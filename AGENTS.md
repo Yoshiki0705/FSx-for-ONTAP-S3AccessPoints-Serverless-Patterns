@@ -141,7 +141,7 @@ python3 -m pytest infrastructure/knfsd-file-cache/tests/ -v -m integration  # In
 ├── params/                 # Additional parameter files (infrastructure templates)
 ├── security/               # cfn-guard rules
 ├── Makefile                # Developer workflow commands
-├── renovate.json           # Automated dependency updates (requires Renovate GitHub App)
+├── renovate.json           # Automated dependency updates (Renovate GitHub App — installed and active)
 └── .github/workflows/      # CI/CD (lint → test → security → deploy)
 ```
 
@@ -723,7 +723,16 @@ git diff --cached | grep -i '/Users/' && echo "LEAK DETECTED" || echo "OK"
 |------|------|---------|
 | Renovate | `renovate.json` | Automated dependency updates (GitHub Actions, `requirements*.txt`/`pyproject.toml`, Dockerfiles). Major bumps require Dependency Dashboard approval. |
 
-Renovate keeps SHA-pinned Actions pinned (`helpers:pinGitHubActionDigests` + `pinDigests: true` on the `github-actions` packageRule), so it does not conflict with the zizmor/gitleaks/scorecard SHA-pinning policy above. **Requires enabling the [Renovate GitHub App](https://github.com/apps/renovate) on this repository** — the config file alone does not activate it.
+Renovate keeps SHA-pinned Actions pinned (`helpers:pinGitHubActionDigests` + `pinDigests: true` on the `github-actions` packageRule), so it does not conflict with the zizmor/gitleaks/scorecard SHA-pinning policy above.
+
+The [Renovate GitHub App](https://github.com/apps/renovate) **is installed and active** on this repository (account-level install with "All repositories" access, so no per-repo step is needed). It has been opening and merging dependency PRs since 2026-07. Confirm status with data rather than re-checking the app settings:
+
+```bash
+gh pr list --state all --author "app/renovate" --limit 5   # recent dependency PRs
+gh issue list --state open | grep "Dependency Dashboard"    # the dashboard issue
+```
+
+Major-version bumps wait for a checkbox on the Dependency Dashboard issue, so a long "Pending Approval" list is normal operation, not a broken install.
 
 ## Cost Awareness
 

@@ -7,8 +7,20 @@
 #
 # Size: ~500MB (LibreOffice + fonts) — exceeds 250MB Lambda Layer limit,
 # hence using container Lambda (max 10GB).
+#
+# STATUS: does not build as written. The dnf step below fails with
+#   error: No package matches 'libreoffice-core'
+# because the AL2023 Lambda base image repositories do not carry LibreOffice.
+# Verified 2026-08-06 against both the python:3.12 and python:3.13 base tags —
+# identical failure, so this is not a runtime-version problem. It has never
+# built. Nothing references this Dockerfile yet (no DockerImageFunction in
+# amplify/backend.ts), which is why CI has never caught it.
+#
+# To make it work, start from an image that already ships LibreOffice instead of
+# installing it here — docs/office-preview-design.md evaluates
+# shelfio/libreoffice-lambda-base-image for exactly this reason.
 
-FROM public.ecr.aws/lambda/python:3.12
+FROM public.ecr.aws/lambda/python:3.13
 
 # Install LibreOffice minimal + CJK fonts
 RUN dnf install -y \
