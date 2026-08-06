@@ -53,38 +53,53 @@ export function AgentFileSidebar({ referencedFiles, visible, onClose }: AgentFil
     }
   }, [referencedFiles, selectedFile]);
 
-  // Fetch permissions when file changes
+  // Fetch permissions when the selected file changes.
+  //
+  // The fetch lives inside the effect rather than in a function declared below it.
+  // Hoisting made the previous arrangement run, but the effect could not list the
+  // function as a dependency, so it captured whichever version existed when the
+  // effect was created.
+  //
+  // `cancelled` drops a response whose request has been superseded. Switching files
+  // while a request is in flight otherwise lets the slower response land last and
+  // show one file's permissions under another file's name.
   useEffect(() => {
     if (!selectedFile || !visible) return;
-    fetchPermissions(selectedFile);
-  }, [selectedFile, visible]);
+    let cancelled = false;
 
-  async function fetchPermissions(filePath: string) {
     setLoading(true);
     setError(null);
     setPermissions(null);
 
-    try {
-      const response = await client.queries.protectionQuery({
-        action: "getFilePermissions",
-        params: JSON.stringify({ filePath }),
-      });
-      const data = response.data
-        ? (typeof response.data === "string" ? JSON.parse(response.data) : response.data) as PermissionsResponse
-        : null;
+    (async () => {
+      try {
+        const response = await client.queries.protectionQuery({
+          action: "getFilePermissions",
+          params: JSON.stringify({ filePath: selectedFile }),
+        });
+        if (cancelled) return;
+        const data = response.data
+          ? (typeof response.data === "string" ? JSON.parse(response.data) : response.data) as PermissionsResponse
+          : null;
 
-      if (data?.permissions) {
-        setPermissions(data.permissions);
+        if (data?.permissions) {
+          setPermissions(data.permissions);
+        }
+        if (data?.error) {
+          setError(data.error);
+        }
+      } catch (e: unknown) {
+        if (cancelled) return;
+        setError(e instanceof Error ? e.message : "Failed to load permissions");
+      } finally {
+        if (!cancelled) setLoading(false);
       }
-      if (data?.error) {
-        setError(data.error);
-      }
-    } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : "Failed to load permissions");
-    } finally {
-      setLoading(false);
-    }
-  }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedFile, visible]);
 
   if (!visible || referencedFiles.length === 0) return null;
 

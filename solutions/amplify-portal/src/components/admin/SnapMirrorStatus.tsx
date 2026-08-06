@@ -2,15 +2,9 @@ import { useState, useEffect } from "react";
 import { generateClient } from "aws-amplify/data";
 import type { Schema } from "../../../amplify/data/resource";
 import { useTranslation } from "../../i18n";
+import { parseResponse } from "../../utils/parseResponse";
 
 const client = generateClient<Schema>();
-
-function parseResponse<T>(response: { data?: string | null }): T | null {
-  if (!response.data) return null;
-  try {
-    return typeof response.data === "string" ? JSON.parse(response.data) : response.data;
-  } catch { return null; }
-}
 
 /** Success message per write action. */
 const SUCCESS_KEY = {
@@ -68,7 +62,7 @@ export function SnapMirrorStatus() {
   const loadRelationships = async () => {
     setLoading(true); setError(null);
     try {
-      const resp = await (client.queries as any).adminQuery({ action: "listSnapmirrorRelationships", params: JSON.stringify({}) });
+      const resp = await client.queries.adminQuery({ action: "listSnapmirrorRelationships", params: JSON.stringify({}) });
       const data = parseResponse<{ relationships?: SnapMirrorRelationship[]; error?: string }>(resp);
       if (data?.error && !data.error.includes("Unknown action") && !data.error.includes("not configured")) {
         setError(data.error);
@@ -86,7 +80,7 @@ export function SnapMirrorStatus() {
     setExpandedUuid(uuid);
     setTransfersLoading(true);
     try {
-      const resp = await (client.queries as any).adminQuery({
+      const resp = await client.queries.adminQuery({
         action: "getSnapmirrorTransfers", params: JSON.stringify({ relationshipUuid: uuid }),
       });
       const data = parseResponse<{ transfers?: Transfer[]; error?: string }>(resp);
@@ -112,7 +106,7 @@ export function SnapMirrorStatus() {
     setError(null);
     setSuccess(null);
     try {
-      const resp = await (client.mutations as any).adminMutation({
+      const resp = await client.mutations.adminMutation({
         action,
         params: JSON.stringify({ relationshipUuid: uuid, ...extra }),
       });

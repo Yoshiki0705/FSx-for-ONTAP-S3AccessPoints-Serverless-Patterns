@@ -2,16 +2,11 @@ import { useState, useEffect } from "react";
 import { generateClient } from "aws-amplify/data";
 import type { Schema } from "../../../amplify/data/resource";
 import { useTranslation } from "../../i18n";
+import { parseResponse } from "../../utils/parseResponse";
 
 const client = generateClient<Schema>();
 
 // Parse the JSON string response from generic dispatch endpoints
-function parseResponse<T>(response: { data?: string | null }): T | null {
-  if (!response.data) return null;
-  try {
-    return typeof response.data === 'string' ? JSON.parse(response.data) : response.data;
-  } catch { return null; }
-}
 
 interface QosPolicy { name: string; uuid: string; type: string; maxThroughputIops?: number; maxThroughputMbps?: number; expectedIops?: number; peakIops?: number; }
 
@@ -38,7 +33,7 @@ export function QosPolicyManager() {
   const loadPolicies = async () => {
     setLoading(true);
     try {
-      const response = await (client.queries as any).adminQuery({ action: "listQosPolicies", params: JSON.stringify({}) });
+      const response = await client.queries.adminQuery({ action: "listQosPolicies", params: JSON.stringify({}) });
       const data = parseResponse<{ policies?: QosPolicy[]; error?: string }>(response);
       if (data) {
         if (data.error) setError(data.error);
@@ -53,7 +48,7 @@ export function QosPolicyManager() {
   const handleCreate = async () => {
     if (!newName) { setError(t("rmQosNameRequired")); return; }
     try {
-      const response = await (client.mutations as any).adminMutation({ action: "createQosPolicy", params: JSON.stringify({
+      const response = await client.mutations.adminMutation({ action: "createQosPolicy", params: JSON.stringify({
         name: newName, policyType,
         maxIops: policyType === "fixed" ? maxIops : undefined,
         maxMbps: policyType === "fixed" ? maxMbps : undefined,
@@ -74,7 +69,7 @@ export function QosPolicyManager() {
   const handleDelete = async (uuid: string, name: string) => {
     if (!confirm(t("rmDeleteConfirm").replace("{name}", name))) return;
     try {
-      const response = await (client.mutations as any).adminMutation({ action: "deleteQosPolicy", params: JSON.stringify({policyUuid: uuid}) });
+      const response = await client.mutations.adminMutation({ action: "deleteQosPolicy", params: JSON.stringify({policyUuid: uuid}) });
       const data = parseResponse<{ success?: boolean; error?: string }>(response);
       if (data) {
         if (data.success) { setResult(t("rmDeleted").replace("{name}", name)); loadPolicies(); }

@@ -2,15 +2,9 @@ import { useState, useEffect } from "react";
 import { generateClient } from "aws-amplify/data";
 import type { Schema } from "../../../amplify/data/resource";
 import { useTranslation } from "../../i18n";
+import { parseResponse } from "../../utils/parseResponse";
 
 const client = generateClient<Schema>({ authMode: "userPool" });
-
-function parseResponse<T>(response: { data?: string | null }): T | null {
-  if (!response.data) return null;
-  try {
-    return typeof response.data === "string" ? JSON.parse(response.data) : response.data;
-  } catch { return null; }
-}
 
 interface FlexCacheOrigin {
   clusterName: string;
@@ -54,7 +48,7 @@ export function FlexCacheManager() {
   const loadCaches = async () => {
     setLoading(true); setError(null);
     try {
-      const resp = await (client.queries as any).adminQuery({
+      const resp = await client.queries.adminQuery({
         action: "listFlexCaches", params: JSON.stringify({}),
       });
       const data = parseResponse<{ caches?: FlexCacheVolume[]; error?: string }>(resp);
@@ -71,8 +65,8 @@ export function FlexCacheManager() {
   useEffect(() => {
     loadCaches();
     // Fetch available volumes for origin selection
-    (client.queries as any).adminQuery({ action: "listVolumes", params: JSON.stringify({}) })
-      .then((resp: any) => {
+    client.queries.adminQuery({ action: "listVolumes", params: JSON.stringify({}) })
+      .then((resp) => {
         const data = parseResponse<{ volumes?: { name: string }[] }>(resp);
         if (data?.volumes) setAvailableVolumes(data.volumes.map(v => v.name));
       }).catch(() => {});
@@ -85,7 +79,7 @@ export function FlexCacheManager() {
     }
     setError(null); setCreating(true);
     try {
-      const resp = await (client.mutations as any).adminMutation({
+      const resp = await client.mutations.adminMutation({
         action: "createFlexCache",
         params: JSON.stringify({
           name: newName,
@@ -118,7 +112,7 @@ export function FlexCacheManager() {
   const handleDelete = async (cache: FlexCacheVolume) => {
     setError(null); setDeleting(cache.uuid);
     try {
-      const resp = await (client.mutations as any).adminMutation({
+      const resp = await client.mutations.adminMutation({
         action: "deleteFlexCache",
         params: JSON.stringify({ uuid: cache.uuid, name: cache.name }),
       });
@@ -141,7 +135,19 @@ export function FlexCacheManager() {
 
       {/* Multi-FS indicator */}
       <div className="rm-hint" style={{ marginBottom: "0.5rem", fontSize: "0.75rem", opacity: 0.7 }}>
-        🖥️ {t("fcacheTargetFs") || "接続先"}: {(window as any).__PORTAL_CONFIG?.ontapMgmtIp || "default"}
+        {/*
+          Reads "default" because that is the file system the backend targets. This
+          was `(window as any).__PORTAL_CONFIG?.ontapMgmtIp || "default"`, but nothing
+          in the repository ever assigns `window.__PORTAL_CONFIG` — not index.html, not
+          a Vite `define`, not the backend — so the lookup was always undefined and the
+          fallback always won. Rendering the same string directly keeps the output
+          identical without an `any` cast over a global that does not exist.
+
+          It is deliberately not wired up: the management IP lives in portal-config.ts,
+          which is gitignored precisely because it holds internal addresses. Publishing
+          one to the browser bundle would leak it to every signed-in user.
+        */}
+        🖥️ {t("fcacheTargetFs") || "接続先"}: default
       </div>
 
       <div className="lu-toolbar">

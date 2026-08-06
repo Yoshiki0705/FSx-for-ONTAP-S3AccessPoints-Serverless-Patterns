@@ -2,16 +2,11 @@ import { useState, useEffect } from "react";
 import { generateClient } from "aws-amplify/data";
 import type { Schema } from "../../../amplify/data/resource";
 import { useTranslation } from "../../i18n";
+import { parseResponse } from "../../utils/parseResponse";
 
 const client = generateClient<Schema>();
 
 // Parse the JSON string response from generic dispatch endpoints
-function parseResponse<T>(response: { data?: string | null }): T | null {
-  if (!response.data) return null;
-  try {
-    return typeof response.data === 'string' ? JSON.parse(response.data) : response.data;
-  } catch { return null; }
-}
 
 interface VolumeEfficiency {
   name: string;
@@ -38,7 +33,7 @@ export function EfficiencyPanel() {
     setLoading(true);
     setError(null);
     try {
-      const response = await (client.queries as any).adminQuery({ action: "getEfficiencyStats", params: JSON.stringify({}) });
+      const response = await client.queries.adminQuery({ action: "getEfficiencyStats", params: JSON.stringify({}) });
       const data = parseResponse<{ stats?: EfficiencyStats; error?: string }>(response);
       if (data) {
         if (data.error) setError(data.error);

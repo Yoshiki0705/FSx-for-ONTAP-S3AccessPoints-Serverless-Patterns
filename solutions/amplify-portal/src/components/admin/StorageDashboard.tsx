@@ -2,15 +2,9 @@ import { useState, useEffect } from "react";
 import { generateClient } from "aws-amplify/data";
 import type { Schema } from "../../../amplify/data/resource";
 import { useTranslation } from "../../i18n";
+import { parseResponse } from "../../utils/parseResponse";
 
 const client = generateClient<Schema>();
-
-function parseResponse<T>(response: { data?: string | null }): T | null {
-  if (!response.data) return null;
-  try {
-    return typeof response.data === "string" ? JSON.parse(response.data) : response.data;
-  } catch { return null; }
-}
 
 interface DashboardData {
   volumeCount: number;
@@ -39,20 +33,22 @@ export function StorageDashboard({ onNavigate }: { onNavigate: (panel: string) =
       try {
         // Parallel fetch for all dashboard data
         const [volResp, arpResp, snapResp, effResp] = await Promise.allSettled([
-          (client.queries as any).adminQuery({ action: "listVolumes", params: JSON.stringify({}) }),
-          (client.queries as any).adminQuery({ action: "listArpVolumes", params: JSON.stringify({}) }),
-          (client.queries as any).protectionQuery({ action: "listSnapshots", params: JSON.stringify({ maxResults: 50 }) }),
-          (client.queries as any).adminQuery({ action: "getEfficiencyStats", params: JSON.stringify({}) }),
+          client.queries.adminQuery({ action: "listVolumes", params: JSON.stringify({}) }),
+          client.queries.adminQuery({ action: "listArpVolumes", params: JSON.stringify({}) }),
+          client.queries.protectionQuery({ action: "listSnapshots", params: JSON.stringify({ maxResults: 50 }) }),
+          client.queries.adminQuery({ action: "getEfficiencyStats", params: JSON.stringify({}) }),
         ]);
 
         let volumeCount = 0, volumeCapacityPct = 0;
         if (volResp.status === "fulfilled") {
-          const vd = parseResponse<{ volumes?: { usedPercent: number }[] }>(volResp.value);
+          // `name` is read below but was missing from this type; the `any` on the
+          // filter callback hid that, so the property was never checked.
+          const vd = parseResponse<{ volumes?: { name?: string; usedPercent?: number }[] }>(volResp.value);
           if (vd?.volumes) {
-            const userVols = vd.volumes.filter((v: any) => !v.name?.endsWith("_root"));
+            const userVols = vd.volumes.filter((v) => !v.name?.endsWith("_root"));
             volumeCount = userVols.length;
             volumeCapacityPct = userVols.length > 0
-              ? Math.round(userVols.reduce((sum: number, v: any) => sum + (v.usedPercent || 0), 0) / userVols.length)
+              ? Math.round(userVols.reduce((sum, v) => sum + (v.usedPercent || 0), 0) / userVols.length)
               : 0;
           }
         }
@@ -61,8 +57,8 @@ export function StorageDashboard({ onNavigate }: { onNavigate: (panel: string) =
         if (arpResp.status === "fulfilled") {
           const ad = parseResponse<{ volumes?: { state: string; threat?: string }[] }>(arpResp.value);
           if (ad?.volumes) {
-            arpProtected = ad.volumes.filter((v: any) => v.state === "enabled" || v.state === "dry_run").length;
-            arpThreats = ad.volumes.filter((v: any) => v.threat && v.threat !== "none").length;
+            arpProtected = ad.volumes.filter((v) => v.state === "enabled" || v.state === "dry_run").length;
+            arpThreats = ad.volumes.filter((v) => v.threat && v.threat !== "none").length;
           }
         }
 
@@ -70,7 +66,7 @@ export function StorageDashboard({ onNavigate }: { onNavigate: (panel: string) =
         if (snapResp.status === "fulfilled") {
           const sd = parseResponse<{ snapshots?: { isLocked: boolean }[] }>(snapResp.value);
           if (sd?.snapshots) {
-            lockedSnapshots = sd.snapshots.filter((s: any) => s.isLocked).length;
+            lockedSnapshots = sd.snapshots.filter((s) => s.isLocked).length;
           }
         }
 

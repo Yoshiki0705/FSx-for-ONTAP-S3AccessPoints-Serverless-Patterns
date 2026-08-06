@@ -2,15 +2,9 @@ import { useState, useEffect } from "react";
 import { generateClient } from "aws-amplify/data";
 import type { Schema } from "../../../amplify/data/resource";
 import { useTranslation } from "../../i18n";
+import { parseResponse } from "../../utils/parseResponse";
 
 const client = generateClient<Schema>();
-
-function parseResponse<T>(response: { data?: string | null }): T | null {
-  if (!response.data) return null;
-  try {
-    return typeof response.data === "string" ? JSON.parse(response.data) : response.data;
-  } catch { return null; }
-}
 
 interface FlexClone {
   name: string;
@@ -41,7 +35,7 @@ export function FlexCloneManager() {
   const loadClones = async () => {
     setLoading(true); setError(null);
     try {
-      const resp = await (client.queries as any).adminQuery({ action: "listFlexClones", params: JSON.stringify({}) });
+      const resp = await client.queries.adminQuery({ action: "listFlexClones", params: JSON.stringify({}) });
       const data = parseResponse<{ clones?: FlexClone[]; error?: string }>(resp);
       if (data?.error && !data.error.includes("Unknown action") && !data.error.includes("not configured")) {
         setError(data.error);
@@ -58,7 +52,7 @@ export function FlexCloneManager() {
     if (!cloneName || !parentVolume) { setError(t("fcCloneNameRequired")); return; }
     setError(null);
     try {
-      const resp = await (client.mutations as any).adminMutation({
+      const resp = await client.mutations.adminMutation({
         action: "createFlexClone",
         params: JSON.stringify({ cloneName, parentVolume, parentSnapshot }),
       });
@@ -74,7 +68,7 @@ export function FlexCloneManager() {
   const handleSplit = async (clone: FlexClone) => {
     if (!window.confirm(t("fcSplitConfirm").replace("{name}", clone.name))) return;
     try {
-      const resp = await (client.mutations as any).adminMutation({
+      const resp = await client.mutations.adminMutation({
         action: "splitFlexClone",
         params: JSON.stringify({ volumeUuid: clone.uuid, volumeName: clone.name }),
       });

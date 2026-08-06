@@ -2,17 +2,9 @@ import { useState, useEffect, useCallback } from "react";
 import { generateClient } from "aws-amplify/data";
 import type { Schema } from "../../../amplify/data/resource";
 import { useTranslation } from "../../i18n";
+import { parseResponse } from "../../utils/parseResponse";
 
 const client = generateClient<Schema>();
-
-function parseResponse<T>(response: { data?: string | null }): T | null {
-  if (!response.data) return null;
-  try {
-    return typeof response.data === "string" ? JSON.parse(response.data) : response.data;
-  } catch {
-    return null;
-  }
-}
 
 interface InterclusterLif {
   name: string;
@@ -93,7 +85,7 @@ export function PeeringManager() {
     try {
       const action =
         tab === "cluster" ? "listClusterPeers" : tab === "svm" ? "listSvmPeers" : "listInterclusterLifs";
-      const resp = await (client.queries as any).adminQuery({
+      const resp = await client.queries.adminQuery({
         action,
         params: JSON.stringify({}),
       });
@@ -126,7 +118,7 @@ export function PeeringManager() {
     setError(null);
     setSuccess(null);
     try {
-      const resp = await (client.mutations as any).adminMutation({
+      const resp = await client.mutations.adminMutation({
         action,
         params: JSON.stringify(params),
       });

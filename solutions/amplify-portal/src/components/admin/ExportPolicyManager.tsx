@@ -2,16 +2,11 @@ import { useState, useEffect } from "react";
 import { generateClient } from "aws-amplify/data";
 import type { Schema } from "../../../amplify/data/resource";
 import { useTranslation } from "../../i18n";
+import { parseResponse } from "../../utils/parseResponse";
 
 const client = generateClient<Schema>();
 
 // Parse the JSON string response from generic dispatch endpoints
-function parseResponse<T>(response: { data?: string | null }): T | null {
-  if (!response.data) return null;
-  try {
-    return typeof response.data === 'string' ? JSON.parse(response.data) : response.data;
-  } catch { return null; }
-}
 
 interface ExportPolicy { id: number; name: string; ruleCount: number; }
 interface ExportRule { index: number; clients: string[]; roRule: string[]; rwRule: string[]; superuser: string[]; protocols: string[]; }
@@ -40,7 +35,7 @@ export function ExportPolicyManager() {
   const loadPolicies = async () => {
     setLoading(true);
     try {
-      const response = await (client.queries as any).adminQuery({ action: "listExportPolicies", params: JSON.stringify({}) });
+      const response = await client.queries.adminQuery({ action: "listExportPolicies", params: JSON.stringify({}) });
       const data = parseResponse<{ policies?: ExportPolicy[]; error?: string }>(response);
       if (data) {
         if (data.error) setError(data.error);
@@ -53,7 +48,7 @@ export function ExportPolicyManager() {
   const loadRules = async (policyId: string) => {
     setLoading(true);
     try {
-      const response = await (client.queries as any).adminQuery({ action: "getExportPolicyRules", params: JSON.stringify({policyId}) });
+      const response = await client.queries.adminQuery({ action: "getExportPolicyRules", params: JSON.stringify({policyId}) });
       const data = parseResponse<{ rules?: ExportRule[]; error?: string }>(response);
       if (data) {
         if (data.error) setError(data.error);
@@ -69,7 +64,7 @@ export function ExportPolicyManager() {
     if (!newPolicyName.trim()) { setError(t("rmPolicyNameRequired")); return; }
     setError(null);
     try {
-      const response = await (client.mutations as any).adminMutation({
+      const response = await client.mutations.adminMutation({
         action: "createExportPolicy",
         params: JSON.stringify({ name: newPolicyName.trim() }),
       });
@@ -90,7 +85,7 @@ export function ExportPolicyManager() {
     if (!confirm(t("rmDeleteConfirm").replace("{name}", policy.name))) return;
     setError(null);
     try {
-      const response = await (client.mutations as any).adminMutation({
+      const response = await client.mutations.adminMutation({
         action: "deleteExportPolicy",
         params: JSON.stringify({ policyId: String(policy.id), confirm: true }),
       });
@@ -119,7 +114,7 @@ export function ExportPolicyManager() {
   const handleAddRule = async () => {
     if (!selectedPolicy || !newClient) return;
     try {
-      const response = await (client.mutations as any).adminMutation({ action: "createExportPolicyRule", params: JSON.stringify({
+      const response = await client.mutations.adminMutation({ action: "createExportPolicyRule", params: JSON.stringify({
         policyId: String(selectedPolicy.id),
         clientMatch: newClient,
         roRule: [newRoRule],
@@ -143,7 +138,7 @@ export function ExportPolicyManager() {
     if (!selectedPolicy) return;
     if (!confirm(t("rmDeleteRuleConfirm").replace("{index}", String(ruleIndex)))) return;
     try {
-      const response = await (client.mutations as any).adminMutation({ action: "deleteExportPolicyRule", params: JSON.stringify({
+      const response = await client.mutations.adminMutation({ action: "deleteExportPolicyRule", params: JSON.stringify({
         policyId: String(selectedPolicy.id), ruleIndex,
       }) });
       const data = parseResponse<{ success?: boolean; error?: string }>(response);

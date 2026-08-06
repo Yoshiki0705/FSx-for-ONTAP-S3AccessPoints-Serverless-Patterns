@@ -2,16 +2,11 @@ import { useState, useEffect } from "react";
 import { generateClient } from "aws-amplify/data";
 import type { Schema } from "../../../amplify/data/resource";
 import { useTranslation } from "../../i18n";
+import { parseResponse } from "../../utils/parseResponse";
 
 const client = generateClient<Schema>();
 
 // Parse the JSON string response from generic dispatch endpoints
-function parseResponse<T>(response: { data?: string | null }): T | null {
-  if (!response.data) return null;
-  try {
-    return typeof response.data === 'string' ? JSON.parse(response.data) : response.data;
-  } catch { return null; }
-}
 
 interface ArpVolume {
   name: string;
@@ -29,6 +24,18 @@ interface ArpSummary {
   enabled: number;
   learning: number;
   disabled: number;
+}
+
+/**
+ * A file ONTAP flagged as a possible ransomware indicator.
+ *
+ * Fields match what the suspects table renders. `filePath` and `fileType` are
+ * optional because the table already falls back to an em dash for each.
+ */
+interface ArpSuspect {
+  filePath?: string;
+  fileType?: string;
+  suspectTime: string;
 }
 
 /**
@@ -58,7 +65,7 @@ export function ArpAdminManager() {
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<string | null>(null);
   const [selectedVolume, setSelectedVolume] = useState<ArpVolume | null>(null);
-  const [suspects, setSuspects] = useState<any[]>([]);
+  const [suspects, setSuspects] = useState<ArpSuspect[]>([]);
   const [showBulkEnable, setShowBulkEnable] = useState(false);
   const [bulkState, setBulkState] = useState<"enabled" | "dry_run">("enabled");
 
@@ -67,7 +74,7 @@ export function ArpAdminManager() {
   const loadVolumes = async () => {
     setLoading(true); setError(null);
     try {
-      const response = await (client.queries as any).adminQuery({ action: "listArpVolumes", params: JSON.stringify({}) });
+      const response = await client.queries.adminQuery({ action: "listArpVolumes", params: JSON.stringify({}) });
       const data = parseResponse<{ volumes?: ArpVolume[]; summary?: ArpSummary; error?: string }>(response);
       if (data) {
         if (data.error) setError(data.error);
@@ -87,7 +94,7 @@ export function ArpAdminManager() {
 
     setError(null);
     try {
-      const response = await (client.mutations as any).adminMutation({ action: "updateArpStateAdmin", params: JSON.stringify({
+      const response = await client.mutations.adminMutation({ action: "updateArpStateAdmin", params: JSON.stringify({
         volumeUuid: vol.uuid, state: newState,
       }) });
       const data = parseResponse<{ success?: boolean; error?: string }>(response);
@@ -102,8 +109,8 @@ export function ArpAdminManager() {
   const handleViewSuspects = async (vol: ArpVolume) => {
     setSelectedVolume(vol); setSuspects([]);
     try {
-      const response = await (client.queries as any).adminQuery({ action: "getArpSuspectsAdmin", params: JSON.stringify({volumeUuid: vol.uuid}) });
-      const data = parseResponse<{ suspects?: any[]; error?: string }>(response);
+      const response = await client.queries.adminQuery({ action: "getArpSuspectsAdmin", params: JSON.stringify({volumeUuid: vol.uuid}) });
+      const data = parseResponse<{ suspects?: ArpSuspect[]; error?: string }>(response);
       if (data) {
         if (data.error) setError(data.error);
         else setSuspects(data.suspects || []);
@@ -115,7 +122,7 @@ export function ArpAdminManager() {
     if (!selectedVolume) return;
     if (!window.confirm(t("rmArpClearSuspectsConfirm"))) return;
     try {
-      const response = await (client.mutations as any).adminMutation({ action: "clearArpSuspects", params: JSON.stringify({volumeUuid: selectedVolume.uuid}) });
+      const response = await client.mutations.adminMutation({ action: "clearArpSuspects", params: JSON.stringify({volumeUuid: selectedVolume.uuid}) });
       const data = parseResponse<{ success?: boolean; error?: string }>(response);
       if (data) {
         if (data.success) { setResult(t("rmArpSuspectsCleared")); clearResult(); setSuspects([]); loadVolumes(); }
@@ -127,7 +134,7 @@ export function ArpAdminManager() {
   const handleSurgeAsNormal = async (vol: ArpVolume) => {
     if (!window.confirm(t("rmArpSurgeConfirm"))) return;
     try {
-      const response = await (client.mutations as any).adminMutation({ action: "updateArpSurgeParams", params: JSON.stringify({
+      const response = await client.mutations.adminMutation({ action: "updateArpSurgeParams", params: JSON.stringify({
         volumeUuid: vol.uuid, surgeAsNormal: true,
       }) });
       const data = parseResponse<{ success?: boolean; error?: string }>(response);
@@ -144,7 +151,7 @@ export function ArpAdminManager() {
     if (!window.confirm(`${t("rmArpBulkConfirm")} ${unprotected.length} ${t("rmArpVolumesTo")} ${bulkState}?`)) return;
 
     try {
-      const response = await (client.mutations as any).adminMutation({ action: "enableArpBulk", params: JSON.stringify({
+      const response = await client.mutations.adminMutation({ action: "enableArpBulk", params: JSON.stringify({
         volumeUuids: unprotected, state: bulkState,
       }) });
       const data = parseResponse<{ successCount?: number; totalCount?: number; error?: string }>(response);
