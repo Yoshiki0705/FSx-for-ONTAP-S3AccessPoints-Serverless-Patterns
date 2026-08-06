@@ -75,31 +75,22 @@ install:
 # ============================================================
 # Testing
 # ============================================================
+# パターンのテストディレクトリは pattern-test-dirs.txt を単一の出典とする。
+# 以前はこの target と ci.yml がそれぞれ手書きの一覧を持っており、CI は 37 個、
+# こちらは 16 個しか回していなかった。両方に載っていないディレクトリが 13 個
+# （約 790 テスト）あり、どこでも実行されていなかった。
+PATTERN_TEST_DIRS := $(shell grep -v '^\#' pattern-test-dirs.txt | grep -v '^$$')
+
 test:
-	$(PYTHON) -m pytest \
-		shared/tests/ \
-		solutions/industry/legal-compliance/tests/ \
-		solutions/sap/erp-adjacent/tests/ \
-		solutions/industry/smart-city-geospatial/tests/ \
-		solutions/industry/defense-satellite/tests/ \
-		--tb=short -q
-	$(PYTHON) -m pytest \
-		solutions/industry/semiconductor-eda/tests/ \
-		--tb=short -q
-	$(PYTHON) -m pytest \
-		solutions/industry/education-research/tests/ \
-		--tb=short -q
-	$(PYTHON) -m pytest \
-		solutions/flexcache/anycast-dr/tests/ \
-		--tb=short -q
-	$(PYTHON) -m pytest \
-		solutions/ha/lifekeeper-monitoring/tests/ \
-		--tb=short -q
+	$(PYTHON) -m pytest shared/tests/ --tb=short -q
 	$(PYTHON) -m pytest scripts/tests/ --tb=short -q
-	# operations/ は 6 パターン分のテストを持つが、この行が無かったため CI でも
-	# ローカルでも一度も実行されていなかった。パターンごとに分けているのは、
-	# handler.py を同名モジュールとして読み込む都合で衝突を避けるため。
-	$(PYTHON) -m pytest operations/ --tb=short -q
+# パターンごとに別プロセスで回す。多くのパターンが functions.discovery のような
+# 同名モジュールを持つため、まとめて 1 プロセスで実行すると sys.modules が最初の
+# パターンのものを掴んで ModuleNotFoundError になる。
+	@for d in $(PATTERN_TEST_DIRS); do \
+		echo "--- $$d"; \
+		$(PYTHON) -m pytest "$$d/tests/" --tb=short -q --ignore=.hypothesis || exit 1; \
+	done
 
 test-quick:
 	$(PYTHON) -m pytest shared/tests/test_s3ap_helper.py shared/tests/test_properties.py shared/tests/test_fsx_helper.py --tb=short -q
