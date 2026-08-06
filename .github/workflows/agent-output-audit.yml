@@ -200,3 +200,21 @@ jobs:
             fi
           done < /tmp/changed_md.txt
           echo "✅ Parity check complete (warnings only)"
+
+      # The section-count check above passes whenever both files have the same
+      # number of headings, which is not the same as both saying the same thing.
+      # docs/ja|en/ad-joined-svm-s3ap-prerequisites.md matched 1:1 on headings
+      # while the JA monitoring section was missing the Lambda definition its own
+      # snippet referenced — the snippet could not be copied and used, and the
+      # count check reported the pair as aligned.
+      #
+      # This compares fenced code blocks, table rows and list items per matching
+      # section. Not line counts: Japanese prose is denser and the EN files are
+      # soft-wrapped near 80 columns, which on the largest pair here accounts for
+      # an 83-line gap with identical content.
+      #
+      # Ratcheted rather than strict. 69 mismatches across 9 of 15 pairs predate
+      # the check; failing on those would block unrelated work. The baseline can
+      # only go down — lower it when gaps are closed.
+      - name: "Check: JA/EN structural parity (ratcheted)"
+        run: python3 scripts/check_doc_structural_parity.py --max-mismatches 69
