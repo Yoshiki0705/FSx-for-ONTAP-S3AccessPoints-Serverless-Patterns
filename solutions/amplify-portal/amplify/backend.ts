@@ -351,7 +351,7 @@ const sharedPythonLayer = new lambda.LayerVersion(dataStack, "SharedPythonLayer"
   description:
     "Repository shared/ Python modules (ONTAP client and ARP containment actions) " +
     `at /opt/python/shared [sources ${sharedSourcesFingerprint}]`,
-  compatibleRuntimes: [lambda.Runtime.PYTHON_3_12],
+  compatibleRuntimes: [lambda.Runtime.PYTHON_3_12, lambda.Runtime.PYTHON_3_13],
   compatibleArchitectures: [lambda.Architecture.ARM_64],
   code: lambda.Code.fromAsset(sharedModulesDir, {
     exclude: ["tests", "tests/**", "__pycache__", "**/__pycache__", "*.pyc"],
@@ -361,7 +361,7 @@ const sharedPythonLayer = new lambda.LayerVersion(dataStack, "SharedPythonLayer"
     // containing the earlier, incomplete file set.
     assetHashType: AssetHashType.OUTPUT,
     bundling: {
-      image: lambda.Runtime.PYTHON_3_12.bundlingImage,
+      image: lambda.Runtime.PYTHON_3_13.bundlingImage,
       command: [],
       local: {
         tryBundle(outputDir: string) {
@@ -401,7 +401,7 @@ const sharedPythonLayer = new lambda.LayerVersion(dataStack, "SharedPythonLayer"
 });
 
 const listFilesFunction = new lambda.Function(dataStack, "ListFilesFunction", {
-  runtime: lambda.Runtime.PYTHON_3_12,
+  runtime: lambda.Runtime.PYTHON_3_13,
   architecture: lambda.Architecture.ARM_64,
   handler: "index.handler",
   code: functionCode("functions/list-files"),
@@ -466,7 +466,7 @@ const folderDownloadFunction = new lambda.Function(
   dataStack,
   "FolderDownloadFunction",
   {
-    runtime: lambda.Runtime.PYTHON_3_12,
+    runtime: lambda.Runtime.PYTHON_3_13,
     architecture: lambda.Architecture.ARM_64,
     handler: "index.handler",
     code: functionCode("functions/folder-download"),
@@ -514,7 +514,7 @@ const getPresignedUrlFunction = new lambda.Function(
   dataStack,
   "GetPresignedUrlFunction",
   {
-    runtime: lambda.Runtime.PYTHON_3_12,
+    runtime: lambda.Runtime.PYTHON_3_13,
     architecture: lambda.Architecture.ARM_64,
     handler: "index.handler",
     code: functionCode("functions/presigned-url"),
@@ -561,7 +561,7 @@ const listSnapshotsFunction = new lambda.Function(
   dataStack,
   "ListSnapshotsFunction",
   {
-    runtime: lambda.Runtime.PYTHON_3_12,
+    runtime: lambda.Runtime.PYTHON_3_13,
     architecture: lambda.Architecture.ARM_64,
     handler: "index.handler",
     code: functionCode("functions/snapshots"),
@@ -630,7 +630,7 @@ const arpResponseFunction = new lambda.Function(
   dataStack,
   "ArpResponseFunction",
   {
-    runtime: lambda.Runtime.PYTHON_3_12,
+    runtime: lambda.Runtime.PYTHON_3_13,
     architecture: lambda.Architecture.ARM_64,
     handler: "handler.handler",
     code: functionCode("functions/data-protection"),
@@ -847,7 +847,7 @@ const resourceMgmtFunction = new lambda.Function(
   dataStack,
   "ResourceMgmtFunction",
   {
-    runtime: lambda.Runtime.PYTHON_3_12,
+    runtime: lambda.Runtime.PYTHON_3_13,
     architecture: lambda.Architecture.ARM_64,
     handler: "handler.handler",
     code: functionCode("functions/resource-management"),
@@ -908,7 +908,7 @@ const searchFilesFunction = new lambda.Function(
   dataStack,
   "SearchFilesFunction",
   {
-    runtime: lambda.Runtime.PYTHON_3_12,
+    runtime: lambda.Runtime.PYTHON_3_13,
     architecture: lambda.Architecture.ARM_64,
     handler: "index.handler",
     code: functionCode("functions/search-files"),
@@ -973,7 +973,7 @@ const agentChatFunction = new lambda.Function(
   dataStack,
   "AgentChatFunction",
   {
-    runtime: lambda.Runtime.PYTHON_3_12,
+    runtime: lambda.Runtime.PYTHON_3_13,
     architecture: lambda.Architecture.ARM_64,
     handler: "handler.handler",
     code: functionCode("functions/agent-chat"),
@@ -1037,7 +1037,7 @@ const queryAuditLogFunction = new lambda.Function(
   dataStack,
   "QueryAuditLogFunction",
   {
-    runtime: lambda.Runtime.PYTHON_3_12,
+    runtime: lambda.Runtime.PYTHON_3_13,
     architecture: lambda.Architecture.ARM_64,
     handler: "index.handler",
     code: functionCode("functions/audit-log"),
@@ -1085,7 +1085,7 @@ const getFileMetadataFunction = new lambda.Function(
   dataStack,
   "GetFileMetadataFunction",
   {
-    runtime: lambda.Runtime.PYTHON_3_12,
+    runtime: lambda.Runtime.PYTHON_3_13,
     architecture: lambda.Architecture.ARM_64,
     handler: "index.handler",
     code: functionCode("functions/file-metadata"),
@@ -1125,7 +1125,7 @@ const generateQrCodeFunction = new lambda.Function(
   dataStack,
   "GenerateQrCodeFunction",
   {
-    runtime: lambda.Runtime.PYTHON_3_12,
+    runtime: lambda.Runtime.PYTHON_3_13,
     architecture: lambda.Architecture.ARM_64,
     handler: "index.handler",
     code: functionCode("functions/generate-qr"),
@@ -1174,7 +1174,7 @@ const askAboutFileFunction = new lambda.Function(
   dataStack,
   "AskAboutFileFunction",
   {
-    runtime: lambda.Runtime.PYTHON_3_12,
+    runtime: lambda.Runtime.PYTHON_3_13,
     architecture: lambda.Architecture.ARM_64,
     handler: "index.handler",
     code: functionCode("functions/ask-about-file"),
@@ -1223,7 +1223,7 @@ const detectLabelsFunction = new lambda.Function(
   dataStack,
   "DetectLabelsFunction",
   {
-    runtime: lambda.Runtime.PYTHON_3_12,
+    runtime: lambda.Runtime.PYTHON_3_13,
     architecture: lambda.Architecture.ARM_64,
     handler: "index.handler",
     code: functionCode("functions/detect-labels"),
@@ -1286,7 +1286,7 @@ const athenaQueryFunction = new lambda.Function(
   dataStack,
   "AthenaQueryFunction",
   {
-    runtime: lambda.Runtime.PYTHON_3_12,
+    runtime: lambda.Runtime.PYTHON_3_13,
     architecture: lambda.Architecture.ARM_64,
     handler: "index.handler",
     code: functionCode("functions/athena-query"),
@@ -1331,7 +1331,7 @@ const textractFunction = new lambda.Function(
   dataStack,
   "TextractFunction",
   {
-    runtime: lambda.Runtime.PYTHON_3_12,
+    runtime: lambda.Runtime.PYTHON_3_13,
     architecture: lambda.Architecture.ARM_64,
     handler: "index.handler",
     code: functionCode("functions/textract"),
@@ -1379,7 +1379,7 @@ const comprehendFunction = new lambda.Function(
   dataStack,
   "ComprehendFunction",
   {
-    runtime: lambda.Runtime.PYTHON_3_12,
+    runtime: lambda.Runtime.PYTHON_3_13,
     architecture: lambda.Architecture.ARM_64,
     handler: "index.handler",
     code: functionCode("functions/comprehend-analysis"),
@@ -1425,7 +1425,7 @@ const glueCatalogFunction = new lambda.Function(
   dataStack,
   "GlueCatalogFunction",
   {
-    runtime: lambda.Runtime.PYTHON_3_12,
+    runtime: lambda.Runtime.PYTHON_3_13,
     architecture: lambda.Architecture.ARM_64,
     handler: "index.handler",
     code: functionCode("functions/glue-catalog"),
@@ -1479,8 +1479,8 @@ NagSuppressions.addStackSuppressions(dataStack, [
   {
     id: "AwsSolutions-L1",
     reason:
-      "All Lambda functions explicitly use Python 3.12 (latest supported runtime as of 2026-07). " +
-      "cdk-nag may flag this if a newer runtime becomes available.",
+      "All Lambda functions explicitly use Python 3.13, matching `Runtime: python3.13` in the " +
+      "SAM templates. cdk-nag may flag this if a newer runtime becomes available.",
   },
   {
     id: "AwsSolutions-COG4",

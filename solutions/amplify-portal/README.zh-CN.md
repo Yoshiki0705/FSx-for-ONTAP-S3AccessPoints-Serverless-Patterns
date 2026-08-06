@@ -65,7 +65,7 @@ AWS 提供了构建模块（S3 API、Cognito、AppSync），但没有提供集�
 │  ┌─────────────────────────────────────────────────────┐ │
 │  │ CDK (in data stack)                                 │ │
 │  │  - HTTP Data Source → states.<region>.amazonaws.com │ │
-│  │  - Lambda Data Source → ListFiles (Python 3.12)     │ │
+│  │  - Lambda Data Source → ListFiles (Python 3.13)     │ │
 │  └─────────────────────────────────────────────────────┘ │
 └──────────────────────────────────────────────────────────┘
           │                              │

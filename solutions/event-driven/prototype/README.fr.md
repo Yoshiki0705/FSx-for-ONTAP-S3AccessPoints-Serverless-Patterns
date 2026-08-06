@@ -88,7 +88,7 @@ response = s3ap.get_object(file_key)
 ### Prérequis
 
 - AWS CLI configuré
-- Python 3.12
+- Python 3.13
 - Compartiment S3 pour le package de déploiement Lambda
 
 ### Déploiement

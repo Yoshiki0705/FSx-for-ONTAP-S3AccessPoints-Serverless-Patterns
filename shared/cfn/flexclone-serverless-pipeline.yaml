@@ -296,7 +296,7 @@ Resources:
     Condition: IsFlexClonePipelineEnabled
     Properties:
       FunctionName: !Sub "${ProjectPrefix}-flexclone-snapshot"
-      Runtime: python3.12
+      Runtime: python3.13
       Handler: handler.handler
       CodeUri: ../lambdas/flexclone_create_snapshot/
       MemorySize: 256
@@ -321,7 +321,7 @@ Resources:
     Condition: IsFlexClonePipelineEnabled
     Properties:
       FunctionName: !Sub "${ProjectPrefix}-flexclone-create"
-      Runtime: python3.12
+      Runtime: python3.13
       Handler: handler.handler
       CodeUri: ../lambdas/flexclone_create_clone/
       MemorySize: 256
@@ -347,7 +347,7 @@ Resources:
     Condition: IsFlexClonePipelineEnabled
     Properties:
       FunctionName: !Sub "${ProjectPrefix}-flexclone-process"
-      Runtime: python3.12
+      Runtime: python3.13
       Handler: handler.handler
       CodeUri: ../lambdas/flexclone_process_files/
       MemorySize: 512
@@ -368,7 +368,7 @@ Resources:
     Condition: IsFlexClonePipelineEnabled
     Properties:
       FunctionName: !Sub "${ProjectPrefix}-flexclone-cifs-share"
-      Runtime: python3.12
+      Runtime: python3.13
       Handler: handler.handler
       CodeUri: ../lambdas/flexclone_create_cifs_share/
       MemorySize: 256

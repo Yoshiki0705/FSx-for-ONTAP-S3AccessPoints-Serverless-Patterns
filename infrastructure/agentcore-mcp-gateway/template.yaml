@@ -110,7 +110,7 @@ Resources:
       Description: >
         AgentCore MCP Tools for FSx for ONTAP S3 AP.
         Provides list_files, read_file, search_files.
-      Runtime: python3.12
+      Runtime: python3.13
       Architectures:
         - arm64
       Handler: index.handler

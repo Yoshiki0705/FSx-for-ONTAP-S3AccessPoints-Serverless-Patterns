@@ -449,7 +449,7 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       FunctionName: !Sub "${AWS::StackName}-discovery"
-      Runtime: python3.12
+      Runtime: python3.13
       Handler: handler.handler
       CodeUri: functions/discovery/
       Layers:
@@ -481,7 +481,7 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       FunctionName: !Sub "${AWS::StackName}-grant-extractor"
-      Runtime: python3.12
+      Runtime: python3.13
       Handler: handler.handler
       CodeUri: functions/grant_extractor/
       Layers:
@@ -504,7 +504,7 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       FunctionName: !Sub "${AWS::StackName}-outcome-matcher"
-      Runtime: python3.12
+      Runtime: python3.13
       Handler: handler.handler
       CodeUri: functions/outcome_matcher/
       Layers:
@@ -527,7 +527,7 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       FunctionName: !Sub "${AWS::StackName}-report"
-      Runtime: python3.12
+      Runtime: python3.13
       Handler: handler.handler
       CodeUri: functions/report/
       Layers:

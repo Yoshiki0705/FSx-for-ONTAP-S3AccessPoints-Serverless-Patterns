@@ -152,7 +152,7 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       Handler: handler.handler
-      Runtime: python3.12
+      Runtime: python3.13
       CodeUri: functions/discovery/
       Timeout: 120
       MemorySize: 512
@@ -166,7 +166,7 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       Handler: handler.handler
-      Runtime: python3.12
+      Runtime: python3.13
       CodeUri: functions/chunking/
       Timeout: 300
       MemorySize: 1024
@@ -181,7 +181,7 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       Handler: handler.handler
-      Runtime: python3.12
+      Runtime: python3.13
       CodeUri: functions/embedding/
       Timeout: 300
       MemorySize: 512
@@ -195,7 +195,7 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       Handler: handler.handler
-      Runtime: python3.12
+      Runtime: python3.13
       CodeUri: functions/acl_extraction/
       Timeout: 60
       MemorySize: 256
@@ -211,7 +211,7 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       Handler: handler.handler
-      Runtime: python3.12
+      Runtime: python3.13
       CodeUri: functions/report/
       Timeout: 60
       MemorySize: 256

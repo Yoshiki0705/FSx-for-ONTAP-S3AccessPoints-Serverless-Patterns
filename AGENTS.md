@@ -149,7 +149,7 @@ python3 -m pytest infrastructure/knfsd-file-cache/tests/ -v -m integration  # In
 
 - **Trigger**: EventBridge Scheduler (polling) OR FPolicy EventBridge Rule (event-driven)
 - **Orchestration**: Step Functions state machine per UC
-- **Compute**: Lambda functions (Python 3.12, ARM64, 256-1024MB)
+- **Compute**: Lambda functions (Python 3.13, ARM64, 256-1024MB)
 - **Storage access**: FSx for ONTAP S3 Access Points (read/write via S3ApHelper)
 - **AI/ML**: Bedrock (Nova/Claude), Textract, Comprehend, Rekognition, SageMaker
 - **Analytics**: Athena + Glue Data Catalog
@@ -162,7 +162,7 @@ python3 -m pytest infrastructure/knfsd-file-cache/tests/ -v -m integration  # In
 
 ### Python
 
-- Python 3.12 target (ARM64 Lambda)
+- Python 3.13 target (ARM64 Lambda). Source must stay compatible with 3.12 (`requires-python = ">=3.12"`, ruff `target-version = "py312"`, CI matrix 3.11–3.13)
 - Type hints on all function signatures (use `shared/schemas/events.py` TypedDicts)
 - Docstrings on all public functions (Google style)
 - `from __future__ import annotations` at top of every module
@@ -573,7 +573,7 @@ This project implements a 6-layer defense architecture for infrastructure code q
 - cdk-nag suppressions MUST include `reason` explaining why it's acceptable
 - Lambda env vars for external infra MUST use `config.<property>` from `portal-config.ts` (not bare `process.env`)
 - AppSync Data Sources MUST be in the same stack as the API (cross-stack = deploy failure)
-- All Lambda functions: Python 3.12, ARM64, explicit timeout, description field
+- All Lambda functions: Python 3.13, ARM64, explicit timeout, description field
 - No `@aws-cdk/*-alpha` modules — use L1 + escape hatches instead
 
 **Validation commands:**

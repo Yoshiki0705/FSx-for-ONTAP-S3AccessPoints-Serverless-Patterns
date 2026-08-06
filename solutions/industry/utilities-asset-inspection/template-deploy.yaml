@@ -511,7 +511,7 @@ Resources:
     Type: AWS::Lambda::Function
     Properties:
       FunctionName: !Sub "${AWS::StackName}-discovery"
-      Runtime: python3.12
+      Runtime: python3.13
       Handler: handler.handler
       Code:
         S3Bucket: !Ref DeployBucket
@@ -545,7 +545,7 @@ Resources:
     Type: AWS::Lambda::Function
     Properties:
       FunctionName: !Sub "${AWS::StackName}-defect-detector"
-      Runtime: python3.12
+      Runtime: python3.13
       Handler: handler.handler
       Code:
         S3Bucket: !Ref DeployBucket
@@ -570,7 +570,7 @@ Resources:
     Type: AWS::Lambda::Function
     Properties:
       FunctionName: !Sub "${AWS::StackName}-scada-analyzer"
-      Runtime: python3.12
+      Runtime: python3.13
       Handler: handler.handler
       Code:
         S3Bucket: !Ref DeployBucket
@@ -594,7 +594,7 @@ Resources:
     Type: AWS::Lambda::Function
     Properties:
       FunctionName: !Sub "${AWS::StackName}-thermal-analyzer"
-      Runtime: python3.12
+      Runtime: python3.13
       Handler: handler.handler
       Code:
         S3Bucket: !Ref DeployBucket
@@ -618,7 +618,7 @@ Resources:
     Type: AWS::Lambda::Function
     Properties:
       FunctionName: !Sub "${AWS::StackName}-report"
-      Runtime: python3.12
+      Runtime: python3.13
       Handler: handler.handler
       Code:
         S3Bucket: !Ref DeployBucket
