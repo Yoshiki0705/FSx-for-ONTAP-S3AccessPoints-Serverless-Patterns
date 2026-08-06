@@ -12,6 +12,11 @@ Environment Variables:
     S3_ACCESS_POINT: S3 AP Alias or ARN (入力読み取り用)
     S3_ACCESS_POINT_OUTPUT: S3 AP Alias or ARN (出力書き込み用、省略時は S3_ACCESS_POINT を使用)
     PREFIX_FILTER: プレフィックスフィルタ (optional)
+    SENSOR_LOG_SUFFIX_FILTER: センサーログの拡張子。カンマ区切り (optional)
+    INSPECTION_IMAGE_SUFFIX_FILTER: 検査画像の拡張子。カンマ区切り (optional)
+        いずれも未設定または実質空の場合はモジュール定数を使用する。
+        検出結果はカテゴリごとに後続処理が分かれるため、単一の SUFFIX_FILTER では
+        設定できない（片方にしか属さない拡張子を足すと分類で落ちる）。
 """
 
 from __future__ import annotations
@@ -24,6 +29,7 @@ from datetime import datetime, timezone
 from shared.exceptions import lambda_error_handler
 from shared.s3ap_helper import S3ApHelper
 from shared.observability import xray_subsegment, EmfMetrics, trace_lambda_handler
+from shared.suffix_filter import allowed_suffixes
 
 logger = logging.getLogger(__name__)
 
@@ -55,9 +61,27 @@ def handler(event, context):
         prefix,
     )
 
+    # 検出対象のサフィックスをカテゴリごとに決める。
+    #
+    # このパターンは検出結果をセンサーログと検査画像に分類し、後続の処理が別なので、
+    # 単一の平坦な SUFFIX_FILTER では設定できない。1 つのノブに拡張子を足しても、
+    # 下の分類（if/elif）でどちらにも該当せず落ちる。カテゴリごとに環境変数を
+    # 分けることで、リスト対象と分類対象が構造的に一致する。
+    sensor_log_suffixes = allowed_suffixes(SENSOR_LOG_SUFFIXES, env_var="SENSOR_LOG_SUFFIX_FILTER")
+    inspection_image_suffixes = allowed_suffixes(INSPECTION_IMAGE_SUFFIXES, env_var="INSPECTION_IMAGE_SUFFIX_FILTER")
+
+    # 両カテゴリの合併を走査対象にする（重複はここで除く）
+    scan_suffixes = tuple(dict.fromkeys(sensor_log_suffixes + inspection_image_suffixes))
+
+    logger.info(
+        "Discovery suffixes: sensor_logs=%s, inspection_images=%s",
+        ",".join(sensor_log_suffixes),
+        ",".join(inspection_image_suffixes),
+    )
+
     # 対象ファイルを各サフィックスで検出
     all_objects: list[dict] = []
-    for suffix in ALL_SUFFIXES:
+    for suffix in scan_suffixes:
         with xray_subsegment(
             name="s3ap_list_objects",
             annotations={"service_name": "s3", "operation": "ListObjectsV2", "use_case": "manufacturing-analytics"},
@@ -78,9 +102,11 @@ def handler(event, context):
     image_files: list[dict] = []
     for obj in unique_objects:
         key_lower = obj["Key"].lower()
-        if any(key_lower.endswith(s) for s in SENSOR_LOG_SUFFIXES):
+        # 走査に使ったものと同じタプルで分類する。定数を直接参照すると、
+        # 環境変数で広げた拡張子がどちらにも該当せず無言で落ちる。
+        if any(key_lower.endswith(s) for s in sensor_log_suffixes):
             csv_files.append(obj)
-        elif any(key_lower.endswith(s) for s in INSPECTION_IMAGE_SUFFIXES):
+        elif any(key_lower.endswith(s) for s in inspection_image_suffixes):
             image_files.append(obj)
 
     # Manifest 生成

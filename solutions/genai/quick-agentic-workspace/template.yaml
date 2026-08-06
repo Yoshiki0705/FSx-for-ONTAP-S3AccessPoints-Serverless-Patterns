@@ -384,7 +384,7 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       Handler: handler.handler
-      Runtime: python3.12
+      Runtime: python3.13
       CodeUri: functions/quick_action/
       Timeout: 60
       MemorySize: 512
@@ -470,7 +470,7 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       Handler: handler.handler
-      Runtime: python3.12
+      Runtime: python3.13
       CodeUri: functions/athena_query/
       Timeout: 120
       MemorySize: 256
@@ -514,7 +514,7 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       Handler: handler.handler
-      Runtime: python3.12
+      Runtime: python3.13
       CodeUri: functions/data_prep/
       Timeout: 120
       MemorySize: 512

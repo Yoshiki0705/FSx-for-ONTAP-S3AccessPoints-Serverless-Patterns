@@ -525,7 +525,7 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       FunctionName: !Sub "${AWS::StackName}-discovery"
-      Runtime: python3.12
+      Runtime: python3.13
       Handler: handler.handler
       CodeUri: functions/discovery/
       Layers:
@@ -558,7 +558,7 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       FunctionName: !Sub "${AWS::StackName}-defect-detector"
-      Runtime: python3.12
+      Runtime: python3.13
       Handler: handler.handler
       CodeUri: functions/defect_detector/
       Layers:
@@ -582,7 +582,7 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       FunctionName: !Sub "${AWS::StackName}-scada-analyzer"
-      Runtime: python3.12
+      Runtime: python3.13
       Handler: handler.handler
       CodeUri: functions/scada_analyzer/
       Layers:
@@ -605,7 +605,7 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       FunctionName: !Sub "${AWS::StackName}-thermal-analyzer"
-      Runtime: python3.12
+      Runtime: python3.13
       Handler: handler.handler
       CodeUri: functions/thermal_analyzer/
       Layers:
@@ -628,7 +628,7 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       FunctionName: !Sub "${AWS::StackName}-report"
-      Runtime: python3.12
+      Runtime: python3.13
       Handler: handler.handler
       CodeUri: functions/report/
       Layers:

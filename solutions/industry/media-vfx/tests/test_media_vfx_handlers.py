@@ -170,6 +170,43 @@ class TestRenderAssetFiltering:
 
         assert [o["Key"] for o in kept] == [f"shots/asset{extension}"]
 
+    @pytest.mark.parametrize(
+        "extension",
+        [".max", ".hipnc", ".hiplc", ".c4d", ".nk", ".aep", ".bip", ".ksp", ".uproject", ".umap", ".vpb"],
+    )
+    def test_keeps_deadline_cloud_scene_formats(self, filter_assets, extension):
+        """Deadline Cloud が submitter を提供する DCC のシーン形式が残ることを検証する
+
+        3ds Max / Houdini (non-commercial, indie) / Cinema 4D / Nuke /
+        After Effects / KeyShot / Unreal Engine / VRED。
+        """
+        kept = filter_assets([{"Key": f"scenes/shot{extension}", "Size": 1}])
+
+        assert len(kept) == 1, f"{extension} was dropped"
+
+    @pytest.mark.parametrize("extension", [".ass", ".vrscene"])
+    def test_keeps_renderer_scene_formats(self, filter_assets, extension):
+        """レンダラーのシーン記述形式（Arnold / V-Ray）が残ることを検証する"""
+        assert len(filter_assets([{"Key": f"scenes/shot{extension}", "Size": 1}])) == 1
+
+    @pytest.mark.parametrize("extension", [".mov", ".mp4", ".mxf"])
+    def test_keeps_video_containers(self, filter_assets, extension):
+        """映像コンテナが残ることを検証する
+
+        コンポジット入力や納品素材として Deadline Cloud のワークフローに入るため
+        対象に含める。FPolicy イベント側の起動条件とも揃えている。
+        """
+        assert len(filter_assets([{"Key": f"plates/clip{extension}", "Size": 1}])) == 1
+
+    @pytest.mark.parametrize("extension", [".png", ".jpg", ".jpeg"])
+    def test_drops_generic_raster_formats(self, filter_assets, extension):
+        """汎用ラスター形式が対象外であることを検証する
+
+        サムネイルや参考画像までレンダリングジョブとして投入されるのを避けるため、
+        プレート形式は .exr / .dpx / .tga に限定している。
+        """
+        assert filter_assets([{"Key": f"refs/thumb{extension}", "Size": 1}]) == []
+
     @pytest.mark.parametrize("extension", [".usd", ".usda", ".usdc", ".usdz"])
     def test_keeps_usd_formats(self, filter_assets, extension):
         """USD 系フォーマットが残ることを検証する"""
@@ -354,6 +391,40 @@ class TestTemplateConsistency:
     def test_conditions_only_reference_declared_names(self, tpl):
         """Conditions が未宣言の名前を参照していないことを検証する"""
         assert tpl.undefined_condition_refs() == set()
+
+    def test_event_rule_suffixes_match_the_discovery_filter(self, tpl, monkeypatch):
+        """FPolicy イベントルールの suffix が Discovery の対象と一致することを検証する
+
+        片方だけ広げると次のどちらかが起きる。イベントでワークフローが起動するのに
+        Discovery が拾わない形式（空の実行）か、Discovery は拾うのにイベントでは
+        起動しない形式（ポーリングまで待たされる）。
+        """
+        harness = load_pattern_handler(DISCOVERY, monkeypatch)
+
+        rule_suffixes = set()
+        for _lid, body in tpl.resources_of_type("AWS::Events::Rule").items():
+            props = body.get("Properties") or {}
+            for entry in _iter_suffix_entries(props.get("EventPattern")):
+                rule_suffixes.add(entry.lower())
+
+        assert rule_suffixes, "no suffix filters found in any EventBridge rule"
+        assert rule_suffixes == set(harness.module.RENDER_ASSET_EXTENSIONS), (
+            f"only in the event rule: {sorted(rule_suffixes - set(harness.module.RENDER_ASSET_EXTENSIONS))}; "
+            f"only in the handler: {sorted(set(harness.module.RENDER_ASSET_EXTENSIONS) - rule_suffixes)}"
+        )
+
+
+def _iter_suffix_entries(node):
+    """イベントパターンの入れ子から `suffix` の値を取り出す"""
+    if isinstance(node, dict):
+        for key, value in node.items():
+            if key == "suffix" and isinstance(value, str):
+                yield value
+            else:
+                yield from _iter_suffix_entries(value)
+    elif isinstance(node, list):
+        for item in node:
+            yield from _iter_suffix_entries(item)
 
 
 class TestSuffixFilterDrivesDiscovery:

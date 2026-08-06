@@ -585,8 +585,9 @@ Resources:
       Role: !GetAtt EntityExtractionLambdaRole.Arn
       Environment:
         Variables:
+          # この関数は S3 に書き出さない。抽出したエンティティは Step Functions の
+          # ペイロードで次のステートへ渡すため、出力先の環境変数を持たない。
           USE_CASE: "financial-idp"
-          PLACEHOLDER: "entity-extraction-no-output"
       LoggingConfig:
         LogGroup: !Ref EntityExtractionLogGroup
       Tags:

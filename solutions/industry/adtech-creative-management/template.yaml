@@ -604,7 +604,7 @@ Resources:
     Properties:
       Tracing: !If [EnableXRay, "Active", "PassThrough"]
       FunctionName: !Sub "${AWS::StackName}-discovery"
-      Runtime: python3.12
+      Runtime: python3.13
       Handler: handler.handler
       CodeUri: functions/discovery/
       Layers:
@@ -636,7 +636,7 @@ Resources:
     Properties:
       Tracing: !If [EnableXRay, "Active", "PassThrough"]
       FunctionName: !Sub "${AWS::StackName}-visual-analyzer"
-      Runtime: python3.12
+      Runtime: python3.13
       Handler: handler.handler
       CodeUri: functions/visual_analyzer/
       Layers:
@@ -662,7 +662,7 @@ Resources:
     Properties:
       Tracing: !If [EnableXRay, "Active", "PassThrough"]
       FunctionName: !Sub "${AWS::StackName}-text-compliance"
-      Runtime: python3.12
+      Runtime: python3.13
       Handler: handler.handler
       CodeUri: functions/text_compliance/
       Layers:
@@ -687,7 +687,7 @@ Resources:
     Properties:
       Tracing: !If [EnableXRay, "Active", "PassThrough"]
       FunctionName: !Sub "${AWS::StackName}-report"
-      Runtime: python3.12
+      Runtime: python3.13
       Handler: handler.handler
       CodeUri: functions/report/
       Layers:

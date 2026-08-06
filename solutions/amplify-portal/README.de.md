@@ -65,7 +65,7 @@ Dieselbe Architektur als Text:
 │  ┌─────────────────────────────────────────────────────┐ │
 │  │ CDK (in data stack)                                 │ │
 │  │  - HTTP Data Source → states.<region>.amazonaws.com │ │
-│  │  - Lambda Data Source → ListFiles (Python 3.12)     │ │
+│  │  - Lambda Data Source → ListFiles (Python 3.13)     │ │
 │  └─────────────────────────────────────────────────────┘ │
 └──────────────────────────────────────────────────────────┘
           │                              │

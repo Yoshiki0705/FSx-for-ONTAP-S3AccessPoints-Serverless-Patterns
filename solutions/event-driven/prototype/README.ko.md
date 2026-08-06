@@ -88,7 +88,7 @@ response = s3ap.get_object(file_key)
 ### 전제 조건
 
 - AWS CLI 설정 완료
-- Python 3.12
+- Python 3.13
 - Lambda 배포 패키지용 S3 버킷
 
 ### 배포

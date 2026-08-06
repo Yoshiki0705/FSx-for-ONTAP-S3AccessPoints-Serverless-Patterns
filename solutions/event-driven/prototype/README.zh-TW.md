@@ -88,7 +88,7 @@ response = s3ap.get_object(file_key)
 ### 前提條件
 
 - 已設定 AWS CLI
-- Python 3.12
+- Python 3.13
 - 用於 Lambda 部署套件的 S3 儲存貯體
 
 ### 部署
