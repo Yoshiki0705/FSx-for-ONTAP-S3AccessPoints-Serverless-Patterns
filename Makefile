@@ -65,7 +65,11 @@ install:
 	@echo "  Installing dependencies..."
 	.venv/bin/pip install --upgrade pip -q
 	.venv/bin/pip install -r requirements.txt -q
-	.venv/bin/pip install pytest pytest-cov "pytest-asyncio>=0.24" hypothesis "moto[all]" ruff cfn-lint pyarrow "bandit>=1.9.1" -q
+# Dev tooling comes from requirements-dev.txt, which CI also installs. Keep it that
+# way: this used to be an inline unpinned list, so a local .venv drifted ahead of CI
+# (ruff 0.16.1 vs 0.15.17, cfn-lint 1.54.0 vs 1.53.3) and `make lint` could disagree
+# with the lint workflow on unchanged code.
+	.venv/bin/pip install -r requirements-dev.txt -q
 	@echo "✅ Setup complete. Run: make test-quick"
 
 # ============================================================

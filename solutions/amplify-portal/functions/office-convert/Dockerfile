@@ -1,35 +1,38 @@
 # Office file → PDF conversion Lambda (Container Image)
 # Converts docx/xlsx/pptx to PDF using LibreOffice headless.
-# Used by UX-5 (Office file preview in portal).
+# Referenced by docs/office-preview-design.md as approach "A".
 #
-# Build: docker build -t office-convert .
-# Deploy: Push to ECR, reference in CDK as lambda.DockerImageFunction
+# STATUS: builds, but is not wired into the backend. The portal currently ships
+# approach "D" from that document — client-side rendering with docx-preview,
+# which is why docx-preview is a package.json dependency and FilePreview.tsx
+# renders in the browser. This image is the starting point if server-side
+# conversion is ever needed for the formats the browser cannot handle (xlsx,
+# pptx). No DockerImageFunction references it yet.
 #
-# Size: ~500MB (LibreOffice + fonts) — exceeds 250MB Lambda Layer limit,
-# hence using container Lambda (max 10GB).
+# ARCHITECTURE: x86_64 only. Upstream publishes no arm64 variant, because
+# LibreOffice does not support it. Every other Lambda in this repository is
+# arm64, so wiring this one up means an explicit
+# `architecture: lambda.Architecture.X86_64` on just this function — it cannot
+# inherit the default.
 #
-# STATUS: does not build as written. The dnf step below fails with
-#   error: No package matches 'libreoffice-core'
-# because the AL2023 Lambda base image repositories do not carry LibreOffice.
-# Verified 2026-08-06 against both the python:3.12 and python:3.13 base tags —
-# identical failure, so this is not a runtime-version problem. It has never
-# built. Nothing references this Dockerfile yet (no DockerImageFunction in
-# amplify/backend.ts), which is why CI has never caught it.
+# Build locally on an arm64 machine with:
+#   docker build --platform linux/amd64 -t office-convert .
 #
-# To make it work, start from an image that already ships LibreOffice instead of
-# installing it here — docs/office-preview-design.md evaluates
-# shelfio/libreoffice-lambda-base-image for exactly this reason.
+# Size: ~877 MB (LibreOffice 26.2 + CJK fonts), well past the 250 MB layer
+# limit, which is why this is a container image rather than a layer.
+#
+# Previously this file installed LibreOffice with `dnf install libreoffice-core`
+# on top of the AWS Lambda Python base image. That never worked: the AL2023
+# Lambda repositories do not carry LibreOffice, so the build failed with
+# "No package matches 'libreoffice-core'" on both python:3.12 and python:3.13.
+# Nothing referenced the file, so CI never surfaced it.
+FROM public.ecr.aws/shelf/lambda-libreoffice-base:26.2-python3.13-x86_64
 
-FROM public.ecr.aws/lambda/python:3.13
-
-# Install LibreOffice minimal + CJK fonts
-RUN dnf install -y \
-    libreoffice-core \
-    libreoffice-calc \
-    libreoffice-writer \
-    libreoffice-impress \
-    google-noto-sans-cjk-ttc-fonts \
-    && dnf clean all
+# Required by the base image. LibreOffice writes a per-user profile on first
+# run, and the Lambda filesystem is read-only apart from /tmp — without this it
+# exits with "The application cannot be started. User installation could not be
+# completed." handler.py does not set it, so it belongs here.
+ENV HOME=/tmp
 
 # Install Python dependencies
 COPY requirements.txt .

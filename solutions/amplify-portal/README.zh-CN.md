@@ -202,6 +202,10 @@ cp amplify/portal-config.example.ts amplify/portal-config.ts
 
 # 3. 部署后端到个人沙盒（首次 ~3-5 分钟，增量 ~30 秒）
 make sandbox
+# ⚠️ 在此步骤之前无法运行 `npm run build`。src/main.tsx 导入
+#    ../amplify_outputs.json，该文件由 sandbox 生成并被 .gitignore 排除。
+#    在全新克隆的仓库中，构建会因
+#    "[UNRESOLVED_IMPORT] Could not resolve '../amplify_outputs.json'" 而失败。
 
 # 4. 在另一个终端启动开发服务器
 make dev

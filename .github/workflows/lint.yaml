@@ -21,7 +21,9 @@ jobs:
       - name: Install ruff
         # Pin to the requirements-dev.txt version so `ruff format --check` is reproducible
         # (a floating `pip install ruff` can drift the formatter target between runs).
-        run: pip install ruff==0.15.17
+        # Read the pin from that file instead of repeating it, so bumping one place
+        # cannot leave this job on a different formatter than `make lint` uses.
+        run: pip install "$(grep -m1 '^ruff==' requirements-dev.txt)"
       - name: Ruff check
         run: ruff check .
       - name: Ruff format check
@@ -37,7 +39,7 @@ jobs:
         with:
           python-version: "3.13"
       - name: Install cfn-lint
-        run: pip install cfn-lint
+        run: pip install "$(grep -m1 '^cfn-lint==' requirements-dev.txt)"
       - name: Lint deployment templates
         run: cfn-lint solutions/**/template-deploy.yaml --ignore-checks W || echo "::warning::cfn-lint found issues in deployment templates (non-blocking)"
       - name: Validate self-contained SAM templates (Issue #53 regression guard)

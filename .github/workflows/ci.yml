@@ -18,7 +18,10 @@ jobs:
         with:
           python-version: "3.13"
       - name: Install cfn-lint
-        run: pip install cfn-lint
+        # Read the pin from requirements-dev.txt rather than repeating the version.
+        # A floating `pip install cfn-lint` lets a new release fail this job on
+        # unchanged templates.
+        run: pip install "$(grep -m1 '^cfn-lint==' requirements-dev.txt)"
       - name: Lint all CloudFormation templates
         id: cfn-lint
         run: |
@@ -306,7 +309,9 @@ jobs:
         with:
           python-version: "3.13"
       - name: Install security tools
-        run: pip install bandit pip-audit
+        # Pins come from requirements-dev.txt so a scan result is attributable to a
+        # known tool version.
+        run: pip install "$(grep -m1 '^bandit==' requirements-dev.txt)" "$(grep -m1 '^pip-audit==' requirements-dev.txt)"
       - name: Run Bandit scan
         run: |
           bandit -r shared/ solutions/ \
