@@ -23,6 +23,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
+from shared.suffix_filter import parse_suffix_filter
 from shared.testing import load_pattern_handler, load_sam_template
 
 PATTERN = "solutions/industry/media-vfx"
@@ -449,6 +450,6 @@ class TestSuffixFilterDrivesDiscovery:
         harness = load_pattern_handler(DISCOVERY, monkeypatch)
         tpl = load_sam_template(TEMPLATE)
 
-        listed = harness.module._parse_suffix_filter(str(tpl.function_env("DiscoveryFunction")["SUFFIX_FILTER"]))
+        listed = parse_suffix_filter(str(tpl.function_env("DiscoveryFunction")["SUFFIX_FILTER"]))
 
         assert set(listed) == set(harness.module.RENDER_ASSET_EXTENSIONS)

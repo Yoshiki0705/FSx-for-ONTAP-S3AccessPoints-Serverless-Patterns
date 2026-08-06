@@ -23,6 +23,7 @@ from datetime import datetime, timezone
 from shared.exceptions import lambda_error_handler
 from shared.s3ap_helper import S3ApHelper
 from shared.observability import EmfMetrics, trace_lambda_handler
+from shared.suffix_filter import allowed_suffixes
 
 logger = logging.getLogger(__name__)
 
@@ -51,8 +52,19 @@ def handler(event, context):
         prefix,
     )
 
-    # S3 AP から .dcm ファイル一覧取得（サフィックスフィルタ適用）
-    dicom_objects = s3ap.list_objects(prefix=prefix, suffix=DICOM_SUFFIX)
+    # S3 AP から対象ファイル一覧取得（サフィックスフィルタ適用）
+    #
+    # 変数名を dicom_objects のまま保つのは意図的。この下のメトリクスと戻り値が
+    # これを参照しているため、ループ内の一時変数を別名で持つと「最後の 1 種の件数」
+    # を報告する取り違えが起きる（他の 11 パターンで実際に起きていた）。
+    suffixes = allowed_suffixes((DICOM_SUFFIX,))
+    seen_keys: set[str] = set()
+    dicom_objects: list[dict] = []
+    for suffix in suffixes:
+        for obj in s3ap.list_objects(prefix=prefix, suffix=suffix):
+            if obj["Key"] not in seen_keys:
+                seen_keys.add(obj["Key"])
+                dicom_objects.append(obj)
 
     logger.info(
         "DICOM files found: total=%d",
