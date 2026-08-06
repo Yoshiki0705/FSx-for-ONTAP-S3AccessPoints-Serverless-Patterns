@@ -12,17 +12,9 @@
 import { useState, useCallback } from "react";
 import { generateClient } from "aws-amplify/data";
 import type { Schema } from "../../amplify/data/resource";
+import { parseResponse } from "../utils/parseResponse";
 
 const client = generateClient<Schema>();
-
-function parseResponse<T>(response: { data?: string | null }): T | null {
-  if (!response.data) return null;
-  try {
-    return typeof response.data === "string" ? JSON.parse(response.data) : response.data;
-  } catch {
-    return null;
-  }
-}
 
 interface UseAdminApiReturn {
   /** Execute an admin read query */
@@ -45,13 +37,13 @@ export function useAdminApi(): UseAdminApiReturn {
     setLoading(true);
     setError(null);
     try {
-      const response = await (client.queries as any).adminQuery({
+      const response = await client.queries.adminQuery({
         action,
         params: JSON.stringify(params || {}),
       });
       const data = parseResponse<T & { error?: string }>(response);
-      if (data && (data as any).error) {
-        setError((data as any).error);
+      if (data?.error) {
+        setError(data.error);
         return null;
       }
       return data;
@@ -68,13 +60,13 @@ export function useAdminApi(): UseAdminApiReturn {
     setLoading(true);
     setError(null);
     try {
-      const response = await (client.mutations as any).adminMutation({
+      const response = await client.mutations.adminMutation({
         action,
         params: JSON.stringify(params || {}),
       });
       const data = parseResponse<T & { error?: string }>(response);
-      if (data && (data as any).error) {
-        setError((data as any).error);
+      if (data?.error) {
+        setError(data.error);
         return null;
       }
       return data;

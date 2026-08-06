@@ -3,16 +3,11 @@ import { generateClient } from "aws-amplify/data";
 import type { Schema } from "../../amplify/data/resource";
 import { useTranslation } from "../i18n";
 import { useIncidentState } from "../hooks/useIncidentState";
+import { parseResponse } from "../utils/parseResponse";
 
 const client = generateClient<Schema>();
 
 // Parse the JSON string response from generic dispatch endpoints
-function parseResponse<T>(response: { data?: string | null }): T | null {
-  if (!response.data) return null;
-  try {
-    return typeof response.data === 'string' ? JSON.parse(response.data) : response.data;
-  } catch { return null; }
-}
 
 interface ActiveBlock {
   pattern?: string;
@@ -156,7 +151,7 @@ export function ArpResponseActions({ threatLevel, volumeName }: ArpResponseActio
   const loadActiveBlocks = async () => {
     setBlocksLoading(true);
     try {
-      const response = await (client.queries as any).arpQuery({ action: "listActiveBlocks", params: JSON.stringify({...svmScope()}) });
+      const response = await client.queries.arpQuery({ action: "listActiveBlocks", params: JSON.stringify({...svmScope()}) });
       const data = parseResponse<{
         smbBlocks?: ActiveBlock[];
         nfsBlocks?: ActiveBlock[];
@@ -197,7 +192,7 @@ export function ArpResponseActions({ threatLevel, volumeName }: ArpResponseActio
   useEffect(() => {
     (async () => {
       try {
-        const response = await (client.queries as any).arpQuery({
+        const response = await client.queries.arpQuery({
           action: "listSvms",
           params: JSON.stringify({}),
         });
@@ -226,7 +221,7 @@ export function ArpResponseActions({ threatLevel, volumeName }: ArpResponseActio
     setResult(null);
 
     try {
-      const response = await (client.mutations as any).arpMutation({ action: "containThreat", params: JSON.stringify({
+      const response = await client.mutations.arpMutation({ action: "containThreat", params: JSON.stringify({
         domain: domain || undefined,
         username: username || undefined,
         clientIp: clientIp || undefined,
@@ -247,7 +242,7 @@ export function ArpResponseActions({ threatLevel, volumeName }: ArpResponseActio
           setError(data.error || t("arpResponsePartialFailure"));
         }
       } else if (response.errors) {
-        setError(response.errors.map((e: any) => e.message).join(", "));
+        setError(response.errors.map((e) => e.message).join(", "));
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Containment failed");
@@ -267,7 +262,7 @@ export function ArpResponseActions({ threatLevel, volumeName }: ArpResponseActio
     setResult(null);
 
     try {
-      const response = await (client.mutations as any).arpMutation({ action: "blockSmbUser", params: JSON.stringify({domain, username, confirm: true, ttlHours, ...svmScope()}) });
+      const response = await client.mutations.arpMutation({ action: "blockSmbUser", params: JSON.stringify({domain, username, confirm: true, ttlHours, ...svmScope()}) });
       const data = parseResponse<{ success?: boolean; error?: string }>(response);
       if (data) {
         if (data.success) {
@@ -294,7 +289,7 @@ export function ArpResponseActions({ threatLevel, volumeName }: ArpResponseActio
     setResult(null);
 
     try {
-      const response = await (client.mutations as any).arpMutation({ action: "blockNfsIp", params: JSON.stringify({clientIp, confirm: true, ttlHours, ...svmScope()}) });
+      const response = await client.mutations.arpMutation({ action: "blockNfsIp", params: JSON.stringify({clientIp, confirm: true, ttlHours, ...svmScope()}) });
       const data = parseResponse<{ success?: boolean; error?: string }>(response);
       if (data) {
         if (data.success) {
@@ -327,7 +322,7 @@ export function ArpResponseActions({ threatLevel, volumeName }: ArpResponseActio
     setResult(null);
 
     try {
-      const response = await (client.mutations as any).arpMutation({ action: "disconnectSessions", params: JSON.stringify({
+      const response = await client.mutations.arpMutation({ action: "disconnectSessions", params: JSON.stringify({
         user: domain && username ? `${domain}\\${username}` : undefined,
         clientIp: clientIp || undefined,
         confirm: true,
@@ -380,7 +375,7 @@ export function ArpResponseActions({ threatLevel, volumeName }: ArpResponseActio
       // The SVM comes from the listed block, not from the current selection: the
       // block lives on one specific SVM, and lifting it anywhere else would
       // leave it in place while reporting success.
-      const response = await (client.mutations as any).arpMutation({ action: "unblockSmbUser", params: JSON.stringify({domain: dom, username: user, ...(svm ? { svm } : {})}) });
+      const response = await client.mutations.arpMutation({ action: "unblockSmbUser", params: JSON.stringify({domain: dom, username: user, ...(svm ? { svm } : {})}) });
       const data = parseResponse<{ success?: boolean; error?: string }>(response);
       if (data) {
         if (data.success) {
@@ -402,7 +397,7 @@ export function ArpResponseActions({ threatLevel, volumeName }: ArpResponseActio
     const ip = ipMatch.replace("fsxn_auto_response,", "");
     setLoading(true);
     try {
-      const response = await (client.mutations as any).arpMutation({ action: "unblockNfsIp", params: JSON.stringify({clientIp: ip, ...(svm ? { svm } : {})}) });
+      const response = await client.mutations.arpMutation({ action: "unblockNfsIp", params: JSON.stringify({clientIp: ip, ...(svm ? { svm } : {})}) });
       const data = parseResponse<{ success?: boolean; error?: string }>(response);
       if (data) {
         if (data.success) {

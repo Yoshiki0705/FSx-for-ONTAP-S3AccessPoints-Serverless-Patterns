@@ -54,7 +54,7 @@ export function AgentDirectory({ onSelectAgent, onCreateAgent }: AgentDirectoryP
   const loadAgents = useCallback(async () => {
     setLoading(true);
     try {
-      const response = await (client.queries as any).agentQuery({
+      const response = await client.queries.agentQuery({
         action: "listAgents",
         params: JSON.stringify({}),
       });
@@ -72,7 +72,7 @@ export function AgentDirectory({ onSelectAgent, onCreateAgent }: AgentDirectoryP
   async function loadAgentDetail(agentId: string) {
     setDetailLoading(true);
     try {
-      const response = await (client.queries as any).agentQuery({
+      const response = await client.queries.agentQuery({
         action: "getAgent",
         params: JSON.stringify({ agentId }),
       });
@@ -85,7 +85,7 @@ export function AgentDirectory({ onSelectAgent, onCreateAgent }: AgentDirectoryP
   async function deleteAgent(agentId: string) {
     if (!confirm(t("agentDirDeleteConfirm"))) return;
     try {
-      await (client.queries as any).agentQuery({
+      await client.queries.agentQuery({
         action: "deleteAgent",
         params: JSON.stringify({ agentId }),
       });

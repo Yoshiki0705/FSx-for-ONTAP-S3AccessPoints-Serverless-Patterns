@@ -3,6 +3,7 @@ import { generateClient } from "aws-amplify/data";
 import type { Schema } from "../../../amplify/data/resource";
 import { useTranslation } from "../../i18n";
 import { VolumeSelector } from "./VolumeSelector";
+import { parseResponse } from "../../utils/parseResponse";
 
 const client = generateClient<Schema>();
 
@@ -17,12 +18,6 @@ const client = generateClient<Schema>();
 const ENABLE_KEYWORD = "ENABLE";
 
 // Parse the JSON string response from generic dispatch endpoints
-function parseResponse<T>(response: { data?: string | null }): T | null {
-  if (!response.data) return null;
-  try {
-    return typeof response.data === 'string' ? JSON.parse(response.data) : response.data;
-  } catch { return null; }
-}
 
 interface SnapshotPolicy {
   name: string;
@@ -76,7 +71,7 @@ export function SnapshotAdminManager() {
   const loadPolicies = async () => {
     setLoading(true); setError(null);
     try {
-      const response = await (client.queries as any).adminQuery({ action: "listSnapshotPolicies", params: JSON.stringify({}) });
+      const response = await client.queries.adminQuery({ action: "listSnapshotPolicies", params: JSON.stringify({}) });
       const data = parseResponse<{ policies?: SnapshotPolicy[]; error?: string }>(response);
       if (data) {
         if (data.error) setError(data.error);
@@ -90,7 +85,7 @@ export function SnapshotAdminManager() {
     if (!volumeUuid) return;
     setLoading(true); setError(null);
     try {
-      const response = await (client.queries as any).adminQuery({ action: "getSnapshotLockingStatus", params: JSON.stringify({volumeUuid}) });
+      const response = await client.queries.adminQuery({ action: "getSnapshotLockingStatus", params: JSON.stringify({volumeUuid}) });
       const data = parseResponse<{ config?: LockingConfig; error?: string }>(response);
       if (data) {
         if (data.error) setError(data.error);
@@ -107,7 +102,7 @@ export function SnapshotAdminManager() {
   const handleCreatePolicy = async () => {
     if (!policyName) { setError(t("rmSnapPolicyNameRequired")); return; }
     try {
-      const response = await (client.mutations as any).adminMutation({ action: "createSnapshotPolicy", params: JSON.stringify({
+      const response = await client.mutations.adminMutation({ action: "createSnapshotPolicy", params: JSON.stringify({
         name: policyName, comment: policyComment,
         schedules: JSON.stringify([{ schedule: policySchedule, count: policyCount, retentionPeriod: policyRetention || undefined }]),
       }) });
@@ -134,7 +129,7 @@ export function SnapshotAdminManager() {
       return;
     }
     try {
-      const response = await (client.mutations as any).adminMutation({ action: "enableSnapshotLocking", params: JSON.stringify({volumeUuid, enabled: true}) });
+      const response = await client.mutations.adminMutation({ action: "enableSnapshotLocking", params: JSON.stringify({volumeUuid, enabled: true}) });
       const data = parseResponse<{ success?: boolean; error?: string }>(response);
       if (data) {
         if (data.success) { setResult(t("rmSnapLockingEnabled")); clearResult(); loadLockingStatus(); }

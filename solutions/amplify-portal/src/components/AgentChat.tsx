@@ -15,18 +15,12 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import type { JSX } from "react";
 import { generateClient } from "aws-amplify/data";
 import type { Schema } from "../../amplify/data/resource";
-import { useTranslation } from "../i18n";
+import { useTranslation, type TranslationKeys } from "../i18n";
 import { ActionApproval, type ApprovalRequest } from "./ActionApproval";
 import { AgentFileSidebar } from "./AgentFileSidebar";
+import { parseResponse } from "../utils/parseResponse";
 
 const client = generateClient<Schema>();
-
-function parseResponse<T>(response: { data?: string | null }): T | null {
-  if (!response.data) return null;
-  try {
-    return typeof response.data === "string" ? JSON.parse(response.data) : response.data;
-  } catch { return null; }
-}
 
 // --- Types ---
 
@@ -86,9 +80,12 @@ const AGENT_ICONS: Record<string, string> = {
 interface TaskCard {
   id: string;
   icon: string;
-  titleKey: string;
-  descKey: string;
-  promptKey: string;
+  // Typed as TranslationKeys, not string, so a key that no locale defines is a
+  // compile error here rather than a card rendering its own key name at runtime.
+  // These were `string`, which forced `t(card.titleKey as any)` at each use.
+  titleKey: TranslationKeys;
+  descKey: TranslationKeys;
+  promptKey: TranslationKeys;
   agent: string;
   color: string;
 }
@@ -262,10 +259,54 @@ export function AgentChat() {
     .filter((f) => f && f !== "/")
     .filter((f, i, arr) => arr.indexOf(f) === i); // deduplicate
 
+  // loadSessions and saveCurrentSession are useCallback rather than plain function
+  // declarations, and are declared above the effects that use them.
+  //
+  // As function declarations they were re-created every render, so the auto-save
+  // effect could not list saveCurrentSession as a dependency. It was not actually
+  // reading stale values — the effect re-runs on messages and currentSessionId, so
+  // the closure it captured came from the same render as those values. But adding
+  // the function to satisfy the linter would have re-run the effect on *every*
+  // render, clearing and restarting the 2-second timer each time and starving the
+  // debounce it exists to provide.
+  //
+  // Memoising instead makes the identity change exactly when messages or
+  // currentSessionId change, which is what the dependency array already said.
+  const loadSessions = useCallback(async () => {
+    try {
+      const response = await client.queries.agentQuery({
+        action: "listSessions",
+        params: JSON.stringify({ limit: 20 }),
+      });
+      const data = parseResponse<{ sessions: ChatSession[] }>(response);
+      if (data?.sessions) setSessions(data.sessions);
+    } catch { /* silent */ }
+  }, []);
+
+  const saveCurrentSession = useCallback(async () => {
+    if (messages.length === 0) return;
+    const title = messages[0]?.content.slice(0, 50) || "Untitled";
+    const sessionId = currentSessionId || `sess-${Date.now()}`;
+    if (!currentSessionId) setCurrentSessionId(sessionId);
+
+    try {
+      await client.queries.agentQuery({
+        action: "saveSession",
+        params: JSON.stringify({
+          sessionId,
+          title,
+          messages: messages.map((m) => ({ role: m.role, content: m.content, timestamp: m.timestamp })),
+          createdAt: messages[0]?.timestamp || Date.now(),
+        }),
+      });
+      loadSessions();
+    } catch { /* silent fail */ }
+  }, [messages, currentSessionId, loadSessions]);
+
   // Load session list on mount
   useEffect(() => {
     loadSessions();
-  }, []);
+  }, [loadSessions]);
 
   // Auto-save after messages change (debounced)
   // React 19 requires useRef to be called with an explicit initial value.
@@ -277,42 +318,11 @@ export function AgentChat() {
       saveCurrentSession();
     }, 2000);
     return () => { if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current); };
-  }, [messages, currentSessionId]);
-
-  async function loadSessions() {
-    try {
-      const response = await (client.queries as any).agentQuery({
-        action: "listSessions",
-        params: JSON.stringify({ limit: 20 }),
-      });
-      const data = parseResponse<{ sessions: ChatSession[] }>(response);
-      if (data?.sessions) setSessions(data.sessions);
-    } catch { /* silent */ }
-  }
-
-  async function saveCurrentSession() {
-    if (messages.length === 0) return;
-    const title = messages[0]?.content.slice(0, 50) || "Untitled";
-    const sessionId = currentSessionId || `sess-${Date.now()}`;
-    if (!currentSessionId) setCurrentSessionId(sessionId);
-
-    try {
-      await (client.queries as any).agentQuery({
-        action: "saveSession",
-        params: JSON.stringify({
-          sessionId,
-          title,
-          messages: messages.map((m) => ({ role: m.role, content: m.content, timestamp: m.timestamp })),
-          createdAt: messages[0]?.timestamp || Date.now(),
-        }),
-      });
-      loadSessions();
-    } catch { /* silent fail */ }
-  }
+  }, [messages, currentSessionId, saveCurrentSession]);
 
   async function loadSession(sessionId: string) {
     try {
-      const response = await (client.queries as any).agentQuery({
+      const response = await client.queries.agentQuery({
         action: "loadSession",
         params: JSON.stringify({ sessionId }),
       });
@@ -332,7 +342,7 @@ export function AgentChat() {
 
   async function deleteSession(sessionId: string) {
     try {
-      await (client.queries as any).agentQuery({
+      await client.queries.agentQuery({
         action: "deleteSession",
         params: JSON.stringify({ sessionId }),
       });
@@ -415,7 +425,7 @@ export function AgentChat() {
         chatParams.image = { data: attachedImage.data, mediaType: attachedImage.mediaType };
       }
 
-      const response = await (client.queries as any).agentQuery({
+      const response = await client.queries.agentQuery({
         action: "chat",
         params: JSON.stringify(chatParams),
       });
@@ -463,7 +473,13 @@ export function AgentChat() {
     } finally {
       setLoading(false);
     }
-  }, [input, messages, t]);
+    // agentMode and attachedImage are read above and belong here. Without them the
+    // callback kept whichever values existed when input, messages or t last changed.
+    // Typing hid the problem, because each keystroke changes `input` and rebuilds the
+    // callback. The task cards do not: they call sendMessage(t(card.promptKey))
+    // directly, so attaching an image or switching mode and then clicking a card sent
+    // the previous mode and dropped the image.
+  }, [input, messages, t, agentMode, attachedImage]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(); }
@@ -560,14 +576,14 @@ export function AgentChat() {
                   key={card.id}
                   className="agent-task-card"
                   style={{ background: card.color }}
-                  onClick={() => sendMessage(t(card.promptKey as any))}
+                  onClick={() => sendMessage(t(card.promptKey))}
                 >
                   <div className="card-top">
                     <span className="card-icon">{card.icon}</span>
                     <span className="card-agent-tag">{card.agent}</span>
                   </div>
-                  <div className="card-title">{t(card.titleKey as any)}</div>
-                  <div className="card-desc">{t(card.descKey as any)}</div>
+                  <div className="card-title">{t(card.titleKey)}</div>
+                  <div className="card-desc">{t(card.descKey)}</div>
                 </button>
               ))}
             </div>

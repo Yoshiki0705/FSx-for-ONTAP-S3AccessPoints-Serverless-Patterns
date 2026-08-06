@@ -3,16 +3,11 @@ import { generateClient } from "aws-amplify/data";
 import type { Schema } from "../../../amplify/data/resource";
 import { useTranslation } from "../../i18n";
 import { VolumeSelector } from "./VolumeSelector";
+import { parseResponse } from "../../utils/parseResponse";
 
 const client = generateClient<Schema>();
 
 // Parse the JSON string response from generic dispatch endpoints
-function parseResponse<T>(response: { data?: string | null }): T | null {
-  if (!response.data) return null;
-  try {
-    return typeof response.data === 'string' ? JSON.parse(response.data) : response.data;
-  } catch { return null; }
-}
 
 interface SnaplockConfig {
   volumeName: string;
@@ -43,7 +38,7 @@ export function SnaplockManager() {
     if (!name) return;  // Don't call API without a volume name
     setLoading(true); setError(null);
     try {
-      const response = await (client.queries as any).adminQuery({ action: "getSnaplockConfig", params: JSON.stringify({
+      const response = await client.queries.adminQuery({ action: "getSnaplockConfig", params: JSON.stringify({
         volumeName: volumeName || volumeInput || undefined,
       }) });
       const data = parseResponse<{ config?: SnaplockConfig; error?: string }>(response);
@@ -59,13 +54,13 @@ export function SnaplockManager() {
     if (!config || retentionDays <= 0) return;
     // Need volume UUID — fetch it
     try {
-      const volResp = await (client.queries as any).adminQuery({ action: "listVolumes", params: JSON.stringify({}) });
+      const volResp = await client.queries.adminQuery({ action: "listVolumes", params: JSON.stringify({}) });
       const volData = parseResponse<{ volumes?: { name: string; uuid: string }[] }>(volResp);
       if (volData) {
         const vol = (volData.volumes || []).find(v => v.name === config.volumeName);
         if (!vol) { setError(`Volume UUID not found for ${config.volumeName}`); return; }
 
-        const response = await (client.mutations as any).adminMutation({ action: "updateSnaplockRetention", params: JSON.stringify({
+        const response = await client.mutations.adminMutation({ action: "updateSnaplockRetention", params: JSON.stringify({
           volumeUuid: vol.uuid, days: retentionDays,
         }) });
         const data = parseResponse<{ success?: boolean; error?: string }>(response);
