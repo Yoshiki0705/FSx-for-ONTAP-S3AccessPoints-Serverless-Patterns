@@ -243,7 +243,6 @@ body {
 
 /* Legacy compat: hide old .app layout */
 .app { display: none; }
-}
 
 .app-nav button {
   padding: 0.4rem 0.8rem;

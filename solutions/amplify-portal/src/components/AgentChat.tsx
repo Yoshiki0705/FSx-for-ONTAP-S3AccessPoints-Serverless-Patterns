@@ -11,6 +11,8 @@
  * - P6: Response metadata (model + execution time)
  */
 import { useState, useRef, useEffect, useCallback } from "react";
+// React 19 removed the global `JSX` namespace; it is now exported from "react".
+import type { JSX } from "react";
 import { generateClient } from "aws-amplify/data";
 import type { Schema } from "../../amplify/data/resource";
 import { useTranslation } from "../i18n";
@@ -266,7 +268,8 @@ export function AgentChat() {
   }, []);
 
   // Auto-save after messages change (debounced)
-  const saveTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
+  // React 19 requires useRef to be called with an explicit initial value.
+  const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   useEffect(() => {
     if (messages.length === 0 || !currentSessionId) return;
     if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
