@@ -222,16 +222,26 @@ class TestSelectTextractApi:
 class TestOcrHandler:
     """OCR ハンドラの振る舞い"""
 
-    def _textract(self, monkeypatch, harness, sync_text="synced", async_text="asynced"):
-        """Textract クライアントを差し替え、呼ばれた API を記録する"""
+    def _textract(self, monkeypatch, harness, sync_text="synced", async_text="asynced", async_kwargs=None):
+        """Textract クライアントを差し替え、呼ばれた API を記録する
+
+        Args:
+            async_kwargs: 渡すと、非同期側が受け取ったキーワード引数をこの dict に
+                記録する。待機上限の受け渡しを検証するテストで使う。
+        """
         seen: list[str] = []
 
         def fake_sync(client, document_bytes):
             seen.append("analyze_document")
             return sync_text
 
-        def fake_async(client, bucket, key):
+        # **kwargs を受けるのは、ハンドラが wait_budget_seconds を渡すため。
+        # 位置引数だけで受けると、待機上限の受け渡しを変えたときに TypeError で
+        # 落ち、本来の検証対象と無関係な理由で赤くなる。
+        def fake_async(client, bucket, key, **kwargs):
             seen.append("start_document_analysis")
+            if async_kwargs is not None:
+                async_kwargs.update(kwargs)
             return async_text
 
         monkeypatch.setattr(harness.module, "_extract_text_sync", fake_sync)
@@ -342,6 +352,280 @@ class TestOcrHandler:
 
         for key in ("document_key", "extracted_text", "page_count", "api_mode"):
             assert key in result, f"missing {key!r} in {sorted(result)}"
+
+    def test_async_wait_budget_comes_from_the_remaining_lambda_time(self, monkeypatch):
+        """待機上限は Lambda の残り時間から算出して渡される
+
+        固定値にすると、Timeout を変えても上限が追従せず、Map の同時実行で起動が
+        遅れた分も考慮できない。
+        """
+        harness = load_pattern_handler(OCR_HANDLER, monkeypatch, env={"TEXTRACT_PAGE_THRESHOLD": "1"})
+        kwargs: dict = {}
+        self._textract(monkeypatch, harness, async_kwargs=kwargs)
+        harness.context.get_remaining_time_in_millis = lambda: 300_000
+
+        harness.handler({"Key": "docs/many.pdf", "Size": 5_000_000, "page_count": 50}, harness.context)
+
+        assert kwargs["wait_budget_seconds"] == pytest.approx(300 - 15)
+
+    def test_non_numeric_remaining_time_falls_back_to_the_default_budget(self, monkeypatch):
+        """残り時間が数値で取れない環境でも落ちない
+
+        ローカル実行やテストダブルでは数値以外が返る。比較で TypeError にせず、
+        既定の上限に倒す。
+        """
+        harness = load_pattern_handler(OCR_HANDLER, monkeypatch, env={"TEXTRACT_PAGE_THRESHOLD": "1"})
+        kwargs: dict = {}
+        self._textract(monkeypatch, harness, async_kwargs=kwargs)
+        harness.context.get_remaining_time_in_millis = lambda: "not-a-number"
+
+        result = harness.handler({"Key": "docs/many.pdf", "Size": 5_000_000, "page_count": 50}, harness.context)
+
+        assert result["api_mode"] == "async"
+        assert kwargs["wait_budget_seconds"] == harness.module._DEFAULT_MAX_WAIT_SECONDS
+
+
+class TestAsyncWaitBudget:
+    """残り実行時間から待機上限を決める"""
+
+    @pytest.fixture
+    def ocr(self, monkeypatch):
+        return load_pattern_handler(OCR_HANDLER, monkeypatch).module
+
+    def test_reserves_headroom_below_the_remaining_time(self, ocr):
+        """余裕を引いて返す。使い切ると構造化した結果を返せない"""
+        assert ocr.async_wait_budget(600_000) == pytest.approx(600 - ocr._TIMEOUT_RESERVE_SECONDS)
+
+    def test_missing_remaining_time_uses_the_default(self, ocr):
+        assert ocr.async_wait_budget(None) == ocr._DEFAULT_MAX_WAIT_SECONDS
+
+    def test_never_returns_a_negative_budget(self, ocr):
+        """残りが余裕より短くても負にしない（負だと即打ち切りになる）"""
+        assert ocr.async_wait_budget(1_000) == 0.0
+        assert ocr.async_wait_budget(0) == 0.0
+
+    def test_default_budget_fits_inside_the_function_timeout(self, ocr):
+        """既定の上限が OcrFunction の Timeout (600s) の内側にある"""
+        assert ocr._DEFAULT_MAX_WAIT_SECONDS < 600
+
+
+class TestExtractTextAsyncWaiting:
+    """非同期ジョブの完了待ちに上限があること
+
+    以前は `while True` + `time.sleep(5)` で、SUCCEEDED も FAILED も来なければ
+    Lambda のタイムアウトまで回り続けた。OcrFunction の Timeout は 600 秒だが
+    Textract の非同期ジョブは大きな文書でそれを超えることがあるため、実際に
+    到達しうる経路だった。
+
+    時計と sleep は差し替えて呼ぶ。実時間を待つと打ち切りの検証に数分かかる。
+    """
+
+    @pytest.fixture
+    def ocr(self, monkeypatch):
+        return load_pattern_handler(OCR_HANDLER, monkeypatch).module
+
+    def _client(self, statuses, blocks=None, pages=None):
+        """指定した順に JobStatus を返す Textract クライアント代替"""
+        client = MagicMock()
+        client.start_document_analysis.return_value = {"JobId": "job-1"}
+
+        seq = list(statuses)
+
+        def get(JobId, NextToken=None):
+            if NextToken is not None:
+                return pages[NextToken]
+            status = seq.pop(0) if len(seq) > 1 else seq[0]
+            out = {"JobStatus": status}
+            if status == "SUCCEEDED":
+                out["Blocks"] = blocks if blocks is not None else []
+                if pages:
+                    out["NextToken"] = next(iter(pages))
+            return out
+
+        client.get_document_analysis.side_effect = get
+        return client
+
+    # sleep を呼べる回数の上限。実装から待機上限を取り除くと、差し替えた sleep は
+    # 即座に返るため、ループは「無限に速く」回る。上限が無いとテストは落ちずに
+    # ハングし、原因が分からなくなる。テストダブル側でも歯止めを持たせて、
+    # 実装の退行が必ず失敗として現れるようにする。
+    _MAX_FAKE_SLEEPS = 10_000
+
+    def _clock(self, step=5.0):
+        """呼ばれるたびに引数の秒数だけ進む単調時計と、記録付き sleep"""
+        state = {"t": 0.0}
+        slept: list[float] = []
+
+        def monotonic():
+            return state["t"]
+
+        def sleep(seconds):
+            if len(slept) >= self._MAX_FAKE_SLEEPS:
+                raise AssertionError(
+                    f"sleep called more than {self._MAX_FAKE_SLEEPS} times — the wait loop is not bounded"
+                )
+            slept.append(seconds)
+            state["t"] += seconds
+
+        return monotonic, sleep, slept
+
+    def test_returns_text_when_the_job_succeeds_immediately(self, ocr):
+        monotonic, sleep, slept = self._clock()
+        client = self._client(
+            ["SUCCEEDED"],
+            blocks=[{"BlockType": "LINE", "Text": "hello"}, {"BlockType": "WORD", "Text": "ignored"}],
+        )
+
+        text = ocr._extract_text_async(client, "bucket", "key", sleep=sleep, monotonic=monotonic)
+
+        assert text == "hello"
+        assert slept == [], "完了しているなら待つ必要はない"
+
+    def test_polls_until_the_job_succeeds(self, ocr):
+        monotonic, sleep, slept = self._clock()
+        client = self._client(
+            ["IN_PROGRESS", "IN_PROGRESS", "SUCCEEDED"],
+            blocks=[{"BlockType": "LINE", "Text": "done"}],
+        )
+
+        text = ocr._extract_text_async(
+            client, "bucket", "key", wait_budget_seconds=60, poll_interval_seconds=5, sleep=sleep, monotonic=monotonic
+        )
+
+        assert text == "done"
+        assert slept == [5, 5]
+
+    def test_raises_timeout_instead_of_looping_forever(self, ocr):
+        """終わらないジョブは打ち切る。以前はここで無限に回っていた"""
+        monotonic, sleep, _ = self._clock()
+        client = self._client(["IN_PROGRESS"])
+
+        with pytest.raises(ocr.TextractJobTimeout) as exc:
+            ocr._extract_text_async(
+                client,
+                "bucket",
+                "key",
+                wait_budget_seconds=30,
+                poll_interval_seconds=5,
+                sleep=sleep,
+                monotonic=monotonic,
+            )
+
+        assert "did not finish within" in str(exc.value)
+        assert "job-1" in str(exc.value)
+
+    def test_stops_before_exceeding_the_budget(self, ocr):
+        """上限を超えてから気付くのではなく、超える前に止める"""
+        monotonic, sleep, slept = self._clock()
+        client = self._client(["IN_PROGRESS"])
+
+        with pytest.raises(ocr.TextractJobTimeout):
+            ocr._extract_text_async(
+                client,
+                "bucket",
+                "key",
+                wait_budget_seconds=12,
+                poll_interval_seconds=5,
+                sleep=sleep,
+                monotonic=monotonic,
+            )
+
+        # 0s -> sleep 5 -> 5s -> sleep 5 -> 10s、次は 15s で 12s を超えるので待たない
+        assert sum(slept) <= 12
+        assert slept == [5, 5]
+
+    def test_zero_budget_polls_once_and_gives_up(self, ocr):
+        """上限 0 でも 1 回は状態を見る（すでに終わっている場合を拾う）"""
+        monotonic, sleep, slept = self._clock()
+        client = self._client(["IN_PROGRESS"])
+
+        with pytest.raises(ocr.TextractJobTimeout):
+            ocr._extract_text_async(client, "bucket", "key", wait_budget_seconds=0, sleep=sleep, monotonic=monotonic)
+
+        assert client.get_document_analysis.call_count == 1
+        assert slept == []
+
+    def test_a_job_that_is_already_done_succeeds_even_with_zero_budget(self, ocr):
+        monotonic, sleep, _ = self._clock()
+        client = self._client(["SUCCEEDED"], blocks=[{"BlockType": "LINE", "Text": "ok"}])
+
+        text = ocr._extract_text_async(client, "bucket", "key", wait_budget_seconds=0, sleep=sleep, monotonic=monotonic)
+
+        assert text == "ok"
+
+    def test_failed_job_raises_a_distinct_error_from_a_timeout(self, ocr):
+        """FAILED は打ち切りとは別の型。原因と次の手が違う"""
+        monotonic, sleep, _ = self._clock()
+        client = self._client(["FAILED"])
+
+        with pytest.raises(RuntimeError) as exc:
+            ocr._extract_text_async(client, "bucket", "key", sleep=sleep, monotonic=monotonic)
+
+        assert not isinstance(exc.value, ocr.TextractJobTimeout)
+        assert "failed" in str(exc.value).lower()
+
+    def test_failed_job_does_not_wait_first(self, ocr):
+        monotonic, sleep, slept = self._clock()
+        client = self._client(["FAILED"])
+
+        with pytest.raises(RuntimeError):
+            ocr._extract_text_async(client, "bucket", "key", sleep=sleep, monotonic=monotonic)
+
+        assert slept == []
+
+    def test_collects_lines_across_paginated_results(self, ocr):
+        monotonic, sleep, _ = self._clock()
+        pages = {
+            "tok-1": {
+                "Blocks": [{"BlockType": "LINE", "Text": "second"}],
+                "NextToken": "tok-2",
+            },
+            "tok-2": {"Blocks": [{"BlockType": "LINE", "Text": "third"}]},
+        }
+        client = self._client(
+            ["SUCCEEDED"],
+            blocks=[{"BlockType": "LINE", "Text": "first"}],
+            pages=pages,
+        )
+
+        text = ocr._extract_text_async(client, "bucket", "key", sleep=sleep, monotonic=monotonic)
+
+        assert text == "first\nsecond\nthird"
+
+    def test_pagination_is_bounded(self, ocr, monkeypatch):
+        """NextToken を返し続ける応答でも止まる
+
+        ページ送りのループには sleep が無いので、上限を外すと CPU を回しきる
+        無限ループになる。上の sleep の歯止めは効かないため、ここでは呼び出し側
+        （テストダブル）で回数を数えて打ち切る。そうしないと実装の退行がテストの
+        ハングとして現れ、失敗として見えない（実際に変異で確認した）。
+        """
+        monotonic, sleep, _ = self._clock()
+        monkeypatch.setattr(ocr, "_MAX_RESULT_PAGES", 3)
+
+        calls = {"n": 0}
+        # 上限の 3 に対して十分大きく、かつ無限ではない値
+        hard_cap = 50
+
+        client = MagicMock()
+        client.start_document_analysis.return_value = {"JobId": "job-1"}
+
+        def get(JobId, NextToken=None):
+            calls["n"] += 1
+            if calls["n"] > hard_cap:
+                raise AssertionError(
+                    f"get_document_analysis called more than {hard_cap} times — pagination is not bounded"
+                )
+            # 常に次のトークンを返す壊れた応答
+            return {"JobStatus": "SUCCEEDED", "Blocks": [], "NextToken": "always"}
+
+        client.get_document_analysis.side_effect = get
+
+        with pytest.raises(RuntimeError) as exc:
+            ocr._extract_text_async(client, "bucket", "key", sleep=sleep, monotonic=monotonic)
+
+        assert "result pages" in str(exc.value)
+        assert calls["n"] <= ocr._MAX_RESULT_PAGES + 1, f"上限を超えて呼んでいる: {calls['n']}"
 
 
 # =========================================================================

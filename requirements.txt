@@ -1,7 +1,23 @@
 # Runtime dependencies — pinned for deployment reproducibility
 boto3==1.43.63
 urllib3==2.7.0
-# jsonschema: ARM64 Lambda 互換性のため 4.17.x を使用（4.18+ は rpds-py が必要で ARM64 ビルド問題あり）
-jsonschema==4.17.3
+# jsonschema: shared/lambdas/fpolicy_engine が遅延 import で使う（arm64 / python3.13）。
+#
+# 以前は「4.18+ は rpds-py を要求し ARM64 ビルドに問題がある」ため 4.17.x に固定して
+# いた。この前提は解消済み。rpds-py は cp313 の manylinux_2_17_aarch64 ホイールを
+# 配布しており、ビルドは発生しない。実測:
+#
+#   pip download jsonschema==4.26.0 --platform manylinux2014_aarch64 \
+#     --python-version 3.13 --implementation cp --only-binary=:all:
+#   -> rpds_py-2026.6.3-cp313-cp313-manylinux_2_17_aarch64.manylinux2014_aarch64.whl
+#
+# --only-binary=:all: は sdist へのフォールバックを禁じるので、成功はデプロイ先で
+# コンパイルが起きないことを示す。
+#
+# 4.17.3 に留めると、moto[all] が >=4.26 を要求するため venv だけが 4.26 に上がり、
+# テストは Lambda と別バージョンで動くことになる（pip も conflict を報告していた）。
+# 4.17.3 と 4.26.0 の両方で fpolicy のスキーマ検証テストを走らせ、結果が同一
+# （16 passed, 3 skipped）であることを確認したうえで揃えた。
+jsonschema==4.26.0
 # Optional: X-Ray トレーシング（ENABLE_XRAY=true 時のみ使用）
 aws-xray-sdk==2.15.0
