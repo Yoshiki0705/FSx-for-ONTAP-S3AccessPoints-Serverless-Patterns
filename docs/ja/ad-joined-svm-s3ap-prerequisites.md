@@ -353,6 +353,7 @@ AD参加SVM で S3 AP データ操作を使うワークフローの**最初の�
 ### EventBridge Schedule + Lambda による定期ヘルスチェック
 
 ```yaml
+# SAM テンプレートに追加する
 AdHealthCheckSchedule:
   Type: AWS::Scheduler::Schedule
   Properties:
@@ -363,7 +364,28 @@ AdHealthCheckSchedule:
     Target:
       Arn: !GetAtt AdHealthCheckFunction.Arn
       RoleArn: !GetAtt SchedulerRole.Arn
+
+AdHealthCheckFunction:
+  Type: AWS::Serverless::Function
+  Properties:
+    Handler: handler.handler
+    Runtime: python3.13
+    Architectures: [arm64]
+    Timeout: 30
+    VpcConfig:
+      SubnetIds: !Ref PrivateSubnetIds
+      SecurityGroupIds: [!Ref FsxAccessSecurityGroup]
+    Environment:
+      Variables:
+        ONTAP_MGMT_IP: !Ref OntapManagementIp
+        ONTAP_SECRET_NAME: !Ref OntapSecretName
+        SVM_NAME: !Ref SvmName
+        ALARM_TOPIC_ARN: !Ref AlertTopic
 ```
+
+ヘルスチェック関数は ONTAP 管理 LIF に接続するため、VPC 内に配置します
+（`VpcConfig` あり）。S3 AP のデータ操作を行う Lambda とは逆で、こちらは
+Internet-origin AP へアクセスしないため VPC 内で問題ありません。
 
 ### CloudWatch カスタムメトリクス
 
@@ -448,9 +470,12 @@ curl -sku user:pass \
 
 **解決策**:
 1. SVM DNS IP がアクティブな AD DC アドレスを指しているか確認
-2. セキュリティグループがポート 53/88/389/445/464/636 を許可しているか確認
+   ```bash
+   curl -sku user:pass "https://<mgmt-ip>/api/name-services/dns?svm.name=<svm>"
+   ```
+2. セキュリティグループが SVM ENI のサブネットから AD DC IP に対してポート 53/88/389/445/464/636 を許可しているか確認
 3. AWS Managed AD の場合、ディレクトリのステータスが `Active` か確認
-4. AD を再作成した場合、SVM は CIFS force-delete + re-join が必要（新しい NetBIOS 名が必要）
+4. AD を再作成した場合、SVM は CIFS force-delete + re-join が必要（新しい NetBIOS 名が必要 — 手順は steering ファイル参照）
 
 ### 症状: WINDOWS タイプの S3 AP 作成が失敗する
 
