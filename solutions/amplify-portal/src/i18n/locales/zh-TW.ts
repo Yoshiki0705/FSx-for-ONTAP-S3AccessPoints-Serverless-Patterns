@@ -1233,6 +1233,52 @@ arpResponseSweepNote: "封鎖會在設定的期限過後自動解除。如需提
   slFailed: "產生連結失敗",
   slNote: "任何持有此連結的人在到期前都可以開啟該檔案。請勿共用機密檔案的連結。",
 
+  // --- SnapLock consequence confirmation ---
+  slcTitle: "套用此設定會發生什麼",
+  slcSubject: "對象：{name}",
+  slcUntilHeadline: "在 {date} 之前無法刪除",
+  slcSeeDocs: "套用設定前，請確認將無法刪除的範圍。",
+  slcTypeToConfirm: "此操作無法復原。要繼續，請輸入 {keyword}。",
+  slcKeywordHint: "以大寫輸入 {keyword} 即可繼續。",
+  slcAcknowledge: "我已閱讀以上內容。",
+  slcCancel: "取消",
+  slcProceed: "套用",
+  slcTypeImmutable:
+    "SnapLock 類型（{type}）僅在建立時設定，之後既不能變更也不能解除。",
+  slcComplianceNoDelete:
+    "在 Compliance 下，保留期屆滿之前任何人都無法刪除。帳戶管理員不能，AWS 也不能。",
+  slcEnterprisePrivilegedDelete:
+    "在 Enterprise 下，僅在特權刪除可用時才能刪除。將 PrivilegedDelete 設為 PERMANENTLY_DISABLED 會永久失去該途徑。",
+  slcWormBlocksParents:
+    "只要還存在一個未到期的 WORM 檔案，此卷冊、其所屬 SVM 以及檔案系統都無法刪除。",
+  slcWormMaxUntil:
+    "保留期上限為 {period}。現在提交的檔案最長在 {date} 之前無法刪除。",
+  slcEmptyStillDeletable:
+    "剛建立的空卷冊仍可刪除。無法刪除的起點是第一個檔案被確定為 WORM 之時。",
+  slcBillingContinues:
+    "在檔案系統無法刪除期間，該檔案系統的費用會持續產生。",
+  slcRetentionFutureFilesOnly:
+    "僅適用於此變更之後提交的檔案。現有 WORM 檔案的保留期不會改變。",
+  slcRetentionNewFileUntil:
+    "在此設定（{period}）下，現在提交的檔案在 {date} 之前無法刪除。",
+  slcRetentionZero: "保留期為 0，因此新檔案不會被鎖定。",
+  slcLockingCannotDisable:
+    "Snapshot 鎖定一旦啟用便無法停用（400 Bad Request）。",
+  slcLockingLocksNothingYet:
+    "僅啟用不會鎖定任何內容。只有透過原則的保留期或個別鎖定才會產生鎖定。",
+  slcSnapshotExtendOnly:
+    "Snapshot 鎖定只能延長，既不能縮短也不能解除。",
+  slcSnapshotUntil: "此 Snapshot 在 {date}（{days} 天）之前無法刪除。",
+  slcSnapshotScope: "不影響其他 Snapshot 和卷冊本身。",
+  slcS3ComplianceNoChange:
+    "在 COMPLIANCE 模式下，已設定的保留期既不能縮短也不能解除。",
+  slcS3GovernanceBypass:
+    "在 GOVERNANCE 模式下，擁有 s3:BypassGovernanceRetention 權限的呼叫方可以覆寫它。",
+  slcS3ObjectsUntil:
+    "此後存入的物件在 {date}（{days} 天）之前無法刪除。",
+  slcS3FutureObjectsOnly:
+    "不適用於現有物件。適用於設定之後存入的物件。",
+
   // --- Shared / misc ---
   processing: "處理中...",
   athenaGuidanceTitle: "使用方法",

@@ -1238,6 +1238,55 @@ arpResponseSweepNote: "Les blocages se lèvent d'eux-mêmes à l'échéance. Pou
   slFailed: "Échec de la génération du lien",
   slNote: "Toute personne disposant de ce lien peut ouvrir le fichier jusqu'à son expiration. Ne partagez pas de liens vers des fichiers confidentiels.",
 
+  // --- SnapLock consequence confirmation ---
+  slcTitle: "Ce que fait ce paramètre",
+  slcSubject: "Cible : {name}",
+  slcUntilHeadline: "Suppression impossible jusqu'au {date}",
+  slcSeeDocs:
+    "Vérifiez ce qui deviendra impossible à supprimer avant d'appliquer ce paramètre.",
+  slcTypeToConfirm: "Action irréversible. Saisissez {keyword} pour continuer.",
+  slcKeywordHint: "Saisissez {keyword} en majuscules pour continuer.",
+  slcAcknowledge: "J'ai lu ce qui précède.",
+  slcCancel: "Annuler",
+  slcProceed: "Appliquer",
+  slcTypeImmutable:
+    "Le type SnapLock ({type}) se définit uniquement à la création. Il ne peut ensuite être ni modifié ni retiré.",
+  slcComplianceNoDelete:
+    "En mode Compliance, personne ne peut supprimer avant l'expiration de la rétention — ni le propriétaire du compte, ni AWS.",
+  slcEnterprisePrivilegedDelete:
+    "En mode Enterprise, la suppression n'est possible que tant que la suppression privilégiée est disponible. Définir PrivilegedDelete sur PERMANENTLY_DISABLED supprime définitivement cette voie.",
+  slcWormBlocksParents:
+    "Tant qu'il reste un seul fichier WORM non expiré, ce volume, son SVM et le système de fichiers ne peuvent pas être supprimés.",
+  slcWormMaxUntil:
+    "Le plafond de rétention est {period}. Un fichier validé maintenant ne pourra pas être supprimé avant le {date} au plus tard.",
+  slcEmptyStillDeletable:
+    "Un volume vide reste supprimable juste après sa création. Le point de non-retour est le premier fichier validé en WORM.",
+  slcBillingContinues:
+    "Tant que le système de fichiers ne peut pas être supprimé, sa facturation continue.",
+  slcRetentionFutureFilesOnly:
+    "S'applique uniquement aux fichiers validés après ce changement. La rétention des fichiers WORM existants ne change pas.",
+  slcRetentionNewFileUntil:
+    "Avec ce paramètre ({period}), un fichier validé maintenant ne pourra pas être supprimé avant le {date}.",
+  slcRetentionZero:
+    "La rétention est nulle, les nouveaux fichiers ne seront donc pas verrouillés.",
+  slcLockingCannotDisable:
+    "Le verrouillage des snapshots ne peut plus être désactivé une fois activé (400 Bad Request).",
+  slcLockingLocksNothingYet:
+    "L'activation seule ne verrouille rien. Un verrou n'apparaît qu'avec une période de rétention de stratégie ou un verrou individuel.",
+  slcSnapshotExtendOnly:
+    "Un verrou de snapshot ne peut qu'être prolongé. Il ne peut être ni raccourci ni levé.",
+  slcSnapshotUntil:
+    "Ce snapshot ne peut pas être supprimé avant le {date} ({days} jours).",
+  slcSnapshotScope: "Les autres snapshots et le volume lui-même ne sont pas affectés.",
+  slcS3ComplianceNoChange:
+    "En mode COMPLIANCE, la période de rétention ne peut être ni raccourcie ni retirée.",
+  slcS3GovernanceBypass:
+    "En mode GOVERNANCE, un appelant disposant de s3:BypassGovernanceRetention peut la contourner.",
+  slcS3ObjectsUntil:
+    "Les objets stockés à partir de maintenant ne pourront pas être supprimés avant le {date} ({days} jours).",
+  slcS3FutureObjectsOnly:
+    "Les objets existants ne sont pas concernés. Cela s'applique aux objets stockés après le changement.",
+
   // --- Shared / misc ---
   processing: "Traitement...",
   athenaGuidanceTitle: "Utilisation",

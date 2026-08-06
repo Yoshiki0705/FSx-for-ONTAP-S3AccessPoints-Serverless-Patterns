@@ -31,6 +31,7 @@
 | [`fsxn-s3ap-improvements.md`](aws-feature-requests/fsxn-s3ap-improvements.md) | FSx for ONTAP S3 AP core | FR-1 to FR-4 | ✅ Submitted 2026-05-10 |
 | [`file-portal-service-gap.md`](aws-feature-requests/file-portal-service-gap.md) | File Portal UI + SaaS gap | FR-5 to FR-10 | 📋 Draft |
 | [`lambda-healthomics-s3ap-gaps.md`](aws-feature-requests/lambda-healthomics-s3ap-gaps.md) | Lambda / HealthOmics 統合 | FR-5 to FR-7 | 📋 Draft |
+| [`snaplock-audit-log-retention.md`](aws-feature-requests/snaplock-audit-log-retention.md) | SnapLock 監査ログの保持期間と削除ロック | SL-1 to SL-3 | 📋 起票済み・一部回答受領 |
 
 **Priority chain**: FR-7 (Presigned URL) → FR-5 (Storage Browser for S3) → FR-6 (Amplify Storage)。
 
