@@ -25,7 +25,8 @@ classifiers = [
 dependencies = [
     "boto3==1.43.63",
     "urllib3==2.7.0",
-    "jsonschema==4.17.3",
+    # requirements.txt と同じ値に保つ。理由と検証内容はそちらのコメント参照。
+    "jsonschema==4.26.0",
 ]
 
 [project.optional-dependencies]

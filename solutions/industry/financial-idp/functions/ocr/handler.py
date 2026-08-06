@@ -70,17 +70,89 @@ def _extract_text_sync(textract_client, document_bytes: bytes) -> str:
     return "\n".join(lines)
 
 
-def _extract_text_async(textract_client, s3_bucket: str, s3_key: str) -> str:
+class TextractJobTimeout(RuntimeError):
+    """非同期 Textract ジョブが待機上限内に完了しなかった
+
+    専用の型にしているのは、待機打ち切りとジョブ自体の失敗
+    （`Textract job ... failed`）を呼び出し側とログで区別できるようにするため。
+    どちらも同じ except 節に入るが、原因と次の手が違う。
+    """
+
+
+# 残り実行時間からこの秒数を引いた分だけ待つ。Lambda に殺される前に戻り、
+# 構造化した結果（handler の except が組み立てる error 付きの dict）を返すための余裕。
+# 途中で殺されると Step Functions には Lambda.Unknown だけが残り、どの
+# ドキュメントで何が起きたか分からなくなる。
+_TIMEOUT_RESERVE_SECONDS = 15.0
+
+# 残り実行時間が取れない場合の上限。OcrFunction の Timeout は 600 秒なので、
+# その内側に収まる値にしている。
+_DEFAULT_MAX_WAIT_SECONDS = 540.0
+
+_DEFAULT_POLL_INTERVAL_SECONDS = 5.0
+
+# NextToken のページ送りの上限。Textract は必ず None を返して終わるが、
+# 応答が壊れた場合や代替実装を挟んだ場合に無限ループにしないための歯止め。
+_MAX_RESULT_PAGES = 1000
+
+
+def async_wait_budget(remaining_millis: float | None) -> float:
+    """非同期ジョブの待機に使える秒数を返す
+
+    Args:
+        remaining_millis: Lambda の残り実行時間（ミリ秒）。
+            取得できない場合は None。
+
+    Returns:
+        float: 待機に使える秒数。負にはならない。
+    """
+    if remaining_millis is None:
+        return _DEFAULT_MAX_WAIT_SECONDS
+    return max(0.0, remaining_millis / 1000.0 - _TIMEOUT_RESERVE_SECONDS)
+
+
+def _extract_text_async(
+    textract_client,
+    s3_bucket: str,
+    s3_key: str,
+    *,
+    wait_budget_seconds: float | None = None,
+    poll_interval_seconds: float | None = None,
+    sleep=time.sleep,
+    monotonic=time.monotonic,
+) -> str:
     """非同期 Textract API (StartDocumentAnalysis) でテキスト抽出
+
+    完了待ちには上限がある。以前は `while True` に `time.sleep(5)` だけで、
+    ジョブが SUCCEEDED も FAILED も返さない限り Lambda のタイムアウトまで回り
+    続けた。OcrFunction の Timeout は 600 秒だが Textract の非同期ジョブは
+    大きなドキュメントでそれを超えることがあるため、実際に到達しうる経路である。
+    その場合 Lambda は待機中に停止させられ、Step Functions からはどの
+    ドキュメントで何が起きたのか分からなくなる。
 
     Args:
         textract_client: boto3 Textract クライアント
         s3_bucket: ドキュメントが格納されている S3 バケット
         s3_key: ドキュメントの S3 キー
+        wait_budget_seconds: 完了待ちの上限秒数。None なら
+            `_DEFAULT_MAX_WAIT_SECONDS`。
+        poll_interval_seconds: ポーリング間隔。None なら
+            `_DEFAULT_POLL_INTERVAL_SECONDS`。
+        sleep: 待機に使う関数。テストから差し替えるために引数にしている
+            （実時間を待たずに打ち切り経路を検証できる）。
+        monotonic: 経過時間の計測に使う関数。壁時計ではなく単調増加時計を
+            使うのは、システム時刻の変更で待機が伸縮しないようにするため。
 
     Returns:
         str: 抽出されたテキスト
+
+    Raises:
+        TextractJobTimeout: 上限内にジョブが完了しなかった
+        RuntimeError: ジョブが FAILED を返した、または結果ページが多すぎる
     """
+    budget = _DEFAULT_MAX_WAIT_SECONDS if wait_budget_seconds is None else wait_budget_seconds
+    interval = _DEFAULT_POLL_INTERVAL_SECONDS if poll_interval_seconds is None else poll_interval_seconds
+
     response = textract_client.start_document_analysis(
         DocumentLocation={
             "S3Object": {
@@ -92,19 +164,43 @@ def _extract_text_async(textract_client, s3_bucket: str, s3_key: str) -> str:
     )
 
     job_id = response["JobId"]
-    logger.info("Textract async job started: job_id=%s", job_id)
+    logger.info(
+        "Textract async job started: job_id=%s, wait_budget=%.1fs, poll_interval=%.1fs",
+        job_id,
+        budget,
+        interval,
+    )
 
-    # ジョブ完了を待機
+    # ジョブ完了を待機（上限あり）
+    started = monotonic()
+    polls = 0
     while True:
         result = textract_client.get_document_analysis(JobId=job_id)
         status = result["JobStatus"]
+        polls += 1
 
         if status == "SUCCEEDED":
             break
-        elif status == "FAILED":
+        if status == "FAILED":
             raise RuntimeError(f"Textract job {job_id} failed: {result.get('StatusMessage', 'Unknown error')}")
 
-        time.sleep(5)
+        elapsed = monotonic() - started
+        # 次の sleep を終えた時点で上限を超えるなら、待たずに打ち切る。
+        # 「上限を超えてから気付く」と、その 1 回分だけ確実に超過する。
+        if elapsed + interval > budget:
+            raise TextractJobTimeout(
+                f"Textract job {job_id} did not finish within {budget:.1f}s "
+                f"(status={status}, polls={polls}, elapsed={elapsed:.1f}s)"
+            )
+
+        sleep(interval)
+
+    logger.info(
+        "Textract async job finished: job_id=%s, polls=%d, elapsed=%.1fs",
+        job_id,
+        polls,
+        monotonic() - started,
+    )
 
     # 全ページのテキストを収集
     lines = []
@@ -112,10 +208,14 @@ def _extract_text_async(textract_client, s3_bucket: str, s3_key: str) -> str:
         if block["BlockType"] == "LINE":
             lines.append(block.get("Text", ""))
 
-    # ページネーション対応
+    # ページネーション対応（ページ数にも上限を置く）
     next_token = result.get("NextToken")
+    pages = 1
     while next_token:
+        if pages >= _MAX_RESULT_PAGES:
+            raise RuntimeError(f"Textract job {job_id} returned more than {_MAX_RESULT_PAGES} result pages")
         result = textract_client.get_document_analysis(JobId=job_id, NextToken=next_token)
+        pages += 1
         for block in result.get("Blocks", []):
             if block["BlockType"] == "LINE":
                 lines.append(block.get("Text", ""))
@@ -174,7 +274,28 @@ def handler(event, context):
             # 非同期 API: S3 ロケーションを渡す
             # 非同期 API は S3 バケット/キーを直接参照する
             s3_bucket = os.environ["S3_ACCESS_POINT"]
-            extracted_text = _extract_text_async(textract_client, s3_bucket, document_key)
+
+            # 完了待ちの上限は Lambda の残り時間から決める。固定値にすると、
+            # Timeout を変えたときに上限が追従せず、また Map の同時実行で
+            # 起動が遅れた分を考慮できない。
+            remaining_millis = None
+            get_remaining = getattr(context, "get_remaining_time_in_millis", None)
+            if callable(get_remaining):
+                try:
+                    candidate = get_remaining()
+                    # ローカル実行やテストダブルでは数値以外が返ることがある。
+                    # その場合は既定の上限に倒す（比較で落とさない）。
+                    if isinstance(candidate, (int, float)) and not isinstance(candidate, bool):
+                        remaining_millis = float(candidate)
+                except Exception:  # pragma: no cover - 取得失敗時は既定値に倒す
+                    remaining_millis = None
+
+            extracted_text = _extract_text_async(
+                textract_client,
+                s3_bucket,
+                document_key,
+                wait_budget_seconds=async_wait_budget(remaining_millis),
+            )
 
     except Exception as e:
         logger.error("Textract error for document %s: %s", document_key, str(e))
