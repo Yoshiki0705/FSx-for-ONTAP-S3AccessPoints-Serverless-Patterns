@@ -4,6 +4,7 @@ import {
   addPeriod,
   confirmationLevel,
   describeConsequences,
+  headlineUntil,
   intentSubject,
   isZeroPeriod,
   lockedUntil,
@@ -304,6 +305,100 @@ describe("intentSubject", () => {
     expect(
       intentSubject({ kind: "s3ObjectLock", bucket: "bucket1", mode: "GOVERNANCE", days: 1 })
     ).toBe("bucket1");
+  });
+});
+
+describe("snapshotPolicyRetention", () => {
+  const policy = (retentionPeriod: string, count = 7): SnaplockIntent => ({
+    kind: "snapshotPolicyRetention",
+    policyName: "nightly_worm",
+    retentionPeriod,
+    schedule: "daily",
+    count,
+  });
+
+  it("dates the next snapshot the schedule takes", () => {
+    expect(lockedUntil(policy("P30D"), NOW)?.toISOString()).toBe("2026-09-05T00:00:00.000Z");
+  });
+
+  it("says the lock recurs, not that it happens once", () => {
+    const keys = describeConsequences(policy("P30D"), NOW).map((c) => c.messageKey);
+    // Recurrence has to be the first thing read: a reader who stops after one
+    // line should not come away thinking this locks a single snapshot.
+    expect(keys[0]).toBe("slcPolicyEverySnapshotLocked");
+    expect(keys).toContain("slcPolicyFirstSnapshotUntil");
+    expect(keys).toContain("slcSnapshotExtendOnly");
+  });
+
+  it("passes the schedule and period through for the sentence", () => {
+    const recur = describeConsequences(policy("P6M"), NOW).find(
+      (c) => c.messageKey === "slcPolicyEverySnapshotLocked"
+    );
+    expect(recur?.values).toEqual({ schedule: "daily", period: "P6M" });
+  });
+
+  it("warns that the retention count stops bounding accumulation", () => {
+    const cap = describeConsequences(policy("P30D", 14), NOW).find(
+      (c) => c.messageKey === "slcPolicyCountNotACap"
+    );
+    // Locked snapshots cannot be rotated out, so the count no longer limits how
+    // many exist. That surfaces as a capacity problem, not a compliance one.
+    expect(cap?.severity).toBe("blocksDeletion");
+    expect(cap?.values).toEqual({ count: 14 });
+  });
+
+  it("says the policy itself can be undone", () => {
+    const stop = describeConsequences(policy("P30D"), NOW).find(
+      (c) => c.messageKey === "slcPolicyStoppable"
+    );
+    expect(stop?.severity).toBe("info");
+  });
+
+  it("asks for the typed keyword, being a standing instruction", () => {
+    // A single snapshot lock only warrants a checkbox, but this keeps producing
+    // locks unattended, so it is held to the stricter gate.
+    expect(confirmationLevel(policy("P30D"))).toBe("keyword");
+  });
+
+  it("treats a policy without retention as ordinary", () => {
+    for (const period of ["", "P0D", "not-a-period"]) {
+      const consequences = describeConsequences(policy(period), NOW);
+      expect(consequences.map((c) => c.messageKey)).toEqual(["slcPolicyNoRetention"]);
+      expect(consequences[0].severity).toBe("info");
+      // No irreversible consequence, so the level relaxes on its own.
+      expect(confirmationLevel(policy(period))).toBe("acknowledge");
+      expect(lockedUntil(policy(period), NOW)).toBeNull();
+    }
+  });
+
+  it("names the policy as the subject", () => {
+    expect(intentSubject(policy("P30D"))).toBe("nightly_worm");
+  });
+});
+
+describe("headlineUntil", () => {
+  it("suppresses the headline for a policy, whose date is not its own", () => {
+    // The headline reads "<subject> cannot be deleted until <date>", but the
+    // policy stays deletable and the date belongs to the next snapshot. The list
+    // states that date with the right owner instead.
+    const intent: SnaplockIntent = {
+      kind: "snapshotPolicyRetention",
+      policyName: "nightly_worm",
+      retentionPeriod: "P30D",
+      schedule: "daily",
+      count: 7,
+    };
+    expect(lockedUntil(intent, NOW)).not.toBeNull();
+    expect(headlineUntil(intent, NOW)).toBeNull();
+  });
+
+  it("keeps the headline where the date does bound the subject", () => {
+    const intent: SnaplockIntent = {
+      kind: "lockSnapshot",
+      snapshotName: "snap1",
+      retentionDays: 7,
+    };
+    expect(headlineUntil(intent, NOW)?.toISOString()).toBe("2026-08-13T00:00:00.000Z");
   });
 });
 

@@ -1961,6 +1961,21 @@ def _create_snapshot_policy(http, headers, event, user_id):
     if not schedules:
         return {"success": False, "error": "At least one schedule is required"}
 
+    # A retention period turns the policy into a standing instruction to lock:
+    # every snapshot the schedule takes becomes undeletable for that period, with
+    # nobody present to approve each one. A policy without retention is ordinary
+    # and is left alone, so the guard only asks when it has something to warn
+    # about.
+    if any(s.get("retentionPeriod") for s in schedules):
+        periods = ", ".join(sorted({str(s["retentionPeriod"]) for s in schedules if s.get("retentionPeriod")}))
+        refused = _require_ack(
+            event,
+            f"Every snapshot this policy takes will be locked for {periods} and cannot be "
+            "deleted or shortened before it expires, on every run of the schedule.",
+        )
+        if refused:
+            return refused
+
     copies = []
     for s in schedules:
         copy: dict = {
@@ -2072,6 +2087,36 @@ def _lock_snapshot(http, headers, event, user_id):
     return {"success": True, "expiryTime": expiry, "retentionDays": retention_days, "error": None}
 
 
+def _snapshot_policy_retention_periods(http, headers, policy_name: str) -> list[str]:
+    """Retention periods the named policy applies to the snapshots it takes.
+
+    Empty when the policy locks nothing. Fails closed: if the policy cannot be
+    read, a single `"unknown"` entry is returned so the caller still asks for
+    acknowledgement rather than assuming the policy is harmless.
+    """
+    data = _ontap_request(
+        http,
+        headers,
+        "GET",
+        f"/storage/snapshot-policies?name={_qval(policy_name)}&fields=copies.retention_period",
+    )
+    if data.get("_error"):
+        return ["unknown"]
+
+    records = data.get("records", [])
+    if not records:
+        # No such policy. The PATCH below will report that plainly, so there is
+        # nothing to acknowledge here.
+        return []
+
+    periods = []
+    for copy in records[0].get("copies", []):
+        period = copy.get("retention_period")
+        if period and period not in periods:
+            periods.append(str(period))
+    return periods
+
+
 def _assign_snapshot_policy(http, headers, event, user_id):
     """Assign a snapshot policy to a volume.
 
@@ -2083,6 +2128,22 @@ def _assign_snapshot_policy(http, headers, event, user_id):
 
     if not vol_uuid or not policy_name:
         return {"success": False, "error": "volumeUuid and policyName are required"}
+
+    # Attaching a policy that carries retention starts the same recurring lock on
+    # this volume, so it needs the same acknowledgement as creating one. Whether
+    # it does is a property of the policy rather than of this request, so it has
+    # to be looked up: asking unconditionally would refuse ordinary assignments,
+    # which are the common case and reversible.
+    retention_periods = _snapshot_policy_retention_periods(http, headers, policy_name)
+    if retention_periods:
+        refused = _require_ack(
+            event,
+            f"Policy '{policy_name}' locks the snapshots it takes for "
+            f"{', '.join(retention_periods)}. Once attached, every snapshot this volume takes "
+            "on that schedule cannot be deleted or shortened before it expires.",
+        )
+        if refused:
+            return refused
 
     body = {"snapshot_policy": {"name": policy_name}}
     data = _ontap_request(http, headers, "PATCH", f"/storage/volumes/{vol_uuid}", body=body)

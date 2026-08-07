@@ -78,6 +78,23 @@ export type SnaplockIntent =
       bucket: string;
       mode: "GOVERNANCE" | "COMPLIANCE";
       days: number;
+    }
+  | {
+      /**
+       * A snapshot policy that carries a retention period.
+       *
+       * Distinct from `lockSnapshot` because the lock recurs: every snapshot the
+       * schedule takes is locked, not one chosen by hand. That difference is the
+       * reason this has its own intent rather than reusing the snapshot wording.
+       */
+      kind: "snapshotPolicyRetention";
+      policyName: string;
+      /** ISO-8601 retention applied to each snapshot the schedule takes. */
+      retentionPeriod: string;
+      /** hourly / daily / weekly, as the form offers it. */
+      schedule: string;
+      /** Snapshots the policy keeps before rotating the oldest out. */
+      count: number;
     };
 
 const PERIOD_RE = /^P(?:(\d+)Y)?(?:(\d+)M)?(?:(\d+)D)?$/;
@@ -151,10 +168,33 @@ export function lockedUntil(intent: SnaplockIntent, now: Date): Date | null {
     case "s3ObjectLock":
       if (intent.days <= 0) return null;
       return addPeriod(now, { years: 0, months: 0, days: intent.days });
+    case "snapshotPolicyRetention": {
+      const period = parseIsoPeriod(intent.retentionPeriod);
+      if (!period || isZeroPeriod(period)) return null;
+      // The date for a snapshot taken now. Later ones move with the schedule,
+      // which is what makes this recurring rather than a single expiry.
+      return addPeriod(now, period);
+    }
     case "enableSnapshotLocking":
       // Enabling locks nothing by itself, so there is no date to show.
       return null;
   }
+}
+
+/**
+ * The date to show as the dialog headline, or null for no headline.
+ *
+ * The headline reads as "<subject> cannot be deleted until <date>", which only
+ * holds when the date bounds the subject itself. A snapshot policy is the
+ * exception: the policy stays deletable and the date belongs to the next
+ * snapshot the schedule takes, so the headline would claim the wrong thing. That
+ * case states its date inside the list instead, where it can say whose date it
+ * is. Keeping the rule here rather than in the dialog leaves presentation free
+ * of intent-specific branching and keeps it testable.
+ */
+export function headlineUntil(intent: SnaplockIntent, now: Date): Date | null {
+  if (intent.kind === "snapshotPolicyRetention") return null;
+  return lockedUntil(intent, now);
 }
 
 /**
@@ -237,6 +277,45 @@ export function describeConsequences(
       break;
     }
 
+    case "snapshotPolicyRetention": {
+      if (!until) {
+        // No retention means an ordinary policy. Saying so plainly is the point:
+        // the field is optional and leaving it empty is the safe default.
+        out.push({ severity: "info", messageKey: "slcPolicyNoRetention" });
+        break;
+      }
+
+      // Recurrence first. A reader who takes in one line should learn that this
+      // is not a single lock but a standing instruction to keep making them.
+      out.push({
+        severity: "blocksDeletion",
+        messageKey: "slcPolicyEverySnapshotLocked",
+        values: { schedule: intent.schedule, period: intent.retentionPeriod },
+      });
+      out.push({
+        severity: "blocksDeletion",
+        messageKey: "slcPolicyFirstSnapshotUntil",
+        values: { date: untilValue },
+      });
+
+      // Locked snapshots cannot be deleted, and rotation deletes the oldest, so
+      // the count stops bounding how many exist. That follows from the two rules
+      // rather than being separate behaviour, and it is the part that shows up as
+      // a capacity problem rather than a compliance one.
+      out.push({
+        severity: "blocksDeletion",
+        messageKey: "slcPolicyCountNotACap",
+        values: { count: intent.count },
+      });
+
+      out.push({ severity: "irreversible", messageKey: "slcSnapshotExtendOnly" });
+
+      // The policy itself is reversible, which is the useful half of the news:
+      // it bounds the damage to snapshots already taken.
+      out.push({ severity: "info", messageKey: "slcPolicyStoppable" });
+      break;
+    }
+
     case "s3ObjectLock": {
       if (intent.mode === "COMPLIANCE") {
         out.push({ severity: "irreversible", messageKey: "slcS3ComplianceNoChange" });
@@ -265,6 +344,12 @@ export function describeConsequences(
  * snapshot lock: it cannot be shortened, but it expires on its own and reaches
  * nothing but that one snapshot, so a checkbox is proportionate. Making every
  * routine lock require typing would train operators to type it without reading.
+ *
+ * A snapshot policy carrying retention does get the keyword, even though each
+ * individual lock it creates would only warrant a checkbox. It is a standing
+ * instruction rather than one act: it keeps producing locks on a schedule after
+ * the operator has stopped watching. A policy with no retention has no
+ * irreversible consequence and so falls through to the checkbox on its own.
  */
 export function confirmationLevel(intent: SnaplockIntent): SnaplockConfirmationLevel {
   if (intent.kind === "lockSnapshot") return "acknowledge";
@@ -285,6 +370,8 @@ export function intentSubject(intent: SnaplockIntent): string {
       return intent.snapshotName;
     case "s3ObjectLock":
       return intent.bucket;
+    case "snapshotPolicyRetention":
+      return intent.policyName;
   }
 }
 

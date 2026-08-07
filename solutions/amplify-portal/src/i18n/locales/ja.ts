@@ -388,6 +388,8 @@ arpResponseSweepNote: "ブロックは指定した期限が過ぎると自動で
   rmSnapCount: "保持数",
   rmSnapRetention: "保持期間",
   rmSnapRetentionHint: "ISO 8601 形式: P30D = 30日、P1Y = 1年（Tamperproof 有効時にロック期間として適用）",
+  rmSnapRetentionInvalid:
+    "保持期間の形式が正しくありません。ISO 8601 の期間で指定してください（例: P30D、P6M、P1Y）。",
   rmSnapNoPolicies: "スナップショットポリシーがありません",
   rmSnapTamperproofDesc: "Tamperproof Snapshot を有効にすると、スナップショットに有効期限付きロックを設定できます。ロックされたスナップショットは保持期間満了まで管理者含め誰も削除できません。",
   rmSnapVolumeUuid: "ボリューム UUID",
@@ -1327,6 +1329,16 @@ arpResponseSweepNote: "ブロックは指定した期限が過ぎると自動で
     "以降に格納されるオブジェクトは {date}（{days} 日間）まで削除できません。",
   slcS3FutureObjectsOnly:
     "既存オブジェクトには適用されません。設定後に格納されるオブジェクトが対象です。",
+  slcPolicyNoRetention:
+    "保持期間が未設定のため、このポリシーが撮る Snapshot はロックされません。通常の Snapshot として削除できます。",
+  slcPolicyEverySnapshotLocked:
+    "1 回のロックではありません。このポリシーが {schedule} で撮る Snapshot が、以降すべて {period} ロックされ続けます。",
+  slcPolicyFirstSnapshotUntil:
+    "今この直後に撮られる Snapshot は {date} まで削除できません。以降の Snapshot はスケジュールに応じて後ろにずれます。",
+  slcPolicyCountNotACap:
+    "保持数 {count} は上限として機能しません。ロック済み Snapshot は世代交換で削除できないため、満了までは {count} を超えて蓄積し、その分の容量を消費します。",
+  slcPolicyStoppable:
+    "ポリシー側は元に戻せます。保持期間の削除、別ポリシーへの変更、デタッチで新規ロックを停止できます。すでにロックされた Snapshot は満了まで残ります。",
 
   // --- Shared / misc ---
   processing: "処理中...",

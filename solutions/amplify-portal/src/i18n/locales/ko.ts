@@ -376,6 +376,8 @@ arpResponseSweepNote: "차단은 지정한 기한이 지나면 자동으로 해�
   rmSnapCount: "보존 개수",
   rmSnapRetention: "보존 기간",
   rmSnapRetentionHint: "ISO 8601 형식: P30D = 30일, P1Y = 1년 (Tamperproof 볼륨에 잠금 기간으로 적용)",
+  rmSnapRetentionInvalid:
+    "보존 기간 형식이 올바르지 않습니다. ISO 8601 기간으로 지정하세요(예: P30D, P6M, P1Y).",
   rmSnapNoPolicies: "스냅샷 정책이 없습니다",
   rmSnapTamperproofDesc: "Tamperproof Snapshot을 활성화하면 스냅샷에 만료 시간을 설정하여 잠글 수 있습니다. 잠긴 스냅샷은 보존 기간이 만료될 때까지 관리자를 포함하여 누구도 삭제할 수 없습니다.",
   rmSnapVolumeUuid: "볼륨 UUID",
@@ -1278,6 +1280,16 @@ arpResponseSweepNote: "차단은 지정한 기한이 지나면 자동으로 해�
     "이후 저장되는 객체는 {date}({days}일간)까지 삭제할 수 없습니다.",
   slcS3FutureObjectsOnly:
     "기존 객체에는 적용되지 않습니다. 설정 후 저장되는 객체가 대상입니다.",
+  slcPolicyNoRetention:
+    "보존 기간이 설정되지 않았으므로 이 정책이 만드는 Snapshot은 잠기지 않습니다. 일반 Snapshot으로 삭제할 수 있습니다.",
+  slcPolicyEverySnapshotLocked:
+    "한 번의 잠금이 아닙니다. 이 정책이 {schedule} 일정으로 만드는 Snapshot이 이후 모두 {period} 동안 잠깁니다.",
+  slcPolicyFirstSnapshotUntil:
+    "다음에 만들어지는 Snapshot은 {date}까지 삭제할 수 없습니다. 이후 Snapshot은 일정에 따라 뒤로 이동합니다.",
+  slcPolicyCountNotACap:
+    "보존 개수 {count}는 상한으로 작동하지 않습니다. 잠긴 Snapshot은 세대 교체로 삭제할 수 없으므로 만료될 때까지 {count}를 초과해 누적되며 그만큼 용량을 소비합니다.",
+  slcPolicyStoppable:
+    "정책 자체는 되돌릴 수 있습니다. 보존 기간 삭제, 다른 정책으로 변경, 분리로 새 잠금을 중지할 수 있습니다. 이미 잠긴 Snapshot은 만료까지 남습니다.",
 
   // --- Shared / misc ---
   processing: "처리 중...",
