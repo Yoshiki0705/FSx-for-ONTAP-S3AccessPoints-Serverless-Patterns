@@ -334,3 +334,161 @@ def test_no_exempt_marker_escape_hatch_for_published_text(published):
     source = (SCRIPTS / "check_published_articles.py").read_text()
     assert "EXEMPT_FILE" not in source
     assert "EXEMPT_LINE" not in source
+
+
+# --------------------------------------------------------------------------
+# Count claims
+#
+# The phrasing rules above cannot reach these. "4 groups × 13 sections" is not a
+# false phrasing — it was the true number when it was written. Three documents
+# and two published articles disagreed with the sidebar at once, in four
+# languages, and every one of them read as correct prose.
+# --------------------------------------------------------------------------
+
+# The number as each locale actually writes it, paired with what the surrounding
+# text looks like. Taken from the eight README files and the two published posts,
+# so a pattern that only understands the English form fails here rather than in
+# production.
+SECTION_PHRASINGS = [
+    "4 groups × 17 sections. Same sidebar pattern as Google Drive and Box.",
+    "4 グループ × 17 セクション。Google Drive や Box と同じサイドバーパターンです。",
+    "## Portal UI — Sidebar Layout (17 Sections)",
+    "## ポータル UI — サイドバーレイアウト（17 セクション）",
+    "## Portal-UI — Seitenleisten-Layout (17 Bereiche)",
+    "## UI del Portal — Diseño de la barra lateral (17 secciones)",
+    "## Interface du portail — Disposition de la barre latérale (17 sections)",
+    "## 포털 UI — 사이드바 레이아웃 (17개 섹션)",
+    "## 门户 UI — 侧边栏布局（17 个部分）",
+    "## 入口 UI — 側邊欄佈局（17 個部分）",
+    "サイドバーナビゲーション（4 グループ × 17 セクション）で構成されています。",
+]
+
+
+def _sections_rule(drift):
+    return next(c for c in drift.COUNT_CLAIMS if c["name"] == "sidebar-sections")
+
+
+@pytest.mark.parametrize("line", SECTION_PHRASINGS)
+def test_every_locale_phrasing_is_understood(drift, line):
+    """The number is found in all eight locales, not just English.
+
+    A pattern that reads "17 sections" and not "17개 섹션" would report PASS on
+    seven of the eight READMEs while they said 16, which is the same silence as
+    having no check.
+    """
+    rule = _sections_rule(drift)
+    match = rule["pattern"].search(line)
+    assert match, line
+    assert next(g for g in match.groups() if g) == "17"
+
+
+@pytest.mark.parametrize("line", SECTION_PHRASINGS)
+def test_a_stale_number_is_reported_in_every_locale(drift, line, tmp_path, monkeypatch):
+    stale = line.replace("17", "13")
+    doc = tmp_path / "docs" / "ja"
+    doc.mkdir(parents=True)
+    (doc / "example.md").write_text(stale, encoding="utf-8")
+    monkeypatch.setattr(drift, "ROOT", tmp_path)
+    monkeypatch.setattr(drift, "COUNT_GLOBS", ["docs/ja/*.md"])
+    monkeypatch.setattr(drift, "COUNT_CLAIMS", [{**_sections_rule(drift), "count": lambda: 17}])
+
+    findings = drift.check_count_claims()
+
+    assert len(findings) == 1, findings
+    assert "says 13" in findings[0].detail
+    assert "has 17" in findings[0].detail
+
+
+def test_the_count_comes_from_the_sidebar_not_a_constant(drift):
+    """The expected number is read from `NAV_ITEMS`, so it cannot itself go stale.
+
+    A hardcoded 17 here would turn the next section anyone adds into a false
+    failure, and the fix for a false failure is usually to delete the check.
+    """
+    counted = _sections_rule(drift)["count"]()
+    nav = (drift.PORTAL / "src" / "App.tsx").read_text()
+    assert counted == nav.count('", icon: "')
+    assert counted >= 17
+
+
+def test_a_zero_count_is_reported_rather_than_passing(drift, monkeypatch):
+    """If the reader stops matching the implementation, say so.
+
+    Counting zero means the pattern that reads `App.tsx` has been outrun by a
+    refactor. Comparing every document against zero would flag all of them; not
+    comparing at all would report PASS forever. Neither is a useful answer, so
+    the broken reader is what gets reported.
+    """
+    monkeypatch.setattr(drift, "COUNT_CLAIMS", [{**_sections_rule(drift), "count": lambda: 0}])
+
+    findings = drift.check_count_claims()
+
+    assert len(findings) == 1
+    assert "counted zero" in findings[0].detail
+
+
+def test_exempt_markers_are_honoured_in_the_repository(drift, tmp_path, monkeypatch):
+    """A correction sheet quotes the stale number on purpose."""
+    doc = tmp_path / "docs" / "ja"
+    doc.mkdir(parents=True)
+    (doc / "corrections.md").write_text(
+        "<!-- drift-exempt-file: quotes the before text for search-and-replace -->\n4 グループ × 13 セクション\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(drift, "ROOT", tmp_path)
+    monkeypatch.setattr(drift, "COUNT_GLOBS", ["docs/ja/*.md"])
+    monkeypatch.setattr(drift, "COUNT_CLAIMS", [{**_sections_rule(drift), "count": lambda: 17}])
+
+    assert drift.check_count_claims() == []
+
+
+def test_a_published_article_gets_no_exemption(published, drift):
+    """The same marker must not silence a live article.
+
+    A file may quote a false number to correct it. An article asserting one to
+    its readers is a finding whatever the intent, so `count_findings` takes text
+    and never sees a marker.
+    """
+    text = "<!-- drift-exempt-file: does not apply here -->\n4 groups × 13 sections. Same pattern.\n"
+    findings = published.count_findings(text, {"label": "Part 1 (EN)", "url": "https://example.com"})
+    assert len(findings) == 1
+    assert "says 13" in findings[0]
+
+
+def test_the_published_checker_shares_the_repository_table(published, drift):
+    """One table, both checks.
+
+    The rules were copied once before and the copies diverged, which is how two
+    articles kept a claim the repository had already corrected.
+
+    Asserted against the source rather than by object identity: the fixtures here
+    load each script as a fresh module, so the two `COUNT_CLAIMS` names refer to
+    equal-but-distinct lists no matter how the import is written. Identity would
+    fail on a correct file, which is worse than not testing it.
+    """
+    source = (SCRIPTS / "check_published_articles.py").read_text()
+    assert "COUNT_CLAIMS," in source, "the table must be imported"
+    assert "COUNT_CLAIMS = " not in source, "a second copy would drift from the first"
+    assert [c["name"] for c in published.COUNT_CLAIMS] == [c["name"] for c in drift.COUNT_CLAIMS]
+
+
+def test_a_correct_published_number_is_left_alone(published):
+    text = "4 groups × 17 sections. Same sidebar pattern as Google Drive and Box."
+    assert published.count_findings(text, {"label": "Part 1 (EN)", "url": "https://x"}) == []
+
+
+# The endpoint count deliberately has no rule. These are the sentences that made
+# one unworkable: each is correct, and each sits a number next to the word
+# "endpoint". If someone adds that rule later, this test tells them what it has
+# to survive.
+ENDPOINT_SENTENCES_THAT_ARE_CORRECT = [
+    "| Azure AD (Entra ID) | OIDC | Documented | Use v2.0 endpoint |",
+    "S3 AP にはパブリック S3 エンドポイント経由でアクセスします。",
+    "The file-browsing Lambda runs OUTSIDE VPC and reaches 3 endpoints.",
+]
+
+
+@pytest.mark.parametrize("line", ENDPOINT_SENTENCES_THAT_ARE_CORRECT)
+def test_no_rule_claims_the_endpoint_count(drift, line):
+    for claim in drift.COUNT_CLAIMS:
+        assert not claim["pattern"].search(line), (claim["name"], line)

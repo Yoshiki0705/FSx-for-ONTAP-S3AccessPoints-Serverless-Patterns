@@ -448,6 +448,104 @@ def check_doc_contradictions() -> list[Finding]:
     return findings
 
 
+# Counts a document states about the portal, paired with where the real number
+# lives. The CONTRADICTIONS rules above cannot cover these: a rule matches the
+# *false half of a phrasing*, and "13 sections" is not a phrasing — it is a
+# number that was true when it was written and quietly stopped being true.
+#
+# The section count had drifted in three places at once when this check was
+# added: two published articles said 13, eight README locales said 16, and the
+# tabs guide said 12, while the sidebar carried 17. The first two were found by
+# reading; the third was found by this check, after the reading had declared
+# itself finished. Nobody wrote anything wrong — the number aged, which is
+# exactly the failure a person cannot be asked to notice.
+COUNT_CLAIMS = [
+    {
+        "name": "sidebar-sections",
+        # "4 groups × 17 sections", "4 グループ × 17 セクション", "(17 Sections)",
+        # "（17 セクション）", "(17개 섹션)", "（17 个部分）" and so on. Only the
+        # number is captured; the surrounding words differ per locale and are
+        # deliberately not pinned, so a rewording does not silently disable this.
+        "pattern": re.compile(
+            r"(?:×|x)\s*(\d+)\s*(?:sections?|セクション|Bereiche|secciones|개 섹션|个部分|個部分)"
+            r"|[(（]\s*(\d+)\s*"
+            r"(?:Sections?|セクション|Bereiche|secciones|sections?|개 섹션|个部分|個部分)\s*[)）]",
+            re.IGNORECASE,
+        ),
+        "count": lambda: len(
+            re.findall(
+                r"\{\s*id:\s*\"[^\"]+\",\s*icon:",
+                (PORTAL / "src" / "App.tsx").read_text(),
+            )
+        ),
+        "source": "NAV_ITEMS in src/App.tsx",
+    },
+]
+# A claim rule for the dispatch endpoint count was written and removed. "8
+# endpoints" in the design notes is the same shape as "Use the v2.0 endpoint",
+# "the public S3 endpoint" and "ONTAP の管理エンドポイント", and six of the ten
+# hits on the first run were sentences about a service endpoint that had nothing
+# to do with dispatch. Narrowing it to "generic endpoints" would have passed, but
+# only until someone wrote the true number without that adjective — a rule that
+# only fires on one phrasing gives cover, not coverage. The endpoint count is
+# printed by `check_portal_action_params.py` on every run, which is where a reader
+# who needs it should look.
+
+# Files whose numbers are checked. Published-article text is not reachable from
+# here; `check_published_articles.py` imports this table and applies it there.
+COUNT_GLOBS = [
+    "solutions/amplify-portal/README*.md",
+    "solutions/amplify-portal/docs/*.md",
+    "docs/ja/*.md",
+    "docs/en/*.md",
+    "drafts/blog/*.md",
+]
+
+
+def check_count_claims() -> list[Finding]:
+    """Numbers a document asserts about the portal, against the implementation.
+
+    A mismatch is reported, not corrected: the sentence around the number may
+    need to change too, and a script that rewrites prose to fix arithmetic tends
+    to produce sentences no one would have written.
+    """
+    findings: list[Finding] = []
+    for claim in COUNT_CLAIMS:
+        try:
+            expected = claim["count"]()
+        except OSError as error:
+            findings.append(Finding("count-claim", claim["source"], f"could not read the source: {error}"))
+            continue
+        if not expected:
+            findings.append(
+                Finding(
+                    "count-claim",
+                    claim["source"],
+                    "counted zero, which means the pattern that reads the implementation has stopped matching it",
+                )
+            )
+            continue
+        for pattern in COUNT_GLOBS:
+            for path in sorted(ROOT.glob(pattern)):
+                text = path.read_text()
+                if EXEMPT_FILE.search(text):
+                    continue
+                for number, line in enumerate(text.split("\n"), start=1):
+                    if EXEMPT_LINE.search(line):
+                        continue
+                    for match in claim["pattern"].finditer(line):
+                        stated = next(g for g in match.groups() if g)
+                        if int(stated) != expected:
+                            findings.append(
+                                Finding(
+                                    "count-claim",
+                                    f"{path.relative_to(ROOT)}:{number}",
+                                    f"says {stated} but {claim['source']} has {expected}: {line.strip()[:100]}",
+                                )
+                            )
+    return findings
+
+
 _ALL_PORTAL_ACTIONS: set[str] = set()
 
 
@@ -485,7 +583,7 @@ def main() -> int:
         return 0
 
     hardcoded, _ = check_hardcoded_strings()
-    findings = check_action_inventories() + hardcoded + check_doc_contradictions()
+    findings = check_action_inventories() + hardcoded + check_doc_contradictions() + check_count_claims()
 
     if not findings:
         print(f"PORTAL DRIFT: PASS ({len(_ALL_PORTAL_ACTIONS)} actions across the portal handlers)")

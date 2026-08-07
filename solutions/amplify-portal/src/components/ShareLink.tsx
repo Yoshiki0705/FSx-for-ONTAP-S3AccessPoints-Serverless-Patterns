@@ -36,12 +36,18 @@ export function ShareLink({ fileKey, fileName }: ShareLinkProps) {
   const [copied, setCopied] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // A base64 PNG of the same presigned URL, for handing a link to a device that
+  // cannot be typed into — a tablet on a factory floor, which is the case the
+  // README has cited for "QR code access" while nothing in the UI produced one.
+  const [qrCode, setQrCode] = useState<string | null>(null);
+  const [qrLoading, setQrLoading] = useState(false);
 
   const generateLink = useCallback(async () => {
     setLoading(true);
     setError(null);
     setCopied(false);
     setGeneratedUrl(null);
+    setQrCode(null);
 
     try {
       const response = await client.queries.getPresignedUrl({
@@ -80,9 +86,37 @@ export function ShareLink({ fileKey, fileName }: ShareLinkProps) {
     }
   }, [generatedUrl]);
 
+  /**
+   * Ask the backend for a QR code of a link with the selected expiry.
+   *
+   * `generateQrCode` presigns its own URL rather than encoding the one already on
+   * screen, so the code and the text box are two links to the same object with the
+   * same TTL, not the same link twice. Both expire.
+   */
+  const generateQr = useCallback(async () => {
+    setQrLoading(true);
+    setError(null);
+    try {
+      const response = await client.mutations.generateQrCode({
+        key: fileKey,
+        expiresIn: selectedTtl,
+      });
+      if (response.data?.qrCodeBase64) {
+        setQrCode(response.data.qrCodeBase64);
+      } else {
+        setError(response.data?.error || t("slQrFailed"));
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : t("slQrFailed"));
+    } finally {
+      setQrLoading(false);
+    }
+  }, [fileKey, selectedTtl, t]);
+
   const handleClose = () => {
     setShowPanel(false);
     setGeneratedUrl(null);
+    setQrCode(null);
     setCopied(false);
     setError(null);
   };
@@ -119,6 +153,7 @@ export function ShareLink({ fileKey, fileName }: ShareLinkProps) {
                   onClick={() => {
                     setSelectedTtl(opt.value);
                     setGeneratedUrl(null);
+                    setQrCode(null);
                   }}
                   role="radio"
                   aria-checked={selectedTtl === opt.value}
@@ -152,6 +187,22 @@ export function ShareLink({ fileKey, fileName }: ShareLinkProps) {
               <button className="share-link-copy" onClick={copyToClipboard}>
                 {copied ? t("slCopied") : t("slCopy")}
               </button>
+            </div>
+          )}
+
+          {generatedUrl && !qrCode && (
+            <button className="share-link-generate" onClick={generateQr} disabled={qrLoading}>
+              {qrLoading ? t("slQrGenerating") : `📱 ${t("slQrGenerate")}`}
+            </button>
+          )}
+
+          {qrCode && (
+            <div className="share-link-qr">
+              <img
+                src={`data:image/png;base64,${qrCode}`}
+                alt={t("slQrAlt").replace("{name}", fileName)}
+              />
+              <p className="form-note">{t("slQrNote")}</p>
             </div>
           )}
 

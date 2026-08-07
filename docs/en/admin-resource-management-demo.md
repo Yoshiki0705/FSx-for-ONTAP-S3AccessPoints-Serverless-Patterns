@@ -1,5 +1,7 @@
 # Admin Resource Management — Demo Guide
 
+**English** | [日本語](../ja/admin-resource-management-demo.md)
+
 > E2E verified on 2026-07-26 against FSx for ONTAP (fs-0123456789abcdef1, ONTAP 9.17.1)
 
 ## Overview
@@ -223,8 +225,9 @@ aws fsx describe-storage-virtual-machines \
 6. Click **⚡ ブレーク** → confirm (warns: "フェイルオーバーに使用します") → destination becomes writable
 7. Click **🔁 再同期** → confirm (warns: "宛先の変更は破棄されます") → relationship resumes
 8. Click **▶ 転送履歴** on a relationship → expand transfer history table:
-   - Columns: 状態 (success/failed badge), サイズ (formatted bytes), 完了日時, 所要時間
+   - Columns: 状態 (success/failed badge), サイズ (formatted bytes), 完了日時, 所要時間, 操作
    - Shows last 10 transfers
+   - A transfer still running (transferring / queued / preparing / finalizing) offers **⏹ Abort transfer**. Aborting re-sends the delta on the next update rather than losing it
 9. Click **▼** to collapse transfer details
 
 > **RPO monitoring**: If lag time exceeds your RPO target (e.g., "2 hours"), the red `⚠️ RPO` warning indicates replication is behind schedule. Trigger a manual sync or investigate network/load issues.
@@ -301,17 +304,17 @@ aws fsx describe-storage-virtual-machines \
 4. **Status tab**: View external engine connection state (connected/disconnected)
 5. Verify the 3-tab structure renders without errors in DemoMode (empty lists displayed)
 
-### Scenario 16: Athena SQL — NAS Data Analytics
+### Scenario 17: Athena SQL — NAS Data Analytics
 
 1. Navigate to **AI & Processing > Analytics** (sidebar: 📊 分析)
 2. Observe the guidance panel explaining what Athena does and how it relates to Glue Crawler + S3 AP
-3. Click **📝 クエリ例を見る** to expand example queries
-4. Start with `SHOW TABLES IN default` (pre-filled) to discover available tables
-5. Click **クエリ実行** to run the query
-6. If tables exist, modify the query: `SELECT key, size FROM default.s3_objects ORDER BY size DESC LIMIT 20`
+3. Click **🗂️ Browse data catalog** to inspect the Glue databases, tables and columns
+4. Choose a table and click **Query this table** — the database and a starter query are filled in
+5. Click **📝 クエリ例を見る** to expand example queries
+6. Click **クエリ実行** to run the query
 7. Observe results rendered as a table with column headers and row count
 
-> **Prerequisites for Athena**: A Glue Crawler must have been configured to catalog files from the S3 AP. Without a Glue table, `SHOW TABLES` returns empty. The portal's Athena panel is a query interface — it does not create Glue Crawlers or tables.
+> **Prerequisites for Athena**: A Glue Crawler must have been configured to catalog files from the S3 AP. Without a Glue table, the catalog browser is empty and says so. The portal's Athena panel is a query interface — it does not create Glue Crawlers or tables.
 
 **What this panel enables**: Rather than opening the AWS Athena console separately, storage administrators and data engineers can run SQL queries directly from the portal. Typical use cases:
 - "Which files are larger than 1 GB?" (capacity planning)
@@ -453,9 +456,9 @@ aws ec2 describe-route-tables \
 | Template > 1MB | Too many resolvers | Already solved via generic dispatch pattern |
 | No files in File Explorer | S3 AP alias incorrect | Verify alias in `portal-config.ts` matches `aws fsx describe-storage-virtual-machines --query ...S3AccessPoints` |
 
-## New Feature Scenarios (2026-07-26)
+## Additional Scenarios
 
-### Scenario 10: Storage Health Dashboard
+### Scenario 18: Storage Health Dashboard
 
 1. Navigate to **Admin > Resources**
 2. Observe the **4 summary cards** at the top of the overview:
@@ -466,7 +469,7 @@ aws ec2 describe-route-tables \
 3. Click any card to navigate directly to that panel
 4. If capacity > 85%, the card shows a yellow warning indicator
 
-### Scenario 11: Welcome Onboarding (First-Time User)
+### Scenario 19: Welcome Onboarding (First-Time User)
 
 1. Clear localStorage: `localStorage.removeItem('portal-welcome-dismissed')`
 2. Reload the page — a welcome modal appears with 3 steps
@@ -476,7 +479,7 @@ aws ec2 describe-route-tables \
 6. Click "Get Started" — modal dismisses
 7. Check "Don't show again" → modal won't appear on next visit
 
-### Scenario 12: Incident Lifecycle (ARP Containment)
+### Scenario 20: Incident Lifecycle (ARP Containment)
 
 1. Navigate to **Data Protection > ARP/AI**
 2. In the **Incident Response** section, observe the state badge:
@@ -488,9 +491,87 @@ aws ec2 describe-route-tables \
 4. Click **→ 調査開始** → badge transitions to 「調査中」
 5. Click **→ 解決** → badge transitions to 「解決済み」
 
-### Scenario 13: EMS Events (ONTAP Alerts)
+### Scenario 21: EMS Events (ONTAP Alerts)
 
-1. Navigate to **Admin > Resources** (StorageDashboard will show summary)
-2. EMS events are available via admin API: `getEmsEvents` action
-3. Returns: timestamp, severity (alert/error/emergency), message, node name
+1. Navigate to **Admin > Resources > Cluster**
+2. Switch to the **Events** tab
+3. Observe recent EMS events: timestamp, severity (alert / error / emergency), message, node name
 4. Use for operational awareness: disk failures, aggregate warnings, HA takeover events
+
+> On FSx for ONTAP, `/cluster/nodes` and `/cluster/licensing/licenses` can legitimately return zero records, because AWS manages the cluster layer. An empty list on those tabs is not an error.
+
+### Scenario 22: File Lifecycle (Rename, Trash, Restore)
+
+1. Navigate to **Browse > All Files**
+2. Click **✏️** on a file row → edit the name → **Save**
+   - A name containing `/` is refused: this renames the file, it does not move it
+3. Click **🗑️** on the row → confirm → the file moves under the `.trash/` prefix
+   - On the S3 Access Point this copies the object and then deletes the original, so it takes a while for large files
+4. Click **🗑️ Trash** in the header → the contents of `.trash/` are listed
+5. Click **♻️** → the file returns to its original location
+6. Click **🗑️ Leave trash** to return to normal browsing
+
+### Scenario 23: Upload Link (Receiving a File from Outside the Portal)
+
+1. Open the folder the file should land in
+2. Click **📤 Upload link**
+3. Enter a file name (generated if left empty) and choose an expiry of 1 hour or 24 hours
+4. Click **Create link** → the destination key and the URL are shown
+5. Copy the URL and hand it to the sender
+
+> **Security note**: The URL is the credential. Until it expires, anyone holding it can write to that key. This is why the UI states the destination key and the expiry next to it.
+
+### Scenario 24: Running a Stored Agent or Team
+
+1. Navigate to **AI & Processing > Agent Directory**
+2. Click an agent card → review its tools and system prompt
+3. Click **💬 Use in chat** → AI Chat opens running that stored definition
+   - The running agent's name is shown as a badge and the mode pills are hidden
+4. If you are the creator, **✏️ Edit** appears → change name / description / system prompt / sharing → save
+   - Agents shared by other people show neither Edit nor Delete
+5. Choosing a team from **Multi-Agent Teams** runs its members and roles as a single supervisor turn
+   - An unreachable member does not stop the run; it is named in the response as `unavailableMembers`
+
+### Scenario 25: Document Text Extraction and Analysis
+
+1. Select a file in **Browse > All Files** (the AI panel opens on the right)
+2. Click **🔎 Analyze document**
+3. Click **Extract text** → review the Amazon Textract result (page count, block count, body text)
+   - For documents with no text layer, such as scanned PDFs, running this first is what lets the chat read them
+4. Choose an analysis type (entities / sentiment / PII detection / key phrases) and click **Run analysis**
+5. Both are refused for files in a regulated folder (`phi/`, `dicom/`, `pii/`, ...)
+   - These operations send the bytes to a managed service, which is what the guard is about
+
+### Scenario 26: Aborting a SnapMirror Transfer
+
+1. Navigate to **Admin > Resources > SnapMirror**
+2. Expand **▶ 転送履歴** on a relationship with a transfer in progress
+3. Rows whose state is transferring / queued / preparing / finalizing offer **⏹ Abort transfer**
+4. Click it → confirm (the prompt states that the delta is re-sent on the next update) → the transfer aborts
+5. Observe that row's state update
+
+### Scenario 27: Folder Watch and Event Notifications
+
+Prerequisite: enable **Folder Watch** under **Admin > Resources > AI settings** (off by default). Enabling it is the admin stating that FPolicy or Transfer Family is publishing to EventBridge.
+
+1. Open **Browse > Folder Watch** (🔔) in the sidebar
+   - With the toggle off, the item does not appear in the sidebar at all
+2. Enter the path to watch in **Folder (prefix)**, for example `engineering/cad/`
+3. Choose the events (create / modify / delete) and click **Add watch**
+   - A trailing slash is appended for you, so a prefix match cannot pull in a sibling folder
+4. The watch appears in the table. **Remove** deletes it
+5. **Received events** lists events under your registered prefixes, newest first
+6. With no events, the three conditions that have to hold are listed (FPolicy enabled, publishing to EventBridge, prefix matching)
+
+> **Security note**: the inbox is filtered first by the Cognito group path boundary (`GROUP_PATH_PREFIXES`), then narrowed by your own watches. A watch is your own record so you may register `/`, but that cannot reveal anything outside the group boundary. `storage-admin` bypasses the boundary. In a single-tenant deployment (no `GROUP_PATH_PREFIXES`) every event is visible, the same boundary as the file listing.
+
+> **Architecture**: FPolicy server (or Transfer Family) -> EventBridge -> notification bridge Lambda -> the `FileNotification` table -> the portal. The portal reads what arrived; it is not what makes ONTAP emit anything. For configuring FPolicy itself see the [event-driven/fpolicy pattern](../../solutions/event-driven/fpolicy/).
+
+## Related Documents
+
+| Document | Contents |
+|----------|----------|
+| [管理者向けリソース管理 — デモガイド (JA)](../ja/admin-resource-management-demo.md) | Japanese version of this document |
+| [PoC to Production Guide](portal-poc-to-production.md) | Moving from DemoMode to a real connection |
+| [Scaling Guide](portal-scaling-guide.md) | Capacity planning and throughput sharing |
+| [Tamperproof Snapshot Design](../tamperproof-snapshot-design.md) | Three-layer design and the irreversibility rules |

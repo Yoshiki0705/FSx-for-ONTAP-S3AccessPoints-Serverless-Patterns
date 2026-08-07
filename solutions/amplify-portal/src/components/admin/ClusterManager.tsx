@@ -63,7 +63,22 @@ interface JobInfo {
   endTime: string;
 }
 
-type Tab = "overview" | "interfaces" | "services" | "jobs";
+type Tab = "overview" | "interfaces" | "services" | "jobs" | "events";
+
+/**
+ * One EMS (Event Management System) record, as the handler flattens it.
+ *
+ * The README has advertised an "EMS Event Viewer" since the panel set was written
+ * and there was none: `getEmsEvents` was implemented, deployed and reachable, with
+ * nothing in the UI calling it. This tab is that viewer.
+ */
+interface EmsEvent {
+  time: string;
+  severity: string;
+  messageName: string;
+  messageText: string;
+  node: string;
+}
 
 /**
  * Cluster inventory and services.
@@ -140,6 +155,14 @@ export function ClusterManager() {
           },
         };
       }
+      if (tab === "events") {
+        const e = await adminQuery<{ events?: EmsEvent[] }>({
+          action: "getEmsEvents",
+          params: { maxRecords: 50 },
+        });
+        fail(e?.error);
+        return { events: e?.events ?? [] };
+      }
       const j = await adminQuery<{ jobs?: JobInfo[] }>({ action: "listJobs" });
       fail(j?.error);
       return { jobs: j?.jobs ?? [] };
@@ -150,6 +173,7 @@ export function ClusterManager() {
   const nodes = ("nodes" in (data ?? {}) ? data!.nodes : []) as NodeInfo[];
   const licenses = ("licenses" in (data ?? {}) ? data!.licenses : []) as LicenseInfo[];
   const interfaces = ("interfaces" in (data ?? {}) ? data!.interfaces : []) as InterfaceInfo[];
+  const emsEvents = ("events" in (data ?? {}) ? data!.events : []) as EmsEvent[];
   const services = ("services" in (data ?? {}) ? data!.services : []) as ServiceInfo[];
   const jobs = ("jobs" in (data ?? {}) ? data!.jobs : []) as JobInfo[];
   const loadedDns = ("dns" in (data ?? {}) ? data!.dns : null) as
@@ -213,6 +237,9 @@ export function ClusterManager() {
         </button>
         <button className={`lu-tab ${tab === "jobs" ? "active" : ""}`} onClick={() => setTab("jobs")}>
           📜 {t("clJobsTab")}
+        </button>
+        <button className={`lu-tab ${tab === "events" ? "active" : ""}`} onClick={() => setTab("events")}>
+          🔔 {t("clEventsTab")}
         </button>
       </div>
 
@@ -502,7 +529,7 @@ export function ClusterManager() {
             <p className="rm-hint">{t("clDnsHint")}</p>
           </div>
         </>
-      ) : (
+      ) : tab === "jobs" ? (
         <>
           <div className="lu-toolbar">
             <span className="lu-count">
@@ -540,6 +567,52 @@ export function ClusterManager() {
                     </td>
                     <td>{j.message || "—"}</td>
                     <td>{j.endTime ? new Date(j.endTime).toLocaleString() : "—"}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </>
+      ) : (
+        <>
+          <div className="lu-toolbar">
+            <span className="lu-count">
+              {t("clEventCount").replace("{count}", String(emsEvents.length))}
+            </span>
+            <button className="rm-btn-sm" onClick={loadData}>
+              🔄 {t("rmApply")}
+            </button>
+          </div>
+          <p className="rm-hint">{t("clEventsHint")}</p>
+          {emsEvents.length === 0 ? (
+            <p className="rm-empty">{t("clNoEvents")}</p>
+          ) : (
+            <table className="rm-table">
+              <thead>
+                <tr>
+                  <th>{t("clEventTime")}</th>
+                  <th>{t("clEventSeverity")}</th>
+                  <th>{t("clEventName")}</th>
+                  <th>{t("clEventMessage")}</th>
+                  <th>{t("clNodeName")}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {emsEvents.map((e, index) => (
+                  <tr key={`${e.time}-${e.messageName}-${index}`}>
+                    <td>{e.time ? new Date(e.time).toLocaleString() : "—"}</td>
+                    <td>
+                      <span
+                        className={`lu-badge ${
+                          e.severity === "emergency" || e.severity === "error" ? "disabled" : ""
+                        }`}
+                      >
+                        {e.severity || "—"}
+                      </span>
+                    </td>
+                    <td><code>{e.messageName || "—"}</code></td>
+                    <td>{e.messageText || "—"}</td>
+                    <td>{e.node || "—"}</td>
                   </tr>
                 ))}
               </tbody>

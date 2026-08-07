@@ -149,7 +149,7 @@ sequenceDiagram
 
 ---
 
-## Portal UI — Sidebar Layout (12 Sections)
+## Portal UI — Sidebar Layout (17 Sections)
 
 ![Sidebar Layout](docs/screenshots/portal-sidebar-layout.png)
 *Left sidebar: grouped navigation. Center: active section content. Right: AI assistant (on file selection).*
@@ -159,14 +159,19 @@ sequenceDiagram
 | **Browse** | All Files | Browse, preview, AI Q&A, share links, QR access |
 | | Favorites | Pinned files (DynamoDB, per-user) |
 | | Recent | Recently accessed files |
+| | Folder Watch | Watched prefixes and received file events (admin toggle) |
 | | Upload | Drag-and-drop via Storage Browser for S3 |
 | **AI & Processing** | AI Processing | Trigger AI/ML workflows (Step Functions) |
+| | AI Chat | Tool-using agent over your files, or a stored agent or team |
+| | Search | Semantic search across the volume |
 | | Job History | Past executions (DynamoDB, owner-scoped) |
 | | Analytics | Athena SQL on Glue Data Catalog |
+| | Agent Directory | Stored agent definitions; run, edit or share one |
 | **Data Protection** | Snapshots | ONTAP snapshot listing + FlexClone restore |
 | | Lock | SnapLock (WORM) + S3 Object Lock status |
 | | ARP/AI | Autonomous Ransomware Protection status |
-| **Admin** | Version Diff | Side-by-side file comparison between snapshots |
+| **Admin** | Resource Management | Volumes, shares, exports, quotas, QoS, SnapMirror (storage-admin only) |
+| | Version Diff | Side-by-side file comparison between snapshots |
 | | Audit Trail | CloudTrail S3 data events (who/when/what) |
 
 ![AI Processing](docs/screenshots/portal-ai-processing.png)
@@ -490,8 +495,8 @@ Upload タブが「AccessDenied」を表示する場合は、`portal-config.ts` 
 Each developer gets an isolated sandbox keyed by OS username. Running `make sandbox` on different machines (or different usernames) creates separate stacks:
 
 ```
-amplify-fsxns3apamplifyportal-yoshiki-sandbox-ae70db2b34  ← developer 1
-amplify-fsxns3apamplifyportal-tanaka-sandbox-bf81ec3c45   ← developer 2
+amplify-fsxns3apamplifyportal-dev1-sandbox-0123456789  ← developer 1
+amplify-fsxns3apamplifyportal-dev2-sandbox-9876543210   ← developer 2
 ```
 
 They share the same AWS account but don't interfere. Use `npx ampx sandbox --identifier custom-name` for explicit naming.
@@ -509,20 +514,25 @@ amplify-portal/
 │   ├── auth/resource.ts            # Cognito (email + MFA + SAML/OIDC placeholders)
 │   ├── data/
 │   │   ├── resource.ts             # AppSync schema (queries, mutations, custom types)
-│   │   └── resolvers/              # APPSYNC_JS resolvers (7 files)
-│   │       ├── start-processing.js # HTTP → StepFunctions.StartExecution
-│   │       ├── get-job-status.js   # HTTP → StepFunctions.DescribeExecution
-│   │       ├── list-files.js       # Lambda → S3 AP ListObjectsV2 (+ group routing)
-│   │       ├── list-files-from-ap.js # Lambda → Arbitrary AP (for SnapshotCompare)
-│   │       ├── list-snapshots.js   # Lambda → ONTAP Snapshot list (VPC)
-│   │       ├── search-files.js     # Lambda → Bedrock KB Retrieve
-│   │       ├── get-file-metadata.js # Lambda → DynamoDB AI metadata
-│   │       ├── get-presigned-url.js # Lambda → Presigned URL generation
-│   │       ├── generate-qr-code.js # Lambda → Presigned URL + QR PNG
-│   │       ├── query-audit-log.js  # Lambda → Athena (CloudTrail)
-│   │       ├── ask-about-file.js   # Lambda → Bedrock Converse API
-│   │       ├── detect-labels.js    # Lambda → Rekognition DetectLabels
-│   │       └── run-athena-query.js # Lambda → Athena StartQueryExecution
+│   │   └── resolvers/              # APPSYNC_JS resolvers (18 files, all reached from resource.ts)
+│   │       ├── start-processing.js   # HTTP → StepFunctions.StartExecution
+│   │       ├── get-job-status.js     # HTTP → StepFunctions.DescribeExecution
+│   │       ├── files-dispatch.js     # Lambda → list-files (listing + file lifecycle)
+│   │       ├── snapshots-dispatch.js # Lambda → snapshots (ONTAP snapshots, FlexClone)
+│   │       ├── rm-dispatch.js        # Lambda → resource-management (storage-admin actions)
+│   │       ├── arp-dispatch.js       # Lambda → ARP response actions
+│   │       ├── agent-dispatch.js     # Lambda → agent chat, directory and teams
+│   │       ├── search-files.js       # Lambda → Bedrock KB Retrieve
+│   │       ├── get-file-metadata.js  # Lambda → DynamoDB AI metadata
+│   │       ├── get-presigned-url.js  # Lambda → Presigned URL generation
+│   │       ├── generate-qr-code.js   # Lambda → Presigned URL + QR PNG
+│   │       ├── query-audit-log.js    # Lambda → Athena (CloudTrail)
+│   │       ├── ask-about-file.js     # Lambda → Bedrock Converse API
+│   │       ├── detect-labels.js      # Lambda → Rekognition DetectLabels
+│   │       ├── extract-text.js       # Lambda → Textract
+│   │       ├── analyze-text.js       # Lambda → Comprehend
+│   │       ├── browse-catalog.js     # Lambda → Glue Data Catalog
+│   │       └── run-athena-query.js   # Lambda → Athena StartQueryExecution
 │   └── custom/
 │       └── step-functions.ts       # (Reference — moved to backend.ts)
 ├── src/
