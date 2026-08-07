@@ -7,7 +7,7 @@
 
 ## 概要
 
-FSx for ONTAP File Portal はサイドバーナビゲーション（4 グループ × 12 セクション）で構成されています。各セクションは独立した機能を提供し、同一の FSx for ONTAP S3 Access Point 上のデータにアクセスします。
+FSx for ONTAP File Portal はサイドバーナビゲーション（4 グループ × 17 セクション）で構成されています。各セクションは独立した機能を提供し、同一の FSx for ONTAP S3 Access Point 上のデータにアクセスします。
 
 ![サイドバーレイアウト](screenshots/portal-sidebar-layout.png)
 
