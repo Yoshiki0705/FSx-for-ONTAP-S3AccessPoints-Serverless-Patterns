@@ -399,6 +399,19 @@ const sharedPythonLayer = new lambda.LayerVersion(dataStack, "SharedPythonLayer"
   }),
 });
 
+// Cognito group -> path prefixes that group may see. Derived from the group/AP
+// mapping by convention: a group reaches its own folder plus the shared one.
+//
+// Named once because two functions now enforce it — the agent for file access and
+// list-files for the notification inbox. Inlining the derivation a second time
+// would let the two boundaries drift apart, and the failure would be silent in
+// the direction that matters (one function showing paths the other hides).
+const groupPathPrefixes: Record<string, string[]> = config.groupApMapping
+  ? Object.fromEntries(
+      Object.keys(config.groupApMapping).map((group) => [group, [`${group}/`, "shared/"]])
+    )
+  : {};
+
 const listFilesFunction = new lambda.Function(dataStack, "ListFilesFunction", {
   runtime: lambda.Runtime.PYTHON_3_13,
   architecture: lambda.Architecture.ARM_64,
@@ -408,13 +421,92 @@ const listFilesFunction = new lambda.Function(dataStack, "ListFilesFunction", {
   environment: {
     S3_AP_ALIAS: config.s3ApAlias,
     GROUP_AP_MAPPING: JSON.stringify(config.groupApMapping || {}),
+    // The folder watch inbox is served from here, so this function needs the
+    // notification table and the same path-prefix boundary the agent applies.
+    NOTIFICATION_TABLE_NAME: dataResources.tables["FileNotification"].tableName,
+    GROUP_PATH_PREFIXES: JSON.stringify(groupPathPrefixes),
   },
   memorySize: 256,
   timeout: Duration.seconds(30),
   description: "Lists files in FSx for ONTAP S3 AP with group-based AP routing",
 });
 
+// Read-only on the notifications: this function serves the inbox and must not be
+// able to forge or remove an event record.
+listFilesFunction.addToRolePolicy(
+  new iam.PolicyStatement({
+    actions: ["dynamodb:Scan"],
+    resources: [dataResources.tables["FileNotification"].tableArn],
+  })
+);
+
 api.addLambdaDataSource("ListFilesLambdaDataSource", listFilesFunction);
+
+// --- Folder watch: FPolicy / Transfer Family events -> FileNotification ---
+//
+// The events come from outside the portal. FPolicy publishes to EventBridge only
+// if the customer runs an FPolicy server (solutions/event-driven/fpolicy), and
+// Transfer Family only if SFTP is deployed. Neither is created here, so this rule
+// is idle until one of them exists — which is why the admin switch that reveals
+// the inbox is off by default rather than the rule being the thing that gates it.
+//
+// The bridge writes into the FileNotification model's own table rather than a
+// table of its own. That is what makes the records readable through the typed
+// client and its subscriptions; a parallel table would need its own query path
+// and would drift from the model.
+const notificationTable = dataResources.tables["FileNotification"];
+
+const notificationBridgeRole = new iam.Role(dataStack, "NotificationBridgeLambdaRole", {
+  assumedBy: new iam.ServicePrincipal("lambda.amazonaws.com"),
+  managedPolicies: [
+    iam.ManagedPolicy.fromAwsManagedPolicyName(
+      "service-role/AWSLambdaBasicExecutionRole"
+    ),
+  ],
+  inlinePolicies: {
+    WriteNotifications: new iam.PolicyDocument({
+      statements: [
+        new iam.PolicyStatement({
+          // Write only. The bridge translates events; reading them back is the
+          // inbox's job and belongs to a different function.
+          actions: ["dynamodb:PutItem"],
+          resources: [notificationTable.tableArn],
+        }),
+      ],
+    }),
+  },
+});
+
+const notificationBridgeFunction = new lambda.Function(
+  dataStack,
+  "NotificationBridgeFunction",
+  {
+    runtime: lambda.Runtime.PYTHON_3_13,
+    architecture: lambda.Architecture.ARM_64,
+    handler: "handler.handler",
+    code: functionCode("functions/notification-bridge"),
+    role: notificationBridgeRole,
+    environment: {
+      NOTIFICATION_TABLE_NAME: notificationTable.tableName,
+    },
+    memorySize: 256,
+    timeout: Duration.seconds(15),
+    description:
+      "Translates FPolicy and Transfer Family EventBridge events into portal file notifications",
+  }
+);
+
+// Matches both publishers in one rule. The detail-type values are what the
+// FPolicy pattern and Transfer Family emit; the bridge ignores anything else and
+// returns 200, so a broader match costs a log line rather than an error.
+new events.Rule(dataStack, "FileEventNotificationRule", {
+  description:
+    "Routes FSx for ONTAP FPolicy and Transfer Family file events to the portal notification bridge",
+  eventPattern: {
+    source: ["fsx.fpolicy", "aws.transfer", "portal.fpolicy"],
+  },
+  targets: [new targets.LambdaFunction(notificationBridgeFunction)],
+});
 
 // --- Lambda Data Source for FolderDownload (ZIP of a prefix) ---
 // Uses functions/folder-download/index.py
@@ -988,9 +1080,7 @@ const agentChatFunction = new lambda.Function(
       CHAT_HISTORY_TABLE: chatHistoryTable.tableName,
       AGENT_DIRECTORY_TABLE: agentDirectoryTable.tableName,
       AGENT_TEAMS_TABLE: agentTeamsTable.tableName,
-      GROUP_PATH_PREFIXES: JSON.stringify(config.groupApMapping ? Object.fromEntries(
-        Object.entries(config.groupApMapping).map(([group]) => [group, [`${group}/`, "shared/"]])
-      ) : {}),
+      GROUP_PATH_PREFIXES: JSON.stringify(groupPathPrefixes),
     },
     memorySize: 512,
     timeout: Duration.seconds(90),

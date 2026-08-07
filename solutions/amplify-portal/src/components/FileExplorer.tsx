@@ -9,8 +9,16 @@ import { ShareLink } from "./ShareLink";
 import { FavoriteButton } from "./Favorites";
 import { FolderDownload } from "./FolderDownload";
 import { FileTagsBadges, FileTagsEditor } from "./FileTags";
+import { AiMetadataBadges, useAiMetadata } from "./AiMetadataBadges";
 import { SnapshotCompare } from "./SnapshotCompare";
+import {
+  FileRowActions,
+  RestoreFromTrashButton,
+  UploadLink,
+  TRASH_PREFIX,
+} from "./FileLifecycle";
 import { useTranslation } from "../i18n";
+import { isRegulatedPath } from "../utils/regulatedPath";
 
 interface FileExplorerProps {
   onSelectPrefix: (prefix: string) => void;
@@ -79,13 +87,6 @@ export function FileExplorer({
   const [cloneAlias, setCloneAlias] = useState("");
   const { t } = useTranslation();
 
-  /** PHI/PII path detection — blocks AI processing for regulated data folders */
-  const isPhiPath = (path: string): boolean => {
-    const lower = path.toLowerCase();
-    return /\/(dicom|phi|pii|hipaa|protected-health)[/-]/.test(`/${lower}`) ||
-           lower.startsWith("dicom/") || lower.startsWith("phi/") || lower.startsWith("pii/");
-  };
-
   // S3 continuation tokens are exactly what useInfiniteQuery models, so "load
   // more" appends a page instead of the loader concatenating onto local state.
   // Changing folder changes the key, which discards the accumulated pages.
@@ -95,6 +96,7 @@ export function FileExplorer({
     error: queryError,
     fetchNextPage,
     hasNextPage,
+    refetch,
   } = useInfiniteQuery({
     queryKey: ["files", "listFiles", currentPrefix],
     initialPageParam: undefined as string | undefined,
@@ -125,6 +127,14 @@ export function FileExplorer({
   const hasMore = hasNextPage;
   const error = errorMessage(queryError, "Failed to load files");
 
+  // Trashed objects live under a prefix in the same bucket, so the trash is a
+  // folder rather than a separate listing. Inside it, rename and trash make no
+  // sense and restore does.
+  const inTrash = currentPrefix.startsWith(TRASH_PREFIX);
+
+  /** Discard the accumulated pages so a rename, trash or restore is reflected. */
+  const reloadListing = () => void refetch();
+
   const navigateToFolder = (folderKey: string) => {
     setNav((prev) => ({ ...prev, prefix: folderKey }));
   };
@@ -143,6 +153,9 @@ export function FileExplorer({
   const regularFiles = files.filter(
     (f) => f.storageClass !== "DIRECTORY" && !f.key.endsWith("/")
   );
+
+  // What AI processing recorded about the files on screen, in one batched call.
+  const { data: aiMetadata } = useAiMetadata(regularFiles.map((f) => f.key));
 
   const formatSize = (bytes: number | null) => {
     if (bytes === null) return "-";
@@ -170,13 +183,22 @@ export function FileExplorer({
         <button
           className="process-btn"
           onClick={() => onSelectPrefix(currentPrefix)}
-          title={isPhiPath(currentPrefix) ? t("aiPhiBlocked") : t("filesProcessFolder")}
-          disabled={!portalSettings.processingEnabled || isPhiPath(currentPrefix)}
+          title={isRegulatedPath(currentPrefix) ? t("aiPhiBlocked") : t("filesProcessFolder")}
+          disabled={!portalSettings.processingEnabled || isRegulatedPath(currentPrefix)}
         >
-          {isPhiPath(currentPrefix) ? `🚫 ${t("aiPhiBlockedShort")}` : t("filesProcessFolder")}
+          {isRegulatedPath(currentPrefix) ? `🚫 ${t("aiPhiBlockedShort")}` : t("filesProcessFolder")}
         </button>
         <FolderDownload currentPrefix={currentPrefix} />
         <RestoreFromSnapshot currentPrefix={currentPrefix} />
+        <UploadLink destinationPrefix={currentPrefix} />
+        <button
+          className={`trash-btn ${inTrash ? "active" : ""}`}
+          onClick={() => navigateToFolder(inTrash ? "" : TRASH_PREFIX)}
+          title={inTrash ? t("flLeaveTrash") : t("flOpenTrash")}
+          aria-pressed={inTrash}
+        >
+          🗑️ {inTrash ? t("flLeaveTrash") : t("flOpenTrash")}
+        </button>
         <button
           className="compare-btn"
           onClick={() => setShowCompare((v) => !v)}
@@ -267,10 +289,21 @@ export function FileExplorer({
                   >
                     🏷️
                   </button>
+                  {inTrash ? (
+                    <RestoreFromTrashButton trashKey={file.key} onChanged={reloadListing} />
+                  ) : (
+                    <FileRowActions
+                      fileKey={file.key}
+                      fileName={fileName}
+                      currentPrefix={currentPrefix}
+                      onChanged={reloadListing}
+                    />
+                  )}
                 </span>
                 <span className="name">
                   {fileName}
                   <FileTagsBadges fileKey={file.key} refreshKey={tagRefresh} />
+                  <AiMetadataBadges metadata={aiMetadata?.get(file.key)} />
                 </span>
                 <span className="size">{formatSize(file.size)}</span>
                 <span className="modified">

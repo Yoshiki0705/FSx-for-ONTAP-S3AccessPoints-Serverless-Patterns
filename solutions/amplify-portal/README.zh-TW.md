@@ -128,7 +128,7 @@ sequenceDiagram
 
 ---
 
-## 入口 UI — 側邊欄佈局（12 個部分）
+## 入口 UI — 側邊欄佈局（17 個部分）
 
 ![Sidebar Layout](docs/screenshots/portal-sidebar-layout.png)
 *左側邊欄：分組導覽。中央：活動部分內容。右側：AI 助手（檔案選取時）。*
@@ -138,14 +138,19 @@ sequenceDiagram
 | **Browse** | All Files | 瀏覽、預覽、AI Q&A、共享連結、QR 存取 |
 | | Favorites | 釘選檔案（DynamoDB，每位使用者） |
 | | Recent | 最近存取的檔案 |
+| | Folder Watch | 監視的前綴與已接收的檔案事件（管理開關） |
 | | Upload | 透過 Storage Browser for S3 拖放上傳 |
 | **AI & Processing** | AI Processing | 觸發 AI/ML 工作流程（Step Functions） |
+| | AI Chat | 面向檔案的工具型代理程式（也可執行已儲存的代理程式或團隊） |
+| | Search | 跨磁碟區語意搜尋 |
 | | Job History | 歷史執行記錄（DynamoDB，擁有者範圍） |
 | | Analytics | 基於 Glue Data Catalog 的 Athena SQL |
+| | Agent Directory | 執行、編輯或共用已儲存的代理程式定義 |
 | **Data Protection** | Snapshots | ONTAP 快照列表 + FlexClone 還原 |
 | | Lock | SnapLock (WORM) + S3 Object Lock 狀態 |
 | | ARP/AI | Autonomous Ransomware Protection 狀態 |
-| **Admin** | Version Diff | 快照間的並排檔案比對 |
+| **Admin** | Resource Management | 磁碟區、共用、匯出、配額、QoS、SnapMirror（僅 storage-admin） |
+| | Version Diff | 快照間的並排檔案比對 |
 | | Audit Trail | CloudTrail S3 資料事件（誰/何時/什麼） |
 
 ![AI Processing](docs/screenshots/portal-ai-processing.png)
@@ -469,8 +474,8 @@ authenticatedRole.addToPrincipalPolicy(
 每位開發者獲得以 OS 使用者名稱為鍵的隔離沙盒。在不同機器（或不同使用者名稱）上執行 `make sandbox` 會建立獨立的堆疊：
 
 ```
-amplify-fsxns3apamplifyportal-yoshiki-sandbox-ae70db2b34  ← 開發者 1
-amplify-fsxns3apamplifyportal-tanaka-sandbox-bf81ec3c45   ← 開發者 2
+amplify-fsxns3apamplifyportal-dev1-sandbox-0123456789  ← 開發者 1
+amplify-fsxns3apamplifyportal-dev2-sandbox-9876543210   ← 開發者 2
 ```
 
 它們共享同一 AWS 帳戶但互不干擾。使用 `npx ampx sandbox --identifier custom-name` 指定明確名稱。
@@ -488,20 +493,25 @@ amplify-portal/
 │   ├── auth/resource.ts            # Cognito（email + MFA + SAML/OIDC 預留位置）
 │   ├── data/
 │   │   ├── resource.ts             # AppSync 結構描述（查詢、變更、自訂類型）
-│   │   └── resolvers/              # APPSYNC_JS 解析器（7 個檔案）
-│   │       ├── start-processing.js # HTTP → StepFunctions.StartExecution
-│   │       ├── get-job-status.js   # HTTP → StepFunctions.DescribeExecution
-│   │       ├── list-files.js       # Lambda → S3 AP ListObjectsV2（+ 群組路由）
-│   │       ├── list-files-from-ap.js # Lambda → 任意 AP（用於 SnapshotCompare）
-│   │       ├── list-snapshots.js   # Lambda → ONTAP Snapshot 列表（VPC）
-│   │       ├── search-files.js     # Lambda → Bedrock KB Retrieve
-│   │       ├── get-file-metadata.js # Lambda → DynamoDB AI 中繼資料
-│   │       ├── get-presigned-url.js # Lambda → Presigned URL 產生
-│   │       ├── generate-qr-code.js # Lambda → Presigned URL + QR PNG
-│   │       ├── query-audit-log.js  # Lambda → Athena（CloudTrail）
-│   │       ├── ask-about-file.js   # Lambda → Bedrock Converse API
-│   │       ├── detect-labels.js    # Lambda → Rekognition DetectLabels
-│   │       └── run-athena-query.js # Lambda → Athena StartQueryExecution
+│   │   └── resolvers/              # APPSYNC_JS resolvers (18 files, all reached from resource.ts)
+│   │       ├── start-processing.js   # HTTP → StepFunctions.StartExecution
+│   │       ├── get-job-status.js     # HTTP → StepFunctions.DescribeExecution
+│   │       ├── files-dispatch.js     # Lambda → list-files (listing + file lifecycle)
+│   │       ├── snapshots-dispatch.js # Lambda → snapshots (ONTAP snapshots, FlexClone)
+│   │       ├── rm-dispatch.js        # Lambda → resource-management (storage-admin actions)
+│   │       ├── arp-dispatch.js       # Lambda → ARP response actions
+│   │       ├── agent-dispatch.js     # Lambda → agent chat, directory and teams
+│   │       ├── search-files.js       # Lambda → Bedrock KB Retrieve
+│   │       ├── get-file-metadata.js  # Lambda → DynamoDB AI metadata
+│   │       ├── get-presigned-url.js  # Lambda → Presigned URL generation
+│   │       ├── generate-qr-code.js   # Lambda → Presigned URL + QR PNG
+│   │       ├── query-audit-log.js    # Lambda → Athena (CloudTrail)
+│   │       ├── ask-about-file.js     # Lambda → Bedrock Converse API
+│   │       ├── detect-labels.js      # Lambda → Rekognition DetectLabels
+│   │       ├── extract-text.js       # Lambda → Textract
+│   │       ├── analyze-text.js       # Lambda → Comprehend
+│   │       ├── browse-catalog.js     # Lambda → Glue Data Catalog
+│   │       └── run-athena-query.js   # Lambda → Athena StartQueryExecution
 │   └── custom/
 │       └── step-functions.ts       # （參考 — 已移至 backend.ts）
 ├── src/

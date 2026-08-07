@@ -52,6 +52,7 @@ describe("Backend Infrastructure Structure", () => {
       "AgentChatFunction",
       "ArpResponseFunction",
       "ResourceMgmtFunction",
+      "NotificationBridgeFunction",
     ];
 
     it("defines all expected Lambda functions", () => {

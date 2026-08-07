@@ -19,12 +19,20 @@ import { useTranslation } from "../../i18n";
 import { adminMutate, dispatch } from "../../lib/dispatch";
 import { errorMessage, unwrap } from "../../lib/portalQuery";
 
+/**
+ * The settings this panel can change.
+ *
+ * Every key here has a consumer: `aiAgentEnabled` and `aiSearchEnabled` gate their
+ * sections in `App.tsx`, and the other two are passed to `AgentChat`. Keys the
+ * handler used to accept but nothing read — `aiSmartRoutingEnabled`,
+ * `aiVoiceEnabled`, `agentDirectoryEnabled` — are gone from both sides.
+ */
 interface PortalSettings {
   aiAgentEnabled: boolean;
   aiSearchEnabled: boolean;
   aiMultimodalEnabled: boolean;
-  aiSmartRoutingEnabled: boolean;
   chatHistoryEnabled: boolean;
+  folderWatchEnabled: boolean;
 }
 
 interface SettingsResponse {
@@ -42,8 +50,8 @@ const DEFAULT_SETTINGS: PortalSettings = {
   aiAgentEnabled: false,
   aiSearchEnabled: false,
   aiMultimodalEnabled: false,
-  aiSmartRoutingEnabled: false,
   chatHistoryEnabled: false,
+  folderWatchEnabled: false,
 };
 
 interface AiSettingsManagerProps {
@@ -83,8 +91,8 @@ export function AiSettingsManager({ initialSettings, onSettingsChange }: AiSetti
         aiAgentEnabled: s?.aiAgentEnabled === true,
         aiSearchEnabled: s?.aiSearchEnabled === true,
         aiMultimodalEnabled: s?.aiMultimodalEnabled === true,
-        aiSmartRoutingEnabled: s?.aiSmartRoutingEnabled === true,
         chatHistoryEnabled: s?.chatHistoryEnabled === true,
+        folderWatchEnabled: s?.folderWatchEnabled === true,
       };
     },
   });
@@ -284,7 +292,46 @@ export function AiSettingsManager({ initialSettings, onSettingsChange }: AiSetti
         </div>
       </div>
 
-      {/* ─── Smart Routing (requires Search) ─── */}
+      {/* ─── Folder Watch ───
+          Unlike the AI switches, this one does not enable a capability the portal
+          owns. The events come from FPolicy on the SVM, or from Transfer Family,
+          publishing to EventBridge; the portal only reads what arrived. So the
+          switch means "a publisher exists", and leaving it off is the honest
+          default for a deployment that has not set one up — otherwise the section
+          appears with an inbox that can never fill. */}
+      <div className="ai-settings-feature-section">
+        <div className="ai-settings-toggle-card">
+          <div className="toggle-info">
+            <span className="toggle-icon">🔔</span>
+            <div>
+              <h4>{t("aiSettingsFolderWatchTitle")}</h4>
+              <p>{t("aiSettingsFolderWatchDesc")}</p>
+            </div>
+          </div>
+          <label className="toggle-switch">
+            <input
+              type="checkbox"
+              checked={settings.folderWatchEnabled}
+              onChange={() => toggleSetting("folderWatchEnabled")}
+              disabled={saving !== null}
+            />
+            <span className="toggle-slider" />
+          </label>
+          {saving === "folderWatchEnabled" && <span className="toggle-saving">⏳</span>}
+        </div>
+        <div className="ai-settings-feature-meta">
+          <span className="meta-badge ready">✅ {t("aiSettingsReady")}</span>
+          <span className="meta-cost">~$0 / {t("aiSettingsPerMonth")}</span>
+        </div>
+        <p className="rm-hint">{t("aiSettingsFolderWatchPrereq")}</p>
+      </div>
+
+      {/* ─── Smart Routing — deploy-time configuration, not a switch ───
+          This was a toggle. It wrote a value nothing read, so it changed nothing,
+          and had it been wired the switch would have offered to widen a
+          multi-tenant scope boundary from the UI. KB scope filtering follows the
+          group-to-prefix mapping given at deploy time, so the panel states that
+          rather than pretending to control it. */}
       <div className="ai-settings-feature-section">
         <div className="ai-settings-toggle-card">
           <div className="toggle-info">
@@ -294,21 +341,13 @@ export function AiSettingsManager({ initialSettings, onSettingsChange }: AiSetti
               <p>{t("aiSettingsSmartRoutingDesc")}</p>
             </div>
           </div>
-          <label className="toggle-switch">
-            <input
-              type="checkbox"
-              checked={settings.aiSmartRoutingEnabled}
-              onChange={() => toggleSetting("aiSmartRoutingEnabled")}
-              disabled={saving !== null || !settings.aiSearchEnabled}
-            />
-            <span className="toggle-slider" />
-          </label>
-          {saving === "aiSmartRoutingEnabled" && <span className="toggle-saving">⏳</span>}
+          <span className="meta-badge setup-needed">⚙️ {t("aiSettingsDeployTimeOnly")}</span>
         </div>
         <div className="ai-settings-feature-meta">
           <span className="meta-badge setup-needed">⚙️ {t("aiSettingsGroupMapping")}</span>
           <span className="meta-cost">$0</span>
         </div>
+        <p className="form-note">{t("aiSettingsSmartRoutingConfigNote")}</p>
       </div>
 
       {/* ─── Status Summary ─── */}
@@ -351,9 +390,7 @@ export function AiSettingsManager({ initialSettings, onSettingsChange }: AiSetti
             <tr>
               <td>🔀 {t("aiSettingsSmartRoutingTitle")}</td>
               <td>
-                <span className={`status-badge ${settings.aiSmartRoutingEnabled ? "enabled" : "disabled"}`}>
-                  {settings.aiSmartRoutingEnabled ? t("stateEnabled") : t("stateDisabled")}
-                </span>
+                <span className="status-badge">{t("aiSettingsDeployTimeOnly")}</span>
               </td>
             </tr>
           </tbody>

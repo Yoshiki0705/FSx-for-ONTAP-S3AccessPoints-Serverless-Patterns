@@ -11,7 +11,7 @@ vi.mock("../../../amplify/data/resource", () => ({}));
 
 // Mock portal-settings to test disabled state
 vi.mock("../../src/portal-settings", () => ({
-  portalSettings: { processingEnabled: false, fileListingEnabled: true },
+  portalSettings: { processingEnabled: false },
 }));
 
 import { JobSubmitForm } from "../../src/components/JobSubmitForm";

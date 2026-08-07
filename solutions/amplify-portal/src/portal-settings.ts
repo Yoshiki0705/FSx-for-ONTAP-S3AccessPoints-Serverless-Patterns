@@ -5,8 +5,9 @@
  * Set `processingEnabled` to true once you have configured a real
  * Step Functions state machine ARN in the backend.
  *
- * Set `fileListingEnabled` to true once you have configured an
- * S3 AP alias or bucket in the backend Lambda environment variable.
+ *
+ * The values below are placeholders and this file is committed. Put the real ones
+ * in `amplify/portal-config.ts`, which is gitignored.
  *
  * UPLOAD TAB (Storage Browser for S3):
  *   The Upload tab requires `region`, `accountId`, and `s3ApAlias` below.
@@ -24,12 +25,10 @@ export const portalSettings = {
    */
   processingEnabled: true,
 
-  /**
-   * Enable the Files tab (S3 AP file listing).
-   * Set to true AFTER configuring S3_AP_ALIAS Lambda env var.
-   * Default: false (shows "not configured" instead of misleading "No files")
-   */
-  fileListingEnabled: true,
+  // `fileListingEnabled` used to live here. It documented a "not configured"
+  // fallback for the Files tab, was hardcoded true, and was imported nowhere — so
+  // neither the flag nor the fallback it described existed. The Files tab reports
+  // an unconfigured backend through the listing response instead.
 
   /**
    * Enable AI Agent Chat and Bedrock Knowledge Base features.
@@ -46,5 +45,8 @@ export const portalSettings = {
    */
   region: "ap-northeast-1",
   accountId: "123456789012",
-  s3ApAlias: "eda-demo-s3ap-fnwqydfpmd4gabncr8xqepjrrt131apn1a-ext-s3alias",
+  // Placeholder, like `accountId` above. This file is committed, so a real alias
+  // here is published: an S3 AP alias names a live access point and belongs in
+  // the gitignored `amplify/portal-config.ts` with the rest of the environment.
+  s3ApAlias: "my-ap-0123456789abcdef0-ext-s3alias",
 };

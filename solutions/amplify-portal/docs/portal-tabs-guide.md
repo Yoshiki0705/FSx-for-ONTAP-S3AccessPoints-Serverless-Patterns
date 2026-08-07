@@ -7,7 +7,7 @@
 
 ## 概要
 
-FSx for ONTAP File Portal はサイドバーナビゲーション（4 グループ × 12 セクション）で構成されています。各セクションは独立した機能を提供し、同一の FSx for ONTAP S3 Access Point 上のデータにアクセスします。
+FSx for ONTAP File Portal はサイドバーナビゲーション（4 グループ × 17 セクション）で構成されています。各セクションは独立した機能を提供し、同一の FSx for ONTAP S3 Access Point 上のデータにアクセスします。
 
 ![サイドバーレイアウト](screenshots/portal-sidebar-layout.png)
 
@@ -55,11 +55,33 @@ FSx for ONTAP File Portal はサイドバーナビゲーション（4 グルー�
 | Rekognition | 画像プレビュー内「Detect Objects」ボタン | 🏷️ |
 | Restore from Snapshot | FlexClone 作成ダイアログ (FC7_FLEXCLONE_RESTORE) | 📸 |
 | Process this folder | 選択中フォルダを AI Processing に渡す | ⚡ |
+| **ファイルタグ** | 🏷️ クリックでタグを編集。行にタグバッジを表示 | 🏷️ |
+| **AI メタデータバッジ** | AI 処理の結果（分類、ラベル数、エンティティ数、要約有無）を行に表示 | — |
+| **名前を変更** | ✏️ クリックでインライン編集。`/` を含む名前は拒否（移動ではないため） | ✏️ |
+| **ごみ箱へ移動** | 🗑️ クリック → 確認 → `.trash/` プレフィックスへ移動 | 🗑️ |
+| **ごみ箱を開く / 復元** | ヘッダーの 🗑️ ごみ箱 → `.trash/` を閲覧 → ♻️ で元の場所に戻す | ♻️ |
+| **アップロードリンク** | 📤 → ファイル名と有効期限（1 時間 / 24 時間）→ 署名付き PUT URL を発行 | 📤 |
+| **フォルダーダウンロード** | 📦 クリックでフォルダー配下を ZIP でまとめてダウンロード | 📦 |
+| **Snapshot 比較** | 🔍 → FlexClone の S3 AP エイリアスを入力 → 現在と Snapshot の差分を並べて表示 | 🔍 |
+| **文書の解析** | AI パネルの 🔎 → Textract でテキスト抽出、Comprehend で解析 | 🔎 |
+| **QR コード** | 🔗 の共有パネル内。署名付き URL を QR PNG で発行（タブレット向け） | 📱 |
 
 **Office プレビュー（新機能 2026-07-22）**:
 - PDF: Presigned URL を `<iframe>` に渡すだけ（ブラウザ内蔵ビューアで表示）
 - DOCX: `docx-preview` ライブラリでクライアントサイドレンダリング（レイアウト再現度 70-80%）
 - XLSX/PPTX: 現時点非対応（ダウンロードリンク表示）。Phase 2 で Lambda Container Image 対応予定
+
+**名前変更 / ごみ箱の実体**:
+- どちらも S3 Access Point 上の CopyObject + DeleteObject です。メタデータの書き換えではないため、大きなファイルでは時間がかかります
+- ごみ箱は同一バケット内の `.trash/` プレフィックスです。別のストレージではないため、容量は解放されません
+
+**アップロードリンクの注意**:
+- 発行した URL 自体が認証情報です。期限まで、URL を持つ誰でもそのキーに書き込めます
+- UI が保存先キーと有効期限を併記するのはこのためです
+
+**文書解析の適用範囲**:
+- Textract / Comprehend はファイルの内容をマネージドサービスに送信します
+- 規制フォルダー（`phi/`、`dicom/`、`pii/`、`hipaa-`、`protected-health-`）配下では拒否されます。判定は `src/utils/regulatedPath.ts` の 1 箇所に定義されています
 
 **CONFIDENTIAL ガードレール**:
 - `shared/ai_guardrails.py` のデータ分類ラベルが CONFIDENTIAL/CUI の場合、AI Q&A をブロック
@@ -92,6 +114,35 @@ FSx for ONTAP File Portal はサイドバーナビゲーション（4 グルー�
 
 ---
 
+### フォルダー監視（Folder Watch）
+
+管理設定で「フォルダー監視」を有効にしたときだけサイドバーに現れます（既定はオフ）。
+
+| 機能 | 操作 |
+|------|------|
+| 監視の追加 | プレフィックスを入力 → 対象イベント（作成 / 更新 / 削除）を選択 → 監視を追加 |
+| 監視の解除 | 監視対象テーブルの「解除」 |
+| 受信箱 | 登録したプレフィックス配下のイベントを新しい順に表示 |
+| 未構成の表示 | 通知テーブルが未接続の場合、推測せず「未構成」と表示 |
+
+**トグルが管理設定にある理由**:
+- ポータルはイベントの発行元ではありません。FPolicy サーバーまたは Transfer Family が EventBridge に発行している必要があります
+- 有効化は「発行元が存在する」という管理者の宣言です。既定オンにすると、発行元のない環境では永久に空の受信箱を見せることになります
+
+**境界の絞り込み順序**:
+1. Cognito グループのパス境界（`GROUP_PATH_PREFIXES`）
+2. 自分の監視対象プレフィックス
+
+この順序は入れ替えられません。監視は自分のレコードなので `/` も登録できますが、グループ境界の外は見えません（`storage-admin` は境界を迂回）。単一テナント構成では全イベントが見えます。ファイル一覧と同じ境界です。
+
+**受信箱を Lambda 経由で読む理由**:
+- `FileNotification` は `allow.authenticated()` で、ブリッジ Lambda は owner を持たずに書き込みます
+- 生成モデルクライアントから直読させると、任意の認証ユーザーが全パス・全ユーザー名・全クライアント IP を読めてしまいます
+
+**経路**: FPolicy サーバー（または Transfer Family）→ EventBridge → 通知ブリッジ Lambda → `FileNotification` テーブル → ポータル。FPolicy 自体の構成は [event-driven/fpolicy パターン](../../event-driven/fpolicy/) を参照。
+
+---
+
 ### Upload（Storage Browser for S3）
 
 | 機能 | 操作 |
@@ -121,6 +172,28 @@ FSx for ONTAP File Portal はサイドバーナビゲーション（4 グルー�
 
 ---
 
+### AI Chat（ツール実行エージェント）
+
+ファイルを対象に、ツールを呼びながら応答するエージェントです。素のチャットと、保存済みエージェント / チームの実行の両方に使います。
+
+| 機能 | 説明 |
+|------|------|
+| モード選択 | 通常チャット / エージェントモード。管理設定でエージェントモードを無効化すると選択肢が消える |
+| ツール | ファイル一覧、読み取り、検索、および承認要求。エージェント定義のツールは実在するツールとの積集合になる |
+| アクション承認 | 変更を伴う操作はカードで提示され、ユーザーの承認まで実行されない |
+| 保存済みエージェントの実行 | Agent Directory から起動すると、その定義（システムプロンプト + ツール）で実行される。実行中はバッジで定義名を表示し、モード選択は隠れる |
+| チームの実行 | Multi-Agent Teams から起動。メンバー構成とロールを 1 ターンのスーパーバイザーとして実行する（並行エージェントではない） |
+
+> 到達できないチームメンバーがいても実行は継続し、応答の `unavailableMembers` に名前が入ります。全員到達できない場合のみ実行を拒否します。
+
+---
+
+### Search（セマンティック検索）
+
+Bedrock Knowledge Base の Retrieve を使い、ファイル名ではなく内容で検索します。結果からファイルを選ぶと All Files の該当箇所に移動します。
+
+---
+
 ### Job History（実行履歴）
 
 DynamoDB `JobExecution` モデル（owner-scoped）。過去のジョブを executionArn, pattern, status, 開始/終了時刻とともに表示。
@@ -132,6 +205,23 @@ DynamoDB `JobExecution` モデル（owner-scoped）。過去のジョブを exec
 ![Analytics](screenshots/portal-analytics.png)
 
 Athena SQL クエリを実行し、結果をテーブル表示。Glue Data Catalog ブラウザ（データベース → テーブル → スキーマ）も統合。
+
+---
+
+### Agent Directory（エージェント定義）
+
+保存済みエージェント定義の一覧です。カードをクリックすると詳細（ツール、システムプロンプト）が開きます。
+
+| 操作 | 説明 |
+|------|------|
+| 💬 チャットで使う | AI Chat をその定義で開いて実行する |
+| ✏️ 編集 | 名前 / 説明 / システムプロンプト / カテゴリ / アイコン / 共有設定を変更。**作成者本人にのみ表示** |
+| 🗑️ 削除 | 定義を削除。**作成者本人にのみ表示** |
+| 検索 / カテゴリ絞り込み | 名前と説明の部分一致、カテゴリでの絞り込み |
+
+> ツールは作成画面で選びます。実行時には実在するツールとの積集合が使われるため、編集フォームでは変更できません（緩く編集できると表示と実際が食い違うため）。
+
+> 他ユーザーが共有した定義には編集 / 削除が表示されません。サーバー側でも作成者以外を拒否しますが、押せるボタンを出すと認可エラーが唯一の説明手段になってしまうため、UI 側でも隠しています。
 
 ---
 
@@ -209,6 +299,18 @@ ONTAP REST API から以下をリアルタイム取得:
 ---
 
 ## Admin グループ
+
+### Resources（リソース管理）
+
+ONTAP System Manager 相当のストレージ管理。`storage-admin` Cognito グループのメンバーにのみサイドバーに表示されます。
+
+Volumes、FlexClone、Qtrees、Quotas、Storage Efficiency、Export Policies、SMB Shares、Local Users、Name Mapping、QoS、ARP/AI、Snapshot 管理、SnapLock、FPolicy、Vscan、SnapMirror、FlexCache、Cluster（ノード / ライセンス / EMS イベント）。
+
+手順は [管理者向けリソース管理 デモガイド](../../../docs/ja/admin-resource-management-demo.md)（26 シナリオ）を参照してください。
+
+> グループ外のユーザーには表示されません。AppSync 側でも `allow.groups(["storage-admin"])` で拒否しますが、開けば必ずエラーになるメニューはメニューとして成立しないためです。
+
+---
 
 ### Version Diff（Snapshot 間差分）
 

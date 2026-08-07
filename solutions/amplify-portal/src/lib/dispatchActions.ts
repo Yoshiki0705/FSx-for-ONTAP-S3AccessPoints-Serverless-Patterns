@@ -556,7 +556,7 @@ export interface ResourceMgmtActionParams {
     svm?: string;
   };
   updatePortalSettings: {
-    key?: "aiAgentEnabled" | "aiSearchEnabled" | "aiMultimodalEnabled" | "aiSmartRoutingEnabled" | "chatHistoryEnabled" | "aiVoiceEnabled" | "agentDirectoryEnabled";
+    key?: "aiAgentEnabled" | "aiSearchEnabled" | "aiMultimodalEnabled" | "chatHistoryEnabled" | "folderWatchEnabled";
     value?: string;
   };
   updateQosPolicy: {
@@ -711,7 +711,7 @@ export interface ListFilesActionParams {
   createUploadLink: {
     continuationToken?: string;
     destinationPrefix?: string;
-    expiresIn?: string;
+    expiresIn?: number;
     fileName?: string;
     groups?: string;
     maxKeys?: number;
@@ -722,14 +722,16 @@ export interface ListFilesActionParams {
     continuationToken?: string;
     destinationKey?: string;
     destinationPrefix?: string;
-    expiresIn?: string;
+    expiresIn?: number;
     fileName?: string;
     groups?: string;
     key?: string;
     maxKeys?: number;
+    maxResults?: number;
     prefix?: string;
     sourceKey?: string;
     trashKey?: string;
+    watchedPrefixes?: string;
   };
   listFilesFromAp: {
     apAlias: string;
@@ -737,6 +739,14 @@ export interface ListFilesActionParams {
     groups?: string;
     maxKeys?: number;
     prefix?: string;
+  };
+  listNotifications: {
+    continuationToken?: string;
+    groups?: string;
+    maxKeys?: number;
+    maxResults?: number;
+    prefix?: string;
+    watchedPrefixes?: string;
   };
   renameFile: {
     destinationKey: string;
@@ -765,10 +775,12 @@ export interface ListFilesActionParams {
 /** Actions of functions/agent-chat, reached by `agentQuery`. */
 export interface AgentChatActionParams {
   chat: {
+    agentId?: string;
     history?: Array<{ role: string; content: string }>;
     image?: { data: string; mediaType: string };
     message?: string;
     mode?: "multi" | "kb" | "agent";
+    teamId?: string;
   };
   createAgent: {
     category?: string;
@@ -815,6 +827,13 @@ export interface AgentChatActionParams {
   };
   updateAgent: {
     agentId: string;
+    category?: string;
+    description?: string;
+    icon?: string;
+    isShared?: boolean;
+    name?: string;
+    systemPrompt?: string;
+    tools?: string[];
   };
 }
 

@@ -15,7 +15,7 @@ aws ce get-cost-and-usage \
   --filter '{
     "Tags": {
       "Key": "aws:cloudformation:stack-name",
-      "Values": ["amplify-fsxns3apamplifyportal-yoshiki-sandbox-ae70db2b34"]
+      "Values": ["amplify-fsxns3apamplifyportal-dev1-sandbox-0123456789"]
     }
   }' \
   --group-by Type=DIMENSION,Key=SERVICE

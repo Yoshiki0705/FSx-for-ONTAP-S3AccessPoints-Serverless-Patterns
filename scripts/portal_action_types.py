@@ -99,6 +99,10 @@ SCALARS: dict[str, str] = {
     "count": "number",
     "retentionDays": "number",
     "ttlHours": "number",
+    # Seconds until a presigned URL expires. The handlers clamp it with `min(...)`,
+    # which raises a TypeError on a string, so declaring it as one would have made
+    # every well-typed caller fail at runtime.
+    "expiresIn": "number",
     "thresholdPercent": "number",
     "lookbackMinutes": "number",
     "priority": "number",

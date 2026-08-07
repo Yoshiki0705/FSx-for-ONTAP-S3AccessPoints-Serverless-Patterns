@@ -130,7 +130,7 @@ sequenceDiagram
 
 ---
 
-## ポータル UI — サイドバーレイアウト（12 セクション）
+## ポータル UI — サイドバーレイアウト（17 セクション）
 
 ![Sidebar Layout](docs/screenshots/portal-sidebar-layout.png)
 *左サイドバー: グループ化されたナビゲーション。中央: アクティブなセクションコンテンツ。右: AI アシスタント（ファイル選択時）。*
@@ -140,14 +140,19 @@ sequenceDiagram
 | **Browse** | All Files | 閲覧、プレビュー、AI Q&A、共有リンク、QR アクセス |
 | | Favorites | ピン留めファイル（DynamoDB、ユーザーごと） |
 | | Recent | 最近アクセスしたファイル |
+| | Folder Watch | 監視対象プレフィックスと受信したファイルイベント（管理トグル） |
 | | Upload | Storage Browser for S3 によるドラッグ＆ドロップ |
 | **AI & Processing** | AI Processing | AI/ML ワークフローのトリガー（Step Functions） |
+| | AI Chat | ファイルを対象にツールを使うエージェント（保存したエージェント / チームの実行も可） |
+| | Search | ボリューム全体のセマンティック検索 |
 | | Job History | 過去の実行履歴（DynamoDB、オーナースコープ） |
 | | Analytics | Glue Data Catalog 上の Athena SQL |
+| | Agent Directory | 保存済みエージェント定義の実行・編集・共有 |
 | **Data Protection** | Snapshots | ONTAP スナップショット一覧 + FlexClone リストア |
 | | Lock | SnapLock (WORM) + S3 Object Lock ステータス |
 | | ARP/AI | Autonomous Ransomware Protection ステータス |
-| **Admin** | Version Diff | スナップショット間のサイドバイサイドファイル比較 |
+| **Admin** | Resource Management | ボリューム、共有、エクスポート、クォータ、QoS、SnapMirror（storage-admin のみ） |
+| | Version Diff | スナップショット間のサイドバイサイドファイル比較 |
 | | Audit Trail | CloudTrail S3 データイベント（誰が/いつ/何を） |
 
 ![AI Processing](docs/screenshots/portal-ai-processing.png)
@@ -471,8 +476,8 @@ Upload タブが「AccessDenied」を表示する場合は、`portal-config.ts` 
 各開発者は OS ユーザー名をキーとする隔離されたサンドボックスを取得します。異なるマシン（または異なるユーザー名）で `make sandbox` を実行すると、別々のスタックが作成されます:
 
 ```
-amplify-fsxns3apamplifyportal-yoshiki-sandbox-ae70db2b34  ← 開発者 1
-amplify-fsxns3apamplifyportal-tanaka-sandbox-bf81ec3c45   ← 開発者 2
+amplify-fsxns3apamplifyportal-dev1-sandbox-0123456789  ← 開発者 1
+amplify-fsxns3apamplifyportal-dev2-sandbox-9876543210   ← 開発者 2
 ```
 
 同じ AWS アカウントを共有しますが、相互に干渉しません。`npx ampx sandbox --identifier custom-name` で明示的な命名も可能です。
@@ -490,20 +495,25 @@ amplify-portal/
 │   ├── auth/resource.ts            # Cognito (email + MFA + SAML/OIDC プレースホルダー)
 │   ├── data/
 │   │   ├── resource.ts             # AppSync スキーマ（queries, mutations, custom types）
-│   │   └── resolvers/              # APPSYNC_JS リゾルバ（7 ファイル）
-│   │       ├── start-processing.js # HTTP → StepFunctions.StartExecution
-│   │       ├── get-job-status.js   # HTTP → StepFunctions.DescribeExecution
-│   │       ├── list-files.js       # Lambda → S3 AP ListObjectsV2 (+ group routing)
-│   │       ├── list-files-from-ap.js # Lambda → 任意の AP（SnapshotCompare 用）
-│   │       ├── list-snapshots.js   # Lambda → ONTAP Snapshot list (VPC)
-│   │       ├── search-files.js     # Lambda → Bedrock KB Retrieve
-│   │       ├── get-file-metadata.js # Lambda → DynamoDB AI metadata
-│   │       ├── get-presigned-url.js # Lambda → Presigned URL generation
-│   │       ├── generate-qr-code.js # Lambda → Presigned URL + QR PNG
-│   │       ├── query-audit-log.js  # Lambda → Athena (CloudTrail)
-│   │       ├── ask-about-file.js   # Lambda → Bedrock Converse API
-│   │       ├── detect-labels.js    # Lambda → Rekognition DetectLabels
-│   │       └── run-athena-query.js # Lambda → Athena StartQueryExecution
+│   │   └── resolvers/              # APPSYNC_JS リゾルバ（18 ファイル、すべて resource.ts から参照）
+│   │       ├── start-processing.js   # HTTP → StepFunctions.StartExecution
+│   │       ├── get-job-status.js     # HTTP → StepFunctions.DescribeExecution
+│   │       ├── files-dispatch.js     # Lambda → list-files（一覧 + ファイル操作）
+│   │       ├── snapshots-dispatch.js # Lambda → snapshots（ONTAP Snapshot、FlexClone）
+│   │       ├── rm-dispatch.js        # Lambda → resource-management（storage-admin 操作）
+│   │       ├── arp-dispatch.js       # Lambda → ARP 対応アクション
+│   │       ├── agent-dispatch.js     # Lambda → エージェントチャット / ディレクトリ / チーム
+│   │       ├── search-files.js       # Lambda → Bedrock KB Retrieve
+│   │       ├── get-file-metadata.js  # Lambda → DynamoDB の AI メタデータ
+│   │       ├── get-presigned-url.js  # Lambda → 署名付き URL 生成
+│   │       ├── generate-qr-code.js   # Lambda → 署名付き URL + QR PNG
+│   │       ├── query-audit-log.js    # Lambda → Athena（CloudTrail）
+│   │       ├── ask-about-file.js     # Lambda → Bedrock Converse API
+│   │       ├── detect-labels.js      # Lambda → Rekognition DetectLabels
+│   │       ├── extract-text.js       # Lambda → Textract
+│   │       ├── analyze-text.js       # Lambda → Comprehend
+│   │       ├── browse-catalog.js     # Lambda → Glue Data Catalog
+│   │       └── run-athena-query.js   # Lambda → Athena StartQueryExecution
 │   └── custom/
 │       └── step-functions.ts       # （参考 — backend.ts に移動済み）
 ├── src/

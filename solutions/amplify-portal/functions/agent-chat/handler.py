@@ -50,6 +50,10 @@ AGENT_TEAMS_TABLE = os.environ.get("AGENT_TEAMS_TABLE", "")
 # Example: {"engineering": ["engineering/", "shared/"], "finance": ["finance/", "shared/"]}
 GROUP_PATH_PREFIXES = json.loads(os.environ.get("GROUP_PATH_PREFIXES", "{}"))
 
+# Distinguishes "the caller did not send this field" from "the caller sent an
+# empty value". `None` cannot: clearing a description is a legitimate edit.
+_MISSING = object()
+
 s3 = boto3.client(
     "s3",
     region_name=REGION,
@@ -714,6 +718,8 @@ def run_agent_loop(
     image: dict | None = None,
     mode: str = "multi",
     user_groups: list[str] | None = None,
+    system_prompt: str | None = None,
+    allowed_tools: list[str] | None = None,
 ) -> dict[str, Any]:
     """Run the multi-agent Bedrock Converse loop with tool_use.
 
@@ -735,9 +741,11 @@ def run_agent_loop(
     """
     import base64
 
-    # Select system prompt and tool set based on mode
-    system_prompt = SYSTEM_PROMPTS.get(mode, SYSTEM_PROMPT_MULTI)
-    allowed_tools = TOOLS_BY_MODE.get(mode, TOOLS_ALL)
+    # A stored agent or team supplies its own prompt and tool set; otherwise the
+    # mode presets apply. The caller has already narrowed the tools to ones that
+    # exist, so nothing here can name a capability the portal does not have.
+    system_prompt = system_prompt or SYSTEM_PROMPTS.get(mode, SYSTEM_PROMPT_MULTI)
+    allowed_tools = allowed_tools or TOOLS_BY_MODE.get(mode, TOOLS_ALL)
 
     # Filter tool config to only include allowed tools
     filtered_tools = {"tools": [t for t in TOOL_CONFIG["tools"] if t["toolSpec"]["name"] in allowed_tools]}
@@ -973,7 +981,28 @@ def handler(event, context):
         if not message and not image:
             return {"answer": "", "error": "Message is required", "toolCalls": []}
 
-        result = run_agent_loop(message, history, image=image, mode=mode, user_groups=user_groups)
+        # A stored agent or team replaces the mode presets. Resolved before the
+        # model call so a definition that cannot run says so instead of silently
+        # falling back to a general assistant the caller did not ask for.
+        target, target_error = _resolve_run_target(user_id, params)
+        if target_error:
+            return {"answer": "", "error": target_error["error"], "toolCalls": []}
+
+        result = run_agent_loop(
+            message,
+            history,
+            image=image,
+            mode=mode,
+            user_groups=user_groups,
+            system_prompt=target["systemPrompt"] if target else None,
+            allowed_tools=target["tools"] if target else None,
+        )
+        if target:
+            # Named in the response so the transcript records which definition ran,
+            # not merely that the agent screen was used.
+            result["ranAs"] = target["name"]
+            if target.get("unavailable"):
+                result["unavailableMembers"] = target["unavailable"]
         return result
 
     # --- Chat History Actions ---
@@ -1148,6 +1177,152 @@ def _delete_session(user_id: str, params: dict) -> dict:
         return {"error": str(e)}
 
 
+# ─── Running a stored agent or team ───────────────────────────────────────────
+#
+# The directory and the team wizard could save a definition and nothing could run
+# it: `chat` took a message, a history and one of three built-in modes, and had no
+# parameter for a stored agent. An agent is a system prompt plus a tool selection,
+# which is exactly what the loop already takes — so running one is a matter of
+# handing it those two values instead of a mode's presets.
+
+
+def _runnable_tools(requested: list[str] | None) -> list[str]:
+    """The subset of `requested` this deployment can actually run.
+
+    Intersected with the implemented tools rather than trusted, so a stored
+    definition — which anyone who can reach the creator form can write — cannot
+    name a capability that does not exist, or one added later by a rename.
+
+    `request_action_approval` is always included. It is the HITL gate the built-in
+    prompts route destructive intent through, and an agent saved without it would
+    otherwise be an agent with no way to ask.
+    """
+    known = set(TOOL_HANDLERS)
+    tools = [name for name in (requested or []) if name in known]
+    if "request_action_approval" not in tools:
+        tools.append("request_action_approval")
+    return tools
+
+
+def _may_use(item: dict, user_id: str) -> bool:
+    """Whether `user_id` may run this stored definition.
+
+    The same rule the listings use: your own, or one its author shared. `_get_agent`
+    does not check this — it is a detail view keyed by an id the caller already
+    has — but running one executes its author's instructions, so the check belongs
+    on this path.
+    """
+    return item.get("createdBy") == user_id or bool(item.get("isShared", False))
+
+
+def _agent_runtime(user_id: str, agent_id: str) -> tuple[dict | None, dict | None]:
+    """A stored agent's prompt and tools, or an error payload."""
+    if not AGENT_DIRECTORY_TABLE:
+        return None, {"error": "Agent directory not configured"}
+    ddb = boto3.resource("dynamodb")
+    item = ddb.Table(AGENT_DIRECTORY_TABLE).get_item(Key={"agentId": agent_id}).get("Item")
+    if not item:
+        return None, {"error": f"Agent '{agent_id}' not found"}
+    if not _may_use(item, user_id):
+        return None, {"error": "This agent is not shared with you"}
+    prompt = (item.get("systemPrompt") or "").strip()
+    if not prompt:
+        return None, {"error": "This agent has no system prompt, so there is nothing to run"}
+    return {
+        "name": item.get("name", agent_id),
+        "systemPrompt": prompt,
+        "tools": _runnable_tools(list(item.get("tools") or [])),
+    }, None
+
+
+def _team_runtime(user_id: str, team_id: str) -> tuple[dict | None, dict | None]:
+    """A stored team's composed prompt and pooled tools, or an error payload.
+
+    One supervisor turn, told who is on the team and what each member is for, with
+    the union of their tools available. That is what the loop can do: it is a single
+    Converse conversation, and the "multi-agent" trace labels tool calls by role
+    rather than running separate sessions. Presenting it as concurrent agents would
+    describe a system this is not — the members are instructions the supervisor is
+    told to follow, and the timeline attributes each tool call to the member whose
+    selection includes that tool.
+    """
+    if not AGENT_TEAMS_TABLE:
+        return None, {"error": "Agent teams not configured"}
+    ddb = boto3.resource("dynamodb")
+    item = ddb.Table(AGENT_TEAMS_TABLE).get_item(Key={"teamId": team_id}).get("Item")
+    if not item:
+        return None, {"error": f"Team '{team_id}' not found"}
+    if not _may_use(item, user_id):
+        return None, {"error": "This team is not shared with you"}
+
+    members = item.get("agents")
+    if isinstance(members, str):
+        members = json.loads(members)
+    members = members or []
+    if len(members) < 2:
+        return None, {"error": "A team needs at least 2 members to run"}
+
+    sections: list[str] = []
+    pooled: list[str] = []
+    unavailable: list[str] = []
+    for member in members:
+        member_id = member.get("agentId", "")
+        runtime, error = _agent_runtime(user_id, member_id) if member_id else (None, {"error": "missing agentId"})
+        if error:
+            # One unreachable member does not stop the team: the others still have
+            # something to contribute, and naming the gap is more use than failing
+            # the whole run over a member that was deleted or never shared.
+            unavailable.append(f"{member.get('name', member_id)} ({error['error']})")
+            continue
+        sections.append(
+            f"### {member.get('name', runtime['name'])} — role: {member.get('role', 'collaborator')}\n"
+            f"Tools: {', '.join(runtime['tools'])}\n"
+            f"{runtime['systemPrompt']}"
+        )
+        pooled.extend(runtime["tools"])
+
+    if not sections:
+        return None, {"error": "No member of this team could be run: " + "; ".join(unavailable)}
+
+    header = (
+        f"You are the supervisor of the '{item.get('name', team_id)}' team working in a file "
+        "portal for FSx for ONTAP.\n"
+        f"{item.get('description', '')}\n\n"
+        "You act as every member below in one conversation. For each step, choose the member "
+        "whose role and instructions fit the request, follow that member's instructions, and use "
+        "only the tools listed for them. Say which member you are acting as when it changes.\n\n"
+        "Team members:\n\n"
+    )
+    footer = ""
+    if unavailable:
+        footer = "\n\nMembers unavailable for this run: " + "; ".join(unavailable)
+
+    return {
+        "name": item.get("name", team_id),
+        "systemPrompt": header + "\n\n".join(sections) + footer,
+        "tools": _runnable_tools(pooled),
+        "unavailable": unavailable,
+    }, None
+
+
+def _resolve_run_target(user_id: str, params: dict) -> tuple[dict | None, dict | None]:
+    """The stored agent or team this request names, if it names one.
+
+    Returns `(None, None)` when neither is given, which is the built-in-mode path.
+    A request naming both is refused rather than resolved by precedence: guessing
+    which the caller meant would run instructions they did not ask for.
+    """
+    agent_id = params.get("agentId") or ""
+    team_id = params.get("teamId") or ""
+    if agent_id and team_id:
+        return None, {"error": "Name either agentId or teamId, not both"}
+    if agent_id:
+        return _agent_runtime(user_id, agent_id)
+    if team_id:
+        return _team_runtime(user_id, team_id)
+    return None, None
+
+
 # ─── Agent Directory (DynamoDB) ───────────────────────────────────────────────
 
 
@@ -1303,11 +1478,22 @@ def _update_agent(user_id: str, params: dict) -> dict:
     except Exception as e:
         return {"error": str(e)}
 
-    # Build update expression
-    updates = {}
-    for key in ["name", "description", "systemPrompt", "tools", "icon", "category", "isShared"]:
-        if key in params:
-            updates[key] = params[key]
+    # Each field is read by name rather than by looping over a list of keys.
+    # The loop worked, but the parameter contract was invisible to anything
+    # reading this source — including the dispatch type generator, which
+    # therefore told callers `updateAgent` accepted `agentId` and nothing else.
+    # A partial update stays possible: `_MISSING` distinguishes "not sent" from
+    # "sent as empty", so clearing a description is not the same as omitting it.
+    editable = {
+        "name": params.get("name", _MISSING),
+        "description": params.get("description", _MISSING),
+        "systemPrompt": params.get("systemPrompt", _MISSING),
+        "tools": params.get("tools", _MISSING),
+        "icon": params.get("icon", _MISSING),
+        "category": params.get("category", _MISSING),
+        "isShared": params.get("isShared", _MISSING),
+    }
+    updates = {key: value for key, value in editable.items() if value is not _MISSING}
     updates["updatedAt"] = Decimal(str(int(time.time())))
 
     try:
