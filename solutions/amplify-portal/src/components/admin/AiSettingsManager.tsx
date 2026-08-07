@@ -15,13 +15,9 @@
  */
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { generateClient } from "aws-amplify/data";
-import type { Schema } from "../../../amplify/data/resource";
 import { useTranslation } from "../../i18n";
+import { adminMutate, dispatch } from "../../lib/dispatch";
 import { errorMessage, unwrap } from "../../lib/portalQuery";
-import { parseResponse } from "../../utils/parseResponse";
-
-const client = generateClient<Schema>();
 
 interface PortalSettings {
   aiAgentEnabled: boolean;
@@ -80,10 +76,7 @@ export function AiSettingsManager({ initialSettings, onSettingsChange }: AiSetti
       : undefined,
     queryFn: async () => {
       const result = await unwrap<SettingsResponse>(
-        client.queries.adminQuery({
-          action: "getPortalSettings",
-          params: JSON.stringify({}),
-        }),
+        dispatch("adminQuery", { action: "getPortalSettings" }),
       );
       const s = result?.settings;
       return {
@@ -105,11 +98,10 @@ export function AiSettingsManager({ initialSettings, onSettingsChange }: AiSetti
     setSuccessMsg(null);
 
     try {
-      const response = await client.mutations.adminMutation({
+      const result = await adminMutate<UpdateResponse>({
         action: "updatePortalSettings",
-        params: JSON.stringify({ key, value: String(newValue) }),
+        params: { key, value: String(newValue) },
       });
-      const result = parseResponse<UpdateResponse>(response);
       if (result?.success) {
         const newSettings = { ...settings, [key]: newValue };
         queryClient.setQueryData(SETTINGS_KEY, newSettings);

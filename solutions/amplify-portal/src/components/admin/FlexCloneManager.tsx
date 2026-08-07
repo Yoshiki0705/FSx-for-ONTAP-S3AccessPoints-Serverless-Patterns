@@ -1,16 +1,14 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { errorMessage } from "../../lib/portalQuery";
-import { generateClient } from "aws-amplify/data";
-import type { Schema } from "../../../amplify/data/resource";
+import { adminMutate, adminQuery } from "../../lib/dispatch";
+import type { VolumeUuid } from "../../lib/dispatchActions";
 import { useTranslation } from "../../i18n";
-import { parseResponse } from "../../utils/parseResponse";
-
-const client = generateClient<Schema>();
 
 interface FlexClone {
   name: string;
-  uuid: string;
+  /** The clone's own volume UUID, branded where it arrives. */
+  uuid: VolumeUuid;
   sizeGiB: number;
   state: string;
   parentVolume: string;
@@ -47,8 +45,7 @@ export function FlexCloneManager() {
   } = useQuery({
     queryKey: ["admin", "listFlexClones"],
     queryFn: async () => {
-      const resp = await client.queries.adminQuery({ action: "listFlexClones", params: JSON.stringify({}) });
-      const data = parseResponse<{ clones?: FlexClone[]; error?: string }>(resp);
+      const data = await adminQuery<{ clones?: FlexClone[] }>({ action: "listFlexClones" });
       if (data?.error && !data.error.includes("Unknown action") && !data.error.includes("not configured")) {
         throw new Error(data.error);
       }
@@ -64,11 +61,10 @@ export function FlexCloneManager() {
     if (!cloneName || !parentVolume) { setError(t("fcCloneNameRequired")); return; }
     setError(null);
     try {
-      const resp = await client.mutations.adminMutation({
+      const data = await adminMutate<{ success?: boolean }>({
         action: "createFlexClone",
-        params: JSON.stringify({ cloneName, parentVolume, parentSnapshot }),
+        params: { cloneName, parentVolume, parentSnapshot },
       });
-      const data = parseResponse<{ success?: boolean; error?: string }>(resp);
       if (data?.success) {
         setSuccess(t("fcCloneCreated")); setShowCreate(false);
         setCloneName(""); setParentVolume(""); setParentSnapshot("");
@@ -80,11 +76,10 @@ export function FlexCloneManager() {
   const handleSplit = async (clone: FlexClone) => {
     if (!window.confirm(t("fcSplitConfirm").replace("{name}", clone.name))) return;
     try {
-      const resp = await client.mutations.adminMutation({
+      const data = await adminMutate<{ success?: boolean }>({
         action: "splitFlexClone",
-        params: JSON.stringify({ volumeUuid: clone.uuid, volumeName: clone.name }),
+        params: { volumeUuid: clone.uuid, volumeName: clone.name },
       });
-      const data = parseResponse<{ success?: boolean; error?: string }>(resp);
       if (data?.success) { setSuccess(t("fcSplitInitiated")); clearSuccess(); loadClones(); }
       else setError(data?.error || "Split failed");
     } catch (e) { setError(e instanceof Error ? e.message : "Split failed"); }
