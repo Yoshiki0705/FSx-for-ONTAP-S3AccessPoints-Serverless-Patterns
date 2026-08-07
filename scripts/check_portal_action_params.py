@@ -23,12 +23,18 @@ Scope: the generic dispatch only. Single-purpose operations (`getPresignedUrl`,
 `searchFiles`) declare their arguments in the GraphQL schema, so the compiler
 already checks those.
 
-Most call sites now go through `src/lib/dispatch.ts`, whose per-action parameter
-types are generated from these same handlers by `portal_action_types.py`, so the
-compiler checks them and this script no longer sees them — the site count it prints
-falls as that migration proceeds, and a low count is not a weakening. What it still
-covers is any call made straight on the generated client, which an ESLint rule now
-refuses, and the handler-side extraction the generated types are built from.
+Every call site now goes through `src/lib/dispatch.ts`, whose per-action parameter
+types are generated from these same handlers by `portal_action_types.py`. That means
+the compiler checks them too, and the two checks are not redundant: the generated
+types can only be as right as the extraction that produced them, and this script
+compares each call against the handler independently. When they disagree, one of
+them is wrong and that is worth knowing.
+
+The three spellings that reach an endpoint are all read here — the endpoint on the
+generated client, `dispatch("adminQuery", { ... })`, and a per-endpoint helper such
+as `adminMutate({ ... })` — because the migration between them was silent from this
+script's point of view: it went on reporting PASS while the number of sites it could
+see fell from 43 to 1.
 
 Run:
 
@@ -842,6 +848,41 @@ def handler_contracts(path: Path, flattened: bool, injected: frozenset[str]) -> 
 # fourteen findings about handlers that were never being called.
 DISPATCH_CALL_RE = re.compile(r"client\.(?:mutations|queries)\.(?P<endpoint>[A-Za-z][A-Za-z0-9_]*)\s*\(")
 
+# The typed helpers in `src/lib/dispatch.ts`, which every component now goes through
+# and an ESLint rule requires. Their argument is one object — `{ action, params }` —
+# rather than the endpoint's `{ action, params: JSON.stringify(...) }`, so the same
+# reader works on both once the call is located.
+#
+# Without these the check would still pass while seeing almost nothing: the site
+# count fell from 43 to 1 as the migration progressed, because the shape it knew how
+# to find had been deliberately removed everywhere.
+TYPED_HELPERS: dict[str, str] = {
+    "adminQuery": "adminQuery",
+    "adminMutate": "adminMutation",
+    "arpQuery": "arpQuery",
+    "arpMutate": "arpMutation",
+    "protectionQuery": "protectionQuery",
+    "protectionMutate": "protectionMutation",
+    "fileQuery": "fileQuery",
+    "fileMutate": "fileMutation",
+    "agentQuery": "agentQuery",
+}
+
+# `helper<{ files?: FileItem[] }>(` or `dispatch(`. The optional type argument is
+# matched with one level of nesting, which covers what the portal writes
+# (`Array<{ ... }>`, `{ volumes?: { name: string }[] }`); it must be consumed here so
+# that the object literal found afterwards is the argument and not the type.
+TYPED_CALL_RE = re.compile(
+    r"\b(?P<name>dispatch|" + "|".join(sorted(TYPED_HELPERS)) + r")"
+    r"\s*(?:<[^<>()]*(?:<[^<>()]*>[^<>()]*)*>)?\s*\(",
+)
+
+# `dispatch("adminQuery", {` — the endpoint is the first argument.
+DISPATCH_ENDPOINT_ARG_RE = re.compile(r"""\(\s*["'](?P<endpoint>[A-Za-z][A-Za-z0-9_]*)["']\s*,""")
+
+# The helper module itself, whose every mention of these names is a definition.
+DISPATCH_MODULE = "src/lib/dispatch.ts"
+
 ACTION_RE = re.compile(r"""(?:^|[\s,{])action:\s*["'](?P<action>[A-Za-z][A-Za-z0-9_]*)["']""")
 
 # `const { query, mutate } = useAdminApi();` — the shared admin wrapper. Its two
@@ -849,10 +890,67 @@ ACTION_RE = re.compile(r"""(?:^|[\s,{])action:\s*["'](?P<action>[A-Za-z][A-Za-z0
 # so callers pass a literal that this check can still read.
 USE_ADMIN_API_RE = re.compile(r"const\s*\{(?P<names>[^}]*)\}\s*=\s*useAdminApi\s*\(")
 
-# A `const NAME = ...` declaration. Used to find which function a dispatch call with
-# a computed action sits inside, so that function can be recognised as a wrapper and
-# its own callers read instead.
-LOCAL_WRAPPER_RE = re.compile(r"const\s+(?P<name>[A-Za-z][A-Za-z0-9_]*)\s*=\s*")
+# A named function declaration. Used to find which function a dispatch call with a
+# computed action sits inside, so that function can be recognised as a wrapper and its
+# own callers read instead.
+#
+# The initialiser has to look like a function. Matching any `const NAME =` made the
+# nearest enclosing declaration of `const data = await adminMutate(call)` be `data`,
+# so `data` was recorded as the wrapper and the real one — the `runAction` around it —
+# was never looked for. Its call sites then went unread and uncounted, which reads as
+# coverage.
+LOCAL_WRAPPER_RE = re.compile(
+    r"\b(?:const\s+(?P<name>[A-Za-z][A-Za-z0-9_]*)\s*(?::[^=;\n]*)?=\s*"
+    r"(?:async\s+)?(?:function\b|useCallback\s*\(\s*(?:async\s+)?)?\s*[(<]"
+    r"|function\s+(?P<fname>[A-Za-z][A-Za-z0-9_]*)\s*\()",
+)
+
+
+@dataclass
+class DispatchCall:
+    """One located call that reaches a generic-dispatch endpoint.
+
+    `paren` is the index of the `(` opening the argument list, so the object literal
+    holding `action` and `params` is the first balanced `{...}` after it. That holds
+    for all three spellings: the endpoint on the generated client, `dispatch` with the
+    endpoint as its first argument, and a per-endpoint helper.
+    """
+
+    name: str
+    endpoint: str
+    paren: int
+    start: int
+
+
+def _dispatch_calls(text: str, dispatch_endpoints: set[str]) -> list[DispatchCall]:
+    """Every call in `text` that reaches a generic-dispatch endpoint, in source order."""
+    calls: list[DispatchCall] = []
+
+    for match in DISPATCH_CALL_RE.finditer(text):
+        endpoint = match.group("endpoint")
+        if endpoint in dispatch_endpoints:
+            calls.append(DispatchCall(endpoint, endpoint, match.end() - 1, match.start()))
+
+    for match in TYPED_CALL_RE.finditer(text):
+        name = match.group("name")
+        paren = match.end() - 1
+        if name == "dispatch":
+            # `dispatch` is also what a `useReducer` returns. Requiring a string first
+            # argument naming a known endpoint tells the two apart, and a dispatch call
+            # cannot have a computed endpoint anyway — the type of `params` depends on
+            # it.
+            argument = DISPATCH_ENDPOINT_ARG_RE.match(text[paren:])
+            if not argument or argument.group("endpoint") not in dispatch_endpoints:
+                continue
+            endpoint = argument.group("endpoint")
+        else:
+            endpoint = TYPED_HELPERS[name]
+            if endpoint not in dispatch_endpoints:
+                continue
+        calls.append(DispatchCall(name, endpoint, paren, match.start()))
+
+    calls.sort(key=lambda call: call.start)
+    return calls
 
 
 def _blank_comments(source: str) -> str:
@@ -894,6 +992,99 @@ def _object_body(text: str, start: int) -> tuple[str, int] | None:
             depth -= 1
             if depth == 0:
                 return text[open_at + 1 : index], index
+    return None
+
+
+def _call_arguments(text: str, paren: int) -> str | None:
+    """The raw text between the parentheses of the call whose `(` is at `paren`."""
+    depth = 0
+    for index in range(paren, len(text)):
+        if text[index] == "(":
+            depth += 1
+        elif text[index] == ")":
+            depth -= 1
+            if depth == 0:
+                return text[paren + 1 : index]
+    return None
+
+
+IDENTIFIER_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
+
+
+def _local_initialiser(text: str, name: str, before: int, after: int = 0) -> str | None:
+    """The initialiser of the `const NAME = ...` most closely preceding `before`.
+
+    `after` bounds the search to one function, which is what keeps a parameter from
+    being mistaken for a variable. `runAction(call)` forwards its own parameter named
+    `call`; the component around it also has `const call = tab === ... ? ...`, and
+    without the bound the parameter resolved to that, so the mutation wrapper was
+    reported as sending three listing actions. Those actions exist on the same
+    handler, so it read as a pass.
+    """
+    best: str | None = None
+    for match in re.finditer(rf"\bconst\s+{re.escape(name)}\s*(?::[^=;\n]*)?=", text):
+        if match.end() > before:
+            break
+        if match.start() < after:
+            continue
+        end = text.find(";", match.end())
+        best = text[match.end() : len(text) if end == -1 else end]
+    return best
+
+
+def _forwarded_call_objects(text: str, paren: int, declarations: list[tuple[str, int, int]]) -> list[str] | None:
+    """The call objects reachable through a call whose argument is one local variable.
+
+    A component that has to choose its action writes the choice out per branch, so the
+    compiler can check each one against that action's parameters:
+
+        const call = tab === "cluster"
+          ? ({ action: "listClusterPeers" } as const)
+          : ({ action: "listSvmPeers" } as const);
+        const data = await adminQuery<...>(call);
+
+    Every action there is a literal, one indirection away. Without following it the
+    enclosing component looked like a wrapper that forwards an action it was given,
+    and being a "wrapper" suppressed the reporting of every call inside it — which in
+    `PeeringManager` was the whole file.
+
+    Returns None when the argument is not a single identifier, or when its initialiser
+    offers several actions and also parameters: pairing those would be guesswork.
+    """
+    arguments = _call_arguments(text, paren)
+    if arguments is None or not IDENTIFIER_RE.match(arguments.strip()):
+        return None
+    enclosing = [start for _, start, end in declarations if start <= paren <= end]
+    initialiser = _local_initialiser(text, arguments.strip(), paren, max(enclosing, default=0))
+    if initialiser is None:
+        return None
+    actions = ACTION_RE.findall(initialiser)
+    if not actions:
+        return None
+    if len(actions) > 1 and "params:" in initialiser:
+        return None
+    return [initialiser] if len(actions) == 1 else [f'action: "{action}"' for action in actions]
+
+
+def _call_argument_object(text: str, paren: int) -> str | None:
+    """The object literal passed to the call whose `(` is at `paren`, if it has one.
+
+    Bounded by the call's own parentheses. `_object_body` searches forward without a
+    limit, which was harmless while every dispatch call was written with its object
+    inline; a wrapper that forwards a variable — `runAction(call)` — has no object of
+    its own, and an unbounded search would have found the next unrelated literal in
+    the file and read whatever `action` it happened to contain.
+    """
+    depth = 0
+    for index in range(paren, len(text)):
+        char = text[index]
+        if char == "(":
+            depth += 1
+        elif char == ")":
+            depth -= 1
+            if depth == 0:
+                found = _object_body(text[paren : index + 1], 0)
+                return found[0] if found else None
     return None
 
 
@@ -940,6 +1131,23 @@ def _top_level_keys(body: str) -> tuple[set[str], bool]:
     return keys, opaque
 
 
+def _site_from_object(location: str, endpoint: str, body: str) -> CallSite:
+    """A call site read from the object holding its `action` and `params`.
+
+    Shared by all the spellings, because past that object they are the same call.
+    """
+    action = ACTION_RE.search(body)
+    assert action, "callers check for an action before getting here"
+    params_at = body.find("params:")
+    if params_at == -1:
+        return CallSite(location, endpoint, action.group("action"), set())
+    found = _object_body(body, params_at)
+    if not found:
+        return CallSite(location, endpoint, action.group("action"), set(), opaque=True)
+    keys, opaque = _top_level_keys(found[0])
+    return CallSite(location, endpoint, action.group("action"), keys, opaque)
+
+
 # Call sites this check cannot read. Kept so `--list-opaque` can name them: they
 # are the blind spot, and a blind spot nobody can enumerate is worse than one they
 # can.
@@ -960,6 +1168,11 @@ def call_sites(dispatch_endpoints: set[str]) -> tuple[list[CallSite], int]:
     OPAQUE_LOCATIONS = []
 
     for path in sorted((PORTAL / "src").rglob("*.ts*")):
+        relative = str(path.relative_to(PORTAL))
+        if relative == DISPATCH_MODULE:
+            # The helpers' own definitions, where the action and parameters are the
+            # caller's and cannot be literals.
+            continue
         # Comments are blanked rather than removed so line numbers still point at
         # the real source. Without this the usage example in the admin hook's own
         # doc comment was read as a call and reported as a broken one.
@@ -967,46 +1180,37 @@ def call_sites(dispatch_endpoints: set[str]) -> tuple[list[CallSite], int]:
         wrappers = _wrapper_endpoints(text, dispatch_endpoints)
         wrapper_bodies = _wrapper_body_ranges(text, wrappers)
 
-        for call in DISPATCH_CALL_RE.finditer(text):
-            endpoint = call.group("endpoint")
-            if endpoint not in dispatch_endpoints:
-                # A single-purpose operation with typed arguments in the GraphQL
-                # schema. The compiler checks those already.
-                continue
-
-            line = text.count("\n", 0, call.start()) + 1
+        for call in _dispatch_calls(text, dispatch_endpoints):
+            endpoint = call.endpoint
+            line = text.count("\n", 0, call.start) + 1
             location = f"{path.relative_to(PORTAL)}:{line}"
-            argument = _object_body(text, call.end() - 1)
-            if argument is None:
+            body = _call_argument_object(text, call.paren)
+            if body is None:
+                forwarded = _forwarded_call_objects(text, call.paren, _declaration_ranges(text))
+                if forwarded:
+                    for one in forwarded:
+                        sites.append(_site_from_object(location, endpoint, one))
+                    continue
+                if any(start <= call.start <= end for start, end in wrapper_bodies):
+                    # A wrapper forwarding its caller's whole call. Read at the caller.
+                    continue
                 opaque_count += 1
                 OPAQUE_LOCATIONS.append(f"{location} ({endpoint}: argument not an object literal)")
                 continue
-            body = argument[0]
 
-            action_match = ACTION_RE.search(body)
-            if action_match is None:
+            if ACTION_RE.search(body) is None:
                 # A wrapper forwards whatever action it is given, so its own body is
                 # the mechanism the indirect scan reads through, not a gap in
                 # coverage. Counting these as blind spots overstated the blind spot
                 # by the number of wrappers and hid the calls that really are
                 # unreadable behind them.
-                if any(start <= call.start() <= end for start, end in wrapper_bodies):
+                if any(start <= call.start <= end for start, end in wrapper_bodies):
                     continue
                 opaque_count += 1
                 OPAQUE_LOCATIONS.append(f"{location} ({endpoint}: action is computed)")
                 continue
-            action = action_match.group("action")
 
-            params_at = body.find("params:")
-            if params_at == -1:
-                sites.append(CallSite(location, endpoint, action, set()))
-                continue
-            found = _object_body(body, params_at)
-            if not found:
-                sites.append(CallSite(location, endpoint, action, set(), opaque=True))
-                continue
-            keys, opaque = _top_level_keys(found[0])
-            sites.append(CallSite(location, endpoint, action, keys, opaque))
+            sites.append(_site_from_object(location, endpoint, body))
 
         # Indirect calls: a wrapper takes the action as an argument, so the literal
         # lives at its caller. Almost the whole admin UI reaches the backend this
@@ -1030,9 +1234,9 @@ def _wrapper_body_ranges(text: str, wrappers: dict[str, str]) -> list[tuple[int,
     ranges: list[tuple[int, int]] = []
     for name in wrappers:
         for match in re.finditer(rf"\b(?:const|function)\s+{re.escape(name)}\b", text):
-            body = _object_body(text, match.end())
-            if body:
-                ranges.append((match.start(), body[1]))
+            end = _function_body_end(text, match.end())
+            if end is not None:
+                ranges.append((match.start(), end))
     return ranges
 
 
@@ -1050,27 +1254,57 @@ def _wrapper_endpoints(text: str, dispatch_endpoints: set[str]) -> dict[str, str
                 wrappers[name] = "adminMutation"
 
     # Component-local wrappers: a function that forwards whatever action it is given.
+    # Since the migration these take the whole call — `runAction(call:
+    # DispatchCall<"adminMutation">)` — so the forwarding call has no object literal
+    # at all, not merely one without an `action`.
     declarations = _declaration_ranges(text)
-    for call in DISPATCH_CALL_RE.finditer(text):
-        endpoint = call.group("endpoint")
-        if endpoint not in dispatch_endpoints:
+    for call in _dispatch_calls(text, dispatch_endpoints):
+        argument = _call_argument_object(text, call.paren)
+        if argument is not None and ACTION_RE.search(argument):
             continue
-        argument = _object_body(text, call.end() - 1)
-        if argument is None or ACTION_RE.search(argument[0]):
+        if _forwarded_call_objects(text, call.paren, declarations):
+            # The action is a literal one indirection away, so this is an ordinary
+            # call site rather than a function that forwards its caller's action.
             continue
-        name = _innermost_declaration(declarations, call.start())
+        name = _innermost_declaration(declarations, call.start)
         if name:
-            wrappers.setdefault(name, endpoint)
+            wrappers.setdefault(name, call.endpoint)
     return wrappers
 
 
+def _function_body_end(text: str, cursor: int) -> int | None:
+    """End of the function body that starts at or after `cursor`.
+
+    An arrow function's body begins after its `=>`, which is not the first `{` after
+    the declaration: a destructured parameter list has braces of its own. An
+    expression-bodied arrow has no braced body at all, and must not be given the next
+    unrelated literal in the file — that range would enclose calls it has nothing to
+    do with.
+    """
+    arrow = text.find("=>", cursor)
+    brace = text.find("{", cursor)
+    if arrow != -1 and (brace == -1 or arrow < brace):
+        cursor = arrow + 2
+        while cursor < len(text) and text[cursor] in " \t\n":
+            cursor += 1
+        if cursor >= len(text) or text[cursor] != "{":
+            # Expression body: it ends with the statement.
+            end = text.find(";", cursor)
+            return len(text) - 1 if end == -1 else end
+    body = _object_body(text, cursor)
+    return body[1] if body else None
+
+
 def _declaration_ranges(text: str) -> list[tuple[str, int, int]]:
-    """`const NAME = ...` declarations with a braced body, as (name, start, end)."""
+    """Named function declarations, as (name, start, end)."""
     found: list[tuple[str, int, int]] = []
     for match in LOCAL_WRAPPER_RE.finditer(text):
-        body = _object_body(text, match.end())
-        if body:
-            found.append((match.group("name"), match.start(), body[1]))
+        name = match.group("name") or match.group("fname")
+        if not name:
+            continue
+        end = _function_body_end(text, match.end() - 1)
+        if end is not None:
+            found.append((name, match.start(), end))
     return found
 
 
@@ -1101,7 +1335,10 @@ def _indirect_sites(path: Path, text: str, dispatch_endpoints: set[str]) -> tupl
 
     sites: list[CallSite] = []
     unreadable: list[str] = []
-    wrapper_bodies = _wrapper_body_ranges(text, wrappers)
+    # Per wrapper, not pooled. A component whose own action is chosen at runtime gets
+    # recognised as a wrapper too, and its body is the whole file — pooling the ranges
+    # then suppressed every call inside it, which in `PeeringManager` was all of them.
+    own_bodies = {name: _wrapper_body_ranges(text, {name: endpoint}) for name, endpoint in wrappers.items()}
     pattern = re.compile(
         r"\b(?P<name>" + "|".join(re.escape(n) for n in sorted(wrappers)) + r")\s*[<(]",
     )
@@ -1111,11 +1348,12 @@ def _indirect_sites(path: Path, text: str, dispatch_endpoints: set[str]) -> tupl
             continue
         line = text.count("\n", 0, match.start()) + 1
         location = f"{path.relative_to(PORTAL)}:{line}"
-        endpoint = wrappers[match.group("name")]
+        name = match.group("name")
+        endpoint = wrappers[name]
 
-        # A wrapper naming itself inside its own definition is the recursive call
-        # of a `useCallback`, not a call site.
-        if any(start <= match.start() <= end for start, end in wrapper_bodies):
+        # A wrapper naming itself inside its own definition is its declaration, or the
+        # recursive call of a `useCallback` — not a call site.
+        if any(start <= match.start() <= end for start, end in own_bodies[name]):
             continue
 
         literal = re.match(
@@ -1123,7 +1361,14 @@ def _indirect_sites(path: Path, text: str, dispatch_endpoints: set[str]) -> tupl
             text[open_paren:],
         )
         if not literal:
-            unreadable.append(f"{location} ({endpoint} via {match.group('name')}: action is computed)")
+            # A wrapper that takes the whole call — `runAction({ action, params })`,
+            # which is the shape the typed helpers pushed the local wrappers into.
+            # The action and its parameters are both in that one object.
+            argument = _call_argument_object(text, open_paren)
+            if argument and ACTION_RE.search(argument):
+                sites.append(_site_from_object(location, endpoint, argument))
+                continue
+            unreadable.append(f"{location} ({endpoint} via {name}: action is computed)")
             continue
         if literal.group("rest") == ")":
             sites.append(CallSite(location, endpoint, literal.group("action"), set()))
