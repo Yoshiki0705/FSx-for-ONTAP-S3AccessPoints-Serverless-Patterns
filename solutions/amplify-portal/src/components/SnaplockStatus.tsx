@@ -171,6 +171,11 @@ export function SnaplockStatus() {
   const unlockedSnapshots: UnlockedSnapshot[] = allSnapshots
     .filter((s) => !s.isLocked)
     .map((s) => ({ name: s.name, createTime: s.createTime, snapshotId: s.snapshotId }));
+  // A snapshot without a UUID cannot be addressed by the lock call, so offering
+  // it would only produce a rejected request.
+  const lockableSnapshots = unlockedSnapshots.filter((s) => !!s.snapshotId);
+  const selectedSnapshotName =
+    lockableSnapshots.find((s) => s.snapshotId === lockTargetSnap)?.name ?? "";
   const snaplockVolumes = volumesQuery.data ?? [];
   const s3LockStatus = s3LockQuery.data ?? null;
   const s3Buckets = s3BucketsQuery.data ?? [];
@@ -215,7 +220,10 @@ export function SnaplockStatus() {
     setError(null);
     setPendingSnaplock({
       kind: "lockSnapshot",
-      snapshotName: lockTargetSnap,
+      // The selection carries the snapshot UUID because that is what the lock
+      // call needs; the dialog names the snapshot, so the label is resolved back
+      // for display and falls back to the UUID if the list has since reloaded.
+      snapshotName: selectedSnapshotName || lockTargetSnap,
       retentionDays: lockRetentionDays,
     });
   };
@@ -256,11 +264,17 @@ export function SnaplockStatus() {
     setLockingInProgress(true);
     setError(null);
     try {
+      // The action takes the snapshot UUID and an absolute expiry, not a name and
+      // a duration. Sending the latter made this button fail every time with
+      // "snapshotId and expiryTime required" — the version history panel had the
+      // contract right, this one did not.
+      const expiry = new Date();
+      expiry.setDate(expiry.getDate() + lockRetentionDays);
       const response = await client.mutations.protectionMutation({
         action: "lockSnapshot",
         params: JSON.stringify({
-          snapshotName: lockTargetSnap,
-          retentionDays: lockRetentionDays,
+          snapshotId: lockTargetSnap,
+          expiryTime: expiry.toISOString(),
           acknowledgeIrreversible: true,
         }),
       });
@@ -607,8 +621,11 @@ export function SnaplockStatus() {
                     <label>{t("lockSelectSnapshot")}</label>
                     <select value={lockTargetSnap} onChange={(e) => setLockTargetSnap(e.target.value)}>
                       <option value="">{t("lockSelectSnapshotPlaceholder")}</option>
-                      {unlockedSnapshots.map((s) => (
-                        <option key={s.snapshotId || s.name} value={s.name}>
+                      {/* The value is the UUID because that is what the lock call
+                          identifies a snapshot by. Names are not unique enough to
+                          address one, and the option text still shows the name. */}
+                      {lockableSnapshots.map((s) => (
+                        <option key={s.snapshotId} value={s.snapshotId}>
                           {s.name} ({formatDate(s.createTime)})
                         </option>
                       ))}

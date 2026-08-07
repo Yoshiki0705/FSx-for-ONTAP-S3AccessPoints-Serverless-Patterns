@@ -376,6 +376,8 @@ arpResponseSweepNote: "Los bloqueos se levantan por sí solos al vencer el plazo
   rmSnapCount: "Cantidad de retención",
   rmSnapRetention: "Período de retención",
   rmSnapRetentionHint: "Formato ISO 8601: P30D = 30 días, P1Y = 1 año (aplicado como duración de bloqueo en volúmenes Tamperproof)",
+  rmSnapRetentionInvalid:
+    "El formato del período de retención no es válido. Use un período ISO 8601, por ejemplo P30D, P6M o P1Y.",
   rmSnapNoPolicies: "No se encontraron políticas de snapshot",
   rmSnapTamperproofDesc: "Habilitar Tamperproof Snapshot permite bloquear snapshots con un tiempo de expiración. Los snapshots bloqueados no pueden ser eliminados por nadie — incluidos los administradores — hasta que expire el período de retención.",
   rmSnapVolumeUuid: "UUID del volumen",
@@ -1284,6 +1286,16 @@ arpResponseSweepNote: "Los bloqueos se levantan por sí solos al vencer el plazo
     "Los objetos almacenados desde ahora no se podrán eliminar hasta el {date} ({days} días).",
   slcS3FutureObjectsOnly:
     "No se aplica a los objetos existentes. Se aplica a los objetos almacenados tras el cambio.",
+  slcPolicyNoRetention:
+    "No se ha definido un periodo de retención, por lo que las snapshots que cree esta política no quedarán bloqueadas. Se pueden eliminar como snapshots normales.",
+  slcPolicyEverySnapshotLocked:
+    "No es un bloqueo único. Cada snapshot que esta política cree con la programación {schedule} quedará bloqueada durante {period}, a partir de ahora.",
+  slcPolicyFirstSnapshotUntil:
+    "La próxima snapshot que cree la programación no se podrá eliminar hasta el {date}. Las siguientes avanzan con la programación.",
+  slcPolicyCountNotACap:
+    "El número {count} deja de actuar como límite. Una snapshot bloqueada no se puede rotar, por lo que las snapshots bloqueadas se acumulan más allá de {count} hasta que expiran, consumiendo esa capacidad.",
+  slcPolicyStoppable:
+    "La política en sí se puede revertir. Quitar el periodo de retención, cambiar de política o desasociarla detiene los nuevos bloqueos. Las snapshots ya bloqueadas permanecen hasta que expiran.",
 
   // --- Shared / misc ---
   processing: "Procesando...",

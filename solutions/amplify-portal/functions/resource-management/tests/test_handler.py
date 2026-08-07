@@ -2582,3 +2582,166 @@ class TestIrreversibleAcknowledgement:
         assert "cannot be shortened or removed" in compliance["error"]
         assert governance["success"] is False
         assert "BypassGovernanceRetention" in governance["error"]
+
+    def test_snapshot_policy_with_retention_refused_without_ack(self, mock_secrets):
+        """A retention period on a policy locks every snapshot it ever takes.
+
+        This is the recurring form of a snapshot lock, and the one nothing asked
+        about: the form field was free text, so a mistyped period would have kept
+        producing locks on a schedule with nobody watching.
+        """
+        from handler import handler
+
+        mock_http = MockHttp({"/storage/snapshot-policies": {"status": 201, "data": {}}})
+        with patch("handler.urllib3.PoolManager") as mock_pool:
+            mock_pool.return_value = mock_http
+
+            result = handler(
+                {
+                    "action": "createSnapshotPolicy",
+                    "name": "nightly_worm",
+                    "schedules": [{"schedule": "daily", "count": 7, "retentionPeriod": "P30D"}],
+                },
+                None,
+            )
+
+        assert result["success"] is False
+        assert "acknowledgeIrreversible" in result["error"]
+        # The refusal has to name the period and the recurrence, not just the flag.
+        assert "P30D" in result["error"]
+        assert "every run of the schedule" in result["error"]
+        assert not any(method == "POST" for method, _url, _kwargs in mock_http.calls)
+
+    def test_snapshot_policy_with_retention_created_with_ack(self, mock_secrets):
+        from handler import handler
+
+        with patch("handler.urllib3.PoolManager") as mock_pool:
+            mock_pool.return_value = MockHttp({"/storage/snapshot-policies": {"status": 201, "data": {}}})
+
+            result = handler(
+                {
+                    "action": "createSnapshotPolicy",
+                    "name": "nightly_worm",
+                    "schedules": [{"schedule": "daily", "count": 7, "retentionPeriod": "P30D"}],
+                    "acknowledgeIrreversible": True,
+                },
+                None,
+            )
+
+        assert result["success"] is True
+
+    def test_snapshot_policy_without_retention_needs_no_ack(self, mock_secrets):
+        """Policies that only rotate snapshots are reversible and stay unguarded."""
+        from handler import handler
+
+        with patch("handler.urllib3.PoolManager") as mock_pool:
+            mock_pool.return_value = MockHttp({"/storage/snapshot-policies": {"status": 201, "data": {}}})
+
+            result = handler(
+                {
+                    "action": "createSnapshotPolicy",
+                    "name": "plain_daily",
+                    "schedules": [{"schedule": "daily", "count": 7}],
+                },
+                None,
+            )
+
+        assert result["success"] is True
+
+    def test_snapshot_policy_guard_runs_after_validation(self, mock_secrets):
+        from handler import handler
+
+        with patch("handler.urllib3.PoolManager") as mock_pool:
+            mock_pool.return_value = MockHttp()
+
+            result = handler(
+                {
+                    "action": "createSnapshotPolicy",
+                    "name": "",
+                    "schedules": [{"schedule": "daily", "retentionPeriod": "P30D"}],
+                },
+                None,
+            )
+
+        assert result["success"] is False
+        assert "Policy name is required" in result["error"]
+        assert "acknowledgeIrreversible" not in result["error"]
+
+    def test_assigning_a_locking_policy_refused_without_ack(self, mock_secrets):
+        """Attaching a policy that locks starts the same recurrence on that volume."""
+        from handler import handler
+
+        mock_http = MockHttp(
+            {
+                "/storage/snapshot-policies": {
+                    "status": 200,
+                    "data": {
+                        "records": [{"copies": [{"retention_period": "P6M"}]}],
+                        "num_records": 1,
+                    },
+                },
+            }
+        )
+        with patch("handler.urllib3.PoolManager") as mock_pool:
+            mock_pool.return_value = mock_http
+
+            result = handler(
+                {
+                    "action": "assignSnapshotPolicy",
+                    "volumeUuid": "uuid-1",
+                    "policyName": "nightly_worm",
+                },
+                None,
+            )
+
+        assert result["success"] is False
+        assert "acknowledgeIrreversible" in result["error"]
+        assert "P6M" in result["error"]
+        assert not any(method == "PATCH" for method, _url, _kwargs in mock_http.calls)
+
+    def test_assigning_a_plain_policy_needs_no_ack(self, mock_secrets):
+        """Whether to ask depends on the policy, so a harmless one is not blocked."""
+        from handler import handler
+
+        with patch("handler.urllib3.PoolManager") as mock_pool:
+            mock_pool.return_value = MockHttp(
+                {
+                    "/storage/snapshot-policies": {
+                        "status": 200,
+                        "data": {"records": [{"copies": [{"count": 7}]}], "num_records": 1},
+                    },
+                    "/storage/volumes": {"status": 200, "data": {}},
+                }
+            )
+
+            result = handler(
+                {
+                    "action": "assignSnapshotPolicy",
+                    "volumeUuid": "uuid-1",
+                    "policyName": "plain_daily",
+                },
+                None,
+            )
+
+        assert result["success"] is True
+
+    def test_unreadable_policy_still_asks(self, mock_secrets):
+        """Fails closed: an unknown policy must not be assumed to be harmless."""
+        from handler import handler
+
+        mock_http = MockHttp({"/storage/snapshot-policies": {"status": 500, "data": {"error": {"message": "boom"}}}})
+        with patch("handler.urllib3.PoolManager") as mock_pool:
+            mock_pool.return_value = mock_http
+
+            result = handler(
+                {
+                    "action": "assignSnapshotPolicy",
+                    "volumeUuid": "uuid-1",
+                    "policyName": "nightly_worm",
+                },
+                None,
+            )
+
+        assert result["success"] is False
+        assert "acknowledgeIrreversible" in result["error"]
+        assert not any(method == "PATCH" for method, _url, _kwargs in mock_http.calls)

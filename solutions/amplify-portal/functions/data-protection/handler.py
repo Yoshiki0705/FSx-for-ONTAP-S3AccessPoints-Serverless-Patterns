@@ -63,6 +63,29 @@ SVM_NAME = os.environ.get("SVM_NAME", "")
 BLOCKS_TABLE = os.environ.get("CONTAINMENT_BLOCKS_TABLE", "")
 
 
+_IRREVERSIBLE_ACK_FIELD = "acknowledgeIrreversible"
+
+
+def _require_ack(event, effect: str):
+    """None when the caller acknowledged the lock, or an error response.
+
+    Mirrors the guard in the resource management handler. This handler carries its
+    own copy of the retention actions, so the same rule has to hold here or the
+    duplicate path becomes the unguarded way in. `effect` is the consequence in
+    one sentence, so a caller reading only the error learns what it is agreeing
+    to.
+    """
+    if event.get(_IRREVERSIBLE_ACK_FIELD) is True:
+        return None
+    return {
+        "success": False,
+        "error": (
+            f"{_IRREVERSIBLE_ACK_FIELD}=true is required for this operation. {effect} "
+            "See docs/tamperproof-snapshot-design.md before setting it."
+        ),
+    }
+
+
 def _env_int(name: str, default: int) -> int:
     """Read an integer setting, falling back rather than failing to import.
 
@@ -655,12 +678,41 @@ def _update_retention_policy(http, headers, event):
     days = event.get("days", 0)
     user_id = event.get("userId", "unknown")
 
-    if target == "snaplock":
-        return _update_snaplock_retention(http, headers, days, user_id)
-    elif target == "s3_object_lock":
-        return _update_s3_object_lock(mode, days, user_id)
-    else:
+    if target not in ("snaplock", "s3_object_lock"):
         return {"success": False, "error": f"Invalid target: {target}. Use 'snaplock' or 's3_object_lock'"}
+
+    # Validated before the guard so that a malformed request is told what is wrong
+    # with it rather than being asked to acknowledge a consequence stated in terms
+    # of the malformed value. Both target functions re-check, since they are
+    # reachable on their own.
+    if days <= 0:
+        return {"success": False, "error": "days must be > 0"}
+    if target == "s3_object_lock" and mode not in ("GOVERNANCE", "COMPLIANCE"):
+        return {"success": False, "error": f"Invalid mode: {mode}. Use GOVERNANCE or COMPLIANCE"}
+
+    if target == "snaplock":
+        # Raising the default retention decides how long every file committed
+        # from now on stays undeletable, and it cannot be shortened afterwards.
+        refused = _require_ack(
+            event,
+            f"Files committed to WORM from now on will be locked for {days} days and cannot "
+            "be deleted or shortened before that expires. Lowering this later does not "
+            "release files already committed.",
+        )
+        if refused:
+            return refused
+        return _update_snaplock_retention(http, headers, days, user_id)
+
+    # Only s3_object_lock remains, the target having been validated above.
+    refused = _require_ack(
+        event,
+        f"Objects stored from now on will be retained for {days} days in {mode} mode. "
+        "COMPLIANCE retention cannot be shortened or removed by anyone, including the "
+        "account root.",
+    )
+    if refused:
+        return refused
+    return _update_s3_object_lock(mode, days, user_id)
 
 
 def _update_snaplock_retention(http, headers, days, user_id):
