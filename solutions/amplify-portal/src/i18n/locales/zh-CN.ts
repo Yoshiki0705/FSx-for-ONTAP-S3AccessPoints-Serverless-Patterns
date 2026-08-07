@@ -1271,7 +1271,7 @@ arpResponseSweepNote: "阻止会在设定的期限过后自动解除。如需提
   slNewVolumeOnly: "SnapLock 只能在创建新卷时启用",
   slNewVolumeOnlyWhy: "无法为已有卷事后启用 SnapLock，这是 ONTAP 的限制。",
   slNewVolumeOnlyHow: "如果需要 SnapLock 卷，请从\"卷管理\"中新建。",
-  fcacheMetricsHint: "指标：可在 ONTAP System Manager 中查看",
+  fcacheMetricsHint: "指标：通过 Amazon CloudWatch 或 ONTAP REST API 获取",
   vhDiffTitle: "版本差异",
   vhDiffNotice:
     "选择两个快照比较内容的功能计划在后续版本实现。当前显示快照列表。",

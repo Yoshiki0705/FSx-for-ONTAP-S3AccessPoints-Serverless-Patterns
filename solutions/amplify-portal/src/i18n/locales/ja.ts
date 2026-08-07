@@ -1320,7 +1320,7 @@ arpResponseSweepNote: "ブロックは指定した期限が過ぎると自動で
   slNewVolumeOnly: "SnapLock は新規ボリューム作成時にのみ有効化できます",
   slNewVolumeOnlyWhy: "既存ボリュームに後から SnapLock を有効にすることはできません（ONTAP の仕様）。",
   slNewVolumeOnlyHow: "SnapLock ボリュームが必要な場合は「ボリューム管理」から新規作成してください。",
-  fcacheMetricsHint: "メトリクス: ONTAP System Manager で確認可",
+  fcacheMetricsHint: "メトリクス: Amazon CloudWatch または ONTAP REST API で取得",
   vhDiffTitle: "バージョン差分",
   vhDiffNotice:
     "2 つのスナップショットを選択して内容を比較する機能です（将来実装予定）。現在はスナップショット一覧を表示しています。",

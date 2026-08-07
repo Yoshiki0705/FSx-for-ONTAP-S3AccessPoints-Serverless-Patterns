@@ -116,9 +116,14 @@ CORRECTED = {
 
 
 def test_rules_are_active(drift):
-    """Both rules must be live, or the cases below prove nothing."""
+    """Every rule must be live, or the cases below prove nothing.
+
+    Pinned to the exact set rather than a subset: a rule that quietly stops
+    applying is the failure this whole file exists to prevent, and a
+    `>=` assertion would not notice one leaving.
+    """
     names = {rule["name"] for rule in drift.active_contradictions()}
-    assert names == {"block-expiry", "multi-svm-fanout"}, (
+    assert names == {"block-expiry", "multi-svm-fanout", "system-manager-vpn"}, (
         "a rule stopped applying because its disproving marker vanished from the "
         "handler; confirm the behaviour still ships before removing the rule"
     )
@@ -492,3 +497,113 @@ ENDPOINT_SENTENCES_THAT_ARE_CORRECT = [
 def test_no_rule_claims_the_endpoint_count(drift, line):
     for claim in drift.COUNT_CLAIMS:
         assert not claim["pattern"].search(line), (claim["name"], line)
+
+
+# --------------------------------------------------------------------------
+# System Manager reachability
+#
+# The comparison in the published Part 2 articles and in the capability map was
+# written against on-premises ONTAP, where any network that reaches the cluster
+# management LIF can open the System Manager web UI. FSx for ONTAP's management
+# endpoint offers SSH and the REST API; System Manager is reached only through
+# the vendor SaaS, which covers FSx for ONTAP in its SaaS-connected mode alone.
+# So "VPN to System Manager" described a path that does not exist, in four
+# languages, for months.
+#
+# The hard part of this rule is what it must NOT match. "Follows System
+# Manager's card navigation" and "System Manager-equivalent operations" are
+# about design and familiarity, they are true, and a rule that flags them
+# would be turned off within a week.
+# --------------------------------------------------------------------------
+
+# Verbatim from the repository and the two posts before the correction.
+SM_SHIPPED_STALE = [
+    "ONTAP System Manager は強力な Web UI ですが、アクセスするには VPN 経由で管理 LIF に接続する必要があります。",
+    "ONTAP System Manager is a powerful Web UI, but accessing it requires a VPN connection to the",
+    "| ARP 脅威の確認と封じ込め | System Manager にVPN接続 → Security パネル → 手動ブロック |",
+    "| Check ARP threats and contain | VPN to System Manager → Security panel → manual block |",
+    "| **ランサムウェア対策の可視化** | ONTAP ARP は動作するが確認に System Manager + VPN |",
+    "| **Ransomware visibility** | ONTAP ARP runs but checking needs System Manager + VPN |",
+    "Node replacement, ONTAP upgrades and disk/shelf management remain with System Manager",
+    "ノードの交換、ONTAP のアップグレード、ディスク・シェルフの管理は System Manager と ONTAP CLI の担当範囲です",
+    "the moment you wanted to know something about the storage layer, you had to go back to ONTAP System Manager or the CLI.",
+    "ストレージ側の状態を知りたくなったら ONTAP System Manager や CLI に戻る必要がありました",
+    "Storage administrators can check recent alerts directly in the portal without accessing ONTAP System Manager or CLI.",
+    "ストレージ管理者が ONTAP System Manager や CLI にアクセスしなくても、ポータル上で直近のアラートを確認できます。",
+    "| Using ONTAP System Manager daily | Provide visibility to non-storage-admin team members |",
+    "| ONTAP System Manager を日常利用中 | ストレージ管理者以外のメンバーへの可視性提供 |",
+    "> **Storage operations note**: Your existing ONTAP System Manager workflows (volume creation,",
+    "既存の ONTAP System Manager ワークフロー（ボリューム作成、スナップショット管理等）はそのまま維持できます",
+]
+
+# Correct sentences that sit close to the rule's subject. Every one of these
+# shipped alongside the stale ones and must survive.
+SM_CORRECT = [
+    "- ONTAP System Manager 相当の管理操作は AppSync + Lambda 経由でブラウザから実行できます",
+    "ONTAP System Manager-equivalent admin operations can be executed from a browser",
+    "管理者がログインして最初に見るのは、4 枚のカードで構成されるヘルスダッシュボードです。ONTAP System Manager の「ダッシュボードファースト」パターンを踏襲しました。",
+    'The first thing admins see after login is a 4-card health dashboard. This follows ONTAP System Manager\'s "dashboard first" pattern.',
+    "各パネルはカード形式のグリッドで表示され、クリックすると詳細画面に遷移します。System Manager のカード型ナビゲーションを踏襲しています。",
+    "Each panel displays as a card grid, clicking navigates to the detail view. Follows System Manager's card-based navigation.",
+    "ブラウザから ONTAP System Manager と同等の操作感でキャッシュボリュームを管理できます。",
+    "The experience mirrors ONTAP System Manager - accessible from any browser with Cognito authentication.",
+    " * UI inspired by ONTAP System Manager's card-based navigation:",
+    " * System Manager equivalent: Storage > Volumes > Anti-Ransomware",
+    "Storage administration equivalent to ONTAP System Manager.",
+    "ONTAP System Manager 相当のストレージ管理をファイルポータルの Web UI から提供します。",
+    # The corrected replacements themselves.
+    "ONTAP CLI / REST API の管理エンドポイントは VPC 内から到達します",
+    "| **Ransomware visibility** | ONTAP ARP runs but checking needs the ONTAP CLI / REST API |",
+    "ONTAP のバージョン管理、ノード、ディスク・シェルフは AWS が運用します。",
+    "The ONTAP version, the nodes and the disks and shelves are operated by AWS.",
+]
+
+
+def _sm_rule(drift):
+    return next(r for r in drift.CONTRADICTIONS if r["name"] == "system-manager-vpn")
+
+
+@pytest.mark.parametrize("line", SM_SHIPPED_STALE)
+def test_the_shipped_system_manager_claims_are_caught(drift, line):
+    assert _sm_rule(drift)["claim"].search(line), line
+
+
+@pytest.mark.parametrize("line", SM_CORRECT)
+def test_design_and_equivalence_phrasings_are_left_alone(drift, line):
+    """A true sentence about System Manager must not fire the rule.
+
+    These describe where the UI took its layout from, and that the same
+    operations are available. Both are accurate. Flagging them would make the
+    check something to be silenced rather than read.
+    """
+    assert not _sm_rule(drift)["claim"].search(line), line
+
+
+def test_the_rule_is_disabled_if_the_portal_stops_calling_ontap(drift):
+    """The rule only stands while the code that disproves it is present.
+
+    Each contradiction names a marker in a handler. If the portal ever stops
+    talking to the ONTAP REST API, this claim is no longer contradicted by
+    anything and the rule retires itself rather than becoming a rule nobody can
+    explain.
+    """
+    handler_path, marker = _sm_rule(drift)["disproved_by"]
+    handler = drift.PORTAL / handler_path
+    assert handler.exists(), handler
+    assert marker in handler.read_text()
+    assert _sm_rule(drift) in drift.active_contradictions()
+
+
+def test_the_repository_carries_the_sources_for_this_claim(drift):
+    """The position is only usable if a reader can check it.
+
+    A rule that says "this is false" without a citable reason is an assertion.
+    Both language versions of the interfaces document must exist and must cite
+    the AWS announcement and the vendor's deployment-mode table.
+    """
+    for name in ("ja", "en"):
+        doc = drift.ROOT / "docs" / name / "fsx-ontap-management-interfaces.md"
+        assert doc.exists(), doc
+        text = doc.read_text()
+        assert "aws.amazon.com/about-aws/whats-new/2023/12" in text, name
+        assert "concept-modes" in text, name

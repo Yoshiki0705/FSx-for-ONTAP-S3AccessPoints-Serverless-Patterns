@@ -265,4 +265,4 @@ aws cognito-idp admin-set-user-password --user-pool-id <pool-id> --username <you
 | [Storage Browser デモ](storage-browser-demo-guide.md) | 全ユーザー | Storage Browser でのアップロード/ダウンロード |
 | [PoC → 本番移行ガイド](portal-poc-to-production.md) | 管理者 | DemoMode から本番 FSx for ONTAP への移行 |
 | [スケーリングガイド](portal-scaling-guide.md) | アーキテクト | キャパシティプランニングとスループット管理 |
-| [アクセシビリティ声明](../en/portal-accessibility.md) | 全ユーザー | キーボード操作、スクリーンリーダー対応（英語のみ） |
+| [アクセシビリティ声明](./portal-accessibility.md) | 全ユーザー | キーボード操作、スクリーンリーダー対応 |

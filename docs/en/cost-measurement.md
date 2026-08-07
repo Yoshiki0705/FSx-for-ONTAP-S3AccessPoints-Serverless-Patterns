@@ -1,5 +1,7 @@
 # Cost Measurement — Sandbox Actual Costs
 
+> 🌐 Language: **English** | [日本語](../ja/cost-measurement.md)
+
 > Methodology for measuring real costs from AWS Cost Explorer after running the portal sandbox.
 
 ## How to Measure

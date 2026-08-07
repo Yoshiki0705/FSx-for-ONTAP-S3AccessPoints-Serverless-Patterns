@@ -1277,7 +1277,7 @@ arpResponseSweepNote: "Les blocages se lèvent d'eux-mêmes à l'échéance. Pou
     "SnapLock ne peut pas être activé après coup sur un volume existant ; c'est une contrainte ONTAP.",
   slNewVolumeOnlyHow:
     "Si vous avez besoin d'un volume SnapLock, créez-en un depuis la gestion des volumes.",
-  fcacheMetricsHint: "Métriques : disponibles dans ONTAP System Manager",
+  fcacheMetricsHint: "Métriques : via Amazon CloudWatch ou l'API REST ONTAP",
   vhDiffTitle: "Différences entre versions",
   vhDiffNotice:
     "La comparaison du contenu de deux snapshots est prévue pour une version ultérieure. Pour l'instant, la liste des snapshots est affichée.",
