@@ -268,6 +268,8 @@ arpResponseSweepNote: "Los bloqueos se levantan por sí solos al vencer el plazo
   rmNewRetentionDays: "Nueva retención (días)",
   rmRetentionHint: "SnapLock Compliance: no se puede acortar. Solo extensión.",
   rmRetentionUpdated: "Retención actualizada",
+  rmRetentionInvalid:
+    "El formato de uno de los períodos de retención no es válido. Use un período ISO 8601, por ejemplo P30D, P6M o P1Y.",
   rmDays: "días",
   rmApply: "Aplicar",
   // --- Resource Management: Quotas ---

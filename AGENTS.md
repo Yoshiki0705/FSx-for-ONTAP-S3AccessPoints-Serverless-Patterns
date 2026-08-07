@@ -46,6 +46,11 @@ make drift
 python3 scripts/check_portal_action_params.py
 python3 scripts/check_portal_action_params.py --list-opaque
 
+# Dispatch parameter types: verify the generated module against the handlers,
+# and regenerate it after changing a handler's parameters
+python3 scripts/portal_action_types.py --check
+python3 scripts/portal_action_types.py --emit > solutions/amplify-portal/src/lib/dispatchActions.ts
+
 # Stale claims in the published blog posts (needs network; not a PR gate)
 make drift-published
 
@@ -261,7 +266,16 @@ Before submitting changes, run:
    reads `snapshotId` and `expiryTime` compiles, lints, renders a button and fails
    on every click. One shipped that way. If you add a dispatch call through a new
    wrapper shape, check `--list-opaque` afterwards — a call the checker cannot read
-   is a call it cannot defend.
+   is a call it cannot defend. It currently reads every call site; keep it that way
+   by writing action names as literals rather than computing them.
+3b. Reach the dispatch endpoints through `src/lib/dispatch.ts`, not
+   `client.mutations.*` directly. The helpers bind each action to the parameters its
+   handler reads, with identifiers, instants and durations branded, so a volume name
+   cannot be passed where a UUID belongs. After changing a handler's parameters,
+   regenerate `src/lib/dispatchActions.ts` — `make drift` fails until it matches.
+   Brand a value where it arrives from ONTAP (in the response interface), never at
+   the call site: branding at the point of use accepts whatever string is in scope,
+   which is the mistake being prevented.
    If the change **removes a limitation** (ships something the docs told readers
    to build themselves), also run `make drift-published`: two published articles
    kept telling readers to build block expiry and multi-SVM fan-out for a month

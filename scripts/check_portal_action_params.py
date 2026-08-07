@@ -146,7 +146,22 @@ class ActionContract:
     handler: str
     # Each entry is a set of alternatives, at least one of which must be sent.
     groups: list[set[str]] = field(default_factory=list)
+    # Every key any code path in this Lambda reads. Deliberately wide: the shared
+    # prologue reads for all actions, so a narrower set reports parameters as
+    # ignored that the handler does use.
     read: set[str] = field(default_factory=set)
+    # Keys read on this action's own branch. Too narrow for the unread-parameter
+    # check, but it is what a parameter type should contain — a generated interface
+    # built from `read` would let every action accept every key the Lambda knows.
+    branch_read: set[str] = field(default_factory=set)
+    # Values a key is restricted to, taken from the handler's own guard
+    # (`if mode not in ("GOVERNANCE", "COMPLIANCE"): return ...`).
+    #
+    # Read rather than guessed, because the same parameter name means different sets
+    # in different actions: `protocol` is validated against nfs/cifs/s3 for one
+    # action and carries ONTAP's FPolicy values (cifs/nfsv3/nfsv4) for another. A
+    # table keyed on the name alone got that wrong and rejected working code.
+    enums: dict[str, tuple[str, ...]] = field(default_factory=dict)
 
     def unsatisfied(self, sent: set[str]) -> list[set[str]]:
         """Requirement groups no key in `sent` satisfies, each reported once.
@@ -238,6 +253,8 @@ class EventKeyVisitor(ast.NodeVisitor):
         # How many enclosing conditional branches we are inside. A guard is only a
         # requirement of the action when nothing conditions it.
         self._conditional_depth = 0
+        # payload key -> the values the handler restricts it to
+        self.enums: dict[str, tuple[str, ...]] = {}
 
     # --- reads -------------------------------------------------------------
 
@@ -320,6 +337,12 @@ class EventKeyVisitor(ast.NodeVisitor):
     # --- guards ------------------------------------------------------------
 
     def visit_If(self, node: ast.If) -> None:
+        if _returns_immediately(node.body) and self._conditional_depth == 0:
+            for key, allowed in _membership_constraints(node.test, self.bindings).items():
+                # A second guard on the same key narrows rather than replaces, but no
+                # handler does that, so first one wins and stays predictable.
+                self.enums.setdefault(key, allowed)
+
         if _returns_immediately(node.body):
             # Presence is tracked by variable name, requirements by payload key, so
             # the names have to be resolved through the bindings before comparing.
@@ -447,6 +470,28 @@ def _expand(keys: set[str]) -> list[set[str]]:
     return [keys] if keys else []
 
 
+def _membership_constraints(test: ast.AST, bindings: dict[str, str]) -> dict[str, tuple[str, ...]]:
+    """Values a rejecting guard restricts a key to.
+
+    Matches `if <var> not in ("a", "b"):` where `<var>` was bound from the payload.
+    This is the handler stating its own accepted set, which is more reliable than any
+    table kept alongside it.
+    """
+    found: dict[str, tuple[str, ...]] = {}
+    for node in ast.walk(test):
+        if not (isinstance(node, ast.Compare) and len(node.ops) == 1 and isinstance(node.ops[0], ast.NotIn)):
+            continue
+        left, right = node.left, node.comparators[0]
+        if not (isinstance(left, ast.Name) and left.id in bindings):
+            continue
+        if not isinstance(right, (ast.Tuple, ast.List, ast.Set)):
+            continue
+        values = tuple(e.value for e in right.elts if isinstance(e, ast.Constant) and isinstance(e.value, str))
+        if len(values) == len(right.elts) and values:
+            found[bindings[left.id]] = values
+    return found
+
+
 def _presence_tested_names(test: ast.AST, event: str = "", constants: dict[str, str] | None = None) -> set[str]:
     """Names or keys this condition establishes are present, rather than valid."""
     found: set[str] = set()
@@ -473,8 +518,10 @@ def _collect(
     functions: dict[str, ast.FunctionDef],
     seen: set[str],
     constants: dict[str, str],
-) -> tuple[set[str], list[set[str]]]:
-    """Keys and requirement groups for `func`, following helpers it passes them to.
+) -> tuple[set[str], list[set[str]], dict[str, tuple[str, ...]]]:
+    """Keys, requirement groups and value constraints for `func`.
+
+    Follows helpers it passes the payload to.
 
     `payload` is the name of the variable holding the caller's parameters. It is
     not always `event`: the agent endpoint nests them, so its handler does
@@ -483,7 +530,7 @@ def _collect(
     """
     visitor = EventKeyVisitor(payload, constants)
     visitor.visit(func)
-    keys, groups = set(visitor.keys), list(visitor.groups)
+    keys, groups, enums = set(visitor.keys), list(visitor.groups), dict(visitor.enums)
 
     followed = {(name, position) for name, position in visitor.delegates}
     followed |= {(name, 0) for name in visitor.callbacks}
@@ -494,11 +541,15 @@ def _collect(
         callee = functions[name]
         if position >= len(callee.args.args):
             continue
-        sub_keys, sub_groups = _collect(callee, callee.args.args[position].arg, functions, seen | {name}, constants)
+        sub_keys, sub_groups, sub_enums = _collect(
+            callee, callee.args.args[position].arg, functions, seen | {name}, constants
+        )
         keys |= sub_keys
         groups.extend(sub_groups)
+        for key, allowed in sub_enums.items():
+            enums.setdefault(key, allowed)
 
-    return keys, groups
+    return keys, groups, enums
 
 
 def _branch_action(test: ast.AST) -> str | None:
@@ -615,14 +666,22 @@ def handler_contracts(path: Path, flattened: bool, injected: frozenset[str]) -> 
 
     contracts: dict[str, ActionContract] = {}
 
-    def record(actions: set[str], keys: set[str], groups: list[set[str]]) -> None:
+    def record(
+        actions: set[str],
+        keys: set[str],
+        groups: list[set[str]],
+        enums: dict[str, tuple[str, ...]],
+    ) -> None:
         for action in actions:
             contract = contracts.setdefault(action, ActionContract(handler=label))
             contract.read |= keys - injected
+            contract.branch_read |= keys - injected
             for group in groups:
                 trimmed = group - injected
                 if trimmed:
                     contract.groups.append(trimmed)
+            for key, allowed in enums.items():
+                contract.enums.setdefault(key, allowed)
 
     for node in ast.walk(tree):
         if not isinstance(node, ast.If):
@@ -640,7 +699,7 @@ def handler_contracts(path: Path, flattened: bool, injected: frozenset[str]) -> 
             type_comment=None,
         )
         ast.fix_missing_locations(wrapper)
-        record(actions, *_collect(wrapper, payload, functions, set(), constants))
+        record(actions, *_collect(wrapper, payload, functions, set(), constants))  # noqa: B026
 
     # Every key this Lambda reads anywhere. The prologue before the action branches
     # runs for all of them — `prefix` and `maxKeys` are read there, once, for every
@@ -655,11 +714,16 @@ def handler_contracts(path: Path, flattened: bool, injected: frozenset[str]) -> 
     module_keys: set[str] = set()
     for function in functions.values():
         if any(argument.arg in ("event", payload) for argument in function.args.args):
-            function_keys, _ = _collect(function, payload, functions, set(), constants)
+            function_keys, _, _ = _collect(function, payload, functions, set(), constants)
             module_keys |= function_keys
 
     for action in _default_actions(tree, {"event", payload}):
-        contracts.setdefault(action, ActionContract(handler=label))
+        contract = contracts.setdefault(action, ActionContract(handler=label))
+        # The default action *is* the module's own code path, so the module's reads
+        # are its branch reads. Leaving these empty gave it no parameters at all,
+        # and a generated type saying `listSnapshots` takes nothing rejected the
+        # `maxResults` every caller sends.
+        contract.branch_read |= module_keys - injected
     for contract in contracts.values():
         contract.read |= module_keys - injected
 
@@ -682,11 +746,10 @@ ACTION_RE = re.compile(r"""(?:^|[\s,{])action:\s*["'](?P<action>[A-Za-z][A-Za-z0
 # so callers pass a literal that this check can still read.
 USE_ADMIN_API_RE = re.compile(r"const\s*\{(?P<names>[^}]*)\}\s*=\s*useAdminApi\s*\(")
 
-# A component-local wrapper: an arrow function that forwards to a dispatch endpoint
-# with a computed action. Its own callers name the action literally.
-LOCAL_WRAPPER_RE = re.compile(
-    r"const\s+(?P<name>[A-Za-z][A-Za-z0-9_]*)\s*=\s*(?:async\s*)?\(",
-)
+# A `const NAME = ...` declaration. Used to find which function a dispatch call with
+# a computed action sits inside, so that function can be recognised as a wrapper and
+# its own callers read instead.
+LOCAL_WRAPPER_RE = re.compile(r"const\s+(?P<name>[A-Za-z][A-Za-z0-9_]*)\s*=\s*")
 
 
 def _blank_comments(source: str) -> str:
@@ -798,6 +861,9 @@ def call_sites(dispatch_endpoints: set[str]) -> tuple[list[CallSite], int]:
         # the real source. Without this the usage example in the admin hook's own
         # doc comment was read as a call and reported as a broken one.
         text = _blank_comments(path.read_text())
+        wrappers = _wrapper_endpoints(text, dispatch_endpoints)
+        wrapper_bodies = _wrapper_body_ranges(text, wrappers)
+
         for call in DISPATCH_CALL_RE.finditer(text):
             endpoint = call.group("endpoint")
             if endpoint not in dispatch_endpoints:
@@ -816,7 +882,13 @@ def call_sites(dispatch_endpoints: set[str]) -> tuple[list[CallSite], int]:
 
             action_match = ACTION_RE.search(body)
             if action_match is None:
-                # The action is a variable, as in a shared runAction(name, ...).
+                # A wrapper forwards whatever action it is given, so its own body is
+                # the mechanism the indirect scan reads through, not a gap in
+                # coverage. Counting these as blind spots overstated the blind spot
+                # by the number of wrappers and hid the calls that really are
+                # unreadable behind them.
+                if any(start <= call.start() <= end for start, end in wrapper_bodies):
+                    continue
                 opaque_count += 1
                 OPAQUE_LOCATIONS.append(f"{location} ({endpoint}: action is computed)")
                 continue
@@ -839,9 +911,26 @@ def call_sites(dispatch_endpoints: set[str]) -> tuple[list[CallSite], int]:
         # unchecked.
         indirect, still_opaque = _indirect_sites(path, text, dispatch_endpoints)
         sites.extend(indirect)
-        opaque_count += still_opaque
+        opaque_count += len(still_opaque)
+        OPAQUE_LOCATIONS.extend(still_opaque)
 
     return sites, opaque_count
+
+
+def _wrapper_body_ranges(text: str, wrappers: dict[str, str]) -> list[tuple[int, int]]:
+    """Character ranges of the recognised wrappers' own definitions.
+
+    A dispatch call inside one of these forwards an action supplied by its caller,
+    which the indirect scan reads. Knowing where they are is what separates "this
+    call cannot be checked" from "this call is how the checking works".
+    """
+    ranges: list[tuple[int, int]] = []
+    for name in wrappers:
+        for match in re.finditer(rf"\b(?:const|function)\s+{re.escape(name)}\b", text):
+            body = _object_body(text, match.end())
+            if body:
+                ranges.append((match.start(), body[1]))
+    return ranges
 
 
 def _wrapper_endpoints(text: str, dispatch_endpoints: set[str]) -> dict[str, str]:
@@ -857,8 +946,8 @@ def _wrapper_endpoints(text: str, dispatch_endpoints: set[str]) -> dict[str, str
             elif name == "mutate" and "adminMutation" in dispatch_endpoints:
                 wrappers[name] = "adminMutation"
 
-    # Component-local wrappers: the endpoint call sits inside the arrow function, so
-    # the nearest preceding declaration owns it.
+    # Component-local wrappers: a function that forwards whatever action it is given.
+    declarations = _declaration_ranges(text)
     for call in DISPATCH_CALL_RE.finditer(text):
         endpoint = call.group("endpoint")
         if endpoint not in dispatch_endpoints:
@@ -866,22 +955,50 @@ def _wrapper_endpoints(text: str, dispatch_endpoints: set[str]) -> dict[str, str
         argument = _object_body(text, call.end() - 1)
         if argument is None or ACTION_RE.search(argument[0]):
             continue
-        declaration = None
-        for candidate in LOCAL_WRAPPER_RE.finditer(text, 0, call.start()):
-            declaration = candidate
-        if declaration:
-            wrappers.setdefault(declaration.group("name"), endpoint)
+        name = _innermost_declaration(declarations, call.start())
+        if name:
+            wrappers.setdefault(name, endpoint)
     return wrappers
 
 
-def _indirect_sites(path: Path, text: str, dispatch_endpoints: set[str]) -> tuple[list[CallSite], int]:
-    """Call sites that name their action when calling a wrapper."""
+def _declaration_ranges(text: str) -> list[tuple[str, int, int]]:
+    """`const NAME = ...` declarations with a braced body, as (name, start, end)."""
+    found: list[tuple[str, int, int]] = []
+    for match in LOCAL_WRAPPER_RE.finditer(text):
+        body = _object_body(text, match.end())
+        if body:
+            found.append((match.group("name"), match.start(), body[1]))
+    return found
+
+
+def _innermost_declaration(declarations: list[tuple[str, int, int]], position: int) -> str | None:
+    """The name of the declaration whose body most closely encloses `position`.
+
+    Enclosing, not merely preceding. Taking the nearest declaration *before* the call
+    named whichever unrelated `const` happened to sit above it, so `isTransient`,
+    `clearSuccess` and `toggleOp` were each treated as a dispatch wrapper — and every
+    call to them was then reported as an unreadable dispatch.
+    """
+    best: tuple[str, int] | None = None
+    for name, start, end in declarations:
+        if start <= position <= end and (best is None or start > best[1]):
+            best = (name, start)
+    return best[0] if best else None
+
+
+def _indirect_sites(path: Path, text: str, dispatch_endpoints: set[str]) -> tuple[list[CallSite], list[str]]:
+    """Call sites that name their action when calling a wrapper.
+
+    Returns the readable ones and the locations of those that are not, so the
+    unreadable calls can be named rather than merely counted.
+    """
     wrappers = _wrapper_endpoints(text, dispatch_endpoints)
     if not wrappers:
-        return [], 0
+        return [], []
 
     sites: list[CallSite] = []
-    unreadable = 0
+    unreadable: list[str] = []
+    wrapper_bodies = _wrapper_body_ranges(text, wrappers)
     pattern = re.compile(
         r"\b(?P<name>" + "|".join(re.escape(n) for n in sorted(wrappers)) + r")\s*[<(]",
     )
@@ -889,16 +1006,22 @@ def _indirect_sites(path: Path, text: str, dispatch_endpoints: set[str]) -> tupl
         open_paren = text.find("(", match.start())
         if open_paren == -1:
             continue
+        line = text.count("\n", 0, match.start()) + 1
+        location = f"{path.relative_to(PORTAL)}:{line}"
+        endpoint = wrappers[match.group("name")]
+
+        # A wrapper naming itself inside its own definition is the recursive call
+        # of a `useCallback`, not a call site.
+        if any(start <= match.start() <= end for start, end in wrapper_bodies):
+            continue
+
         literal = re.match(
             r"""\(\s*["'](?P<action>[A-Za-z][A-Za-z0-9_]*)["']\s*(?P<rest>[,)])""",
             text[open_paren:],
         )
         if not literal:
-            unreadable += 1
+            unreadable.append(f"{location} ({endpoint} via {match.group('name')}: action is computed)")
             continue
-        line = text.count("\n", 0, match.start()) + 1
-        location = f"{path.relative_to(PORTAL)}:{line}"
-        endpoint = wrappers[match.group("name")]
         if literal.group("rest") == ")":
             sites.append(CallSite(location, endpoint, literal.group("action"), set()))
             continue
@@ -926,7 +1049,10 @@ def contracts_for(endpoint: Endpoint) -> dict[str, ActionContract] | None:
         for action, contract in found.items():
             if action in merged:
                 merged[action].read |= contract.read
+                merged[action].branch_read |= contract.branch_read
                 merged[action].groups.extend(contract.groups)
+                for key, allowed in contract.enums.items():
+                    merged[action].enums.setdefault(key, allowed)
             else:
                 merged[action] = contract
     return merged if dispatches else None

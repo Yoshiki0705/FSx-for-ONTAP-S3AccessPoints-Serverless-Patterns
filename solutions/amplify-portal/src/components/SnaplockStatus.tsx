@@ -1,16 +1,11 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { generateClient } from "aws-amplify/data";
-import type { Schema } from "../../amplify/data/resource";
 import { useTranslation } from "../i18n";
 import { errorMessage, unwrap } from "../lib/portalQuery";
+import { adminMutate, adminQuery, dispatch, protectionMutate, protectionQuery } from "../lib/dispatch";
+import { daysFromNow, type SnapshotId } from "../lib/dispatchActions";
 import { SnaplockConfirmDialog } from "./SnaplockConfirmDialog";
-import { parseResponse } from "../utils/parseResponse";
 import type { SnaplockIntent } from "../utils/snaplockConsequences";
-
-const client = generateClient<Schema>();
-
-// Parse the JSON string response from generic dispatch endpoints
 
 interface SnaplockData {
   type: string;
@@ -31,7 +26,14 @@ interface LockedSnapshot {
   expiryTime: string;
   snaplockExpiryTime: string;
   isLocked: boolean;
-  snapshotId: string;
+  /**
+   * The snapshot's UUID, branded at the boundary it arrives on.
+   *
+   * Branding here rather than where it is used is the point: a value branded at the
+   * call site could be a name that happened to be in scope, which is the mistake
+   * this is meant to catch.
+   */
+  snapshotId: SnapshotId;
 }
 
 interface SnaplockVolume {
@@ -45,7 +47,7 @@ interface SnaplockVolume {
 interface UnlockedSnapshot {
   name: string;
   createTime: string;
-  snapshotId: string;
+  snapshotId: SnapshotId;
 }
 
 /**
@@ -72,7 +74,10 @@ export function SnaplockStatus() {
   // S3 Object Lock configuration form
   const [s3BucketFilter, setS3BucketFilter] = useState("");
   const [s3SelectedBucket, setS3SelectedBucket] = useState("");
-  const [s3LockMode, setS3LockMode] = useState("GOVERNANCE");
+  // Narrowed to the two modes ONTAP accepts, so a third value cannot reach the
+  // action. It used to be a bare string, and the action's own type is the only
+  // thing that would have noticed.
+  const [s3LockMode, setS3LockMode] = useState<"GOVERNANCE" | "COMPLIANCE">("GOVERNANCE");
   const [s3LockDays, setS3LockDays] = useState(1);
   const [s3Configuring, setS3Configuring] = useState(false);
   const [showS3Config, setShowS3Config] = useState(false);
@@ -89,12 +94,7 @@ export function SnaplockStatus() {
         volumeName?: string;
         snaplock?: SnaplockData;
         snapshotLockingEnabled?: boolean;
-      }>(
-        client.queries.protectionQuery({
-          action: "getSnaplockStatus",
-          params: JSON.stringify({}),
-        }),
-      ),
+      }>(dispatch("protectionQuery", { action: "getSnaplockStatus" })),
   });
 
   // Locked and unlocked come from one listing, so they are split here rather
@@ -102,12 +102,10 @@ export function SnaplockStatus() {
   const snapshotsQuery = useQuery({
     queryKey: ["protection", "listSnapshots", 50],
     queryFn: async () => {
-      const data = parseResponse<{ snapshots?: LockedSnapshot[] }>(
-        await client.queries.protectionQuery({
-          action: "listSnapshots",
-          params: JSON.stringify({ maxResults: 50 }),
-        }),
-      );
+      const data = await protectionQuery<{ snapshots?: LockedSnapshot[] }>({
+        action: "listSnapshots",
+        params: { maxResults: 50 },
+      });
       return data?.snapshots ?? [];
     },
   });
@@ -115,12 +113,7 @@ export function SnaplockStatus() {
   const volumesQuery = useQuery({
     queryKey: ["admin", "snaplockVolumes"],
     queryFn: async () => {
-      const data = parseResponse<{ volumes?: SnaplockVolume[] }>(
-        await client.queries.adminQuery({
-          action: "listVolumes",
-          params: JSON.stringify({}),
-        }),
-      );
+      const data = await adminQuery<{ volumes?: SnaplockVolume[] }>({ action: "listVolumes" });
       return (data?.volumes ?? []).filter(
         (v) => v.snaplockType && v.snaplockType !== "non_snaplock",
       );
@@ -130,19 +123,13 @@ export function SnaplockStatus() {
   const s3LockQuery = useQuery({
     queryKey: ["admin", "getS3ObjectLockStatus"],
     queryFn: async () => {
-      const data = parseResponse<{
+      const data = await adminQuery<{
         configured: boolean;
         bucket: string | null;
         objectLockEnabled: boolean;
         defaultRetention: { mode: string; days?: number; years?: number } | null;
         message?: string;
-        error?: string;
-      }>(
-        await client.queries.adminQuery({
-          action: "getS3ObjectLockStatus",
-          params: JSON.stringify({}),
-        }),
-      );
+      }>({ action: "getS3ObjectLockStatus" });
       return data ?? null;
     },
   });
@@ -153,12 +140,10 @@ export function SnaplockStatus() {
     queryKey: ["admin", "listS3Buckets", s3BucketFilter],
     enabled: showS3Config,
     queryFn: async () => {
-      const data = parseResponse<{ buckets?: { name: string }[] }>(
-        await client.queries.adminQuery({
-          action: "listS3Buckets",
-          params: JSON.stringify({ nameFilter: s3BucketFilter }),
-        }),
-      );
+      const data = await adminQuery<{ buckets?: { name: string }[] }>({
+        action: "listS3Buckets",
+        params: { nameFilter: s3BucketFilter },
+      });
       return data?.buckets ?? [];
     },
   });
@@ -233,16 +218,15 @@ export function SnaplockStatus() {
     setS3Configuring(true);
     setError(null);
     try {
-      const response = await client.mutations.adminMutation({
+      const data = await adminMutate<{ success?: boolean }>({
         action: "putS3ObjectLockRetention",
-        params: JSON.stringify({
+        params: {
           bucket: s3SelectedBucket,
           mode: s3LockMode,
           days: s3LockDays,
           acknowledgeIrreversible: true,
-        }),
+        },
       });
-      const data = parseResponse<{ success?: boolean; error?: string }>(response);
       if (data) {
         if (data.success) {
           setSuccess(t("lockS3Configured"));
@@ -268,17 +252,22 @@ export function SnaplockStatus() {
       // a duration. Sending the latter made this button fail every time with
       // "snapshotId and expiryTime required" — the version history panel had the
       // contract right, this one did not.
-      const expiry = new Date();
-      expiry.setDate(expiry.getDate() + lockRetentionDays);
-      const response = await client.mutations.protectionMutation({
+      //
+      // The UUID is taken from the listing rather than from the select's value: a
+      // DOM value is a string, and branding one at this point would accept whatever
+      // string was there. Resolving it also catches a selection left stale by a
+      // reload, which would previously have been sent as-is.
+      const selected = lockableSnapshots.find((s) => s.snapshotId === lockTargetSnap);
+      if (!selected) { setError(t("lockSelectSnapshotRequired")); return; }
+
+      const data = await protectionMutate<{ success?: boolean }>({
         action: "lockSnapshot",
-        params: JSON.stringify({
-          snapshotId: lockTargetSnap,
-          expiryTime: expiry.toISOString(),
+        params: {
+          snapshotId: selected.snapshotId,
+          expiryTime: daysFromNow(lockRetentionDays),
           acknowledgeIrreversible: true,
-        }),
+        },
       });
-      const data = parseResponse<{ success?: boolean; error?: string }>(response);
       if (data) {
         if (data.success) {
           setSuccess(t("lockSnapshotLocked"));
@@ -551,7 +540,14 @@ export function SnaplockStatus() {
                 </div>
                 <div className="form-group">
                   <label>{t("lockS3Mode")}</label>
-                  <select value={s3LockMode} onChange={(e) => setS3LockMode(e.target.value)}>
+                  {/* A select yields a string, so the two options are narrowed back
+                      here rather than widening the state to accept a third mode. */}
+                  <select
+                    value={s3LockMode}
+                    onChange={(e) =>
+                      setS3LockMode(e.target.value === "COMPLIANCE" ? "COMPLIANCE" : "GOVERNANCE")
+                    }
+                  >
                     <option value="GOVERNANCE">Governance — {t("lockS3GovernanceHint")}</option>
                     <option value="COMPLIANCE">Compliance — {t("lockS3ComplianceHint")}</option>
                   </select>
