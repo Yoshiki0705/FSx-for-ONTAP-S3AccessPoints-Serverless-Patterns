@@ -370,6 +370,58 @@ body {
   opacity: 1;
 }
 
+/* Textract / Comprehend panel, above the file chat it feeds. */
+.doc-analysis-toggle {
+  font-size: 0.8rem;
+  padding: 4px 10px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-surface);
+  cursor: pointer;
+}
+
+.doc-analysis-panel {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  margin: 0.5rem 0;
+  padding: 0.6rem;
+}
+
+.doc-analysis-actions {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin: 0.5rem 0;
+}
+
+.doc-analysis-result textarea {
+  font-family: monospace;
+  font-size: 0.75rem;
+  width: 100%;
+}
+
+.doc-analysis-result h5 {
+  font-size: 0.8rem;
+  margin: 0.5rem 0 0.25rem;
+}
+
+.doc-analysis-json {
+  background: var(--color-bg);
+  border-radius: 4px;
+  font-size: 0.72rem;
+  max-height: 16rem;
+  overflow: auto;
+  padding: 0.5rem;
+}
+
+.doc-analysis-file {
+  margin: 0.4rem 0 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 /* Glue Data Catalog browser: three columns that narrow left to right
    (databases, tables, that table's schema). */
 .catalog-toggle {

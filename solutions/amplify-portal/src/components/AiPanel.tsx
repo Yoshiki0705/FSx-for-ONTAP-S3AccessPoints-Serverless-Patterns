@@ -2,6 +2,8 @@ import { useState, useCallback } from "react";
 import { generateClient } from "aws-amplify/data";
 import type { Schema } from "../../amplify/data/resource";
 import { useTranslation } from "../i18n";
+import { DocumentAnalysis } from "./DocumentAnalysis";
+import { isRegulatedPath } from "../utils/regulatedPath";
 
 const client = generateClient<Schema>();
 
@@ -111,6 +113,14 @@ export function AiPanel({ selectedFileKey, selectedFileName }: AiPanelProps) {
           {selectedFileName}
         </span>
       </div>
+
+      {/* A scanned document has no text layer for the chat below to read, so
+          extraction sits above it rather than beside it. */}
+      <DocumentAnalysis
+        fileKey={selectedFileKey}
+        fileName={selectedFileName ?? selectedFileKey}
+        blocked={isRegulatedPath(selectedFileKey)}
+      />
 
       <div className="ai-panel-messages" role="log" aria-label={t("aiTitle")}>
         {messages.length === 0 && (

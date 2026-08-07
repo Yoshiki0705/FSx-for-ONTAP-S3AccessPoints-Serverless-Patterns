@@ -17,6 +17,7 @@ import {
   TRASH_PREFIX,
 } from "./FileLifecycle";
 import { useTranslation } from "../i18n";
+import { isRegulatedPath } from "../utils/regulatedPath";
 
 interface FileExplorerProps {
   onSelectPrefix: (prefix: string) => void;
@@ -84,13 +85,6 @@ export function FileExplorer({
   const [cloneAliasDraft, setCloneAliasDraft] = useState("");
   const [cloneAlias, setCloneAlias] = useState("");
   const { t } = useTranslation();
-
-  /** PHI/PII path detection — blocks AI processing for regulated data folders */
-  const isPhiPath = (path: string): boolean => {
-    const lower = path.toLowerCase();
-    return /\/(dicom|phi|pii|hipaa|protected-health)[/-]/.test(`/${lower}`) ||
-           lower.startsWith("dicom/") || lower.startsWith("phi/") || lower.startsWith("pii/");
-  };
 
   // S3 continuation tokens are exactly what useInfiniteQuery models, so "load
   // more" appends a page instead of the loader concatenating onto local state.
@@ -185,10 +179,10 @@ export function FileExplorer({
         <button
           className="process-btn"
           onClick={() => onSelectPrefix(currentPrefix)}
-          title={isPhiPath(currentPrefix) ? t("aiPhiBlocked") : t("filesProcessFolder")}
-          disabled={!portalSettings.processingEnabled || isPhiPath(currentPrefix)}
+          title={isRegulatedPath(currentPrefix) ? t("aiPhiBlocked") : t("filesProcessFolder")}
+          disabled={!portalSettings.processingEnabled || isRegulatedPath(currentPrefix)}
         >
-          {isPhiPath(currentPrefix) ? `🚫 ${t("aiPhiBlockedShort")}` : t("filesProcessFolder")}
+          {isRegulatedPath(currentPrefix) ? `🚫 ${t("aiPhiBlockedShort")}` : t("filesProcessFolder")}
         </button>
         <FolderDownload currentPrefix={currentPrefix} />
         <RestoreFromSnapshot currentPrefix={currentPrefix} />
