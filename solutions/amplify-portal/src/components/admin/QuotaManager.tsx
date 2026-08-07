@@ -1,15 +1,9 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { generateClient } from "aws-amplify/data";
-import type { Schema } from "../../../amplify/data/resource";
 import { useTranslation } from "../../i18n";
 import { errorMessage, unwrap } from "../../lib/portalQuery";
+import { adminMutate, dispatch } from "../../lib/dispatch";
 import { VolumeSelector } from "./VolumeSelector";
-import { parseResponse } from "../../utils/parseResponse";
-
-const client = generateClient<Schema>();
-
-// Parse the JSON string response from generic dispatch endpoints
 
 interface QuotaRule {
   uuid: string;
@@ -58,10 +52,7 @@ export function QuotaManager() {
     enabled: !!volumeName && activeTab === "rules",
     queryFn: () =>
       unwrap<{ rules?: QuotaRule[] }>(
-        client.queries.adminQuery({
-          action: "listQuotaRules",
-          params: JSON.stringify({ volumeName }),
-        }),
+        dispatch("adminQuery", { action: "listQuotaRules", params: { volumeName } }),
       ).then((d) => d?.rules ?? []),
   });
 
@@ -70,10 +61,7 @@ export function QuotaManager() {
     enabled: !!volumeName && activeTab === "report",
     queryFn: () =>
       unwrap<{ usage?: QuotaUsage[] }>(
-        client.queries.adminQuery({
-          action: "getQuotaReport",
-          params: JSON.stringify({ volumeName }),
-        }),
+        dispatch("adminQuery", { action: "getQuotaReport", params: { volumeName } }),
       ).then((d) => d?.usage ?? []),
   });
 
@@ -92,13 +80,15 @@ export function QuotaManager() {
   const handleCreate = async () => {
     setError(null);
     try {
-      const response = await client.mutations.adminMutation({ action: "createQuotaRule", params: JSON.stringify({
-        volumeName, type: newType, qtreeName: newType === "tree" ? newQtreeName : undefined,
-        userName: newType === "user" ? newUserName : undefined,
-        groupName: newType === "group" ? newGroupName : undefined,
-        spaceHardLimitGiB: newSpaceHard, spaceSoftLimitGiB: newSpaceSoft, filesHardLimit: newFilesHard,
-      }) });
-      const data = parseResponse<{ success?: boolean; error?: string }>(response);
+      const data = await adminMutate<{ success?: boolean }>({
+        action: "createQuotaRule",
+        params: {
+          volumeName, type: newType, qtreeName: newType === "tree" ? newQtreeName : undefined,
+          userName: newType === "user" ? newUserName : undefined,
+          groupName: newType === "group" ? newGroupName : undefined,
+          spaceHardLimitGiB: newSpaceHard, spaceSoftLimitGiB: newSpaceSoft, filesHardLimit: newFilesHard,
+        },
+      });
       if (data) {
         if (data.success) {
           setSuccess(t("rmQuotaCreated"));
@@ -113,8 +103,10 @@ export function QuotaManager() {
   const handleDelete = async (ruleUuid: string) => {
     if (!window.confirm(t("rmDeleteConfirm"))) return;
     try {
-      const response = await client.mutations.adminMutation({ action: "deleteQuotaRule", params: JSON.stringify({ruleUuid}) });
-      const data = parseResponse<{ success?: boolean; error?: string }>(response);
+      const data = await adminMutate<{ success?: boolean }>({
+        action: "deleteQuotaRule",
+        params: { ruleUuid },
+      });
       if (data) {
         if (data.success) { setSuccess(t("rmDeleted")); clearSuccess(); loadRules(); }
         else setError(data.error || "Delete failed");

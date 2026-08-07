@@ -1,12 +1,9 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { generateClient } from "aws-amplify/data";
-import type { Schema } from "../../../amplify/data/resource";
 import { useTranslation } from "../../i18n";
+import { adminMutate, adminQuery, type DispatchCall } from "../../lib/dispatch";
+import type { ParamsOf } from "../../lib/dispatchActions";
 import { errorMessage } from "../../lib/portalQuery";
-import { parseResponse } from "../../utils/parseResponse";
-
-const client = generateClient<Schema>();
 
 interface ClusterInfo {
   name: string;
@@ -46,7 +43,12 @@ interface InterfaceInfo {
 }
 
 interface ServiceInfo {
-  protocol: string;
+  /**
+   * Typed as the set the enable/disable action accepts, so a row can be handed
+   * straight to it. The listing and that action are the same handler's two halves,
+   * and it enumerates these three.
+   */
+  protocol: NonNullable<ParamsOf<"adminMutation", "setProtocolServiceEnabled">["protocol"]>;
   enabled: boolean;
   state: string;
   detail: string;
@@ -87,13 +89,7 @@ export function ClusterManager() {
   const isTransient = (msg?: string) =>
     !!msg && (msg.includes("Unknown action") || msg.includes("not configured"));
 
-  const query = async <T,>(action: string, params: Record<string, unknown> = {}) => {
-    const resp = await client.queries.adminQuery({
-      action,
-      params: JSON.stringify(params),
-    });
-    return parseResponse<T & { error?: string }>(resp);
-  };
+
 
   // One query per tab. Each tab fetches only what it renders, and the tab is
   // part of the key so going back to a tab shows its data straight away.
@@ -111,10 +107,10 @@ export function ClusterManager() {
         if (msg && !isTransient(msg)) throw new Error(msg);
       };
       if (tab === "overview") {
-        const info = await query<ClusterInfo>("getClusterInfo");
+        const info = await adminQuery<ClusterInfo>({ action: "getClusterInfo" });
         fail(info?.error);
-        const n = await query<{ nodes?: NodeInfo[] }>("listNodes");
-        const l = await query<{ licenses?: LicenseInfo[] }>("listLicenses");
+        const n = await adminQuery<{ nodes?: NodeInfo[] }>({ action: "listNodes" });
+        const l = await adminQuery<{ licenses?: LicenseInfo[] }>({ action: "listLicenses" });
         return {
           cluster: info ? { name: info.name, version: info.version } : null,
           nodes: n?.nodes ?? [],
@@ -122,14 +118,20 @@ export function ClusterManager() {
         };
       }
       if (tab === "interfaces") {
-        const i = await query<{ interfaces?: InterfaceInfo[] }>("listNetworkInterfaces");
+        const i = await adminQuery<{ interfaces?: InterfaceInfo[] }>({
+          action: "listNetworkInterfaces",
+        });
         fail(i?.error);
         return { interfaces: i?.interfaces ?? [] };
       }
       if (tab === "services") {
-        const s = await query<{ services?: ServiceInfo[] }>("listProtocolServices");
+        const s = await adminQuery<{ services?: ServiceInfo[] }>({
+          action: "listProtocolServices",
+        });
         fail(s?.error);
-        const d = await query<{ domains?: string[]; servers?: string[] }>("getDnsConfig");
+        const d = await adminQuery<{ domains?: string[]; servers?: string[] }>({
+          action: "getDnsConfig",
+        });
         return {
           services: s?.services ?? [],
           dns: {
@@ -138,7 +140,7 @@ export function ClusterManager() {
           },
         };
       }
-      const j = await query<{ jobs?: JobInfo[] }>("listJobs");
+      const j = await adminQuery<{ jobs?: JobInfo[] }>({ action: "listJobs" });
       fail(j?.error);
       return { jobs: j?.jobs ?? [] };
     },
@@ -164,16 +166,14 @@ export function ClusterManager() {
   const loadData = () => void refetch();
   const error = actionError ?? errorMessage(queryError, "Load failed");
 
-  const runAction = async (action: string, params: Record<string, unknown>) => {
+  // Takes the whole call rather than an action name and a loose bag, so each
+  // button's parameters are checked against the action it names.
+  const runAction = async (call: DispatchCall<"adminMutation">) => {
     setBusy(true);
     setError(null);
     setSuccess(null);
     try {
-      const resp = await client.mutations.adminMutation({
-        action,
-        params: JSON.stringify(params),
-      });
-      const data = parseResponse<{ success?: boolean; error?: string }>(resp);
+      const data = await adminMutate<{ success?: boolean }>(call);
       if (data?.success) {
         setSuccess(t("clActionDone"));
         setTimeout(() => setSuccess(null), 4000);
@@ -340,10 +340,9 @@ export function ClusterManager() {
                               className="rm-btn-danger-sm"
                               disabled={busy}
                               onClick={() =>
-                                runAction("setNetworkInterfaceEnabled", {
-                                  uuid: i.uuid,
-                                  enabled: false,
-                                  confirm: true,
+                                runAction({
+                                  action: "setNetworkInterfaceEnabled",
+                                  params: { uuid: i.uuid, enabled: false, confirm: true },
                                 })
                               }
                             >
@@ -367,7 +366,10 @@ export function ClusterManager() {
                           className="rm-btn-sm"
                           disabled={busy}
                           onClick={() =>
-                            runAction("setNetworkInterfaceEnabled", { uuid: i.uuid, enabled: true })
+                            runAction({
+                              action: "setNetworkInterfaceEnabled",
+                              params: { uuid: i.uuid, enabled: true },
+                            })
                           }
                         >
                           {t("clEnable")}
@@ -414,10 +416,9 @@ export function ClusterManager() {
                               className="rm-btn-danger-sm"
                               disabled={busy}
                               onClick={() =>
-                                runAction("setProtocolServiceEnabled", {
-                                  protocol: s.protocol,
-                                  enabled: false,
-                                  confirm: true,
+                                runAction({
+                                  action: "setProtocolServiceEnabled",
+                                  params: { protocol: s.protocol, enabled: false, confirm: true },
                                 })
                               }
                             >
@@ -441,9 +442,9 @@ export function ClusterManager() {
                           className="rm-btn-sm"
                           disabled={busy}
                           onClick={() =>
-                            runAction("setProtocolServiceEnabled", {
-                              protocol: s.protocol,
-                              enabled: true,
+                            runAction({
+                              action: "setProtocolServiceEnabled",
+                              params: { protocol: s.protocol, enabled: true },
                             })
                           }
                         >
@@ -486,9 +487,12 @@ export function ClusterManager() {
                 className="rm-btn-primary"
                 disabled={busy || !dnsDomains.trim() || !dnsServers.trim()}
                 onClick={() =>
-                  runAction("updateDnsConfig", {
-                    domains: dnsDomains.split(",").map((s) => s.trim()).filter(Boolean),
-                    servers: dnsServers.split(",").map((s) => s.trim()).filter(Boolean),
+                  runAction({
+                    action: "updateDnsConfig",
+                    params: {
+                      domains: dnsDomains.split(",").map((s) => s.trim()).filter(Boolean),
+                      servers: dnsServers.split(",").map((s) => s.trim()).filter(Boolean),
+                    },
                   })
                 }
               >

@@ -1,10 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
-import { generateClient } from "aws-amplify/data";
-import type { Schema } from "../../../amplify/data/resource";
 import { useTranslation } from "../../i18n";
+import { dispatch } from "../../lib/dispatch";
 import { errorMessage, unwrap } from "../../lib/portalQuery";
-
-const client = generateClient<Schema>();
 
 interface VolumeEfficiency {
   name: string;
@@ -33,7 +30,7 @@ export function EfficiencyPanel() {
     queryKey: ["admin", "getEfficiencyStats"],
     queryFn: () =>
       unwrap<{ stats?: EfficiencyStats }>(
-        client.queries.adminQuery({ action: "getEfficiencyStats", params: JSON.stringify({}) }),
+        dispatch("adminQuery", { action: "getEfficiencyStats" }),
       ),
   });
 

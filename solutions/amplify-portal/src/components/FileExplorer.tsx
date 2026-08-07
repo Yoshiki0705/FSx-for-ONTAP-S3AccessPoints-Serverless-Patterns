@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { useInfiniteQuery } from "@tanstack/react-query";
-import { generateClient } from "aws-amplify/data";
-import type { Schema } from "../../amplify/data/resource";
+import { fileQuery } from "../lib/dispatch";
 import { errorMessage } from "../lib/portalQuery";
 import { portalSettings } from "../portal-settings";
 import { FilePreview } from "./FilePreview";
@@ -12,11 +11,6 @@ import { FolderDownload } from "./FolderDownload";
 import { FileTagsBadges, FileTagsEditor } from "./FileTags";
 import { SnapshotCompare } from "./SnapshotCompare";
 import { useTranslation } from "../i18n";
-import { parseResponse } from "../utils/parseResponse";
-
-const client = generateClient<Schema>();
-
-// Parse the JSON string response from generic dispatch endpoints
 
 interface FileExplorerProps {
   onSelectPrefix: (prefix: string) => void;
@@ -107,19 +101,18 @@ export function FileExplorer({
     getNextPageParam: (last: FilePage) =>
       last.isTruncated ? last.nextContinuationToken ?? undefined : undefined,
     queryFn: async ({ pageParam }): Promise<FilePage> => {
-      const response = await client.queries.fileQuery({
-        action: "listFiles",
-        params: JSON.stringify({
-          prefix: currentPrefix,
-          maxKeys: 100,
-          continuationToken: pageParam,
-        }),
-      });
-      const parsed = parseResponse<{
+      const parsed = await fileQuery<{
         files?: FileItem[];
         nextContinuationToken?: string;
         isTruncated?: boolean;
-      }>(response);
+      }>({
+        action: "listFiles",
+        params: {
+          prefix: currentPrefix,
+          maxKeys: 100,
+          continuationToken: pageParam,
+        },
+      });
       return {
         files: (parsed?.files ?? []) as FileItem[],
         nextContinuationToken: parsed?.nextContinuationToken,

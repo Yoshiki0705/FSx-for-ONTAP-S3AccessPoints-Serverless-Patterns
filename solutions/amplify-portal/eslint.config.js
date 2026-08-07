@@ -109,6 +109,35 @@ export default tseslint.config(
     },
   },
   {
+    // The generic dispatch endpoints take an action name and a JSON blob, so a call
+    // made directly on the generated client has nothing to check it: TypeScript sees
+    // two strings. That is how a lock button shipped sending a snapshot name and a
+    // day count to an action that reads a UUID and an absolute instant.
+    //
+    // `src/lib/dispatch.ts` wraps them with the action union and per-action parameter
+    // types generated from the handlers, and is the one place allowed to reach the
+    // client. `folderMutation` is not listed: the folder download function never
+    // looks at `action`, so it has no action union to belong to and its own schema
+    // types are already specific.
+    files: ["src/**/*.{ts,tsx}"],
+    ignores: ["src/lib/dispatch.ts"],
+    rules: {
+      "no-restricted-syntax": [
+        "error",
+        {
+          selector:
+            "MemberExpression[object.property.name=/^(queries|mutations)$/]" +
+            "[property.name=/^(adminQuery|adminMutation|arpQuery|arpMutation|protectionQuery" +
+            "|protectionMutation|fileQuery|fileMutation|agentQuery)$/]",
+          message:
+            "Call the generic dispatch endpoints through src/lib/dispatch.ts " +
+            "(dispatch / adminQuery / adminMutate / …), which checks the action name " +
+            "and its parameters against the handler. A direct client call is unchecked.",
+        },
+      ],
+    },
+  },
+  {
     // Playwright specs are type-checked and run by Playwright's own runner and
     // are excluded from tsconfig, so linting them here would report unresolved
     // imports for a dependency that is intentionally provisioned via npx.

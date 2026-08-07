@@ -1,16 +1,20 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { generateClient } from "aws-amplify/data";
-import type { Schema } from "../../../amplify/data/resource";
 import { useTranslation } from "../../i18n";
 import { errorMessage, unwrap } from "../../lib/portalQuery";
-import { parseResponse } from "../../utils/parseResponse";
+import { adminMutate, dispatch } from "../../lib/dispatch";
+import type { PolicyUuid } from "../../lib/dispatchActions";
 
-const client = generateClient<Schema>();
-
-// Parse the JSON string response from generic dispatch endpoints
-
-interface QosPolicy { name: string; uuid: string; type: string; maxThroughputIops?: number; maxThroughputMbps?: number; expectedIops?: number; peakIops?: number; }
+interface QosPolicy {
+  name: string;
+  /** ONTAP's policy UUID, branded where it arrives. Not the policy name. */
+  uuid: PolicyUuid;
+  type: string;
+  maxThroughputIops?: number;
+  maxThroughputMbps?: number;
+  expectedIops?: number;
+  peakIops?: number;
+}
 
 /**
  * QoS Policy Manager — Create, view, delete QoS policies and assign to volumes.
@@ -40,7 +44,7 @@ export function QosPolicyManager() {
     queryKey: ["admin", "listQosPolicies"],
     queryFn: () =>
       unwrap<{ policies?: QosPolicy[] }>(
-        client.queries.adminQuery({ action: "listQosPolicies", params: JSON.stringify({}) }),
+        dispatch("adminQuery", { action: "listQosPolicies" }),
       ).then((d) => d?.policies ?? []),
   });
 
@@ -53,14 +57,16 @@ export function QosPolicyManager() {
   const handleCreate = async () => {
     if (!newName) { setError(t("rmQosNameRequired")); return; }
     try {
-      const response = await client.mutations.adminMutation({ action: "createQosPolicy", params: JSON.stringify({
-        name: newName, policyType,
-        maxIops: policyType === "fixed" ? maxIops : undefined,
-        maxMbps: policyType === "fixed" ? maxMbps : undefined,
-        expectedIops: policyType === "adaptive" ? expectedIops : undefined,
-        peakIops: policyType === "adaptive" ? peakIops : undefined,
-      }) });
-      const data = parseResponse<{ success?: boolean; error?: string }>(response);
+      const data = await adminMutate<{ success?: boolean }>({
+        action: "createQosPolicy",
+        params: {
+          name: newName, policyType,
+          maxIops: policyType === "fixed" ? maxIops : undefined,
+          maxMbps: policyType === "fixed" ? maxMbps : undefined,
+          expectedIops: policyType === "adaptive" ? expectedIops : undefined,
+          peakIops: policyType === "adaptive" ? peakIops : undefined,
+        },
+      });
       if (data) {
         if (data.success) {
           setResult(`${t("rmQosCreated")}: ${newName}`);
@@ -71,11 +77,13 @@ export function QosPolicyManager() {
     } catch (err) { setError(err instanceof Error ? err.message : "Failed"); }
   };
 
-  const handleDelete = async (uuid: string, name: string) => {
+  const handleDelete = async (uuid: PolicyUuid, name: string) => {
     if (!confirm(t("rmDeleteConfirm").replace("{name}", name))) return;
     try {
-      const response = await client.mutations.adminMutation({ action: "deleteQosPolicy", params: JSON.stringify({policyUuid: uuid}) });
-      const data = parseResponse<{ success?: boolean; error?: string }>(response);
+      const data = await adminMutate<{ success?: boolean }>({
+        action: "deleteQosPolicy",
+        params: { policyUuid: uuid },
+      });
       if (data) {
         if (data.success) { setResult(t("rmDeleted").replace("{name}", name)); loadPolicies(); }
         else setError(data.error || "Failed");

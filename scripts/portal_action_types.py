@@ -102,6 +102,20 @@ SCALARS: dict[str, str] = {
     "thresholdPercent": "number",
     "lookbackMinutes": "number",
     "priority": "number",
+    "spaceHardLimitGiB": "number",
+    "spaceSoftLimitGiB": "number",
+    "filesHardLimit": "number",
+    "maxIops": "number",
+    "maxMbps": "number",
+    "expectedIops": "number",
+    "peakIops": "number",
+    "index": "number",
+    "ruleIndex": "number",
+    "encryption": "boolean",
+    "continuouslyAvailable": "boolean",
+    "surgeAsNormal": "boolean",
+    # Epoch seconds, taken from the first message's timestamp.
+    "createdAt": "number",
     "confirm": "boolean",
     "enabled": "boolean",
     "mandatory": "boolean",
@@ -126,10 +140,16 @@ UNCHECKED_ENUMS: dict[tuple[str, str], str] = {
     # ONTAP REST POST /storage/volumes: snaplock.type, nas.security_style.
     ("createVolume", "snaplockType"): '"compliance" | "enterprise" | "non_snaplock"',
     ("createVolume", "securityStyle"): '"unix" | "ntfs" | "mixed"',
+    # agent-chat: SYSTEM_PROMPTS / TOOLS_BY_MODE are keyed by exactly these three,
+    # and an unknown mode falls back to "multi" silently rather than being refused.
+    ("chat", "mode"): '"multi" | "kb" | "agent"',
 }
 
 # Parameters that carry a list rather than one value.
 LISTS: dict[str, str] = {
+    # The plural of a branded identifier keeps the brand: a list of volume names is
+    # not a list of volume UUIDs any more than one name is one UUID.
+    "volumeUuids": "VolumeUuid[]",
     "remoteAddresses": "string[]",
     "excludedPaths": "string[]",
     "excludedExtensions": "string[]",
@@ -139,10 +159,26 @@ LISTS: dict[str, str] = {
     "fileOperations": "string[]",
     "accountIds": "string[]",
     "remoteVserverNames": "string[]",
+    "applications": "string[]",
+    "domains": "string[]",
+    "servers": "string[]",
+    "prepopulatePaths": "string[]",
+    "roRule": "string[]",
+    "rwRule": "string[]",
+    "superuser": "string[]",
+    "protocols": "string[]",
     "schedules": "string",  # JSON-encoded by the caller, so a string on the wire.
-    "agents": "string",
-    "messages": "string",
-    "tools": "string",
+    # Structured payloads, spelled out because the element shape is what the caller
+    # can get wrong. These four were previously declared `string` on the assumption
+    # that the caller encoded them; it does not — `dispatch` serialises the whole
+    # params object once, so a list arrives as a list and the handler reads it as
+    # one (`json.dumps(messages)` on the way into DynamoDB, `for h in history` on
+    # the way into Bedrock).
+    "tools": "string[]",
+    "history": "Array<{ role: string; content: string }>",
+    "messages": "Array<{ role: string; content: string; timestamp: number }>",
+    "agents": "Array<{ agentId: string; name: string; icon: string; role: string }>",
+    "image": "{ data: string; mediaType: string }",
 }
 
 BRAND_DEFINITIONS = """\

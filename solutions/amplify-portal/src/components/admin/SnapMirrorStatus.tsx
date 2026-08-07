@@ -1,12 +1,9 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { generateClient } from "aws-amplify/data";
-import type { Schema } from "../../../amplify/data/resource";
 import { useTranslation } from "../../i18n";
 import { errorMessage } from "../../lib/portalQuery";
-import { parseResponse } from "../../utils/parseResponse";
-
-const client = generateClient<Schema>();
+import { adminMutate, adminQuery, type DispatchCall } from "../../lib/dispatch";
+import type { SnapmirrorUuid } from "../../lib/dispatchActions";
 
 /** Success message per write action. */
 const SUCCESS_KEY = {
@@ -28,8 +25,25 @@ const CONFIRM_KEY = {
 type WriteAction = keyof typeof SUCCESS_KEY;
 type ConfirmAction = keyof typeof CONFIRM_KEY;
 
+/**
+ * One of the six SnapMirror write calls, with its own parameters.
+ *
+ * `Extract` narrows the endpoint's whole action union down to these six and keeps
+ * each one's parameters attached. That matters because the shapes genuinely differ:
+ * break, resync and delete require `confirm`, and update, resume and quiesce do not
+ * accept it. A single `(action, uuid, extra: Record<string, unknown>)` signature
+ * could not express that, and the compiler said so.
+ */
+type SnapmirrorCall = Extract<DispatchCall<"adminMutation">, { action: WriteAction }>;
+
 interface SnapMirrorRelationship {
-  uuid: string;
+  /**
+   * ONTAP's relationship UUID, branded where it arrives.
+   *
+   * Every write action here identifies the relationship by it, and the source and
+   * destination paths sit right beside it in this same object.
+   */
+  uuid: SnapmirrorUuid;
   sourcePath: string;
   sourceSvm: string;
   destinationPath: string;
@@ -68,9 +82,9 @@ export function SnapMirrorStatus() {
   } = useQuery({
     queryKey: ["admin", "listSnapmirrorRelationships"],
     queryFn: async () => {
-      const data = parseResponse<{ relationships?: SnapMirrorRelationship[]; error?: string }>(
-        await client.queries.adminQuery({ action: "listSnapmirrorRelationships", params: JSON.stringify({}) }),
-      );
+      const data = await adminQuery<{ relationships?: SnapMirrorRelationship[] }>({
+        action: "listSnapmirrorRelationships",
+      });
       // A dispatcher that has not been wired yet is an empty list, not a failure.
       if (
         data?.error &&
@@ -89,15 +103,15 @@ export function SnapMirrorStatus() {
   const error = actionError ?? errorMessage(queryError, "Failed to load relationships");
 
 
-  const toggleTransfers = async (uuid: string) => {
+  const toggleTransfers = async (uuid: SnapmirrorUuid) => {
     if (expandedUuid === uuid) { setExpandedUuid(null); return; }
     setExpandedUuid(uuid);
     setTransfersLoading(true);
     try {
-      const resp = await client.queries.adminQuery({
-        action: "getSnapmirrorTransfers", params: JSON.stringify({ relationshipUuid: uuid }),
+      const data = await adminQuery<{ transfers?: Transfer[] }>({
+        action: "getSnapmirrorTransfers",
+        params: { relationshipUuid: uuid },
       });
-      const data = parseResponse<{ transfers?: Transfer[]; error?: string }>(resp);
       setTransfers(data?.transfers || []);
     } catch { setTransfers([]); }
     finally { setTransfersLoading(false); }
@@ -111,22 +125,14 @@ export function SnapMirrorStatus() {
   };
 
   /** Run a write action, then refresh the list. */
-  const runAction = async (
-    action: WriteAction,
-    uuid: string,
-    extra: Record<string, unknown> = {}
-  ) => {
-    setBusyUuid(uuid);
+  const runAction = async (call: SnapmirrorCall) => {
+    setBusyUuid(call.params.relationshipUuid);
     setError(null);
     setSuccess(null);
     try {
-      const resp = await client.mutations.adminMutation({
-        action,
-        params: JSON.stringify({ relationshipUuid: uuid, ...extra }),
-      });
-      const data = parseResponse<{ success?: boolean; error?: string }>(resp);
+      const data = await adminMutate<{ success?: boolean }>(call);
       if (data?.success) {
-        setSuccess(t(SUCCESS_KEY[action]));
+        setSuccess(t(SUCCESS_KEY[call.action]));
         setTimeout(() => setSuccess(null), 4000);
         loadRelationships();
       } else {
@@ -173,7 +179,9 @@ export function SnapMirrorStatus() {
                 <button
                   className="rm-btn-sm"
                   disabled={busyUuid === r.uuid}
-                  onClick={() => runAction("updateSnapmirrorNow", r.uuid)}
+                  onClick={() =>
+                    runAction({ action: "updateSnapmirrorNow", params: { relationshipUuid: r.uuid } })
+                  }
                 >
                   ⟳ {t("smUpdateNow")}
                 </button>
@@ -181,7 +189,9 @@ export function SnapMirrorStatus() {
                   <button
                     className="rm-btn-sm"
                     disabled={busyUuid === r.uuid}
-                    onClick={() => runAction("resumeSnapmirror", r.uuid)}
+                    onClick={() =>
+                      runAction({ action: "resumeSnapmirror", params: { relationshipUuid: r.uuid } })
+                    }
                   >
                     ▶ {t("smResume")}
                   </button>
@@ -189,7 +199,9 @@ export function SnapMirrorStatus() {
                   <button
                     className="rm-btn-sm"
                     disabled={busyUuid === r.uuid}
-                    onClick={() => runAction("quiesceSnapmirror", r.uuid)}
+                    onClick={() =>
+                      runAction({ action: "quiesceSnapmirror", params: { relationshipUuid: r.uuid } })
+                    }
                   >
                     ⏸ {t("smQuiesce")}
                   </button>
@@ -226,7 +238,14 @@ export function SnapMirrorStatus() {
                   <button
                     className="rm-btn-danger-sm"
                     disabled={busyUuid === r.uuid}
-                    onClick={() => runAction(confirmFor.action, r.uuid, { confirm: true })}
+                    onClick={() =>
+                      // The three destructive actions all require `confirm`, which is
+                      // why they share this one confirmation path.
+                      runAction({
+                        action: confirmFor.action,
+                        params: { relationshipUuid: r.uuid, confirm: true },
+                      })
+                    }
                   >
                     {t("rmExecute")}
                   </button>

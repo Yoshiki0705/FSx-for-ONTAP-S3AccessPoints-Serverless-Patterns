@@ -1,14 +1,8 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { generateClient } from "aws-amplify/data";
-import type { Schema } from "../../amplify/data/resource";
 import { useTranslation } from "../i18n";
+import { fileQuery } from "../lib/dispatch";
 import { errorMessage } from "../lib/portalQuery";
-import { parseResponse } from "../utils/parseResponse";
-
-const client = generateClient<Schema>();
-
-// Parse the JSON string response from generic dispatch endpoints
 
 interface FileItem {
   key: string;
@@ -68,17 +62,17 @@ export function SnapshotCompare({ cloneApAlias, cloneLabel }: SnapshotComparePro
     queryFn: async () => {
       const prefix = currentPrefix;
       // Fetch both file lists in parallel
-      const [currentResp, cloneResp] = await Promise.all([
-        client.queries.fileQuery({ action: "listFiles", params: JSON.stringify({prefix, maxKeys: 500}) }),
-        client.queries.fileQuery({ action: "listFilesFromAp", params: JSON.stringify({
-          prefix,
-          maxKeys: 500,
-          apAlias: cloneApAlias,
-        }) }),
+      const [currData, clnData] = await Promise.all([
+        fileQuery<{ files?: FileItem[] }>({
+          action: "listFiles",
+          params: { prefix, maxKeys: 500 },
+        }),
+        fileQuery<{ files?: FileItem[] }>({
+          action: "listFilesFromAp",
+          params: { prefix, maxKeys: 500, apAlias: cloneApAlias },
+        }),
       ]);
 
-      const currData = parseResponse<{ files?: FileItem[] }>(currentResp);
-      const clnData = parseResponse<{ files?: FileItem[] }>(cloneResp);
       const currFiles = (currData?.files || []) as FileItem[];
       const clnFiles = (clnData?.files || []) as FileItem[];
 

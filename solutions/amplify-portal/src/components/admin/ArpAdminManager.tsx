@@ -1,18 +1,16 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { generateClient } from "aws-amplify/data";
-import type { Schema } from "../../../amplify/data/resource";
 import { useTranslation } from "../../i18n";
+import { adminMutate, adminQuery, dispatch } from "../../lib/dispatch";
+import type { ParamsOf, VolumeUuid } from "../../lib/dispatchActions";
 import { errorMessage, unwrap } from "../../lib/portalQuery";
-import { parseResponse } from "../../utils/parseResponse";
 
-const client = generateClient<Schema>();
-
-// Parse the JSON string response from generic dispatch endpoints
+/** The states ARP can be moved to, taken from the action that applies them. */
+type ArpState = NonNullable<ParamsOf<"adminMutation", "updateArpStateAdmin">["state"]>;
 
 interface ArpVolume {
   name: string;
-  uuid: string;
+  uuid: VolumeUuid;
   state: string;
   attackProbability: string;
   dryRunStartTime: string | null;
@@ -82,7 +80,7 @@ export function ArpAdminManager() {
     queryKey: ["admin", "listArpVolumes"],
     queryFn: () =>
       unwrap<{ volumes?: ArpVolume[]; summary?: ArpSummary }>(
-        client.queries.adminQuery({ action: "listArpVolumes", params: JSON.stringify({}) }),
+        dispatch("adminQuery", { action: "listArpVolumes" }),
       ),
   });
   const volumes = arp?.volumes ?? [];
@@ -93,7 +91,7 @@ export function ArpAdminManager() {
   const loadVolumes = () => void refetch();
   const error = actionError ?? errorMessage(queryError, "Failed to load volumes");
 
-  const handleStateChange = async (vol: ArpVolume, newState: string) => {
+  const handleStateChange = async (vol: ArpVolume, newState: ArpState) => {
     const confirmMsg = newState === "disabled"
       ? `${t("rmArpDisableWarning")}: ${vol.name}?`
       : `${t("rmArpChangeState")} ${vol.name} → ${newState}?`;
@@ -101,10 +99,10 @@ export function ArpAdminManager() {
 
     setError(null);
     try {
-      const response = await client.mutations.adminMutation({ action: "updateArpStateAdmin", params: JSON.stringify({
-        volumeUuid: vol.uuid, state: newState,
-      }) });
-      const data = parseResponse<{ success?: boolean; error?: string }>(response);
+      const data = await adminMutate<{ success?: boolean }>({
+        action: "updateArpStateAdmin",
+        params: { volumeUuid: vol.uuid, state: newState },
+      });
       if (data) {
         if (data.success) {
           setResult(`${vol.name} → ${newState}`); clearResult(); loadVolumes();
@@ -116,8 +114,10 @@ export function ArpAdminManager() {
   const handleViewSuspects = async (vol: ArpVolume) => {
     setSelectedVolume(vol); setSuspects([]);
     try {
-      const response = await client.queries.adminQuery({ action: "getArpSuspectsAdmin", params: JSON.stringify({volumeUuid: vol.uuid}) });
-      const data = parseResponse<{ suspects?: ArpSuspect[]; error?: string }>(response);
+      const data = await adminQuery<{ suspects?: ArpSuspect[] }>({
+        action: "getArpSuspectsAdmin",
+        params: { volumeUuid: vol.uuid },
+      });
       if (data) {
         if (data.error) setError(data.error);
         else setSuspects(data.suspects || []);
@@ -129,8 +129,10 @@ export function ArpAdminManager() {
     if (!selectedVolume) return;
     if (!window.confirm(t("rmArpClearSuspectsConfirm"))) return;
     try {
-      const response = await client.mutations.adminMutation({ action: "clearArpSuspects", params: JSON.stringify({volumeUuid: selectedVolume.uuid}) });
-      const data = parseResponse<{ success?: boolean; error?: string }>(response);
+      const data = await adminMutate<{ success?: boolean }>({
+        action: "clearArpSuspects",
+        params: { volumeUuid: selectedVolume.uuid },
+      });
       if (data) {
         if (data.success) { setResult(t("rmArpSuspectsCleared")); clearResult(); setSuspects([]); loadVolumes(); }
         else setError(data.error || "Failed");
@@ -141,10 +143,10 @@ export function ArpAdminManager() {
   const handleSurgeAsNormal = async (vol: ArpVolume) => {
     if (!window.confirm(t("rmArpSurgeConfirm"))) return;
     try {
-      const response = await client.mutations.adminMutation({ action: "updateArpSurgeParams", params: JSON.stringify({
-        volumeUuid: vol.uuid, surgeAsNormal: true,
-      }) });
-      const data = parseResponse<{ success?: boolean; error?: string }>(response);
+      const data = await adminMutate<{ success?: boolean }>({
+        action: "updateArpSurgeParams",
+        params: { volumeUuid: vol.uuid, surgeAsNormal: true },
+      });
       if (data) {
         if (data.success) { setResult(t("rmArpSurgeMarked")); clearResult(); loadVolumes(); }
         else setError(data.error || "Failed");
@@ -158,10 +160,10 @@ export function ArpAdminManager() {
     if (!window.confirm(`${t("rmArpBulkConfirm")} ${unprotected.length} ${t("rmArpVolumesTo")} ${bulkState}?`)) return;
 
     try {
-      const response = await client.mutations.adminMutation({ action: "enableArpBulk", params: JSON.stringify({
-        volumeUuids: unprotected, state: bulkState,
-      }) });
-      const data = parseResponse<{ successCount?: number; totalCount?: number; error?: string }>(response);
+      const data = await adminMutate<{ successCount?: number; totalCount?: number }>({
+        action: "enableArpBulk",
+        params: { volumeUuids: unprotected, state: bulkState },
+      });
       if (data) {
         setResult(`${data.successCount}/${data.totalCount} ${t("rmArpBulkDone")}`);
         clearResult(); setShowBulkEnable(false); loadVolumes();

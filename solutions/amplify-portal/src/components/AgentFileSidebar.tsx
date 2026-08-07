@@ -7,12 +7,9 @@
  */
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { generateClient } from "aws-amplify/data";
-import type { Schema } from "../../amplify/data/resource";
+import { dispatch } from "../lib/dispatch";
 import { errorMessage } from "../lib/portalQuery";
 import { useTranslation } from "../i18n";
-
-const client = generateClient<Schema>();
 
 interface FilePermissions {
   securityStyle: string;
@@ -64,9 +61,9 @@ export function AgentFileSidebar({ referencedFiles, visible, onClose }: AgentFil
     queryKey: ["protection", "getFilePermissions", selectedFile],
     enabled: !!selectedFile && visible,
     queryFn: async () => {
-      const response = await client.queries.protectionQuery({
+      const response = await dispatch("protectionQuery", {
         action: "getFilePermissions",
-        params: JSON.stringify({ filePath: selectedFile }),
+        params: { filePath: selectedFile },
       });
       const data = response.data
         ? ((typeof response.data === "string"
