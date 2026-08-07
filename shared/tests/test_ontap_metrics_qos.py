@@ -19,8 +19,8 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from shared.ontap_metrics import OntapMetricsCollector
 from shared.ontap_client import OntapClientError
+from shared.ontap_metrics import OntapMetricsCollector
 
 
 @pytest.fixture

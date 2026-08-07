@@ -14,14 +14,14 @@ from __future__ import annotations
 import os
 import sys
 
-from hypothesis import given, settings, strategies as st
+from hypothesis import given, settings
+from hypothesis import strategies as st
 
 # shared モジュールと UC9 関数のパスを追加
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "..", "..", "shared"))
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from functions.inference_comparison.handler import aggregate_by_variant
-
 
 # ---------------------------------------------------------------------------
 # Helper: Inference Routing Decision

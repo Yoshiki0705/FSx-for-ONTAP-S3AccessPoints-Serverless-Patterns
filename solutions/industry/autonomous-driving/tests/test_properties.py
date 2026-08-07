@@ -15,20 +15,20 @@ import json
 import os
 import sys
 
-from hypothesis import given, settings, strategies as st
+from hypothesis import given, settings
+from hypothesis import strategies as st
 
 # shared モジュールと UC9 関数のパスを追加
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "..", "..", "shared"))
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
+from functions.annotation_manager.handler import (
+    build_coco_annotations,
+)
 from functions.point_cloud_qc.handler import (
     parse_pcd_header,
     validate_point_cloud,
 )
-from functions.annotation_manager.handler import (
-    build_coco_annotations,
-)
-
 
 # ---------------------------------------------------------------------------
 # Helper: PCD ファイルデータ生成

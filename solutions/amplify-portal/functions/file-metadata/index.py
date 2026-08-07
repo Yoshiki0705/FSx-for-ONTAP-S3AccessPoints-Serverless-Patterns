@@ -1,4 +1,5 @@
 import os
+
 import boto3
 
 METADATA_TABLE = os.environ.get("AI_METADATA_TABLE_NAME", "")

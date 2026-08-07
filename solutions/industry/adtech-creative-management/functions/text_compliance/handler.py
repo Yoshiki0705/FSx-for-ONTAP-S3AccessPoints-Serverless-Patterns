@@ -42,13 +42,13 @@ from botocore.config import Config
 from botocore.exceptions import ClientError
 
 from shared.exceptions import lambda_error_handler
-from shared.observability import xray_subsegment, EmfMetrics, trace_lambda_handler
+from shared.observability import EmfMetrics, trace_lambda_handler, xray_subsegment
 from shared.retry_handler import (
-    execute_with_retry,
+    ErrorCategory,
     RetryConfig,
     RetryExhaustedError,
     categorize_error,
-    ErrorCategory,
+    execute_with_retry,
 )
 from shared.s3ap_helper import S3ApHelper
 

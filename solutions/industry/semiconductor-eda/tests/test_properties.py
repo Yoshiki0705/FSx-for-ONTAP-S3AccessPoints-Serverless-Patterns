@@ -18,7 +18,8 @@ import struct
 import sys
 from datetime import datetime, timezone
 
-from hypothesis import given, settings, strategies as st
+from hypothesis import given, settings
+from hypothesis import strategies as st
 
 # shared モジュールと UC6 関数のパスを追加
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "..", "..", "shared"))
@@ -30,7 +31,6 @@ from functions.metadata_extraction.handler import (
     _extract_metadata,
     _parse_gdsii_header,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helper: GDSII バイナリヘッダー構築

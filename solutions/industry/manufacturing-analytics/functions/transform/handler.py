@@ -24,8 +24,8 @@ import logging
 import os
 
 from shared.exceptions import lambda_error_handler
-from shared.s3ap_helper import S3ApHelper
 from shared.observability import EmfMetrics, trace_lambda_handler
+from shared.s3ap_helper import S3ApHelper
 
 logger = logging.getLogger(__name__)
 

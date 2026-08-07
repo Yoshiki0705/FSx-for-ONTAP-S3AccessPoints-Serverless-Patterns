@@ -21,8 +21,8 @@ import os
 from datetime import datetime, timezone
 
 from shared.exceptions import lambda_error_handler
+from shared.observability import EmfMetrics, trace_lambda_handler, xray_subsegment
 from shared.s3ap_helper import S3ApHelper
-from shared.observability import xray_subsegment, EmfMetrics, trace_lambda_handler
 
 logger = logging.getLogger(__name__)
 

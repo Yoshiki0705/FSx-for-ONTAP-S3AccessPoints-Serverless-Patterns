@@ -14,7 +14,6 @@ import pytest
 
 from shared.observability import EmfMetrics, trace_lambda_handler, xray_subsegment
 
-
 # ---------------------------------------------------------------------------
 # EmfMetrics flush output conforms to EMF spec
 # ---------------------------------------------------------------------------
@@ -302,6 +301,7 @@ class TestXraySubsegmentNoop:
             with patch.dict(sys.modules, {"aws_xray_sdk": None, "aws_xray_sdk.core": None}):
                 # Remove cached import if any
                 import importlib
+
                 import shared.observability
 
                 importlib.reload(shared.observability)

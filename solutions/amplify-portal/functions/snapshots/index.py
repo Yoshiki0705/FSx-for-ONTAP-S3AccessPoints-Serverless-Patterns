@@ -1,7 +1,8 @@
-import os
 import json
-import urllib3
+import os
+
 import boto3
+import urllib3
 
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 

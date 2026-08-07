@@ -32,8 +32,9 @@ Usage:
 from __future__ import annotations
 
 import os
-import pytest
+
 import boto3
+import pytest
 from botocore.config import Config
 
 # Skip if floci is not running

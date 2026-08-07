@@ -45,23 +45,43 @@ Documentation = "https://github.com/Yoshiki0705/FSx-for-ONTAP-S3AccessPoints-Ser
 Issues = "https://github.com/Yoshiki0705/FSx-for-ONTAP-S3AccessPoints-Serverless-Patterns/issues"
 
 [tool.ruff]
+# This is the only ruff configuration. A `ruff.toml` used to sit alongside it, and
+# because ruff prefers `ruff.toml` over `pyproject.toml` during discovery, that
+# file was the one in force everywhere — CI (`ruff check .`), editors, pre-commit —
+# while this block was dead. The two disagreed on target version, selected rules
+# and per-file ignores, so the settings written down here described a policy that
+# had never run. The values below are the union of both, and `ruff.toml` is gone.
+#
 # Lambda deploys on python3.13, but this is the *minimum* version ruff must keep
 # the source compatible with. It tracks `requires-python` (>=3.12), not the
 # deployed runtime — raising it to py313 would admit 3.13-only syntax into code
-# that still claims 3.12 support.
+# that still claims 3.12 support. The deleted `ruff.toml` said py39, which was
+# stale by three releases of the floor.
 target-version = "py312"
 line-length = 120
 
 [tool.ruff.lint]
-select = ["E", "F", "W", "I"]
+select = ["E", "F", "W", "I", "DTZ003"]
 ignore = [
-    "E501",   # Line too long — handled by formatter
-    "F841",   # Local variable assigned but never used (common in test fixtures)
+    "E501",  # Line too long — the formatter owns line length
+    # Both of the following were ignored by the config that was actually in force.
+    # They are kept rather than newly suppressed.
+    "E402",  # Import not at top — conftest and scripts adjust sys.path first
+    "E741",  # Ambiguous name (l, O, I)
+    "F841",  # Assigned but never used — common in test fixtures
 ]
 
 [tool.ruff.lint.per-file-ignores]
-"tests/**" = ["F811"]  # Redefined unused fixture names
-"**/conftest.py" = ["F401", "E402"]  # Unused imports + import order in conftest
+"**/conftest.py" = ["E402", "F401", "F811"]
+"**/tests/**" = ["F401", "F811"]  # Fixtures are imported for their side effect
+# Re-export surfaces: the imports are the public API, not dead weight.
+"shared/__init__.py" = ["F401"]
+"shared/schemas/__init__.py" = ["F401"]
+"shared/routing.py" = ["F401"]
+# Contains a literal PDF. Each cross-reference entry has to be exactly 20 bytes,
+# so the trailing space on those lines is part of the format and stripping it
+# produces a corrupt file.
+"scripts/generate_test_data.py" = ["W291"]
 
 [tool.ruff.format]
 quote-style = "double"

@@ -11,7 +11,6 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
-
 # For each language, the OLD and NEW versions of UC1-5 rows
 UPDATES = {
     "en": {

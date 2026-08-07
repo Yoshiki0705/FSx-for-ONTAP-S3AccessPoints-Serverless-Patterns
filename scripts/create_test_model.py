@@ -91,10 +91,9 @@ def output_fn(prediction, accept):
 def create_dummy_model(model_path: Path) -> None:
     """ダミーの sklearn 分類モデルを作成する。"""
     try:
+        import joblib
         from sklearn.datasets import make_classification
         from sklearn.ensemble import RandomForestClassifier
-
-        import joblib
     except ImportError:
         print("ERROR: scikit-learn と joblib が必要です。")
         print("  pip install scikit-learn joblib numpy")

@@ -32,7 +32,6 @@ import re
 import sys
 from pathlib import Path
 
-
 UC_DIRS = [
     "solutions/industry/legal-compliance",
     "solutions/industry/financial-idp",

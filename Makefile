@@ -29,6 +29,15 @@ else
   PYTHON ?= python$(PY_VERSION)
 endif
 
+# ruff from the venv, so linting uses the version pinned in requirements-dev.txt
+# that CI installs. Falling back to whatever is on PATH is what let a homebrew
+# ruff answer for the pipeline's.
+ifneq (,$(wildcard .venv/bin/ruff))
+  VENV_RUFF := .venv/bin/ruff
+else
+  VENV_RUFF := ruff
+endif
+
 # Default target
 help:
 	@echo "Available targets:"
@@ -128,20 +137,26 @@ lint: lint-python lint-cfn
 
 lint-python: lint-python-check lint-python-format
 
+# Matches `.github/workflows/lint.yaml` exactly: same binary, same paths, one
+# invocation. It used to run `ruff check ... --config pyproject.toml 2>/dev/null ||
+# ruff check ...`, which always took the fallback — the two ruff configs in the
+# repo disagreed, so the first form reported hundreds of findings, its exit code
+# was discarded and its output was left on the terminal looking like failure. It
+# also scoped the check to three directories while CI checks the whole tree, and
+# called whichever ruff was on PATH instead of the pinned one, so a local homebrew
+# install could disagree with the pipeline on unchanged code.
 lint-python-check:
-	ruff check shared/ solutions/ operations/ \
-		--config pyproject.toml 2>/dev/null || \
-	ruff check shared/ solutions/ operations/
+	$(VENV_RUFF) check .
 
 # CI runs `ruff format --check` as its own step, so `make lint` has to run it
 # too. Without this, formatting drift passes locally and only fails in the
 # pipeline.
 lint-python-format:
-	ruff format --check .
+	$(VENV_RUFF) format --check .
 
 # Rewrites files in place. Use after lint-python-format reports drift.
 format-python:
-	ruff format .
+	$(VENV_RUFF) format .
 
 # Template discovery comes from the `templates:` globs in .cfnlintrc, so this
 # target cannot drift out of sync with the patterns that actually exist.
@@ -159,6 +174,12 @@ lint-cfn:
 drift:
 	$(PYTHON) -m pytest scripts/tests/test_stale_claim_rules.py --tb=short -q
 	$(PYTHON) scripts/check_portal_drift.py
+# The generic dispatch endpoints take an untyped `params` blob, so nothing checks
+# that a component sends what its action requires. A lock button shipped that had
+# never worked once: it sent a name and a duration where the action reads a UUID
+# and an absolute expiry.
+	$(PYTHON) -m pytest scripts/tests/test_portal_action_params.py --tb=short -q
+	$(PYTHON) scripts/check_portal_action_params.py
 
 # Fetches the published posts from Hatena and dev.to, so it needs network and is
 # not part of `make lint`. Run it after shipping a feature that makes an article's

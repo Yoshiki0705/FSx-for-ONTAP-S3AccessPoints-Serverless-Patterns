@@ -6,7 +6,6 @@ import importlib.util
 import os
 import time
 
-
 _handler_path = os.path.join(os.path.dirname(__file__), "..", "src", "monitor_job", "handler.py")
 _spec = importlib.util.spec_from_file_location("monitor_job_handler", _handler_path)
 _module = importlib.util.module_from_spec(_spec)

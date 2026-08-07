@@ -20,8 +20,8 @@ from dataclasses import dataclass, field
 from typing import Any
 
 import boto3
-from boto3.dynamodb.conditions import Attr
 import pytest
+from boto3.dynamodb.conditions import Attr
 
 logger = logging.getLogger(__name__)
 

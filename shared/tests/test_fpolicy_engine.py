@@ -24,7 +24,6 @@ from shared.lambdas.fpolicy_engine.handler import (
     validate_fpolicy_event,
 )
 
-
 SCHEMA_PATH = str(Path(__file__).parent.parent / "schemas" / "fpolicy-event-schema.json")
 
 

@@ -15,9 +15,9 @@ Limitations:
 from __future__ import annotations
 
 import io
+import logging
 import os
 import zipfile
-import logging
 from datetime import datetime, timezone
 
 import boto3

@@ -17,7 +17,6 @@ from shared.fpolicy.protobuf_reader import (
     ProtobufFrameReader,
 )
 
-
 # --- Helpers ---
 
 

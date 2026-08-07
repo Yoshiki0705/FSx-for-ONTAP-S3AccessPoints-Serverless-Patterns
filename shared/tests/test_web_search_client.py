@@ -18,7 +18,6 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 from shared.web_search_client import WebSearchClient, WebSearchResult
 
-
 # --- WebSearchResult テスト ---
 
 

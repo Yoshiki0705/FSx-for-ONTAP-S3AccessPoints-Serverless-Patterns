@@ -23,7 +23,7 @@ pytestmark = pytest.mark.skipif(
     True,
     reason="Requires pytest-asyncio with strict mode disabled — tracked for fix in Phase 15",
 )
-from hypothesis import given, settings, HealthCheck
+from hypothesis import HealthCheck, given, settings
 from hypothesis import strategies as st
 
 from shared.fpolicy.protobuf_reader import (
@@ -31,7 +31,6 @@ from shared.fpolicy.protobuf_reader import (
     FramingMode,
     ProtobufFrameReader,
 )
-
 
 # --- Helpers ---
 

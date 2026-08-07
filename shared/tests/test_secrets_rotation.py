@@ -15,7 +15,6 @@ import pytest
 
 from shared.lambdas.secrets_rotation import handler as rotation_handler
 
-
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------

@@ -15,7 +15,6 @@ import pytest
 from shared.cross_region_client import CrossRegionClient, CrossRegionConfig
 from shared.exceptions import CrossRegionClientError
 
-
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------

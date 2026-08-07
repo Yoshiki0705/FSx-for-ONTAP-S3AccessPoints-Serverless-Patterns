@@ -18,7 +18,6 @@ from shared.routing import (
     validate_serverless_config,
 )
 
-
 # ---------------------------------------------------------------------------
 # Tests: determine_inference_path — Routing Rules
 # ---------------------------------------------------------------------------

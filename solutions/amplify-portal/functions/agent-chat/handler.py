@@ -19,9 +19,9 @@ Supports DemoMode: when S3_AP_ALIAS is empty, tools return mock data.
 from __future__ import annotations
 
 import json
+import logging
 import os
 import re
-import logging
 import time
 import uuid
 from decimal import Decimal

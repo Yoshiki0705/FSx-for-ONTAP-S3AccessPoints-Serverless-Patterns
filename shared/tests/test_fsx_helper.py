@@ -15,7 +15,6 @@ from botocore.exceptions import ClientError
 
 from shared.fsx_helper import FsxHelper, FsxHelperError
 
-
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------

@@ -29,15 +29,15 @@ os.environ["USE_CASE"] = "autonomous-driving"
 os.environ["REGION"] = "ap-northeast-1"
 os.environ["ENABLE_XRAY"] = "false"
 
-from shared.exceptions import TokenStorageError
 from functions.sagemaker_invoke.handler import (
-    generate_mock_segmentation,
+    _build_job_tags,
     _handle_mock_mode,
     _handle_real_mode,
-    _build_job_tags,
+    generate_mock_segmentation,
     handler,
 )
 
+from shared.exceptions import TokenStorageError
 
 # ---------------------------------------------------------------------------
 # Helpers

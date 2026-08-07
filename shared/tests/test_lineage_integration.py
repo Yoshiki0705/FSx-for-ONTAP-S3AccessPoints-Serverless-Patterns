@@ -17,8 +17,8 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 from shared.integrations.lineage_integration import (
     LineageContext,
-    _is_lineage_enabled,
     _get_lineage_tracker,
+    _is_lineage_enabled,
     track_lineage,
 )
 

@@ -14,11 +14,10 @@ import os
 from unittest.mock import MagicMock, patch
 
 import pytest
-from hypothesis import given, settings, assume, HealthCheck
+from hypothesis import HealthCheck, assume, given, settings
 from hypothesis import strategies as st
 
 from shared.lambdas.secrets_rotation import handler as rotation_module
-
 
 # --- Hypothesis Strategies ---
 

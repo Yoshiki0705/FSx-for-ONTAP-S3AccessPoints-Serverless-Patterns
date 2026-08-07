@@ -28,7 +28,7 @@ _cs_spec.loader.exec_module(_cs_module)
 _parse_scoring_response = _cs_module._parse_scoring_response
 
 # Import PiiFilter
-from shared.pii_filter import PiiFilter, mask_pii_in_text, is_strict_mode
+from shared.pii_filter import PiiFilter, is_strict_mode, mask_pii_in_text
 
 
 class TestExtractCandidateData:
