@@ -1,21 +1,18 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { generateClient } from "aws-amplify/data";
-import type { Schema } from "../../../amplify/data/resource";
 import { useTranslation } from "../../i18n";
 import { errorMessage, unwrap } from "../../lib/portalQuery";
+import { adminMutate, dispatch } from "../../lib/dispatch";
+import { asIsoDuration, type IsoDuration, type VolumeUuid } from "../../lib/dispatchActions";
 import { SnaplockConfirmDialog } from "../SnaplockConfirmDialog";
 import { durationLabel, durationRange } from "../../utils/duration";
-import { parseResponse } from "../../utils/parseResponse";
+import { oneOf } from "../../utils/oneOf";
 import type { SnaplockIntent } from "../../utils/snaplockConsequences";
-
-const client = generateClient<Schema>();
-
-// Parse the JSON string response from generic dispatch endpoints
 
 interface Volume {
   name: string;
-  uuid: string;
+  /** ONTAP's UUID, branded where it arrives so the name beside it cannot stand in. */
+  uuid: VolumeUuid;
   sizeGiB: number;
   usedPercent: number;
   state: string;
@@ -38,8 +35,11 @@ export function VolumeManager() {
   // Create form state
   const [newName, setNewName] = useState("");
   const [newSize, setNewSize] = useState(100);
-  const [newStyle, setNewStyle] = useState("unix");
-  const [newSnaplockType, setNewSnaplockType] = useState("none");
+  // Narrowed to the values ONTAP accepts. As bare strings a typo reached the API,
+  // where `securityStyle: "unxi"` is a 400 and `snaplockType: "complaince"` quietly
+  // produced a volume with no SnapLock at all.
+  const [newStyle, setNewStyle] = useState<"unix" | "ntfs" | "mixed">("unix");
+  const [newSnaplockType, setNewSnaplockType] = useState<"none" | "compliance" | "enterprise">("none");
   const [newRetentionDefault, setNewRetentionDefault] = useState("P30D");
   const [newRetentionMin, setNewRetentionMin] = useState("P1D");
   const [newRetentionMax, setNewRetentionMax] = useState("P365D");
@@ -57,9 +57,9 @@ export function VolumeManager() {
   } = useQuery({
     queryKey: ["admin", "listVolumes"],
     queryFn: () =>
-      unwrap<{ volumes?: Volume[] }>(
-        client.queries.adminQuery({ action: "listVolumes", params: JSON.stringify({}) }),
-      ).then((d) => d?.volumes ?? []),
+      unwrap<{ volumes?: Volume[] }>(dispatch("adminQuery", { action: "listVolumes" })).then(
+        (d) => d?.volumes ?? [],
+      ),
   });
 
   // Mutation handlers report through their own state, so a failed action is
@@ -95,21 +95,40 @@ export function VolumeManager() {
 
   const handleCreate = async () => {
     if (!newName) { setError(t("rmVolumeNameRequired")); return; }
+
+    // The three retention fields are ISO 8601 periods, and one of them is assembled
+    // from a number and a unit the operator picks. Validating them here means a
+    // malformed period is refused before it becomes a volume that cannot be undone;
+    // previously anything shaped like a string was sent.
+    const snaplock = newSnaplockType === "none" ? null : newSnaplockType;
+    let retention: { retentionDefault: IsoDuration; retentionMin: IsoDuration; retentionMax: IsoDuration } | null =
+      null;
+    if (snaplock) {
+      const periods = [resolvedRetentionDefault(), newRetentionMin, newRetentionMax].map(asIsoDuration);
+      const [asDefault, asMin, asMax] = periods;
+      if (!asDefault || !asMin || !asMax) { setError(t("rmRetentionInvalid")); return; }
+      retention = { retentionDefault: asDefault, retentionMin: asMin, retentionMax: asMax };
+    }
+
     setActionResult(null);
     try {
-      const response = await client.mutations.adminMutation({ action: "createVolume", params: JSON.stringify({
-        name: newName,
-        sizeGiB: newSize,
-        securityStyle: newStyle,
-        snaplockType: newSnaplockType !== "none" ? newSnaplockType : undefined,
-        retentionDefault: newSnaplockType !== "none" ? resolvedRetentionDefault() : undefined,
-        retentionMin: newSnaplockType !== "none" ? newRetentionMin : undefined,
-        retentionMax: newSnaplockType !== "none" ? newRetentionMax : undefined,
-        // The backend refuses SnapLock settings without this, so a caller that
-        // bypasses the dialog cannot create a lock either.
-        acknowledgeIrreversible: newSnaplockType !== "none" ? true : undefined,
-      }) });
-      const data = parseResponse<{ success?: boolean; error?: string }>(response);
+      const data = await adminMutate<{ success?: boolean }>({
+        action: "createVolume",
+        params: {
+          name: newName,
+          sizeGiB: newSize,
+          securityStyle: newStyle,
+          ...(snaplock
+            ? {
+                snaplockType: snaplock,
+                ...retention!,
+                // The backend refuses SnapLock settings without this, so a caller
+                // that bypasses the dialog cannot create a lock either.
+                acknowledgeIrreversible: true as const,
+              }
+            : {}),
+        },
+      });
       if (data) {
         if (data.success) {
           setActionResult(`${t("rmVolumeCreated")}: ${newName}`);
@@ -121,14 +140,16 @@ export function VolumeManager() {
     } catch (err) { setError(err instanceof Error ? err.message : "Create failed"); }
   };
 
-  const handleResize = async (uuid: string, name: string) => {
+  const handleResize = async (uuid: VolumeUuid, name: string) => {
     const input = prompt(t("rmResizePrompt"), "200");
     if (!input) return;
     const newSizeGiB = parseInt(input, 10);
     if (isNaN(newSizeGiB) || newSizeGiB <= 0) { setError("Invalid size"); return; }
     try {
-      const response = await client.mutations.adminMutation({ action: "resizeVolume", params: JSON.stringify({volumeUuid: uuid, newSizeGiB}) });
-      const data = parseResponse<{ success?: boolean; error?: string }>(response);
+      const data = await adminMutate<{ success?: boolean }>({
+        action: "resizeVolume",
+        params: { volumeUuid: uuid, newSizeGiB },
+      });
       if (data) {
         if (data.success) { setActionResult(`${name} → ${newSizeGiB} GiB`); loadVolumes(); }
         else setError(data.error || "Resize failed");
@@ -136,11 +157,13 @@ export function VolumeManager() {
     } catch (err) { setError(err instanceof Error ? err.message : "Resize failed"); }
   };
 
-  const handleDelete = async (uuid: string, name: string) => {
+  const handleDelete = async (uuid: VolumeUuid, name: string) => {
     if (!confirm(t("rmDeleteConfirm").replace("{name}", name))) return;
     try {
-      const response = await client.mutations.adminMutation({ action: "deleteVolume", params: JSON.stringify({volumeUuid: uuid, volumeName: name, confirm: true}) });
-      const data = parseResponse<{ success?: boolean; error?: string }>(response);
+      const data = await adminMutate<{ success?: boolean }>({
+        action: "deleteVolume",
+        params: { volumeUuid: uuid, volumeName: name, confirm: true },
+      });
       if (data) {
         if (data.success) { setActionResult(t("rmDeleted").replace("{name}", name)); loadVolumes(); }
         else setError(data.error || "Delete failed");
@@ -191,7 +214,10 @@ export function VolumeManager() {
             </div>
             <div className="form-group">
               <label>{t("rmSecurityStyle")}</label>
-              <select value={newStyle} onChange={(e) => setNewStyle(e.target.value)}>
+              <select
+                value={newStyle}
+                onChange={(e) => setNewStyle(oneOf(["unix", "ntfs", "mixed"], e.target.value, "unix"))}
+              >
                 <option value="unix">UNIX</option>
                 <option value="ntfs">NTFS</option>
                 <option value="mixed">Mixed</option>
@@ -202,7 +228,12 @@ export function VolumeManager() {
           <div className="form-row">
             <div className="form-group">
               <label>{t("rmSnaplockType")}</label>
-              <select value={newSnaplockType} onChange={(e) => setNewSnaplockType(e.target.value)}>
+              <select
+                value={newSnaplockType}
+                onChange={(e) =>
+                  setNewSnaplockType(oneOf(["none", "enterprise", "compliance"], e.target.value, "none"))
+                }
+              >
                 <option value="none">None (standard volume)</option>
                 <option value="enterprise">Enterprise (privileged delete)</option>
                 <option value="compliance">Compliance (immutable)</option>

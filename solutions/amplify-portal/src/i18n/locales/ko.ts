@@ -268,6 +268,8 @@ arpResponseSweepNote: "차단은 지정한 기한이 지나면 자동으로 해�
   rmNewRetentionDays: "새 보존 기간 (일)",
   rmRetentionHint: "SnapLock Compliance: 단축 불가. 연장만 가능.",
   rmRetentionUpdated: "보존 기간 업데이트됨",
+  rmRetentionInvalid:
+    "보존 기간 형식이 올바르지 않습니다. ISO 8601 기간으로 지정하세요(예: P30D, P6M, P1Y).",
   rmDays: "일",
   rmApply: "적용",
   // --- Resource Management: Quotas ---

@@ -1,19 +1,16 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { generateClient } from "aws-amplify/data";
-import type { Schema } from "../../../amplify/data/resource";
 import { useTranslation } from "../../i18n";
 import { errorMessage, unwrap } from "../../lib/portalQuery";
+import { adminMutate, dispatch } from "../../lib/dispatch";
+import type { VolumeUuid } from "../../lib/dispatchActions";
 import { SnaplockConfirmDialog } from "../SnaplockConfirmDialog";
 import { VolumeSelector } from "./VolumeSelector";
-import { parseResponse } from "../../utils/parseResponse";
 import {
   isZeroPeriod,
   parseIsoPeriod,
   type SnaplockIntent,
 } from "../../utils/snaplockConsequences";
-
-const client = generateClient<Schema>();
 
 // The typed keyword now lives with the confirmation dialog, as
 // SNAPLOCK_CONFIRM_KEYWORD, so that every irreversible SnapLock action asks for
@@ -59,7 +56,9 @@ export function SnapshotAdminManager() {
   /** Set while the consequence dialog is open; null when nothing is pending. */
   const [pendingSnaplock, setPendingSnaplock] = useState<SnaplockIntent | null>(null);
   const [showCreatePolicy, setShowCreatePolicy] = useState(false);
-  const [volumeUuid, setVolumeUuid] = useState("");
+  // Null until a volume is picked, rather than an empty string: the actions below
+  // take a branded UUID, and "" is not one. The selector supplies the branded value.
+  const [volumeUuid, setVolumeUuid] = useState<VolumeUuid | null>(null);
 
   // Policy form state
   const [policyName, setPolicyName] = useState("");
@@ -75,10 +74,7 @@ export function SnapshotAdminManager() {
     enabled: activeTab === "policies",
     queryFn: () =>
       unwrap<{ policies?: SnapshotPolicy[] }>(
-        client.queries.adminQuery({
-          action: "listSnapshotPolicies",
-          params: JSON.stringify({}),
-        }),
+        dispatch("adminQuery", { action: "listSnapshotPolicies" }),
       ).then((d) => d?.policies ?? []),
   });
 
@@ -86,13 +82,17 @@ export function SnapshotAdminManager() {
   const lockQuery = useQuery({
     queryKey: ["admin", "getSnapshotLockingStatus", volumeUuid],
     enabled: !!volumeUuid,
-    queryFn: () =>
-      unwrap<{ config?: LockingConfig }>(
-        client.queries.adminQuery({
+    queryFn: () => {
+      // `enabled` keeps this from running without a volume, but that is a runtime
+      // guarantee the type cannot see, so the narrowing is written out.
+      if (!volumeUuid) return Promise.resolve(null);
+      return unwrap<{ config?: LockingConfig }>(
+        dispatch("adminQuery", {
           action: "getSnapshotLockingStatus",
-          params: JSON.stringify({ volumeUuid }),
+          params: { volumeUuid },
         }),
-      ).then((d) => d?.config ?? null),
+      ).then((d) => d?.config ?? null);
+    },
   });
 
   const policies = policiesQuery.data ?? [];
@@ -141,14 +141,23 @@ export function SnapshotAdminManager() {
     if (!policyName) { setError(t("rmSnapPolicyNameRequired")); return; }
     try {
       const retention = policyRetention.trim();
-      const response = await client.mutations.adminMutation({ action: "createSnapshotPolicy", params: JSON.stringify({
-        name: policyName, comment: policyComment,
-        schedules: JSON.stringify([{ schedule: policySchedule, count: policyCount, retentionPeriod: retention || undefined }]),
-        // Only sent when a retention period makes the policy lock snapshots;
-        // the backend refuses that combination without it.
-        ...(retention ? { acknowledgeIrreversible: true } : {}),
-      }) });
-      const data = parseResponse<{ success?: boolean; error?: string }>(response);
+      const data = await adminMutate<{ success?: boolean }>({
+        action: "createSnapshotPolicy",
+        params: {
+          name: policyName,
+          comment: policyComment,
+          // The schedules travel as a JSON string because that is what the handler
+          // parses, which puts `retentionPeriod` out of reach of the branded type.
+          // `handleCreatePolicyClick` validates it with `parseIsoPeriod` before this
+          // runs, so the check happens — just one layer up rather than in the type.
+          schedules: JSON.stringify([
+            { schedule: policySchedule, count: policyCount, retentionPeriod: retention || undefined },
+          ]),
+          // Only sent when a retention period makes the policy lock snapshots;
+          // the backend refuses that combination without it.
+          ...(retention ? { acknowledgeIrreversible: true as const } : {}),
+        },
+      });
       if (data) {
         if (data.success) {
           setResult(`${t("rmSnapPolicyCreated")}: ${policyName}`); clearResult();
@@ -177,8 +186,10 @@ export function SnapshotAdminManager() {
   const handleEnableLocking = async () => {
     if (!volumeUuid) return;
     try {
-      const response = await client.mutations.adminMutation({ action: "enableSnapshotLocking", params: JSON.stringify({volumeUuid, enabled: true, acknowledgeIrreversible: true}) });
-      const data = parseResponse<{ success?: boolean; error?: string }>(response);
+      const data = await adminMutate<{ success?: boolean }>({
+        action: "enableSnapshotLocking",
+        params: { volumeUuid, enabled: true, acknowledgeIrreversible: true },
+      });
       if (data) {
         if (data.success) { setResult(t("rmSnapLockingEnabled")); clearResult(); loadLockingStatus(); }
         else setError(data.error || t("rmActionFailed"));

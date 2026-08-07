@@ -180,6 +180,11 @@ drift:
 # and an absolute expiry.
 	$(PYTHON) -m pytest scripts/tests/test_portal_action_params.py --tb=short -q
 	$(PYTHON) scripts/check_portal_action_params.py
+# The parameter check above compares names. It cannot see a name that is right and a
+# value that is wrong — a volume name where a UUID belongs spells the key correctly.
+# That needs types, and types generated from the handlers need checking against them.
+	$(PYTHON) -m pytest scripts/tests/test_portal_action_types.py --tb=short -q
+	$(PYTHON) scripts/portal_action_types.py --check
 
 # Fetches the published posts from Hatena and dev.to, so it needs network and is
 # not part of `make lint`. Run it after shipping a feature that makes an article's

@@ -1,21 +1,18 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { generateClient } from "aws-amplify/data";
-import type { Schema } from "../../amplify/data/resource";
 import { useTranslation } from "../i18n";
 import { errorMessage } from "../lib/portalQuery";
+import { dispatch } from "../lib/dispatch";
+import { daysFromNow, type SnapshotId } from "../lib/dispatchActions";
 import { SnaplockConfirmDialog } from "./SnaplockConfirmDialog";
 import { parseResponse } from "../utils/parseResponse";
 import type { SnaplockIntent } from "../utils/snaplockConsequences";
 
-const client = generateClient<Schema>();
-
-// Parse the JSON string response from generic dispatch endpoints
-
 interface Snapshot {
   name: string;
   createTime: string | null;
-  snapshotId: string | null;
+  /** ONTAP's UUID for the snapshot, branded where it arrives. */
+  snapshotId: SnapshotId | null;
   state: string | null;
   comment: string | null;
   expiryTime: string | null;
@@ -39,7 +36,7 @@ interface Snapshot {
  */
 export function VersionHistory({ mode = "browse" }: { mode?: "browse" | "diff" }) {
 
-  const [lockDialog, setLockDialog] = useState<{ snapshotId: string } | null>(null);
+  const [lockDialog, setLockDialog] = useState<{ snapshotId: SnapshotId } | null>(null);
   const [lockDays, setLockDays] = useState("30");
   const [lockLoading, setLockLoading] = useState(false);
   const [lockResult, setLockResult] = useState<string | null>(null);
@@ -56,9 +53,9 @@ export function VersionHistory({ mode = "browse" }: { mode?: "browse" | "diff" }
   } = useQuery({
     queryKey: ["protection", "listSnapshots"],
     queryFn: async () => {
-      const response = await client.queries.protectionQuery({
+      const response = await dispatch("protectionQuery", {
         action: "listSnapshots",
-        params: JSON.stringify({ maxResults: 20 }),
+        params: { maxResults: 20 },
       });
       // `unknown`, not `any`: this resolver has been seen to return the snapshot list
       // either as an array or as a JSON string that needs a second parse, which the
@@ -107,7 +104,7 @@ export function VersionHistory({ mode = "browse" }: { mode?: "browse" | "diff" }
     }
   };
 
-  const handleLockSnapshot = (snapshotId: string) => {
+  const handleLockSnapshot = (snapshotId: SnapshotId) => {
     setLockDialog({ snapshotId });
     setLockResult(null);
   };
@@ -146,18 +143,17 @@ export function VersionHistory({ mode = "browse" }: { mode?: "browse" | "diff" }
       return;
     }
 
-    // Calculate expiry_time as ISO 8601
-    const expiry = new Date();
-    expiry.setDate(expiry.getDate() + days);
-    const expiryTime = expiry.toISOString();
+    // An absolute instant, which is what the action reads. `daysFromNow` returns the
+    // branded type, so a day count cannot reach the field by mistake.
+    const expiryTime = daysFromNow(days);
 
     try {
-      const response = await client.mutations.protectionMutation({ action: "lockSnapshot", params: JSON.stringify({
-        snapshotId: lockDialog.snapshotId,
-        expiryTime,
-        acknowledgeIrreversible: true,
-      }) });
-
+      // `dispatch` rather than `protectionMutate` because the branch below reports
+      // GraphQL-level errors, which only the raw response carries.
+      const response = await dispatch("protectionMutation", {
+        action: "lockSnapshot",
+        params: { snapshotId: lockDialog.snapshotId, expiryTime, acknowledgeIrreversible: true },
+      });
       const data = parseResponse<{ success?: boolean; error?: string; expiryTime?: string }>(response);
       if (data) {
         if (data.success) {

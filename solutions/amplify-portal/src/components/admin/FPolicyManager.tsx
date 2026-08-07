@@ -1,12 +1,8 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { generateClient } from "aws-amplify/data";
-import type { Schema } from "../../../amplify/data/resource";
 import { useTranslation } from "../../i18n";
 import { errorMessage } from "../../lib/portalQuery";
-import { parseResponse } from "../../utils/parseResponse";
-
-const client = generateClient<Schema>();
+import { adminMutate, adminQuery, type DispatchCall } from "../../lib/dispatch";
 
 interface FPolicyPolicy {
   name: string;
@@ -51,17 +47,19 @@ export function FPolicyManager() {
   const [evProtocol, setEvProtocol] = useState("cifs");
   const [evOps, setEvOps] = useState<string[]>(["create", "delete"]);
 
-  /** Run a write action, then refresh the active tab. */
-  const runAction = async (action: string, params: Record<string, unknown>) => {
+  /**
+   * Run a write action, then refresh the active tab.
+   *
+   * Takes the whole call rather than `(action: string, params: Record<string,
+   * unknown>)`. That signature accepted any name with any parameters beside it,
+   * which is the shape that let a lock button ship broken elsewhere in this portal.
+   */
+  const runAction = async (call: DispatchCall<"adminMutation">) => {
     setBusy(true);
     setError(null);
     setSuccess(null);
     try {
-      const resp = await client.mutations.adminMutation({
-        action,
-        params: JSON.stringify(params),
-      });
-      const data = parseResponse<{ success?: boolean; error?: string }>(resp);
+      const data = await adminMutate<{ success?: boolean }>(call);
       if (data?.success) {
         setSuccess(t("fpActionDone"));
         setTimeout(() => setSuccess(null), 4000);
@@ -92,18 +90,17 @@ export function FPolicyManager() {
   } = useQuery({
     queryKey: ["admin", "fpolicy", tab],
     queryFn: async () => {
-      const action =
+      const call =
         tab === "policies"
-          ? "listFpolicyPolicies"
+          ? ({ action: "listFpolicyPolicies" } as const)
           : tab === "events"
-            ? "listFpolicyEvents"
-            : "getFpolicyStatus";
-      const parsed = parseResponse<{
+            ? ({ action: "listFpolicyEvents" } as const)
+            : ({ action: "getFpolicyStatus" } as const);
+      const parsed = await adminQuery<{
         policies?: FPolicyPolicy[];
         events?: FPolicyEvent[];
         connections?: FPolicyConnection[];
-        error?: string;
-      }>(await client.queries.adminQuery({ action, params: JSON.stringify({}) }));
+      }>(call);
       // A dispatcher that is not wired yet is an empty list, not a failure.
       if (
         parsed?.error &&
@@ -177,12 +174,12 @@ export function FPolicyManager() {
           </div>
           <div className="rm-form-actions">
             <button className="rm-btn-primary" disabled={busy || !polName.trim() || !polEvents.trim()}
-              onClick={() => runAction("createFpolicyPolicy", {
+              onClick={() => runAction({ action: "createFpolicyPolicy", params: {
                 name: polName.trim(),
                 events: polEvents.split(",").map((s) => s.trim()).filter(Boolean),
                 engineName: polEngine.trim() || "native",
                 priority: polPriority,
-              })}>
+              } })}>
               {t("rmCreate")}
             </button>
             <button className="rm-btn-secondary" onClick={() => setShowCreate(false)}>{t("cancel")}</button>
@@ -222,9 +219,9 @@ export function FPolicyManager() {
           </div>
           <div className="rm-form-actions">
             <button className="rm-btn-primary" disabled={busy || !evName.trim() || evOps.length === 0}
-              onClick={() => runAction("createFpolicyEvent", {
+              onClick={() => runAction({ action: "createFpolicyEvent", params: {
                 name: evName.trim(), protocol: evProtocol, fileOperations: evOps,
-              })}>
+              } })}>
               {t("rmCreate")}
             </button>
             <button className="rm-btn-secondary" onClick={() => setShowCreate(false)}>{t("cancel")}</button>
@@ -246,11 +243,11 @@ export function FPolicyManager() {
                 <td>
                   <span className="sm-actions" style={{ padding: 0, border: "none" }}>
                     <button className="rm-btn-sm" disabled={busy}
-                      onClick={() => runAction("setFpolicyPolicyEnabled", {
+                      onClick={() => runAction({ action: "setFpolicyPolicyEnabled", params: {
                         name: p.name,
                         enabled: !p.enabled,
                         priority: p.enabled ? undefined : p.priority || 1,
-                      })}>
+                      } })}>
                       {p.enabled ? t("fpDisableBtn") : t("fpEnableBtn")}
                     </button>
                     <button className="rm-btn-danger-sm" disabled={busy || p.enabled}
@@ -263,7 +260,7 @@ export function FPolicyManager() {
                     <span className="peer-accept-row" role="alertdialog">
                       <span className="sm-confirm-text">{t("fpConfirmDeletePolicy")}</span>
                       <button className="rm-btn-danger-sm" disabled={busy}
-                        onClick={() => runAction("deleteFpolicyPolicy", { name: p.name, confirm: true })}>
+                        onClick={() => runAction({ action: "deleteFpolicyPolicy", params: { name: p.name, confirm: true } })}>
                         {t("rmExecute")}
                       </button>
                       <button className="rm-btn-sm" onClick={() => setConfirmFor(null)}>
@@ -294,7 +291,7 @@ export function FPolicyManager() {
                     <span className="peer-accept-row" role="alertdialog">
                       <span className="sm-confirm-text">{t("fpConfirmDeleteEvent")}</span>
                       <button className="rm-btn-danger-sm" disabled={busy}
-                        onClick={() => runAction("deleteFpolicyEvent", { name: e.name, confirm: true })}>
+                        onClick={() => runAction({ action: "deleteFpolicyEvent", params: { name: e.name, confirm: true } })}>
                         {t("rmExecute")}
                       </button>
                       <button className="rm-btn-sm" onClick={() => setConfirmFor(null)}>

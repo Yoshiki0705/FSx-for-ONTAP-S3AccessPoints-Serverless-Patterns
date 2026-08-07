@@ -268,6 +268,8 @@ arpResponseSweepNote: "Sperren heben sich nach Ablauf der Frist selbst auf. Für
   rmNewRetentionDays: "Neue Aufbewahrung (Tage)",
   rmRetentionHint: "SnapLock Compliance: Nicht verkürzbar. Nur Verlängerung möglich.",
   rmRetentionUpdated: "Aufbewahrung aktualisiert",
+  rmRetentionInvalid:
+    "Eine der Aufbewahrungsfristen hat kein gültiges Format. Verwenden Sie eine ISO 8601-Dauer, zum Beispiel P30D, P6M oder P1Y.",
   rmDays: "Tage",
   rmApply: "Anwenden",
   // --- Resource Management: Quotas ---
