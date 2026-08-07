@@ -1,7 +1,9 @@
 # Amplify Gen2 File Portal — セクション構成ガイド
 
+> 🌐 言語: **日本語** | [English](portal-tabs-guide.en.md)
+
 > **最終更新**: 2026-07-22
-> **検証**: CDK Sandbox デプロイ → Cognito ログイン → 12 セクション全表示確認済み
+> **検証**: CDK Sandbox デプロイ → Cognito ログイン → 17 セクション全表示確認済み
 
 ---
 
@@ -12,29 +14,34 @@ FSx for ONTAP File Portal はサイドバーナビゲーション（4 グルー�
 ![サイドバーレイアウト](screenshots/portal-sidebar-layout.png)
 
 ```
-┌──────────────────────────────────────────────────────────┐
-│ File Portal                         demo@example.com     │
-├────────────┬─────────────────────────────────────────────┤
-│ BROWSE     │  [Main Content Area]                        │
-│  All Files │                                             │
-│  Favorites │  + AI Assistant Panel (right, on selection) │
-│  Recent    │                                             │
-│  Upload    │                                             │
-│────────────│                                             │
-│ AI & PROC. │                                             │
-│  AI Proc.  │                                             │
-│  History   │                                             │
-│  Analytics │                                             │
-│────────────│                                             │
-│ DATA PROT. │                                             │
-│  Snapshots │                                             │
-│  Lock      │                                             │
-│  ARP/AI    │                                             │
-│────────────│                                             │
-│ ADMIN      │                                             │
-│  Version   │                                             │
-│  Audit     │                                             │
-└────────────┴─────────────────────────────────────────────┘
+┌────────────────────────────────────────────────────────────┐
+│ File Portal                           demo@example.com     │
+├──────────────┬─────────────────────────────────────────────┤
+│ BROWSE       │                                             │
+│  All Files   │  [Main Content Area]                        │
+│  Favorites   │                                             │
+│  Recent      │  + AI Assistant Panel (right, on selection) │
+│  Folder Watch│                                             │
+│  Upload      │                                             │
+│──────────────│                                             │
+│ AI & PROC.   │                                             │
+│  AI Proc.    │                                             │
+│  AI Chat     │                                             │
+│  Search      │                                             │
+│  History     │                                             │
+│  Analytics   │                                             │
+│  Agent Dir   │                                             │
+│──────────────│                                             │
+│ DATA PROT.   │                                             │
+│  Snapshots   │                                             │
+│  Lock        │                                             │
+│  ARP/AI      │                                             │
+│──────────────│                                             │
+│ ADMIN        │                                             │
+│  Resources   │                                             │
+│  Version     │                                             │
+│  Audit       │                                             │
+└──────────────┴─────────────────────────────────────────────┘
 ```
 
 ---
@@ -306,7 +313,7 @@ ONTAP System Manager 相当のストレージ管理。`storage-admin` Cognito �
 
 Volumes、FlexClone、Qtrees、Quotas、Storage Efficiency、Export Policies、SMB Shares、Local Users、Name Mapping、QoS、ARP/AI、Snapshot 管理、SnapLock、FPolicy、Vscan、SnapMirror、FlexCache、Cluster（ノード / ライセンス / EMS イベント）。
 
-手順は [管理者向けリソース管理 デモガイド](../../../docs/ja/admin-resource-management-demo.md)（26 シナリオ）を参照してください。
+手順は [管理者向けリソース管理 デモガイド](../../../docs/ja/admin-resource-management-demo.md)（27 シナリオ）を参照してください。
 
 > グループ外のユーザーには表示されません。AppSync 側でも `allow.groups(["storage-admin"])` で拒否しますが、開けば必ずエラーになるメニューはメニューとして成立しないためです。
 

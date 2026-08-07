@@ -1277,7 +1277,7 @@ arpResponseSweepNote: "Los bloqueos se levantan por sí solos al vencer el plazo
     "No es posible habilitar SnapLock después en un volumen existente; es una restricción de ONTAP.",
   slNewVolumeOnlyHow:
     "Si necesita un volumen SnapLock, cree uno desde la gestión de volúmenes.",
-  fcacheMetricsHint: "Métricas: disponibles en ONTAP System Manager",
+  fcacheMetricsHint: "Métricas: mediante Amazon CloudWatch o la API REST de ONTAP",
   vhDiffTitle: "Diferencias entre versiones",
   vhDiffNotice:
     "Seleccionar dos snapshots para comparar su contenido está previsto para una versión futura. Por ahora se muestra la lista de snapshots.",

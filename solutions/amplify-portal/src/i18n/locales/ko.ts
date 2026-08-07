@@ -1272,7 +1272,7 @@ arpResponseSweepNote: "차단은 지정한 기한이 지나면 자동으로 해�
   slNewVolumeOnly: "SnapLock은 볼륨을 새로 만들 때만 활성화할 수 있습니다",
   slNewVolumeOnlyWhy: "기존 볼륨에 나중에 SnapLock을 활성화할 수는 없습니다(ONTAP 제약).",
   slNewVolumeOnlyHow: "SnapLock 볼륨이 필요하면 볼륨 관리에서 새로 만드세요.",
-  fcacheMetricsHint: "메트릭: ONTAP System Manager에서 확인 가능",
+  fcacheMetricsHint: "메트릭: Amazon CloudWatch 또는 ONTAP REST API로 조회",
   vhDiffTitle: "버전 차이",
   vhDiffNotice:
     "두 스냅샷을 선택해 내용을 비교하는 기능은 향후 구현 예정입니다. 현재는 스냅샷 목록을 표시합니다.",

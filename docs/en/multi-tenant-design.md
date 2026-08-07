@@ -1,5 +1,7 @@
 # Multi-Tenant Design Patterns
 
+> 🌐 Language: **English** | [日本語](../ja/multi-tenant-design.md)
+
 ## Overview
 
 For ISVs or managed service providers who want to offer this portal as a service to multiple tenants (organizations/teams), this document describes data isolation patterns.
