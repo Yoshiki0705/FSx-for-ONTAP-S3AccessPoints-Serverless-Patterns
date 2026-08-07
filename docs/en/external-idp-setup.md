@@ -152,7 +152,12 @@ import { signInWithRedirect } from "aws-amplify/auth";
 - **MFA**: Configure MFA at the IdP level (Cognito MFA is bypassed for federated users).
 - **Session duration**: Cognito token lifetime is configurable (default: 1 hour access, 30 days refresh).
 
-## Tested IdP Configurations
+## IdP Configurations Documented Here
+
+> These are configurations this guide describes, not configurations that have been
+> stood up and signed off. Every row's status is "Documented" for that reason. If you
+> complete one against a real IdP, the useful contribution is changing its row and
+> saying which version you used.
 
 | IdP | Protocol | Status | Notes |
 |-----|----------|:---:|-------|

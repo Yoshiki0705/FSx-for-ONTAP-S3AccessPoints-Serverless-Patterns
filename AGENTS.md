@@ -725,10 +725,23 @@ This is a **public repository**. All committed content is visible to the world.
 | Secret ARN suffix | `-XXXXXX` |
 | VPC/Subnet/SG IDs | `vpc-0123456789abcdef0` |
 | File System ID | `fs-0123456789abcdef0` |
-| Real IP addresses | `10.0.x.x` or `<management-ip>` |
+| Real IP addresses — a network or CIDR | `10.0.0.0/16`, `10.0.1.0/24`, or `<management-ip>` |
+| Real IP addresses — **one host standing in for a person's client** | RFC 5737 documentation range: `203.0.113.x` (or `198.51.100.x`) |
 | SSH key paths | `<your-ssh-key.pem>` |
 | Personal file paths | Relative paths or `${PROJECT_DIR}` |
 | S3 AP Alias | Use parameter reference `!Ref S3AccessPointAlias` |
+
+> **なぜ IP を 2 行に分けているか**: `10.0.0.0/16` のような CIDR はプライベート
+> アドレス空間の例示であり、これを RFC 5737 に置き換えるのは誤りです（実際に
+> プライベートである点が説明の一部だから）。一方、**特定の 1 台**を指す
+> `blockedIp` や「攻撃元ワークステーションの IP」は、まさに PII 監査が守ろうと
+> している対象です。ここは RFC 5737 のドキュメント用レンジを使います。
+> `scripts/portal-probes/` が `203.0.113.99` を選んでいるのも同じ理由です。
+>
+> 事前 grep 監査（global steering 側の `10\.[0-9]` パターン）は CIDR の例示にも
+> 反応します。**CIDR 例示へのヒットは想定内**で、指摘事項ではありません。
+> 判断基準は「そのアドレスは 1 人の端末を指しているか」です。指しているなら
+> 置換し、ネットワークを指しているなら残します。
 
 ### 🚫 Never Commit
 

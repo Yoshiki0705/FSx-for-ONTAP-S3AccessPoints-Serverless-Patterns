@@ -57,22 +57,38 @@ Key cost drivers post-Free Tier:
 
 For FinOps teams who need unit economics:
 
-| Operation | Components | Cost per Invocation |
-|-----------|-----------|--------------------|
-| Browse 1 folder (ListObjectsV2) | Lambda (128MB, 200ms) + AppSync | ~$0.0000034 |
-| AI process 1 PDF (Bedrock Nova Lite) | Lambda (256MB, 3s) + Bedrock (1K input + 500 output tokens) | ~$0.005 |
-| AI process 1 PDF (Claude 3.5 Haiku) | Lambda (256MB, 5s) + Bedrock (1K in + 500 out) | ~$0.002 |
-| Lock 1 snapshot (ONTAP REST) | Lambda (256MB, 1s) + AppSync | ~$0.0000084 |
-| Rekognition (1 image) | Lambda + Rekognition DetectLabels | ~$0.001 |
-| Textract (1 page) | Lambda + Textract AnalyzeDocument | ~$0.0015 |
-| Athena query (10MB scanned) | Lambda + Athena | ~$0.00005 |
+| Operation | Components | Arithmetic | Cost per invocation |
+|-----------|-----------|-----------|--------------------|
+| Browse 1 folder (ListObjectsV2) | Lambda (128MB, 200ms) + AppSync | 0.025 GB-s × $0.0000166667 + $0.000004 | ~$0.0000044 |
+| AI process 1 PDF (Bedrock Nova Lite) | Lambda (256MB, 3s) + Bedrock (1K input + 500 output tokens) | 1 × $0.00006 + 0.5 × $0.00024 + 0.75 GB-s × $0.0000166667 | ~$0.0002 |
+| AI process 1 PDF (Claude 3.5 Haiku) | Lambda (256MB, 5s) + Bedrock (1K in + 500 out) | 1 × $0.0008 + 0.5 × $0.004 + 1.25 GB-s × $0.0000166667 | ~$0.0028 |
+| Lock 1 snapshot (ONTAP REST) | Lambda (256MB, 1s) + AppSync | 0.25 GB-s × $0.0000166667 + $0.000004 | ~$0.0000082 |
+| Rekognition (1 image) | Lambda + Rekognition image API | $0.001/image (first 1M/month) | ~$0.001 |
+| Textract, text only (1 page) | Lambda + `DetectDocumentText` | $0.0015/page (first 1M) | ~$0.0015 |
+| Textract, tables and forms (1 page) | Lambda + `AnalyzeDocument` with `TABLES`,`FORMS` | $0.07/page (first 1M) | ~$0.07 |
+| Athena query (10MB scanned) | Lambda + Athena | 10MB minimum × $5/TB | ~$0.00005 |
 
-> Calculation: Lambda @ $0.0000166667/GB-s + AppSync @ $0.000004/request + Bedrock/AI per-token pricing.
-> These are estimates. Actual costs depend on file size, token count, and processing time.
+> **Rates**: us-east-1, on-demand, retrieved from the AWS Price List API on 2026-08-07.
+> Lambda $0.0000166667/GB-s, AppSync $0.000004/request. ap-northeast-1 differs slightly;
+> re-check before quoting a figure to anyone.
+>
+> **Nova Lite is the cheaper model, by an order of magnitude.** Nova Lite is
+> $0.06/$0.24 per million input/output tokens against Claude 3.5 Haiku's
+> $0.80/$4.00 — roughly 13× on input and 17× on output. An earlier version of this
+> table had the two the wrong way round.
+>
+> **The two Textract rows differ by ~47×.** The portal calls `analyze_document`
+> with `TABLES` and `FORMS` in analyze mode and `detect_document_text` otherwise
+> (`functions/textract/index.py`), so which row applies depends on the mode the
+> caller picked.
+>
+> These remain estimates: real cost tracks file size, token count and duration.
 
-**Example**: Processing 1,000 contract PDFs with Bedrock Nova Lite:
-- 1,000 × $0.005 = **$5.00** (one-time batch)
-- Same volume monthly (5 batches) = **$25.00/month** for AI processing alone
+**Example**: 1,000 contract PDFs with Bedrock Nova Lite, at the token counts above:
+- 1,000 × $0.0002 = **$0.20** for one batch
+- Five such batches a month = **$1.00/month** for the AI processing alone
+
+At these rates the AI processing is not what drives the bill. The infrastructure below is.
 
 ## FSx for ONTAP Infrastructure Cost (Separate)
 
