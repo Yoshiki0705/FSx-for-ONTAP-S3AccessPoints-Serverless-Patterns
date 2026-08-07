@@ -711,7 +711,7 @@ export interface ListFilesActionParams {
   createUploadLink: {
     continuationToken?: string;
     destinationPrefix?: string;
-    expiresIn?: string;
+    expiresIn?: number;
     fileName?: string;
     groups?: string;
     maxKeys?: number;
@@ -722,7 +722,7 @@ export interface ListFilesActionParams {
     continuationToken?: string;
     destinationKey?: string;
     destinationPrefix?: string;
-    expiresIn?: string;
+    expiresIn?: number;
     fileName?: string;
     groups?: string;
     key?: string;

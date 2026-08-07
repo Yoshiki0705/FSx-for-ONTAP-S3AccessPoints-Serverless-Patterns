@@ -10,6 +10,12 @@ import { FavoriteButton } from "./Favorites";
 import { FolderDownload } from "./FolderDownload";
 import { FileTagsBadges, FileTagsEditor } from "./FileTags";
 import { SnapshotCompare } from "./SnapshotCompare";
+import {
+  FileRowActions,
+  RestoreFromTrashButton,
+  UploadLink,
+  TRASH_PREFIX,
+} from "./FileLifecycle";
 import { useTranslation } from "../i18n";
 
 interface FileExplorerProps {
@@ -95,6 +101,7 @@ export function FileExplorer({
     error: queryError,
     fetchNextPage,
     hasNextPage,
+    refetch,
   } = useInfiniteQuery({
     queryKey: ["files", "listFiles", currentPrefix],
     initialPageParam: undefined as string | undefined,
@@ -124,6 +131,14 @@ export function FileExplorer({
   const files = data?.pages.flatMap((p) => p.files) ?? [];
   const hasMore = hasNextPage;
   const error = errorMessage(queryError, "Failed to load files");
+
+  // Trashed objects live under a prefix in the same bucket, so the trash is a
+  // folder rather than a separate listing. Inside it, rename and trash make no
+  // sense and restore does.
+  const inTrash = currentPrefix.startsWith(TRASH_PREFIX);
+
+  /** Discard the accumulated pages so a rename, trash or restore is reflected. */
+  const reloadListing = () => void refetch();
 
   const navigateToFolder = (folderKey: string) => {
     setNav((prev) => ({ ...prev, prefix: folderKey }));
@@ -177,6 +192,15 @@ export function FileExplorer({
         </button>
         <FolderDownload currentPrefix={currentPrefix} />
         <RestoreFromSnapshot currentPrefix={currentPrefix} />
+        <UploadLink destinationPrefix={currentPrefix} />
+        <button
+          className={`trash-btn ${inTrash ? "active" : ""}`}
+          onClick={() => navigateToFolder(inTrash ? "" : TRASH_PREFIX)}
+          title={inTrash ? t("flLeaveTrash") : t("flOpenTrash")}
+          aria-pressed={inTrash}
+        >
+          🗑️ {inTrash ? t("flLeaveTrash") : t("flOpenTrash")}
+        </button>
         <button
           className="compare-btn"
           onClick={() => setShowCompare((v) => !v)}
@@ -267,6 +291,16 @@ export function FileExplorer({
                   >
                     🏷️
                   </button>
+                  {inTrash ? (
+                    <RestoreFromTrashButton trashKey={file.key} onChanged={reloadListing} />
+                  ) : (
+                    <FileRowActions
+                      fileKey={file.key}
+                      fileName={fileName}
+                      currentPrefix={currentPrefix}
+                      onChanged={reloadListing}
+                    />
+                  )}
                 </span>
                 <span className="name">
                   {fileName}

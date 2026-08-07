@@ -370,6 +370,77 @@ body {
   opacity: 1;
 }
 
+/* Row lifecycle controls (rename, trash, restore). Same restraint as
+   .tag-toggle: faint until hovered, so a long row is not a wall of icons. */
+.fl-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 0.95rem;
+  padding: 2px 4px;
+  opacity: 0.45;
+  transition: opacity 0.15s;
+}
+
+.fl-btn:hover:not(:disabled) {
+  opacity: 1;
+}
+
+.fl-btn:disabled {
+  cursor: default;
+  opacity: 0.25;
+}
+
+.fl-rename {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.fl-rename input {
+  font-size: 0.9rem;
+  padding: 2px 6px;
+  min-width: 12rem;
+}
+
+.fl-error {
+  color: var(--color-error);
+  font-size: 0.8rem;
+  margin-left: 0.4rem;
+}
+
+.fl-upload-panel {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+  max-width: 34rem;
+  padding: 0.75rem;
+}
+
+.fl-upload-panel textarea {
+  font-family: monospace;
+  font-size: 0.75rem;
+  width: 100%;
+  word-break: break-all;
+}
+
+.fl-ttl {
+  display: flex;
+  gap: 0.35rem;
+}
+
+/* The upload URL is a bearer credential, so its caveat is styled as a warning
+   rather than as a hint. */
+.fl-warning {
+  color: var(--color-warning);
+  font-size: 0.8rem;
+  margin: 0;
+}
+
 .file-tags-inline {
   display: inline-flex;
   gap: 0.25rem;
@@ -479,6 +550,8 @@ body {
   color: var(--color-text-secondary);
 }
 
+.trash-btn,
+.upload-link-btn,
 .compare-btn {
   font-size: 0.8rem;
   padding: 4px 10px;
@@ -489,8 +562,16 @@ body {
   white-space: nowrap;
 }
 
+.trash-btn:hover,
+.upload-link-btn:hover,
 .compare-btn:hover {
   background: #f3f6f9;
+}
+
+/* Viewing the trash is a mode, so the button reflects it. */
+.trash-btn.active {
+  background: var(--color-primary-light);
+  border-color: var(--color-primary);
 }
 
 /* SnapMirror per-relationship operations and their confirmation row. */
