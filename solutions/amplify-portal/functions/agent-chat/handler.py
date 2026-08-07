@@ -50,6 +50,10 @@ AGENT_TEAMS_TABLE = os.environ.get("AGENT_TEAMS_TABLE", "")
 # Example: {"engineering": ["engineering/", "shared/"], "finance": ["finance/", "shared/"]}
 GROUP_PATH_PREFIXES = json.loads(os.environ.get("GROUP_PATH_PREFIXES", "{}"))
 
+# Distinguishes "the caller did not send this field" from "the caller sent an
+# empty value". `None` cannot: clearing a description is a legitimate edit.
+_MISSING = object()
+
 s3 = boto3.client(
     "s3",
     region_name=REGION,
@@ -1474,11 +1478,22 @@ def _update_agent(user_id: str, params: dict) -> dict:
     except Exception as e:
         return {"error": str(e)}
 
-    # Build update expression
-    updates = {}
-    for key in ["name", "description", "systemPrompt", "tools", "icon", "category", "isShared"]:
-        if key in params:
-            updates[key] = params[key]
+    # Each field is read by name rather than by looping over a list of keys.
+    # The loop worked, but the parameter contract was invisible to anything
+    # reading this source — including the dispatch type generator, which
+    # therefore told callers `updateAgent` accepted `agentId` and nothing else.
+    # A partial update stays possible: `_MISSING` distinguishes "not sent" from
+    # "sent as empty", so clearing a description is not the same as omitting it.
+    editable = {
+        "name": params.get("name", _MISSING),
+        "description": params.get("description", _MISSING),
+        "systemPrompt": params.get("systemPrompt", _MISSING),
+        "tools": params.get("tools", _MISSING),
+        "icon": params.get("icon", _MISSING),
+        "category": params.get("category", _MISSING),
+        "isShared": params.get("isShared", _MISSING),
+    }
+    updates = {key: value for key, value in editable.items() if value is not _MISSING}
     updates["updatedAt"] = Decimal(str(int(time.time())))
 
     try:

@@ -4360,6 +4360,42 @@ button[type="submit"]:disabled {
 .btn-danger { padding: 0.5rem 1rem; background: #fee2e2; color: #dc2626; border: 1px solid #fca5a5; border-radius: 6px; cursor: pointer; font-size: 0.85rem; }
 .btn-danger:hover { background: #fecaca; }
 
+/* Edit form inside the agent detail panel. Stacked labels and full-width
+   controls, because the system prompt is the field that matters most and it
+   needs the width. */
+.agent-dir-edit {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.agent-dir-edit input[type="text"],
+.agent-dir-edit textarea {
+  font-size: 0.85rem;
+  padding: 0.4rem 0.5rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  width: 100%;
+}
+
+.agent-dir-edit textarea {
+  font-family: monospace;
+  resize: vertical;
+}
+
+.agent-dir-share-toggle {
+  align-items: center;
+  display: flex;
+  gap: 0.4rem;
+  margin-top: 0.35rem;
+}
+
+.agent-dir-edit-actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
 .agent-dir-empty { text-align: center; padding: 3rem; color: #64748b; }
 .agent-dir-loading { text-align: center; padding: 2rem; color: #64748b; }
 .agent-dir-error { padding: 0.75rem; background: #fef2f2; border: 1px solid #fca5a5; border-radius: 6px; color: #991b1b; margin-bottom: 1rem; font-size: 0.85rem; }

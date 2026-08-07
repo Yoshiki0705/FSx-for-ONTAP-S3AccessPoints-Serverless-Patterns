@@ -788,6 +788,17 @@ arpResponseSweepNote: "Blocks lift themselves once their expiry passes. To lift 
   agentRunningTeam: "Running as the team {name}",
   agentBackToModes: "Back to modes",
   agentDirDelete: "Delete",
+  agentDirEdit: "Edit",
+  agentDirSave: "Save",
+  agentDirSaveFailed: "Save failed",
+  agentDirFieldName: "Name",
+  agentDirFieldDescription: "Description",
+  agentDirFieldCategory: "Category",
+  agentDirFieldIcon: "Icon",
+  agentDirFieldSystemPrompt: "System prompt",
+  agentDirFieldShared: "Share with other users",
+  agentDirSharedHint: "Sharing lets other users run this agent.",
+  agentDirToolsNotEditable: "Tools are chosen in the creator. At run time the stored list is intersected with the tools that exist.",
   agentDirDeleteConfirm: "Delete this agent?",
 
   // --- Agent Creator ---

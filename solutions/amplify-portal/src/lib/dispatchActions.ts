@@ -817,6 +817,13 @@ export interface AgentChatActionParams {
   };
   updateAgent: {
     agentId: string;
+    category?: string;
+    description?: string;
+    icon?: string;
+    isShared?: boolean;
+    name?: string;
+    systemPrompt?: string;
+    tools?: string[];
   };
 }
 

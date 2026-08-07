@@ -795,6 +795,17 @@ arpResponseSweepNote: "ブロックは指定した期限が過ぎると自動で
   agentRunningTeam: "チーム「{name}」で実行中",
   agentBackToModes: "モード選択に戻る",
   agentDirDelete: "削除",
+  agentDirEdit: "編集",
+  agentDirSave: "保存",
+  agentDirSaveFailed: "保存に失敗しました",
+  agentDirFieldName: "名前",
+  agentDirFieldDescription: "説明",
+  agentDirFieldCategory: "カテゴリ",
+  agentDirFieldIcon: "アイコン",
+  agentDirFieldSystemPrompt: "システムプロンプト",
+  agentDirFieldShared: "他のユーザーに共有する",
+  agentDirSharedHint: "共有すると、他のユーザーがこのエージェントを実行できます。",
+  agentDirToolsNotEditable: "ツールの変更は作成画面から行います。実行時には実在するツールとの積集合が使われます。",
   agentDirDeleteConfirm: "このエージェントを削除しますか？",
 
   // --- Agent Creator ---
