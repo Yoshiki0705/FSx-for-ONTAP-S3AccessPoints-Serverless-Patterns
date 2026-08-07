@@ -128,7 +128,7 @@ sequenceDiagram
 
 ---
 
-## Portal-UI — Seitenleisten-Layout (12 Bereiche)
+## Portal-UI — Seitenleisten-Layout (17 Bereiche)
 
 ![Sidebar Layout](docs/screenshots/portal-sidebar-layout.png)
 *Linke Seitenleiste: gruppierte Navigation. Mitte: aktiver Bereichsinhalt. Rechts: AI-Assistent (bei Dateiauswahl).*
@@ -138,14 +138,19 @@ sequenceDiagram
 | **Browse** | All Files | Durchsuchen, Vorschau, AI Q&A, Freigabelinks, QR-Zugriff |
 | | Favorites | Angeheftete Dateien (DynamoDB, pro Benutzer) |
 | | Recent | Kürzlich aufgerufene Dateien |
+| | Folder Watch | Überwachte Prefixe und empfangene Dateiereignisse (Admin-Schalter) |
 | | Upload | Drag-and-Drop über Storage Browser for S3 |
 | **AI & Processing** | AI Processing | AI/ML-Workflows auslösen (Step Functions) |
+| | AI Chat | Werkzeugnutzender Agent auf Ihren Dateien, oder ein gespeicherter Agent bzw. ein Team |
+| | Search | Semantische Suche über das gesamte Volume |
 | | Job History | Vergangene Ausführungen (DynamoDB, Eigentümer-Bereich) |
 | | Analytics | Athena SQL auf Glue Data Catalog |
+| | Agent Directory | Gespeicherte Agentendefinitionen ausführen, bearbeiten oder teilen |
 | **Data Protection** | Snapshots | ONTAP-Snapshot-Liste + FlexClone-Wiederherstellung |
 | | Lock | SnapLock (WORM) + S3 Object Lock-Status |
 | | ARP/AI | Autonomous Ransomware Protection-Status |
-| **Admin** | Version Diff | Dateivergleich zwischen Snapshots (nebeneinander) |
+| **Admin** | Resource Management | Volumes, Freigaben, Exporte, Quotas, QoS, SnapMirror (nur storage-admin) |
+| | Version Diff | Dateivergleich zwischen Snapshots (nebeneinander) |
 | | Audit Trail | CloudTrail S3-Datenereignisse (wer/wann/was) |
 
 ![AI Processing](docs/screenshots/portal-ai-processing.png)
@@ -469,8 +474,8 @@ Wenn der Upload-Tab "AccessDenied" anzeigt, bestätigen Sie, dass `s3ApResourceA
 Jeder Entwickler erhält eine isolierte Sandbox, die durch den OS-Benutzernamen gekennzeichnet ist. `make sandbox` auf verschiedenen Maschinen (oder mit verschiedenen Benutzernamen) erstellt separate Stacks:
 
 ```
-amplify-fsxns3apamplifyportal-yoshiki-sandbox-ae70db2b34  ← Entwickler 1
-amplify-fsxns3apamplifyportal-tanaka-sandbox-bf81ec3c45   ← Entwickler 2
+amplify-fsxns3apamplifyportal-dev1-sandbox-0123456789  ← Entwickler 1
+amplify-fsxns3apamplifyportal-dev2-sandbox-9876543210   ← Entwickler 2
 ```
 
 Sie teilen dasselbe AWS-Konto, interferieren aber nicht. Verwenden Sie `npx ampx sandbox --identifier benutzerdefinierter-name` für explizite Benennung.

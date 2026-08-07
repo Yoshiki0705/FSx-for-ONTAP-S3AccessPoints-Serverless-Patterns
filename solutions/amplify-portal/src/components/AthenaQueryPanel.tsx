@@ -3,6 +3,7 @@ import { generateClient } from "aws-amplify/data";
 import type { Schema } from "../../amplify/data/resource";
 import { useTranslation } from "../i18n";
 import { withNodes } from "../utils/richText";
+import { CatalogBrowser } from "./CatalogBrowser";
 
 const client = generateClient<Schema>();
 
@@ -75,6 +76,14 @@ export function AthenaQueryPanel() {
           cmd: <code>SHOW DATABASES</code>,
         })}
       </p>
+
+      {/* Browsing the catalog beats guessing a database name and retrying. */}
+      <CatalogBrowser
+        onSelectTable={(db, table) => {
+          setDatabase(db);
+          setSql(`SELECT * FROM ${db}.${table} LIMIT 20`);
+        }}
+      />
 
       <div className="athena-guidance" style={{ marginBottom: "1rem", padding: "0.75rem", background: "var(--surface-secondary, #f8f9fa)", borderRadius: "6px", fontSize: "0.85rem" }}>
         <p style={{ margin: "0 0 0.5rem" }}>

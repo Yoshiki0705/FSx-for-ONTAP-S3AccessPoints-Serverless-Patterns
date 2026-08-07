@@ -41,7 +41,11 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from check_portal_drift import active_contradictions, scan_text  # noqa: E402
+from check_portal_drift import (  # noqa: E402
+    COUNT_CLAIMS,
+    active_contradictions,
+    scan_text,
+)
 
 USER_AGENT = "fsxn-s3ap-serverless-patterns-doc-check (+https://github.com/Yoshiki0705)"
 TIMEOUT_SECONDS = 20
@@ -206,6 +210,38 @@ def article_text(url: str, kind: str) -> str:
     return text
 
 
+def count_findings(text: str, article: dict) -> list[str]:
+    """Numbers the article states about the portal, against the implementation.
+
+    This is the half of the rule table that the phrasing patterns cannot reach. A
+    published "4 groups × 13 sections" is not a false phrasing to match on — it is
+    a number that was correct on the day it was written. Both articles carried a
+    stale one, and neither the repository check nor a reader was ever going to
+    catch it.
+    """
+    out: list[str] = []
+    for claim in COUNT_CLAIMS:
+        try:
+            expected = claim["count"]()
+        except OSError:
+            # The implementation is unreadable, so there is nothing to compare
+            # against. Reported by check_portal_drift.py, not duplicated here.
+            continue
+        if not expected:
+            continue
+        for number, line in enumerate(text.split("\n"), start=1):
+            for match in claim["pattern"].finditer(line):
+                stated = next(group for group in match.groups() if group)
+                if int(stated) != expected:
+                    out.append(
+                        f"{article['label']} (line {number})\n"
+                        f"      says {stated} but {claim['source']} has {expected}\n"
+                        f"      {line.strip()[:150]}\n"
+                        f"      {article['url']}"
+                    )
+    return out
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
@@ -226,7 +262,7 @@ def main() -> int:
     args = parser.parse_args()
 
     rules = active_contradictions()
-    if not rules:
+    if not rules and not COUNT_CLAIMS:
         print("PUBLISHED ARTICLES: no active claim rules; nothing to check")
         return 0
 
@@ -250,6 +286,7 @@ def main() -> int:
                 f"      {matched[:150]}\n"
                 f"      {article['url']}"
             )
+        findings.extend(count_findings(text, article))
 
     for message in unreachable:
         print(f"could not fetch — {message}")
@@ -276,7 +313,10 @@ def main() -> int:
         print(f"\nPUBLISHED ARTICLES: {len(unreachable)} article(s) unreachable (--require-fetch)")
         return 2
 
-    print(f"PUBLISHED ARTICLES: PASS ({checked} article(s), {len(rules)} claim rule(s))")
+    print(
+        f"PUBLISHED ARTICLES: PASS ({checked} article(s), {len(rules)} claim rule(s), "
+        f"{len(COUNT_CLAIMS)} count rule(s))"
+    )
     return 0
 
 

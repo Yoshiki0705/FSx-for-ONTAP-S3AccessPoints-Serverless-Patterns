@@ -561,15 +561,26 @@ def _update_portal_settings(event, user_id):
     key = event.get("key", "")
     value = event.get("value", "")
 
-    # Whitelist of allowed settings keys
+    # Settings the portal actually acts on. A key that nothing reads is worse than
+    # a missing key: the admin panel shows a switch, the write succeeds, and
+    # nothing changes. Four keys were removable on that basis:
+    #
+    #   aiSmartRoutingEnabled — KB scope filtering follows GROUP_PATH_PREFIXES,
+    #     which is deploy-time configuration. A runtime switch that could widen a
+    #     multi-tenant scope boundary is not a switch worth having, so the panel
+    #     now reports the configured state instead of offering to change it.
+    #   aiVoiceEnabled, agentDirectoryEnabled — no UI and no consumer at all.
     allowed_keys = {
         "aiAgentEnabled",
         "aiSearchEnabled",
         "aiMultimodalEnabled",
-        "aiSmartRoutingEnabled",
         "chatHistoryEnabled",
-        "aiVoiceEnabled",
-        "agentDirectoryEnabled",
+        # Folder watch is off by default because the events come from outside the
+        # portal: FPolicy (or Transfer Family) has to be publishing to EventBridge
+        # for anything to arrive. Enabling it with no publisher would show an inbox
+        # that is permanently empty, so the switch is the admin saying "the
+        # publisher exists".
+        "folderWatchEnabled",
     }
     if key not in allowed_keys:
         return {"error": f"Setting '{key}' is not allowed. Valid: {sorted(allowed_keys)}"}
@@ -3039,6 +3050,10 @@ def _get_snapmirror_transfers(event):
     for tr in records:
         transfers.append(
             {
+                # Carried through because `abortSnapmirrorTransfer` needs it. Without
+                # it that action had no caller and could not have had one: the only
+                # listing of transfers did not report which transfer each row was.
+                "uuid": tr.get("uuid", ""),
                 "state": tr.get("state", ""),
                 "bytesTransferred": tr.get("bytes_transferred", 0),
                 "endTime": tr.get("end_time", ""),

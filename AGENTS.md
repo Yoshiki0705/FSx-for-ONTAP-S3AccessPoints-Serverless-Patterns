@@ -827,7 +827,19 @@ When reviewing changes, consider these perspectives:
 | [Demo Mode Guide](docs/demo-mode-guide.md) | Run without FSx for ONTAP |
 | [Customization Guide](docs/customization-guide.md) | Adapt patterns to your workload |
 | [Portal Implementation Guide](solutions/amplify-portal/docs/IMPLEMENTATION.md) | Portal architecture, config, component structure, modification log |
-| [Admin Demo Guide](docs/en/admin-resource-management-demo.md) | Admin Resource Management E2E demo scenarios |
+| [Admin Demo Guide (EN)](docs/en/admin-resource-management-demo.md) | 26 admin + user demo scenarios |
+| [管理者向けリソース管理 デモガイド (JA)](docs/ja/admin-resource-management-demo.md) | 同 26 シナリオの日本語版 |
+| [Portal Verification Results (EN)](solutions/amplify-portal/docs/verification-results.en.md) | What is Live E2E vs live-read vs tests-only vs DemoMode, per feature |
+| [ポータル検証結果 (JA)](solutions/amplify-portal/docs/verification-results.md) | 機能ごとの検証区分（実機 E2E / 読み取り / テストのみ / DemoMode） |
+| [Portal Getting Started](solutions/amplify-portal/docs/GETTING-STARTED.md) | First deploy of the portal |
+| [ONTAP Connection Guide](solutions/amplify-portal/docs/ONTAP-CONNECTION-GUIDE.md) | VPC, secret and management LIF wiring |
+| [Portal Tabs Guide](solutions/amplify-portal/docs/portal-tabs-guide.md) | What each sidebar section does |
+| [Admin Capability Map (JA)](solutions/amplify-portal/docs/admin-capability-map.md) / [(EN)](solutions/amplify-portal/docs/admin-capability-map.en.md) | ONTAP System Manager feature coverage |
+| [Resource Management Demo Guide (JA)](solutions/amplify-portal/docs/resource-management-demo-guide.md) / [(EN)](solutions/amplify-portal/docs/resource-management-demo-guide.en.md) | Panel-by-panel walkthrough |
+| [AI Agent Demo Guide (JA)](solutions/amplify-portal/docs/ai-agent-demo-guide.md) / [(EN)](solutions/amplify-portal/docs/ai-agent-demo-guide.en.md) | Agent chat, directory and teams |
+| [Amplify Gen2 CDK Patterns](solutions/amplify-portal/docs/amplify-gen2-cdk-patterns.md) | Cross-stack data sources, VPC Lambda deploy cost, escape hatches |
+| [Portal Cleanup Guide](solutions/amplify-portal/docs/cleanup-guide.md) | Tearing the sandbox and its resources down |
+| [AppSync Auth Troubleshooting](solutions/amplify-portal/docs/TROUBLESHOOTING-APPSYNC-AUTH.md) | When Cognito group authorization fails |
 | [Cost Calculator](docs/cost-calculator.md) | Estimate monthly costs |
 | [Comparison Alternatives](docs/comparison-alternatives.md) | S3 AP vs EFS vs NFS vs DataSync + NFS Read Cache (FlexCache/KNFSD/File Cache) |
 | [PoC Go/No-Go Template](docs/poc-go-nogo-template.md) | PoC success criteria |
