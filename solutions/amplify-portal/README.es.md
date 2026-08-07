@@ -128,7 +128,7 @@ sequenceDiagram
 
 ---
 
-## UI del Portal — Diseño de la barra lateral (12 secciones)
+## UI del Portal — Diseño de la barra lateral (16 secciones)
 
 ![Sidebar Layout](docs/screenshots/portal-sidebar-layout.png)
 *Barra lateral izquierda: navegación agrupada. Centro: contenido de la sección activa. Derecha: asistente AI (al seleccionar archivo).*
@@ -140,12 +140,16 @@ sequenceDiagram
 | | Recent | Archivos accedidos recientemente |
 | | Upload | Arrastrar y soltar vía Storage Browser for S3 |
 | **AI & Processing** | AI Processing | Disparar flujos de trabajo AI/ML (Step Functions) |
+| | AI Chat | Agente con herramientas sobre sus archivos, o ejecución de un agente o equipo guardado |
+| | Search | Búsqueda semántica en todo el volumen |
 | | Job History | Ejecuciones pasadas (DynamoDB, ámbito del propietario) |
 | | Analytics | SQL Athena sobre Glue Data Catalog |
+| | Agent Directory | Ejecutar, editar o compartir una definición de agente guardada |
 | **Data Protection** | Snapshots | Lista de snapshots ONTAP + restauración FlexClone |
 | | Lock | SnapLock (WORM) + estado de S3 Object Lock |
 | | ARP/AI | Estado de Autonomous Ransomware Protection |
-| **Admin** | Version Diff | Comparación lado a lado de archivos entre snapshots |
+| **Admin** | Resource Management | Volúmenes, recursos compartidos, exportaciones, cuotas, QoS, SnapMirror (solo storage-admin) |
+| | Version Diff | Comparación lado a lado de archivos entre snapshots |
 | | Audit Trail | Eventos de datos S3 de CloudTrail (quién/cuándo/qué) |
 
 ![AI Processing](docs/screenshots/portal-ai-processing.png)
@@ -469,8 +473,8 @@ Si la pestaña Upload muestra "AccessDenied", confirme que `s3ApResourceArns` en
 Cada desarrollador obtiene un sandbox aislado identificado por el nombre de usuario del SO. Ejecutar `make sandbox` en diferentes máquinas (o diferentes nombres de usuario) crea stacks separados:
 
 ```
-amplify-fsxns3apamplifyportal-yoshiki-sandbox-ae70db2b34  ← desarrollador 1
-amplify-fsxns3apamplifyportal-tanaka-sandbox-bf81ec3c45   ← desarrollador 2
+amplify-fsxns3apamplifyportal-dev1-sandbox-0123456789  ← desarrollador 1
+amplify-fsxns3apamplifyportal-dev2-sandbox-9876543210   ← desarrollador 2
 ```
 
 Comparten la misma cuenta AWS pero no interfieren. Use `npx ampx sandbox --identifier nombre-personalizado` para nombrado explícito.

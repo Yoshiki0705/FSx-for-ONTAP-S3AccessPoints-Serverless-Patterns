@@ -128,7 +128,7 @@ sequenceDiagram
 
 ---
 
-## 포털 UI — 사이드바 레이아웃 (12개 섹션)
+## 포털 UI — 사이드바 레이아웃 (16개 섹션)
 
 ![Sidebar Layout](docs/screenshots/portal-sidebar-layout.png)
 *왼쪽 사이드바: 그룹화된 네비게이션. 중앙: 활성 섹션 콘텐츠. 오른쪽: AI 어시스턴트 (파일 선택 시).*
@@ -140,12 +140,16 @@ sequenceDiagram
 | | Recent | 최근 액세스한 파일 |
 | | Upload | Storage Browser for S3를 통한 드래그 앤 드롭 |
 | **AI & Processing** | AI Processing | AI/ML 워크플로우 트리거 (Step Functions) |
+| | AI Chat | 파일을 대상으로 도구를 사용하는 에이전트(저장된 에이전트/팀 실행 포함) |
+| | Search | 볼륨 전체 시맨틱 검색 |
 | | Job History | 과거 실행 이력 (DynamoDB, 소유자 스코프) |
 | | Analytics | Glue Data Catalog 기반 Athena SQL |
+| | Agent Directory | 저장된 에이전트 정의 실행, 편집, 공유 |
 | **Data Protection** | Snapshots | ONTAP 스냅샷 목록 + FlexClone 복원 |
 | | Lock | SnapLock (WORM) + S3 Object Lock 상태 |
 | | ARP/AI | Autonomous Ransomware Protection 상태 |
-| **Admin** | Version Diff | 스냅샷 간 파일 비교 (사이드 바이 사이드) |
+| **Admin** | Resource Management | 볼륨, 공유, 내보내기, 할당량, QoS, SnapMirror(storage-admin 전용) |
+| | Version Diff | 스냅샷 간 파일 비교 (사이드 바이 사이드) |
 | | Audit Trail | CloudTrail S3 데이터 이벤트 (누가/언제/무엇을) |
 
 ![AI Processing](docs/screenshots/portal-ai-processing.png)
@@ -469,8 +473,8 @@ Upload 탭에 "AccessDenied"가 표시되면 `portal-config.ts`의 `s3ApResource
 각 개발자는 OS 사용자 이름으로 키가 지정된 격리된 샌드박스를 받습니다. 다른 머신 (또는 다른 사용자 이름)에서 `make sandbox`를 실행하면 별도의 스택이 생성됩니다:
 
 ```
-amplify-fsxns3apamplifyportal-yoshiki-sandbox-ae70db2b34  ← 개발자 1
-amplify-fsxns3apamplifyportal-tanaka-sandbox-bf81ec3c45   ← 개발자 2
+amplify-fsxns3apamplifyportal-dev1-sandbox-0123456789  ← 개발자 1
+amplify-fsxns3apamplifyportal-dev2-sandbox-9876543210   ← 개발자 2
 ```
 
 동일한 AWS 계정을 공유하지만 간섭하지 않습니다. `npx ampx sandbox --identifier custom-name`으로 명시적 이름을 지정할 수 있습니다.
@@ -488,20 +492,25 @@ amplify-portal/
 │   ├── auth/resource.ts            # Cognito (email + MFA + SAML/OIDC 플레이스홀더)
 │   ├── data/
 │   │   ├── resource.ts             # AppSync 스키마 (쿼리, 뮤테이션, 커스텀 타입)
-│   │   └── resolvers/              # APPSYNC_JS 리졸버 (7개 파일)
-│   │       ├── start-processing.js # HTTP → StepFunctions.StartExecution
-│   │       ├── get-job-status.js   # HTTP → StepFunctions.DescribeExecution
-│   │       ├── list-files.js       # Lambda → S3 AP ListObjectsV2 (+ 그룹 라우팅)
-│   │       ├── list-files-from-ap.js # Lambda → 임의 AP (SnapshotCompare용)
-│   │       ├── list-snapshots.js   # Lambda → ONTAP Snapshot 목록 (VPC)
-│   │       ├── search-files.js     # Lambda → Bedrock KB Retrieve
-│   │       ├── get-file-metadata.js # Lambda → DynamoDB AI 메타데이터
-│   │       ├── get-presigned-url.js # Lambda → Presigned URL 생성
-│   │       ├── generate-qr-code.js # Lambda → Presigned URL + QR PNG
-│   │       ├── query-audit-log.js  # Lambda → Athena (CloudTrail)
-│   │       ├── ask-about-file.js   # Lambda → Bedrock Converse API
-│   │       ├── detect-labels.js    # Lambda → Rekognition DetectLabels
-│   │       └── run-athena-query.js # Lambda → Athena StartQueryExecution
+│   │   └── resolvers/              # APPSYNC_JS resolvers (18 files, all reached from resource.ts)
+│   │       ├── start-processing.js   # HTTP → StepFunctions.StartExecution
+│   │       ├── get-job-status.js     # HTTP → StepFunctions.DescribeExecution
+│   │       ├── files-dispatch.js     # Lambda → list-files (listing + file lifecycle)
+│   │       ├── snapshots-dispatch.js # Lambda → snapshots (ONTAP snapshots, FlexClone)
+│   │       ├── rm-dispatch.js        # Lambda → resource-management (storage-admin actions)
+│   │       ├── arp-dispatch.js       # Lambda → ARP response actions
+│   │       ├── agent-dispatch.js     # Lambda → agent chat, directory and teams
+│   │       ├── search-files.js       # Lambda → Bedrock KB Retrieve
+│   │       ├── get-file-metadata.js  # Lambda → DynamoDB AI metadata
+│   │       ├── get-presigned-url.js  # Lambda → Presigned URL generation
+│   │       ├── generate-qr-code.js   # Lambda → Presigned URL + QR PNG
+│   │       ├── query-audit-log.js    # Lambda → Athena (CloudTrail)
+│   │       ├── ask-about-file.js     # Lambda → Bedrock Converse API
+│   │       ├── detect-labels.js      # Lambda → Rekognition DetectLabels
+│   │       ├── extract-text.js       # Lambda → Textract
+│   │       ├── analyze-text.js       # Lambda → Comprehend
+│   │       ├── browse-catalog.js     # Lambda → Glue Data Catalog
+│   │       └── run-athena-query.js   # Lambda → Athena StartQueryExecution
 │   └── custom/
 │       └── step-functions.ts       # (참조 — backend.ts로 이동됨)
 ├── src/
