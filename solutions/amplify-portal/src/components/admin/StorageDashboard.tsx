@@ -1,10 +1,7 @@
 import { useState, useEffect } from "react";
-import { generateClient } from "aws-amplify/data";
-import type { Schema } from "../../../amplify/data/resource";
 import { useTranslation } from "../../i18n";
+import { dispatch } from "../../lib/dispatch";
 import { parseResponse } from "../../utils/parseResponse";
-
-const client = generateClient<Schema>();
 
 interface DashboardData {
   volumeCount: number;
@@ -33,10 +30,10 @@ export function StorageDashboard({ onNavigate }: { onNavigate: (panel: string) =
       try {
         // Parallel fetch for all dashboard data
         const [volResp, arpResp, snapResp, effResp] = await Promise.allSettled([
-          client.queries.adminQuery({ action: "listVolumes", params: JSON.stringify({}) }),
-          client.queries.adminQuery({ action: "listArpVolumes", params: JSON.stringify({}) }),
-          client.queries.protectionQuery({ action: "listSnapshots", params: JSON.stringify({ maxResults: 50 }) }),
-          client.queries.adminQuery({ action: "getEfficiencyStats", params: JSON.stringify({}) }),
+          dispatch("adminQuery", { action: "listVolumes" }),
+          dispatch("adminQuery", { action: "listArpVolumes" }),
+          dispatch("protectionQuery", { action: "listSnapshots", params: { maxResults: 50 } }),
+          dispatch("adminQuery", { action: "getEfficiencyStats" }),
         ]);
 
         let volumeCount = 0, volumeCapacityPct = 0;

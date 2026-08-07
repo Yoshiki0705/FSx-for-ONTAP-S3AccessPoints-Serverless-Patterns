@@ -268,6 +268,7 @@ arpResponseSweepNote: "阻止会在设定的期限过后自动解除。如需提
   rmNewRetentionDays: "新保留期（天）",
   rmRetentionHint: "SnapLock Compliance：不可缩短，仅可延长。",
   rmRetentionUpdated: "保留期已更新",
+  rmRetentionInvalid: "保留期格式不正确。请使用 ISO 8601 期间格式，例如 P30D、P6M 或 P1Y。",
   rmDays: "天",
   rmApply: "应用",
   // --- Resource Management: Quotas ---

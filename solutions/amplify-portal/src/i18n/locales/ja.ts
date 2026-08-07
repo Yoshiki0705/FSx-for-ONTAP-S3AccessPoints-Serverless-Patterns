@@ -274,6 +274,8 @@ arpResponseSweepNote: "ブロックは指定した期限が過ぎると自動で
   rmNewRetentionDays: "新しい保持期間（日数）",
   rmRetentionHint: "SnapLock Compliance: 短縮不可。延長のみ可能。",
   rmRetentionUpdated: "保持期間を更新しました",
+  rmRetentionInvalid:
+    "保持期間の形式が正しくありません。ISO 8601 の期間で指定してください（例: P30D、P6M、P1Y）。",
   rmDays: "日",
   rmApply: "適用",
 

@@ -4,6 +4,7 @@ import { generateClient } from "aws-amplify/data";
 import type { Schema } from "../../../amplify/data/resource";
 import { useTranslation } from "../../i18n";
 import { errorMessage } from "../../lib/portalQuery";
+import { adminQuery } from "../../lib/dispatch";
 import { parseResponse } from "../../utils/parseResponse";
 
 const client = generateClient<Schema>();
@@ -67,15 +68,11 @@ export function LocalUserManager() {
   } = useQuery({
     queryKey: ["admin", "localIdentities", tab],
     queryFn: async () => {
-      const data = parseResponse<{
-        users?: LocalUser[];
-        groups?: LocalGroup[];
-        error?: string;
-      }>(
-        await client.queries.adminQuery({
-          action: tab === "users" ? "listLocalUsers" : "listLocalGroups",
-          params: JSON.stringify({}),
-        }),
+      // The action is written out per branch rather than computed. A computed name
+      // is unreadable to the parameter check and, now that each action carries its
+      // own parameter type, would defeat that too.
+      const data = await adminQuery<{ users?: LocalUser[]; groups?: LocalGroup[] }>(
+        tab === "users" ? { action: "listLocalUsers" } : { action: "listLocalGroups" },
       );
       // A dispatcher that is not wired yet is an empty list, not a failure.
       if (
