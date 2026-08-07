@@ -1,15 +1,10 @@
 import { useState } from "react";
-import { generateClient } from "aws-amplify/data";
-import type { Schema } from "../../../amplify/data/resource";
 import { useTranslation } from "../../i18n";
+import { adminMutate, adminQuery } from "../../lib/dispatch";
+import type { VolumeUuid } from "../../lib/dispatchActions";
 import { SnaplockConfirmDialog } from "../SnaplockConfirmDialog";
 import { VolumeSelector } from "./VolumeSelector";
-import { parseResponse } from "../../utils/parseResponse";
 import type { SnaplockIntent } from "../../utils/snaplockConsequences";
-
-const client = generateClient<Schema>();
-
-// Parse the JSON string response from generic dispatch endpoints
 
 interface SnaplockConfig {
   volumeName: string;
@@ -42,10 +37,10 @@ export function SnaplockManager() {
     if (!name) return;  // Don't call API without a volume name
     setLoading(true); setError(null);
     try {
-      const response = await client.queries.adminQuery({ action: "getSnaplockConfig", params: JSON.stringify({
-        volumeName: volumeName || volumeInput || undefined,
-      }) });
-      const data = parseResponse<{ config?: SnaplockConfig; error?: string }>(response);
+      const data = await adminQuery<{ config?: SnaplockConfig }>({
+        action: "getSnaplockConfig",
+        params: { volumeName: volumeName || volumeInput || undefined },
+      });
       if (data) {
         if (data.error) setError(data.error);
         else setConfig(data.config || null);
@@ -73,17 +68,19 @@ export function SnaplockManager() {
     if (!config || retentionDays <= 0) return;
     // Need volume UUID — fetch it
     try {
-      const volResp = await client.queries.adminQuery({ action: "listVolumes", params: JSON.stringify({}) });
-      const volData = parseResponse<{ volumes?: { name: string; uuid: string }[] }>(volResp);
+      // `uuid` is branded here, where ONTAP's answer arrives, so that the update
+      // below cannot be handed the volume *name* that sits beside it.
+      const volData = await adminQuery<{ volumes?: { name: string; uuid: VolumeUuid }[] }>({
+        action: "listVolumes",
+      });
       if (volData) {
         const vol = (volData.volumes || []).find(v => v.name === config.volumeName);
         if (!vol) { setError(`Volume UUID not found for ${config.volumeName}`); return; }
 
-        const response = await client.mutations.adminMutation({ action: "updateSnaplockRetention", params: JSON.stringify({
-          volumeUuid: vol.uuid, days: retentionDays,
-          acknowledgeIrreversible: true,
-        }) });
-        const data = parseResponse<{ success?: boolean; error?: string }>(response);
+        const data = await adminMutate<{ success?: boolean }>({
+          action: "updateSnaplockRetention",
+          params: { volumeUuid: vol.uuid, days: retentionDays, acknowledgeIrreversible: true },
+        });
         if (data) {
           if (data.success) {
             setResult(`${t("rmRetentionUpdated")}: ${retentionDays} ${t("rmDays")}`);

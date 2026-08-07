@@ -43,6 +43,12 @@ jobs:
       # worked once. Needs no dependencies beyond the standard library.
       - name: Check portal actions receive the parameters they require
         run: python3 scripts/check_portal_action_params.py
+      # The check above compares parameter *names*. The generated types below carry
+      # the values — branded identifiers, instants and durations — so that a volume
+      # name cannot be passed where a UUID belongs. This verifies the generated file
+      # still describes the handlers it was generated from.
+      - name: Check the generated dispatch parameter types match the handlers
+        run: python3 scripts/portal_action_types.py --check
 
   handler-name-check:
     name: "Handler undefined-name sweep"

@@ -271,6 +271,8 @@ arpResponseSweepNote: "Blocks lift themselves once their expiry passes. To lift 
   rmNewRetentionDays: "New retention (days)",
   rmRetentionHint: "SnapLock Compliance: cannot shorten. Extension only.",
   rmRetentionUpdated: "Retention updated",
+  rmRetentionInvalid:
+    "One of the retention periods is not a valid format. Use an ISO 8601 period, for example P30D, P6M or P1Y.",
   rmDays: "days",
   rmApply: "Apply",
 

@@ -4,6 +4,7 @@ import { generateClient } from "aws-amplify/data";
 import type { Schema } from "../../../amplify/data/resource";
 import { useTranslation } from "../../i18n";
 import { errorMessage } from "../../lib/portalQuery";
+import { adminQuery } from "../../lib/dispatch";
 import { parseResponse } from "../../utils/parseResponse";
 
 const client = generateClient<Schema>();
@@ -88,13 +89,18 @@ export function PeeringManager() {
   } = useQuery({
     queryKey: ["admin", "peering", tab],
     queryFn: async () => {
-      const action =
-        tab === "cluster" ? "listClusterPeers" : tab === "svm" ? "listSvmPeers" : "listInterclusterLifs";
-      const data = parseResponse<{
+      // Written out per branch: a computed action name is unreadable to the
+      // parameter check and bypasses the per-action parameter type.
+      const call =
+        tab === "cluster"
+          ? ({ action: "listClusterPeers" } as const)
+          : tab === "svm"
+            ? ({ action: "listSvmPeers" } as const)
+            : ({ action: "listInterclusterLifs" } as const);
+      const data = await adminQuery<{
         peers?: ClusterPeer[] | SvmPeer[];
         lifs?: InterclusterLif[];
-        error?: string;
-      }>(await client.queries.adminQuery({ action, params: JSON.stringify({}) }));
+      }>(call);
       // A dispatcher that is not wired yet is an empty list, not a failure.
       if (data?.error && !isTransient(data.error)) throw new Error(data.error);
       return data;

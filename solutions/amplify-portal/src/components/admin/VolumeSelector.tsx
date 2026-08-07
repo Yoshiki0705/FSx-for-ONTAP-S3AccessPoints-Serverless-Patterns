@@ -1,15 +1,20 @@
 import { useState, useEffect, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { generateClient } from "aws-amplify/data";
-import type { Schema } from "../../../amplify/data/resource";
 import { useTranslation } from "../../i18n";
 import { errorMessage, unwrap } from "../../lib/portalQuery";
-
-const client = generateClient<Schema>();
+import { dispatch } from "../../lib/dispatch";
+import type { VolumeUuid } from "../../lib/dispatchActions";
 
 export interface VolumeInfo {
   name: string;
-  uuid: string;
+  /**
+   * ONTAP's UUID for the volume, branded here.
+   *
+   * This selector is where four panels get the identifier they then pass to
+   * resize, delete, quota, qtree and locking actions. Branding it once here is
+   * what stops any of them handing a volume *name* to one of those.
+   */
+  uuid: VolumeUuid;
   sizeGiB: number;
   state: string;
   securityStyle: string;
@@ -54,14 +59,17 @@ export function VolumeSelector({ onSelect, label, showUuid = false, autoSelectFi
   } = useQuery({
     queryKey: ["admin", "volumeSelector", nameFilter ?? null],
     queryFn: async () => {
-      const action = nameFilter !== undefined ? "listVolumesFiltered" : "listVolumes";
-      const params: Record<string, unknown> = {};
-      if (nameFilter !== undefined) {
-        params.nameFilter = nameFilter;
-        params.maxRecords = 20;
-      }
+      // Two calls rather than one with a computed action name. The filtered form
+      // takes parameters the unfiltered one does not, and building the action and a
+      // `Record<string, unknown>` together hid that from both the compiler and the
+      // parameter check, which could not read a call whose action was a variable.
       const data = await unwrap<{ volumes?: VolumeInfo[] }>(
-        client.queries.adminQuery({ action, params: JSON.stringify(params) }),
+        nameFilter !== undefined
+          ? dispatch("adminQuery", {
+              action: "listVolumesFiltered",
+              params: { nameFilter, maxRecords: 20 },
+            })
+          : dispatch("adminQuery", { action: "listVolumes" }),
       );
       // Internal root volumes are not selectable targets.
       return (data?.volumes ?? []).filter(
@@ -97,6 +105,8 @@ export function VolumeSelector({ onSelect, label, showUuid = false, autoSelectFi
     }, 300);
   };
 
+  // The select's value is a plain string; the branded UUID comes from the volume it
+  // identifies, not from the DOM.
   const handleChange = (uuid: string) => {
     setSelectedUuid(uuid);
     const vol = volumes.find((v) => v.uuid === uuid);

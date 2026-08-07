@@ -268,6 +268,8 @@ arpResponseSweepNote: "Les blocages se lèvent d'eux-mêmes à l'échéance. Pou
   rmNewRetentionDays: "Nouvelle rétention (jours)",
   rmRetentionHint: "SnapLock Compliance : non réductible. Extension uniquement.",
   rmRetentionUpdated: "Rétention mise à jour",
+  rmRetentionInvalid:
+    "Le format d'une des périodes de rétention est invalide. Utilisez une période ISO 8601, par exemple P30D, P6M ou P1Y.",
   rmDays: "jours",
   rmApply: "Appliquer",
   // --- Resource Management: Quotas ---
