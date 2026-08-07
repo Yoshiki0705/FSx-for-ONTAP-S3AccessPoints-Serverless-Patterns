@@ -9,6 +9,7 @@ import { ShareLink } from "./ShareLink";
 import { FavoriteButton } from "./Favorites";
 import { FolderDownload } from "./FolderDownload";
 import { FileTagsBadges, FileTagsEditor } from "./FileTags";
+import { AiMetadataBadges, useAiMetadata } from "./AiMetadataBadges";
 import { SnapshotCompare } from "./SnapshotCompare";
 import {
   FileRowActions,
@@ -152,6 +153,9 @@ export function FileExplorer({
   const regularFiles = files.filter(
     (f) => f.storageClass !== "DIRECTORY" && !f.key.endsWith("/")
   );
+
+  // What AI processing recorded about the files on screen, in one batched call.
+  const { data: aiMetadata } = useAiMetadata(regularFiles.map((f) => f.key));
 
   const formatSize = (bytes: number | null) => {
     if (bytes === null) return "-";
@@ -299,6 +303,7 @@ export function FileExplorer({
                 <span className="name">
                   {fileName}
                   <FileTagsBadges fileKey={file.key} refreshKey={tagRefresh} />
+                  <AiMetadataBadges metadata={aiMetadata?.get(file.key)} />
                 </span>
                 <span className="size">{formatSize(file.size)}</span>
                 <span className="modified">

@@ -689,6 +689,11 @@ arpResponseSweepNote: "ブロックは指定した期限が過ぎると自動で
 
   // --- AI Panel ---
   aiTitle: "AI アシスタント",
+  aiMetaClassification: "データ分類",
+  aiMetaLabels: "検出ラベル数",
+  aiMetaEntities: "抽出エンティティ数",
+  aiMetaTextLength: "抽出文字数",
+  aiMetaSummary: "要約あり",
   docAnalysisShow: "文書を解析",
   docAnalysisHide: "解析を閉じる",
   docAnalysisHint: "Amazon Textract でテキストを抽出し、Amazon Comprehend で解析します。スキャン PDF などテキスト層がない文書はまず抽出してください。",

@@ -661,6 +661,11 @@ arpResponseSweepNote: "阻止会在设定的期限过后自动解除。如需提
   pdfLoading: "正在加载 PDF...",
   // --- AI Panel ---
   aiTitle: "AI 助手",
+  aiMetaClassification: "数据分类",
+  aiMetaLabels: "检测到的标签数",
+  aiMetaEntities: "提取的实体数",
+  aiMetaTextLength: "提取的字符数",
+  aiMetaSummary: "有摘要",
   docAnalysisShow: "分析文档",
   docAnalysisHide: "关闭分析",
   docAnalysisHint: "使用 Amazon Textract 提取文本，并用 Amazon Comprehend 分析。扫描版 PDF 等没有文本层的文档请先提取。",

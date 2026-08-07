@@ -662,6 +662,11 @@ arpResponseSweepNote: "Les blocages se lèvent d'eux-mêmes à l'échéance. Pou
   pdfLoading: "Chargement du PDF...",
   // --- AI Panel ---
   aiTitle: "Assistant AI",
+  aiMetaClassification: "Classification des données",
+  aiMetaLabels: "Étiquettes détectées",
+  aiMetaEntities: "Entités extraites",
+  aiMetaTextLength: "Caractères extraits",
+  aiMetaSummary: "Résumé",
   docAnalysisShow: "Analyser le document",
   docAnalysisHide: "Masquer l'analyse",
   docAnalysisHint: "Extrayez le texte avec Amazon Textract et analysez-le avec Amazon Comprehend. Extrayez d'abord pour les documents sans couche de texte, comme les PDF scannés.",

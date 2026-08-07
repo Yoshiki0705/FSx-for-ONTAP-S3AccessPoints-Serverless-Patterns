@@ -32,32 +32,31 @@ def handler(event, context):
 
     try:
         dynamodb = boto3.resource("dynamodb")
-        table = dynamodb.Table(METADATA_TABLE)
 
-        # Use batch_get_item for efficiency
-        keys = [{"file_key": k} for k in file_keys]
-
-        # DynamoDB BatchGetItem via resource API
+        # One BatchGetItem rather than a get_item per key. The previous loop said
+        # "use batch_get_item for efficiency" above a sequential read of up to 100
+        # items, which is 100 round trips. That was survivable while nothing called
+        # this; it now runs on every folder the explorer opens.
         results = []
-        for key in keys:
-            try:
-                resp = table.get_item(Key=key)
-                if resp.get("Item"):
-                    item = resp["Item"]
-                    results.append(
-                        {
-                            "fileKey": item.get("file_key", ""),
-                            "classification": item.get("classification"),
-                            "rekognitionLabels": item.get("rekognition_labels"),
-                            "comprehendEntities": item.get("comprehend_entities_count"),
-                            "textractLength": item.get("textract_text_length"),
-                            "bedrockSummary": item.get("bedrock_summary"),
-                            "processedAt": item.get("processed_at"),
-                            "pattern": item.get("processing_pattern"),
-                        }
-                    )
-            except Exception:
-                continue
+        unprocessed = {METADATA_TABLE: {"Keys": [{"file_key": k} for k in dict.fromkeys(file_keys)]}}
+        # BatchGetItem may return some keys unread when it hits its response size
+        # limit; those come back as UnprocessedKeys rather than as an error.
+        while unprocessed:
+            response = dynamodb.batch_get_item(RequestItems=unprocessed)
+            for item in response.get("Responses", {}).get(METADATA_TABLE, []):
+                results.append(
+                    {
+                        "fileKey": item.get("file_key", ""),
+                        "classification": item.get("classification"),
+                        "rekognitionLabels": item.get("rekognition_labels"),
+                        "comprehendEntities": item.get("comprehend_entities_count"),
+                        "textractLength": item.get("textract_text_length"),
+                        "bedrockSummary": item.get("bedrock_summary"),
+                        "processedAt": item.get("processed_at"),
+                        "pattern": item.get("processing_pattern"),
+                    }
+                )
+            unprocessed = response.get("UnprocessedKeys") or {}
 
         return {"metadata": results, "error": None}
 

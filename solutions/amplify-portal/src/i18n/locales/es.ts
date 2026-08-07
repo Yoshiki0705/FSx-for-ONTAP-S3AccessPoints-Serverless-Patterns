@@ -662,6 +662,11 @@ arpResponseSweepNote: "Los bloqueos se levantan por sí solos al vencer el plazo
   pdfLoading: "Cargando PDF...",
   // --- AI Panel ---
   aiTitle: "Asistente AI",
+  aiMetaClassification: "Clasificación de datos",
+  aiMetaLabels: "Etiquetas detectadas",
+  aiMetaEntities: "Entidades extraídas",
+  aiMetaTextLength: "Caracteres extraídos",
+  aiMetaSummary: "Resumen",
   docAnalysisShow: "Analizar documento",
   docAnalysisHide: "Ocultar el análisis",
   docAnalysisHint: "Extraiga el texto con Amazon Textract y analícelo con Amazon Comprehend. Extraiga primero en documentos sin capa de texto, como los PDF escaneados.",

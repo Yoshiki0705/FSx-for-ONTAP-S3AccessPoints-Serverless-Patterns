@@ -370,6 +370,33 @@ body {
   opacity: 1;
 }
 
+/* AI processing badges in the file listing. Counts and labels only: the row is
+   a place to notice a classification, not to read a summary. */
+.ai-meta-badges {
+  display: inline-flex;
+  gap: 0.25rem;
+  margin-left: 0.4rem;
+  vertical-align: middle;
+}
+
+.ai-meta-badge {
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: 3px;
+  font-size: 0.68rem;
+  padding: 0 4px;
+  white-space: nowrap;
+}
+
+/* A classification the deployment treats as sensitive is worth more than a
+   neutral chip in a list of a hundred rows. */
+.ai-meta-badge.sensitive {
+  background: #fee2e2;
+  border-color: #fca5a5;
+  color: #b3261e;
+  font-weight: 600;
+}
+
 /* Textract / Comprehend panel, above the file chat it feeds. */
 .doc-analysis-toggle {
   font-size: 0.8rem;

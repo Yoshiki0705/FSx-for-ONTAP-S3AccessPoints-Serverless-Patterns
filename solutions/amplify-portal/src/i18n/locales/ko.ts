@@ -662,6 +662,11 @@ arpResponseSweepNote: "차단은 지정한 기한이 지나면 자동으로 해�
   pdfLoading: "PDF 로드 중...",
   // --- AI Panel ---
   aiTitle: "AI 어시스턴트",
+  aiMetaClassification: "데이터 분류",
+  aiMetaLabels: "검출된 라벨 수",
+  aiMetaEntities: "추출된 엔터티 수",
+  aiMetaTextLength: "추출된 문자 수",
+  aiMetaSummary: "요약 있음",
   docAnalysisShow: "문서 분석",
   docAnalysisHide: "분석 닫기",
   docAnalysisHint: "Amazon Textract 로 텍스트를 추출하고 Amazon Comprehend 로 분석합니다. 스캔 PDF 처럼 텍스트 레이어가 없는 문서는 먼저 추출하세요.",

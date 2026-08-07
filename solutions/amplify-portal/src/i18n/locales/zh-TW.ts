@@ -661,6 +661,11 @@ arpResponseSweepNote: "封鎖會在設定的期限過後自動解除。如需提
   pdfLoading: "正在載入 PDF...",
   // --- AI Panel ---
   aiTitle: "AI 助理",
+  aiMetaClassification: "資料分類",
+  aiMetaLabels: "偵測到的標籤數",
+  aiMetaEntities: "擷取的實體數",
+  aiMetaTextLength: "擷取的字元數",
+  aiMetaSummary: "有摘要",
   docAnalysisShow: "分析文件",
   docAnalysisHide: "關閉分析",
   docAnalysisHint: "使用 Amazon Textract 擷取文字，並用 Amazon Comprehend 分析。掃描版 PDF 等沒有文字層的文件請先擷取。",

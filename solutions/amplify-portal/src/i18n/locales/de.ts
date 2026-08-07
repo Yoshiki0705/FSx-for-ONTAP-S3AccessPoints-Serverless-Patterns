@@ -662,6 +662,11 @@ arpResponseSweepNote: "Sperren heben sich nach Ablauf der Frist selbst auf. Für
   pdfLoading: "PDF wird geladen...",
   // --- AI Panel ---
   aiTitle: "AI-Assistent",
+  aiMetaClassification: "Datenklassifizierung",
+  aiMetaLabels: "Erkannte Labels",
+  aiMetaEntities: "Extrahierte Entitäten",
+  aiMetaTextLength: "Extrahierte Zeichen",
+  aiMetaSummary: "Zusammenfassung",
   docAnalysisShow: "Dokument analysieren",
   docAnalysisHide: "Analyse ausblenden",
   docAnalysisHint: "Text mit Amazon Textract extrahieren und mit Amazon Comprehend analysieren. Bei Dokumenten ohne Textebene, etwa gescannten PDFs, zuerst extrahieren.",

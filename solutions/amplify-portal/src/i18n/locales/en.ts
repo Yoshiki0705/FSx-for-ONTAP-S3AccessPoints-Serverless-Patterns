@@ -683,6 +683,11 @@ arpResponseSweepNote: "Blocks lift themselves once their expiry passes. To lift 
 
   // --- AI Panel ---
   aiTitle: "AI Assistant",
+  aiMetaClassification: "Data classification",
+  aiMetaLabels: "Detected labels",
+  aiMetaEntities: "Extracted entities",
+  aiMetaTextLength: "Extracted characters",
+  aiMetaSummary: "Summary",
   docAnalysisShow: "Analyze document",
   docAnalysisHide: "Hide analysis",
   docAnalysisHint: "Extract text with Amazon Textract and analyze it with Amazon Comprehend. Extract first for documents with no text layer, such as scanned PDFs.",
