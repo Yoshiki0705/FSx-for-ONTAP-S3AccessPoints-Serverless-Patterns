@@ -30,17 +30,22 @@ This avoids write contention entirely. AI results go to a separate S3 bucket, no
 
 When AI results must be visible to NFS/SMB users on the same volume:
 
-1. **Write to a dedicated output directory** (e.g., `/vol1/ai-outputs/`) that NFS clients only read
-2. **Use ONTAP file locks**: S3 AP PutObject acquires an exclusive lock during write
-3. **Avoid concurrent edits**: Schedule AI processing during off-hours when NFS write activity is low
-4. **Monitor**: ONTAP `statistics` show lock contention per volume
+1. **Write to a dedicated output directory** (e.g., `/vol1/ai-outputs/`) that NFS clients only read. This is the mitigation that actually works: it removes the possibility of a conflict rather than managing one.
+2. **Do not expect locking to arbitrate it.** S3 has no open or lock semantics, and ONTAP's cross-protocol locking is between NFS and SMB. An S3 AP write is not serialised against a concurrent NFS writer to the same file.
+3. **Separate in time if you cannot separate in path**: schedule AI processing when NFS write activity is low. This narrows the window; it does not close it.
+4. **Detect it after the fact**: because there is no lock to observe, lock-contention counters will not show this class of conflict. What does show it is access events on the path — ONTAP audit logs, or FPolicy delivered through EventBridge (see `solutions/event-driven/fpolicy/`) — where an S3 write and an NFS write to the same file appear as two events close together.
 
 ## ONTAP Behavior
 
-- S3 AP PutObject is atomic (entire object replacement, not partial)
+- S3 AP PutObject is atomic in the sense that it replaces the whole object; a reader never sees a half-written object
+- Atomic is not the same as exclusive. Two writers are ordered, not prevented
 - NFS advisory locks are NOT visible to S3 AP operations
 - ONTAP WAFL ensures file system consistency at the block level
-- No data corruption risk — but last-writer-wins semantics apply
+- No data corruption risk — but last-writer-wins semantics apply, so one of the two writes is silently lost
+
+> The last point is the one worth carrying away. "No corruption" is a statement about
+> the file system, not about your data: the file will be internally valid and will
+> contain exactly one of the two versions.
 
 ## Reference
 
