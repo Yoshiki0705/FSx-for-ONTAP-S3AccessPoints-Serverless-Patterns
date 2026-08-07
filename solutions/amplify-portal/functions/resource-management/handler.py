@@ -3044,6 +3044,10 @@ def _get_snapmirror_transfers(event):
     for tr in records:
         transfers.append(
             {
+                # Carried through because `abortSnapmirrorTransfer` needs it. Without
+                # it that action had no caller and could not have had one: the only
+                # listing of transfers did not report which transfer each row was.
+                "uuid": tr.get("uuid", ""),
                 "state": tr.get("state", ""),
                 "bytesTransferred": tr.get("bytes_transferred", 0),
                 "endTime": tr.get("end_time", ""),

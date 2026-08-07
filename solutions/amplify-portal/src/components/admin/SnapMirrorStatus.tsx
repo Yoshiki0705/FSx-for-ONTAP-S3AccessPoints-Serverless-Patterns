@@ -56,11 +56,16 @@ interface SnapMirrorRelationship {
 }
 
 interface Transfer {
+  /** Needed to abort this transfer; the listing did not use to report it. */
+  uuid: string;
   state: string;
   bytesTransferred: number;
   endTime: string;
   duration: string;
 }
+
+/** Transfer states that are still running, and so can be aborted. */
+const ABORTABLE_STATES = new Set(["transferring", "queued", "preparing", "finalizing"]);
 
 export function SnapMirrorStatus() {
   const { t } = useTranslation();
@@ -115,6 +120,39 @@ export function SnapMirrorStatus() {
       setTransfers(data?.transfers || []);
     } catch { setTransfers([]); }
     finally { setTransfersLoading(false); }
+  };
+
+  /**
+   * Stop a transfer that is still running.
+   *
+   * Separate from `runAction`, which keys its busy state and its success message on
+   * the relationship. This one is scoped to a transfer inside an expanded row, and
+   * refreshes that row's transfer list rather than the relationship list.
+   */
+  const abortTransfer = async (relationshipUuid: SnapmirrorUuid, transferUuid: string) => {
+    if (!window.confirm(t("smAbortConfirm"))) return;
+    setError(null);
+    setSuccess(null);
+    try {
+      const data = await adminMutate<{ success?: boolean }>({
+        action: "abortSnapmirrorTransfer",
+        params: { relationshipUuid, transferUuid },
+      });
+      if (data?.success) {
+        setSuccess(t("smAborted"));
+        setTimeout(() => setSuccess(null), 4000);
+        // Re-read the same row: the aborted transfer's state is what changed.
+        const refreshed = await adminQuery<{ transfers?: Transfer[] }>({
+          action: "getSnapmirrorTransfers",
+          params: { relationshipUuid },
+        });
+        setTransfers(refreshed?.transfers || []);
+      } else {
+        setError(data?.error || "Abort failed");
+      }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Abort failed");
+    }
   };
 
   const formatBytes = (bytes: number) => {
@@ -261,13 +299,26 @@ export function SnapMirrorStatus() {
                     <p className="rm-empty-sm">{t("smNoTransfers")}</p>
                   ) : (
                     <table className="rm-table" style={{ fontSize: "0.85rem" }}>
-                      <thead><tr><th>{t("rmState")}</th><th>{t("smSize")}</th><th>{t("smEndTime")}</th><th>{t("smDuration")}</th></tr></thead>
+                      <thead><tr><th>{t("rmState")}</th><th>{t("smSize")}</th><th>{t("smEndTime")}</th><th>{t("smDuration")}</th><th>{t("rmActions")}</th></tr></thead>
                       <tbody>{transfers.map((tr, i) => (
-                        <tr key={i}>
+                        <tr key={tr.uuid || i}>
                           <td><span className={`lu-badge ${tr.state === "success" ? "active" : ""}`}>{tr.state}</span></td>
                           <td>{formatBytes(tr.bytesTransferred)}</td>
                           <td>{tr.endTime ? new Date(tr.endTime).toLocaleString() : "—"}</td>
                           <td>{tr.duration || "—"}</td>
+                          <td>
+                            {/* Only while it is still running: aborting a finished
+                                transfer is not a thing ONTAP offers. */}
+                            {tr.uuid && ABORTABLE_STATES.has(tr.state) ? (
+                              <button
+                                className="rm-btn-danger-sm"
+                                onClick={() => abortTransfer(r.uuid, tr.uuid)}
+                                title={t("smAbort")}
+                              >
+                                ⏹ {t("smAbort")}
+                              </button>
+                            ) : "—"}
+                          </td>
                         </tr>
                       ))}</tbody>
                     </table>
