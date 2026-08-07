@@ -37,9 +37,11 @@ function parseResp<T>(response: { data?: unknown }): T | null {
 
 interface AgentDirectoryProps {
   onCreateAgent?: () => void;
+  /** Open the chat running this stored agent. */
+  onRunAgent?: (agentId: string, name: string) => void;
 }
 
-export function AgentDirectory({ onCreateAgent }: AgentDirectoryProps) {
+export function AgentDirectory({ onCreateAgent, onRunAgent }: AgentDirectoryProps) {
   const { t } = useTranslation();
   const [searchQuery, setSearchQuery] = useState("");
   const [filterCategory, setFilterCategory] = useState<string>("all");
@@ -135,15 +137,15 @@ export function AgentDirectory({ onCreateAgent }: AgentDirectoryProps) {
                 </div>
               )}
 
-              {/* A "use in chat" button used to sit here. Its only caller passed an
-                  empty handler, so it did nothing when clicked — and it could not have
-                  done anything: the `chat` action takes a message, a history and one of
-                  three built-in modes, and has no parameter for a stored agent. Until
-                  running a stored agent exists, saying what the directory is is more
-                  use than a button that cannot lead anywhere. */}
-              <p className="form-note">{t("agentDirDefinitionOnly")}</p>
-
               <div className="agent-dir-detail-actions">
+                {onRunAgent && (
+                  <button
+                    className="btn-primary"
+                    onClick={() => onRunAgent(selectedAgent.agentId, selectedAgent.name)}
+                  >
+                    💬 {t("agentDirUseInChat")}
+                  </button>
+                )}
                 <button className="btn-danger" onClick={() => deleteAgent(selectedAgent.agentId)}>
                   🗑️ {t("agentDirDelete")}
                 </button>

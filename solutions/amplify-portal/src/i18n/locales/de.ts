@@ -730,7 +730,9 @@ arpResponseSweepNote: "Sperren heben sich nach Ablauf der Frist selbst auf. Für
   agentDirTools: "Werkzeuge",
   agentDirSystemPrompt: "System-Prompt",
   agentDirUseInChat: "Im Chat verwenden",
-  agentDirDefinitionOnly: "Ein registrierter Agent wird als Definition gespeichert: ein System-Prompt mit einer Werkzeugauswahl. Unterhaltungen laufen in den drei Modi des Chat-Bildschirms (KB, Agent, Multi).",
+  agentRunningAgent: "Läuft als Agent {name}",
+  agentRunningTeam: "Läuft als Team {name}",
+  agentBackToModes: "Zurück zu den Modi",
   agentDirDelete: "Löschen",
   agentDirDeleteConfirm: "Diesen Agenten löschen?",
   // --- Agent Creator ---

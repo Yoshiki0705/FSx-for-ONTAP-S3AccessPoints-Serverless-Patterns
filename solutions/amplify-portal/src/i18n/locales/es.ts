@@ -730,7 +730,9 @@ arpResponseSweepNote: "Los bloqueos se levantan por sí solos al vencer el plazo
   agentDirTools: "Herramientas",
   agentDirSystemPrompt: "Prompt del sistema",
   agentDirUseInChat: "Usar en el chat",
-  agentDirDefinitionOnly: "Un agente registrado se guarda como una definición: un prompt de sistema junto con una selección de herramientas. Las conversaciones se ejecutan en los tres modos de la pantalla de chat (KB, Agente, Multi).",
+  agentRunningAgent: "Ejecutando como el agente {name}",
+  agentRunningTeam: "Ejecutando como el equipo {name}",
+  agentBackToModes: "Volver a los modos",
   agentDirDelete: "Eliminar",
   agentDirDeleteConfirm: "¿Eliminar este agente?",
   // --- Agent Creator ---

@@ -148,6 +148,10 @@ function App() {
   const [aiMultimodalEnabled, setAiMultimodalEnabled] = useState(false);
   const [chatHistoryEnabled, setChatHistoryEnabled] = useState(false);
   const isStorageAdmin = useStorageAdmin();
+  // Set when the directory or the team list hands one over, and carried into the
+  // chat section. Lives here rather than in AgentChat because the two sections are
+  // siblings and the handover crosses between them.
+  const [runTarget, setRunTarget] = useState<RunTarget | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -285,6 +289,8 @@ function App() {
           <AgentChat
             multimodalEnabled={aiMultimodalEnabled}
             chatHistoryEnabled={chatHistoryEnabled}
+            runTarget={runTarget}
+            onClearRunTarget={() => setRunTarget(null)}
           />
         ) : <AgentDisabled />)}
         {activeSection === "search" && (aiSearchEnabled ? (
@@ -323,7 +329,12 @@ function App() {
           />
         ) : isStorageAdmin === false ? <AdminOnly /> : <LoadingSkeleton />)}
         {activeSection === "agentDir" && (
-          <AgentDirectoryPage />
+          <AgentDirectoryPage
+            onRun={(target) => {
+              setRunTarget(target);
+              setActiveSection("agent");
+            }}
+          />
         )}
         {/* End of Data Protection sections */}
       </main>
@@ -341,8 +352,11 @@ function App() {
   );
 }
 
+/** A stored agent or team the chat should run instead of a built-in mode. */
+type RunTarget = { kind: "agent" | "team"; id: string; name: string };
+
 /** Agent Directory Page — combines Directory, Creator, and Teams */
-function AgentDirectoryPage() {
+function AgentDirectoryPage({ onRun }: { onRun: (target: RunTarget) => void }) {
   const { t } = useTranslation();
   const [view, setView] = useState<"directory" | "creator" | "teams">("directory");
 
@@ -359,7 +373,10 @@ function AgentDirectoryPage() {
       </div>
 
       {view === "directory" && (
-        <AgentDirectory onCreateAgent={() => setView("creator")} />
+        <AgentDirectory
+          onCreateAgent={() => setView("creator")}
+          onRunAgent={(id, name) => onRun({ kind: "agent", id, name })}
+        />
       )}
       {view === "creator" && (
         <AgentCreator
@@ -368,7 +385,7 @@ function AgentDirectoryPage() {
         />
       )}
       {view === "teams" && (
-        <AgentTeams />
+        <AgentTeams onSelectTeam={(id, name) => onRun({ kind: "team", id, name })} />
       )}
     </div>
   );

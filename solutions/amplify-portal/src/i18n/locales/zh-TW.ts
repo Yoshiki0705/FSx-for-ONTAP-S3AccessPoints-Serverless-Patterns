@@ -729,7 +729,9 @@ arpResponseSweepNote: "封鎖會在設定的期限過後自動解除。如需提
   agentDirTools: "工具",
   agentDirSystemPrompt: "系統提示詞",
   agentDirUseInChat: "在聊天中使用",
-  agentDirDefinitionOnly: "已註冊的智慧代理儲存為定義（系統提示詞與工具組合）。對話在聊天畫面的三種模式（KB / 代理 / 多代理）中執行。",
+  agentRunningAgent: "正在以智慧代理「{name}」執行",
+  agentRunningTeam: "正在以團隊「{name}」執行",
+  agentBackToModes: "返回模式選擇",
   agentDirDelete: "刪除",
   agentDirDeleteConfirm: "確定要刪除此智慧體嗎？",
   // --- Agent Creator ---

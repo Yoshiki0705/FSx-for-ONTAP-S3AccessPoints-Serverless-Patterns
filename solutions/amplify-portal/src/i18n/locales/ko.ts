@@ -730,7 +730,9 @@ arpResponseSweepNote: "차단은 지정한 기한이 지나면 자동으로 해�
   agentDirTools: "도구",
   agentDirSystemPrompt: "시스템 프롬프트",
   agentDirUseInChat: "채팅에서 사용",
-  agentDirDefinitionOnly: "등록한 에이전트는 정의(시스템 프롬프트와 도구 조합)로 저장됩니다. 대화 실행은 채팅 화면의 세 가지 모드(KB / 에이전트 / 멀티)에서 수행합니다.",
+  agentRunningAgent: "에이전트 {name}으로 실행 중",
+  agentRunningTeam: "팀 {name}으로 실행 중",
+  agentBackToModes: "모드 선택으로 돌아가기",
   agentDirDelete: "삭제",
   agentDirDeleteConfirm: "이 에이전트를 삭제하시겠습니까?",
   // --- Agent Creator ---

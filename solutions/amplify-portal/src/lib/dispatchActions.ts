@@ -765,10 +765,12 @@ export interface ListFilesActionParams {
 /** Actions of functions/agent-chat, reached by `agentQuery`. */
 export interface AgentChatActionParams {
   chat: {
+    agentId?: string;
     history?: Array<{ role: string; content: string }>;
     image?: { data: string; mediaType: string };
     message?: string;
     mode?: "multi" | "kb" | "agent";
+    teamId?: string;
   };
   createAgent: {
     category?: string;

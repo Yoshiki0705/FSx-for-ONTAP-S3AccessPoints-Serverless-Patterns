@@ -44,7 +44,14 @@ function parseResp<T>(response: { data?: unknown }): T | null {
 }
 
 interface AgentTeamsProps {
-  onSelectTeam?: (teamId: string) => void;
+  /**
+   * Open the chat running this stored team.
+   *
+   * Optional, and for a while nothing passed it — so the "use" button below never
+   * rendered and a saved team had no way to be run. It is wired now; the name comes
+   * along so the chat can say which team is answering.
+   */
+  onSelectTeam?: (teamId: string, name: string) => void;
 }
 
 export function AgentTeams({ onSelectTeam }: AgentTeamsProps) {
@@ -254,7 +261,9 @@ export function AgentTeams({ onSelectTeam }: AgentTeamsProps) {
               </div>
               <div className="team-card-actions">
                 {onSelectTeam && (
-                  <button className="btn-sm" onClick={() => onSelectTeam(team.teamId)}>💬 {t("teamsUse")}</button>
+                  <button className="btn-sm" onClick={() => onSelectTeam(team.teamId, team.name)}>
+                    💬 {t("teamsUse")}
+                  </button>
                 )}
                 <button className="btn-sm" onClick={() => deleteTeam(team.teamId)}>🗑️</button>
               </div>

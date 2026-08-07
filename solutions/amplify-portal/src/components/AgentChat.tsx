@@ -240,9 +240,25 @@ interface AgentChatProps {
   multimodalEnabled?: boolean;
   /** Whether sessions are saved and restorable, as the admin panel reports it. */
   chatHistoryEnabled?: boolean;
+  /**
+   * A stored agent or team to run instead of a built-in mode.
+   *
+   * The Agent Directory and the team wizard could save a definition that nothing
+   * could run. When one is named here its own system prompt and tool selection
+   * replace the mode presets, and the mode selector is hidden: the modes and a
+   * stored definition are two answers to the same question.
+   */
+  runTarget?: { kind: "agent" | "team"; id: string; name: string } | null;
+  /** Leave the stored definition and go back to the built-in modes. */
+  onClearRunTarget?: () => void;
 }
 
-export function AgentChat({ multimodalEnabled = true, chatHistoryEnabled = true }: AgentChatProps = {}) {
+export function AgentChat({
+  multimodalEnabled = true,
+  chatHistoryEnabled = true,
+  runTarget = null,
+  onClearRunTarget,
+}: AgentChatProps = {}) {
   const { t } = useTranslation();
   const [messages, setMessages] = useState<AgentMessage[]>([]);
   const [input, setInput] = useState("");
@@ -445,6 +461,10 @@ export function AgentChat({ multimodalEnabled = true, chatHistoryEnabled = true 
         history,
         mode: agentMode,
       };
+      // Only one of the two is ever sent: the handler refuses a request naming
+      // both rather than picking one.
+      if (runTarget?.kind === "agent") chatParams.agentId = runTarget.id;
+      if (runTarget?.kind === "team") chatParams.teamId = runTarget.id;
       if (attachedImage) {
         chatParams.image = { data: attachedImage.data, mediaType: attachedImage.mediaType };
       }
@@ -500,7 +520,7 @@ export function AgentChat({ multimodalEnabled = true, chatHistoryEnabled = true 
     // callback. The task cards do not: they call sendMessage(t(card.promptKey))
     // directly, so attaching an image or switching mode and then clicking a card sent
     // the previous mode and dropped the image.
-  }, [input, messages, t, agentMode, attachedImage]);
+  }, [input, messages, t, agentMode, attachedImage, runTarget]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(); }
@@ -528,7 +548,29 @@ export function AgentChat({ multimodalEnabled = true, chatHistoryEnabled = true 
         </div>
       </div>
 
+      {/* Which stored definition is running, and the way back to the modes. Shown
+          instead of the mode selector rather than beside it: a stored agent supplies
+          its own prompt and tools, so a mode pill next to it would suggest the two
+          combine. */}
+      {runTarget && (
+        <div className="agent-run-target" role="status">
+          <span>
+            {runTarget.kind === "team" ? "🧩" : "🤖"}{" "}
+            {t(runTarget.kind === "team" ? "agentRunningTeam" : "agentRunningAgent").replace(
+              "{name}",
+              runTarget.name,
+            )}
+          </span>
+          {onClearRunTarget && (
+            <button className="btn-sm" onClick={onClearRunTarget}>
+              {t("agentBackToModes")}
+            </button>
+          )}
+        </div>
+      )}
+
       {/* Mode Selector */}
+      {!runTarget && (
       <div className="agent-mode-selector">
         <button
           className={`mode-pill ${agentMode === "kb" ? "active" : ""}`}
@@ -552,6 +594,7 @@ export function AgentChat({ multimodalEnabled = true, chatHistoryEnabled = true 
           🤖 {t("modeMulti")}
         </button>
       </div>
+      )}
 
       {/* Session History Panel */}
       {showHistory && (

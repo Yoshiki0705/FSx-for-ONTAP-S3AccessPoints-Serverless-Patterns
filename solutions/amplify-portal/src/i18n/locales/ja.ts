@@ -767,7 +767,9 @@ arpResponseSweepNote: "ブロックは指定した期限が過ぎると自動で
   agentDirTools: "使用ツール",
   agentDirSystemPrompt: "システムプロンプト",
   agentDirUseInChat: "チャットで使用",
-  agentDirDefinitionOnly: "登録した エージェント は定義（システムプロンプトとツールの組み合わせ）として保存されます。会話の実行はチャット画面の 3 つのモード（KB / エージェント / マルチ）で行います。",
+  agentRunningAgent: "エージェント「{name}」で実行中",
+  agentRunningTeam: "チーム「{name}」で実行中",
+  agentBackToModes: "モード選択に戻る",
   agentDirDelete: "削除",
   agentDirDeleteConfirm: "このエージェントを削除しますか？",
 

@@ -730,7 +730,9 @@ arpResponseSweepNote: "Les blocages se lèvent d'eux-mêmes à l'échéance. Pou
   agentDirTools: "Outils",
   agentDirSystemPrompt: "Prompt système",
   agentDirUseInChat: "Utiliser dans le chat",
-  agentDirDefinitionOnly: "Un agent enregistré est stocké comme une définition : une invite système associée à une sélection d'outils. Les conversations s'exécutent dans les trois modes de l'écran de chat (KB, Agent, Multi).",
+  agentRunningAgent: "Exécuté avec l'agent {name}",
+  agentRunningTeam: "Exécuté avec l'équipe {name}",
+  agentBackToModes: "Revenir aux modes",
   agentDirDelete: "Supprimer",
   agentDirDeleteConfirm: "Supprimer cet agent ?",
   // --- Agent Creator ---

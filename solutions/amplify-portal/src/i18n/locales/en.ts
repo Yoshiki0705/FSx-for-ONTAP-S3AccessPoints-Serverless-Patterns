@@ -760,7 +760,9 @@ arpResponseSweepNote: "Blocks lift themselves once their expiry passes. To lift 
   agentDirTools: "Tools",
   agentDirSystemPrompt: "System Prompt",
   agentDirUseInChat: "Use in Chat",
-  agentDirDefinitionOnly: "A registered agent is stored as a definition: a system prompt paired with a tool selection. Conversations run in the chat screen's three modes (KB, Agent, Multi).",
+  agentRunningAgent: "Running as the agent {name}",
+  agentRunningTeam: "Running as the team {name}",
+  agentBackToModes: "Back to modes",
   agentDirDelete: "Delete",
   agentDirDeleteConfirm: "Delete this agent?",
 

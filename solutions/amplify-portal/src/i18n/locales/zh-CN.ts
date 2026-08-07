@@ -729,7 +729,9 @@ arpResponseSweepNote: "阻止会在设定的期限过后自动解除。如需提
   agentDirTools: "工具",
   agentDirSystemPrompt: "系统提示词",
   agentDirUseInChat: "在聊天中使用",
-  agentDirDefinitionOnly: "已注册的智能体保存为定义（系统提示词与工具组合）。对话在聊天界面的三种模式（KB / 智能体 / 多智能体）中运行。",
+  agentRunningAgent: "正在以智能体「{name}」运行",
+  agentRunningTeam: "正在以团队「{name}」运行",
+  agentBackToModes: "返回模式选择",
   agentDirDelete: "删除",
   agentDirDeleteConfirm: "确定要删除此智能体吗？",
   // --- Agent Creator ---
