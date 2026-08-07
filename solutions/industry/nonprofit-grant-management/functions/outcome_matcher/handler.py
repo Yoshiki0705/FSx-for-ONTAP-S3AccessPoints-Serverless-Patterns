@@ -35,8 +35,8 @@ from datetime import datetime, timezone
 import boto3
 
 from shared.exceptions import lambda_error_handler
-from shared.observability import xray_subsegment, EmfMetrics, trace_lambda_handler
-from shared.retry_handler import retry_with_backoff, RetryConfig
+from shared.observability import EmfMetrics, trace_lambda_handler, xray_subsegment
+from shared.retry_handler import RetryConfig, retry_with_backoff
 from shared.s3ap_helper import S3ApHelper
 
 logger = logging.getLogger(__name__)

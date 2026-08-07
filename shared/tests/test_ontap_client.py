@@ -16,7 +16,6 @@ import pytest
 
 from shared.ontap_client import OntapClient, OntapClientConfig, OntapClientError
 
-
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------

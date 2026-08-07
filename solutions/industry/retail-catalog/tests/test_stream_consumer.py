@@ -21,7 +21,6 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-
 # stream_consumer モジュールをインポート可能にする
 _project_root = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(_project_root))
@@ -35,8 +34,8 @@ sys.modules["retail_catalog_functions_stream_consumer"] = _module
 _spec.loader.exec_module(_module)
 
 from retail_catalog_functions_stream_consumer import (
-    handler,
     _validate_record,
+    handler,
 )
 
 

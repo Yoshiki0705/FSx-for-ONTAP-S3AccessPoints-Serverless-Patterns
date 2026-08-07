@@ -11,16 +11,15 @@ Property 6: Lineage History Ordering
 from __future__ import annotations
 
 import os
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timedelta, timezone
 
 import boto3
 import pytest
-from hypothesis import given, settings, assume, HealthCheck
+from hypothesis import HealthCheck, assume, given, settings
 from hypothesis import strategies as st
 from moto import mock_aws
 
 from shared.lineage import LineageRecord, LineageTracker
-
 
 # --- Hypothesis Strategies ---
 

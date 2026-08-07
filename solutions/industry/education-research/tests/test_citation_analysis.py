@@ -10,14 +10,13 @@ from __future__ import annotations
 import os
 import sys
 
-
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "..", "..", "shared"))
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from functions.citation_analysis.handler import (
+    build_citation_network,
     extract_references_section,
     parse_references,
-    build_citation_network,
 )
 
 

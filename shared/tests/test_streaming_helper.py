@@ -15,7 +15,6 @@ import pytest
 from shared.exceptions import StreamingError
 from shared.streaming import StreamingConfig, StreamingHelper
 
-
 # ---------------------------------------------------------------------------
 # Test: Batch splitting logic (500 record limit)
 # ---------------------------------------------------------------------------

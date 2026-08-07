@@ -11,13 +11,12 @@ import os
 import sys
 from unittest.mock import MagicMock
 
-
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "..", "..", "shared"))
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from functions.classification.handler import (
-    extract_entities_with_comprehend,
     detect_key_phrases,
+    extract_entities_with_comprehend,
 )
 
 

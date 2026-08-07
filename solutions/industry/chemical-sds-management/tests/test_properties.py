@@ -17,7 +17,8 @@ import os
 import sys
 from datetime import datetime, timedelta, timezone
 
-from hypothesis import given, settings, assume, strategies as st
+from hypothesis import assume, given, settings
+from hypothesis import strategies as st
 
 # shared モジュールのパスを追加
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))

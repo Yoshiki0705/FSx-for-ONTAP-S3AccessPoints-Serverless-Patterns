@@ -16,15 +16,15 @@ import os
 import struct
 import sys
 
-from hypothesis import given, settings, strategies as st
+from hypothesis import given, settings
+from hypothesis import strategies as st
 
 # shared モジュールと UC8 関数のパスを追加
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "..", "..", "shared"))
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-from functions.seismic_metadata.handler import _parse_binary_header
 from functions.anomaly_detection.handler import _detect_anomalies
-
+from functions.seismic_metadata.handler import _parse_binary_header
 
 # ---------------------------------------------------------------------------
 # Helper: SEG-Y バイナリヘッダー構築

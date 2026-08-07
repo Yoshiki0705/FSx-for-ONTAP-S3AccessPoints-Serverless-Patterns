@@ -15,10 +15,12 @@ Property-Based Tests (Hypothesis):
 
 from __future__ import annotations
 
+from unittest.mock import MagicMock, patch
+
 import pytest
 from botocore.exceptions import ClientError
-from hypothesis import given, settings, strategies as st
-from unittest.mock import MagicMock, patch
+from hypothesis import given, settings
+from hypothesis import strategies as st
 
 from shared.retry_handler import (
     DEFAULT_RETRY_CONFIG,
@@ -29,13 +31,12 @@ from shared.retry_handler import (
     ErrorCategory,
     RetryConfig,
     RetryExhaustedError,
+    _is_retryable,
     calculate_backoff,
     categorize_error,
     execute_with_retry,
     retry_with_backoff,
-    _is_retryable,
 )
-
 
 # =============================================================================
 # Unit Tests — RetryConfig

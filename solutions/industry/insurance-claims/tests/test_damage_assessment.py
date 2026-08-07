@@ -11,23 +11,21 @@ import os
 import sys
 from unittest.mock import MagicMock, patch
 
-
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "..", "..", "shared"))
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
+from functions.claims_report.handler import (
+    _generate_human_readable_report,
+)
 from functions.damage_assessment.handler import (
-    detect_damage_labels,
     classify_damage,
+    detect_damage_labels,
     sanitize_for_logging,
 )
 from functions.estimate_ocr.handler import (
     _extract_text_from_blocks,
     _parse_estimate_data,
 )
-from functions.claims_report.handler import (
-    _generate_human_readable_report,
-)
-
 
 # =========================================================================
 # 損害検出テスト

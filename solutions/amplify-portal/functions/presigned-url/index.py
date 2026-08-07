@@ -1,6 +1,7 @@
 import os
-import boto3
 from datetime import datetime, timezone
+
+import boto3
 from botocore.config import Config
 
 # Use SigV4 signing with explicit regional endpoint (required for FSx for ONTAP S3 AP)

@@ -18,7 +18,6 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 from shared.lambdas.sqs_to_eventbridge.handler import handler
 
-
 # --- Hypothesis Strategies ---
 
 uuid_strategy = st.from_regex(

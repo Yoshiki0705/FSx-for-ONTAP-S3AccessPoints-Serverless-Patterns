@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """Check all screenshot sizes."""
 
-from PIL import Image
 import os
+
+from PIL import Image
 
 bases = [
     "solutions/genai/kb-selfservice-curation/docs/screenshots/masked",

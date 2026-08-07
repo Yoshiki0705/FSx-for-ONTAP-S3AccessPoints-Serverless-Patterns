@@ -19,15 +19,14 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from functions.bim_parse.handler import (
     IfcParseError,
-    parse_ifc_metadata,
     compute_version_diff,
+    parse_ifc_metadata,
 )
 from functions.safety_check.handler import (
-    determine_overall_compliance,
-    _keyword_based_check,
     DEFAULT_SAFETY_RULES,
+    _keyword_based_check,
+    determine_overall_compliance,
 )
-
 
 # ---------------------------------------------------------------------------
 # IFC パーステスト
