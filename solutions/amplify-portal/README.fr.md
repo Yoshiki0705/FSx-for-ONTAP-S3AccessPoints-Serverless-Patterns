@@ -128,7 +128,7 @@ sequenceDiagram
 
 ---
 
-## Interface du portail — Disposition de la barre latérale (16 sections)
+## Interface du portail — Disposition de la barre latérale (17 sections)
 
 ![Sidebar Layout](docs/screenshots/portal-sidebar-layout.png)
 *Barre latérale gauche : navigation groupée. Centre : contenu de la section active. Droite : assistant AI (lors de la sélection de fichier).*
@@ -138,6 +138,7 @@ sequenceDiagram
 | **Browse** | All Files | Parcourir, prévisualiser, AI Q&A, liens de partage, accès QR |
 | | Favorites | Fichiers épinglés (DynamoDB, par utilisateur) |
 | | Recent | Fichiers récemment consultés |
+| | Folder Watch | Préfixes surveillés et événements de fichiers reçus (bascule admin) |
 | | Upload | Glisser-déposer via Storage Browser for S3 |
 | **AI & Processing** | AI Processing | Déclencher les workflows AI/ML (Step Functions) |
 | | AI Chat | Agent outillé sur vos fichiers, ou exécution d'un agent ou d'une équipe enregistrés |

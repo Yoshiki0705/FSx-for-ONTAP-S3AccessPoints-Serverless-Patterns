@@ -66,6 +66,7 @@ These are the features made reachable in this session (2026-08-07). Handler and 
 | AI metadata badges | `AiMetadataBadges.test.tsx`, 9 tests | Rendering with real rows in the AI metadata table |
 | EMS event display | Generated-type agreement only | The real shape of an EMS event response |
 | QR code generation | Same | Whether the generated QR reaches the presigned URL |
+| Folder watch / event notifications | `functions/list-files/tests/test_notifications.py`, 9 tests | Real delivery from FPolicy through EventBridge to the bridge Lambda, the shape of real events, and the group boundary filter |
 
 ### Test totals
 
@@ -73,8 +74,9 @@ These are the features made reachable in this session (2026-08-07). Handler and 
 |-------|-------|
 | Portal components and utilities (vitest) | 177 |
 | `functions/resource-management` (pytest) | 213 |
+| `functions/list-files` (pytest) | 9 |
 | `functions/agent-chat` (pytest) | 21 |
-| Dispatch contract checks (`make drift`) | 149 call sites / 154 actions |
+| Dispatch contract checks (`make drift`) | 150 call sites / 155 actions |
 
 ## DemoMode only
 

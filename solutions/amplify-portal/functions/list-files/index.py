@@ -8,6 +8,13 @@ s3 = boto3.client("s3")
 # Group → AP mapping (JSON from environment variable)
 GROUP_AP_MAPPING = json.loads(os.environ.get("GROUP_AP_MAPPING", "{}"))
 DEFAULT_AP_ALIAS = os.environ.get("S3_AP_ALIAS", "")
+# Where the notification bridge writes FPolicy / Transfer Family events. Empty
+# when folder watch is not deployed, which the inbox reports as "not configured"
+# rather than as an empty list.
+NOTIFICATION_TABLE = os.environ.get("NOTIFICATION_TABLE_NAME", "")
+# Cognito group -> allowed path prefixes, the same multi-tenancy boundary the
+# agent applies to file access.
+GROUP_PATH_PREFIXES = json.loads(os.environ.get("GROUP_PATH_PREFIXES", "{}"))
 
 
 def resolve_ap_alias(groups: list[str]) -> str:
@@ -21,6 +28,88 @@ def resolve_ap_alias(groups: list[str]) -> str:
             if group_name in groups:
                 return ap_alias
     return DEFAULT_AP_ALIAS
+
+
+def _allowed_prefixes(user_groups: list[str]) -> list[str]:
+    """Path prefixes this caller may see, or [] for no restriction.
+
+    Mirrors `_get_allowed_prefixes` in functions/agent-chat: same environment
+    variable, same storage-admin bypass, same "no configured prefixes means no
+    restriction" reading. Two copies of a boundary can disagree, so if a third
+    consumer appears this belongs in a shared module.
+    """
+    if not GROUP_PATH_PREFIXES or not user_groups:
+        return []
+    if "storage-admin" in user_groups:
+        return []
+    prefixes: list[str] = []
+    for group in user_groups:
+        prefixes.extend(GROUP_PATH_PREFIXES.get(group, []))
+    return sorted(set(prefixes))
+
+
+def _list_notifications(event, user_groups):
+    """Recent file events, newest first, scoped to what the caller may see.
+
+    Returns `configured: False` when no notification table is wired, so the UI
+    can say the feature is not deployed rather than showing an empty inbox that
+    looks like "nothing has happened".
+    """
+    if not NOTIFICATION_TABLE:
+        return {
+            "notifications": [],
+            "configured": False,
+            "error": None,
+        }
+
+    limit = min(int(event.get("maxResults") or 50), 200)
+    watched = [p for p in (event.get("watchedPrefixes") or "").split(",") if p]
+    scope = _allowed_prefixes(user_groups if isinstance(user_groups, list) else [])
+
+    try:
+        ddb = boto3.resource("dynamodb")
+        table = ddb.Table(NOTIFICATION_TABLE)
+        # A scan rather than a query: the table is keyed by the notification id,
+        # so there is no partition to query by time. It is bounded by the page
+        # limit below, and the table is short-lived by design (see the TTL note
+        # in backend.ts). A time-ordered access pattern would need a GSI.
+        records = table.scan(Limit=1000).get("Items", [])
+    except Exception as e:
+        return {"notifications": [], "configured": True, "error": str(e)}
+
+    def visible(item) -> bool:
+        key = item.get("fileKey", "")
+        # The tenancy boundary comes first: a caller must not learn that a path
+        # exists outside their scope by watching a prefix that covers it.
+        if scope and not any(key.startswith(p) for p in scope):
+            return False
+        if watched and not any(key.startswith(p) for p in watched):
+            return False
+        return True
+
+    visible_records = [r for r in records if visible(r)]
+    visible_records.sort(key=lambda r: str(r.get("timestamp", "")), reverse=True)
+
+    notifications = [
+        {
+            "id": str(r.get("id", "")),
+            "source": r.get("source", ""),
+            "eventType": r.get("eventType", ""),
+            "fileKey": r.get("fileKey", ""),
+            "fileName": r.get("fileName", ""),
+            "fileSize": int(r.get("fileSize", 0) or 0),
+            "clientIp": r.get("clientIp", ""),
+            "userName": r.get("userName", ""),
+            "timestamp": r.get("timestamp", ""),
+        }
+        for r in visible_records[:limit]
+    ]
+    return {
+        "notifications": notifications,
+        "configured": True,
+        "count": len(notifications),
+        "error": None,
+    }
 
 
 def handler(event, context):
@@ -38,6 +127,21 @@ def handler(event, context):
     max_keys = event.get("maxKeys", 100)
     continuation_token = event.get("continuationToken")
     user_groups = event.get("groups", [])
+
+    # E-1/E-2: Folder watch inbox. Reads the FileNotification records the
+    # notification bridge writes from FPolicy and Transfer Family events.
+    #
+    # Read here rather than through the generated model client because the model
+    # is `allow.authenticated()`: the bridge writes rows with no owner, so
+    # per-owner authorization cannot express who may read one. Filtering in a
+    # Lambda lets the same GROUP_PATH_PREFIXES boundary the rest of the portal
+    # uses apply to the notifications too.
+    #
+    # Placed ahead of the Access Point resolution: the inbox reads DynamoDB and
+    # needs no alias, so the "no alias configured" early return below would
+    # otherwise swallow it and answer with an empty file listing.
+    if action == "listNotifications":
+        return _list_notifications(event, user_groups)
 
     # Determine which AP to use
     if action == "listFilesFromAp" and event.get("apAlias"):

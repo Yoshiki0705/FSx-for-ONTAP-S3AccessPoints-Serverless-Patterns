@@ -556,7 +556,7 @@ export interface ResourceMgmtActionParams {
     svm?: string;
   };
   updatePortalSettings: {
-    key?: "aiAgentEnabled" | "aiSearchEnabled" | "aiMultimodalEnabled" | "chatHistoryEnabled";
+    key?: "aiAgentEnabled" | "aiSearchEnabled" | "aiMultimodalEnabled" | "chatHistoryEnabled" | "folderWatchEnabled";
     value?: string;
   };
   updateQosPolicy: {
@@ -727,9 +727,11 @@ export interface ListFilesActionParams {
     groups?: string;
     key?: string;
     maxKeys?: number;
+    maxResults?: number;
     prefix?: string;
     sourceKey?: string;
     trashKey?: string;
+    watchedPrefixes?: string;
   };
   listFilesFromAp: {
     apAlias: string;
@@ -737,6 +739,14 @@ export interface ListFilesActionParams {
     groups?: string;
     maxKeys?: number;
     prefix?: string;
+  };
+  listNotifications: {
+    continuationToken?: string;
+    groups?: string;
+    maxKeys?: number;
+    maxResults?: number;
+    prefix?: string;
+    watchedPrefixes?: string;
   };
   renameFile: {
     destinationKey: string;

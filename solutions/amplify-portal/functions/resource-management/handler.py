@@ -575,6 +575,12 @@ def _update_portal_settings(event, user_id):
         "aiSearchEnabled",
         "aiMultimodalEnabled",
         "chatHistoryEnabled",
+        # Folder watch is off by default because the events come from outside the
+        # portal: FPolicy (or Transfer Family) has to be publishing to EventBridge
+        # for anything to arrive. Enabling it with no publisher would show an inbox
+        # that is permanently empty, so the switch is the admin saying "the
+        # publisher exists".
+        "folderWatchEnabled",
     }
     if key not in allowed_keys:
         return {"error": f"Setting '{key}' is not allowed. Valid: {sorted(allowed_keys)}"}

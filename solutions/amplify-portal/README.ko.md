@@ -128,7 +128,7 @@ sequenceDiagram
 
 ---
 
-## 포털 UI — 사이드바 레이아웃 (16개 섹션)
+## 포털 UI — 사이드바 레이아웃 (17개 섹션)
 
 ![Sidebar Layout](docs/screenshots/portal-sidebar-layout.png)
 *왼쪽 사이드바: 그룹화된 네비게이션. 중앙: 활성 섹션 콘텐츠. 오른쪽: AI 어시스턴트 (파일 선택 시).*
@@ -138,6 +138,7 @@ sequenceDiagram
 | **Browse** | All Files | 탐색, 미리보기, AI Q&A, 공유 링크, QR 액세스 |
 | | Favorites | 핀 고정 파일 (DynamoDB, 사용자별) |
 | | Recent | 최근 액세스한 파일 |
+| | Folder Watch | 감시 대상 프리픽스와 수신된 파일 이벤트 (관리 토글) |
 | | Upload | Storage Browser for S3를 통한 드래그 앤 드롭 |
 | **AI & Processing** | AI Processing | AI/ML 워크플로우 트리거 (Step Functions) |
 | | AI Chat | 파일을 대상으로 도구를 사용하는 에이전트(저장된 에이전트/팀 실행 포함) |

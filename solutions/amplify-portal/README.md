@@ -149,7 +149,7 @@ sequenceDiagram
 
 ---
 
-## Portal UI — Sidebar Layout (16 Sections)
+## Portal UI — Sidebar Layout (17 Sections)
 
 ![Sidebar Layout](docs/screenshots/portal-sidebar-layout.png)
 *Left sidebar: grouped navigation. Center: active section content. Right: AI assistant (on file selection).*
@@ -159,6 +159,7 @@ sequenceDiagram
 | **Browse** | All Files | Browse, preview, AI Q&A, share links, QR access |
 | | Favorites | Pinned files (DynamoDB, per-user) |
 | | Recent | Recently accessed files |
+| | Folder Watch | Watched prefixes and received file events (admin toggle) |
 | | Upload | Drag-and-drop via Storage Browser for S3 |
 | **AI & Processing** | AI Processing | Trigger AI/ML workflows (Step Functions) |
 | | AI Chat | Tool-using agent over your files, or a stored agent or team |

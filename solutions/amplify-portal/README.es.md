@@ -128,7 +128,7 @@ sequenceDiagram
 
 ---
 
-## UI del Portal — Diseño de la barra lateral (16 secciones)
+## UI del Portal — Diseño de la barra lateral (17 secciones)
 
 ![Sidebar Layout](docs/screenshots/portal-sidebar-layout.png)
 *Barra lateral izquierda: navegación agrupada. Centro: contenido de la sección activa. Derecha: asistente AI (al seleccionar archivo).*
@@ -138,6 +138,7 @@ sequenceDiagram
 | **Browse** | All Files | Explorar, previsualizar, AI Q&A, enlaces compartidos, acceso QR |
 | | Favorites | Archivos fijados (DynamoDB, por usuario) |
 | | Recent | Archivos accedidos recientemente |
+| | Folder Watch | Prefijos vigilados y eventos de archivo recibidos (interruptor de admin) |
 | | Upload | Arrastrar y soltar vía Storage Browser for S3 |
 | **AI & Processing** | AI Processing | Disparar flujos de trabajo AI/ML (Step Functions) |
 | | AI Chat | Agente con herramientas sobre sus archivos, o ejecución de un agente o equipo guardado |

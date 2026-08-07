@@ -128,7 +128,7 @@ sequenceDiagram
 
 ---
 
-## 门户 UI — 侧边栏布局（16 个部分）
+## 门户 UI — 侧边栏布局（17 个部分）
 
 ![Sidebar Layout](docs/screenshots/portal-sidebar-layout.png)
 *左侧边栏：分组导航。中央：活动部分内容。右侧：AI 助手（文件选择时）。*
@@ -138,6 +138,7 @@ sequenceDiagram
 | **Browse** | All Files | 浏览、预览、AI Q&A、共享链接、QR 访问 |
 | | Favorites | 固定文件（DynamoDB，每用户） |
 | | Recent | 最近访问的文件 |
+| | Folder Watch | 监视的前缀和已接收的文件事件（管理开关） |
 | | Upload | 通过 Storage Browser for S3 拖放上传 |
 | **AI & Processing** | AI Processing | 触发 AI/ML 工作流（Step Functions） |
 | | AI Chat | 面向文件的工具型代理（也可运行已保存的代理或团队） |

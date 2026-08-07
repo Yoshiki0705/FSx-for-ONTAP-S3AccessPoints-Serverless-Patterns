@@ -32,6 +32,7 @@ interface PortalSettings {
   aiSearchEnabled: boolean;
   aiMultimodalEnabled: boolean;
   chatHistoryEnabled: boolean;
+  folderWatchEnabled: boolean;
 }
 
 interface SettingsResponse {
@@ -50,6 +51,7 @@ const DEFAULT_SETTINGS: PortalSettings = {
   aiSearchEnabled: false,
   aiMultimodalEnabled: false,
   chatHistoryEnabled: false,
+  folderWatchEnabled: false,
 };
 
 interface AiSettingsManagerProps {
@@ -90,6 +92,7 @@ export function AiSettingsManager({ initialSettings, onSettingsChange }: AiSetti
         aiSearchEnabled: s?.aiSearchEnabled === true,
         aiMultimodalEnabled: s?.aiMultimodalEnabled === true,
         chatHistoryEnabled: s?.chatHistoryEnabled === true,
+        folderWatchEnabled: s?.folderWatchEnabled === true,
       };
     },
   });
@@ -287,6 +290,40 @@ export function AiSettingsManager({ initialSettings, onSettingsChange }: AiSetti
           <span className="meta-badge ready">✅ {t("aiSettingsReady")}</span>
           <span className="meta-cost">~$0 / {t("aiSettingsPerMonth")}</span>
         </div>
+      </div>
+
+      {/* ─── Folder Watch ───
+          Unlike the AI switches, this one does not enable a capability the portal
+          owns. The events come from FPolicy on the SVM, or from Transfer Family,
+          publishing to EventBridge; the portal only reads what arrived. So the
+          switch means "a publisher exists", and leaving it off is the honest
+          default for a deployment that has not set one up — otherwise the section
+          appears with an inbox that can never fill. */}
+      <div className="ai-settings-feature-section">
+        <div className="ai-settings-toggle-card">
+          <div className="toggle-info">
+            <span className="toggle-icon">🔔</span>
+            <div>
+              <h4>{t("aiSettingsFolderWatchTitle")}</h4>
+              <p>{t("aiSettingsFolderWatchDesc")}</p>
+            </div>
+          </div>
+          <label className="toggle-switch">
+            <input
+              type="checkbox"
+              checked={settings.folderWatchEnabled}
+              onChange={() => toggleSetting("folderWatchEnabled")}
+              disabled={saving !== null}
+            />
+            <span className="toggle-slider" />
+          </label>
+          {saving === "folderWatchEnabled" && <span className="toggle-saving">⏳</span>}
+        </div>
+        <div className="ai-settings-feature-meta">
+          <span className="meta-badge ready">✅ {t("aiSettingsReady")}</span>
+          <span className="meta-cost">~$0 / {t("aiSettingsPerMonth")}</span>
+        </div>
+        <p className="rm-hint">{t("aiSettingsFolderWatchPrereq")}</p>
       </div>
 
       {/* ─── Smart Routing — deploy-time configuration, not a switch ───

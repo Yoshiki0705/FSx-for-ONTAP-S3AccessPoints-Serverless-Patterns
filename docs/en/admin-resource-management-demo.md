@@ -550,6 +550,23 @@ aws ec2 describe-route-tables \
 4. Click it → confirm (the prompt states that the delta is re-sent on the next update) → the transfer aborts
 5. Observe that row's state update
 
+### Scenario 27: Folder Watch and Event Notifications
+
+Prerequisite: enable **Folder Watch** under **Admin > Resources > AI settings** (off by default). Enabling it is the admin stating that FPolicy or Transfer Family is publishing to EventBridge.
+
+1. Open **Browse > Folder Watch** (🔔) in the sidebar
+   - With the toggle off, the item does not appear in the sidebar at all
+2. Enter the path to watch in **Folder (prefix)**, for example `engineering/cad/`
+3. Choose the events (create / modify / delete) and click **Add watch**
+   - A trailing slash is appended for you, so a prefix match cannot pull in a sibling folder
+4. The watch appears in the table. **Remove** deletes it
+5. **Received events** lists events under your registered prefixes, newest first
+6. With no events, the three conditions that have to hold are listed (FPolicy enabled, publishing to EventBridge, prefix matching)
+
+> **Security note**: the inbox is filtered first by the Cognito group path boundary (`GROUP_PATH_PREFIXES`), then narrowed by your own watches. A watch is your own record so you may register `/`, but that cannot reveal anything outside the group boundary. `storage-admin` bypasses the boundary. In a single-tenant deployment (no `GROUP_PATH_PREFIXES`) every event is visible, the same boundary as the file listing.
+
+> **Architecture**: FPolicy server (or Transfer Family) -> EventBridge -> notification bridge Lambda -> the `FileNotification` table -> the portal. The portal reads what arrived; it is not what makes ONTAP emit anything. For configuring FPolicy itself see the [event-driven/fpolicy pattern](../../solutions/event-driven/fpolicy/).
+
 ## Related Documents
 
 | Document | Contents |

@@ -10,6 +10,7 @@ import { AthenaQueryPanel } from "./components/AthenaQueryPanel";
 import { StorageBrowserTab } from "./components/StorageBrowserTab";
 import { FavoritesView, isFolderKey } from "./components/Favorites";
 import { RecentFiles } from "./components/RecentFiles";
+import { FolderWatch } from "./components/FolderWatch";
 import { VersionHistory } from "./components/VersionHistory";
 import { AuditLog } from "./components/AuditLog";
 import { ArpStatus } from "./components/ArpStatus";
@@ -30,7 +31,7 @@ import { portalSettings } from "./portal-settings";
 import type { TranslationKeys } from "./i18n";
 
 type Section =
-  | "files" | "favorites" | "recent" | "upload"
+  | "files" | "favorites" | "recent" | "watch" | "upload"
   | "process" | "agent" | "search" | "history" | "analytics"
   | "snapshots" | "arp" | "lock"
   | "versions" | "audit" | "resources" | "agentDir";
@@ -40,6 +41,7 @@ const NAV_ITEMS: { id: Section; icon: string; labelKey: TranslationKeys; group: 
   { id: "files", icon: "📂", labelKey: "navAllFiles", group: "browse" },
   { id: "favorites", icon: "⭐", labelKey: "navFavorites", group: "browse" },
   { id: "recent", icon: "🕐", labelKey: "navRecent", group: "browse" },
+  { id: "watch", icon: "🔔", labelKey: "navFolderWatch", group: "browse" },
   { id: "upload", icon: "📤", labelKey: "navUpload", group: "browse" },
   // AI & Processing group
   { id: "process", icon: "⚡", labelKey: "navAiProcessing", group: "actions" },
@@ -147,6 +149,10 @@ function App() {
   // the paperclip in place, and turning history off kept saving sessions.
   const [aiMultimodalEnabled, setAiMultimodalEnabled] = useState(false);
   const [chatHistoryEnabled, setChatHistoryEnabled] = useState(false);
+  // Folder watch depends on a publisher outside the portal (FPolicy or Transfer
+  // Family emitting to EventBridge), so it is off until an admin says that
+  // publisher exists. Defaulting it on would show an inbox that can never fill.
+  const [folderWatchEnabled, setFolderWatchEnabled] = useState(false);
   const isStorageAdmin = useStorageAdmin();
   // Set when the directory or the team list hands one over, and carried into the
   // chat section. Lives here rather than in AgentChat because the two sections are
@@ -167,6 +173,7 @@ function App() {
           setAiSearchEnabled(parsed.settings.aiSearchEnabled === true);
           setAiMultimodalEnabled(parsed.settings.aiMultimodalEnabled === true);
           setChatHistoryEnabled(parsed.settings.chatHistoryEnabled === true);
+          setFolderWatchEnabled(parsed.settings.folderWatchEnabled === true);
         }
       } catch {
         // Non-admin users may get auth error — fall back to compile-time default
@@ -181,6 +188,7 @@ function App() {
   if (!aiAgentEnabled) hiddenSections.add("agent");
   if (!aiSearchEnabled) hiddenSections.add("search");
   if (!aiAgentEnabled) hiddenSections.add("agentDir");
+  if (!folderWatchEnabled) hiddenSections.add("watch");
   // Resource Management is the only section whose every panel needs the
   // storage-admin group. It was shown to everyone, so a non-admin got the card
   // grid and an authorization error from each of the twenty panels behind it.
@@ -275,6 +283,7 @@ function App() {
             }}
           />
         )}
+        {activeSection === "watch" && <FolderWatch />}
         {activeSection === "upload" && <StorageBrowserTab />}
         {activeSection === "process" && (
           <JobSubmitForm

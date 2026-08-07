@@ -130,7 +130,7 @@ sequenceDiagram
 
 ---
 
-## ポータル UI — サイドバーレイアウト（16 セクション）
+## ポータル UI — サイドバーレイアウト（17 セクション）
 
 ![Sidebar Layout](docs/screenshots/portal-sidebar-layout.png)
 *左サイドバー: グループ化されたナビゲーション。中央: アクティブなセクションコンテンツ。右: AI アシスタント（ファイル選択時）。*
@@ -140,6 +140,7 @@ sequenceDiagram
 | **Browse** | All Files | 閲覧、プレビュー、AI Q&A、共有リンク、QR アクセス |
 | | Favorites | ピン留めファイル（DynamoDB、ユーザーごと） |
 | | Recent | 最近アクセスしたファイル |
+| | Folder Watch | 監視対象プレフィックスと受信したファイルイベント（管理トグル） |
 | | Upload | Storage Browser for S3 によるドラッグ＆ドロップ |
 | **AI & Processing** | AI Processing | AI/ML ワークフローのトリガー（Step Functions） |
 | | AI Chat | ファイルを対象にツールを使うエージェント（保存したエージェント / チームの実行も可） |

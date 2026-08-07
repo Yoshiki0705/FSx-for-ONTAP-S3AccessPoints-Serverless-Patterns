@@ -128,7 +128,7 @@ sequenceDiagram
 
 ---
 
-## Portal-UI — Seitenleisten-Layout (16 Bereiche)
+## Portal-UI — Seitenleisten-Layout (17 Bereiche)
 
 ![Sidebar Layout](docs/screenshots/portal-sidebar-layout.png)
 *Linke Seitenleiste: gruppierte Navigation. Mitte: aktiver Bereichsinhalt. Rechts: AI-Assistent (bei Dateiauswahl).*
@@ -138,6 +138,7 @@ sequenceDiagram
 | **Browse** | All Files | Durchsuchen, Vorschau, AI Q&A, Freigabelinks, QR-Zugriff |
 | | Favorites | Angeheftete Dateien (DynamoDB, pro Benutzer) |
 | | Recent | Kürzlich aufgerufene Dateien |
+| | Folder Watch | Überwachte Prefixe und empfangene Dateiereignisse (Admin-Schalter) |
 | | Upload | Drag-and-Drop über Storage Browser for S3 |
 | **AI & Processing** | AI Processing | AI/ML-Workflows auslösen (Step Functions) |
 | | AI Chat | Werkzeugnutzender Agent auf Ihren Dateien, oder ein gespeicherter Agent bzw. ein Team |
