@@ -13,14 +13,13 @@ from __future__ import annotations
 import math
 
 import pytest
-from hypothesis import given, settings, assume, HealthCheck
+from hypothesis import HealthCheck, assume, given, settings
 from hypothesis import strategies as st
 
 from shared.lambdas.capacity_forecast.handler import (
     linear_regression,
     predict_days_until_full,
 )
-
 
 # --- Hypothesis Strategies ---
 

@@ -32,22 +32,21 @@ Environment Variables:
 
 from __future__ import annotations
 
+# UC23 ローカル shared モジュール — 動的 import で namespace isolation
+import importlib.util
 import json
 import logging
 import os
+import sys
 from datetime import datetime, timezone
+from pathlib import Path
 
 import boto3
 
 from shared.exceptions import lambda_error_handler
-from shared.observability import xray_subsegment, EmfMetrics, trace_lambda_handler
-from shared.retry_handler import retry_with_backoff, RetryConfig
+from shared.observability import EmfMetrics, trace_lambda_handler, xray_subsegment
+from shared.retry_handler import RetryConfig, retry_with_backoff
 from shared.s3ap_helper import S3ApHelper
-
-# UC23 ローカル shared モジュール — 動的 import で namespace isolation
-import importlib.util
-import sys
-from pathlib import Path
 
 _uc_normalizer_path = Path(__file__).parent.parent.parent / "shared" / "unit_normalizer.py"
 if _uc_normalizer_path.exists():

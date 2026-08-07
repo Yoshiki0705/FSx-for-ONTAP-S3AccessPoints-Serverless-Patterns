@@ -14,7 +14,6 @@ from __future__ import annotations
 import logging
 from datetime import datetime, timezone
 
-
 from shared.exceptions import lambda_error_handler
 from shared.observability import EmfMetrics, trace_lambda_handler
 from shared.output_writer import OutputWriter

@@ -5,16 +5,15 @@ Properties 2, 3, 4: Out-of-order distance, duplicate detection, event loss flagg
 
 from __future__ import annotations
 
-from hypothesis import given, settings, assume
+from hypothesis import assume, given, settings
 from hypothesis import strategies as st
 
 from shared.tests.test_replay_storm_metrics import (
+    calculate_event_loss_rate,
     calculate_out_of_order_distance,
     count_duplicates,
-    calculate_event_loss_rate,
     is_flagged_as_risk,
 )
-
 
 # --- Property 2: Out-of-Order Distance ---
 

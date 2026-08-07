@@ -14,24 +14,22 @@ import os
 import sys
 from unittest.mock import MagicMock, patch
 
-
 # shared モジュールと UC11 関数のパスを追加
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "..", "..", "shared"))
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-from functions.image_tagging.handler import (
-    detect_labels,
-    evaluate_confidence,
-)
 from functions.catalog_metadata.handler import (
     _ensure_required_fields,
     _generate_fallback_metadata,
+)
+from functions.image_tagging.handler import (
+    detect_labels,
+    evaluate_confidence,
 )
 from functions.quality_check.handler import (
     get_image_dimensions,
     validate_quality,
 )
-
 
 # =========================================================================
 # detect_labels テスト

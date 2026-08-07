@@ -13,7 +13,7 @@ from moto import mock_aws
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from shared.idempotency_checker import handler, _bucket_timestamp
+from shared.idempotency_checker import _bucket_timestamp, handler
 
 
 @pytest.fixture

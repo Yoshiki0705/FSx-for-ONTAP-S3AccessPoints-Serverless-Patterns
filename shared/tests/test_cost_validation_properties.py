@@ -11,10 +11,10 @@ Testing Strategy:
 
 from __future__ import annotations
 
-from hypothesis import given, settings, strategies as st
+from hypothesis import given, settings
+from hypothesis import strategies as st
 
-from shared.cost_validation import validate_scaling_schedule, validate_billing_thresholds
-
+from shared.cost_validation import validate_billing_thresholds, validate_scaling_schedule
 
 # ---------------------------------------------------------------------------
 # Property 5: Scheduled Scaling Time Ordering

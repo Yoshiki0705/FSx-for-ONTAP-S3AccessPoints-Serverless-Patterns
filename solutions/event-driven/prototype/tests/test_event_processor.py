@@ -22,7 +22,6 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-
 # Add project root to path for shared module imports
 _project_root = Path(__file__).resolve().parent.parent.parent
 if str(_project_root) not in sys.path:
@@ -39,8 +38,8 @@ from event_processor_handler import (
     detect_labels,
     evaluate_confidence,
     generate_catalog_metadata,
-    process_image,
     handler,
+    process_image,
 )
 
 

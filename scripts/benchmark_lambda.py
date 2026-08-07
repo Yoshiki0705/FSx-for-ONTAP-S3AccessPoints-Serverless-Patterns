@@ -3,9 +3,10 @@ S3 AP Concurrent GetObject Benchmark Lambda
 Measures latency for concurrent GetObject operations against FSx for ONTAP S3 Access Point.
 """
 
-import time
-import statistics
 import concurrent.futures
+import statistics
+import time
+
 import boto3
 
 s3 = boto3.client("s3")

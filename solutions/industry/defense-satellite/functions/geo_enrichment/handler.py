@@ -16,7 +16,6 @@ import logging
 from datetime import datetime, timezone
 from typing import Any
 
-
 from shared.exceptions import lambda_error_handler
 from shared.observability import EmfMetrics, trace_lambda_handler
 from shared.output_writer import OutputWriter

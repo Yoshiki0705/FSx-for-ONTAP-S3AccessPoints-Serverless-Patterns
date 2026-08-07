@@ -21,7 +21,6 @@ from protobuf_parser import (
     is_protobuf_format,
 )
 
-
 # --- Test Data ---
 
 SAMPLE_EVENT = {
@@ -121,7 +120,7 @@ class TestProtobufParser:
     def test_parse_header(self):
         """Parse a protobuf header message."""
         # Manually encode header fields
-        from protobuf_parser import _encode_varint, WIRE_LENGTH_DELIMITED, WIRE_VARINT
+        from protobuf_parser import WIRE_LENGTH_DELIMITED, WIRE_VARINT, _encode_varint
 
         parts = []
         # Field 1: notf_type (string)
@@ -150,7 +149,7 @@ class TestProtobufParser:
 
     def test_parse_handshake_request(self):
         """Parse a handshake request with repeated versions field."""
-        from protobuf_parser import _encode_varint, WIRE_LENGTH_DELIMITED
+        from protobuf_parser import WIRE_LENGTH_DELIMITED, _encode_varint
 
         parts = []
         # Field 1: vs_uuid

@@ -19,7 +19,6 @@ from moto import mock_aws
 from shared.exceptions import TokenStorageError
 from shared.task_token_store import TaskTokenStore
 
-
 # ---------------------------------------------------------------------------
 # Fixtures / Helpers
 # ---------------------------------------------------------------------------

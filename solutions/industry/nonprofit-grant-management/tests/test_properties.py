@@ -16,7 +16,8 @@ import importlib.util
 import os
 import sys
 
-from hypothesis import given, settings, strategies as st
+from hypothesis import given, settings
+from hypothesis import strategies as st
 
 # shared モジュールのパスを追加
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))

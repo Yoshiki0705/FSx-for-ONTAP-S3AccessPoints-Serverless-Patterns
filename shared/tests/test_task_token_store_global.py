@@ -20,7 +20,6 @@ from moto import mock_aws
 
 from shared.task_token_store import TaskTokenStore
 
-
 # ---------------------------------------------------------------------------
 # Fixtures / Helpers
 # ---------------------------------------------------------------------------

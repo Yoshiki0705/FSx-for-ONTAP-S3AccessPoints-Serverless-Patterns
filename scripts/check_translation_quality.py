@@ -3,6 +3,7 @@
 Japanese-specific kana remnants (excluding the language switcher line) + fence balance."""
 
 from __future__ import annotations
+
 import re
 import sys
 from pathlib import Path

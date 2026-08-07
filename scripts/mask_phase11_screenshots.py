@@ -5,6 +5,7 @@
 """
 
 from pathlib import Path
+
 from PIL import Image, ImageDraw
 
 SCREENSHOTS_DIR = Path(__file__).parent.parent / "docs" / "screenshots" / "phase11"

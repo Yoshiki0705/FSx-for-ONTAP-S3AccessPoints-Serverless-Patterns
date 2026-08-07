@@ -13,6 +13,7 @@ DemoMode: When S3_AP_ALIAS is empty, returns mock results for keyword mode.
 from __future__ import annotations
 
 import os
+
 import boto3
 from botocore.config import Config
 

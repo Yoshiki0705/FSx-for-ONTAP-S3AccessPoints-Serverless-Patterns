@@ -15,13 +15,12 @@ import os
 from unittest.mock import MagicMock, patch
 
 import pytest
-from hypothesis import given, settings, HealthCheck
+from hypothesis import HealthCheck, given, settings
 from hypothesis import strategies as st
 
 from shared.lambdas.canary.s3ap_health_check import (
     handler,
 )
-
 
 # --- Hypothesis Strategies ---
 

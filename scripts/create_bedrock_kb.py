@@ -3,6 +3,7 @@ import os
 #!/usr/bin/env python3
 """Bedrock Knowledge Base を作成するスクリプト"""
 import time
+
 import boto3
 
 REGION = os.environ.get("AWS_DEFAULT_REGION", "ap-northeast-1")

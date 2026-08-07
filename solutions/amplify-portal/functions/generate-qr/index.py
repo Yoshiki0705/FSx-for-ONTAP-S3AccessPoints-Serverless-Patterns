@@ -1,6 +1,7 @@
-import os
-import io
 import base64
+import io
+import os
+
 import boto3
 from botocore.config import Config
 

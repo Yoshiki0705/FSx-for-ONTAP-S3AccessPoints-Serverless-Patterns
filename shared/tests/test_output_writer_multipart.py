@@ -15,12 +15,12 @@ import pytest
 from moto import mock_aws
 
 from shared.output_writer import (
+    _MAX_PUT_OBJECT_SIZE,
     FSXN_S3AP,
     STANDARD_S3,
     OutputWriter,
     OutputWriterError,
     _chunk_bytes,
-    _MAX_PUT_OBJECT_SIZE,
 )
 
 REGION = "ap-northeast-1"

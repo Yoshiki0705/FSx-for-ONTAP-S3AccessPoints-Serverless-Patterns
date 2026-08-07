@@ -5,10 +5,11 @@ from __future__ import annotations
 import importlib.util
 import json
 import os
+from unittest.mock import patch
+
 import boto3
 import pytest
 from moto import mock_aws
-from unittest.mock import patch
 
 
 def _load_handler(function_name: str):

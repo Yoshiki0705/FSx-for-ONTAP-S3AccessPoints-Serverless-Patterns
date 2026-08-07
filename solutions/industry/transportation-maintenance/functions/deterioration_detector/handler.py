@@ -41,7 +41,7 @@ import boto3
 
 from shared.exceptions import lambda_error_handler
 from shared.observability import trace_lambda_handler
-from shared.retry_handler import retry_with_backoff, RetryConfig
+from shared.retry_handler import RetryConfig, retry_with_backoff
 
 logger = logging.getLogger(__name__)
 

@@ -12,11 +12,11 @@ Testing Strategy:
 
 from __future__ import annotations
 
-from hypothesis import given, settings, strategies as st
+from hypothesis import given, settings
+from hypothesis import strategies as st
 
 from shared.cross_region_client import CrossRegionConfig
 from shared.exceptions import CrossRegionClientError
-
 
 # ---------------------------------------------------------------------------
 # Property 1: CrossRegionConfig round-trip

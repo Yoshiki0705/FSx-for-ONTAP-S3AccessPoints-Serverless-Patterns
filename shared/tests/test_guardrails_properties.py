@@ -17,12 +17,11 @@ from decimal import Decimal
 
 import boto3
 import pytest
-from hypothesis import given, settings, HealthCheck
+from hypothesis import HealthCheck, given, settings
 from hypothesis import strategies as st
 from moto import mock_aws
 
 from shared.guardrails import CapacityGuardrail, GuardrailMode
-
 
 # --- Hypothesis Strategies ---
 

@@ -17,7 +17,6 @@ from botocore.exceptions import ClientError
 from shared.exceptions import S3ApHelperError
 from shared.s3ap_helper import S3ApHelper
 
-
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------

@@ -32,7 +32,7 @@ from botocore.exceptions import ClientError
 from shared.exceptions import lambda_error_handler
 from shared.observability import EmfMetrics, trace_lambda_handler
 from shared.output_writer import OutputWriter
-from shared.routing import determine_inference_path, InferencePath
+from shared.routing import InferencePath, determine_inference_path
 from shared.s3ap_helper import S3ApHelper
 
 logger = logging.getLogger(__name__)

@@ -17,7 +17,8 @@ import os
 import sys
 from unittest.mock import MagicMock, patch
 
-from hypothesis import given, settings, strategies as st
+from hypothesis import given, settings
+from hypothesis import strategies as st
 
 # shared モジュールと UC9 関数のパスを追加
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "..", "..", "shared"))
@@ -32,14 +33,13 @@ os.environ.setdefault("USE_CASE", "autonomous-driving")
 os.environ.setdefault("REGION", "ap-northeast-1")
 os.environ.setdefault("ENABLE_XRAY", "false")
 
-from functions.sagemaker_invoke.handler import (
-    generate_mock_segmentation,
-    _handle_mock_mode,
-)
 from functions.sagemaker_callback.handler import (
     handle_job_failure,
 )
-
+from functions.sagemaker_invoke.handler import (
+    _handle_mock_mode,
+    generate_mock_segmentation,
+)
 
 # ---------------------------------------------------------------------------
 # Strategies
