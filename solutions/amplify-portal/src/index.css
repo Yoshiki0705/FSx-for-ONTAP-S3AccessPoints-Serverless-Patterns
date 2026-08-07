@@ -370,6 +370,98 @@ body {
   opacity: 1;
 }
 
+/* Glue Data Catalog browser: three columns that narrow left to right
+   (databases, tables, that table's schema). */
+.catalog-toggle {
+  font-size: 0.8rem;
+  padding: 4px 10px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-surface);
+  cursor: pointer;
+  margin-bottom: 0.75rem;
+}
+
+.catalog-panel {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  margin-bottom: 1rem;
+  padding: 0.75rem;
+}
+
+.catalog-columns {
+  display: grid;
+  gap: 0.75rem;
+  /* The schema column gets the extra width: it holds names and types, the
+     other two hold one identifier each. */
+  grid-template-columns: 1fr 1fr 2fr;
+  margin-top: 0.5rem;
+}
+
+@media (max-width: 900px) {
+  .catalog-columns {
+    grid-template-columns: 1fr;
+  }
+}
+
+.catalog-column h5 {
+  font-size: 0.8rem;
+  margin: 0 0 0.35rem;
+  text-transform: uppercase;
+  color: var(--color-text-secondary);
+}
+
+.catalog-list {
+  list-style: none;
+  margin: 0;
+  max-height: 14rem;
+  overflow-y: auto;
+  padding: 0;
+}
+
+.catalog-list button {
+  background: none;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  display: flex;
+  font-size: 0.85rem;
+  justify-content: space-between;
+  padding: 0.25rem 0.4rem;
+  text-align: left;
+  width: 100%;
+}
+
+.catalog-list button:hover {
+  background: var(--color-primary-light);
+}
+
+.catalog-list button.active {
+  background: var(--color-primary-light);
+  font-weight: 600;
+}
+
+.catalog-count {
+  color: var(--color-text-secondary);
+  font-size: 0.75rem;
+}
+
+.catalog-schema-table {
+  font-size: 0.8rem;
+}
+
+/* Partition keys are listed with the columns but are not one of them. */
+.catalog-partition-tag {
+  background: var(--color-primary-light);
+  border-radius: 3px;
+  font-size: 0.7rem;
+  padding: 1px 4px;
+}
+
+.catalog-location code {
+  word-break: break-all;
+}
+
 /* Row lifecycle controls (rename, trash, restore). Same restraint as
    .tag-toggle: faint until hovered, so a long row is not a wall of icons. */
 .fl-btn {
