@@ -180,3 +180,54 @@ describe("SnaplockConfirmDialog", () => {
     expect(document.body.textContent).not.toMatch(/\{(date|period|name|keyword|type|days)\}/);
   });
 });
+
+describe("SnaplockConfirmDialog with a snapshot policy", () => {
+  const policy: SnaplockIntent = {
+    kind: "snapshotPolicyRetention",
+    policyName: "nightly_worm",
+    retentionPeriod: "P6M",
+    schedule: "daily",
+    count: 7,
+  };
+
+  it("does not claim the policy itself becomes undeletable", () => {
+    // The headline reads "<subject> cannot be deleted until <date>". For a policy
+    // that would be wrong twice over: the policy stays deletable, and the date is
+    // the next snapshot's. The list says it with the right owner instead.
+    renderDialog(
+      <SnaplockConfirmDialog intent={policy} onConfirm={vi.fn()} onCancel={vi.fn()} now={NOW} />
+    );
+    expect(document.querySelector(".slc-until")).toBeNull();
+    expect(screen.getByText(/next snapshot the schedule takes/i)).toBeInTheDocument();
+  });
+
+  it("says the lock recurs and shows the date it starts from", () => {
+    renderDialog(
+      <SnaplockConfirmDialog intent={policy} onConfirm={vi.fn()} onCancel={vi.fn()} now={NOW} />
+    );
+    expect(screen.getByText(/This is not one lock/i)).toBeInTheDocument();
+    // P6M from 2026-08-06 lands in February 2027.
+    expect(screen.getByText(/2027/)).toBeInTheDocument();
+  });
+
+  it("asks for the typed keyword", () => {
+    const onConfirm = vi.fn();
+    renderDialog(
+      <SnaplockConfirmDialog intent={policy} onConfirm={onConfirm} onCancel={vi.fn()} now={NOW} />
+    );
+
+    const proceed = screen.getByRole("button", { name: /apply/i });
+    expect(proceed).toBeDisabled();
+    fireEvent.change(screen.getByLabelText(/type/i), { target: { value: "LOCK" } });
+    expect(proceed).toBeEnabled();
+    fireEvent.click(proceed);
+    expect(onConfirm).toHaveBeenCalledOnce();
+  });
+
+  it("substitutes every placeholder for this intent too", () => {
+    renderDialog(
+      <SnaplockConfirmDialog intent={policy} onConfirm={vi.fn()} onCancel={vi.fn()} now={NOW} />
+    );
+    expect(document.body.textContent).not.toMatch(/\{(date|period|schedule|count|name|keyword)\}/);
+  });
+});

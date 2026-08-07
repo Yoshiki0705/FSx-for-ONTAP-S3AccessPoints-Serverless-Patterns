@@ -376,6 +376,8 @@ arpResponseSweepNote: "Les blocages se lèvent d'eux-mêmes à l'échéance. Pou
   rmSnapCount: "Nombre de rétention",
   rmSnapRetention: "Période de rétention",
   rmSnapRetentionHint: "Format ISO 8601 : P30D = 30 jours, P1Y = 1 an (appliqué comme durée de verrouillage sur les volumes Tamperproof)",
+  rmSnapRetentionInvalid:
+    "Le format de la période de rétention est invalide. Utilisez une période ISO 8601, par exemple P30D, P6M ou P1Y.",
   rmSnapNoPolicies: "Aucune politique de snapshot trouvée",
   rmSnapTamperproofDesc: "L'activation de Tamperproof Snapshot permet de verrouiller les snapshots avec un délai d'expiration. Les snapshots verrouillés ne peuvent être supprimés par personne — y compris les administrateurs — jusqu'à l'expiration de la rétention.",
   rmSnapVolumeUuid: "UUID du volume",
@@ -1286,6 +1288,16 @@ arpResponseSweepNote: "Les blocages se lèvent d'eux-mêmes à l'échéance. Pou
     "Les objets stockés à partir de maintenant ne pourront pas être supprimés avant le {date} ({days} jours).",
   slcS3FutureObjectsOnly:
     "Les objets existants ne sont pas concernés. Cela s'applique aux objets stockés après le changement.",
+  slcPolicyNoRetention:
+    "Aucune période de rétention n'est définie : les snapshots créés par cette stratégie ne seront pas verrouillés et pourront être supprimés normalement.",
+  slcPolicyEverySnapshotLocked:
+    "Il ne s'agit pas d'un verrou unique. Chaque snapshot créé par cette stratégie selon la planification {schedule} sera verrouillé pendant {period}, à partir de maintenant.",
+  slcPolicyFirstSnapshotUntil:
+    "Le prochain snapshot créé par la planification ne pourra pas être supprimé avant le {date}. Les suivants avancent avec la planification.",
+  slcPolicyCountNotACap:
+    "Le nombre de {count} cesse de faire office de limite. Un snapshot verrouillé ne peut pas être remplacé par rotation : les snapshots verrouillés s'accumulent donc au-delà de {count} jusqu'à leur expiration, en consommant la capacité correspondante.",
+  slcPolicyStoppable:
+    "La stratégie elle-même est réversible. Retirer la période de rétention, changer de stratégie ou la détacher arrête les nouveaux verrous. Les snapshots déjà verrouillés subsistent jusqu'à leur expiration.",
 
   // --- Shared / misc ---
   processing: "Traitement...",
