@@ -95,9 +95,13 @@ jobs:
           while IFS= read -r file; do
             [ -z "$file" ] && continue
             [ ! -f "$file" ] && continue
-            HITS=$(grep -nE 'Workload Factory|NetApp Console|BlueXP' "$file" || true)
+            # Exclude lines with allow:vendor-ref. The rule bans *proposing* these
+            # products. A document that records why we do not use one has to be
+            # able to name it: a constraint written in euphemisms ("a vendor
+            # management suite") is one no reader can check or act on.
+            HITS=$(grep -nE 'Workload Factory|NetApp Console|BlueXP' "$file" | grep -v 'allow:vendor-ref' || true)
             if [ -n "$HITS" ]; then
-              echo "::error file=$file::Forbidden tool reference (use native equivalents)"
+              echo "::error file=$file::Forbidden tool reference (use native equivalents, or mark the line 'allow:vendor-ref' if it records a constraint rather than proposing the product)"
               echo "$HITS" | head -5
               FAIL=1
             fi

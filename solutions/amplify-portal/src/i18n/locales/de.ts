@@ -1277,7 +1277,7 @@ arpResponseSweepNote: "Sperren heben sich nach Ablauf der Frist selbst auf. Für
     "Für ein bestehendes Volume lässt sich SnapLock nicht nachträglich einschalten; das ist eine ONTAP-Einschränkung.",
   slNewVolumeOnlyHow:
     "Wenn Sie ein SnapLock-Volume benötigen, legen Sie es in der Volume-Verwaltung neu an.",
-  fcacheMetricsHint: "Metriken: im ONTAP System Manager verfügbar",
+  fcacheMetricsHint: "Metriken: über Amazon CloudWatch oder die ONTAP REST API",
   vhDiffTitle: "Versionsunterschiede",
   vhDiffNotice:
     "Zwei Snapshots auszuwählen und ihren Inhalt zu vergleichen ist für eine künftige Version geplant. Derzeit wird die Snapshot-Liste angezeigt.",

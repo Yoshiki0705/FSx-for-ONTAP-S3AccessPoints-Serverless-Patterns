@@ -9,7 +9,7 @@
 | Amplify Gen2 ポータルがデプロイ済み | `make sandbox` が完了し、http://localhost:5173 が開ける |
 | VPC Lambda が ONTAP 管理 LIF に到達できる | `ONTAP_MGMT_IP` を設定済み、SG が TCP/443 の outbound を許可 |
 | Cognito ユーザーが `storage-admin` グループに所属 | AWS コンソール → Cognito → User Pool → Groups → storage-admin にユーザーを追加 |
-| ARP を有効にした FSx for ONTAP（または SimulationMode） | System Manager → Volume → Anti-Ransomware → Enabled/Learning |
+| ARP を有効にした FSx for ONTAP（または SimulationMode） | ONTAP CLI: `volume modify -vserver <svm> -volume <vol> -anti-ransomware-state enabled`（REST では `PATCH /api/storage/volumes/{uuid}` の `anti_ransomware.state`） |
 | ONTAP 9.14.1 以降 | CLI で `system image show` |
 
 > **SimulationMode**: 実際の FSx for ONTAP がなくても、Lambda はモックレスポンスを返します。UI のワークフローは一通り操作でき、スキップされるのは ONTAP REST API の呼び出しだけです。`ONTAP_MGMT_IP=""` にすると SimulationMode になります。

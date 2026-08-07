@@ -1,5 +1,7 @@
 # External IdP Setup — SAML / OIDC Federation
 
+> 🌐 Language: **English** | [日本語](../ja/external-idp-setup.md)
+
 > Connect the File Portal to your organization's identity provider (AD FS, Okta, Azure AD, etc.)
 
 ## Overview

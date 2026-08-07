@@ -9,39 +9,51 @@
 
 ## Summary
 
-This portal covers **ONTAP operations that can be run from a browser without a VPN**.
-It does not replace ONTAP System Manager; the two differ in two respects.
+This portal is **a layer that makes operations available through the ONTAP REST API
+runnable from a screen behind Cognito authentication**.
 
-- **Reachability**: no VPN connection to the management LIF. Cognito authentication
-  records who performed which operation.
-- **Scope**: day-to-day operations, plus the ONTAP-specific operations the AWS
-  Management Console does not expose. Hardware replacement and upgrades are out of scope.
+For Amazon FSx for NetApp ONTAP (hereafter FSx for ONTAP), the interfaces reachable
+without routing through an additional third-party SaaS are three: the AWS Management
+Console / FSx API, the ONTAP CLI over SSH, and the ONTAP REST API. ONTAP System Manager
+is not among them — see [FSx for ONTAP management interfaces](../../../docs/en/fsx-ontap-management-interfaces.md)
+for the sources and the misconceptions. So what this portal should be compared against
+is **the ONTAP CLI and the REST API**, not System Manager.
+
+Against those two, it differs in two respects.
+
+- **Delegation**: a specific operation can be given to someone outside storage
+  administration (security, compliance, data protection) without handing them
+  cluster-administrator SSH.
+- **Record**: who ran which operation and when is retained against a Cognito principal.
 
 **Cluster peering and SVM peering** matter in particular: the AWS Management Console
-for Amazon FSx for NetApp ONTAP (hereafter FSx for ONTAP) has no surface for them, so
-until now they required the ONTAP CLI or hand-written REST calls. This portal makes
-that area available from the UI.
+for FSx for ONTAP has no surface for them, so until now they required the ONTAP CLI or
+hand-written REST calls. This portal makes that area available from the UI.
 
-Node replacement, ONTAP upgrades and disk/shelf management remain with System Manager
-and the ONTAP CLI. This portal does not perform them.
+The ONTAP version, the nodes and the disks and shelves are **operated by AWS**. They do
+not exist as customer operations, so they appear neither in this portal nor in any other
+interface.
 
 ---
 
 ## What each interface covers
 
-| Area | Interface normally used | Position of this portal |
-|------|------------------------|------------------------|
-| ONTAP upgrades, hardware management | ONTAP System Manager / ONTAP CLI | Out of scope |
-| Day-to-day volume, qtree and quota operations | System Manager / this portal | Implemented |
-| NAS access control (export policies, SMB shares) | System Manager / this portal | Implemented |
-| Identity mapping (Windows ↔ UNIX), SMB local users | System Manager / this portal | Implemented |
-| Snapshots, SnapLock, tamperproof snapshots | System Manager / this portal | Implemented |
-| Ransomware detection (ARP/AI) review and response | System Manager / this portal | Implemented |
-| FlexCache, FlexClone | System Manager / this portal | Implemented |
-| Replication (SnapMirror) status and operations | System Manager / this portal | Implemented |
-| Virus scanning (Vscan) and FPolicy configuration | System Manager / this portal | Implemented |
-| Cluster peers, SVM peers | ONTAP CLI / REST API / this portal | Implemented (no Management Console surface) |
-| Nodes, licences, LIFs, protocol services, DNS, jobs | System Manager / this portal | Implemented |
+Rows marked "ONTAP CLI / REST API" name how the operation is performed without this portal.
+
+| Area | Without this portal | Position of this portal |
+|------|--------------------|------------------------|
+| ONTAP version, nodes, disks and shelves | Operated by AWS (no customer operation) | Out of scope |
+| Creating file systems, SVMs and volumes; backups | AWS Management Console / FSx API | Partial (volume operations implemented) |
+| Day-to-day volume, qtree and quota operations | ONTAP CLI / REST API | Implemented |
+| NAS access control (export policies, SMB shares) | ONTAP CLI / REST API | Implemented |
+| Identity mapping (Windows ↔ UNIX), SMB local users | ONTAP CLI / REST API | Implemented |
+| Snapshots, SnapLock, tamperproof snapshots | ONTAP CLI / REST API | Implemented |
+| Ransomware detection (ARP/AI) review and response | ONTAP CLI / REST API | Implemented |
+| FlexCache, FlexClone | ONTAP CLI / REST API | Implemented |
+| Replication (SnapMirror) status and operations | ONTAP CLI / REST API | Implemented |
+| Virus scanning (Vscan) and FPolicy configuration | ONTAP CLI / REST API | Implemented |
+| Cluster peers, SVM peers | ONTAP CLI / REST API | Implemented (no Management Console surface) |
+| Nodes, licences, LIFs, protocol services, DNS, jobs | ONTAP CLI / REST API | Implemented (read) |
 | Long-term metric retention, capacity trend analysis | Amazon CloudWatch / ONTAP REST API | The `operations/` patterns in this repository |
 | File access audit aggregation and anomaly detection | FPolicy → EventBridge → patterns in this repository | `solutions/event-driven/fpolicy/` |
 | End-user file browsing and sharing | This portal | Implemented |
@@ -56,13 +68,18 @@ and the ONTAP CLI. This portal does not perform them.
 
 ---
 
-## Mapping to System Manager capability areas
+## Mapping to ONTAP capability areas
 
-The table is organised by System Manager's own capability areas.
+The table is organised by ONTAP's capability areas.
 "Out of scope" reflects a deliberate split of responsibility, not a missing feature.
 
-| System Manager area | Main features | Coverage in this portal |
-|--------------------|--------------|------------------------|
+The areas follow ONTAP System Manager's screen layout, so that a reader who knows
+System Manager can follow the mapping. That is a presentation choice, not a statement
+that System Manager is available for FSx for ONTAP — see
+[management interfaces](../../../docs/en/fsx-ontap-management-interfaces.md).
+
+| Area | Main features | Coverage in this portal |
+|------|--------------|------------------------|
 | Dashboard | Capacity, performance and health overview | Partial (capacity, ARP/AI and EMS appear in dedicated panels; performance charts live in CloudWatch) |
 | Storage | Volumes, qtrees, quotas, efficiency, LUNs | Implemented (LUNs out of scope; SAN use of FSx for ONTAP is outside this portal) |
 | Network | LIFs, ports, routes, broadcast domains | Partial (LIF listing plus enable/disable; ports and routes out of scope) |
@@ -74,7 +91,7 @@ The table is organised by System Manager's own capability areas.
 | Cluster | Name services (DNS) | Implemented |
 | Cluster | Protocol services (NFS / SMB / S3) | Implemented (enable/disable) |
 | Cluster | Jobs | Implemented (read) |
-| Cluster | ONTAP upgrade, disks and shelves | Out of scope (System Manager / CLI) |
+| Cluster | ONTAP upgrade, disks and shelves | Out of scope (operated by AWS on FSx for ONTAP; no customer operation) |
 
 ---
 
