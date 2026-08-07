@@ -23,6 +23,7 @@ import { SemanticSearch } from "./components/SemanticSearch";
 import { LanguageSwitcher } from "./components/LanguageSwitcher";
 import { WelcomeModal } from "./components/WelcomeModal";
 import { useTranslation } from "./i18n";
+import { useStorageAdmin } from "./hooks/useStorageAdmin";
 import { dispatch } from "./lib/dispatch";
 import { portalSettings } from "./portal-settings";
 
@@ -141,6 +142,12 @@ function App() {
   // Query DynamoDB portal settings on mount. Falls back to compile-time portalSettings.
   const [aiAgentEnabled, setAiAgentEnabled] = useState(portalSettings.aiAgentEnabled);
   const [aiSearchEnabled, setAiSearchEnabled] = useState(portalSettings.aiAgentEnabled);
+  // Carried down to AgentChat. These two used to be written by the admin panel and
+  // read by nothing, so both switches were decoration: turning image input off left
+  // the paperclip in place, and turning history off kept saving sessions.
+  const [aiMultimodalEnabled, setAiMultimodalEnabled] = useState(false);
+  const [chatHistoryEnabled, setChatHistoryEnabled] = useState(false);
+  const isStorageAdmin = useStorageAdmin();
 
   useEffect(() => {
     let cancelled = false;
@@ -154,6 +161,8 @@ function App() {
         if (parsed?.settings) {
           setAiAgentEnabled(parsed.settings.aiAgentEnabled === true);
           setAiSearchEnabled(parsed.settings.aiSearchEnabled === true);
+          setAiMultimodalEnabled(parsed.settings.aiMultimodalEnabled === true);
+          setChatHistoryEnabled(parsed.settings.chatHistoryEnabled === true);
         }
       } catch {
         // Non-admin users may get auth error — fall back to compile-time default
@@ -168,6 +177,12 @@ function App() {
   if (!aiAgentEnabled) hiddenSections.add("agent");
   if (!aiSearchEnabled) hiddenSections.add("search");
   if (!aiAgentEnabled) hiddenSections.add("agentDir");
+  // Resource Management is the only section whose every panel needs the
+  // storage-admin group. It was shown to everyone, so a non-admin got the card
+  // grid and an authorization error from each of the twenty panels behind it.
+  // `null` means the session has not resolved yet; hide it until it has rather
+  // than show the section and take it away.
+  if (isStorageAdmin !== true) hiddenSections.add("resources");
 
   if (authStatus !== "authenticated") {
     return <LoadingSkeleton />;
@@ -266,7 +281,12 @@ function App() {
             }}
           />
         )}
-        {activeSection === "agent" && (aiAgentEnabled ? <AgentChat /> : <AgentDisabled />)}
+        {activeSection === "agent" && (aiAgentEnabled ? (
+          <AgentChat
+            multimodalEnabled={aiMultimodalEnabled}
+            chatHistoryEnabled={chatHistoryEnabled}
+          />
+        ) : <AgentDisabled />)}
         {activeSection === "search" && (aiSearchEnabled ? (
           <SemanticSearch
             onNavigateToFile={(fileKey) => openInFiles(parentPrefixOf(fileKey))}
@@ -294,12 +314,14 @@ function App() {
         {activeSection === "snapshots" && <VersionHistory mode="browse" />}
         {activeSection === "lock" && <SnaplockStatus />}
         {activeSection === "arp" && <ArpStatus />}
-        {activeSection === "resources" && (
+        {/* Guarded again here, not only in the nav: the section is reachable by
+            URL hash, and hiding the button alone left a non-admin on a blank page. */}
+        {activeSection === "resources" && (isStorageAdmin === true ? (
           <ResourceManagement
             aiSettings={{ aiAgentEnabled, aiSearchEnabled }}
             onAiSettingsChange={(s) => { setAiAgentEnabled(s.aiAgentEnabled); setAiSearchEnabled(s.aiSearchEnabled); }}
           />
-        )}
+        ) : isStorageAdmin === false ? <AdminOnly /> : <LoadingSkeleton />)}
         {activeSection === "agentDir" && (
           <AgentDirectoryPage />
         )}
@@ -337,10 +359,7 @@ function AgentDirectoryPage() {
       </div>
 
       {view === "directory" && (
-        <AgentDirectory
-          onCreateAgent={() => setView("creator")}
-          onSelectAgent={() => {/* TODO: switch to chat with agent */}}
-        />
+        <AgentDirectory onCreateAgent={() => setView("creator")} />
       )}
       {view === "creator" && (
         <AgentCreator
@@ -351,6 +370,24 @@ function AgentDirectoryPage() {
       {view === "teams" && (
         <AgentTeams />
       )}
+    </div>
+  );
+}
+
+/**
+ * Shown when a section is reached by URL but the account is not a storage admin.
+ *
+ * The same styling as the AI-disabled panel: from the user's point of view both are
+ * "this section is not available to you", and the reason differs only in who can
+ * change it.
+ */
+function AdminOnly() {
+  const { t } = useTranslation();
+  return (
+    <div className="agent-disabled">
+      <div className="agent-disabled-icon">🔒</div>
+      <h3>{t("adminOnlyTitle")}</h3>
+      <p>{t("adminOnlyDesc")}</p>
     </div>
   );
 }

@@ -229,7 +229,20 @@ interface ChatSession {
   updatedAt: number;
 }
 
-export function AgentChat() {
+interface AgentChatProps {
+  /**
+   * Whether image input is enabled, as the admin panel reports it.
+   *
+   * The panel has always written this setting and nothing read it, so the switch
+   * changed nothing. Defaults to enabled so a caller that does not pass it — and
+   * the tests — keep the previous behaviour.
+   */
+  multimodalEnabled?: boolean;
+  /** Whether sessions are saved and restorable, as the admin panel reports it. */
+  chatHistoryEnabled?: boolean;
+}
+
+export function AgentChat({ multimodalEnabled = true, chatHistoryEnabled = true }: AgentChatProps = {}) {
   const { t } = useTranslation();
   const [messages, setMessages] = useState<AgentMessage[]>([]);
   const [input, setInput] = useState("");
@@ -276,6 +289,9 @@ export function AgentChat() {
   const queryClient = useQueryClient();
   const { data: sessions = [], refetch: refetchSessions } = useQuery({
     queryKey: SESSIONS_KEY,
+    // Listing is skipped when the admin has turned history off, so the panel's
+    // switch is the thing that decides whether sessions are read at all.
+    enabled: chatHistoryEnabled,
     queryFn: async () => {
       const data = parseResponse<{ sessions: ChatSession[] }>(
         await dispatch("agentQuery", { action: "listSessions", params: { limit: 20 } }),
@@ -289,6 +305,7 @@ export function AgentChat() {
   const loadSessions = useCallback(() => void refetchSessions(), [refetchSessions]);
 
   const saveCurrentSession = useCallback(async () => {
+    if (!chatHistoryEnabled) return;
     if (messages.length === 0) return;
     const title = messages[0]?.content.slice(0, 50) || "Untitled";
     const sessionId = currentSessionId || `sess-${Date.now()}`;
@@ -306,7 +323,7 @@ export function AgentChat() {
       });
       loadSessions();
     } catch { /* silent fail */ }
-  }, [messages, currentSessionId, loadSessions]);
+  }, [messages, currentSessionId, loadSessions, chatHistoryEnabled]);
 
   // Auto-save after messages change (debounced)
   // React 19 requires useRef to be called with an explicit initial value.
@@ -356,6 +373,9 @@ export function AgentChat() {
 
   // --- Image Upload Handlers ---
   function handleImageSelect(file: File) {
+    // Guarded here rather than only at the button, because a drop onto the
+    // message area reaches this without passing one.
+    if (!multimodalEnabled) return;
     if (!file.type.startsWith("image/")) return;
     if (file.size > 5 * 1024 * 1024) { setError("Image must be under 5MB"); return; }
 
@@ -496,7 +516,9 @@ export function AgentChat() {
       <div className="agent-chat-header">
         <h2>🤖 {t("agentTitle")}</h2>
         <div className="agent-header-actions">
-          <button className="btn-sm" onClick={() => setShowHistory(!showHistory)} title={t("chatHistoryTitle")}>📜</button>
+          {chatHistoryEnabled && (
+            <button className="btn-sm" onClick={() => setShowHistory(!showHistory)} title={t("chatHistoryTitle")}>📜</button>
+          )}
           {referencedFiles.length > 0 && (
             <button className="btn-sm" onClick={() => setShowFileSidebar(!showFileSidebar)} title={t("sidebarFileInfo")}>📂</button>
           )}
@@ -731,21 +753,25 @@ export function AgentChat() {
           </div>
         )}
         <div className="agent-input-row">
-          <button
-            className="agent-attach-btn"
-            onClick={() => fileInputRef.current?.click()}
-            title={t("multimodalAttach")}
-            disabled={loading}
-          >
-            📎
-          </button>
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/jpeg,image/png,image/gif,image/webp"
-            onChange={handleFileInput}
-            style={{ display: "none" }}
-          />
+          {multimodalEnabled && (
+            <>
+              <button
+                className="agent-attach-btn"
+                onClick={() => fileInputRef.current?.click()}
+                title={t("multimodalAttach")}
+                disabled={loading}
+              >
+                📎
+              </button>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/jpeg,image/png,image/gif,image/webp"
+                onChange={handleFileInput}
+                style={{ display: "none" }}
+              />
+            </>
+          )}
           <textarea
             ref={inputRef}
             value={input}

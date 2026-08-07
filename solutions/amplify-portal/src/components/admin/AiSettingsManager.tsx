@@ -19,11 +19,18 @@ import { useTranslation } from "../../i18n";
 import { adminMutate, dispatch } from "../../lib/dispatch";
 import { errorMessage, unwrap } from "../../lib/portalQuery";
 
+/**
+ * The settings this panel can change.
+ *
+ * Every key here has a consumer: `aiAgentEnabled` and `aiSearchEnabled` gate their
+ * sections in `App.tsx`, and the other two are passed to `AgentChat`. Keys the
+ * handler used to accept but nothing read — `aiSmartRoutingEnabled`,
+ * `aiVoiceEnabled`, `agentDirectoryEnabled` — are gone from both sides.
+ */
 interface PortalSettings {
   aiAgentEnabled: boolean;
   aiSearchEnabled: boolean;
   aiMultimodalEnabled: boolean;
-  aiSmartRoutingEnabled: boolean;
   chatHistoryEnabled: boolean;
 }
 
@@ -42,7 +49,6 @@ const DEFAULT_SETTINGS: PortalSettings = {
   aiAgentEnabled: false,
   aiSearchEnabled: false,
   aiMultimodalEnabled: false,
-  aiSmartRoutingEnabled: false,
   chatHistoryEnabled: false,
 };
 
@@ -83,7 +89,6 @@ export function AiSettingsManager({ initialSettings, onSettingsChange }: AiSetti
         aiAgentEnabled: s?.aiAgentEnabled === true,
         aiSearchEnabled: s?.aiSearchEnabled === true,
         aiMultimodalEnabled: s?.aiMultimodalEnabled === true,
-        aiSmartRoutingEnabled: s?.aiSmartRoutingEnabled === true,
         chatHistoryEnabled: s?.chatHistoryEnabled === true,
       };
     },
@@ -284,7 +289,12 @@ export function AiSettingsManager({ initialSettings, onSettingsChange }: AiSetti
         </div>
       </div>
 
-      {/* ─── Smart Routing (requires Search) ─── */}
+      {/* ─── Smart Routing — deploy-time configuration, not a switch ───
+          This was a toggle. It wrote a value nothing read, so it changed nothing,
+          and had it been wired the switch would have offered to widen a
+          multi-tenant scope boundary from the UI. KB scope filtering follows the
+          group-to-prefix mapping given at deploy time, so the panel states that
+          rather than pretending to control it. */}
       <div className="ai-settings-feature-section">
         <div className="ai-settings-toggle-card">
           <div className="toggle-info">
@@ -294,21 +304,13 @@ export function AiSettingsManager({ initialSettings, onSettingsChange }: AiSetti
               <p>{t("aiSettingsSmartRoutingDesc")}</p>
             </div>
           </div>
-          <label className="toggle-switch">
-            <input
-              type="checkbox"
-              checked={settings.aiSmartRoutingEnabled}
-              onChange={() => toggleSetting("aiSmartRoutingEnabled")}
-              disabled={saving !== null || !settings.aiSearchEnabled}
-            />
-            <span className="toggle-slider" />
-          </label>
-          {saving === "aiSmartRoutingEnabled" && <span className="toggle-saving">⏳</span>}
+          <span className="meta-badge setup-needed">⚙️ {t("aiSettingsDeployTimeOnly")}</span>
         </div>
         <div className="ai-settings-feature-meta">
           <span className="meta-badge setup-needed">⚙️ {t("aiSettingsGroupMapping")}</span>
           <span className="meta-cost">$0</span>
         </div>
+        <p className="form-note">{t("aiSettingsSmartRoutingConfigNote")}</p>
       </div>
 
       {/* ─── Status Summary ─── */}
@@ -351,9 +353,7 @@ export function AiSettingsManager({ initialSettings, onSettingsChange }: AiSetti
             <tr>
               <td>🔀 {t("aiSettingsSmartRoutingTitle")}</td>
               <td>
-                <span className={`status-badge ${settings.aiSmartRoutingEnabled ? "enabled" : "disabled"}`}>
-                  {settings.aiSmartRoutingEnabled ? t("stateEnabled") : t("stateDisabled")}
-                </span>
+                <span className="status-badge">{t("aiSettingsDeployTimeOnly")}</span>
               </td>
             </tr>
           </tbody>

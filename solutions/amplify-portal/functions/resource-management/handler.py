@@ -561,15 +561,20 @@ def _update_portal_settings(event, user_id):
     key = event.get("key", "")
     value = event.get("value", "")
 
-    # Whitelist of allowed settings keys
+    # Settings the portal actually acts on. A key that nothing reads is worse than
+    # a missing key: the admin panel shows a switch, the write succeeds, and
+    # nothing changes. Four keys were removable on that basis:
+    #
+    #   aiSmartRoutingEnabled — KB scope filtering follows GROUP_PATH_PREFIXES,
+    #     which is deploy-time configuration. A runtime switch that could widen a
+    #     multi-tenant scope boundary is not a switch worth having, so the panel
+    #     now reports the configured state instead of offering to change it.
+    #   aiVoiceEnabled, agentDirectoryEnabled — no UI and no consumer at all.
     allowed_keys = {
         "aiAgentEnabled",
         "aiSearchEnabled",
         "aiMultimodalEnabled",
-        "aiSmartRoutingEnabled",
         "chatHistoryEnabled",
-        "aiVoiceEnabled",
-        "agentDirectoryEnabled",
     }
     if key not in allowed_keys:
         return {"error": f"Setting '{key}' is not allowed. Valid: {sorted(allowed_keys)}"}

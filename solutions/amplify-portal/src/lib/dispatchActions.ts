@@ -556,7 +556,7 @@ export interface ResourceMgmtActionParams {
     svm?: string;
   };
   updatePortalSettings: {
-    key?: "aiAgentEnabled" | "aiSearchEnabled" | "aiMultimodalEnabled" | "aiSmartRoutingEnabled" | "chatHistoryEnabled" | "aiVoiceEnabled" | "agentDirectoryEnabled";
+    key?: "aiAgentEnabled" | "aiSearchEnabled" | "aiMultimodalEnabled" | "chatHistoryEnabled";
     value?: string;
   };
   updateQosPolicy: {
