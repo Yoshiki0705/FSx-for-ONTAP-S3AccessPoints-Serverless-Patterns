@@ -3,7 +3,6 @@
 import os
 from unittest.mock import patch
 
-
 from shared.data_classification import DataClassification, get_classification
 
 

@@ -14,11 +14,10 @@ import os
 import sys
 import time
 from decimal import Decimal
-
-import pytest
 from unittest.mock import MagicMock, patch
 
 import boto3
+import pytest
 from moto import mock_aws
 
 # パス設定
@@ -35,12 +34,11 @@ os.environ.setdefault("USE_CASE", "autonomous-driving")
 os.environ.setdefault("ENABLE_XRAY", "false")
 
 from functions.inference_comparison.handler import (
-    aggregate_by_variant,
     _emit_variant_metrics,
     _write_aggregation_to_dynamodb,
+    aggregate_by_variant,
     handler,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers

@@ -12,10 +12,10 @@ Testing Strategy:
 from __future__ import annotations
 
 import pytest
-from hypothesis import given, settings, strategies as st
+from hypothesis import given, settings
+from hypothesis import strategies as st
 
 from shared.routing import InferencePath, determine_inference_path
-
 
 # ---------------------------------------------------------------------------
 # Property 1: Three-Way Routing Determinism
@@ -131,7 +131,7 @@ def test_three_way_routing_invalid_inference_type_raises(
 # Property 2: ServerlessConfig Validation
 # ---------------------------------------------------------------------------
 
-from shared.routing import validate_serverless_config, VALID_MEMORY_SIZES_MB
+from shared.routing import VALID_MEMORY_SIZES_MB, validate_serverless_config
 
 
 @settings(max_examples=100)

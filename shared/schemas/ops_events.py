@@ -15,7 +15,6 @@ from __future__ import annotations
 
 from typing import TypedDict
 
-
 # --- Volume Space (OPS1: capacity-rightsizing) ---
 
 

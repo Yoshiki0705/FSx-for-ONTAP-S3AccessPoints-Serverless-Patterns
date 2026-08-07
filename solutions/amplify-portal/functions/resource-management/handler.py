@@ -2068,7 +2068,7 @@ def _lock_snapshot(http, headers, event, user_id):
     if refused:
         return refused
 
-    from datetime import datetime, timezone, timedelta
+    from datetime import datetime, timedelta, timezone
 
     expiry = (datetime.now(timezone.utc) + timedelta(days=retention_days)).strftime("%Y-%m-%dT%H:%M:%SZ")
 

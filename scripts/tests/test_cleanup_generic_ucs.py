@@ -19,7 +19,6 @@ from moto import mock_aws
 sys.path.insert(0, str(__import__("pathlib").Path(__file__).parent.parent))
 import cleanup_generic_ucs as cleanup  # noqa: E402
 
-
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------

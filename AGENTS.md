@@ -38,8 +38,13 @@ make deploy-ops1
 # Security scan
 make security
 
-# Doc/code drift: action inventories, i18n coverage, stale claim rules (offline)
+# Doc/code drift: action inventories, i18n coverage, stale claim rules,
+# and whether each UI call sends the parameters its Lambda action requires (offline)
 make drift
+
+# Just the action-parameter contract check, with the call sites it cannot read
+python3 scripts/check_portal_action_params.py
+python3 scripts/check_portal_action_params.py --list-opaque
 
 # Stale claims in the published blog posts (needs network; not a PR gate)
 make drift-published
@@ -249,7 +254,14 @@ Before submitting changes, run:
    drift used to pass locally and only fail in the pipeline. Run `make
    format-python` to fix drift.
 3. `cfn-lint` on modified templates
-3a. `make drift` — action inventories, i18n coverage and stale claim rules.
+3a. `make drift` — action inventories, i18n coverage, stale claim rules, and the
+   portal action-parameter contracts. The last one exists because the generic
+   dispatch endpoints take an untyped `params` blob: TypeScript cannot see across
+   it, so a component sending `{snapshotName, retentionDays}` to an action that
+   reads `snapshotId` and `expiryTime` compiles, lints, renders a button and fails
+   on every click. One shipped that way. If you add a dispatch call through a new
+   wrapper shape, check `--list-opaque` afterwards — a call the checker cannot read
+   is a call it cannot defend.
    If the change **removes a limitation** (ships something the docs told readers
    to build themselves), also run `make drift-published`: two published articles
    kept telling readers to build block expiry and multi-SVM fan-out for a month

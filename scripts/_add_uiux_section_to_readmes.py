@@ -11,7 +11,6 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
-
 SECTIONS = {
     "en": {
         "heading": "## UI/UX Screenshots (End Users / Staff / Personnel Views)",

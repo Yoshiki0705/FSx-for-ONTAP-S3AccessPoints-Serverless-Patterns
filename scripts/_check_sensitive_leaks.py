@@ -42,8 +42,8 @@ EXCLUDE_PATHS = {
 def scan_image(path: Path) -> list[tuple[str, str]]:
     """Return (sensitive_token, matching_word) list for any leak found."""
     try:
-        from PIL import Image
         import pytesseract  # type: ignore
+        from PIL import Image
     except ImportError:
         return [("IMPORT_ERROR", "PIL/pytesseract not installed — skipping image scan")]
 

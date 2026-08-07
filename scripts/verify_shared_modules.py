@@ -18,14 +18,14 @@ OntapClient, FsxHelper, S3ApHelper の AWS 環境での動作を検証する。
     python3 scripts/verify_shared_modules.py
 """
 
+import logging
 import os
 import sys
-import logging
 
 # Add parent dir to path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from shared import OntapClient, OntapClientConfig, FsxHelper, S3ApHelper
+from shared import FsxHelper, OntapClient, OntapClientConfig, S3ApHelper
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 logger = logging.getLogger(__name__)

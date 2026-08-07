@@ -6,7 +6,6 @@ import importlib.util
 import os
 from unittest.mock import patch
 
-
 # 正しいハンドラーモジュールをロード
 _handler_path = os.path.join(os.path.dirname(__file__), "..", "src", "create_flexcache", "handler.py")
 _spec = importlib.util.spec_from_file_location("create_flexcache_handler", _handler_path)

@@ -13,16 +13,14 @@ import os
 import sys
 from unittest.mock import MagicMock
 
-
 # パス設定
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from register_model import (
-    register_model,
     approve_model,
     list_model_versions,
+    register_model,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers

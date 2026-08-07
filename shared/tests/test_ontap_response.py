@@ -13,7 +13,7 @@ from __future__ import annotations
 
 import json
 import sys
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
@@ -23,14 +23,13 @@ import pytest
 sys.path.insert(0, str(Path(__file__).parents[2]))
 
 from shared.ontap_response import (
-    ArpResponseActions,
-    ArpResponseError,
     PROTECTED_ACCOUNTS,
     RESPONSE_MARKER,
+    ArpResponseActions,
+    ArpResponseError,
     _validate_ip,
     _validate_username,
 )
-
 
 # --- Fixtures ---
 

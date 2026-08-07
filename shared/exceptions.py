@@ -19,8 +19,8 @@ import functools
 import logging
 import traceback
 
-from shared.ontap_client import OntapClientError  # noqa: F401
 from shared.fsx_helper import FsxHelperError  # noqa: F401
+from shared.ontap_client import OntapClientError  # noqa: F401
 
 logger = logging.getLogger(__name__)
 

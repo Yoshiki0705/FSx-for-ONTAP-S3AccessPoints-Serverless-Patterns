@@ -19,7 +19,6 @@ from shared.ad_health_check import (
 )
 from shared.ontap_client import OntapClientError
 
-
 # --- Fixtures ----------------------------------------------------------------
 
 

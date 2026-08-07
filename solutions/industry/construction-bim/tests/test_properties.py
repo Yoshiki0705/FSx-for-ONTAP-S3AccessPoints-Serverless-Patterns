@@ -16,20 +16,20 @@ import json
 import os
 import sys
 
-from hypothesis import given, settings, strategies as st
+from hypothesis import given, settings
+from hypothesis import strategies as st
 
 # shared モジュールと UC10 関数のパスを追加
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "..", "..", "shared"))
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from functions.bim_parse.handler import (
-    parse_ifc_metadata,
     compute_version_diff,
+    parse_ifc_metadata,
 )
 from functions.safety_check.handler import (
     determine_overall_compliance,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helper: IFC ファイルデータ生成

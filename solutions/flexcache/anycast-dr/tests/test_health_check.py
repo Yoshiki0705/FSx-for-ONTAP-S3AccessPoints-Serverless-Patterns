@@ -6,7 +6,6 @@ import importlib.util
 import os
 from unittest.mock import patch
 
-
 _handler_path = os.path.join(os.path.dirname(__file__), "..", "src", "health_check", "handler.py")
 _spec = importlib.util.spec_from_file_location("health_check_handler", _handler_path)
 _module = importlib.util.module_from_spec(_spec)

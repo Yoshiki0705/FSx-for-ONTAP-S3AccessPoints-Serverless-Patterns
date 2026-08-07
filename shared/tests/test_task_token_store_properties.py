@@ -20,11 +20,11 @@ from unittest.mock import patch
 
 import boto3
 import pytest
-from hypothesis import given, settings, strategies as st
+from hypothesis import given, settings
+from hypothesis import strategies as st
 from moto import mock_aws
 
 from shared.task_token_store import TaskTokenStore
-
 
 # ---------------------------------------------------------------------------
 # Fixtures / Helpers

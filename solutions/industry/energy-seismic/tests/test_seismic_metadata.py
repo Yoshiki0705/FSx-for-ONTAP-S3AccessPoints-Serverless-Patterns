@@ -26,7 +26,6 @@ from functions.seismic_metadata.handler import (
     _parse_binary_header,
 )
 
-
 # ---------------------------------------------------------------------------
 # _decode_textual_header tests
 # ---------------------------------------------------------------------------

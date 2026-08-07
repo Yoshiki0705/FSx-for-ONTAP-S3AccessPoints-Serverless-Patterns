@@ -32,8 +32,7 @@ from functions.metadata_extraction.handler import (
 )
 
 # テスト用ヘルパーを property テストから再利用
-from tests.test_properties import build_gds_header, _make_gdsii_record
-
+from tests.test_properties import _make_gdsii_record, build_gds_header
 
 # =========================================================================
 # _read_gdsii_record テスト

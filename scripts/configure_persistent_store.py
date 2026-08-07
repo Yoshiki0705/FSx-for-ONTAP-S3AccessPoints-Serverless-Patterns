@@ -19,7 +19,6 @@ VPC 内の Lambda (IP Updater) 経由で ONTAP API を呼び出す。
 import argparse
 import json
 
-
 # Configuration
 REGION = os.environ.get("AWS_REGION", "ap-northeast-1")
 LAMBDA_FUNCTION = "fsxn-fpolicy-ip-updater"

@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """AWS 実環境テスト — S3ApHelper + FsxHelper"""
 
-import sys
 import os
+import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 os.environ.setdefault("AWS_DEFAULT_REGION", "ap-northeast-1")
@@ -10,8 +10,8 @@ os.environ.setdefault("AWS_DEFAULT_REGION", "ap-northeast-1")
 S3_AP = os.environ.get("S3_ACCESS_POINT", "")
 FS_ID = os.environ.get("FSX_FILESYSTEM_ID", "")
 
-from shared.s3ap_helper import S3ApHelper
 from shared.fsx_helper import FsxHelper
+from shared.s3ap_helper import S3ApHelper
 
 print("=== Test 1: S3ApHelper ListObjectsV2 ===")
 helper = S3ApHelper(S3_AP)

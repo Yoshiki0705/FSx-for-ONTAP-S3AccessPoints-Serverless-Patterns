@@ -4,9 +4,10 @@ from __future__ import annotations
 
 import importlib.util
 import os
+from unittest.mock import patch
+
 import pytest
 from botocore.exceptions import ClientError
-from unittest.mock import patch
 
 
 def _load_handler():

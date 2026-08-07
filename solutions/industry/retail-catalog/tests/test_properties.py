@@ -15,19 +15,19 @@ from __future__ import annotations
 import os
 import sys
 
-from hypothesis import given, settings, strategies as st
+from hypothesis import given, settings
+from hypothesis import strategies as st
 
 # shared モジュールと UC11 関数のパスを追加
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "..", "..", "shared"))
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-from functions.image_tagging.handler import evaluate_confidence
 from functions.catalog_metadata.handler import (
     REQUIRED_METADATA_FIELDS,
     _ensure_required_fields,
     _generate_fallback_metadata,
 )
-
+from functions.image_tagging.handler import evaluate_confidence
 
 # ---------------------------------------------------------------------------
 # Strategies

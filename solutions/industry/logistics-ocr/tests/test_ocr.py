@@ -14,26 +14,24 @@ import os
 import sys
 from unittest.mock import MagicMock, patch
 
-
 # shared モジュールと UC12 関数のパスを追加
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "..", "..", "shared"))
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-from functions.ocr.handler import (
-    _extract_text_from_blocks,
-    _extract_forms_from_blocks,
-    _evaluate_confidence,
-)
 from functions.data_structuring.handler import (
     _ensure_required_fields,
     _extract_json_from_text,
 )
 from functions.inventory_analysis.handler import (
-    detect_inventory_objects,
     count_inventory_items,
+    detect_inventory_objects,
     estimate_shelf_occupancy,
 )
-
+from functions.ocr.handler import (
+    _evaluate_confidence,
+    _extract_forms_from_blocks,
+    _extract_text_from_blocks,
+)
 
 # =========================================================================
 # OCR テキスト抽出テスト

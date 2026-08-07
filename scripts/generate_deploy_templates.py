@@ -7,8 +7,8 @@ Transformations:
 3. Replace Lambda Handler paths and add Code block with S3Bucket/S3Key
 """
 
-import re
 import os
+import re
 
 PHASE2_UCS = [
     "solutions/industry/semiconductor-eda",

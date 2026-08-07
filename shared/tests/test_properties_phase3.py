@@ -12,10 +12,10 @@ Testing Strategy:
 
 from __future__ import annotations
 
-from hypothesis import given, settings, strategies as st
+from hypothesis import given, settings
+from hypothesis import strategies as st
 
 from shared.streaming import StreamingConfig, StreamingHelper
-
 
 # ---------------------------------------------------------------------------
 # Property 1: StreamingConfig round-trip serialization
@@ -115,7 +115,6 @@ import os
 from unittest.mock import patch
 
 from shared.observability import EmfMetrics
-
 
 # Strategy for valid metric names: ASCII alphanumeric + underscore, 1-256 chars
 _METRIC_NAME_ALPHABET = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_"

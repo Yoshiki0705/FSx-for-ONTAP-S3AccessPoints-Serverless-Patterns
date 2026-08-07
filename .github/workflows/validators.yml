@@ -37,6 +37,12 @@ jobs:
       # they need. Running them here as well would only duplicate that.
       - name: Check portal action inventory, i18n coverage and doc claims
         run: python3 scripts/check_portal_drift.py
+      # The generic dispatch endpoints pass an untyped `params` blob, so a
+      # component can send parameters an action does not read and nothing objects
+      # — not the compiler, not the linter. A lock button shipped that had never
+      # worked once. Needs no dependencies beyond the standard library.
+      - name: Check portal actions receive the parameters they require
+        run: python3 scripts/check_portal_action_params.py
 
   handler-name-check:
     name: "Handler undefined-name sweep"

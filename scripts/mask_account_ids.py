@@ -7,8 +7,9 @@ AWS account IDs (123456789012) in console screenshots.
 All screenshots are 1680x906 (Phase 16 set).
 """
 
-from PIL import Image, ImageDraw
 import os
+
+from PIL import Image, ImageDraw
 
 # Uniform black mask for all regions — clearly communicates redaction
 MASK_COLOR = (0, 0, 0)
