@@ -1,18 +1,14 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { generateClient } from "aws-amplify/data";
-import type { Schema } from "../../../amplify/data/resource";
 import { useTranslation } from "../../i18n";
 import { errorMessage, unwrap } from "../../lib/portalQuery";
+import { adminMutate, dispatch } from "../../lib/dispatch";
+import type { QtreeId } from "../../lib/dispatchActions";
 import { VolumeSelector } from "./VolumeSelector";
-import { parseResponse } from "../../utils/parseResponse";
-
-const client = generateClient<Schema>();
-
-// Parse the JSON string response from generic dispatch endpoints
 
 interface Qtree {
-  id: string;
+  /** ONTAP's qtree identifier, branded where it arrives. Not the qtree name. */
+  id: QtreeId;
   name: string;
   volumeName: string;
   securityStyle: string;
@@ -47,9 +43,9 @@ export function QtreeManager() {
     enabled: !!filterVolume,
     queryFn: () =>
       unwrap<{ qtrees?: Qtree[] }>(
-        client.queries.adminQuery({
+        dispatch("adminQuery", {
           action: "listQtrees",
-          params: JSON.stringify({ volumeName: filterVolume }),
+          params: { volumeName: filterVolume },
         }),
       ).then((d) => d?.qtrees ?? []),
   });
@@ -63,11 +59,13 @@ export function QtreeManager() {
     if (!newVolumeName || !newName) { setError("Volume name and qtree name are required"); return; }
     setError(null);
     try {
-      const response = await client.mutations.adminMutation({ action: "createQtree", params: JSON.stringify({
-        volumeName: newVolumeName, name: newName,
-        securityStyle: newSecurityStyle, exportPolicy: newExportPolicy,
-      }) });
-      const data = parseResponse<{ success?: boolean; error?: string }>(response);
+      const data = await adminMutate<{ success?: boolean }>({
+        action: "createQtree",
+        params: {
+          volumeName: newVolumeName, name: newName,
+          securityStyle: newSecurityStyle, exportPolicy: newExportPolicy,
+        },
+      });
       if (data) {
         if (data.success) {
           setSuccess(t("rmQtreeCreated"));
@@ -80,11 +78,13 @@ export function QtreeManager() {
     } catch (err) { setError(err instanceof Error ? err.message : "Create failed"); }
   };
 
-  const handleDelete = async (volumeName: string, qtreeId: string, name: string) => {
+  const handleDelete = async (volumeName: string, qtreeId: QtreeId, name: string) => {
     if (!window.confirm(t("rmDeleteConfirm").replace("{name}", name))) return;
     try {
-      const response = await client.mutations.adminMutation({ action: "deleteQtree", params: JSON.stringify({volumeName, qtreeId, confirm: true}) });
-      const data = parseResponse<{ success?: boolean; error?: string }>(response);
+      const data = await adminMutate<{ success?: boolean }>({
+        action: "deleteQtree",
+        params: { volumeName, qtreeId, confirm: true },
+      });
       if (data) {
         if (data.success) { setSuccess(t("rmDeleted").replace("{name}", name)); clearSuccess(); loadQtrees(); }
         else setError(data.error || "Delete failed");

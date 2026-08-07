@@ -7,12 +7,9 @@
  */
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { generateClient } from "aws-amplify/data";
-import type { Schema } from "../../amplify/data/resource";
 import { useTranslation } from "../i18n";
+import { dispatch } from "../lib/dispatch";
 import { errorMessage } from "../lib/portalQuery";
-
-const client = generateClient<Schema>();
 
 interface AgentItem {
   agentId: string;
@@ -61,10 +58,7 @@ export function AgentDirectory({ onSelectAgent, onCreateAgent }: AgentDirectoryP
     queryKey: AGENTS_KEY,
     queryFn: async () => {
       const data = parseResp<{ agents: AgentItem[] }>(
-        await client.queries.agentQuery({
-          action: "listAgents",
-          params: JSON.stringify({}),
-        }),
+        await dispatch("agentQuery", { action: "listAgents" }),
       );
       return data?.agents ?? [];
     },
@@ -74,9 +68,9 @@ export function AgentDirectory({ onSelectAgent, onCreateAgent }: AgentDirectoryP
   async function loadAgentDetail(agentId: string) {
     setDetailLoading(true);
     try {
-      const response = await client.queries.agentQuery({
+      const response = await dispatch("agentQuery", {
         action: "getAgent",
-        params: JSON.stringify({ agentId }),
+        params: { agentId },
       });
       const data = parseResp<{ agent: AgentDetail }>(response);
       if (data?.agent) setSelectedAgent(data.agent);
@@ -87,10 +81,7 @@ export function AgentDirectory({ onSelectAgent, onCreateAgent }: AgentDirectoryP
   async function deleteAgent(agentId: string) {
     if (!confirm(t("agentDirDeleteConfirm"))) return;
     try {
-      await client.queries.agentQuery({
-        action: "deleteAgent",
-        params: JSON.stringify({ agentId }),
-      });
+      await dispatch("agentQuery", { action: "deleteAgent", params: { agentId } });
       // Drop the row from the cache rather than refetching the whole directory.
       queryClient.setQueryData<AgentItem[]>(AGENTS_KEY, (prev) =>
         (prev ?? []).filter((a) => a.agentId !== agentId),

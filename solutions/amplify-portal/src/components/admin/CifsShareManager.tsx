@@ -1,14 +1,8 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { generateClient } from "aws-amplify/data";
-import type { Schema } from "../../../amplify/data/resource";
 import { useTranslation } from "../../i18n";
 import { errorMessage, unwrap } from "../../lib/portalQuery";
-import { parseResponse } from "../../utils/parseResponse";
-
-const client = generateClient<Schema>();
-
-// Parse the JSON string response from generic dispatch endpoints
+import { adminMutate, dispatch } from "../../lib/dispatch";
 
 interface CifsShare {
   name: string;
@@ -41,7 +35,7 @@ export function CifsShareManager() {
     queryKey: ["admin", "listCifsShares"],
     queryFn: () =>
       unwrap<{ shares?: CifsShare[] }>(
-        client.queries.adminQuery({ action: "listCifsShares", params: JSON.stringify({}) }),
+        dispatch("adminQuery", { action: "listCifsShares" }),
       ).then((d) => d?.shares ?? []),
   });
 
@@ -54,10 +48,10 @@ export function CifsShareManager() {
     if (!newName || !newPath) { setError("Name and path are required"); return; }
     setError(null);
     try {
-      const response = await client.mutations.adminMutation({ action: "createCifsShare", params: JSON.stringify({
-        name: newName, path: newPath, comment: newComment,
-      }) });
-      const data = parseResponse<{ success?: boolean; error?: string }>(response);
+      const data = await adminMutate<{ success?: boolean }>({
+        action: "createCifsShare",
+        params: { name: newName, path: newPath, comment: newComment },
+      });
       if (data) {
         if (data.success) {
           setSuccess(t("rmShareCreated"));
@@ -73,8 +67,10 @@ export function CifsShareManager() {
   const handleDelete = async (name: string) => {
     if (!window.confirm(t("rmShareDeleteConfirm").replace("{name}", name))) return;
     try {
-      const response = await client.mutations.adminMutation({ action: "deleteCifsShare", params: JSON.stringify({name, confirm: true}) });
-      const data = parseResponse<{ success?: boolean; error?: string }>(response);
+      const data = await adminMutate<{ success?: boolean }>({
+        action: "deleteCifsShare",
+        params: { name, confirm: true },
+      });
       if (data) {
         if (data.success) { setSuccess(t("rmShareDeleted").replace("{name}", name)); clearSuccess(); loadShares(); }
         else setError(data.error || "Delete failed");
@@ -85,11 +81,10 @@ export function CifsShareManager() {
   const handleToggleEncryption = async (name: string, enable: boolean) => {
     setError(null);
     try {
-      const response = await client.mutations.adminMutation({
+      const data = await adminMutate<{ success?: boolean }>({
         action: "updateCifsShare",
-        params: JSON.stringify({ name, encryption: enable }),
+        params: { name, encryption: enable },
       });
-      const data = parseResponse<{ success?: boolean; error?: string }>(response);
       if (data) {
         if (data.success) {
           setSuccess(enable ? t("rmEncryptionEnabled") : t("rmEncryptionDisabled"));

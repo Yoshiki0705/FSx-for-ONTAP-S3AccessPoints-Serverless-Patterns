@@ -146,10 +146,10 @@ export interface ResourceMgmtActionParams {
   createExportPolicyRule: {
     clientMatch: string;
     policyId: string;
-    protocols?: string;
-    roRule?: string;
-    rwRule?: string;
-    superuser?: string;
+    protocols?: string[];
+    roRule?: string[];
+    rwRule?: string[];
+    superuser?: string[];
   };
   createFlexCache: {
     name: string;
@@ -157,7 +157,7 @@ export interface ResourceMgmtActionParams {
     sizeGiB: number;
     originSvm?: string;
     path?: string;
-    prepopulatePaths?: string;
+    prepopulatePaths?: string[];
     svm?: string;
   };
   createFlexClone: {
@@ -195,15 +195,15 @@ export interface ResourceMgmtActionParams {
     direction: string;
     pattern: string;
     replacement: string;
-    index?: string;
+    index?: number;
     svm?: string;
   };
   createQosPolicy: {
     name: string;
-    expectedIops?: string;
-    maxIops?: string;
-    maxMbps?: string;
-    peakIops?: string;
+    expectedIops?: number;
+    maxIops?: number;
+    maxMbps?: number;
+    peakIops?: number;
     policyType?: string;
     svm?: string;
   };
@@ -216,11 +216,11 @@ export interface ResourceMgmtActionParams {
   };
   createQuotaRule: {
     volumeName: string;
-    filesHardLimit?: string;
+    filesHardLimit?: number;
     groupName?: string;
     qtreeName?: string;
-    spaceHardLimitGiB?: string;
-    spaceSoftLimitGiB?: string;
+    spaceHardLimitGiB?: number;
+    spaceSoftLimitGiB?: number;
     svm?: string;
     type?: string;
     userName?: string;
@@ -234,7 +234,7 @@ export interface ResourceMgmtActionParams {
   };
   createSvmPeer: {
     peerSvm: string;
-    applications?: string;
+    applications?: string[];
     localSvm?: string;
     peerCluster?: string;
   };
@@ -273,7 +273,7 @@ export interface ResourceMgmtActionParams {
   };
   deleteExportPolicyRule: {
     policyId: string;
-    ruleIndex: string;
+    ruleIndex: number;
   };
   deleteFlexCache: {
     uuid: string;
@@ -301,7 +301,7 @@ export interface ResourceMgmtActionParams {
   };
   deleteNameMapping: {
     direction?: string;
-    index?: string;
+    index?: number;
     svm?: string;
   };
   deleteQosPolicy: {
@@ -335,8 +335,8 @@ export interface ResourceMgmtActionParams {
     svm?: string;
   };
   enableArpBulk: {
-    volumeUuids: string;
-    state?: string;
+    volumeUuids: VolumeUuid[];
+    state?: "dry_run" | "enabled";
   };
   enableSnapshotLocking: {
     volumeUuid: VolumeUuid;
@@ -538,33 +538,33 @@ export interface ResourceMgmtActionParams {
   };
   updateArpStateAdmin: {
     volumeUuid: VolumeUuid;
-    state?: string;
+    state?: "disabled" | "dry_run" | "enabled" | "paused";
   };
   updateArpSurgeParams: {
     volumeUuid: VolumeUuid;
-    surgeAsNormal?: string;
+    surgeAsNormal?: boolean;
   };
   updateCifsShare: {
     name: string;
-    continuouslyAvailable?: string;
-    encryption?: string;
+    continuouslyAvailable?: boolean;
+    encryption?: boolean;
     svm?: string;
   };
   updateDnsConfig: {
-    domains?: string;
-    servers?: string;
+    domains?: string[];
+    servers?: string[];
     svm?: string;
   };
   updatePortalSettings: {
-    key?: string;
+    key?: "aiAgentEnabled" | "aiSearchEnabled" | "aiMultimodalEnabled" | "aiSmartRoutingEnabled" | "chatHistoryEnabled" | "aiVoiceEnabled" | "agentDirectoryEnabled";
     value?: string;
   };
   updateQosPolicy: {
     policyUuid: PolicyUuid;
-    expectedIops?: string;
-    maxIops?: string;
-    maxMbps?: string;
-    peakIops?: string;
+    expectedIops?: number;
+    maxIops?: number;
+    maxMbps?: number;
+    peakIops?: number;
   };
   updateSnaplockRetention: {
     volumeUuid: VolumeUuid;
@@ -649,24 +649,24 @@ export interface DataProtectionActionParams {
   sweepExpiredBlocks: Record<string, never>;
   unblockNfsIp: {
     clientIp: string;
-    confirm: boolean;
     allSvms?: boolean;
+    confirm?: boolean;
     policyName?: string;
     reason?: string;
     svm?: string;
     svms?: string[];
   };
   unblockSmbUser: {
-    confirm: boolean;
     domain: string;
     username: string;
     allSvms?: boolean;
+    confirm?: boolean;
     reason?: string;
     svm?: string;
     svms?: string[];
   };
   updateArpState: {
-    state?: string;
+    state?: "disabled" | "dry_run" | "enabled" | "paused";
   };
   updateRetentionPolicy: {
     acknowledgeIrreversible?: true;
@@ -678,15 +678,19 @@ export interface DataProtectionActionParams {
 
 /** Actions of functions/snapshots, reached by `protectionMutation`, `protectionQuery`. */
 export interface SnapshotsActionParams {
-  /** No parameters. */
-  getArpStatus: Record<string, never>;
+  getArpStatus: {
+    maxResults?: number;
+  };
   getFilePermissions: {
     filePath: string;
+    maxResults?: number;
   };
-  /** No parameters. */
-  getProtectionSummary: Record<string, never>;
-  /** No parameters. */
-  getSnaplockStatus: Record<string, never>;
+  getProtectionSummary: {
+    maxResults?: number;
+  };
+  getSnaplockStatus: {
+    maxResults?: number;
+  };
   listSnapshots: {
     acknowledgeIrreversible?: true;
     expiryTime?: IsoTimestamp;
@@ -698,15 +702,20 @@ export interface SnapshotsActionParams {
     expiryTime: IsoTimestamp;
     snapshotId: SnapshotId;
     acknowledgeIrreversible?: true;
+    maxResults?: number;
   };
 }
 
 /** Actions of functions/list-files, reached by `fileMutation`, `fileQuery`. */
 export interface ListFilesActionParams {
   createUploadLink: {
+    continuationToken?: string;
     destinationPrefix?: string;
     expiresIn?: string;
     fileName?: string;
+    groups?: string;
+    maxKeys?: number;
+    prefix?: string;
   };
   listFiles: {
     apAlias?: string;
@@ -724,26 +733,42 @@ export interface ListFilesActionParams {
   };
   listFilesFromAp: {
     apAlias: string;
+    continuationToken?: string;
+    groups?: string;
+    maxKeys?: number;
+    prefix?: string;
   };
   renameFile: {
     destinationKey: string;
     sourceKey: string;
+    continuationToken?: string;
+    groups?: string;
+    maxKeys?: number;
+    prefix?: string;
   };
   restoreFromTrash: {
+    continuationToken?: string;
+    groups?: string;
+    maxKeys?: number;
+    prefix?: string;
     trashKey?: string;
   };
   trashFile: {
     key: string;
+    continuationToken?: string;
+    groups?: string;
+    maxKeys?: number;
+    prefix?: string;
   };
 }
 
 /** Actions of functions/agent-chat, reached by `agentQuery`. */
 export interface AgentChatActionParams {
   chat: {
-    history?: string;
-    image?: string;
+    history?: Array<{ role: string; content: string }>;
+    image?: { data: string; mediaType: string };
     message?: string;
-    mode?: string;
+    mode?: "multi" | "kb" | "agent";
   };
   createAgent: {
     category?: string;
@@ -752,10 +777,10 @@ export interface AgentChatActionParams {
     isShared?: boolean;
     name?: string;
     systemPrompt?: string;
-    tools?: string;
+    tools?: string[];
   };
   createTeam: {
-    agents?: string;
+    agents?: Array<{ agentId: string; name: string; icon: string; role: string }>;
     description?: string;
     isShared?: boolean;
     name?: string;
@@ -783,8 +808,8 @@ export interface AgentChatActionParams {
     sessionId: string;
   };
   saveSession: {
-    createdAt?: string;
-    messages?: string;
+    createdAt?: number;
+    messages?: Array<{ role: string; content: string; timestamp: number }>;
     sessionId?: string;
     title?: string;
   };

@@ -1,13 +1,8 @@
 import { useQuery } from "@tanstack/react-query";
+import { dispatch } from "../lib/dispatch";
 import { errorMessage, unwrap } from "../lib/portalQuery";
-import { generateClient } from "aws-amplify/data";
-import type { Schema } from "../../amplify/data/resource";
 import { useTranslation } from "../i18n";
 import { ArpResponseActions } from "./ArpResponseActions";
-
-const client = generateClient<Schema>();
-
-// Parse the JSON string response from generic dispatch endpoints
 
 interface ArpData {
   state: string;
@@ -41,7 +36,7 @@ export function ArpStatus() {
     queryKey: ["protection", "getArpStatus"],
     queryFn: () =>
       unwrap<{ volumeName?: string; arp?: ArpData }>(
-        client.queries.protectionQuery({ action: "getArpStatus", params: JSON.stringify({}) }),
+        dispatch("protectionQuery", { action: "getArpStatus" }),
       ),
   });
 

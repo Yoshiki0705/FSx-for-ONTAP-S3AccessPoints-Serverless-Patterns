@@ -5,11 +5,8 @@
  * Fields: name, description, system prompt, tools (checkboxes), icon (emoji picker), category, shared toggle.
  */
 import { useState } from "react";
-import { generateClient } from "aws-amplify/data";
-import type { Schema } from "../../amplify/data/resource";
 import { useTranslation } from "../i18n";
-
-const client = generateClient<Schema>();
+import { dispatch } from "../lib/dispatch";
 
 const AVAILABLE_TOOLS = [
   { id: "list_files", label: "list_files", desc: "Browse directories" },
@@ -56,9 +53,9 @@ export function AgentCreator({ onCreated, onCancel }: AgentCreatorProps) {
     setError(null);
 
     try {
-      const response = await client.queries.agentQuery({
+      const response = await dispatch("agentQuery", {
         action: "createAgent",
-        params: JSON.stringify({
+        params: {
           name: name.trim(),
           description,
           systemPrompt,
@@ -66,7 +63,7 @@ export function AgentCreator({ onCreated, onCancel }: AgentCreatorProps) {
           icon,
           category,
           isShared,
-        }),
+        },
       });
       const data = response.data
         ? (typeof response.data === "string" ? JSON.parse(response.data) : response.data)

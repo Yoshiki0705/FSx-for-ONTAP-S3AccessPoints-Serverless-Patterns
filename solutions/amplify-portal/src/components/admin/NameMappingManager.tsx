@@ -1,12 +1,8 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { generateClient } from "aws-amplify/data";
-import type { Schema } from "../../../amplify/data/resource";
 import { useTranslation } from "../../i18n";
 import { errorMessage } from "../../lib/portalQuery";
-import { parseResponse } from "../../utils/parseResponse";
-
-const client = generateClient<Schema>();
+import { adminMutate, adminQuery } from "../../lib/dispatch";
 
 interface NameMapping {
   direction: string;
@@ -37,9 +33,7 @@ export function NameMappingManager() {
   } = useQuery({
     queryKey: ["admin", "listNameMappings"],
     queryFn: async () => {
-      const data = parseResponse<{ mappings?: NameMapping[]; error?: string }>(
-        await client.queries.adminQuery({ action: "listNameMappings", params: JSON.stringify({}) }),
-      );
+      const data = await adminQuery<{ mappings?: NameMapping[] }>({ action: "listNameMappings" });
       // A dispatcher that has not been wired yet is an empty list, not a failure.
       if (
         data?.error &&
@@ -64,18 +58,15 @@ export function NameMappingManager() {
     }
     setError(null);
     try {
-      const resp = await client.mutations.adminMutation({
+      const data = await adminMutate<{ success?: boolean }>({
         action: "createNameMapping",
-        params: JSON.stringify({
+        params: {
           direction: newDirection,
           index: newIndex,
           pattern: newPattern,
           replacement: newReplacement,
-        }),
+        },
       });
-      const data = parseResponse<{
-        success?: boolean; error?: string
-      }>(resp);
       if (data?.success) {
         setSuccess(t("nmCreated")); setShowCreate(false);
         setNewPattern(""); setNewReplacement("");
@@ -93,15 +84,10 @@ export function NameMappingManager() {
         .replace("{idx}", String(m.index))
     )) return;
     try {
-      const resp = await client.mutations.adminMutation({
+      const data = await adminMutate<{ success?: boolean }>({
         action: "deleteNameMapping",
-        params: JSON.stringify({
-          direction: m.direction, index: m.index,
-        }),
+        params: { direction: m.direction, index: m.index },
       });
-      const data = parseResponse<{
-        success?: boolean; error?: string
-      }>(resp);
       if (data?.success) {
         setSuccess(t("nmDeleted")); clearSuccess(); loadMappings();
       } else setError(data?.error || "Delete failed");

@@ -1,13 +1,8 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { generateClient } from "aws-amplify/data";
-import type { Schema } from "../../../amplify/data/resource";
 import { useTranslation } from "../../i18n";
 import { errorMessage } from "../../lib/portalQuery";
-import { adminQuery } from "../../lib/dispatch";
-import { parseResponse } from "../../utils/parseResponse";
-
-const client = generateClient<Schema>();
+import { adminMutate, adminQuery, type DispatchCall } from "../../lib/dispatch";
 
 interface InterclusterLif {
   name: string;
@@ -116,16 +111,14 @@ export function PeeringManager() {
   const loadData = () => void refetch();
   const error = actionError ?? errorMessage(queryError, "Failed to load peering");
 
-  const runAction = async (action: string, params: Record<string, unknown>) => {
+  // Takes the whole call rather than an action name and a loose bag, so each
+  // button's parameters are checked against the action it names.
+  const runAction = async (call: DispatchCall<"adminMutation">) => {
     setBusy(true);
     setError(null);
     setSuccess(null);
     try {
-      const resp = await client.mutations.adminMutation({
-        action,
-        params: JSON.stringify(params),
-      });
-      const data = parseResponse<{ success?: boolean; error?: string; passphrase?: string }>(resp);
+      const data = await adminMutate<{ success?: boolean; passphrase?: string }>(call);
       if (data?.success) {
         if (data.passphrase) setGeneratedPassphrase(data.passphrase);
         setSuccess(t("peerActionDone"));
@@ -273,13 +266,16 @@ export function PeeringManager() {
                   className="rm-btn-primary"
                   disabled={busy || !remoteAddrs.trim() || (!useGenerated && !passphrase)}
                   onClick={() =>
-                    runAction("createClusterPeer", {
-                      remoteAddresses: remoteAddrs
-                        .split(",")
-                        .map((s) => s.trim())
-                        .filter(Boolean),
-                      generatePassphrase: useGenerated,
-                      passphrase: useGenerated ? undefined : passphrase,
+                    runAction({
+                      action: "createClusterPeer",
+                      params: {
+                        remoteAddresses: remoteAddrs
+                          .split(",")
+                          .map((s) => s.trim())
+                          .filter(Boolean),
+                        generatePassphrase: useGenerated,
+                        passphrase: useGenerated ? undefined : passphrase,
+                      },
                     })
                   }
                 >
@@ -343,9 +339,9 @@ export function PeeringManager() {
                             className="rm-btn-primary"
                             disabled={busy || !acceptPassphrase}
                             onClick={() =>
-                              runAction("acceptClusterPeer", {
-                                uuid: p.uuid,
-                                passphrase: acceptPassphrase,
+                              runAction({
+                                action: "acceptClusterPeer",
+                                params: { uuid: p.uuid, passphrase: acceptPassphrase },
                               })
                             }
                           >
@@ -362,7 +358,12 @@ export function PeeringManager() {
                           <button
                             className="rm-btn-danger-sm"
                             disabled={busy}
-                            onClick={() => runAction("deleteClusterPeer", { uuid: p.uuid, confirm: true })}
+                            onClick={() =>
+                              runAction({
+                                action: "deleteClusterPeer",
+                                params: { uuid: p.uuid, confirm: true },
+                              })
+                            }
                           >
                             {t("rmExecute")}
                           </button>
@@ -419,10 +420,13 @@ export function PeeringManager() {
                   className="rm-btn-primary"
                   disabled={busy || !peerSvm.trim()}
                   onClick={() =>
-                    runAction("createSvmPeer", {
-                      peerSvm: peerSvm.trim(),
-                      peerCluster: peerCluster.trim() || undefined,
-                      applications: ["snapmirror"],
+                    runAction({
+                      action: "createSvmPeer",
+                      params: {
+                        peerSvm: peerSvm.trim(),
+                        peerCluster: peerCluster.trim() || undefined,
+                        applications: ["snapmirror"],
+                      },
                     })
                   }
                 >
@@ -468,7 +472,7 @@ export function PeeringManager() {
                           <button
                             className="rm-btn-sm"
                             disabled={busy}
-                            onClick={() => runAction("acceptSvmPeer", { uuid: p.uuid })}
+                            onClick={() => runAction({ action: "acceptSvmPeer", params: { uuid: p.uuid } })}
                           >
                             {t("peerAccept")}
                           </button>
@@ -476,7 +480,9 @@ export function PeeringManager() {
                         <button
                           className="rm-btn-danger-sm"
                           disabled={busy}
-                          onClick={() => runAction("deleteSvmPeer", { uuid: p.uuid, confirm: true })}
+                          onClick={() =>
+                            runAction({ action: "deleteSvmPeer", params: { uuid: p.uuid, confirm: true } })
+                          }
                         >
                           {t("delete")}
                         </button>

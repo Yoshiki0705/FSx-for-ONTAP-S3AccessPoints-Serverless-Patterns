@@ -21,12 +21,14 @@
  *       queryKey: ["admin", "listVolumes"],
  *       queryFn: () =>
  *         unwrap<{ volumes?: Volume[] }>(
- *           client.queries.adminQuery({ action: "listVolumes", params: "{}" }),
+ *           dispatch("adminQuery", { action: "listVolumes" }),
  *         ),
  *     });
  *
- * The operation is invoked at the call site rather than passed in as a function,
- * so the Amplify client keeps its `this` binding.
+ * Go through `dispatch` from `./dispatch`, not the generated client directly: it is
+ * what checks the action name and its parameters. The operation is invoked at the
+ * call site rather than passed in as a function, so the Amplify client keeps its
+ * `this` binding.
  */
 
 import { parseResponse } from "../utils/parseResponse";
