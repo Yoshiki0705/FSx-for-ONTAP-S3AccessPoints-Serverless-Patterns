@@ -1,7 +1,5 @@
 import { useState, useEffect } from "react";
 import { useAuthenticator } from "@aws-amplify/ui-react";
-import { generateClient } from "aws-amplify/data";
-import type { Schema } from "../amplify/data/resource";
 import { FileExplorer } from "./components/FileExplorer";
 import { JobSubmitForm } from "./components/JobSubmitForm";
 import { ResultsViewer } from "./components/ResultsViewer";
@@ -25,11 +23,10 @@ import { SemanticSearch } from "./components/SemanticSearch";
 import { LanguageSwitcher } from "./components/LanguageSwitcher";
 import { WelcomeModal } from "./components/WelcomeModal";
 import { useTranslation } from "./i18n";
+import { dispatch } from "./lib/dispatch";
 import { portalSettings } from "./portal-settings";
 
 import type { TranslationKeys } from "./i18n";
-
-const appClient = generateClient<Schema>();
 
 type Section =
   | "files" | "favorites" | "recent" | "upload"
@@ -149,10 +146,7 @@ function App() {
     let cancelled = false;
     async function loadAiSettings() {
       try {
-        const response = await appClient.queries.adminQuery({
-          action: "getPortalSettings",
-          params: JSON.stringify({}),
-        });
+        const response = await dispatch("adminQuery", { action: "getPortalSettings" });
         if (cancelled) return;
         const parsed = response.data
           ? (typeof response.data === "string" ? JSON.parse(response.data) : response.data)

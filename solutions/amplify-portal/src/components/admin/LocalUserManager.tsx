@@ -1,13 +1,8 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { generateClient } from "aws-amplify/data";
-import type { Schema } from "../../../amplify/data/resource";
 import { useTranslation } from "../../i18n";
 import { errorMessage } from "../../lib/portalQuery";
-import { adminQuery } from "../../lib/dispatch";
-import { parseResponse } from "../../utils/parseResponse";
-
-const client = generateClient<Schema>();
+import { adminMutate, adminQuery } from "../../lib/dispatch";
 
 interface LocalUser {
   name: string;
@@ -107,16 +102,15 @@ export function LocalUserManager() {
     }
     setError(null);
     try {
-      const response = await client.mutations.adminMutation({
+      const data = await adminMutate<{ success?: boolean }>({
         action: "createLocalUser",
-        params: JSON.stringify({
+        params: {
           name: newUserName,
           password: newUserPassword,
           fullName: newUserFullName,
           description: newUserDescription,
-        }),
+        },
       });
-      const data = parseResponse<{ success?: boolean; error?: string }>(response);
       if (data?.success) {
         setSuccess(t("luUserCreated"));
         setShowCreateUser(false);
@@ -137,11 +131,10 @@ export function LocalUserManager() {
     const displayName = user.fullName || user.name;
     if (!window.confirm(t("luDeleteUserConfirm").replace("{name}", displayName))) return;
     try {
-      const response = await client.mutations.adminMutation({
+      const data = await adminMutate<{ success?: boolean }>({
         action: "deleteLocalUser",
-        params: JSON.stringify({ sid: user.sid, name: user.name }),
+        params: { sid: user.sid, name: user.name },
       });
-      const data = parseResponse<{ success?: boolean; error?: string }>(response);
       if (data?.success) {
         setSuccess(t("luUserDeleted").replace("{name}", displayName));
         clearSuccess();
@@ -162,14 +155,10 @@ export function LocalUserManager() {
     }
     setError(null);
     try {
-      const response = await client.mutations.adminMutation({
+      const data = await adminMutate<{ success?: boolean }>({
         action: "createLocalGroup",
-        params: JSON.stringify({
-          name: newGroupName,
-          description: newGroupDescription,
-        }),
+        params: { name: newGroupName, description: newGroupDescription },
       });
-      const data = parseResponse<{ success?: boolean; error?: string }>(response);
       if (data?.success) {
         setSuccess(t("luGroupCreated"));
         setShowCreateGroup(false);
@@ -188,11 +177,10 @@ export function LocalUserManager() {
   const handleDeleteGroup = async (group: LocalGroup) => {
     if (!window.confirm(t("luDeleteGroupConfirm").replace("{name}", group.name))) return;
     try {
-      const response = await client.mutations.adminMutation({
+      const data = await adminMutate<{ success?: boolean }>({
         action: "deleteLocalGroup",
-        params: JSON.stringify({ sid: group.sid, name: group.name }),
+        params: { sid: group.sid, name: group.name },
       });
-      const data = parseResponse<{ success?: boolean; error?: string }>(response);
       if (data?.success) {
         setSuccess(t("luGroupDeleted").replace("{name}", group.name));
         clearSuccess();
@@ -209,11 +197,10 @@ export function LocalUserManager() {
   const loadGroupMembers = async (groupSid: string) => {
     setMembersLoading(true);
     try {
-      const response = await client.queries.adminQuery({
+      const data = await adminQuery<{ members?: GroupMember[] }>({
         action: "listGroupMembers",
-        params: JSON.stringify({ groupSid }),
+        params: { groupSid },
       });
-      const data = parseResponse<{ members?: GroupMember[]; error?: string }>(response);
       if (data) {
         setGroupMembers(data.members || []);
       }
@@ -234,15 +221,14 @@ export function LocalUserManager() {
   const handleAddMember = async (group: LocalGroup) => {
     if (!newMemberName) return;
     try {
-      const response = await client.mutations.adminMutation({
+      const data = await adminMutate<{ success?: boolean }>({
         action: "addGroupMember",
-        params: JSON.stringify({
+        params: {
           groupSid: group.sid,
           groupName: group.name,
           memberName: newMemberName,
-        }),
+        },
       });
-      const data = parseResponse<{ success?: boolean; error?: string }>(response);
       if (data?.success) {
         setNewMemberName("");
         loadGroupMembers(group.sid);
@@ -259,15 +245,14 @@ export function LocalUserManager() {
   const handleRemoveMember = async (group: LocalGroup, memberName: string) => {
     if (!window.confirm(t("luRemoveMemberConfirm").replace("{member}", memberName).replace("{group}", group.name))) return;
     try {
-      const response = await client.mutations.adminMutation({
+      const data = await adminMutate<{ success?: boolean }>({
         action: "removeGroupMember",
-        params: JSON.stringify({
+        params: {
           groupSid: group.sid,
           groupName: group.name,
           memberName,
-        }),
+        },
       });
-      const data = parseResponse<{ success?: boolean; error?: string }>(response);
       if (data?.success) {
         loadGroupMembers(group.sid);
         setSuccess(t("luMemberRemoved"));

@@ -1,12 +1,12 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { generateClient } from "aws-amplify/data";
-import type { Schema } from "../../../amplify/data/resource";
 import { useTranslation } from "../../i18n";
 import { errorMessage } from "../../lib/portalQuery";
-import { parseResponse } from "../../utils/parseResponse";
+import { adminMutate, adminQuery } from "../../lib/dispatch";
 
-const client = generateClient<Schema>({ authMode: "userPool" });
+// The client used to be built here with `{ authMode: "userPool" }`. That is already
+// the schema's `defaultAuthorizationMode`, so the shared client behaves identically
+// and the explicit option was only hiding that it was redundant.
 
 interface FlexCacheOrigin {
   clusterName: string;
@@ -53,12 +53,7 @@ export function FlexCacheManager() {
   } = useQuery({
     queryKey: ["admin", "listFlexCaches"],
     queryFn: async () => {
-      const data = parseResponse<{ caches?: FlexCacheVolume[]; error?: string }>(
-        await client.queries.adminQuery({
-          action: "listFlexCaches",
-          params: JSON.stringify({}),
-        }),
-      );
+      const data = await adminQuery<{ caches?: FlexCacheVolume[] }>({ action: "listFlexCaches" });
       // A dispatcher that is not wired yet is an empty list, not a failure.
       if (
         data?.error &&
@@ -76,12 +71,7 @@ export function FlexCacheManager() {
   const { data: availableVolumes = [] } = useQuery({
     queryKey: ["admin", "flexCacheOriginCandidates"],
     queryFn: async () => {
-      const data = parseResponse<{ volumes?: { name: string }[] }>(
-        await client.queries.adminQuery({
-          action: "listVolumes",
-          params: JSON.stringify({}),
-        }),
-      );
+      const data = await adminQuery<{ volumes?: { name: string }[] }>({ action: "listVolumes" });
       return (data?.volumes ?? []).map((v) => v.name);
     },
   });
@@ -98,18 +88,17 @@ export function FlexCacheManager() {
     }
     setError(null); setCreating(true);
     try {
-      const resp = await client.mutations.adminMutation({
+      const data = await adminMutate<{ success?: boolean; jobId?: string }>({
         action: "createFlexCache",
-        params: JSON.stringify({
+        params: {
           name: newName,
           originVolume: newOriginVolume,
           originSvm: newOriginSvm || undefined,
           sizeGiB: newSizeGiB,
           path: newPath || `/${newName}`,
           prepopulatePaths: prepopulatePaths ? prepopulatePaths.split(",").map(p => p.trim()).filter(Boolean) : undefined,
-        }),
+        },
       });
-      const data = parseResponse<{ success?: boolean; error?: string; jobId?: string }>(resp);
       if (data?.success) {
         setSuccess(t("fcacheCreated") || "FlexCache を作成しました（バックグラウンドで構築中）");
         setShowCreate(false);
@@ -131,11 +120,10 @@ export function FlexCacheManager() {
   const handleDelete = async (cache: FlexCacheVolume) => {
     setError(null); setDeleting(cache.uuid);
     try {
-      const resp = await client.mutations.adminMutation({
+      const data = await adminMutate<{ success?: boolean }>({
         action: "deleteFlexCache",
-        params: JSON.stringify({ uuid: cache.uuid, name: cache.name }),
+        params: { uuid: cache.uuid, name: cache.name },
       });
-      const data = parseResponse<{ success?: boolean; error?: string }>(resp);
       if (data?.success) {
         setSuccess(t("fcacheDeleted") || `FlexCache "${cache.name}" を削除しました`);
         clearSuccess(); loadCaches();

@@ -6,11 +6,8 @@
  */
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { generateClient } from "aws-amplify/data";
-import type { Schema } from "../../amplify/data/resource";
 import { useTranslation } from "../i18n";
-
-const client = generateClient<Schema>();
+import { dispatch } from "../lib/dispatch";
 
 /** Cache key for the teams + agents bundle, shared with the delete action. */
 const TEAMS_KEY = ["agents", "teamsAndAgents"];
@@ -74,8 +71,8 @@ export function AgentTeams({ onSelectTeam }: AgentTeamsProps) {
     queryKey: TEAMS_KEY,
     queryFn: async () => {
       const [teamsResp, agentsResp] = await Promise.all([
-        client.queries.agentQuery({ action: "listTeams", params: JSON.stringify({}) }),
-        client.queries.agentQuery({ action: "listAgents", params: JSON.stringify({}) }),
+        dispatch("agentQuery", { action: "listTeams" }),
+        dispatch("agentQuery", { action: "listAgents" }),
       ]);
       return {
         teams: parseResp<{ teams: TeamItem[] }>(teamsResp)?.teams ?? [],
@@ -108,14 +105,14 @@ export function AgentTeams({ onSelectTeam }: AgentTeamsProps) {
     setWizSaving(true);
     setWizError(null);
     try {
-      const response = await client.queries.agentQuery({
+      const response = await dispatch("agentQuery", {
         action: "createTeam",
-        params: JSON.stringify({
+        params: {
           name: wizName.trim(),
           description: wizDesc,
           agents: wizAgents,
           isShared: wizShared,
-        }),
+        },
       });
       const data = parseResp<{ success: boolean; teamId: string }>(response);
       if (data?.success) {
@@ -133,10 +130,7 @@ export function AgentTeams({ onSelectTeam }: AgentTeamsProps) {
   async function deleteTeam(teamId: string) {
     if (!confirm(t("teamsDeleteConfirm"))) return;
     try {
-      await client.queries.agentQuery({
-        action: "deleteTeam",
-        params: JSON.stringify({ teamId }),
-      });
+      await dispatch("agentQuery", { action: "deleteTeam", params: { teamId } });
       // Drop the card from the cache rather than refetching both lists.
       queryClient.setQueryData<{ teams: TeamItem[]; agents: AgentOption[] }>(
         TEAMS_KEY,

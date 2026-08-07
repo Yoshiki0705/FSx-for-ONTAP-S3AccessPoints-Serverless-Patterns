@@ -23,6 +23,13 @@ Scope: the generic dispatch only. Single-purpose operations (`getPresignedUrl`,
 `searchFiles`) declare their arguments in the GraphQL schema, so the compiler
 already checks those.
 
+Most call sites now go through `src/lib/dispatch.ts`, whose per-action parameter
+types are generated from these same handlers by `portal_action_types.py`, so the
+compiler checks them and this script no longer sees them — the site count it prints
+falls as that migration proceeds, and a low count is not a weakening. What it still
+covers is any call made straight on the generated client, which an ESLint rule now
+refuses, and the handler-side extraction the generated types are built from.
+
 Run:
 
     python3 scripts/check_portal_action_params.py
@@ -31,6 +38,7 @@ Run:
 from __future__ import annotations
 
 import ast
+import copy
 import re
 import sys
 from dataclasses import dataclass, field
@@ -244,6 +252,13 @@ class EventKeyVisitor(ast.NodeVisitor):
         # Functions handed to a helper as a callback, which receive the payload as
         # their own first argument.
         self.callbacks: set[str] = set()
+        # Helpers reached only from inside a conditional branch. What such a helper
+        # demands is demanded on that branch, not by the action: `_fan_out` calls
+        # `_require_confirm` under `if gated:`, and gated is false for the unblock
+        # actions. Reported flatly, every unblock button looked like it was missing
+        # a confirmation it must not send.
+        self.delegates_conditional: set[str] = set()
+        self.delegates_unconditional: set[str] = set()
         # Variables an enclosing `if` has already tested for presence. A guard on
         # one of these validates the value's shape when supplied rather than
         # demanding it: `svms` is optional, but inside `if requested is not None:`
@@ -255,6 +270,10 @@ class EventKeyVisitor(ast.NodeVisitor):
         self._conditional_depth = 0
         # payload key -> the values the handler restricts it to
         self.enums: dict[str, tuple[str, ...]] = {}
+        # local name -> the string constants it was assigned, for guards written as
+        # `valid_states = {...}` / `if new_state not in valid_states:` rather than
+        # with the set inline. Both spellings state the same accepted set.
+        self.literal_sets: dict[str, tuple[str, ...]] = {}
 
     # --- reads -------------------------------------------------------------
 
@@ -303,6 +322,8 @@ class EventKeyVisitor(ast.NodeVisitor):
         # position is recorded so the callee's own parameter name can be used,
         # which is not always the same word.
         if isinstance(node.func, ast.Name) and node.func.id.startswith("_"):
+            reached = self.delegates_conditional if self._conditional_depth > 0 else self.delegates_unconditional
+            reached.add(node.func.id)
             for position, argument in enumerate(node.args):
                 if isinstance(argument, ast.Name) and argument.id == self.event:
                     self.delegates.add((node.func.id, position))
@@ -332,13 +353,17 @@ class EventKeyVisitor(ast.NodeVisitor):
         key = self._event_key(node.value)
         if key and len(node.targets) == 1 and isinstance(node.targets[0], ast.Name):
             self.bindings[node.targets[0].id] = key
+        if len(node.targets) == 1 and isinstance(node.targets[0], ast.Name):
+            values = _string_collection(node.value)
+            if values:
+                self.literal_sets[node.targets[0].id] = values
         self.generic_visit(node)
 
     # --- guards ------------------------------------------------------------
 
     def visit_If(self, node: ast.If) -> None:
         if _returns_immediately(node.body) and self._conditional_depth == 0:
-            for key, allowed in _membership_constraints(node.test, self.bindings).items():
+            for key, allowed in _membership_constraints(node.test, self.bindings, self.literal_sets).items():
                 # A second guard on the same key narrows rather than replaces, but no
                 # handler does that, so first one wins and stays predictable.
                 self.enums.setdefault(key, allowed)
@@ -470,10 +495,28 @@ def _expand(keys: set[str]) -> list[set[str]]:
     return [keys] if keys else []
 
 
-def _membership_constraints(test: ast.AST, bindings: dict[str, str]) -> dict[str, tuple[str, ...]]:
+def _string_collection(node: ast.AST) -> tuple[str, ...]:
+    """The strings in a tuple/list/set literal, or empty if it is not one of those.
+
+    Empty is also returned when any element is not a string constant, because a
+    partially understood set would understate the accepted values and reject calls
+    the handler allows.
+    """
+    if not isinstance(node, (ast.Tuple, ast.List, ast.Set)):
+        return ()
+    values = tuple(e.value for e in node.elts if isinstance(e, ast.Constant) and isinstance(e.value, str))
+    return values if len(values) == len(node.elts) else ()
+
+
+def _membership_constraints(
+    test: ast.AST,
+    bindings: dict[str, str],
+    literal_sets: dict[str, tuple[str, ...]] | None = None,
+) -> dict[str, tuple[str, ...]]:
     """Values a rejecting guard restricts a key to.
 
-    Matches `if <var> not in ("a", "b"):` where `<var>` was bound from the payload.
+    Matches `if <var> not in ("a", "b"):` where `<var>` was bound from the payload,
+    and the same guard written against a named set assigned earlier in the function.
     This is the handler stating its own accepted set, which is more reliable than any
     table kept alongside it.
     """
@@ -484,10 +527,11 @@ def _membership_constraints(test: ast.AST, bindings: dict[str, str]) -> dict[str
         left, right = node.left, node.comparators[0]
         if not (isinstance(left, ast.Name) and left.id in bindings):
             continue
-        if not isinstance(right, (ast.Tuple, ast.List, ast.Set)):
-            continue
-        values = tuple(e.value for e in right.elts if isinstance(e, ast.Constant) and isinstance(e.value, str))
-        if len(values) == len(right.elts) and values:
+        if isinstance(right, ast.Name):
+            values = (literal_sets or {}).get(right.id, ())
+        else:
+            values = _string_collection(right)
+        if values:
             found[bindings[left.id]] = values
     return found
 
@@ -534,6 +578,7 @@ def _collect(
 
     followed = {(name, position) for name, position in visitor.delegates}
     followed |= {(name, 0) for name in visitor.callbacks}
+    conditional_only = visitor.delegates_conditional - visitor.delegates_unconditional
 
     for name, position in followed:
         if name in seen or name not in functions:
@@ -545,7 +590,8 @@ def _collect(
             callee, callee.args.args[position].arg, functions, seen | {name}, constants
         )
         keys |= sub_keys
-        groups.extend(sub_groups)
+        if name not in conditional_only:
+            groups.extend(sub_groups)
         for key, allowed in sub_enums.items():
             enums.setdefault(key, allowed)
 
@@ -613,6 +659,31 @@ def _default_actions(tree: ast.Module, payload_names: set[str]) -> set[str]:
         ):
             found.add(call.args[1].value)
     return found
+
+
+def _without_action_branches(body: list[ast.stmt]) -> list[ast.stmt]:
+    """`body` with the action dispatch removed, leaving the code common to all actions.
+
+    Descends into `try`/`with`/plain `if`, because the dispatch chain is usually
+    nested inside a `try:` and the reads before it are not.
+    """
+    kept: list[ast.stmt] = []
+    for statement in body:
+        if isinstance(statement, ast.If):
+            if _branch_actions(statement.test):
+                continue
+            trimmed = ast.If(
+                test=statement.test,
+                body=_without_action_branches(statement.body) or [ast.Pass()],
+                orelse=_without_action_branches(statement.orelse),
+            )
+            ast.copy_location(trimmed, statement)
+            kept.append(trimmed)
+            continue
+        if isinstance(statement, (ast.Try, ast.With)):
+            statement.body = _without_action_branches(statement.body) or [ast.Pass()]
+        kept.append(statement)
+    return kept
 
 
 def _payload_variable(tree: ast.Module, flattened: bool) -> str:
@@ -700,6 +771,38 @@ def handler_contracts(path: Path, flattened: bool, injected: frozenset[str]) -> 
         )
         ast.fix_missing_locations(wrapper)
         record(actions, *_collect(wrapper, payload, functions, set(), constants))  # noqa: B026
+
+    # Keys the code outside every action branch reads. That code runs whatever the
+    # action is, so those keys belong to all of them: `list-files` reads `prefix`,
+    # `maxKeys` and `continuationToken` once at the top, and attributing them to the
+    # default action alone made `listFilesFromAp` look like it takes an AP alias and
+    # nothing else — which would have moved the SnapshotCompare bug rather than
+    # fixing it, by declaring the prefix it needs to send illegal.
+    prologue_keys: set[str] = set()
+    for function in functions.values():
+        if not any(argument.arg in ("event", payload) for argument in function.args.args):
+            continue
+        # Only the function that dispatches has a prologue. Every other function is
+        # one action's implementation, and taking its whole body as common code gave
+        # every action every parameter in the Lambda.
+        if not any(isinstance(node, ast.If) and _branch_actions(node.test) for node in ast.walk(function)):
+            continue
+        outside = ast.FunctionDef(
+            name="_prologue",
+            args=ast.arguments(posonlyargs=[], args=[], kwonlyargs=[], kw_defaults=[], defaults=[]),
+            # Copied, because the trim rewrites `try`/`with` bodies in place and the
+            # untouched tree is still needed below for the module-wide read set.
+            body=_without_action_branches(copy.deepcopy(function.body)) or [ast.Pass()],
+            decorator_list=[],
+            returns=None,
+            type_comment=None,
+        )
+        ast.fix_missing_locations(outside)
+        function_keys, _, _ = _collect(outside, payload, functions, set(), constants)
+        prologue_keys |= function_keys
+
+    for contract in contracts.values():
+        contract.branch_read |= prologue_keys - injected
 
     # Every key this Lambda reads anywhere. The prologue before the action branches
     # runs for all of them — `prefix` and `maxKeys` are read there, once, for every

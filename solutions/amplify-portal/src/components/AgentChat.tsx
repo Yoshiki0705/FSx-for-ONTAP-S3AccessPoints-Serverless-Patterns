@@ -14,14 +14,12 @@ import { useState, useRef, useEffect, useCallback } from "react";
 // React 19 removed the global `JSX` namespace; it is now exported from "react".
 import type { JSX } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { generateClient } from "aws-amplify/data";
-import type { Schema } from "../../amplify/data/resource";
 import { useTranslation, type TranslationKeys } from "../i18n";
 import { ActionApproval, type ApprovalRequest } from "./ActionApproval";
 import { AgentFileSidebar } from "./AgentFileSidebar";
+import { dispatch } from "../lib/dispatch";
+import type { ParamsOf } from "../lib/dispatchActions";
 import { parseResponse } from "../utils/parseResponse";
-
-const client = generateClient<Schema>();
 
 /** Cache key for the saved chat sessions, shared with the delete action. */
 const SESSIONS_KEY = ["agents", "listSessions"];
@@ -280,10 +278,7 @@ export function AgentChat() {
     queryKey: SESSIONS_KEY,
     queryFn: async () => {
       const data = parseResponse<{ sessions: ChatSession[] }>(
-        await client.queries.agentQuery({
-          action: "listSessions",
-          params: JSON.stringify({ limit: 20 }),
-        }),
+        await dispatch("agentQuery", { action: "listSessions", params: { limit: 20 } }),
       );
       return data?.sessions ?? [];
     },
@@ -300,14 +295,14 @@ export function AgentChat() {
     if (!currentSessionId) setCurrentSessionId(sessionId);
 
     try {
-      await client.queries.agentQuery({
+      await dispatch("agentQuery", {
         action: "saveSession",
-        params: JSON.stringify({
+        params: {
           sessionId,
           title,
           messages: messages.map((m) => ({ role: m.role, content: m.content, timestamp: m.timestamp })),
           createdAt: messages[0]?.timestamp || Date.now(),
-        }),
+        },
       });
       loadSessions();
     } catch { /* silent fail */ }
@@ -327,9 +322,9 @@ export function AgentChat() {
 
   async function loadSession(sessionId: string) {
     try {
-      const response = await client.queries.agentQuery({
+      const response = await dispatch("agentQuery", {
         action: "loadSession",
-        params: JSON.stringify({ sessionId }),
+        params: { sessionId },
       });
       const data = parseResponse<{ messages: Array<{ role: string; content: string; timestamp: number }> }>(response);
       if (data?.messages) {
@@ -347,10 +342,7 @@ export function AgentChat() {
 
   async function deleteSession(sessionId: string) {
     try {
-      await client.queries.agentQuery({
-        action: "deleteSession",
-        params: JSON.stringify({ sessionId }),
-      });
+      await dispatch("agentQuery", { action: "deleteSession", params: { sessionId } });
       // Drop the row from the cache rather than refetching the whole list.
       queryClient.setQueryData<ChatSession[]>(SESSIONS_KEY, (prev) =>
         (prev ?? []).filter((s) => s.sessionId !== sessionId),
@@ -428,15 +420,16 @@ export function AgentChat() {
         content: m.content,
       }));
 
-      const chatParams: Record<string, unknown> = { message: messageText, history, mode: agentMode };
+      const chatParams: ParamsOf<"agentQuery", "chat"> = {
+        message: messageText,
+        history,
+        mode: agentMode,
+      };
       if (attachedImage) {
         chatParams.image = { data: attachedImage.data, mediaType: attachedImage.mediaType };
       }
 
-      const response = await client.queries.agentQuery({
-        action: "chat",
-        params: JSON.stringify(chatParams),
-      });
+      const response = await dispatch("agentQuery", { action: "chat", params: chatParams });
 
       // Clear image after sending
       setAttachedImage(null);

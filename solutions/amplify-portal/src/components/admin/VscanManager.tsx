@@ -1,10 +1,6 @@
 import { useState, useEffect } from "react";
-import { generateClient } from "aws-amplify/data";
-import type { Schema } from "../../../amplify/data/resource";
 import { useTranslation } from "../../i18n";
-import { parseResponse } from "../../utils/parseResponse";
-
-const client = generateClient<Schema>();
+import { adminMutate, adminQuery, type DispatchCall } from "../../lib/dispatch";
 
 interface VscanPolicy {
   name: string;
@@ -33,17 +29,19 @@ export function VscanManager() {
   const [newExts, setNewExts] = useState("");
   const [newMandatory, setNewMandatory] = useState(false);
 
-  /** Run a write action, then refresh. */
-  const runAction = async (action: string, params: Record<string, unknown>) => {
+  /**
+   * Run a write action, then refresh.
+   *
+   * Takes the whole call rather than `(action: string, params: Record<string,
+   * unknown>)`, so the action name and the parameters beside it are checked against
+   * what the handler reads.
+   */
+  const runAction = async (call: DispatchCall<"adminMutation">) => {
     setBusy(true);
     setError(null);
     setSuccess(null);
     try {
-      const resp = await client.mutations.adminMutation({
-        action,
-        params: JSON.stringify(params),
-      });
-      const data = parseResponse<{ success?: boolean; error?: string }>(resp);
+      const data = await adminMutate<{ success?: boolean }>(call);
       if (data?.success) {
         setSuccess(t("vsActionDone"));
         setConfirmFor(null);
@@ -64,12 +62,12 @@ export function VscanManager() {
       .split(",")
       .map((s) => s.trim())
       .filter(Boolean);
-    await runAction("createVscanPolicy", {
+    await runAction({ action: "createVscanPolicy", params: {
       name: newName.trim(),
       mandatory: newMandatory,
       maxFileSize: newMaxMb * 1024 * 1024,
       excludedExtensions: exts.length > 0 ? exts : undefined,
-    });
+    } });
     setShowCreate(false);
     setNewName("");
     setNewExts("");
@@ -78,12 +76,7 @@ export function VscanManager() {
   const loadData = async () => {
     setLoading(true); setError(null);
     try {
-      const statusResp = await client.queries.adminQuery({
-        action: "getVscanStatus", params: JSON.stringify({}),
-      });
-      const statusData = parseResponse<{
-        enabled?: boolean; error?: string
-      }>(statusResp);
+      const statusData = await adminQuery<{ enabled?: boolean }>({ action: "getVscanStatus" });
       if (statusData?.error) {
         // ONTAP not connected or action not deployed yet — show guidance
         setEnabled(false);
@@ -91,12 +84,7 @@ export function VscanManager() {
         setEnabled(statusData.enabled || false);
       }
 
-      const polResp = await client.queries.adminQuery({
-        action: "listVscanPolicies", params: JSON.stringify({}),
-      });
-      const polData = parseResponse<{
-        policies?: VscanPolicy[]; error?: string
-      }>(polResp);
+      const polData = await adminQuery<{ policies?: VscanPolicy[] }>({ action: "listVscanPolicies" });
       // Don't show error for connection/deploy issues — just show empty + guidance
       if (polData?.error && !polData.error.includes("Unknown action") && !polData.error.includes("not configured")) {
         setError(polData.error);
@@ -321,7 +309,7 @@ vserver vscan enable -vserver <svm-name>`}</pre>
             <button
               className={enabled ? "rm-btn-danger-sm" : "rm-btn-primary"}
               disabled={busy}
-              onClick={() => runAction("setVscanEnabled", { enabled: !enabled })}
+              onClick={() => runAction({ action: "setVscanEnabled", params: { enabled: !enabled } })}
             >
               {enabled ? t("vsDisableBtn") : t("vsEnableBtn")}
             </button>
@@ -457,10 +445,10 @@ vserver vscan enable -vserver <svm-name>`}</pre>
                               className="rm-btn-sm"
                               disabled={busy}
                               onClick={() =>
-                                runAction("setVscanPolicyEnabled", {
+                                runAction({ action: "setVscanPolicyEnabled", params: {
                                   name: p.name,
                                   enabled: !p.enabled,
-                                })
+                                } })
                               }
                             >
                               {p.enabled ? t("vsDisableBtn") : t("vsEnableBtn")}
@@ -482,10 +470,10 @@ vserver vscan enable -vserver <svm-name>`}</pre>
                                 className="rm-btn-danger-sm"
                                 disabled={busy}
                                 onClick={() =>
-                                  runAction("deleteVscanPolicy", {
+                                  runAction({ action: "deleteVscanPolicy", params: {
                                     name: p.name,
                                     confirm: true,
-                                  })
+                                  } })
                                 }
                               >
                                 {t("rmExecute")}
