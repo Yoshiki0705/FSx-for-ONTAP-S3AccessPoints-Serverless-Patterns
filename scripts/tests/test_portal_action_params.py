@@ -409,3 +409,160 @@ class TestHelpers:
         contract = ActionContract(handler="h", groups=[{"a"}, {"b", "c"}])
         assert contract.unsatisfied({"a", "b"}) == []
         assert [frozenset(g) for g in contract.unsatisfied({"a"})] == [frozenset({"b", "c"})]
+
+
+class TestCallShapes:
+    """The three spellings that reach an endpoint, all of which must be read.
+
+    The portal moved from the first to the other two, and this check did not notice:
+    it went on printing PASS while the number of sites it could see fell from 43 to 1.
+    A check that cannot see the code is indistinguishable from a passing one, so each
+    spelling is pinned here.
+    """
+
+    def sites_for(self, source: str, tmp_path: Path):
+        import check_portal_action_params as checker
+
+        (tmp_path / "src").mkdir()
+        (tmp_path / "src" / "Component.tsx").write_text(source)
+        original = checker.PORTAL
+        checker.PORTAL = tmp_path
+        try:
+            return checker.call_sites({"adminQuery", "adminMutation", "fileQuery"})
+        finally:
+            checker.PORTAL = original
+
+    def test_the_endpoint_on_the_generated_client(self, tmp_path):
+        source = """
+const data = await client.mutations.adminMutation({
+  action: "createQtree",
+  params: JSON.stringify({ volumeName, name }),
+});
+"""
+        sites, opaque = self.sites_for(source, tmp_path)
+        assert opaque == 0
+        assert [(s.endpoint, s.action, sorted(s.keys)) for s in sites] == [
+            ("adminMutation", "createQtree", ["name", "volumeName"])
+        ]
+
+    def test_dispatch_with_the_endpoint_as_its_first_argument(self, tmp_path):
+        source = """
+unwrap(dispatch("adminQuery", { action: "listQtrees", params: { volumeName } }));
+"""
+        sites, opaque = self.sites_for(source, tmp_path)
+        assert opaque == 0
+        assert [(s.endpoint, s.action, sorted(s.keys)) for s in sites] == [("adminQuery", "listQtrees", ["volumeName"])]
+
+    def test_a_per_endpoint_helper_with_a_type_argument(self, tmp_path):
+        """The type argument holds braces, so it has to be consumed before the object.
+
+        Anchoring on the name and taking the next `{` would read `{ files?: FileItem[] }`
+        as the call's arguments and find no action in it.
+        """
+        source = """
+const data = await fileQuery<{ files?: FileItem[] }>({
+  action: "listFiles",
+  params: { prefix, maxKeys: 100 },
+});
+"""
+        sites, opaque = self.sites_for(source, tmp_path)
+        assert opaque == 0
+        assert [(s.endpoint, s.action, sorted(s.keys)) for s in sites] == [
+            ("fileQuery", "listFiles", ["maxKeys", "prefix"])
+        ]
+
+    def test_a_reducer_dispatch_is_not_a_dispatch_call(self, tmp_path):
+        """`dispatch` is also what `useReducer` returns.
+
+        Telling them apart on the first argument matters both ways: a reducer call must
+        not be reported, and a real one must not be missed.
+        """
+        source = """
+dispatch({ type: "reset" });
+dispatch(somethingElse);
+"""
+        sites, opaque = self.sites_for(source, tmp_path)
+        assert sites == []
+        assert opaque == 0
+
+    def test_a_wrapper_taking_the_whole_call_is_read_at_its_callers(self, tmp_path):
+        """`runAction({ action, params })` — the shape the typed helpers produced.
+
+        The forwarding call inside the wrapper has no object literal of its own, so
+        without recognising it the wrapper looked unreadable and its call sites were
+        never visited.
+        """
+        source = """
+const runAction = async (call: DispatchCall<"adminMutation">) => {
+  const data = await adminMutate<{ success?: boolean }>(call);
+  return data;
+};
+const onDelete = () => runAction({ action: "deleteQtree", params: { volumeName, qtreeId } });
+const onCreate = () => runAction({ action: "createQtree", params: { volumeName, name } });
+"""
+        sites, opaque = self.sites_for(source, tmp_path)
+        assert opaque == 0
+        assert {(s.action, tuple(sorted(s.keys))) for s in sites} == {
+            ("deleteQtree", ("qtreeId", "volumeName")),
+            ("createQtree", ("name", "volumeName")),
+        }
+
+    def test_a_forwarded_variable_does_not_borrow_a_later_literal(self, tmp_path):
+        """The argument object is bounded by the call's own parentheses.
+
+        Searching forward for the next `{` without a limit made `adminMutate(call)`
+        adopt the next unrelated object in the file and report whatever action it
+        happened to name.
+        """
+        source = """
+const runAction = async (call: DispatchCall<"adminMutation">) => adminMutate(call);
+const unrelated = { action: "createQtree", params: { volumeName, name } };
+"""
+        sites, opaque = self.sites_for(source, tmp_path)
+        assert sites == []
+        assert opaque == 0
+
+    def test_a_forwarded_local_is_followed_to_its_literals(self, tmp_path):
+        """A per-branch call object, written that way so the compiler can check it.
+
+        Before this was followed, the enclosing component counted as a wrapper that
+        forwards an action it was given — and being a wrapper suppressed the reporting
+        of every call inside it, which was the whole file.
+        """
+        source = """
+export function Panel() {
+  const call =
+    tab === "cluster"
+      ? ({ action: "listClusterPeers" } as const)
+      : ({ action: "listSvmPeers" } as const);
+  const data = await adminQuery<{ peers?: Peer[] }>(call);
+}
+"""
+        sites, opaque = self.sites_for(source, tmp_path)
+        assert opaque == 0
+        assert {(s.endpoint, s.action) for s in sites} == {
+            ("adminQuery", "listClusterPeers"),
+            ("adminQuery", "listSvmPeers"),
+        }
+
+    def test_a_parameter_is_not_resolved_to_an_outer_variable(self, tmp_path):
+        """`runAction(call)` forwards its own parameter, which shadows the outer name.
+
+        Resolving it to the component's `const call` reported the mutation wrapper as
+        sending three listing actions. Those actions exist on the same handler, so it
+        read as a pass — the worst kind of wrong answer.
+        """
+        source = """
+export function Panel() {
+  const call = ({ action: "listClusterPeers" } as const);
+  const listing = await adminQuery<{ peers?: Peer[] }>(call);
+  const runAction = async (call: DispatchCall<"adminMutation">) => adminMutate(call);
+  const onAccept = () => runAction({ action: "acceptSvmPeer", params: { uuid } });
+}
+"""
+        sites, opaque = self.sites_for(source, tmp_path)
+        assert opaque == 0
+        assert {(s.endpoint, s.action, tuple(sorted(s.keys))) for s in sites} == {
+            ("adminQuery", "listClusterPeers", ()),
+            ("adminMutation", "acceptSvmPeer", ("uuid",)),
+        }
