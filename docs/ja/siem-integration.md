@@ -100,7 +100,7 @@ aws events create-api-destination \
   "details": {
     "volumeName": "vol1",
     "blockedUser": "DOMAIN\\username",
-    "blockedIp": "10.0.1.50",
+    "blockedIp": "203.0.113.50",
     "snapshotCreated": "arp_contain_20260726_103000",
     "reason": "ARP/AI detected high-probability ransomware"
   }

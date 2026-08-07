@@ -57,22 +57,37 @@ Free Tier 終了後の主なコスト要因は次のとおりです。
 
 ユニットエコノミクスを必要とする FinOps チーム向けの内訳です。
 
-| 操作 | 構成要素 | 1 回あたりのコスト |
-|-----------|-----------|--------------------|
-| フォルダ 1 件の閲覧（ListObjectsV2） | Lambda（128MB、200ms）+ AppSync | ~$0.0000034 |
-| PDF 1 件の AI 処理（Bedrock Nova Lite） | Lambda（256MB、3s）+ Bedrock（入力 1K + 出力 500 トークン） | ~$0.005 |
-| PDF 1 件の AI 処理（Claude 3.5 Haiku） | Lambda（256MB、5s）+ Bedrock（入力 1K + 出力 500） | ~$0.002 |
-| スナップショット 1 件のロック（ONTAP REST） | Lambda（256MB、1s）+ AppSync | ~$0.0000084 |
-| Rekognition（画像 1 枚） | Lambda + Rekognition DetectLabels | ~$0.001 |
-| Textract（1 ページ） | Lambda + Textract AnalyzeDocument | ~$0.0015 |
-| Athena クエリ（スキャン 10MB） | Lambda + Athena | ~$0.00005 |
+| 操作 | 構成要素 | 計算 | 1 回あたりのコスト |
+|-----------|-----------|------|--------------------|
+| フォルダ 1 件の閲覧（ListObjectsV2） | Lambda（128MB、200ms）+ AppSync | 0.025 GB 秒 × $0.0000166667 + $0.000004 | ~$0.0000044 |
+| PDF 1 件の AI 処理（Bedrock Nova Lite） | Lambda（256MB、3s）+ Bedrock（入力 1K + 出力 500 トークン） | 1 × $0.00006 + 0.5 × $0.00024 + 0.75 GB 秒 × $0.0000166667 | ~$0.0002 |
+| PDF 1 件の AI 処理（Claude 3.5 Haiku） | Lambda（256MB、5s）+ Bedrock（入力 1K + 出力 500） | 1 × $0.0008 + 0.5 × $0.004 + 1.25 GB 秒 × $0.0000166667 | ~$0.0028 |
+| スナップショット 1 件のロック（ONTAP REST） | Lambda（256MB、1s）+ AppSync | 0.25 GB 秒 × $0.0000166667 + $0.000004 | ~$0.0000082 |
+| Rekognition（画像 1 枚） | Lambda + Rekognition の画像 API | $0.001/枚（月間 100 万枚まで） | ~$0.001 |
+| Textract（テキストのみ、1 ページ） | Lambda + `DetectDocumentText` | $0.0015/ページ（100 万ページまで） | ~$0.0015 |
+| Textract（表とフォーム、1 ページ） | Lambda + `AnalyzeDocument`（`TABLES`,`FORMS`） | $0.07/ページ（100 万ページまで） | ~$0.07 |
+| Athena クエリ（スキャン 10MB） | Lambda + Athena | 最小課金 10MB × $5/TB | ~$0.00005 |
 
-> 算出根拠: Lambda は $0.0000166667/GB 秒、AppSync は $0.000004/リクエスト、Bedrock / AI はトークン単価に基づきます。
-> これらは見積もりです。実際のコストはファイルサイズ、トークン数、処理時間によって変わります。
+> **単価の出典**: us-east-1、オンデマンド。AWS Price List API から 2026-08-07 に取得。
+> Lambda は $0.0000166667/GB 秒、AppSync は $0.000004/リクエスト。ap-northeast-1 は
+> 若干異なるため、社外に数値を提示する前に再確認してください。
+>
+> **安いのは Nova Lite で、桁が違います**。Nova Lite は 100 万トークンあたり
+> 入力 $0.06 / 出力 $0.24、Claude 3.5 Haiku は $0.80 / $4.00 で、入力で約 13 倍、
+> 出力で約 17 倍の差があります。本表の以前のバージョンは両者が逆になっていました。
+>
+> **Textract の 2 行は約 47 倍違います**。ポータルは analyze モードで
+> `analyze_document`（`TABLES` と `FORMS`）を、それ以外で `detect_document_text` を
+> 呼びます（`functions/textract/index.py`）。どちらの行が該当するかは呼び出し側が
+> 選んだモードで決まります。
+>
+> いずれも見積もりです。実際のコストはファイルサイズ、トークン数、処理時間で変わります。
 
-**例**: 契約書 PDF 1,000 件を Bedrock Nova Lite で処理する場合
-- 1,000 × $0.005 = **$5.00**（1 回のバッチ）
-- 同じ量を毎月処理する場合（5 バッチ） = AI 処理のみで **$25.00/月**
+**例**: 契約書 PDF 1,000 件を Bedrock Nova Lite で処理する場合（トークン数は上表のとおり）
+- 1,000 × $0.0002 = **$0.20**（1 回のバッチ）
+- 同規模のバッチを月 5 回実行 = AI 処理のみで **$1.00/月**
+
+この単価では、請求額を左右するのは AI 処理ではありません。次節のインフラコストです。
 
 ## FSx for ONTAP のインフラコスト（別枠）
 
