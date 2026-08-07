@@ -1,12 +1,12 @@
-# SIEM Integration — ARP/AI Threat Events
+# SIEM 連携 — ARP/AI 脅威イベント
 
-> 🌐 Language: **English** | [日本語](../ja/siem-integration.md)
+> 🌐 言語: **日本語** | [English](../en/siem-integration.md)
 
-## Overview
+## 概要
 
-When ARP/AI detects ransomware activity or the portal executes containment actions, these events can be forwarded to external SIEM systems (Splunk, Datadog, Sentinel, QRadar) for centralized incident management.
+ARP/AI がランサムウェアの活動を検知した場合、またはポータルが封じ込めアクションを実行した場合、これらのイベントを外部 SIEM システム（Splunk、Datadog、Sentinel、QRadar）へ転送し、インシデント管理を一元化できます。
 
-## Architecture
+## アーキテクチャ
 
 ```
 ARP/AI Threat Detection (ONTAP)
@@ -16,9 +16,9 @@ ARP/AI Threat Detection (ONTAP)
         → SIEM destination (Splunk HEC / Datadog API / CloudWatch Logs)
 ```
 
-## Implementation Pattern
+## 実装パターン
 
-### 1. SNS Topic for Security Events
+### 1. セキュリティイベント用の SNS Topic
 
 ```yaml
 # Add to backend.ts or separate CloudFormation
@@ -28,9 +28,9 @@ SecurityEventsTopic:
     TopicName: fsxn-portal-security-events
 ```
 
-### 2. Publish from Containment Lambda
+### 2. 封じ込め Lambda からの発行
 
-In `functions/data-protection/handler.py`, after successful containment:
+`functions/data-protection/handler.py` において、封じ込めが成功した後に次を実行します。
 
 ```python
 sns = boto3.client("sns")
@@ -73,7 +73,7 @@ SecurityEventsRule:
         Id: cloudwatch-logs
 ```
 
-### 4. Splunk HEC Configuration
+### 4. Splunk HEC の設定
 
 ```bash
 # EventBridge API Destination for Splunk
@@ -89,7 +89,7 @@ aws events create-api-destination \
   --http-method POST
 ```
 
-## Event Schema
+## イベントスキーマ
 
 ```json
 {
@@ -107,7 +107,7 @@ aws events create-api-destination \
 }
 ```
 
-## References
+## 参考リンク
 
 - [EventBridge API Destinations](https://docs.aws.amazon.com/eventbridge/latest/userguide/eb-api-destinations.html)
 - [Splunk HEC with EventBridge](https://docs.splunk.com/Documentation/AddOns/released/AWS/EventBridge)

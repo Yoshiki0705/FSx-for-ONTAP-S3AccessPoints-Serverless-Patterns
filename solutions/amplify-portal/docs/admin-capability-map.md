@@ -9,38 +9,39 @@
 
 ## 結論
 
-本ポータルは **ブラウザから VPN なしで実行できる ONTAP 運用操作** を担います。
-ONTAP System Manager を置き換えるものではなく、次の 2 点で用途が異なります。
+本ポータルは、**ONTAP REST API で実行できる運用操作を、Cognito 認証つきの画面から実行できるようにする層**です。
 
-- **到達性**: 管理 LIF への VPN 接続が不要。Cognito 認証で誰がどの操作をしたかが残ります。
-- **対象範囲**: 日常的に発生する操作と、AWS マネジメントコンソールで扱えない
-  ONTAP 固有の操作に絞っています。ハードウェア交換やアップグレードは範囲外です。
+Amazon FSx for NetApp ONTAP（以降 FSx for ONTAP）に対して、追加のサードパーティ SaaS を経由せずに到達できるインターフェースは、AWS マネジメントコンソール / FSx API、ONTAP CLI（SSH）、ONTAP REST API の 3 つです。ONTAP System Manager はこの一覧に含まれません（根拠と誤解の整理は [FSx for ONTAP の管理インターフェース](../../../docs/ja/fsx-ontap-management-interfaces.md)）。したがって本ポータルの比較相手は System Manager ではなく **ONTAP CLI と REST API** です。
 
-とくに **クラスターピアリングと SVM ピアリング** は、Amazon FSx for NetApp ONTAP
-（以降 FSx for ONTAP）の AWS マネジメントコンソールに操作面がないため、
-これまで ONTAP CLI か REST API を手作業で叩く必要がありました。本ポータルは
-この領域を画面から実行できるようにしています。
+その 2 つと比べたときの違いは次の 2 点です。
 
-ノードの交換、ONTAP のアップグレード、ディスク・シェルフの管理は
-System Manager と ONTAP CLI の担当範囲です。本ポータルからは行いません。
+- **委譲**: ストレージ管理者以外（セキュリティ、コンプライアンス、データ保護）に、クラスター管理者相当の SSH を渡さずに特定の操作だけを委譲できます。
+- **記録**: 誰がどの操作をいつ実行したかが Cognito の主体つきで残ります。
+
+とくに **クラスターピアリングと SVM ピアリング** は、FSx for ONTAP の AWS マネジメントコンソールに操作面がないため、これまで ONTAP CLI か REST API を手作業で叩く必要がありました。本ポータルはこの領域を画面から実行できるようにしています。
+
+ONTAP のバージョン管理、ノード、ディスク・シェルフは **AWS が運用します**。利用者側の操作としては存在しないため、本ポータルにも他のどのインターフェースにも現れません。
 
 ---
 
 ## インターフェースの担当範囲
 
-| 領域 | 主に使うインターフェース | 本ポータルの位置づけ |
-|------|------------------------|--------------------|
-| ONTAP アップグレード・ハードウェア管理 | ONTAP System Manager / ONTAP CLI | 対象外 |
-| ボリューム・Qtree・クォータの日常運用 | System Manager / 本ポータル | 実装済み |
-| NAS アクセス制御（エクスポートポリシー、SMB 共有） | System Manager / 本ポータル | 実装済み |
-| ID マッピング（Windows ↔ UNIX）、SMB ローカルユーザー | System Manager / 本ポータル | 実装済み |
-| スナップショット・SnapLock・改ざん防止 | System Manager / 本ポータル | 実装済み |
-| ランサムウェア検知（ARP/AI）の確認と対処 | System Manager / 本ポータル | 実装済み |
-| FlexCache・FlexClone | System Manager / 本ポータル | 実装済み |
-| レプリケーション（SnapMirror）の状態確認と運用操作 | System Manager / 本ポータル | 実装済み |
-| ウイルススキャン（Vscan）・FPolicy の設定 | System Manager / 本ポータル | 実装済み |
-| クラスターピア・SVM ピア | ONTAP CLI / REST API / 本ポータル | 実装済み（マネジメントコンソールに操作面なし） |
-| ノード・ライセンス・LIF・プロトコルサービス・DNS・ジョブ | System Manager / 本ポータル | 実装済み |
+「ONTAP CLI / REST API」と書いた行は、本ポータルを使わない場合にその操作を実行する手段です。
+
+| 領域 | ポータルを使わない場合の手段 | 本ポータルの位置づけ |
+|------|---------------------------|--------------------|
+| ONTAP のバージョン管理・ノード・ディスク・シェルフ | AWS が運用（利用者の操作なし） | 対象外 |
+| ファイルシステム・SVM・ボリュームの作成、バックアップ | AWS マネジメントコンソール / FSx API | 一部（ボリューム操作は実装済み） |
+| ボリューム・Qtree・クォータの日常運用 | ONTAP CLI / REST API | 実装済み |
+| NAS アクセス制御（エクスポートポリシー、SMB 共有） | ONTAP CLI / REST API | 実装済み |
+| ID マッピング（Windows ↔ UNIX）、SMB ローカルユーザー | ONTAP CLI / REST API | 実装済み |
+| スナップショット・SnapLock・改ざん防止 | ONTAP CLI / REST API | 実装済み |
+| ランサムウェア検知（ARP/AI）の確認と対処 | ONTAP CLI / REST API | 実装済み |
+| FlexCache・FlexClone | ONTAP CLI / REST API | 実装済み |
+| レプリケーション（SnapMirror）の状態確認と運用操作 | ONTAP CLI / REST API | 実装済み |
+| ウイルススキャン（Vscan）・FPolicy の設定 | ONTAP CLI / REST API | 実装済み |
+| クラスターピア・SVM ピア | ONTAP CLI / REST API | 実装済み（マネジメントコンソールに操作面なし） |
+| ノード・ライセンス・LIF・プロトコルサービス・DNS・ジョブ | ONTAP CLI / REST API | 実装済み（参照） |
 | 長期のメトリクス蓄積・容量トレンド分析 | Amazon CloudWatch / ONTAP REST API | 本リポジトリの `operations/` パターン |
 | ファイルアクセス監査の集約・異常検知 | FPolicy → EventBridge → 本リポジトリのパターン | `solutions/event-driven/fpolicy/` |
 | エンドユーザーのファイル閲覧・共有 | 本ポータル | 実装済み |
@@ -54,13 +55,17 @@ System Manager と ONTAP CLI の担当範囲です。本ポータルからは行
 
 ---
 
-## System Manager の機能領域との対応
+## ONTAP の機能領域との対応
 
-System Manager が持つ機能領域を軸に、本ポータルの対応状況を示します。
+ONTAP の機能領域を軸に、本ポータルの対応状況を示します。
 「対象外」は実装漏れではなく、担当インターフェースを分けた結果です。
 
-| System Manager の領域 | 主な機能 | 本ポータルの対応 |
-|---------------------|---------|----------------|
+領域の区切りは ONTAP System Manager の画面構成に合わせています。System Manager を
+使い慣れた読者が対応を追いやすいためで、FSx for ONTAP で System Manager が使える
+という意味ではありません（[管理インターフェースの整理](../../../docs/ja/fsx-ontap-management-interfaces.md)）。
+
+| 機能領域 | 主な機能 | 本ポータルの対応 |
+|---------|---------|----------------|
 | ダッシュボード | 容量、性能、健全性の概況 | 部分的（容量・ARP/AI・EMS を個別パネルで表示。性能グラフは CloudWatch 側） |
 | ストレージ | ボリューム、Qtree、クォータ、効率、LUN | 実装済み（LUN は対象外。FSx for ONTAP の SAN 用途は本ポータルの範囲外） |
 | ネットワーク | LIF、ポート、ルート、ブロードキャストドメイン | 部分的（LIF の一覧と有効・無効。ポートとルートは対象外） |
@@ -72,7 +77,7 @@ System Manager が持つ機能領域を軸に、本ポータルの対応状況�
 | クラスター | ネームサービス（DNS） | 実装済み |
 | クラスター | プロトコルサービス（NFS / SMB / S3） | 実装済み（有効・無効） |
 | クラスター | ジョブ | 実装済み（参照） |
-| クラスター | ONTAP アップグレード、ディスク・シェルフ | 対象外（System Manager / CLI） |
+| クラスター | ONTAP アップグレード、ディスク・シェルフ | 対象外（FSx for ONTAP では AWS が運用。利用者の操作なし） |
 
 ---
 

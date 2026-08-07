@@ -1310,7 +1310,7 @@ arpResponseSweepNote: "Blocks lift themselves once their expiry passes. To lift 
   slNewVolumeOnlyWhy:
     "SnapLock cannot be turned on for an existing volume afterwards; this is an ONTAP constraint.",
   slNewVolumeOnlyHow: "If you need a SnapLock volume, create one from Volume Management.",
-  fcacheMetricsHint: "Metrics: available in ONTAP System Manager",
+  fcacheMetricsHint: "Metrics: via Amazon CloudWatch or the ONTAP REST API",
   vhDiffTitle: "Version diff",
   vhDiffNotice:
     "Selecting two snapshots to compare their contents is planned for a future release. For now this shows the snapshot list.",

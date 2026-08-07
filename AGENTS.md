@@ -888,6 +888,28 @@ When reviewing changes, consider these perspectives:
 - 初出は **Amazon FSx for NetApp ONTAP**、以降 **FSx for ONTAP**。`FSxN` / 単独 `FSx` / `FSx ONTAP` は不可。アクセスポイントは **FSx for ONTAP S3 AP**。
 - NetApp Workload Factory / NetApp Console / BlueXP は提案しない。native 等価物（CloudWatch, ONTAP REST API, FabricPool, AWS DataSync, Snapshot/FlexClone/SnapMirror）に置換。
 - 例外: 外部引用タイトルの逐語引用（その行に `allow:naming` コメントを付与）。
+- 例外: **制約の根拠として**これらの製品名を挙げる場合（「なぜ使わないのか」を書く文書）はその行に `allow:vendor-ref` を付与。婉曲表現にすると読者が検証できないため。提案は不可、制約の記録は可。
+
+### FSx for ONTAP の管理インターフェース（プロジェクト全体の前提）
+
+**ONTAP System Manager は FSx for ONTAP の到達可能な管理インターフェースではない。** 詳細と出典は [管理インターフェースの整理（JA）](docs/ja/fsx-ontap-management-interfaces.md) / [(EN)](docs/en/fsx-ontap-management-interfaces.md)。要点のみ:
+
+- 到達できるのは 3 つ: AWS マネジメントコンソール / FSx API、ONTAP CLI（SSH）、ONTAP REST API。CLI と REST は VPC 内（または TGW ピア経由）からのみ。
+- FSx for ONTAP における System Manager 対応はベンダー SaaS 経由でのみ提供される（AWS 公式アナウンス 2023-12-20）。
+- そのベンダー SaaS は FSx for ONTAP を **standard（SaaS 接続必須）モードでしか扱わない**。restricted / private モードの対応表はいずれも「No」（ベンダー公式ドキュメント）。つまり SaaS 依存を切ると FSx for ONTAP が対象外になる。
+- したがって管理経路にサードパーティ SaaS を置けない体制では System Manager を使う選択肢が存在しない。これはレジデンシー制約からの帰結で、製品の優劣判断ではない。
+
+**書くときの禁止事項**:
+
+| ❌ 書かない | ✅ 書く |
+|-----------|--------|
+| 「System Manager には VPN で接続する必要がある」 | 「ONTAP CLI / REST API の管理エンドポイントは VPC 内から到達する」 |
+| 「ONTAP アップグレードやディスク交換は System Manager の担当」 | 「FSx for ONTAP では AWS が運用。利用者の操作としては存在しない」 |
+| 「System Manager / 本ポータル」のような並置（同じ体制で選べる前提） | 「ONTAP CLI / REST API」を比較相手にする |
+| 「メトリクスは System Manager で確認」 | 「Amazon CloudWatch または ONTAP REST API で取得」 |
+| ポータルの利点を「VPN 不要」と書く | 利点は**委譲**（管理者以外に SSH を渡さず操作を渡せる）と**記録**（Cognito 主体つき） |
+
+System Manager を **UI デザインの参照元**として挙げるのは可（「カード型ナビゲーションを踏襲」等）。到達可能性の主張と混ざらないようにする。
 
 ### Vendor neutrality (right-tool-for-the-job)
 

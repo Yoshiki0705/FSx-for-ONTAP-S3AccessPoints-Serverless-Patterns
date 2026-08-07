@@ -1271,7 +1271,7 @@ arpResponseSweepNote: "封鎖會在設定的期限過後自動解除。如需提
   slNewVolumeOnly: "SnapLock 只能在建立新磁碟區時啟用",
   slNewVolumeOnlyWhy: "無法為既有磁碟區事後啟用 SnapLock，這是 ONTAP 的限制。",
   slNewVolumeOnlyHow: "若需要 SnapLock 磁碟區，請從「磁碟區管理」中新建。",
-  fcacheMetricsHint: "指標：可在 ONTAP System Manager 中查看",
+  fcacheMetricsHint: "指標：透過 Amazon CloudWatch 或 ONTAP REST API 取得",
   vhDiffTitle: "版本差異",
   vhDiffNotice:
     "選擇兩個快照比較內容的功能預計於後續版本實作。目前顯示快照清單。",

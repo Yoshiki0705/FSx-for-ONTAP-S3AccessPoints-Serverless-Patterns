@@ -1,5 +1,7 @@
 # NFS / S3 AP Write Conflict Considerations
 
+> 🌐 Language: **English** | [日本語](../ja/nfs-s3ap-write-conflict.md)
+
 ## Overview
 
 FSx for ONTAP S3 Access Points expose the same data accessible via NFS/SMB. When both protocols write to the same file simultaneously, ONTAP handles consistency through its WAFL (Write Anywhere File Layout) — but application-level conflicts can still occur.

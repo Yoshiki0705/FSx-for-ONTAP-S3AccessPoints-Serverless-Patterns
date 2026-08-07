@@ -1,5 +1,7 @@
 # Well-Architected Framework — Self-Review
 
+> 🌐 Language: **English** | [日本語](../ja/well-architected-review.md)
+
 > Portal architecture assessment against AWS Well-Architected 6 pillars.
 
 ## Summary Scores
@@ -8,7 +10,7 @@
 |--------|:---:|---------------|
 | Operational Excellence | ⭐⭐⭐⭐ | DemoMode enables rapid iteration; production needs monitoring |
 | Security | ⭐⭐⭐⭐ | AppSync auth + Cognito groups; production needs WAF + SCP |
-| Reliability | ⭐⭐⭐ | Single-AZ Lambda+FSx; multi-AZ requires additional config |
+| Reliability | ⭐⭐⭐ | Lambda in a single AZ; multi-AZ requires additional config |
 | Performance Efficiency | ⭐⭐⭐⭐ | ARM64 Lambda + S3 AP direct access; VPC Cold Start is trade-off |
 | Cost Optimization | ⭐⭐⭐⭐⭐ | Free Tier coverage; serverless = pay-per-use |
 | Sustainability | ⭐⭐⭐⭐ | ARM64 (Graviton), no idle resources, data-local processing |
@@ -37,7 +39,7 @@
 | Secrets management | ✅ | Secrets Manager for ONTAP credentials |
 | IAM least privilege | ⚠️ | `resources: ["*"]` in sandbox; production guide provided |
 | WAF | ❌ | Not configured (production checklist item) |
-| VPC security groups | ⚠️ | Shared FSx SG in sandbox; production guide recommends separation |
+| VPC security groups | ⚠️ | The FSx for ONTAP SG is shared in sandbox; the production guide recommends separation |
 
 ### Reliability
 

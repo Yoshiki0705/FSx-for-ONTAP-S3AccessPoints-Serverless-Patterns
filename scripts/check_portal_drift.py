@@ -316,6 +316,52 @@ CONTRADICTIONS = [
         "why": "the expiry sweep exists, so blocks do expire",
     },
     {
+        "name": "system-manager-vpn",
+        # Written against on-premises ONTAP, where a network that reaches the
+        # cluster management LIF can open the System Manager web UI directly. For
+        # FSx for ONTAP the management endpoint offers SSH and the REST API; the
+        # System Manager UI is reached only through the vendor SaaS, which covers
+        # FSx for ONTAP in its SaaS-connected mode alone. So "VPN to System
+        # Manager" describes a path that does not exist here, and it shipped in
+        # both published Part 2 articles and the capability map.
+        #
+        # Only the reachability claim is matched. "UI inspired by System Manager"
+        # and "System Manager-equivalent operations" are about design and
+        # familiarity, are true, and are deliberately left alone.
+        "claim": re.compile(
+            # A VPN as the way to reach System Manager.
+            r"(VPN\s+(?:connection\s+)?to\s+(?:the\s+)?System\s+Manager"
+            r"|VPN\s+to\s+System\s+Manager"
+            r"|System\s+Manager[^.\n]{0,40}requires?\s+a\s+VPN"
+            r"|accessing\s+it\s+requires\s+a\s+VPN"
+            r"|System\s+Manager\s*(?:に|へ)\s*VPN"
+            r"|System\s+Manager[^。\n]{0,30}VPN\s*(?:経由|接続)"
+            r"|System\s+Manager\s*\+\s*VPN"
+            r"|確認に\s*System\s+Manager"
+            # System Manager named as the owner of operations that, on FSx for
+            # ONTAP, AWS performs and the customer never does.
+            r"|System\s+Manager\s*(?:と|／|/)\s*ONTAP\s*CLI\s*の担当範囲"
+            r"|remain\s+with\s+System\s+Manager"
+            # System Manager presented as an interface the reader is using or can
+            # fall back to. "System Manager-equivalent operations" and "follows
+            # System Manager's card navigation" are about familiarity and design,
+            # are true, and must not match — hence the specific verbs.
+            r"|(?:back\s+to|accessing|access)\s+ONTAP\s+System\s+Manager"
+            r"|Using\s+ONTAP\s+System\s+Manager\s+daily"
+            r"|existing\s+ONTAP\s+System\s+Manager\s+workflows"
+            r"|System\s+Manager\s*(?:や|または)\s*CLI\s*(?:に|へ)\s*(?:アクセス|戻る)"
+            r"|System\s+Manager\s*ワークフロー"
+            r"|System\s+Manager\s*を日常利用)",
+            re.IGNORECASE,
+        ),
+        "disproved_by": ("functions/resource-management/handler.py", "ontap_request"),
+        "why": (
+            "System Manager is not reachable for FSx for ONTAP without the vendor "
+            "SaaS; the portal's peer is the ONTAP CLI / REST API. See "
+            "docs/ja/fsx-ontap-management-interfaces.md"
+        ),
+    },
+    {
         "name": "multi-svm-fanout",
         "claim": re.compile(
             r"(multi-SVM\s+fan-?out" r"|マルチ\s*SVM\s*へのファンアウト)",
