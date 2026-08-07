@@ -74,7 +74,7 @@ After a few minutes, ARP should detect the pattern and the threat level will cha
 3. Fill in the threat details:
    - **Domain**: `CORP` (or your AD domain)
    - **Username**: `testuser` (the compromised account)
-   - **Client IP**: `10.0.5.99` (the attacker's workstation IP)
+   - **Client IP**: `203.0.113.99` (the attacker's workstation IP)
    - **Reason**: "ARP/AI detected high-probability ransomware"
 4. Click **🛡️ Contain Threat**
 5. A confirmation row appears stating what the action will do — it creates a snapshot, blocks the targets and disconnects their SMB sessions, across the whole SVM. Click **Run** to proceed, or **Cancel** to go back.
@@ -96,7 +96,7 @@ A success message appears: "Containment complete — user blocked + snapshot cre
 1. Switch to the **Active Blocks** tab
 2. You should see:
    - **SMB User Blocks**: `CORP\\testuser` (position 1)
-   - **NFS IP Blocks**: `10.0.5.99` (policy: default)
+   - **NFS IP Blocks**: `203.0.113.99` (policy: default)
 
 ### Step 5: Verify from ONTAP (Optional)
 

@@ -2,7 +2,17 @@
 
 > 🌐 Language: **English** | [日本語](../ja/well-architected-review.md)
 
-> Portal architecture assessment against AWS Well-Architected 6 pillars.
+> Portal architecture assessment against the six pillars of AWS Well-Architected.
+
+> **How to read the scores**: this is a **self-assessment**, not a reviewed one. No
+> AWS Well-Architected Framework Review has been conducted with a third party. Each
+> star rating is the author's summary of the practice table under the same heading,
+> which is where the checkable content is: implemented, partial, or absent.
+> Read the tables and disregard the stars if they disagree.
+>
+> **Assessed**: 2026-08-07, against the sandbox configuration.
+> Rated for a PoC or evaluation deployment; a production deployment that has worked
+> through the production checklist would score differently on Security and Reliability.
 
 ## Summary Scores
 
@@ -10,9 +20,9 @@
 |--------|:---:|---------------|
 | Operational Excellence | ⭐⭐⭐⭐ | DemoMode enables rapid iteration; production needs monitoring |
 | Security | ⭐⭐⭐⭐ | AppSync auth + Cognito groups; production needs WAF + SCP |
-| Reliability | ⭐⭐⭐ | Lambda in a single AZ; multi-AZ requires additional config |
+| Reliability | ⭐⭐⭐ | FSx for ONTAP can be multi-AZ; the portal's Lambda sits in one subnet |
 | Performance Efficiency | ⭐⭐⭐⭐ | ARM64 Lambda + S3 AP direct access; VPC Cold Start is trade-off |
-| Cost Optimization | ⭐⭐⭐⭐⭐ | Free Tier coverage; serverless = pay-per-use |
+| Cost Optimization | ⭐⭐⭐⭐ | Portal components are serverless and pay-per-use; the storage layer is not |
 | Sustainability | ⭐⭐⭐⭐ | ARM64 (Graviton), no idle resources, data-local processing |
 
 ## Pillar Details
@@ -45,7 +55,7 @@
 
 | Practice | Status | Notes |
 |----------|:---:|-------|
-| Multi-AZ | ⚠️ | FSx for ONTAP is multi-AZ; Lambda in single subnet |
+| Multi-AZ | ⚠️ | The portal's VPC Lambda is attached to one subnet, so it fails with that AZ. FSx for ONTAP itself can be deployed multi-AZ, and is in this configuration; the two are independent choices |
 | Retry/backoff | ✅ | Step Functions with Retry/Catch |
 | Health checks | ⚠️ | No explicit health endpoint |
 | Disaster recovery | ✅ | SnapMirror + FlexClone for data; stack re-deploy for infra |
@@ -64,8 +74,8 @@
 
 | Practice | Status | Notes |
 |----------|:---:|-------|
-| Serverless | ✅ | Zero cost when idle (Lambda/AppSync/DynamoDB) |
-| Free Tier utilization | ✅ | Most components within Free Tier for 12 months |
+| Serverless | ✅ | Zero cost when idle for the portal's own components (Lambda/AppSync/DynamoDB) |
+| Free Tier utilization | ⚠️ | Lambda and DynamoDB free tiers are perpetual; AppSync's is 12 months. FSx for ONTAP has no free tier and runs continuously (~$194/month at 128 MBps) |
 | Right-sized AI models | ✅ | Nova Lite for cost; Claude for accuracy (configurable) |
 | No over-provisioning | ✅ | No EC2, no NAT Gateway required |
 
