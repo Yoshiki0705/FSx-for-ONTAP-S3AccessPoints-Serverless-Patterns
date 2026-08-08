@@ -807,7 +807,7 @@ make sfn-test-delete  # If you created a test state machine
 ## Related Documents
 
 - [Demo Mode Guide](../demo-mode-guide.en.md) — Run patterns without FSx for ONTAP
-- [Cost Calculator](../cost-calculator.md) — Detailed cost estimation
+- [Cost Calculator](../cost-calculator.md) (Japanese) — Detailed cost estimation
 - [S3 AP Compatibility Notes](../s3ap-compatibility-notes.en.md) — Known constraints and workarounds
 - [Deployment Profiles (FPolicy)](../deployment-profiles.en.md) — PoC / Production / Compliance profiles
 - [Pattern Selection Guide](../pattern-selection-guide.en.md) — Choose the right pattern for your use case

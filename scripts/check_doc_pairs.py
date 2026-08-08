@@ -1,0 +1,136 @@
+#!/usr/bin/env python3
+"""Check that translated documentation pairs are navigable and their links resolve.
+
+Two failures this catches, both of which had shipped:
+
+**A pair with no language switcher.** 27 of 83 pairs had none, so a reader who
+landed on one language had no way to reach the other. The translation existed;
+nothing pointed at it.
+
+**A relative link that resolves to nothing.** 18 links were dead in the portal
+docs alone, because `../../docs/` from `solutions/amplify-portal/docs/` is
+`solutions/docs/`, which does not exist. Nobody noticed because nothing looked
+at them: a dead relative link renders as ordinary text on GitHub until clicked.
+
+Six pairing conventions are in use across the repository, which is why this reads
+the layout rather than assuming one:
+
+    docs/ja/X.md      + docs/en/X.md
+    docs/X.md         + docs/en/X.md
+    X.md              + X.en.md         (same directory)
+    X.md              + X-en.md         (same directory)
+    …either suffix form extended to eight locales
+    solutions/amplify-portal/README.md is English with README.ja.md alongside —
+    the inverted case, which is why language is never inferred from position.
+
+Run with no arguments. Exits non-zero on any finding.
+"""
+
+from __future__ import annotations
+
+import pathlib
+import re
+import sys
+
+ROOT = pathlib.Path(__file__).resolve().parent.parent
+
+LOCALES = ("en", "ko", "zh-CN", "zh-TW", "fr", "de", "es")
+SWITCHER = re.compile(r"Language / 言語|🌐 *(言語|Language)")
+LOCALE_SUFFIX = re.compile(r"[.\-](" + "|".join(LOCALES) + r")\.md$")
+RELATIVE_LINK = re.compile(r"\]\((\.{1,2}/[^)#\s]+\.md)")
+
+# Directories whose pairs are checked. The pattern library under `solutions/`
+# carries 108 eight-locale README sets that are generated, and including them
+# would make a single missing switcher in a generated file fail this check
+# without telling anyone which generator to fix.
+PAIR_DIRS = ("docs", "docs/ja", "docs/guides", "solutions/amplify-portal/docs")
+LINK_DIRS = ("docs", "docs/ja", "docs/en", "docs/guides", "solutions/amplify-portal/docs")
+
+
+def _switcher(path: pathlib.Path) -> bool:
+    return bool(SWITCHER.search(path.read_text(encoding="utf-8")))
+
+
+def find_pairs() -> list[list[pathlib.Path]]:
+    """Every group of files that are translations of one another."""
+    groups: list[list[pathlib.Path]] = []
+    claimed: set[pathlib.Path] = set()
+
+    # A Japanese file in docs/ja/ or docs/ paired with the same name in docs/en/.
+    for parent in (ROOT / "docs" / "ja", ROOT / "docs"):
+        if not parent.is_dir():
+            continue
+        for base in sorted(parent.glob("*.md")):
+            twin = ROOT / "docs" / "en" / base.name
+            if twin.exists() and base not in claimed:
+                groups.append([base, twin])
+                claimed.update({base, twin})
+
+    # Suffix conventions inside one directory, two locales or eight.
+    for name in PAIR_DIRS:
+        parent = ROOT / name
+        if not parent.is_dir():
+            continue
+        for base in sorted(parent.glob("*.md")):
+            if base in claimed or LOCALE_SUFFIX.search(base.name):
+                continue
+            group = [base]
+            for locale in LOCALES:
+                for candidate in (
+                    parent / f"{base.stem}.{locale}.md",
+                    parent / f"{base.stem}-{locale}.md",
+                ):
+                    if candidate.exists():
+                        group.append(candidate)
+            if len(group) > 1:
+                groups.append(group)
+                claimed.update(group)
+    return groups
+
+
+def check_switchers() -> list[str]:
+    findings = []
+    for group in find_pairs():
+        without = [p for p in group if not _switcher(p)]
+        if without:
+            names = ", ".join(str(p.relative_to(ROOT)) for p in without)
+            findings.append(f"no language switcher, so the translation is unreachable from it: {names}")
+    return findings
+
+
+def check_links() -> list[str]:
+    findings = []
+    for name in LINK_DIRS:
+        parent = ROOT / name
+        if not parent.is_dir():
+            continue
+        for md in sorted(parent.glob("*.md")):
+            lines = md.read_text(encoding="utf-8").split("\n")
+            for number, line in enumerate(lines, start=1):
+                for match in RELATIVE_LINK.finditer(line):
+                    if not (md.parent / match.group(1)).resolve().exists():
+                        findings.append(f"{md.relative_to(ROOT)}:{number}: link resolves to nothing: {match.group(1)}")
+    return findings
+
+
+def main() -> int:
+    pairs = find_pairs()
+    if not pairs:
+        print("DOC PAIRS: FAIL — found no pairs at all, so this check proves nothing")
+        return 1
+
+    findings = check_switchers() + check_links()
+    if findings:
+        print(f"\ndoc-pairs ({len(findings)}):")
+        for finding in findings:
+            print(f"  {finding}")
+        print(f"\nDOC PAIRS: {len(findings)} finding(s)")
+        return 1
+
+    files = sum(len(group) for group in pairs)
+    print(f"DOC PAIRS: PASS ({len(pairs)} pairs, {files} files, all switchers and relative links resolve)")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

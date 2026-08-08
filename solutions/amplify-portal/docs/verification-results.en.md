@@ -1,5 +1,7 @@
 # File Portal — Verification Results
 
+🌐 **Language / 言語**: [日本語](verification-results.md) | **English**
+
 **English** | [日本語](verification-results.md)
 
 This document records **how far each portal feature has been verified against a real system**. Its purpose is to keep "verified on real hardware" clearly separate from "the tests pass".

@@ -1,5 +1,7 @@
 # Production Amplify Hosting Deployment Guide
 
+🌐 **Language / 言語**: [日本語](../ja/amplify-hosting-production-guide.md) | **English**
+
 Deploy the FSx for ONTAP File Portal as a production web application using AWS Amplify Hosting with branch-based CI/CD, custom domain, and enterprise authentication.
 
 ---

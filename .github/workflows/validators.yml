@@ -47,6 +47,13 @@ jobs:
       # the values — branded identifiers, instants and durations — so that a volume
       # name cannot be passed where a UUID belongs. This verifies the generated file
       # still describes the handlers it was generated from.
+      # A translation exists but nothing links to it, or a relative link resolves
+      # to nothing. Both had shipped: 27 of 83 pairs carried no language switcher,
+      # and 18 links in the portal docs were dead because ../../docs/ from there is
+      # solutions/docs/. GitHub renders a dead relative link as plain text, so
+      # reading the page does not reveal it.
+      - name: Check translated doc pairs are navigable and their links resolve
+        run: python3 scripts/check_doc_pairs.py
       - name: Check the generated dispatch parameter types match the handlers
         run: python3 scripts/portal_action_types.py --check
 

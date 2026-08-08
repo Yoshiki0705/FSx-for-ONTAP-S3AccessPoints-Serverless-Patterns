@@ -185,6 +185,11 @@ drift:
 # That needs types, and types generated from the handlers need checking against them.
 	$(PYTHON) -m pytest scripts/tests/test_portal_action_types.py --tb=short -q
 	$(PYTHON) scripts/portal_action_types.py --check
+# Translations nobody can reach, and relative links that resolve to nothing. 27 of
+# 83 pairs had no language switcher, and 18 links in the portal docs alone were
+# dead because ../../docs/ from that directory is solutions/docs/, which does not
+# exist. A dead relative link renders as ordinary text until someone clicks it.
+	$(PYTHON) scripts/check_doc_pairs.py
 
 # Fetches the published posts from Hatena and dev.to, so it needs network and is
 # not part of `make lint`. Run it after shipping a feature that makes an article's

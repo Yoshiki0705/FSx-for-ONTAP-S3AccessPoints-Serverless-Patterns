@@ -1,5 +1,7 @@
 # デモガイド: Amazon Quick Desktop × AgentCore MCP Gateway × FSx for ONTAP
 
+🌐 **Language / 言語**: **日本語** | [English](en/demo-agentcore-mcp-quick-desktop.md)
+
 > ⚠️ **本デモは PoC 構成（認証なし Gateway）を使用します。** 機密データを含むボリュームには接続しないでください。本番では CUSTOM_JWT 認証 + VPC 保護が必要です。
 >
 > **Data residency note**: ~~Lambda（us-east-1）→ S3 AP（ap-northeast-1）間でファイル内容がリージョン間転送されます。~~ **2026-07-22 検証完了: Gateway + Lambda を ap-northeast-1 にデプロイ可能。同一リージョン構成でクロスリージョン転送を排除済み。**

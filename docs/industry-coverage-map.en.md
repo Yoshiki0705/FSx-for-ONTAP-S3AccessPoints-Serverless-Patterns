@@ -1,5 +1,7 @@
 # Industry Coverage Map
 
+🌐 **Language / 言語**: [日本語](industry-coverage-map.md) | **English**
+
 > **Last Updated**: 2026-06-03
 
 This document provides a comprehensive view of FSx for ONTAP S3 Access Points serverless pattern coverage against AWS official Industries categories.
