@@ -1,6 +1,6 @@
 # AI Agent & Semantic Search — Demo Guide
 
-> 🌐 Language: **English** | [日本語](../ja/ai-agent-demo-guide.md)
+> 🌐 Language: **English** | [日本語](../../solutions/amplify-portal/docs/ai-agent-demo-guide.md)
 
 Step-by-step demo of the AI Agent Chat, Semantic Search, Bedrock Guardrails, Multi-Agent Trace, and HITL Action Approval features added in Part 3.
 

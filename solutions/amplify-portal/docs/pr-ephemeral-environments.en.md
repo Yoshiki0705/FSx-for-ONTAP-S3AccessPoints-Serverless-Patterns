@@ -1,17 +1,17 @@
-# PR ベース使い捨て環境の設計
+# Design for PR-Based Ephemeral Environments
 
 🌐 **Language / 言語**: [日本語](pr-ephemeral-environments.md) | [English](pr-ephemeral-environments.en.md)
 
-> CDK Conference Japan 2026 セッション「CDKでPRごとに使い捨て環境立てたら便利すぎました」の知見を反映。
+> Reflects takeaways from the CDK Conference Japan 2026 session "Standing up a disposable environment per PR with CDK turned out to be extremely convenient".
 
-## 概要
+## Overview
 
-PR ごとに独立した Amplify Gen2 サンドボックス（バックエンド）を自動作成し、マージまたは PR クローズ時に自動削除する設計。
+A design in which an independent Amplify Gen2 sandbox (the backend) is created automatically per PR and deleted automatically when the PR is merged or closed.
 
-> **未実装であり、数値は見積りです**: `.github/workflows/pr-preview.yml` と `pr-cleanup.yml` は**まだ存在しません**。以下の時間・コストはすべて**未計測の見積り**です。
-> 下記ワークフロー案は `npm run build` までで、**Amplify Hosting へのデプロイ手順を含みません**。したがって reviewer がブラウザで触るにはブランチを取得してローカルで `make dev` を実行する必要があります（PR コメントもその手順を案内します）。「クリックして確認できる」状態にするには Hosting デプロイ手順の追加が必要です。
+> **Unimplemented, and the figures are estimates**: `.github/workflows/pr-preview.yml` and `pr-cleanup.yml` **do not exist yet**. Every time and cost below is an **unmeasured estimate**.
+> The proposed workflow also stops at `npm run build` and **contains no Amplify Hosting deployment step**. A reviewer therefore has to check out the branch and run `make dev` locally, which is what the PR comment tells them to do. Making it genuinely click-through requires adding the Hosting deployment step.
 
-## アーキテクチャ
+## Architecture
 
 ```
 PR open/sync
@@ -27,9 +27,9 @@ GitHub Actions (pr-preview.yml)
     │
     ├── npm run build (Vite → dist/)
     │
-    └── （未実装）Amplify Hosting へのデプロイ
-          └── 現状のワークフロー案は build まで。PR コメントは
-              ローカル実行手順（make dev）を案内する
+    └── (not implemented) deploy to Amplify Hosting
+          └── the proposed workflow stops at build; the PR comment
+              gives local run instructions (make dev) instead
 
 PR close/merge
     │
@@ -39,31 +39,31 @@ GitHub Actions (pr-cleanup.yml)
     └── npx ampx sandbox delete --identifier pr-${PR_NUMBER} --yes
 ```
 
-## コスト分析
+## Cost analysis
 
-| リソース | PR 1 件あたりのコスト（見積り） | 備考 |
+| Resource | Cost per PR (estimate) | Notes |
 |---------|:---:|------|
 | Cognito User Pool | $0 | Free Tier (50,000 MAU) |
-| AppSync API | $0 | Free Tier (250,000 queries/月) |
-| Lambda x18 | $0 | Free Tier (1M requests/月) |
+| AppSync API | $0 | Free Tier (250,000 queries/month) |
+| Lambda x18 | $0 | Free Tier (1M requests/month) |
 | DynamoDB x5 tables | $0 | On-demand, Free Tier 25 GB |
-| Amplify Hosting | ~$0.01/PR | Build minutes のみ。Hosting デプロイ手順を実装した場合の見積り |
-| **合計** | **~$0/PR（見積り）** | Free Tier 枠を他で消費していない前提。Free Tier はアカウント単位なので同時に複数 PR があるとこの前提は崩れる（常時無料は Cognito の 50,000 MAU のみ） |
+| Amplify Hosting | ~$0.01/PR | Build minutes only. Estimate for the case where the Hosting deployment step is implemented |
+| **Total** | **~$0/PR (estimate)** | Assumes the Free Tier allowance is not consumed elsewhere. The Free Tier is account-wide, so concurrent PRs break that assumption (only Cognito's 50,000 MAU is always free) |
 
-> **結論**: コスト影響は実質ゼロ。主要コストは CI のビルド時間（GitHub Actions 無料枠）のみ。
+> **Conclusion**: the cost impact is effectively zero. The main cost is CI build time (within the GitHub Actions free allowance).
 
-## デプロイ時間（未計測の見積り）
+## Deployment time (unmeasured estimates)
 
-| フェーズ | 初回 | 2回目以降 (push) |
+| Phase | First run | Subsequent runs (push) |
 |---------|:---:|:---:|
-| `npx ampx sandbox --once` | ~8-12 min | ~2-3 min (差分) |
+| `npx ampx sandbox --once` | ~8-12 min | ~2-3 min (diff) |
 | `npm run build` | ~10 sec | ~10 sec |
 | Amplify Hosting deploy | ~30 sec | ~30 sec |
-| **合計** | **~10-13 min** | **~3-4 min** |
+| **Total** | **~10-13 min** | **~3-4 min** |
 
-## Workflow 設計
+## Workflow design
 
-### pr-preview.yml (PR 作成/更新時)
+### pr-preview.yml (on PR creation/update)
 
 ```yaml
 name: PR Preview Environment
@@ -138,7 +138,7 @@ jobs:
             });
 ```
 
-### pr-cleanup.yml (PR クローズ/マージ時)
+### pr-cleanup.yml (on PR close/merge)
 
 ```yaml
 name: PR Cleanup
@@ -177,38 +177,38 @@ jobs:
         run: npx ampx sandbox delete --identifier pr-${{ github.event.pull_request.number }} --yes
 ```
 
-## 前提条件
+## Prerequisites
 
-1. **IAM ロール**: `AMPLIFY_DEPLOY_ROLE_ARN` — Amplify + CDK のフルデプロイ権限を持つ OIDC ロール
-2. **テスト用 S3 バケット**: `TEST_S3_BUCKET` — DemoMode 用の通常 S3 バケット（FSx for ONTAP 不要）
-3. **GitHub Actions secrets**: 上記 2 つを設定
+1. **IAM role**: `AMPLIFY_DEPLOY_ROLE_ARN` — an OIDC role with full Amplify + CDK deployment permissions
+2. **Test S3 bucket**: `TEST_S3_BUCKET` — a regular S3 bucket for DemoMode (no Amazon FSx for NetApp ONTAP required)
+3. **GitHub Actions secrets**: configure the two above
 
-## トレードオフと考慮事項
+## Trade-offs and considerations
 
-| 項目 | 判断 |
+| Item | Decision |
 |------|------|
-| FSx for ONTAP 接続 | 不要（DemoMode で動作確認） |
-| 認証テスト | 各 PR に専用 Cognito User Pool が作られるため独立 |
-| データ永続性 | PR クローズで全データ削除（DynamoDB テーブルごと消える） |
-| 並行 PR 数 | AWS アカウントのリソース制限に注意（Cognito: 1000 User Pools/アカウント） |
-| セキュリティ | 外部 PR（fork）では実行しない（`head.repo.full_name == github.repository`） |
-| 不要なデプロイ防止 | `paths` フィルターで amplify-portal 変更時のみトリガー |
+| FSx for ONTAP connectivity | Not required (behaviour is verified in DemoMode) |
+| Authentication testing | Independent, because a dedicated Cognito User Pool is created per PR |
+| Data persistence | All data is deleted when the PR closes (the DynamoDB tables go with it) |
+| Concurrent PR count | Watch AWS account resource limits (Cognito: 1000 User Pools per account) |
+| Security | Not run for external PRs from forks (`head.repo.full_name == github.repository`) |
+| Preventing unnecessary deployments | The `paths` filter triggers only on amplify-portal changes |
 
-## 導入ステップ
+## Adoption steps
 
-1. [ ] IAM OIDC ロール作成（Amplify + CloudFormation 権限）
-2. [ ] GitHub Secrets に `AMPLIFY_DEPLOY_ROLE_ARN` + `TEST_S3_BUCKET` 設定
-3. [ ] `.github/workflows/pr-preview.yml` 作成
-4. [ ] `.github/workflows/pr-cleanup.yml` 作成
-5. [ ] テスト PR を作成して動作確認
-6. [ ] README にプレビュー環境の使い方を追記
+1. [ ] Create the IAM OIDC role (Amplify + CloudFormation permissions)
+2. [ ] Set `AMPLIFY_DEPLOY_ROLE_ARN` + `TEST_S3_BUCKET` in GitHub Secrets
+3. [ ] Create `.github/workflows/pr-preview.yml`
+4. [ ] Create `.github/workflows/pr-cleanup.yml`
+5. [ ] Open a test PR and confirm the behaviour
+6. [ ] Add usage notes for the preview environment to the README
 
-## 現時点の判断
+## Current position
 
-本プロジェクトはソロ開発のため、PR プレビュー環境の自動化は**設計ドキュメントとして保持し、チーム開発に移行した段階で実装する**方針とする。個人開発では `npx ampx sandbox` の個人サンドボックスで十分。
+Because this project is developed solo, the policy is to **keep PR preview environment automation as a design document and implement it once development moves to a team**. For solo development, the personal sandbox from `npx ampx sandbox` is sufficient.
 
-## 参考
+## References
 
-- [CDK Conference Japan 2026 セッション一覧](https://qiita.com/issy929/items/f8c5abf9f2e327bec8da)
+- [CDK Conference Japan 2026 session list](https://qiita.com/issy929/items/f8c5abf9f2e327bec8da)
 - [Amplify Gen2 Sandbox documentation](https://docs.amplify.aws/react/deploy-and-host/sandbox-environments/)
 - [GitHub Actions OIDC + AWS](https://docs.github.com/en/actions/security-for-github-actions/security-hardening-your-deployments/configuring-openid-connect-in-amazon-web-services)

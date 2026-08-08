@@ -714,7 +714,7 @@ The Amplify Gen2 File Portal is a separate deployment from the SAM/CloudFormatio
 |----------|---------|
 | Cognito User Pool + Identity Pool | Authentication + S3 API credentials |
 | AppSync GraphQL API | Frontend ↔ backend communication |
-| Lambda x8 (inline, Python 3.12 ARM64) | File listing, presigned URLs, AI services |
+| Lambda x18 (inline, Python 3.12 ARM64) | File listing, presigned URLs, AI services |
 | DynamoDB table | Job execution history |
 
 ### Deployment steps

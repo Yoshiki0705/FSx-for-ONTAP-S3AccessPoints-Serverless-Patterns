@@ -156,6 +156,6 @@ git push origin main  # Amplify Hosting が自動デプロイ
 
 - [Getting Started Guide](../../solutions/amplify-portal/docs/GETTING-STARTED.md)
 - [Implementation Guide](../../solutions/amplify-portal/docs/IMPLEMENTATION.md)
-- [Security Review](../../solutions/amplify-portal/docs/SECURITY-REVIEW.md)
+- [Security Review Template](security-review-template.md)
 - [スケーリングガイド](./portal-scaling-guide.md)
 - [DemoMode ガイド](../demo-mode-guide.md)

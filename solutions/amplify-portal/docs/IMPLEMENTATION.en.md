@@ -95,13 +95,13 @@ Without this, `JSON.parse(object)` silently produces `{}` → Lambda receives em
 ### Resource Management: Card Grid (not flat tabs)
 - **Before**: Flat horizontal tab row with 10 items — looked machine-generated, hard to scan
 - **After**: 3 category sections (Storage / Access Control / Protection) with icon cards + descriptions
-- **Intent**: Match System Manager's grouped navigation. Users can find related functions visually.
+- **Intent**: Follow the grouped navigation of ONTAP System Manager as a presentation model, so related functions can be found visually.
 - **File**: `src/components/ResourceManagement.tsx`
 
 ### VolumeSelector: Dropdown (not manual input)
 - **Before**: Text input for volume name/UUID — users didn't know valid values
 - **After**: Pre-populated dropdown from ONTAP REST API with `autoSelectFirst`
-- **Intent**: System Manager never requires manual UUID input. All selectable entities should be queryable.
+- **Intent**: Manual UUID entry is not an acceptable UI pattern for ONTAP management screens. All selectable entities should be queryable.
 - **File**: `src/components/admin/VolumeSelector.tsx`
 
 ### Tamperproof Enable: ENABLE Prompt (not simple confirm)
@@ -149,7 +149,7 @@ Without this, `JSON.parse(object)` silently produces `{}` → Lambda receives em
 | Date | Change | Intent | Files |
 |------|--------|--------|-------|
 | 2026-07-26 | Generic dispatch refactor | Fix CloudFormation 1MB limit (73 ops → 8 endpoints) | backend.ts, resource.ts, resolvers |
-| 2026-07-26 | VolumeSelector component | Replace manual UUID/name input with System Manager-style dropdown | VolumeSelector.tsx, QuotaManager, SnaplockManager |
+| 2026-07-26 | VolumeSelector component | Replace manual UUID/name input with a queryable dropdown | VolumeSelector.tsx, QuotaManager, SnaplockManager |
 | 2026-07-26 | AWSJSON typeof fix | AppSync delivers objects not strings — prevent empty params | all *-dispatch.js |
 | 2026-07-26 | URL hash navigation | Preserve admin context on browser refresh | App.tsx |
 | 2026-07-26 | Tamperproof ENABLE prompt | Prevent accidental irreversible locking (typed confirmation) | SnapshotAdminManager.tsx |
@@ -195,7 +195,7 @@ Without this, `JSON.parse(object)` silently produces `{}` → Lambda receives em
 | 2026-07-27 | Snapshot policy delete | Delete button per policy row (red). Cannot delete if assigned — error guides to detach first | SnapshotAdminManager.tsx, handler.py, ja.ts, en.ts |
 | 2026-07-27 | Tamperproof design doc | 3-layer design guide + stop flow (Pattern D) + API reference | docs/tamperproof-snapshot-design.md |
 | 2026-07-28 | ShareLink i18n | Full Japanese translation for share link dialog (title, expires, generate, copy, security note) | ShareLink.tsx, ja.ts, en.ts |
-| 2026-07-28 | ShareLink user guide | Detailed share link usage guide in portal-tabs-guide.md (操作手順, 仕様, セキュリティ) | portal-tabs-guide.md |
+| 2026-07-28 | ShareLink user guide | Detailed share link usage guide in portal-tabs-guide.md (operating steps, specification, security) | portal-tabs-guide.md |
 | 2026-07-28 | Folder share link | Copy direct link to folder (`#files?path=prefix`). initialPrefix prop on FileExplorer for external navigation | FileExplorer.tsx, App.tsx, ja.ts, en.ts |
 | 2026-07-28 | ZIP folder download | Download all files as ZIP (500 files / 500MB max). DemoMode mock. Lambda action in list-files handler | list-files/index.py, FolderDownload.tsx, ja.ts, en.ts |
 | 2026-07-28 | Folder favorites | Star button (☆/★) on both folders and files. FavoritesView shows 📁/📄 with correct navigation | FileExplorer.tsx, Favorites.tsx, App.tsx |
@@ -364,7 +364,7 @@ Lambda to a live ONTAP cluster is not covered.
 
 | Document | Purpose |
 |----------|---------|
-| [Getting Started Guide](./GETTING-STARTED.md) | 30-minute quickstart with DemoMode |
+| [Getting Started Guide](./GETTING-STARTED.en.md) | 30-minute quickstart with DemoMode |
 | [PoC → Production Guide](../../../docs/en/portal-poc-to-production.md) | Migration checklist for production FSx for ONTAP connectivity |
 | [Scaling Guide](../../../docs/en/portal-scaling-guide.md) | Capacity planning, throughput sharing, QoS, growth estimation |
 | [Accessibility Statement](../../../docs/en/portal-accessibility.md) | ARIA, keyboard nav, screen reader, WCAG compliance note |
