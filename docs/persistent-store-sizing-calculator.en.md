@@ -1,6 +1,6 @@
 # FPolicy Persistent Store Sizing Calculator
 
-🌐 **Language / 言語**: [日本語](persistent-store-sizing-calculator.md) | [English](persistent-store-sizing-calculator.en.md)
+🌐 **Language / 言語**: [日本語](persistent-store-sizing-calculator.md) | **English**
 
 ## Overview
 
@@ -95,6 +95,5 @@ curl -k -u fsxadmin:PASSWORD \
 
 ## Reference Links
 
-- [FPolicy Persistent Store Configuration Guide](event-driven/fpolicy-persistent-store.md)
 - [Deployment Profiles](deployment-profiles.md)
 - [ONTAP Persistent Store — NetApp Documentation](https://docs.netapp.com/us-en/ontap/nas-audit/persistent-stores.html)

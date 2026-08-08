@@ -183,7 +183,7 @@ PoC/Demo ──────→ Production ──────→ Compliance-sensi
 
 ## References
 
-- [FPolicy Persistent Store Configuration Guide](event-driven/fpolicy-persistent-store.md)
+- [FPolicy Persistent Store Configuration Guide](persistent-store-sizing-calculator.en.md)
 - [SLO Violation Runbooks](runbooks/)
 - [Replay Storm Testing](../tests/load/)
 - [ONTAP FPolicy — NetApp Documentation](https://docs.netapp.com/us-en/ontap/nas-audit/persistent-stores.html)

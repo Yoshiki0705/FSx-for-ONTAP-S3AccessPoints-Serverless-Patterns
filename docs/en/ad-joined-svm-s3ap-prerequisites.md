@@ -1,5 +1,7 @@
 # AD-Joined SVM: S3 Access Point Prerequisites
 
+🌐 **Language / 言語**: [日本語](../ja/ad-joined-svm-s3ap-prerequisites.md) | **English**
+
 > Prerequisites and operational guidance for using FSx for ONTAP S3 Access Points on AD-joined SVMs (CIFS enabled).
 
 ## Executive Summary
@@ -703,7 +705,7 @@ GETs.
 - [ONTAP Integration Notes](../ontap-integration-notes.en.md) — NAS coexistence, identity mapping
 - [S3AP Compatibility Notes](../s3ap-compatibility-notes.en.md) — Known constraints
 - [S3AP Authorization Model](../s3ap-authorization-model.en.md) — Dual-layer auth
-- [Incident Response Playbook](../incident-response-playbook.md) — Security incident handling
+- [Incident Response Playbook](../incident-response-playbook.md) (Japanese) — Security incident handling
 - [ROADMAP](../../ROADMAP.md) — SnapMirror DR test automation (future)
 - [AWS: Troubleshooting S3 access point issues](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/troubleshooting-access-points-for-fsxn.html) — Official guide
 - [AWS: Best practices for AD](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/self-managed-AD-best-practices.html) — AD service account permissions

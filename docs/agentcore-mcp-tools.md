@@ -1,5 +1,7 @@
 # AgentCore MCP Gateway — ツール定義リファレンス
 
+🌐 **Language / 言語**: **日本語** | [English](en/agentcore-mcp-tools.md)
+
 > **Workshop**: [Deploy AgentCore Gateway (Module 09)](https://catalog.us-east-1.prod.workshops.aws/workshops/9cd82e0b-8348-456b-932a-818b9e5825a1/en-US/09-agentcore)
 >
 > **関連パターン**: [UC30 quick-agentic-workspace](../solutions/genai/quick-agentic-workspace/README.md)

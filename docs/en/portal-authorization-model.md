@@ -1,5 +1,7 @@
 # Portal Authorization Model
 
+🌐 **Language / 言語**: [日本語](../ja/portal-authorization-model.md) | **English**
+
 > How Cognito groups control access to portal features. All operations are enforced at the AppSync authorization layer — the frontend renders UI based on group membership, but the backend rejects unauthorized calls regardless of UI state.
 
 ## Overview

@@ -171,7 +171,7 @@ aws cloudformation deploy \
   (`arn:aws:s3:<region>:<account>:accesspoint/<name>/object/*`) — the Phase 7
   learning is baked in
 - AWS verified: UC11 + UC14 deployed 2026-05-10 in FSXN_S3AP mode, both
-  SUCCEEDED. See [verification-results-output-destination.md](verification-results-output-destination.md).
+  SUCCEEDED. See `verification-results-output-destination.md`.
 
 ## Pattern C: Standard S3 Only (UC6, UC7, UC8, UC13)
 
@@ -225,5 +225,5 @@ has no `S3AccessPointOutputAlias` parameter, it's Pattern C.
 ## Cross-Reference
 
 - [aws-feature-requests/fsxn-s3ap-improvements.md](aws-feature-requests/fsxn-s3ap-improvements.md) — requested AWS enhancements including Athena result FSx for ONTAP support
-- [verification-results-output-destination.md](verification-results-output-destination.md) — AWS verification results for UC11/UC14 in FSXN_S3AP mode
+- `verification-results-output-destination.md` — AWS verification results for UC11/UC14 in FSXN_S3AP mode
 - [../README.md#aws-仕様上の制約と回避策](../README.md#aws-仕様上の制約と回避策) — top-level project docs on AWS limitations

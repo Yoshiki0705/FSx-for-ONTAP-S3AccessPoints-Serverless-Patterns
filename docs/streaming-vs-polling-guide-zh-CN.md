@@ -1,5 +1,7 @@
 # 流式处理 vs 轮询选择指南
 
+🌐 **Language / 言語**: [日本語](streaming-vs-polling-guide.md) | [English](streaming-vs-polling-guide-en.md) | [한국어](streaming-vs-polling-guide-ko.md) | **简体中文** | [繁體中文](streaming-vs-polling-guide-zh-TW.md) | [Français](streaming-vs-polling-guide-fr.md) | [Deutsch](streaming-vs-polling-guide-de.md) | [Español](streaming-vs-polling-guide-es.md)
+
 本指南比较了 FSx for ONTAP S3 Access Points 无服务器自动化模式中的两种架构模式 — **EventBridge 轮询**和 **Kinesis 流式处理** — 并提供选择最佳模式的决策标准。
 
 ## 概述

@@ -409,5 +409,5 @@ After deployment, the portal is accessible at `https://main.<APP_ID>.amplifyapp.
 
 - [README (full setup)](../../solutions/amplify-portal/README.md)
 - [Storage Browser Demo Guide](./storage-browser-demo-guide.md)
-- [S3 AP Compatibility Notes](../s3ap-compatibility-notes.md)
-- [File Portal UI Selection Guide](../file-portal-amplify-gen2.md)
+- [S3 AP Compatibility Notes](../s3ap-compatibility-notes.en.md)
+- [File Portal UI Selection Guide](../file-portal-amplify-gen2.en.md)

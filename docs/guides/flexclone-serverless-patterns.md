@@ -1,5 +1,7 @@
 # FlexClone Serverless Patterns — Industry Use Cases
 
+🌐 **Language / 言語**: **日本語** | [English](flexclone-serverless-patterns-en.md)
+
 ## Overview
 
 FSx for ONTAP の FlexClone は、データコピーなしで瞬時に書き込み可能なボリュームコピーを作成する。

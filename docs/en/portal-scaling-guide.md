@@ -1,5 +1,7 @@
 # File Portal — Scaling & Capacity Planning Guide
 
+🌐 **Language / 言語**: [日本語](../ja/portal-scaling-guide.md) | **English**
+
 > Understanding scaling characteristics, throughput sharing, and growth planning.
 
 ## Component Scaling Overview
@@ -127,6 +129,6 @@ For most portal deployments (< 100 concurrent users), default limits are suffici
 ## Related Documents
 
 - [PoC to Production Guide](./portal-poc-to-production.md)
-- [S3 AP Performance Considerations](../s3ap-performance-considerations.md)
-- [Cost Calculator](../cost-calculator.md)
+- [S3 AP Performance Considerations](../s3ap-performance-considerations.en.md)
+- [Cost Calculator](../cost-calculator.md) (Japanese)
 - [Implementation Guide](../../solutions/amplify-portal/docs/IMPLEMENTATION.md)

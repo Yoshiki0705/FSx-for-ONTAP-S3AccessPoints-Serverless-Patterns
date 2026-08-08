@@ -1,5 +1,7 @@
 # AgentCore MCP Gateway — Tool Definition Reference
 
+🌐 **Language / 言語**: [日本語](../agentcore-mcp-tools.md) | **English**
+
 > **Workshop**: [Deploy AgentCore Gateway (Module 09)](https://catalog.us-east-1.prod.workshops.aws/workshops/9cd82e0b-8348-456b-932a-818b9e5825a1/en-US/09-agentcore)
 >
 > **Related pattern**: [UC30 quick-agentic-workspace](../../solutions/genai/quick-agentic-workspace/README.md)
@@ -490,8 +492,8 @@ def validate_path(path: str) -> str:
 
 | Document | Content |
 |----------|---------|
-| [Workshop EDA Integration Guide](../workshop-eda-integration.md) | Workshop module to UC pattern mapping |
+| [Workshop EDA Integration Guide](workshop-eda-integration.md) | Workshop module to UC pattern mapping |
 | [UC30 README](../../solutions/genai/quick-agentic-workspace/README.md) | Quick Suite full integration pattern |
 | [AgentCore Web Search Integration](../investigations/agentcore-web-search-fsxn-integration.md) | Web Search Tool details |
 | [AD-Joined SVM Prerequisites](ad-joined-svm-s3ap-prerequisites.md) | AD configuration prerequisites |
-| [S3AP Compatibility Notes](../s3ap-compatibility-notes.md) | S3 AP constraints and workarounds |
+| [S3AP Compatibility Notes](../s3ap-compatibility-notes.en.md) | S3 AP constraints and workarounds |

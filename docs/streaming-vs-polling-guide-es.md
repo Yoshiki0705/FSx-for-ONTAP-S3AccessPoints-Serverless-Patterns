@@ -1,5 +1,7 @@
 # Guía de selección: Streaming vs Polling
 
+🌐 **Language / 言語**: [日本語](streaming-vs-polling-guide.md) | [English](streaming-vs-polling-guide-en.md) | [한국어](streaming-vs-polling-guide-ko.md) | [简体中文](streaming-vs-polling-guide-zh-CN.md) | [繁體中文](streaming-vs-polling-guide-zh-TW.md) | [Français](streaming-vs-polling-guide-fr.md) | [Deutsch](streaming-vs-polling-guide-de.md) | **Español**
+
 Esta guía compara dos patrones de arquitectura para la automatización serverless con FSx for ONTAP S3 Access Points — **Polling con EventBridge** y **Streaming con Kinesis** — y proporciona criterios de decisión para seleccionar el patrón óptimo para su carga de trabajo.
 
 ## Descripción general

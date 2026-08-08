@@ -1,5 +1,7 @@
 # ファイルポータル — PoC から本番への移行ガイド
 
+🌐 **Language / 言語**: **日本語** | [English](../en/portal-poc-to-production.md)
+
 > DemoMode での評価から、本番 FSx for ONTAP 接続への移行手順。
 
 ## 概要

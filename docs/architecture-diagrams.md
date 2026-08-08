@@ -1,5 +1,7 @@
 # 構成図インデックス（ライト / ダーク）
 
+🌐 **Language / 言語**: **日本語** | [English](architecture-diagrams.en.md)
+
 🌐 **言語**: 日本語 | [English](architecture-diagrams.en.md)
 
 このリポジトリの構成図は、**ライトテーマ（白背景）** と **ダークテーマ（濃色背景）** の 2 種類を同じ内容で公開しています。

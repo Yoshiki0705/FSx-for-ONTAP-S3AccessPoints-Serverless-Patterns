@@ -1,5 +1,7 @@
 # File Portal — PoC to Production Migration Guide
 
+🌐 **Language / 言語**: [日本語](../ja/portal-poc-to-production.md) | **English**
+
 > Moving from DemoMode evaluation to production FSx for ONTAP connectivity.
 
 ## Overview
@@ -158,4 +160,4 @@ After deployment, verify each layer:
 - [Implementation Guide](../../solutions/amplify-portal/docs/IMPLEMENTATION.md)
 - [Security Review Template](security-review-template.md)
 - [Scaling Guide](./portal-scaling-guide.md)
-- [DemoMode Guide](../demo-mode-guide.md)
+- [DemoMode Guide](../demo-mode-guide.en.md)
