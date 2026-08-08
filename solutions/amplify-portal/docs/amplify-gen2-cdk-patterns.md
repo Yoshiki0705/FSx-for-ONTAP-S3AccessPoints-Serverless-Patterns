@@ -1,6 +1,8 @@
 # Amplify Gen2 + CDK 設計判断ガイド
 
-> CDK Conference Japan 2026 セッション「Amplify Gen2 で backend.ts に CDK を定義する/しないことによる CDK の挙動の違いとユースケース」(鈴木) の知見を反映。
+🌐 **Language / 言語**: [日本語](amplify-gen2-cdk-patterns.md) | [English](amplify-gen2-cdk-patterns.en.md)
+
+> CDK Conference Japan 2026 セッション「Amplify Gen2 で backend.ts に CDK を定義する/しないことによる CDK の挙動の違いとユースケース」の知見を反映。
 
 ## 判断基準: backend.ts 内に定義するか、外部スタックにするか
 
@@ -73,7 +75,7 @@ environment: { ONTAP_MGMT_IP: process.env.ONTAP_MGMT_IP || "" }
 ```
 npx ampx sandbox --once
   ├── cdk synth (backend.ts → CloudFormation テンプレート生成)
-  │     └── cdk-nag チェック実行（AwsSolutionsChecks）
+  │     └── cdk-nag は走らない（CDK_NAG=1 のときだけ適用される opt-in）
   ├── cdk deploy (差分のみ反映)
   │     ├── 初回: Cognito User Pool + AppSync API + Lambda x N + DynamoDB
   │     └── 2回目以降: 変更された Lambda コードのみホットスワップ（数秒）
@@ -83,10 +85,12 @@ npx ampx sandbox --once
 **ホットスワップ対象**: Lambda コード変更、AppSync resolver コード変更
 **フルデプロイになる変更**: IAM ポリシー変更、VPC 設定変更、新規リソース追加、環境変数追加
 
+> **cdk-nag を sandbox デプロイの経路に入れていない理由**: 常時適用すると Amplify 管理リソースの findings で `[AssemblyError]` になり、デプロイが止まります。`backend.ts` では `CDK_NAG=1` のときだけ有効になります。詳細は [IaC ガバナンスパターン](iac-governance-patterns.md) と AGENTS.md の「cdk-nag Design Decision」を参照。
+
 ## 推奨ワークフロー
 
 1. **開発時**: `npx ampx sandbox` (watch mode) — Lambda コード変更は数秒で反映
-2. **CI**: `npx ampx sandbox --once` + `cdk synth` → cdk-nag チェック → テスト
+2. **検証**: `npx tsc --noEmit` + `npx vitest run` + `npm run build`。cdk-nag を見る場合は `CDK_NAG=1 npx ampx generate outputs` を別途実行（CI には未統合）
 3. **本番**: `npx ampx pipeline-deploy` (Amplify Hosting の CI/CD パイプライン)
 
 ## 関連リファレンス

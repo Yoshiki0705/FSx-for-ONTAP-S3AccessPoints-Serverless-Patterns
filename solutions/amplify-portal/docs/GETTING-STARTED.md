@@ -1,5 +1,7 @@
 # Getting Started — FSx for ONTAP File Portal
 
+🌐 **Language / 言語**: [日本語](GETTING-STARTED.md) | [English](GETTING-STARTED.en.md)
+
 > 30 分で動作確認可能。DemoMode なら FSx for ONTAP なしで始められます。
 
 ## 前提条件
@@ -37,7 +39,7 @@ npm start
 ファイルブラウズ・AI 処理・アップロードは DemoMode で動作します。
 admin/data-protection 機能は「ONTAP 接続が必要」と表示されます。
 
-> **エンドユーザー向け**: デプロイ完了後、ポータルを使い始めるユーザーには [ユーザーガイド](../../docs/ja/portal-user-guide.md)（[EN](../../docs/en/portal-user-guide.md)）を案内してください。デプロイ手順の知識は不要で、日常操作だけをカバーしています。
+> **エンドユーザー向け**: デプロイ完了後、ポータルを使い始めるユーザーには [ユーザーガイド](../../../docs/ja/portal-user-guide.md)（[EN](../../../docs/en/portal-user-guide.md)）を案内してください。デプロイ手順の知識は不要で、日常操作だけをカバーしています。
 
 ## フルセットアップ（FSx for ONTAP 接続あり）
 
@@ -252,11 +254,11 @@ aws s3 rb s3://fsxn-portal-objectlock-demo --force
 
 ## 次のステップ
 
-- [PoC → 本番移行ガイド](../../docs/ja/portal-poc-to-production.md) — DemoMode から本番接続への移行チェックリスト
-- [スケーリングガイド](../../docs/ja/portal-scaling-guide.md) — キャパシティプランニングとスループット管理
-- [アクセシビリティ](../../docs/en/portal-accessibility.md) — キーボードナビゲーション、ARIA、スクリーンリーダー対応
-- [Admin Resource Management Demo Guide](../../docs/en/admin-resource-management-demo.md) — 全管理機能の操作手順
+- [PoC → 本番移行ガイド](../../../docs/ja/portal-poc-to-production.md) — DemoMode から本番接続への移行チェックリスト
+- [スケーリングガイド](../../../docs/ja/portal-scaling-guide.md) — キャパシティプランニングとスループット管理
+- [アクセシビリティ](../../../docs/en/portal-accessibility.md) — キーボードナビゲーション、ARIA、スクリーンリーダー対応
+- [Admin Resource Management Demo Guide](../../../docs/en/admin-resource-management-demo.md) — 全管理機能の操作手順
 - [AI Agent Demo Guide](./ai-agent-demo-guide.md) — AI エージェント機能の E2E デモ
-- [DemoMode Guide](../../docs/demo-mode-guide.md) — FSx for ONTAP なしでの検証方法
+- [DemoMode Guide](../../../docs/demo-mode-guide.md) — FSx for ONTAP なしでの検証方法
 - [IMPLEMENTATION.md](./IMPLEMENTATION.md) — 設計意図と変更履歴
-- [認可モデル](../../docs/ja/portal-authorization-model.md) — Cognito グループによるアクセス制御
+- [認可モデル](../../../docs/ja/portal-authorization-model.md) — Cognito グループによるアクセス制御

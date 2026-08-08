@@ -1,6 +1,8 @@
 # AWS DevOps Agent — CDK メンテナンス自動化の評価
 
-> CDK Conference Japan 2026 セッション「AWS DevOps Agent で CDK メンテナンスは楽になるのか？〜検証から見えた最適解〜」(奥田) の知見を反映。
+🌐 **Language / 言語**: [日本語](devops-agent-evaluation.md) | [English](devops-agent-evaluation.en.md)
+
+> CDK Conference Japan 2026 セッション「AWS DevOps Agent で CDK メンテナンスは楽になるのか？〜検証から見えた最適解〜」の知見を反映。
 
 ## DevOps Agent とは
 
@@ -61,7 +63,7 @@ AWS DevOps Agent (GA 2026/3) は、GitHub リポジトリに接続し、コー�
 Renovate PR (aws-cdk-lib bump)
     → cfn-lint (テンプレート構文)
     → cdk-nag (コンプライアンス)
-    → CDK ハーネステスト (構造アサーション 17 tests)
+    → CDK ハーネステスト (構造アサーション 35 tests)
     → IAM policy validation (Access Analyzer)
     → Unit tests (2,162+ tests)
 ```

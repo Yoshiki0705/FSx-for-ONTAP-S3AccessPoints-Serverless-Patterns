@@ -1,28 +1,31 @@
-# AppSync Authorization Troubleshooting (Amplify Gen2)
+# AppSync 認可のトラブルシューティング（Amplify Gen2）
 
-## Issue: "User is not authorized" on Custom Query/Mutation
+🌐 **Language / 言語**: [日本語](TROUBLESHOOTING-APPSYNC-AUTH.md) | [English](TROUBLESHOOTING-APPSYNC-AUTH.en.md)
 
-### Symptom
+## 事象: カスタム Query / Mutation で "User is not authorized"
 
-- Custom `adminQuery` (list operations) works fine
-- Custom `adminMutation` (create/delete operations) returns `"User is not authorized."`
-- User is confirmed signed-in (Cognito User Pools)
-- `data/resource.ts` has `.authorization((allow) => [allow.authenticated()])`
-- Sandbox deployment shows success
+### 症状
 
-### Root Cause
+- カスタム `adminQuery`（一覧系の操作）は正常に動作する
+- カスタム `adminMutation`（作成・削除系の操作）が `"User is not authorized."` を返す
+- ユーザーはサインイン済みであることを確認（Cognito User Pools）
+- `data/resource.ts` には `.authorization((allow) => [allow.authenticated()])` がある
+- サンドボックスのデプロイは成功している
 
-In Amplify Gen2 with multiple auth providers configured (Cognito User Pools + IAM), `generateClient<Schema>()` without an explicit `authMode` parameter may **not send the Cognito ID Token** to AppSync. Instead, it may use IAM or another default mode, causing AppSync to reject the request.
+### 根本原因
 
-This is documented behavior:
-- [Amplify Docs: AI Generation example](https://docs.amplify.aws/react/ai/generation/) shows `generateClient<Schema>({ authMode: "userPool" })`
-- [openillumi.com: How to Fix AWS Amplify GraphQL Unauthorized Errors](https://openillumi.com/en/en-amplify-graphql-unauthorized-fix-authmode/) — explicitly specifying `authMode` is the definitive fix
+Amplify Gen2 で複数の認証プロバイダを設定している場合（Cognito User Pools + IAM）、`authMode` を明示せずに `generateClient<Schema>()` を呼ぶと、**Cognito ID トークンが AppSync に送られないことがあります**。代わりに IAM など別の既定モードが使われ、AppSync がリクエストを拒否します。
+
+これは公開情報として記載のある挙動です。
+
+- [Amplify Docs: AI Generation の例](https://docs.amplify.aws/react/ai/generation/) では `generateClient<Schema>({ authMode: "userPool" })` と書かれています
+- [openillumi.com: How to Fix AWS Amplify GraphQL Unauthorized Errors](https://openillumi.com/en/en-amplify-graphql-unauthorized-fix-authmode/) — `authMode` の明示が決定的な対処であると述べられています
 
 Content was rephrased for compliance with licensing restrictions.
 
-### Solution
+### 対処
 
-Always specify `authMode: "userPool"` when creating the Amplify data client:
+Amplify データクライアントを作るときは常に `authMode: "userPool"` を指定します。
 
 ```typescript
 // BEFORE (broken): authMode not specified
@@ -32,19 +35,19 @@ const client = generateClient<Schema>();
 const client = generateClient<Schema>({ authMode: "userPool" });
 ```
 
-### Why List Worked But Create Failed
+### なぜ一覧は通り、作成は失敗したのか
 
-The list operation (`adminQuery` with `action: "listFlexCaches"`) uses a **Query** type in GraphQL. AppSync may have a cached/default behavior that allows Query types through with the available credentials. However, **Mutation** types (`adminMutation` with `action: "createFlexCache"`) undergo stricter authorization checks that require the explicit Cognito token.
+一覧の操作（`action: "listFlexCaches"` を伴う `adminQuery`）は GraphQL の **Query** 型です。AppSync は手元の資格情報のまま Query 型を通す既定・キャッシュ挙動を取ることがあります。一方 **Mutation** 型（`action: "createFlexCache"` を伴う `adminMutation`）はより厳しい認可チェックを受け、Cognito トークンの明示が必要になります。
 
-### Additional Issue: CloudFormation "Group Already Exists"
+### 併発する事象: CloudFormation の "Group Already Exists"
 
-When adding `groups: ["storage-admin"]` to `amplify/auth/resource.ts` and the group was previously created manually in the Cognito User Pool console, CloudFormation fails with:
+`amplify/auth/resource.ts` に `groups: ["storage-admin"]` を追加したとき、そのグループを事前に Cognito User Pool のコンソールで手動作成していると、CloudFormation が次のエラーで失敗します。
 
 ```
 Group storage-admin already exists in UserPool ap-northeast-1_XXXXX
 ```
 
-**Solution**: Do not declare `groups` in `defineAuth` if the group already exists. Manage group membership via CLI/console instead:
+**対処**: グループが既に存在する場合は `defineAuth` に `groups` を宣言しないでください。グループ所属は CLI またはコンソールで管理します。
 
 ```bash
 aws cognito-idp admin-add-user-to-group \
@@ -53,23 +56,23 @@ aws cognito-idp admin-add-user-to-group \
   --group-name storage-admin
 ```
 
-### Affected Components
+### 影響を受けたコンポーネント
 
-| Component | File | Fix Applied |
+| コンポーネント | ファイル | 適用した修正 |
 |-----------|------|-------------|
 | FlexCacheManager | `src/components/admin/FlexCacheManager.tsx` | `authMode: "userPool"` |
 | SnapMirrorStatus | `src/components/admin/SnapMirrorStatus.tsx` | `authMode: "userPool"` |
-| VolumeManager | `src/components/admin/VolumeManager.tsx` | Should also add `authMode: "userPool"` |
+| VolumeManager | `src/components/admin/VolumeManager.tsx` | `authMode: "userPool"` を追加すべき |
 
-### Verification
+### 確認手順
 
-1. Ensure sandbox is deployed (`amplify_outputs.json` updated)
-2. Sign out and sign back in (refresh Cognito token)
-3. Navigate to Resource Management > FlexCache
-4. Click "+ FlexCache Create" > fill form > Submit
-5. Should see success message (or ONTAP error, not auth error)
+1. サンドボックスがデプロイ済みであることを確認（`amplify_outputs.json` が更新されている）
+2. サインアウトして再サインイン（Cognito トークンを更新）
+3. Resource Management > FlexCache へ移動
+4. 「+ FlexCache Create」をクリック → フォーム入力 → Submit
+5. 成功メッセージが出ること（ONTAP のエラーは可。認可エラーでないこと）
 
-### References
+### 参考
 
 - [Amplify Gen2 Docs: Customize Authorization](https://docs.amplify.aws/react/build-a-backend/data/customize-authz/)
 - [AWS re:Post: Schema difference between Mutation and Query](https://repost.aws/questions/QUBa3YlvqRQsuex_K4YVS9RA)
@@ -77,9 +80,9 @@ aws cognito-idp admin-add-user-to-group \
 
 ---
 
-## Issue: "User is not authorized" from ONTAP REST API (Lambda-Level)
+## 事象: ONTAP REST API 側の "User is not authorized"（Lambda レベル）
 
-> **Canonical reference**: 詳細な接続アーキテクチャ、パスワード管理、ロックアウト復旧手順は [ONTAP-CONNECTION-GUIDE.md](./ONTAP-CONNECTION-GUIDE.md) を参照してください。
+> **一次情報**: 詳細な接続アーキテクチャ、パスワード管理、ロックアウト復旧手順は [ONTAP-CONNECTION-GUIDE.md](./ONTAP-CONNECTION-GUIDE.md) を参照してください。
 
 ### 要約
 
@@ -89,63 +92,65 @@ aws cognito-idp admin-add-user-to-group \
 
 ---
 
-## Issue: Lambda Timeout on FlexCache POST (Root Cause Found)
+## 事象: FlexCache の POST で Lambda がタイムアウトする（原因判明）
 
-### Symptom
+### 症状
 
-- `listFlexCaches` (GET) completes in 4-5 seconds ✅
-- `createFlexCache` (POST) causes Lambda to timeout at 60 seconds ❌
-- CloudWatch logs show `Duration: 60000.00 ms  Status: timeout`
-- Error displayed as "User is not authorized" (misleading — actual cause is timeout)
+- `listFlexCaches`（GET）は 4-5 秒で完了 ✅
+- `createFlexCache`（POST）で Lambda が 60 秒でタイムアウト ❌
+- CloudWatch ログに `Duration: 60000.00 ms  Status: timeout`
+- 画面表示は "User is not authorized"（誤解を招く。実際の原因はタイムアウト）
 
-### Root Cause
+### 根本原因
 
-ONTAP REST API `POST /storage/flexcache/flexcaches` is a **synchronous long-running operation** by default. Without `return_timeout=0`, ONTAP holds the HTTP connection open until the FlexCache is fully created (which can take 30-120+ seconds depending on volume size). This exceeds Lambda's timeout.
+ONTAP REST API の `POST /storage/flexcache/flexcaches` は、既定で**同期的な長時間処理**です。`return_timeout=0` を付けないと、ONTAP は FlexCache の作成が完全に終わるまで HTTP 接続を保持します（ボリュームサイズにより 30-120 秒以上）。これが Lambda のタイムアウトを超えます。
 
-The GET endpoint (`/storage/flexcache/flexcaches`) returns immediately with existing cache metadata — no long-running operation involved.
+GET のエンドポイント（`/storage/flexcache/flexcaches`）は既存のキャッシュのメタデータを即座に返すため、長時間処理は発生しません。
 
-### Fix Applied
+### 適用した修正
 
-1. **Added `return_timeout=0`** to the POST URL: `/storage/flexcache/flexcaches?return_timeout=0`
-   - This tells ONTAP to return immediately with a `202 Accepted` + job UUID
-   - The actual FlexCache creation proceeds asynchronously
+1. **POST の URL に `return_timeout=0` を追加**: `/storage/flexcache/flexcaches?return_timeout=0`
+   - ONTAP が `202 Accepted` + ジョブ UUID を即座に返すようになります
+   - FlexCache の作成自体は非同期で進みます
 
-2. **Increased Lambda timeout** from 60s to 120s in `amplify/backend.ts`
-   - Safety margin for other operations that may take longer
+2. **Lambda のタイムアウトを 60 秒から 120 秒へ引き上げ**（`amplify/backend.ts`）
+   - 他の操作が長引く場合の安全余裕
 
-3. **Added detailed logging** to `_create_flexcache` and `_ontap_request`
-   - HTTP status code and error messages now logged to CloudWatch
+3. **`_create_flexcache` と `_ontap_request` に詳細ログを追加**
+   - HTTP ステータスコードとエラーメッセージが CloudWatch に記録されます
 
-### ONTAP REST API: Synchronous vs Asynchronous
+### ONTAP REST API: 同期と非同期
 
-| Parameter | Behavior |
-|-----------|----------|
-| (default) | ONTAP holds connection until operation completes (can exceed Lambda timeout) |
-| `return_timeout=0` | ONTAP returns immediately with 202 + job UUID |
-| `return_timeout=N` | ONTAP waits up to N seconds, then returns job UUID if not complete |
+| パラメータ | 挙動 |
+|-----------|------|
+| （既定） | 処理完了まで ONTAP が接続を保持する（Lambda のタイムアウトを超えうる） |
+| `return_timeout=0` | ONTAP が 202 + ジョブ UUID を即座に返す |
+| `return_timeout=N` | ONTAP が最大 N 秒待ち、未完了ならジョブ UUID を返す |
 
-### How "User is not authorized" Appears from a Timeout
+### タイムアウトが "User is not authorized" に見える理由
 
-When Lambda times out (60s), AppSync receives no response and may synthesize a generic error. The Amplify client interprets certain AppSync error patterns as "User is not authorized." This is a misleading error message caused by the timeout, not by actual authorization failure.
+Lambda がタイムアウトすると（60 秒）、AppSync は応答を受け取れず、汎用のエラーを合成することがあります。Amplify クライアントは特定の AppSync エラーパターンを "User is not authorized." と解釈します。これはタイムアウトに起因する誤ったエラーメッセージで、実際の認可失敗ではありません。
 
 ---
 
-## CONFIRMED: ONTAP REST API `/storage/flexcache/flexcaches` Returns 401 for `fsxadmin`
+## 撤回: `/storage/flexcache/flexcaches` が `fsxadmin` を 401 で拒否する、と考えていた
 
-**UPDATE: This was WRONG.** The 401 was caused by fsxadmin password mismatch/lockout, NOT by an API restriction. See corrected analysis below.
+**この結論は誤りでした。** 推論の過程が参考になるため記録として残しています。401 の原因は `fsxadmin` のパスワード不一致とロックアウトであり、API 側の制限ではありませんでした。訂正後の分析を以下に記します。
 
-### Corrected Root Cause: Password Mismatch / Account Lockout
+### 訂正後の根本原因: パスワード不一致 / アカウントロックアウト
 
-The `fsxadmin` user has FULL access to all ONTAP REST API endpoints including:
-- `/storage/flexcache/flexcaches` (GET, POST, DELETE)
-- `/snapmirror/relationships` (GET, POST, PATCH, DELETE)
-- All other cluster-scope APIs
+`fsxadmin` ユーザーは、以下を含む ONTAP REST API の全エンドポイントにフルアクセスを持ちます。
 
-The 401 error was caused by:
-1. **Password mismatch**: The password in Secrets Manager did not match the actual `fsxadmin` password on the FSx for ONTAP filesystem
-2. **Account lockout**: Multiple failed authentication attempts (from earlier timeout debugging) triggered ONTAP's account lockout mechanism
+- `/storage/flexcache/flexcaches`（GET、POST、DELETE）
+- `/snapmirror/relationships`（GET、POST、PATCH、DELETE）
+- その他すべてのクラスタースコープ API
 
-### Resolution
+401 の原因は次の 2 点でした。
+
+1. **パスワード不一致**: Secrets Manager 上のパスワードが、Amazon FSx for NetApp ONTAP ファイルシステム上の実際の `fsxadmin` パスワードと一致していなかった
+2. **アカウントロックアウト**: 認証失敗の繰り返し（先のタイムアウト調査によるもの）が ONTAP のアカウントロックアウト機構を発動させた
+
+### 解決手順
 
 ```bash
 # 1. Reset fsxadmin password via AWS FSx API
@@ -161,42 +166,43 @@ aws secretsmanager put-secret-value \
   --region ap-northeast-1
 ```
 
-### Evidence: Working after password reset
-- FlexCache list: ✅ `1 FlexCache volumes` (cachevol01 displayed)
-- FlexCache create: ✅ `fc_e2e_test` accepted (202 + job UUID)
-- SnapMirror list: ✅ `1 レプリケーション関係` (svm_shift:ds_migtoaws → fsxsvm01:ds_migtoaws_bk)
+### 証跡: パスワードリセット後は正常動作
+- FlexCache 一覧: ✅ `1 FlexCache volumes`（cachevol01 が表示）
+- FlexCache 作成: ✅ `fc_e2e_test` が受理（202 + ジョブ UUID）
+- SnapMirror 一覧: ✅ `1 レプリケーション関係`（svm_shift:ds_migtoaws → fsxsvm01:ds_migtoaws_bk）
 
-### Lesson Learned
+### 学び
 
-Never assume an API endpoint is "restricted" when getting 401. Always verify:
-1. Is the password correct? (check Secrets Manager vs actual)
-2. Is the account locked? (ONTAP locks after N failed attempts)
-3. Are you connecting to the right endpoint? (filesystem mgmt IP vs SVM mgmt LIF)
+401 が出たときに、そのエンドポイントが「制限されている」と決めつけないこと。常に次を確認します。
+
+1. パスワードは正しいか？（Secrets Manager と実際の値を照合）
+2. アカウントはロックされていないか？（ONTAP は N 回の失敗でロックする）
+3. 接続先のエンドポイントは正しいか？（ファイルシステム管理 IP と SVM 管理 LIF）
 
 ---
 
-## UI Improvements Identified During Debugging
+## 調査中に見つかった UI の改善点
 
-### 1. Error Message Clarity
-**Problem**: ONTAP 401 errors display as generic "User is not authorized" — same wording as AppSync auth failures, causing confusion.
-**Fix**: Prefix ONTAP errors with the HTTP status and endpoint: `"ONTAP 401: /storage/flexcache/... — check fsxadmin credentials"`
+### 1. エラーメッセージの明確化
+**問題**: ONTAP の 401 が汎用の "User is not authorized" として表示され、AppSync の認可失敗と同じ文言になるため混乱を招く。
+**改善**: ONTAP のエラーには HTTP ステータスとエンドポイントを前置する: `"ONTAP 401: /storage/flexcache/... — check fsxadmin credentials"`
 
-### 2. FlexCache Job Status Tracking
-**Problem**: After successful creation (202 Accepted), the UI says "building in background" but provides no way to check job progress.
-**Fix**: Store the job UUID and add a "Check Status" button that polls `/cluster/jobs/{uuid}`
+### 2. FlexCache のジョブ状態の追跡
+**問題**: 作成成功（202 Accepted）後、UI は「バックグラウンドで構築中」と表示するが、進捗を確認する手段がない。
+**改善**: ジョブ UUID を保持し、`/cluster/jobs/{uuid}` をポーリングする「状態を確認」ボタンを追加する
 
-### 3. Auto-Refresh After Mutation
-**Problem**: After create/delete, user must manually navigate away and back to see updated list.
-**Fix**: Automatically refresh the list 5-10 seconds after successful creation
+### 3. Mutation 後の自動リフレッシュ
+**問題**: 作成・削除の後、一覧を更新するには画面を離れて戻る必要がある。
+**改善**: 作成成功の 5-10 秒後に一覧を自動更新する
 
-### 4. Connection Health Indicator
-**Problem**: When ONTAP credentials are wrong, ALL operations fail silently or with confusing errors.
-**Fix**: Add a connection health check on panel load (hit `/api/cluster` endpoint, show green/red indicator)
+### 4. 接続状態のインジケーター
+**問題**: ONTAP の資格情報が誤っていると、すべての操作が無言で失敗するか、分かりにくいエラーになる。
+**改善**: パネル読み込み時に接続チェックを行う（`/api/cluster` エンドポイントを叩き、緑・赤で表示）
 
-### 5. Destructive Action Safeguards
-**Problem**: Delete button uses `window.confirm()` — no visual distinction from other actions.
-**Fix**: Use an inline confirmation UI with red styling, require typing the volume name for deletion
+### 5. 破壊的操作の保護
+**問題**: 削除ボタンが `window.confirm()` を使っており、他の操作と見分けがつかない。
+**改善**: 赤系のスタイルを当てたインラインの確認 UI にし、削除にはボリューム名の入力を要求する
 
-### 6. SnapMirror State Display
-**Problem**: State `broken_off` shown as raw string — users don't know what it means.
-**Fix**: Map states to human-readable labels with color indicators (green=snapmirrored, yellow=transferring, red=broken_off)
+### 6. SnapMirror の状態表示
+**問題**: 状態 `broken_off` が生の文字列で表示され、意味が分からない。
+**改善**: 状態を人が読める表示に対応づけ、色を添える（緑=snapmirrored、黄=transferring、赤=broken_off）

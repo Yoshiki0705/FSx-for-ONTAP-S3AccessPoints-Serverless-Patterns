@@ -22,7 +22,7 @@ cd solutions/amplify-portal
 npm install
 cp amplify/portal-config.example.ts amplify/portal-config.ts
 # portal-config.ts を編集: s3ApAlias に AP alias またはバケット名を設定
-SKIP_CDK_NAG=1 npx ampx sandbox --once
+npx ampx sandbox --once
 ```
 
 約 4 分でデプロイ完了:
@@ -103,7 +103,7 @@ npm run dev
 
 ```bash
 cd solutions/amplify-portal
-SKIP_CDK_NAG=1 npx ampx sandbox delete --yes
+npx ampx sandbox delete --yes
 ```
 
 ---
