@@ -521,7 +521,7 @@ hybrid work (UC7/UC8) may adopt it.
 - [`shared/tests/test_output_writer.py`](../shared/tests/test_output_writer.py) — Existing 28 tests; new tests land here
 - [`docs/output-destination-patterns.md`](output-destination-patterns.md) — Pattern catalog; add "Large object handling" section
 - [`docs/aws-feature-requests/fsxn-s3ap-improvements.md`](aws-feature-requests/fsxn-s3ap-improvements.md) — single-PUT 5 GB limit accepted as fundamental (section "Secondary / Informational Findings" #1; note the object ceiling has since moved to 50 GB)
-- [`docs/verification-results-phase7-outputdestination.md`](verification-results-phase7-outputdestination.md) — Phase 7 Theme E verification report (same doc pattern will apply to B-P8-3 verification)
+- ``docs/verification-results-phase7-outputdestination.md`` — Phase 7 Theme E verification report (same doc pattern will apply to B-P8-3 verification)
 - [`docs/design-pattern-c-to-b-hybrid.md`](design-pattern-c-to-b-hybrid.md) — B-P8-2 design (potential `put_stream` adopter in UC7/UC8 AI artifacts)
 
 ## 12. Open Questions

@@ -135,6 +135,6 @@ flowchart TD
 |-------------|------|
 | [管理機能マップ](../../solutions/amplify-portal/docs/admin-capability-map.md) | 各インターフェースの担当範囲とポータルの実装状況 |
 | [ONTAP 接続ガイド](../../solutions/amplify-portal/docs/ONTAP-CONNECTION-GUIDE.md) | VPC・シークレット・管理 LIF の配線 |
-| [検証状況](../../solutions/amplify-portal/docs/verification-results.md) | どの機能がどの水準まで確認済みか |
+| [検証状況](../../solutions/amplify-portal/docs/verification-results.en.md) | どの機能がどの水準まで確認済みか |
 | [代替手段の比較](../comparison-alternatives.md) | S3 AP / EFS / NFS / DataSync と読み取りキャッシュの選択 |
 | [ONTAP 連携メモ](../ontap-integration-notes.md) | NAS 併用、ID、データ保護、OT |

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Check that translated documentation pairs are navigable and their links resolve.
 
-Two failures this catches, both of which had shipped:
+Three failures this catches, all of which had shipped:
 
 **A pair with no language switcher.** 27 of 83 pairs had none, so a reader who
 landed on one language had no way to reach the other. The translation existed;
@@ -11,6 +11,12 @@ nothing pointed at it.
 docs alone, because `../../docs/` from `solutions/amplify-portal/docs/` is
 `solutions/docs/`, which does not exist. Nobody noticed because nothing looked
 at them: a dead relative link renders as ordinary text on GitHub until clicked.
+
+**A link to a file that is not in the repository.** `.gitignore` excludes
+`**/docs/verification-results.md` while its `.en.md` twin is committed, so a link
+to the Japanese one resolves for whoever wrote it and 404s for every reader. Only
+git decides what exists here, for that reason — and the first version of this
+check, which trusted the filesystem, added a switcher pointing at that very file.
 
 Six pairing conventions are in use across the repository, which is why this reads
 the layout rather than assuming one:
@@ -30,14 +36,42 @@ from __future__ import annotations
 
 import pathlib
 import re
+import subprocess
 import sys
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 
+
+def _in_repository() -> set[pathlib.Path]:
+    """Files a reader of the repository can actually open.
+
+    `solutions/amplify-portal/docs/verification-results.md` exists on a
+    contributor's machine and is excluded by `.gitignore`, while its `.en.md`
+    twin is committed. Pairing the two produced a switcher on the published file
+    pointing at one that is not published — a dead link created by the very pass
+    meant to remove dead links, and invisible locally because the file was right
+    there.
+    """
+    result = subprocess.run(
+        ["git", "-C", str(ROOT), "ls-files", "--cached", "--others", "--exclude-standard"],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if result.returncode != 0:
+        return set()
+    return {ROOT / line for line in result.stdout.split("\n") if line}
+
+
 LOCALES = ("en", "ko", "zh-CN", "zh-TW", "fr", "de", "es")
 SWITCHER = re.compile(r"Language / 言語|🌐 *(言語|Language)")
 LOCALE_SUFFIX = re.compile(r"[.\-](" + "|".join(LOCALES) + r")\.md$")
-RELATIVE_LINK = re.compile(r"\]\((\.{1,2}/[^)#\s]+\.md)")
+# Any markdown link to a `.md` file that is not an absolute URL. Restricting this
+# to `./` and `../` prefixes missed same-directory links, and a dead
+# `[日本語](verification-results.md)` in the same directory is just as dead. The
+# `](` prefix keeps it unambiguous: an inline code span containing a filename has
+# no such prefix.
+RELATIVE_LINK = re.compile(r"\]\((?!https?://|/)([^)#\s]+\.md)")
 
 # Directories whose pairs are checked. The pattern library under `solutions/`
 # carries 108 eight-locale README sets that are generated, and including them
@@ -53,8 +87,12 @@ def _switcher(path: pathlib.Path) -> bool:
 
 def find_pairs() -> list[list[pathlib.Path]]:
     """Every group of files that are translations of one another."""
+    published = _in_repository()
     groups: list[list[pathlib.Path]] = []
     claimed: set[pathlib.Path] = set()
+
+    def exists(path: pathlib.Path) -> bool:
+        return path.exists() and path in published
 
     # A Japanese file in docs/ja/ or docs/ paired with the same name in docs/en/.
     for parent in (ROOT / "docs" / "ja", ROOT / "docs"):
@@ -62,7 +100,7 @@ def find_pairs() -> list[list[pathlib.Path]]:
             continue
         for base in sorted(parent.glob("*.md")):
             twin = ROOT / "docs" / "en" / base.name
-            if twin.exists() and base not in claimed:
+            if exists(base) and exists(twin) and base not in claimed:
                 groups.append([base, twin])
                 claimed.update({base, twin})
 
@@ -72,7 +110,7 @@ def find_pairs() -> list[list[pathlib.Path]]:
         if not parent.is_dir():
             continue
         for base in sorted(parent.glob("*.md")):
-            if base in claimed or LOCALE_SUFFIX.search(base.name):
+            if base in claimed or LOCALE_SUFFIX.search(base.name) or not exists(base):
                 continue
             group = [base]
             for locale in LOCALES:
@@ -80,7 +118,7 @@ def find_pairs() -> list[list[pathlib.Path]]:
                     parent / f"{base.stem}.{locale}.md",
                     parent / f"{base.stem}-{locale}.md",
                 ):
-                    if candidate.exists():
+                    if exists(candidate):
                         group.append(candidate)
             if len(group) > 1:
                 groups.append(group)
@@ -99,17 +137,26 @@ def check_switchers() -> list[str]:
 
 
 def check_links() -> list[str]:
+    published = _in_repository()
     findings = []
     for name in LINK_DIRS:
         parent = ROOT / name
         if not parent.is_dir():
             continue
         for md in sorted(parent.glob("*.md")):
+            if published and md not in published:
+                continue
             lines = md.read_text(encoding="utf-8").split("\n")
             for number, line in enumerate(lines, start=1):
                 for match in RELATIVE_LINK.finditer(line):
-                    if not (md.parent / match.group(1)).resolve().exists():
-                        findings.append(f"{md.relative_to(ROOT)}:{number}: link resolves to nothing: {match.group(1)}")
+                    target = (md.parent / match.group(1)).resolve()
+                    if not target.exists():
+                        reason = "resolves to nothing"
+                    elif published and target not in published:
+                        reason = "resolves to a file that is not in the repository"
+                    else:
+                        continue
+                    findings.append(f"{md.relative_to(ROOT)}:{number}: link {reason}: {match.group(1)}")
     return findings
 
 
