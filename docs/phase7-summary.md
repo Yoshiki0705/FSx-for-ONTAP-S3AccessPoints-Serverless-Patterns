@@ -73,7 +73,7 @@ with outputs physically landing on FSx for ONTAP via the S3 Access Point:
 CLI evidence and sample outputs captured at
 [`docs/verification-evidence/uc{15,16,17}-demo/`](verification-evidence/).
 Full report at
-[`docs/verification-results-phase7-outputdestination.md`](verification-results-phase7-outputdestination.md).
+``docs/verification-results-phase7-outputdestination.md``.
 
 ### 4. Documentation updates
 
@@ -352,13 +352,13 @@ compute and introduced new stack-cleanup surface.
 ## Cross-References
 
 
-- [`docs/verification-results-phase7-outputdestination.md`](verification-results-phase7-outputdestination.md) — Theme E AWS evidence
+- ``docs/verification-results-phase7-outputdestination.md`` — Theme E AWS evidence
 - [`docs/verification-evidence/uc{15,16,17}-demo/`](verification-evidence/) — CLI evidence
 - [`docs/output-destination-patterns.md`](output-destination-patterns.md) — Pattern A/B/C catalog
-- [`docs/article-phase7-en.md`](article-phase7-en.md) — published-ready narrative (dev.to draft)
+- ``docs/article-phase7-en.md`` — published-ready narrative (dev.to draft)
 - [`docs/phase7-troubleshooting.md`](phase7-troubleshooting.md) — debugging playbook for Phase 7 UCs
 - [`docs/dual-kiro-coordination.md`](dual-kiro-coordination.md) — A/B coordination protocol
-- [`docs/verification-results-output-destination.md`](verification-results-output-destination.md) — UC11/14 Phase 2 (reference)
+- ``docs/verification-results-output-destination.md`` — UC11/14 Phase 2 (reference)
 - [`README.md#uc-別の出力先制約`](../README.md#uc-別の出力先制約) — per-UC output destination table
 - [`shared/output_writer.py`](../shared/output_writer.py) — OutputWriter implementation
 

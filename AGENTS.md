@@ -8,7 +8,7 @@ FSx for ONTAP S3 Access Points Serverless Patterns — a library of **28 industr
 
 **Two pillars**: `solutions/` (S3 AP data processing patterns) + `operations/` (FS operational optimization patterns).
 
-**Test coverage**: ~4,000 Python tests across 228 files + ~180 vitest tests across 14 files | cfn-lint + ruff validation
+**Test coverage**: ~4,000 Python tests across 229 files + ~180 vitest tests across 14 files | cfn-lint + ruff validation
 
 > The **file** counts above are checked against the tree by `make drift`, so they fail
 > rather than age. The test total is deliberately approximate, because it is the sum of

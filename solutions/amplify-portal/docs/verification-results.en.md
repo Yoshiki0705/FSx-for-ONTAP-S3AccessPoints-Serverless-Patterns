@@ -1,7 +1,5 @@
 # File Portal — Verification Results
 
-**English** | [日本語](verification-results.md)
-
 This document records **how far each portal feature has been verified against a real system**. Its purpose is to keep "verified on real hardware" clearly separate from "the tests pass".
 
 > **Why the distinction matters**: "the tests pass" is not the same as "it works in production". Unit tests exercise handler logic; they do not exercise the actual shape of an ONTAP REST response, AppSync authorization, VPC reachability, or Cognito group propagation. Calling an unverified feature "verified" hides exactly the places a PoC breaks first.

@@ -1,5 +1,7 @@
 # Storage Browser for S3 + FSx for ONTAP S3 Access Points — Demo Guide
 
+🌐 **Language / 言語**: [日本語](../ja/storage-browser-demo-guide.md) | **English**
+
 Browse, preview, download, and upload files on your FSx for ONTAP volumes directly from a React web application using [Storage Browser for S3](https://ui.docs.amplify.aws/react/connected-components/storage/storage-browser).
 
 ---

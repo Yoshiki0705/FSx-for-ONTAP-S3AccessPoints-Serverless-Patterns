@@ -1,5 +1,7 @@
 # 管理者向けリソース管理 — デモガイド
 
+🌐 **Language / 言語**: **日本語** | [English](../en/admin-resource-management-demo.md)
+
 [English](../en/admin-resource-management-demo.md) | **日本語**
 
 > FSx for ONTAP（fs-0123456789abcdef1、ONTAP 9.17.1）に対して 2026-07-26 に E2E 検証済み

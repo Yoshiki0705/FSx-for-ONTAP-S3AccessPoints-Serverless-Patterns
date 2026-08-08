@@ -280,5 +280,4 @@ Model Registry が無効の場合、直接 ModelName を指定する従来の方
 ## 関連ドキュメント
 
 - [推論コスト比較ガイド](inference-cost-comparison.md)
-- [Phase 4 設計書](../.kiro/specs/fsxn-s3ap-serverless-patterns-phase4/design.md)
 - [AWS SageMaker Model Registry ドキュメント](https://docs.aws.amazon.com/sagemaker/latest/dg/model-registry.html)

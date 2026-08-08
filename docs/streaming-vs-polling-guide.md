@@ -1,5 +1,7 @@
 # ストリーミング vs ポーリング選択ガイド
 
+🌐 **Language / 言語**: **日本語** | [English](streaming-vs-polling-guide-en.md) | [한국어](streaming-vs-polling-guide-ko.md) | [简体中文](streaming-vs-polling-guide-zh-CN.md) | [繁體中文](streaming-vs-polling-guide-zh-TW.md) | [Français](streaming-vs-polling-guide-fr.md) | [Deutsch](streaming-vs-polling-guide-de.md) | [Español](streaming-vs-polling-guide-es.md)
+
 本ガイドでは、FSx for ONTAP S3 Access Points を活用したサーバーレス自動化パターンにおける 2 つのアーキテクチャパターン — **EventBridge ポーリング** と **Kinesis ストリーミング** — を比較し、ワークロードに最適なパターンを選択するための判断基準を提供します。
 
 ## 概要

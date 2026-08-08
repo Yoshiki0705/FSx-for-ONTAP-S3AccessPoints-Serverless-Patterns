@@ -1,5 +1,7 @@
 # Nextcloud External Storage with FSx for ONTAP S3 Access Points
 
+🌐 **Language / 言語**: [日本語](nextcloud-external-storage-s3ap.md) | **English**
+
 ## Executive Summary
 
 Nextcloud's External Storage app can connect to FSx for ONTAP volumes via S3 Access Points, presenting enterprise NAS files in Nextcloud's familiar file browser without data migration. This guide covers the setup procedure, IAM configuration, architecture options, and operational considerations.

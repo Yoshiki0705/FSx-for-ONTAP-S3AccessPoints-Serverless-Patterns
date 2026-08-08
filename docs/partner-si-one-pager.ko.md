@@ -1,5 +1,7 @@
 # Partner/SI 1페이지 요약: FSx for ONTAP S3 Access Points Serverless Patterns
 
+🌐 **Language / 言語**: [日本語](partner-si-one-pager.md) | [English](partner-si-one-pager.en.md) | **한국어** | [简体中文](partner-si-one-pager.zh-CN.md)
+
 🌐 **Language / 언어**: [日本語](partner-si-one-pager.md) | [English](partner-si-one-pager.en.md) | [한국어](partner-si-one-pager.ko.md) | [简体中文](partner-si-one-pager.zh-CN.md)
 
 ---

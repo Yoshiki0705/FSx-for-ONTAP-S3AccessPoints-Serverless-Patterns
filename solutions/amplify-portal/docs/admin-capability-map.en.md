@@ -1,5 +1,7 @@
 # Admin capability map — what each interface covers, and what this portal implements
 
+🌐 **Language / 言語**: [日本語](admin-capability-map.md) | **English**
+
 > Purpose: set out which ONTAP management interface owns which area, and record
 > how far this portal is implemented today, based on measurement rather than intent.
 

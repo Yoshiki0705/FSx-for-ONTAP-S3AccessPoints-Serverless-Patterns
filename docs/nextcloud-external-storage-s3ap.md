@@ -1,5 +1,7 @@
 # Nextcloud External Storage と FSx for ONTAP S3 Access Points の統合
 
+🌐 **Language / 言語**: **日本語** | [English](nextcloud-external-storage-s3ap.en.md)
+
 ## エグゼクティブサマリ
 
 Nextcloud の External Storage アプリを使うことで、FSx for ONTAP ボリューム上のファイルを S3 Access Point 経由で Nextcloud のファイルブラウザに表示できます。データ移行なしに、エンタープライズ NAS ファイルを Web インターフェースで閲覧・操作できる構成です。

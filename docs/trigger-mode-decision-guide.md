@@ -151,4 +151,4 @@ POLLING ──→ EVENT_DRIVEN ──→ HYBRID
 - [ストリーミング vs ポーリング選択ガイド](streaming-vs-polling-guide.md)
 - [イベント駆動 FPolicy クイックスタート](event-driven/README.md)
 - [Deployment Profiles](deployment-profiles.md)
-- [FPolicy Persistent Store 設定](event-driven/fpolicy-persistent-store.md)
+- [FPolicy Persistent Store 設定](persistent-store-sizing-calculator.md)

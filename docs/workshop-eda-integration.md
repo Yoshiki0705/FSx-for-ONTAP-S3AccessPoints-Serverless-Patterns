@@ -1,5 +1,7 @@
 # AWS Workshop: FSx for ONTAP S3 AP × EDA ワークフロー統合ガイド
 
+🌐 **Language / 言語**: **日本語** | [English](en/workshop-eda-integration.md)
+
 > **Workshop リンク**: [FSx for NetApp ONTAP S3 Access Points Workshop](https://catalog.us-east-1.prod.workshops.aws/workshops/9cd82e0b-8348-456b-932a-818b9e5825a1/en-US)
 
 本ドキュメントは、AWS Workshop Studio で公開されている EDA ハンズオンの各モジュールと、本リポジトリの UC パターンの対応関係を整理し、Workshop で検証済みのシナリオを各パターンに取り込むためのガイドです。
