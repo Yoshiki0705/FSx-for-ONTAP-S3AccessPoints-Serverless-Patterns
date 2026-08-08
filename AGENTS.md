@@ -4,11 +4,18 @@
 
 ## Project Overview
 
-FSx for ONTAP S3 Access Points Serverless Patterns — a library of **28 industry-specific use cases (UC1-UC28)** + **1 SAP/ERP pattern** + **7 FlexCache/FlexClone patterns** + **2 GenAI patterns** + **1 HA monitoring pattern** + **2 event-driven patterns** + **1 edge delivery pattern** + **6 operations optimization patterns (OPS1-OPS6)** using Amazon FSx for ONTAP S3 Access Points. Each pattern is an independent CloudFormation/SAM template with shared Python modules.
+FSx for ONTAP S3 Access Points Serverless Patterns — a library of **28 industry-specific use cases (UC1-UC28)** + **1 SAP/ERP pattern** + **10 FlexCache/FlexClone patterns** + **2 GenAI patterns** + **1 HA monitoring pattern** + **2 event-driven patterns** + **2 edge delivery patterns** + **6 operations optimization patterns (OPS1-OPS6)** using Amazon FSx for ONTAP S3 Access Points. Each pattern is an independent CloudFormation/SAM template with shared Python modules.
 
 **Two pillars**: `solutions/` (S3 AP data processing patterns) + `operations/` (FS operational optimization patterns).
 
-**Test coverage**: 2,162+ unit/property tests | 126 test files | cfn-lint + ruff validation
+**Test coverage**: ~4,000 Python tests across 229 files + ~180 vitest tests across 14 files | cfn-lint + ruff validation
+
+> The **file** counts above are checked against the tree by `make drift`, so they fail
+> rather than age. The test total is deliberately approximate, because it is the sum of
+> three runs: `make test`, the per-directory portal handler runs (not included in `make
+> test` — see the module-collision note below) and `npx vitest run` in
+> `solutions/amplify-portal`. Pinning an exact total here would mean editing this line
+> on every added test, and a number nobody maintains is worse than a rounded one.
 
 ## Core Commands
 
@@ -85,14 +92,17 @@ python3 -m pytest infrastructure/knfsd-file-cache/tests/ -v -m integration  # In
 │   │       ├── samconfig.toml.example
 │   │       └── README.md             # 8 languages (ja/en/ko/zh-CN/zh-TW/fr/de/es)
 │   ├── sap/erp-adjacent/            # SAP/ERP pattern
-│   ├── flexcache/                    # FlexCache/FlexClone patterns (7)
+│   ├── flexcache/                    # FlexCache/FlexClone patterns (10)
 │   │   ├── anycast-dr/
-│   │   ├── dynamic-render-workflow/
-│   │   ├── rag-enterprise-files/
 │   │   ├── automotive-cae/
-│   │   ├── life-sciences-research/
+│   │   ├── cross-region-s3ap/
+│   │   ├── devops-cicd/
+│   │   ├── dynamic-render-workflow/
 │   │   ├── gaming-build-pipeline/
-│   │   └── devops-cicd/
+│   │   ├── life-sciences-research/
+│   │   ├── rag-enterprise-files/
+│   │   ├── same-region-s3ap/
+│   │   └── snapmirror-cross-region-dr/
 │   ├── genai/                        # GenAI patterns (2)
 │   │   ├── kb-selfservice-curation/
 │   │   └── quick-agentic-workspace/
@@ -100,16 +110,18 @@ python3 -m pytest infrastructure/knfsd-file-cache/tests/ -v -m integration  # In
 │   ├── event-driven/                 # Event-driven patterns (2)
 │   │   ├── fpolicy/
 │   │   └── prototype/
-│   └── edge/content-delivery/        # CDN/edge delivery pattern
-├── operations/             # Operational optimization patterns (NEW)
+│   └── edge/                         # CDN/edge delivery patterns (2)
+│       ├── content-delivery/
+│       └── media-ivs-vod-publishing/
+├── operations/             # Operational optimization patterns (6, all built)
 │   ├── README.md           # Category overview + adoption roadmap
 │   ├── docs/               # Cross-pattern docs (metrics-mapping, SLO, etc.)
 │   ├── capacity-rightsizing/   # OPS1: Volume/throughput monitoring + AI recommendations
-│   ├── snapshot-lifecycle/     # OPS4: Retention compliance + cleanup (planned)
-│   ├── tiering-optimizer/      # OPS3: FabricPool policy optimization (planned)
-│   ├── storage-efficiency/     # OPS2: Dedup/compression tracking (planned)
-│   ├── cost-optimization/      # OPS5: FinOps integration (planned)
-│   └── qos-monitoring/         # OPS6: QoS policy compliance (planned)
+│   ├── storage-efficiency/     # OPS2: Dedup/compression tracking
+│   ├── tiering-optimizer/      # OPS3: FabricPool policy optimization
+│   ├── snapshot-lifecycle/     # OPS4: Retention compliance + cleanup
+│   ├── cost-optimization/      # OPS5: FinOps integration
+│   └── qos-monitoring/         # OPS6: QoS policy compliance
 ├── infrastructure/         # Shared infrastructure templates (not per-pattern)
 │   ├── demo-ad-environment.yaml  # AD + EC2 for WINDOWS S3 AP testing
 │   └── knfsd-file-cache/         # KNFSD NFS read cache (Terraform, Preview)

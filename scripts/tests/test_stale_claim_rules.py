@@ -500,6 +500,201 @@ def test_no_rule_claims_the_endpoint_count(drift, line):
 
 
 # --------------------------------------------------------------------------
+# Pattern and test-file counts
+#
+# Five of these were stale at once and had been for months: FlexCache said 7
+# with 10 directories on disk, edge said 1 with 2, five of the six operations
+# patterns were annotated "(planned)" while all six were built, and the coverage
+# line said 126 test files with 229 present. Nobody wrote anything false — the
+# repository grew.
+#
+# The reason no check caught it is duller than the drift: `AGENTS.md` was not in
+# `COUNT_GLOBS`, so the file where every one of these numbers lives was the one
+# file the count check never opened.
+# --------------------------------------------------------------------------
+
+# Each count is written twice in the same file, in opposite orders: the summary
+# sentence leads with the number, the directory tree trails it in parentheses.
+# Both forms are kept here because matching only the parenthesised one left the
+# summary line — the line most readers actually read — unchecked.
+COUNT_PHRASINGS = {
+    "flexcache-patterns": (
+        10,
+        "**10 FlexCache/FlexClone patterns**",
+        "│   ├── flexcache/                    # FlexCache/FlexClone patterns (10)",
+    ),
+    "genai-patterns": (
+        2,
+        "**2 GenAI patterns**",
+        "│   ├── genai/                        # GenAI patterns (2)",
+    ),
+    "event-driven-patterns": (
+        2,
+        "**2 event-driven patterns**",
+        "│   ├── event-driven/                 # Event-driven patterns (2)",
+    ),
+    "edge-patterns": (
+        2,
+        "**2 edge delivery patterns**",
+        "│   └── edge/                         # CDN/edge delivery patterns (2)",
+    ),
+    "operations-patterns": (
+        6,
+        "**6 operations optimization patterns (OPS1-OPS6)**",
+        "├── operations/             # Operational optimization patterns (6, all built)",
+    ),
+    "pytest-files": (229, "~4,000 Python tests across 229 files", None),
+    "vitest-files": (177, "177 vitest tests across 14 files", None),
+}
+
+_COUNT_CASES = [
+    pytest.param(name, line, id=f"{name}/{label}")
+    for name, (_, *forms) in sorted(COUNT_PHRASINGS.items())
+    for label, line in zip(("number-first", "number-last"), forms, strict=True)
+    if line
+]
+
+
+def _claim(drift, name: str):
+    return next(c for c in drift.COUNT_CLAIMS if c["name"] == name)
+
+
+@pytest.mark.parametrize(("name", "line"), _COUNT_CASES)
+def test_both_orders_of_a_count_are_understood(drift, name, line):
+    """Number-first and number-last phrasings of the same count both match."""
+    match = _claim(drift, name)["pattern"].search(line)
+    assert match, line
+    stated = next(g for g in match.groups() if g)
+    assert int(stated) == _claim(drift, name)["count"](), (
+        f"{name}: the phrasing matched but the number read from it disagrees with disk"
+    )
+
+
+@pytest.mark.parametrize(("name", "line"), _COUNT_CASES)
+def test_a_stale_count_is_reported(drift, name, line, tmp_path, monkeypatch):
+    """The value that was actually committed, made stale again, is a finding.
+
+    The expected number is pinned before `ROOT` moves, because the counters read
+    the repository through it — pointing `ROOT` at an empty directory would make
+    every counter return zero and report a broken reader instead of a stale
+    claim, which is a different finding and would leave this untested.
+    """
+    expected = _claim(drift, name)["count"]()
+    stale = line.replace(str(expected), str(expected + 3), 1)
+    assert stale != line, "the fixture no longer contains the number it claims to"
+
+    (tmp_path / "AGENTS.md").write_text(stale, encoding="utf-8")
+    monkeypatch.setattr(drift, "ROOT", tmp_path)
+    monkeypatch.setattr(drift, "COUNT_GLOBS", ["AGENTS.md"])
+    monkeypatch.setattr(drift, "COUNT_CLAIMS", [{**_claim(drift, name), "count": lambda n=expected: n}])
+
+    findings = drift.check_count_claims()
+    assert len(findings) == 1, findings
+    assert f"says {expected + 3}" in findings[0].detail
+    assert f"has {expected}" in findings[0].detail
+
+
+@pytest.mark.parametrize("name", sorted(COUNT_PHRASINGS))
+def test_a_category_rule_ignores_the_other_categories(drift, name):
+    """Seven rules, not one.
+
+    A single `(\\d+) patterns` rule would compare every category against
+    whichever number it read first, and a single `across (\\d+) files` rule would
+    hold the pytest and vitest file counts to the same total. Both would report a
+    mismatch on correct prose, and the usual fix for a check that cries wolf is
+    to delete it. So each subject is matched on its own name, and this pins that.
+    """
+    rule = _claim(drift, name)["pattern"]
+    for other, (_, *forms) in COUNT_PHRASINGS.items():
+        if other == name:
+            continue
+        for line in filter(None, forms):
+            assert not rule.search(line), f"the {name} rule read a {other} sentence: {line}"
+
+
+@pytest.mark.parametrize("name", sorted(COUNT_PHRASINGS))
+def test_the_expected_count_is_read_from_disk(drift, name):
+    """No rule may hardcode its expected number.
+
+    A literal here would turn the next pattern anyone adds into a failure that
+    is not their fault, and the usual repair for a failure that is not your
+    fault is to remove the assertion. Counting the directories means adding a
+    pattern updates the check by itself; only the prose then needs a human.
+    """
+    counted = _claim(drift, name)["count"]()
+    assert counted == COUNT_PHRASINGS[name][0] or name in {"pytest-files", "vitest-files"}, (
+        f"{name}: disk says {counted}, AGENTS.md says {COUNT_PHRASINGS[name][0]}"
+    )
+    assert counted > 0
+
+
+@pytest.mark.parametrize(
+    ("name", "glob"),
+    [
+        ("flexcache-patterns", "solutions/flexcache/*/template.yaml"),
+        ("genai-patterns", "solutions/genai/*/template.yaml"),
+        ("event-driven-patterns", "solutions/event-driven/*/template.yaml"),
+        ("edge-patterns", "solutions/edge/*/template.yaml"),
+        ("operations-patterns", "operations/*/template.yaml"),
+    ],
+)
+def test_a_pattern_is_counted_by_its_template(drift, name, glob):
+    """One deployable template is one pattern, which is what the prose counts.
+
+    Counting directories instead would include `docs/`, and counting README
+    files would miss a pattern that has no README yet.
+    """
+    assert _claim(drift, name)["count"]() == len(list(drift.ROOT.glob(glob)))
+
+
+def test_the_test_file_counts_exclude_the_suites_that_cannot_run_here(drift):
+    """`e2e/` needs deployed stacks and `load/` needs live infrastructure.
+
+    Counting them would make the coverage line describe tests that no one can
+    run from a checkout, which is the kind of number that reads as reassurance
+    and is not.
+    """
+    counted = _claim(drift, "pytest-files")["count"]()
+    on_disk = [
+        path for path in drift.ROOT.rglob("test_*.py") if not {"node_modules", ".venv", ".hypothesis"} & set(path.parts)
+    ]
+    excluded = [path for path in on_disk if {"e2e", "load"} & set(path.parts)]
+
+    assert excluded, "the exclusion stopped applying to anything; confirm the suites still exist"
+    assert counted == len(on_disk) - len(excluded)
+
+
+def test_agents_md_is_checked(drift):
+    """The file every one of these numbers lives in.
+
+    Its absence from this list is the whole reason five counts could go stale
+    together without a single failure.
+    """
+    assert "AGENTS.md" in drift.COUNT_GLOBS
+
+
+@pytest.mark.parametrize("name", sorted(COUNT_PHRASINGS))
+def test_a_zero_count_is_reported_as_a_broken_reader(drift, name, monkeypatch):
+    """A directory that stops matching must fail loudly, not silently pass.
+
+    If `solutions/flexcache` is renamed, the counter returns zero. Comparing
+    every document against zero would flag all of them; skipping the comparison
+    would report PASS forever. Neither tells anyone what happened, so the reader
+    is what gets named.
+    """
+    monkeypatch.setattr(drift, "COUNT_CLAIMS", [{**_claim(drift, name), "count": lambda: 0}])
+    findings = drift.check_count_claims()
+    assert len(findings) == 1
+    assert "counted zero" in findings[0].detail
+
+
+def test_the_repository_agrees_with_its_own_counts(drift):
+    """Guards the fix: five of these numbers were wrong when the rules landed."""
+    findings = drift.check_count_claims()
+    assert not findings, [f"{f.location}: {f.detail}" for f in findings]
+
+
+# --------------------------------------------------------------------------
 # System Manager reachability
 #
 # The comparison in the published Part 2 articles and in the capability map was

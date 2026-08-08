@@ -527,6 +527,107 @@ COUNT_CLAIMS = [
         "source": "NAV_ITEMS in src/App.tsx",
     },
 ]
+
+
+def _templates_under(*relative: str) -> int:
+    """Pattern directories under `relative`, counted by their template.yaml.
+
+    One template is one deployable pattern, which is the unit the prose counts.
+    """
+    total = 0
+    for part in relative:
+        base = ROOT / part
+        if not base.is_dir():
+            continue
+        total += sum(1 for _ in base.glob("*/template.yaml"))
+    return total
+
+
+def _test_files(pattern: str, *skip: str) -> int:
+    """Test files matching `pattern`, excluding paths containing any of `skip`."""
+    return sum(
+        1
+        for path in ROOT.rglob(pattern)
+        if not any(part in ("node_modules", ".venv", ".hypothesis") for part in path.parts)
+        and not any(s in path.parts for s in skip)
+    )
+
+
+# Counts stated in prose that name a directory or a suite. Each entry pairs a
+# phrasing with the thing to count, and both halves are narrow on purpose: a
+# single "(\d+) patterns" rule would compare every category against one number,
+# and a single "across (\d+) files" rule would compare the pytest and vitest
+# counts against the same total.
+#
+# These are the numbers that had actually drifted: FlexCache said 7 with 10 on
+# disk, edge said 1 with 2, the coverage line said 126 files with 229, and five
+# of six operations patterns were annotated "(planned)" while all six were built.
+#
+# Each category is written both ways in the same file, so both are matched:
+# the summary sentence puts the number first ("10 FlexCache/FlexClone
+# patterns"), the directory tree puts it after ("FlexCache/FlexClone patterns
+# (10)"). Matching only the parenthesised form left the summary line — the one
+# line most people read — unchecked, which is where these numbers went stale in
+# the first place.
+def _either_order(subject: str) -> str:
+    return rf"(\d+)\s*(?:\*\*\s*)?{subject}|{subject}\s*\((\d+)"
+
+
+_COUNTED_IN_PROSE = [
+    (
+        "flexcache-patterns",
+        _either_order(r"FlexCache/FlexClone patterns?"),
+        lambda: _templates_under("solutions/flexcache"),
+        "solutions/flexcache/*/template.yaml",
+    ),
+    (
+        "genai-patterns",
+        _either_order(r"GenAI patterns?"),
+        lambda: _templates_under("solutions/genai"),
+        "solutions/genai/*/template.yaml",
+    ),
+    (
+        "event-driven-patterns",
+        _either_order(r"event-driven patterns?"),
+        lambda: _templates_under("solutions/event-driven"),
+        "solutions/event-driven/*/template.yaml",
+    ),
+    (
+        "edge-patterns",
+        _either_order(r"(?:CDN/)?edge delivery patterns?"),
+        lambda: _templates_under("solutions/edge"),
+        "solutions/edge/*/template.yaml",
+    ),
+    (
+        "operations-patterns",
+        _either_order(r"operation(?:s|al) optimization patterns?"),
+        lambda: _templates_under("operations"),
+        "operations/*/template.yaml",
+    ),
+    (
+        "pytest-files",
+        r"Python tests across (\d+) files",
+        lambda: _test_files("test_*.py", "e2e", "load"),
+        "test_*.py on disk, excluding e2e and load",
+    ),
+    (
+        "vitest-files",
+        r"vitest tests across (\d+) files",
+        lambda: _test_files("*.test.ts") + _test_files("*.test.tsx"),
+        "*.test.ts(x) on disk",
+    ),
+]
+
+for _name, _regex, _counter, _source in _COUNTED_IN_PROSE:
+    COUNT_CLAIMS.append(
+        {
+            "name": _name,
+            "pattern": re.compile(_regex, re.IGNORECASE),
+            "count": _counter,
+            "source": _source,
+        }
+    )
+
 # A claim rule for the dispatch endpoint count was written and removed. "8
 # endpoints" in the design notes is the same shape as "Use the v2.0 endpoint",
 # "the public S3 endpoint" and "ONTAP の管理エンドポイント", and six of the ten
@@ -540,8 +641,13 @@ COUNT_CLAIMS = [
 # Files whose numbers are checked. Published-article text is not reachable from
 # here; `check_published_articles.py` imports this table and applies it there.
 COUNT_GLOBS = [
+    # AGENTS.md is where the pattern and test counts live, and where they had all
+    # gone stale. It was outside this list, which is why nothing noticed.
+    "AGENTS.md",
+    "README.md",
     "solutions/amplify-portal/README*.md",
     "solutions/amplify-portal/docs/*.md",
+    "operations/README.md",
     "docs/ja/*.md",
     "docs/en/*.md",
     "drafts/blog/*.md",
