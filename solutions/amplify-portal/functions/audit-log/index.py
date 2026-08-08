@@ -71,7 +71,13 @@ class AuditQueryError(ValueError):
 
 
 def _sql_literal(value: str) -> str:
-    """Render a Python string as a single-quoted SQL literal."""
+    """Render a Python string as a single-quoted SQL literal.
+
+    Duplicates `shared/sql.py` on purpose: this Lambda has no `SharedPythonLayer`,
+    and attaching one to import three lines would add a deployment dependency whose
+    content `ampx sandbox` does not reliably refresh. **If the rendering rule
+    changes there, change it here too.** Both copies have their own tests.
+    """
     return "'" + value.replace("'", "''") + "'"
 
 
@@ -171,7 +177,7 @@ def _build_query(event) -> tuple[str, int]:
     WHERE {where_clause}
     ORDER BY eventtime DESC
     LIMIT {max_results}
-    """
+    """  # nosec B608 - operands rendered by _sql_literal()/_like_operand(); see below
     return sql, max_results
 
 

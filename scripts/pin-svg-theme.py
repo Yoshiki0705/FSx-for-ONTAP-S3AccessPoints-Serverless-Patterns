@@ -88,7 +88,8 @@ def pin(path: Path, check_only: bool = False) -> tuple[int, bool]:
     pinned = pinned.replace("color-scheme: light dark;", "color-scheme: light;")
     changed = pinned != original
     if changed and not check_only:
-        ET.fromstring(pinned)  # hard gate: never write a malformed SVG
+        # Hard gate: never write a malformed SVG. Our own output, not untrusted XML.
+        ET.fromstring(pinned)  # nosec B314
         path.write_text(pinned, encoding="utf-8")
     return count, changed
 

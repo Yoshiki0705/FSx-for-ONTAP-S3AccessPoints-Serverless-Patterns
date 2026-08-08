@@ -3,170 +3,104 @@
 > Project-specific instructions for AI coding agents working in this repository.
 
 ## Project Overview
+FSx for ONTAP S3 Access Points Serverless Patterns — a library of **28 industry-specific use
+cases (UC1-UC28)** + **1 SAP/ERP pattern** + **10 FlexCache/FlexClone patterns** + **2 GenAI
+patterns** + **1 HA monitoring pattern** + **2 event-driven patterns** + **2 edge delivery
+patterns** + **6 operations optimization patterns (OPS1-OPS6)**. Each pattern is an independent
+CloudFormation/SAM template sharing the Python modules in `shared/`.
 
-FSx for ONTAP S3 Access Points Serverless Patterns — a library of **28 industry-specific use cases (UC1-UC28)** + **1 SAP/ERP pattern** + **10 FlexCache/FlexClone patterns** + **2 GenAI patterns** + **1 HA monitoring pattern** + **2 event-driven patterns** + **2 edge delivery patterns** + **6 operations optimization patterns (OPS1-OPS6)** using Amazon FSx for ONTAP S3 Access Points. Each pattern is an independent CloudFormation/SAM template with shared Python modules.
+**Two pillars**: `solutions/` (S3 AP data processing) + `operations/` (file system operational
+optimization).
 
-**Two pillars**: `solutions/` (S3 AP data processing patterns) + `operations/` (FS operational optimization patterns).
+**Test coverage**: ~4,200 Python tests across 233 files + ~180 vitest tests across 14 files.
 
-**Test coverage**: ~4,000 Python tests across 229 files + ~180 vitest tests across 14 files | cfn-lint + ruff validation
+> ファイル数は `make drift` がツリーと照合するので、古くなれば fail する。テスト総数は
+> `make test` / ポータルハンドラの個別実行 / vitest の 3 系統の合計なので概数。誰も保守
+> しない厳密な数値より、丸めた数値のほうがよい。
+## 詳細知識の所在
 
-> The **file** counts above are checked against the tree by `make drift`, so they fail
-> rather than age. The test total is deliberately approximate, because it is the sum of
-> three runs: `make test`, the per-directory portal handler runs (not included in `make
-> test` — see the module-collision note below) and `npx vitest run` in
-> `solutions/amplify-portal`. Pinning an exact total here would mean editing this line
-> on every added test, and a number nobody maintains is worse than a rounded one.
+このファイルは**タスクの内容が分かる前に必要な情報**だけを持つ。作業別の詳細は
+`docs/agent/` にある。ローカルの Kiro では `.kiro/steering/` と `.kiro/skills/` が
+「いつ読むか」だけを持ち、該当する作業をしているときに自動でこれらへ誘導する。
+`.kiro/` は公開しないため、**知識の本体は常に `docs/agent/` 側にある**。
+
+| 作業 | 参照先 |
+|---|---|
+| CloudFormation / SAM を書く・デプロイが失敗した | [pitfalls-cfn-sam](docs/agent/pitfalls-cfn-sam.md) |
+| S3 AP / ONTAP API を扱う・AccessDenied を調べる | [pitfalls-s3ap-ontap](docs/agent/pitfalls-s3ap-ontap.md) |
+| AD 連携 / SMB / Windows ドメイン参加 | [pitfalls-ad-smb](docs/agent/pitfalls-ad-smb.md) |
+| Bedrock / AgentCore / Quick / KNFSD | [pitfalls-genai-edge](docs/agent/pitfalls-genai-edge.md) |
+| SnapLock / WORM / Snapshot ロック | [pitfalls-snaplock](docs/agent/pitfalls-snaplock.md) |
+| ポータルの CDK / cdk-nag | [portal-cdk-quality-gates](docs/agent/portal-cdk-quality-gates.md) |
+| ポータル UI の文字列 / 翻訳 | [portal-i18n](docs/agent/portal-i18n.md) |
+| コスト見積り / リソース停止 | [cost-awareness](docs/agent/cost-awareness.md) |
+| 依存追加 / Renovate | [dependency-updates](docs/agent/dependency-updates.md) |
+| 構成図の作成・再生成・エクスポート | [diagram-regeneration](docs/agent/diagram-regeneration.md) |
+| 新パターンの追加と公開判定 | [new-pattern](docs/agent/new-pattern.md) |
+| ドキュメント全体を探す | [docs/index.md](docs/index.md) |
+| README / ドキュメント構成の設計 | グローバル steering `documentation-design` |
+| 成果物のレビュー観点 | グローバル steering `sa-persona-review-board` |
+
+> 不可逆操作・命名・PII・認可のように**知らないと事故る情報は上の表に移していない**。
+> ロード条件のマッチ運に賭けられないため、常時ロードかフック強制のままにしてある。
 
 ## Core Commands
+`make help` が現役のターゲット一覧を出す。ここには毎回使うものだけを置く。
 
 ```bash
-# Quick test (key patterns)
-make test-quick
+make test-quick     # 主要パターンのテスト（コミット前に必須）
+make test           # 全テスト
+make lint           # ruff check + ruff format --check（CI と同じ 2 段）
+make format-python  # フォーマット差分の修正
+make drift          # ドキュメント/コード乖離、i18n 網羅、ポータルの action-parameter 契約
+make security       # セキュリティスキャン
+make clean          # ビルド成果物の削除
 
-# Full test suite
-make test
-
-# Lint
-make lint
-
-# Single pattern test
-make test-uc1    # UC1 legal-compliance
-make test-uc6    # UC6 semiconductor-eda
-make test-sap    # SAP/ERP adjacent
-make test-fc1    # FC1 flexcache-anycast-dr
-make test-ops1   # OPS1 capacity-rightsizing
-
-# Build & deploy (requires samconfig.toml)
-make build-uc1
-make deploy-uc1
-make build-ops1
-make deploy-ops1
-
-# Security scan
-make security
-
-# Doc/code drift: action inventories, i18n coverage, stale claim rules,
-# and whether each UI call sends the parameters its Lambda action requires (offline)
-make drift
-
-# Just the action-parameter contract check, with the call sites it cannot read
-python3 scripts/check_portal_action_params.py
-python3 scripts/check_portal_action_params.py --list-opaque
-
-# Dispatch parameter types: verify the generated module against the handlers,
-# and regenerate it after changing a handler's parameters
-python3 scripts/portal_action_types.py --check
-python3 scripts/portal_action_types.py --emit > solutions/amplify-portal/src/lib/dispatchActions.ts
-
-# Stale claims in the published blog posts (needs network; not a PR gate)
-make drift-published
-
-# Clean build artifacts
-make clean
-
-# Manual pytest (specific pattern)
-python3 -m pytest solutions/industry/semiconductor-eda/tests/ -v
-python3 -m pytest shared/tests/ -q
-
-# cfn-lint validation
-cfn-lint solutions/industry/legal-compliance/template.yaml solutions/sap/erp-adjacent/template.yaml
-
-# KNFSD File Cache (Terraform, infrastructure/knfsd-file-cache/)
-cd infrastructure/knfsd-file-cache && ./scripts/deploy.sh    # Deploy
-cd infrastructure/knfsd-file-cache && ./scripts/validate-cache.sh  # Validate
-cd infrastructure/knfsd-file-cache && ./scripts/cleanup.sh   # Destroy
-python3 -m pytest infrastructure/knfsd-file-cache/tests/ -v -m integration  # Integration tests
+make test-uc1 / test-ops1 / test-fc1 / test-sap   # 単一パターン（番号を差し替える）
+make build-uc1 / deploy-uc1                       # samconfig.toml が必要
 ```
 
+個別に呼ぶことがあるもの:
+
+```bash
+python3 -m pytest solutions/industry/semiconductor-eda/tests/ -v  # 単一ディレクトリ
+cfn-lint --non-zero-exit-code error <template.yaml>               # 単一テンプレート
+python3 scripts/check_portal_action_params.py --list-opaque        # 読めない呼び出し箇所
+python3 scripts/portal_action_types.py --check                     # 生成モジュールと handler の一致
+make drift-published                                               # 公開記事の陳腐化（要ネットワーク、PR ゲートではない）
+```
+
+KNFSD（Terraform、`infrastructure/knfsd-file-cache/`）は `scripts/{deploy,validate-cache,cleanup}.sh`。
 ## Project Layout
+ツリー全体はリポジトリから読める（`ls`、`make drift`）。ここには**役割**だけを置く。
+構造を焼き込むと更新されずに古くなるため、一覧は列挙しない。
+
+| パス | 役割 |
+|------|------|
+| `solutions/industry/` | UC1-UC28 の業種別パターン。1 ディレクトリ = 独立してデプロイ可能な 1 パターン |
+| `solutions/{sap,flexcache,genai,ha,event-driven,edge}/` | 業種横断のパターン群 |
+| `solutions/amplify-portal/` | Amplify Gen2 のファイルポータル（`amplify/` が CDK、`src/` が React） |
+| `operations/` | OPS1-OPS6。ファイルシステム運用最適化（S3 AP を使わない側の柱） |
+| `infrastructure/` | パターンに属さない共有基盤（AD 検証環境、KNFSD 読み取りキャッシュ） |
+| `shared/` | 全パターンが import する Python モジュール。`s3ap_helper.py` が中核抽象 |
+| `shared/schemas/` | イベント / レスポンスの TypedDict |
+| `scripts/` | 自動化スクリプト。`make` のターゲットから呼ばれるものが現役 |
+| `docs/` | ドキュメント。索引は `docs/index.md`、`en/` と `ja/` が対訳 |
+| `security/`, `cfn-params/`, `params/` | cfn-guard ルールとパラメータ例 |
+| `.kiro/` | このリポジトリ固有の steering / skills / hooks（git 未追跡） |
+
+各パターンのディレクトリは同じ形をしている:
 
 ```
-├── solutions/
-│   ├── industry/                     # UC1-UC28 industry-specific patterns
-│   │   └── {pattern-name}/
-│   │       ├── template.yaml         # SAM/CloudFormation template
-│   │       ├── functions/            # Lambda function handlers
-│   │       │   └── {func}/handler.py
-│   │       ├── tests/                # Pattern-specific tests (pytest + hypothesis)
-│   │       ├── docs/                 # Architecture, demo guide (8 languages)
-│   │       ├── samconfig.toml.example
-│   │       └── README.md             # 8 languages (ja/en/ko/zh-CN/zh-TW/fr/de/es)
-│   ├── sap/erp-adjacent/            # SAP/ERP pattern
-│   ├── flexcache/                    # FlexCache/FlexClone patterns (10)
-│   │   ├── anycast-dr/
-│   │   ├── automotive-cae/
-│   │   ├── cross-region-s3ap/
-│   │   ├── devops-cicd/
-│   │   ├── dynamic-render-workflow/
-│   │   ├── gaming-build-pipeline/
-│   │   ├── life-sciences-research/
-│   │   ├── rag-enterprise-files/
-│   │   ├── same-region-s3ap/
-│   │   └── snapmirror-cross-region-dr/
-│   ├── genai/                        # GenAI patterns (2)
-│   │   ├── kb-selfservice-curation/
-│   │   └── quick-agentic-workspace/
-│   ├── ha/lifekeeper-monitoring/     # HA monitoring pattern
-│   ├── event-driven/                 # Event-driven patterns (2)
-│   │   ├── fpolicy/
-│   │   └── prototype/
-│   └── edge/                         # CDN/edge delivery patterns (2)
-│       ├── content-delivery/
-│       └── media-ivs-vod-publishing/
-├── operations/             # Operational optimization patterns (6, all built)
-│   ├── README.md           # Category overview + adoption roadmap
-│   ├── docs/               # Cross-pattern docs (metrics-mapping, SLO, etc.)
-│   ├── capacity-rightsizing/   # OPS1: Volume/throughput monitoring + AI recommendations
-│   ├── storage-efficiency/     # OPS2: Dedup/compression tracking
-│   ├── tiering-optimizer/      # OPS3: FabricPool policy optimization
-│   ├── snapshot-lifecycle/     # OPS4: Retention compliance + cleanup
-│   ├── cost-optimization/      # OPS5: FinOps integration
-│   └── qos-monitoring/         # OPS6: QoS policy compliance
-├── infrastructure/         # Shared infrastructure templates (not per-pattern)
-│   ├── demo-ad-environment.yaml  # AD + EC2 for WINDOWS S3 AP testing
-│   └── knfsd-file-cache/         # KNFSD NFS read cache (Terraform, Preview)
-│       ├── terraform/            # Deployment configuration
-│       ├── scripts/              # setup, deploy, validate, benchmark, cleanup
-│       ├── tests/                # pytest integration tests (dual-path, cache hit)
-│       ├── docs/                 # Demo guide, verification results, troubleshooting
-│       └── dashboards/           # CloudWatch integrated dashboard
-├── shared/                 # Shared Python modules (imported by all patterns)
-│   ├── s3ap_helper.py      # S3 Access Point helper (core abstraction)
-│   ├── ontap_client.py     # ONTAP REST API client (SVM scope)
-│   ├── ontap_metrics.py    # ONTAP metrics collector (Cluster scope, for operations/)
-│   ├── fsx_helper.py       # AWS FSx API helper
-│   ├── demo_data_loader.py # DemoMode mock data loader (for operations/)
-│   ├── exceptions.py       # Common exceptions + error handler decorator
-│   ├── observability.py    # EMF metrics + structured logging
-│   ├── data_classification.py  # Data classification labels (INTERNAL/CUI/etc.)
-│   ├── human_review.py     # Confidence-based Human Review decisions
-│   ├── idempotency_checker.py  # HYBRID mode deduplication
-│   ├── lineage.py          # Compliance-grade data lineage
-│   ├── guardrails.py       # Capacity guardrails
-│   ├── slo.py              # SLO monitoring
-│   ├── schemas/            # TypedDict event/response schemas
-│   │   ├── events.py       # DiscoveryOutput, ProcessingOutput, etc.
-│   │   ├── ops_events.py   # OPS pattern TypedDicts (VolumeSpaceMetric, etc.)
-│   │   └── fpolicy-event-schema.json
-│   ├── fpolicy/            # FPolicy protobuf/XML parsers
-│   ├── fpolicy-server/     # FPolicy TCP server (ECS Fargate)
-│   ├── cfn/                # Shared CloudFormation snippets
-│   ├── lambdas/            # Shared Lambda functions
-│   └── tests/              # Shared module tests
-├── test-data/              # Sample data per UC (gitignore override)
-├── scripts/                # Automation scripts
-│   └── demo-ad-join-svm.sh  # Join SVM to AD domain (WINDOWS S3 AP enablement)
-├── docs/                   # Documentation and guides (40+ docs)
-│   ├── en/                 # English docs (deployment-guide.md, etc.)
-│   └── ja/                 # Japanese docs (deployment-guide.md, etc.)
-├── cfn-params/             # Sample CloudFormation parameter files (*.example.json)
-├── params/                 # Additional parameter files (infrastructure templates)
-├── security/               # cfn-guard rules
-├── Makefile                # Developer workflow commands
-├── renovate.json           # Automated dependency updates (Renovate GitHub App — installed and active)
-└── .github/workflows/      # CI/CD (lint → test → security → deploy)
+{pattern}/
+├── template.yaml            # SAM/CloudFormation。単体でデプロイ可能
+├── functions/{func}/handler.py
+├── statemachine/*.asl.json  # Step Functions（DefinitionUri で参照）
+├── tests/                   # pytest + hypothesis
+├── docs/                    # アーキテクチャ、デモガイド
+├── samconfig.toml.example
+└── README.md                # 8 言語（ja/en/ko/zh-CN/zh-TW/fr/de/es）
 ```
-
 ## Architecture Patterns
 
 - **Trigger**: EventBridge Scheduler (polling) OR FPolicy EventBridge Rule (event-driven)
@@ -250,6 +184,14 @@ python3 -m pytest solutions/sap/erp-adjacent/tests/ -v
 - `tests/load/` — requires deployed infrastructure
 - `shared/tests/test_canary_properties.py` — requires live S3 AP
 
+### テスト固有の罠
+
+| Pitfall | Solution |
+|---------|----------|
+| Hypothesis + moto DynamoDB slow | Use `deadline=None` in `@given()` settings |
+| Test file name collision across patterns | Use unique test file names or run per-directory |
+| `from functions.xxx import` collision in batch test runs | Run patterns with `handler` module imports in separate pytest invocations (Makefile splits these) |
+
 ## Self-Review (4-Axis Check)
 
 Before running the Verification Checklist below, walk these four axes to catch issues that automated checks miss:
@@ -262,64 +204,33 @@ Before running the Verification Checklist below, walk these four axes to catch i
 Surface findings explicitly and fix them before finalizing. The cost of one more pass is small compared to a follow-up fix or a missed regression.
 
 ## Verification Checklist
+変更を出す前に、毎回:
 
-Before submitting changes, run:
+1. `make test-quick`
+2. `make lint` — `ruff check` と `ruff format --check` の両方。CI が別ステップなので、
+   片方だけではローカルを通って CI で落ちる。差分は `make format-python`
+3. `cfn-lint` — 変更したテンプレート
+4. `make drift` — action インベントリ、i18n 網羅、陳腐化ルール、ポータルの action-parameter 契約
 
-1. `make test-quick` — key tests pass
-2. `make lint` — no lint errors. This now covers **both** `ruff check` and
-   `ruff format --check`, because CI runs them as separate steps and formatting
-   drift used to pass locally and only fail in the pipeline. Run `make
-   format-python` to fix drift.
-3. `cfn-lint` on modified templates
-3a. `make drift` — action inventories, i18n coverage, stale claim rules, and the
-   portal action-parameter contracts. The last one exists because the generic
-   dispatch endpoints take an untyped `params` blob: TypeScript cannot see across
-   it, so a component sending `{snapshotName, retentionDays}` to an action that
-   reads `snapshotId` and `expiryTime` compiles, lints, renders a button and fails
-   on every click. One shipped that way. If you add a dispatch call through a new
-   wrapper shape, check `--list-opaque` afterwards — a call the checker cannot read
-   is a call it cannot defend. It currently reads every call site; keep it that way
-   by writing action names as literals rather than computing them.
-3b. Reach the dispatch endpoints through `src/lib/dispatch.ts`, not
-   `client.mutations.*` directly. The helpers bind each action to the parameters its
-   handler reads, with identifiers, instants and durations branded, so a volume name
-   cannot be passed where a UUID belongs. After changing a handler's parameters,
-   regenerate `src/lib/dispatchActions.ts` — `make drift` fails until it matches.
-   Brand a value where it arrives from ONTAP (in the response interface), never at
-   the call site: branding at the point of use accepts whatever string is in scope,
-   which is the mistake being prevented.
-   If the change **removes a limitation** (ships something the docs told readers
-   to build themselves), also run `make drift-published`: two published articles
-   kept telling readers to build block expiry and multi-SVM fan-out for a month
-   after both shipped, and no repository-only check can see that.
-4. If modifying UC templates: verify TriggerMode params + conditions present
-5. If adding new shared module: add tests in `shared/tests/`
-6. If modifying README: ensure Governance Note + Performance Considerations present
-7. If adding output: include `data_classification` field
-8. If touching `solutions/amplify-portal/amplify/**`: the IAM Policy Validation
-   workflow fires on that path and scans **every** template under
-   `solutions/industry/` and `infrastructure/`, not just what you changed. A
-   failure there may be pre-existing debt rather than something you introduced —
-   check `git diff --name-only` for template changes before assuming ownership.
-9. If adding user-facing UI strings: add the key to `ja.ts` first, then to all 7
-   other locales, and use `t("key")` in the component. No hardcoded strings in
-   JSX text, `aria-label`, `title` or `placeholder`. Product names, SQL literals
-   and technical terms (ONTAP, FlexCache, SnapLock, S3 AP) stay untranslated.
+変更内容に応じて:
 
-## New Pattern: Field-Shareable Definition of Done
+| 変更したもの | 追加で必要なこと |
+|---|---|
+| UC テンプレート | TriggerMode のパラメータと Condition が揃っているか |
+| `shared/` にモジュール追加 | `shared/tests/` にテストを追加 |
+| README | Governance Note と Performance Considerations があるか |
+| 新しい出力 | `data_classification` フィールドを含める |
+| ポータルの dispatch 呼び出し | `src/lib/dispatch.ts` を経由する（`client.mutations.*` を直接呼ばない）。handler のパラメータを変えたら `src/lib/dispatchActions.ts` を再生成する（`make drift` が一致するまで fail する）。ブランドは ONTAP から値が到着する場所（レスポンスの interface）で付ける。呼び出し側で付けると、その場にある任意の文字列を受け入れてしまい、防ぎたい間違いそのものになる |
+| ユーザー向け UI 文字列 | `ja.ts` に先に追加してから他 7 言語。`t("key")` を使う。JSX テキスト・`aria-label`・`title`・`placeholder` にハードコードしない。製品名・SQL リテラル・技術用語（ONTAP, FlexCache, SnapLock, S3 AP）は翻訳しない |
+| 制約の解消（ドキュメントが「自分で作れ」と書いていたものを実装した） | `make drift-published` も走らせる。公開記事の記述はリポジトリ内のチェックでは見えない |
+| `solutions/amplify-portal/amplify/**` | IAM Policy Validation ワークフローが `solutions/industry/` と `infrastructure/` の**全**テンプレートを走査する。失敗は既存の負債かもしれないので、`git diff --name-only` で自分の変更範囲を確認してから引き受ける |
 
-A new industry pattern is considered field-shareable (ready for Partner/SI customer conversations) only when ALL of the following are met:
-
-- [ ] CloudFormation template passes `cfn-lint` with zero errors
-- [ ] DemoMode=true execution succeeds (no FSx for ONTAP dependency)
-- [ ] Unit tests + property-based tests pass
-- [ ] Success Metrics defined (Business Outcome / Technical KPI / Quality KPI / Cost KPI / Go-No-Go)
-- [ ] Data classification labels documented
-- [ ] Human review thresholds defined and documented
-- [ ] README in JP + EN at minimum
-- [ ] `samconfig.toml.example` included
-- [ ] Governance Note present (for regulated/safety-critical domains)
-
+> **なぜ action-parameter 契約チェックがあるか**: dispatch は型のない `params` を取るため、
+> TypeScript は境界の向こうを見られない。`{snapshotName, retentionDays}` を `snapshotId` と
+> `expiryTime` を読む action に送るコードは、コンパイルも lint も通り、ボタンも描画され、
+> クリックのたびに失敗する。実際に出荷された。新しいラッパー形状で dispatch を呼んだら
+> `--list-opaque` を確認する。チェッカーが読めない呼び出しは、守れない呼び出しである。
+> action 名は計算せずリテラルで書く。
 ## Key Design Decisions
 
 ### S3ApHelper is the Core Abstraction
@@ -345,372 +256,6 @@ decision = evaluate_confidence(confidence=0.72)
 # decision.action: "AUTO_APPROVE" | "HUMAN_REVIEW" | "REJECT"
 ```
 
-## Documentation Design Principles
-
-All README and documentation files follow these UX principles:
-
-### Hub & Spoke Model
-- **README.md is the hub**: It links OUT to everything, never contains full details inline
-- **docs/ files are spokes**: Each answers ONE specific question in depth
-- **Maximum visible content in README**: ~150 lines (before `<details>` expansion)
-
-### Progressive Disclosure
-- Use `<details><summary>` for everything not immediately needed on first read
-- First-time visitors need: (1) What is this? (2) How do I start? (3) Where are details?
-- Returning visitors need: (1) What changed? (2) Where's the specific doc?
-
-### Action-First Headings
-- ✅ "はじめる" / "Get Started" — action verb
-- ❌ "Prerequisites" / "前提条件" — static noun (move to deployment guide)
-- The first visible section should be a "Get Started" table with time estimates
-
-### 7±2 Rule
-- No more than 7 items visible at any single navigation level
-- If a table has >7 rows, collapse it into `<details>`
-- If a section has >7 bullet points, restructure into a table or sub-sections
-
-### Multi-Language Consistency
-- All language README files (JA, EN, KO, ZH-CN, ZH-TW, FR, DE, ES) use IDENTICAL structure
-- Translate: headings, descriptions, table content
-- Never translate: file paths, commands, badge URLs, anchor IDs
-- Language switcher at BOTH top and bottom of README
-
-### No Dead Weight
-- Phase-based development history → belongs in CHANGELOG.md or blog articles, NOT README
-- Verification screenshots → belong in docs/verification-results*.md
-- Full deploy commands → belong in docs/guides/deployment-guide.md
-- API compatibility tables → belong in docs/s3ap-compatibility-notes.md
-- If content will never be updated again, it should not be in README
-
-### Mobile & Scanning Readability
-- Tables with >5 columns are unreadable on mobile → split or use key-value format
-- Code blocks should be copy-pasteable without horizontal scrolling
-- Use emoji as visual markers for quick scanning (📂, 🚀, ⚠️, 📚, 🔧)
-
-### Cross-Repository Consistency
-- All Yoshiki0705 repos should follow this same README structure
-- Same language switcher format, same badge style, same `<details>` patterns
-- Related repositories link to each other in a consistent "Related Repositories" section
-
-## Common Pitfalls
-
-| Pitfall | Solution |
-|---------|----------|
-| `RecursiveDeleteOption` duplicate key in YAML | Single key only: `RecursiveDeleteOption: true` |
-| `SNSPublishMessagePolicy` with TopicArn | Use `TopicName: !GetAtt Topic.TopicName` |
-| `Handler: index.handler` but file is `handler.py` | Use `Handler: handler.handler` |
-| `DefinitionBody` inline in SAM StateMachine | Use `DefinitionUri: statemachine/workflow.asl.json` |
-| `S3ObjectStorageMode: REFERENCE` on `AWS::Serverless::Function` silently has no effect | Released SAM drops unrecognized `CodeUri` keys during transform, so `sam validate`/`sam deploy` succeed but the function runs in `COPY` mode. The SAM-side name is `StorageMode` (not `S3ObjectStorageMode`), added upstream in aws/serverless-application-model#3959 but **not in any release yet** (latest 1.111.0 predates the merge). Use a native `AWS::Lambda::Function` with `Code.S3ObjectStorageMode` meanwhile; mixing `AWS::Serverless::` and native `AWS::` resources in one template is confirmed supported. Silent-drop tracked in aws/serverless-application-model#3970. See docs/aws-feature-requests/lambda-healthomics-s3ap-gaps.md FR-7 |
-| CloudFormation `validate-template` fails for large templates | Use S3 URL upload for templates >51KB |
-| Internet-origin S3AP from VPC Lambda | Use VPC-external Lambda or NAT Gateway |
-| S3 Gateway VPC Endpoint + Internet-origin S3AP | Does NOT work — use NAT or VPC-external |
-| ONTAP REST API auth on SVM IP | Use filesystem management IP, not SVM IP |
-| FlexClone `nas.security_style` | Cannot specify — inherited from parent volume |
-| Modifying enabled FPolicy policy | Disable → modify → re-enable sequence |
-| `mount -o vers=4` negotiates NFSv4.2 | Always use explicit `vers=4.1` |
-| Hypothesis + moto DynamoDB slow | Use `deadline=None` in `@given()` settings |
-| Test file name collision across patterns | Use unique test file names or run per-directory |
-| `from functions.xxx import` collision in batch test runs | Run patterns with `handler` module imports in separate pytest invocations (Makefile splits these) |
-| `SsmAssociations` + `aws:domainJoin` → schema error | Use separate `AWS::SSM::Association` resource with `AWS-JoinDirectoryServiceDomain` document (see below) |
-| IVS Auto-Record to FSx for ONTAP S3 AP → `Recording Start Failure` | IVS does not support S3 AP as recording destination (confirmed by AWS service team). Use IVS → standard S3 bucket → FSx for ONTAP path |
-| WINDOWS S3 AP `AccessDenied` on data-plane | `WindowsUser.Name` must be username only (`Admin`), NOT `DOMAIN\Admin` — domain prefix silently breaks data-plane |
-| WINDOWS S3 AP creation fails | SVM must be AD-joined first; use `scripts/demo-ad-join-svm.sh` |
-| AD-joined SVM + S3 AP data ops → `AccessDenied` | AD DC must be reachable for all data operations (ListObjectsV2/GetObject/PutObject). ONTAP performs `unix→win` reverse name-mapping on every data op. HeadBucket succeeds (false positive) — always verify with a data operation |
-| HeadBucket success but data operations fail on S3 AP | HeadBucket is metadata-only (S3 layer). If AD DC is unreachable, data ops fail at the file-system layer. Check CIFS domain discovery: `GET /api/protocols/cifs/domains?svm.name=<svm>&fields=discovered_servers` |
-| AD-joined SVM + S3 AP data ops → AD DC unreachable | AccessDenied on ListObjectsV2 (HeadBucket OK = false positive). Pre-flight check: `GET /api/protocols/cifs/domains?svm.name=<svm>&fields=discovered_servers` — if `discovered_servers == []`, AD DC is unreachable. Use `shared/ad_health_check.py` for programmatic verification |
-| CFn deploy with `CAPABILITY_IAM` → InsufficientCapabilitiesException | Use `CAPABILITY_NAMED_IAM` (template creates named IAM roles). `--capabilities CAPABILITY_NAMED_IAM` |
-| Volume name `quick-test-data` → BadRequest | Volume names allow only alphanumeric + underscore. Use `quick_test_data` (no hyphens) |
-| Existing SVM with stale AD → "SVM is already joined to a domain" | Cannot re-join via FSx API. Either unjoin via ONTAP CLI (`vserver cifs delete`) or create a new SVM with AD config |
-| `aws fsx create-and-attach-s3-access-point` positional args fail | Use `--cli-input-json file://create-ap.json`. Positional `--ontap-configuration` parsing is fragile |
-| Delete volume while S3 AP attached → BadRequest | Delete S3 AP first (`detach-and-delete-s3-access-point`), wait for deletion, then delete volume |
-| Quick S3 Knowledge base not visible in ap-northeast-1 | S3 KB feature only available in us-east-1, us-west-2, ap-southeast-2, eu-west-1. Use Bedrock KB for Tokyo region, or cross-region Quick account |
-| Presigned URL `SignatureDoesNotMatch` from Lambda | boto3 defaults to SigV2 for presign, and ONTAP S3 only supports v2 presigned URLs from 9.16.1. Use `Config(signature_version="s3v4")` explicitly (v4 supported from ONTAP 9.11.1; NetApp recommends v4) |
-| Presigned URL `PermanentRedirect` from Lambda | Global endpoint `s3.amazonaws.com` redirects. Use `endpoint_url=f"https://s3.{region}.amazonaws.com"` |
-| Presigned URL `HEAD` returns 403 but `GET` works | Some S3 AP configurations don't support HEAD on presigned URLs. Use GET for verification |
-| Bedrock `InvokeModel` with `inputText` → ValidationException | Nova/Claude models require Messages API. Use `bedrock.converse()` (not `invoke_model` with `inputText`). Add `bedrock:Converse` to IAM policy |
-| AgentCore Gateway us-east-1 only assumption | **ap-northeast-1 で利用可能（検証済み 2026-07）**。Workshop が us-east-1 を使うのは簡便性のため。Gateway + Lambda + S3 AP を同一リージョンに配置すること |
-| AgentCore Lambda event format: `event.toolName` で取得 | ❌ 正しくは `context.client_context.custom['bedrockAgentCoreToolName']`。event はフラットなパラメータ辞書。ツール名は `targetName___toolName` 形式 |
-| AgentCore Gateway + Quick Desktop: Remote MCP 追加が永続化されない | **Import 方式**（JSON ファイルからの読み込み）を使う。Local/Remote 直接追加は Quick Desktop v0.1000.1495 で不安定 |
-| Quick Web コンソール MCP コネクタ Step 2 エラー | Previous で Step 1 に戻ると OAuth フィールドがクリアされる。一度で全フィールド入力を完了すること。再現しない場合もある（間欠的） |
-| AgentCore Gateway CUSTOM_JWT + Quick Desktop → 403 | NONE auth を PoC に使用。CUSTOM_JWT は認可ポリシー設定が必要（未解決、`docs/agentcore-mcp-remaining-issues.md` 参照） |
-| AgentCore Gateway `create-gateway-target` で Lambda not found | Gateway と Lambda は**同一リージョン**に配置必須。クロスリージョン Lambda 呼び出しは不可 |
-| Quick Desktop サインインで「account name is invalid」 | IAM ユーザー名 ≠ QuickSight ユーザー名。`aws quicksight list-users` で確認。Email ベースのサインインが最もシンプル |
-| KNFSD cache hit speedup が見られない | NVMe なしインスタンス (`t3`, `m6i`) では L2 キャッシュ不可。`m6gd`/`im4gn`/`i3en` を使用 |
-| KNFSD NFS mount: Connection refused | SG で TCP 2049 が未許可。KNFSD SG に NFS inbound rule を追加 |
-| KNFSD 経由 write → S3 AP で見えない | NFS write は非同期。`sync` 後 2-3 秒待機してから S3 AP GetObject |
-| KNFSD Terraform: InvalidAMIID | AMI ビルドリージョンとデプロイリージョンの不一致。`--region` を揃える |
-| Tamperproof 有効化 → 無効化できない | `snapshot_locking_enabled` は不可逆（400 Bad Request）。ただしポリシーの retention_period 削除で新規ロック停止は可能。詳細は [docs/tamperproof-snapshot-design.md](docs/tamperproof-snapshot-design.md) |
-| Tamperproof 有効化 ≠ 全 Snapshot 自動ロック | 有効化は「ロック機能 ON」であり「自動ロック」ではない。ポリシーに retention_period を設定して初めて自動ロックが発動 |
-| SnapLock 監査ログボリュームを作成 → ファイルシステムが最短 6 か月削除できない | 未満了の監査ログはボリューム → SVM → **ファイルシステム**の削除を連鎖ブロックする。保持期間満了前の削除はアカウント閉鎖以外に経路がない（AWS サポートでも不可）。**検証用ファイルシステムに作らない**。確認事項は [docs/tamperproof-snapshot-design.md](docs/tamperproof-snapshot-design.md) の事前チェック |
-| `CreateSnaplockConfiguration` の `RetentionPeriod` で監査ログ保持期間は縛れない | `RetentionPeriod` はボリューム上の WORM ファイル用。監査ログ側の保持期間を指定するフィールドは AWS API に**存在しない**（6 フィールドのみ）。AWS API だけで作ると既定の 6 か月が適用される。明示指定は ONTAP CLI の `snaplock log create -retention-period` のみ |
-| `DescribeVolumes` が `AuditLogVolume: False` → 削除できるはず、と読める | 読めない。SVM レベルの監査ログ指定を解除しても ONTAP の `snaplock.is_audit_log` は読み取り専用で解除できず（`PATCH` は 262196 で拒否）、削除可否は変わらない。判断は ONTAP の `snaplock.is_audit_log` と `snaplock.expiry_time` で行う |
-| `DeleteVolume` がエラーを返さないのに削除されない | 未満了 WORM / 監査ログがある場合、`DELETING` に遷移後、無言で `CREATED` に復帰する。`BypassSnaplockEnterpriseRetention=true` / `SkipFinalBackup=true` を付けても同じ。レスポンスではなく数十秒後の `Lifecycle` で判定する |
-| SnapLock 種別を後から変更・解除しようとする | 不可。`snaplock.type` は**作成時のみ**。`compliance` ⇄ `enterprise` の変更も、SnapLock の解除もできない。`PrivilegedDelete=PERMANENTLY_DISABLED` も終端状態（設定すると `enterprise` が `compliance` 相当になる） |
-| ポータルの Lambda が `shared/` を import できない | `functions/<name>/` の asset にはそのディレクトリしか入らない。`shared.*` を使う関数には `amplify/backend.ts` の `SharedPythonLayer` を `layers:` で付与する。レイヤーは `/opt` にマウントされ Python が見るのは `/opt/python` なので、アーカイブに `python/` プレフィックスが必要（`Code.fromAsset` の `bundling.local` で再配置している） |
-| `shared/` を変更しても sandbox のレイヤーが更新されない | `ampx sandbox` は hotswap で Lambda を更新し、LayerVersion の内容変更をスキップする（hotswap 無効化フラグは存在しない）。テンプレート側に変更がある場合のみ CloudFormation が走る。確実に反映するには `ampx sandbox delete` → 再デプロイ、またはパイプラインデプロイ |
-| 例外メッセージからエラー原因を推測する実装 | `str(IndexError(4))` は `"4"` で HTTP 404 に見える。実際に `Path(__file__).parents[4]`（Lambda では親が 3 つ）の IndexError を「CIFS 未設定」と誤報告していた。`type(e).__name__` を含めて報告し、文字列パターンで原因を決めない |
-| ONTAP REST の `fields=` に存在しないフィールドを混ぜる → 一覧が空になる | ONTAP はリクエスト全体を 400 で拒否し（例: `The value "last_transfer_size" is invalid for field "fields"`）、ハンドラ側は空リスト + error で返す。モック ONTAP は `fields` を無視してレコードを返すため、レスポンス整形のアサートだけでは検出できない。**送信 URL の `fields` 自体をテストで固定する**（`MockHttp.calls` を検査） |
-| `/cluster/nodes` と `/cluster/licensing/licenses` が 0 件 | エラーではない。FSx for ONTAP ではクラスター管理を AWS が担うため 0 件で返ることがある（ONTAP 9.17.1P7D1 で実測）。UI 側に「エラーではない」旨の注記を出す |
-| robocopy で ACL 権限のないファイルがスキップされる | Backup Operators への追加だけでは不足。robocopy に `/B`（バックアップモード）が必要。コピー先は SVM の `BUILTIN\Backup Operators` にも追加（`SeRestorePrivilege` で差分上書き）。詳細は [smb-acl-migration-backup-operators.md](docs/smb-acl-migration-backup-operators.md) |
-
-## S3 Access Point Critical Knowledge
-
-### IAM ARN Format (Most Common Error)
-
-```yaml
-# ✅ Correct
-Resource: !Sub "arn:aws:s3:${AWS::Region}:${AWS::AccountId}:accesspoint/${S3AccessPointName}"
-Resource: !Sub "arn:aws:s3:${AWS::Region}:${AWS::AccountId}:accesspoint/${S3AccessPointName}/object/*"
-
-# ❌ Wrong (bucket-style ARN does not work for S3 AP)
-Resource: !Sub "arn:aws:s3:::${S3AccessPointAlias}"
-```
-
-### Dual-Layer Authorization
-
-Both must Allow:
-1. **AWS-side**: IAM identity policy + S3 AP resource policy
-2. **ONTAP-side**: File system identity (UNIX UID or Windows AD user)
-
-### Supported Operations
-
-PutObject, GetObject, ListObjectsV2, HeadObject, DeleteObject, MultipartUpload.
-**Measured size limits** (2026-08-02, ap-northeast-1 — see [size limit verification](docs/s3ap-object-size-limits-verification.md)):
-- Single `PutObject`: **5 GiB = 5,368,709,120 bytes**. Rejected on Content-Length (immediate, ~2.7s) with 400 `EntityTooLarge` + `MaxSizeAllowed`.
-- `UploadPart` per part: **5 GiB** (same value, same fast rejection).
-- Whole object (upload): **50 GiB = 53,687,091,200 bytes**. 50 GiB succeeds; 50 GiB + 1 fails.
-- ⚠️ The whole-object limit is checked **only at `CompleteMultipartUpload`, after the entire payload is transferred** (~10 min for 50 GiB). `UploadPart` has no cumulative check, and the Complete error omits `MaxSizeAllowed`. **Validate object size client-side before uploading.**
-- `CompleteMultipartUpload` took ~557s to assemble a 50 GiB object — set a long `read_timeout`.
-- Docs say "5 GB"/"50 GB" but both are **binary** (GiB).
-`UploadPartCopy` is documented as Supported but **fails with `NoSuchKey`** in practice (`CopyObject` works) — server-side assembly of large objects is not possible.
-NOT supported: GetBucketNotificationConfiguration.
-Presigned URLs: Listed as "Not supported" in the AWS compatibility table, but observed working (client-side SigV4 calculation → standard GetObject). AWS Support has since confirmed ONTAP-layer support (v4 from ONTAP 9.11.1, v2 from 9.16.1) and submitted a doc correction — **not yet published**, so continue to avoid production reliance until it is. See docs/s3ap-compatibility-notes.md for details.
-
-### NetworkOrigin (Immutable After Creation)
-
-- `Internet`: Accessible from anywhere with valid credentials. NOT via S3 Gateway VPC Endpoint.
-- `VPC`: Accessible only from bound VPC via S3 Gateway/Interface Endpoint.
-
-### AD-Joined SVM: AD DC Reachability Required for Data Operations
-
-On AD-joined SVMs (CIFS enabled), **every S3 AP data operation** (ListObjectsV2, GetObject, PutObject) requires the SVM to successfully contact its AD domain controllers. ONTAP's multiprotocol identity pipeline performs a `unix→win` reverse lookup for every file system operation when CIFS is enabled — even on UNIX security style volumes accessed via S3 AP.
-
-**Diagnostic pattern**:
-| Test | AD DC Reachable | AD DC Unreachable |
-|------|:---:|:---:|
-| HeadBucket | ✅ | ✅ (false positive) |
-| ListObjectsV2 | ✅ | ❌ AccessDenied |
-| GetObject | ✅ | ❌ AccessDenied |
-| PutObject | ✅ | ❌ AccessDenied |
-
-**Pre-flight check** (recommended for Step Functions workflows on AD-joined SVMs):
-```python
-# 1. Check if SVM has CIFS enabled (= AD-joined)
-cifs = ontap_request("GET", f"/protocols/cifs/services?svm.name={svm}&fields=ad_domain.fqdn")
-if cifs["records"]:
-    # 2. Verify DC discovery
-    domains = ontap_request("GET", f"/protocols/cifs/domains?svm.name={svm}&fields=discovered_servers")
-    if not domains["records"] or domains["records"][0].get("discovered_servers") == []:
-        raise RuntimeError("AD DC unreachable — S3 AP data operations will fail with AccessDenied")
-```
-
-**Why this is confusing**: HeadBucket succeeds because it only validates at the S3 metadata layer. All IAM, AP policy, and network checks also pass. This leads developers to investigate the wrong layers. The root cause is at the ONTAP file-system layer (reverse name-mapping requires AD DC LDAP/Kerberos connectivity).
-
-**When this happens**:
-- AD (Managed AD or self-managed) is deleted, stopped, or network-unreachable
-- SVM DNS IPs point to old/dead AD DC addresses after AD recreation
-- Security Group or NACL blocks AD ports (53/88/389/445/636) from SVM ENIs to DC IPs
-
-> **Note**: This pattern was verified in `fsxn-observability-integrations` (restore-verification workflow). The patterns in this repo work without AD because they typically target pure UNIX SVMs (no CIFS enabled).
-
-## SSM Domain Join — Correct Pattern for Windows EC2 AD Join
-
-```yaml
-# ❌ FAILS: EC2 SsmAssociations + aws:domainJoin (any schemaVersion)
-# Error: "Document schema version, 2.2, is not supported by association
-#         that is created with instance id"
-WindowsInstance:
-  SsmAssociations:
-    - DocumentName: !Ref MyCustomDoc  # ← NEVER do this for AD join
-
-# ✅ CORRECT: Separate AWS::SSM::Association resource
-DomainJoinAssociation:
-  Type: AWS::SSM::Association
-  Properties:
-    Name: AWS-JoinDirectoryServiceDomain  # AWS-managed document
-    Targets:
-      - Key: InstanceIds
-        Values:
-          - !Ref WindowsInstance
-    Parameters:
-      directoryId:
-        - !Ref ManagedAd
-      directoryName:
-        - !Ref DomainName
-      dnsIpAddresses:
-        - !Select [0, !GetAtt ManagedAd.DnsIpAddresses]
-        - !Select [1, !GetAtt ManagedAd.DnsIpAddresses]
-```
-
-EC2 IAM role requires: `AmazonSSMManagedInstanceCore` + `AmazonSSMDirectoryServiceAccess`.
-
-## WINDOWS User Type S3 Access Point — AD Requirements
-
-- SVM must be AD-joined before creating WINDOWS-type S3 AP (fails immediately if not)
-- `WindowsUser.Name` = username only (`Admin`), NEVER `DOMAIN\Admin`
-- Domain prefix is accepted at API level but causes `AccessDenied` on data-plane (ListObjects/GetObject/PutObject)
-- Infrastructure template: `infrastructure/demo-ad-environment.yaml` (3 AD modes)
-- Join script: `scripts/demo-ad-join-svm.sh` (auto-resolves from CFn stack outputs)
-- Parameter file: `params/demo-ad-environment.example.json`
-
-## CDK / IaC Quality Gates
-
-This project implements a 6-layer defense architecture for infrastructure code quality:
-
-| Layer | Tool | Purpose |
-|:---:|------|---------|
-| 1 | cfn-lint | Template syntax validation |
-| 2 | cdk-nag (AwsSolutionsChecks) | AWS compliance checks (**CI-only**, see below) |
-| 3 | gitleaks + zizmor | Secrets + Actions security |
-| 4 | IAM Access Analyzer | Over-permissive policy detection |
-| 5 | CDK harness tests (35 assertions) | Structural regression prevention |
-| 6 | floci integration tests (9 tests) | S3 AP runtime behavior |
-
-### cdk-nag Design Decision (Amplify Gen2 Constraint)
-
-**Problem**: cdk-nag applied as a CDK `Aspect` during synth causes `[AssemblyError] Found errors` and blocks deployment. Amplify Gen2 creates resources (AppSync, Cognito, internal S3 buckets, DynamoDB) that produce Non-Compliant findings (ASC3, S1, S10, COG1, COG7, COG8, IAM4, IAM5) which are **NOT user-configurable** — Amplify controls their creation and does not expose configuration hooks for these properties.
-
-**Solution**: cdk-nag is **opt-in via `CDK_NAG=1` environment variable** and executed only in CI:
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│ Deployment Flow (sandbox & production)                       │
-│ npx ampx sandbox / amplify deploy                           │
-│ → synth → deploy (NO cdk-nag → no blocking)                │
-└─────────────────────────────────────────────────────────────┘
-
-┌─────────────────────────────────────────────────────────────┐
-│ CI Quality Gate (PR checks)                                  │
-│ CDK_NAG=1 npx ampx generate outputs                        │
-│ → synth WITH cdk-nag → NagReport CSVs                      │
-│ → suppressions resolve all custom-code findings             │
-│ → Amplify-managed findings suppressed with documented reason│
-│ → PR blocked if NEW un-suppressed findings appear           │
-└─────────────────────────────────────────────────────────────┘
-```
-
-**What this means for new code:**
-- Adding a Lambda with `resources: ["*"]` → cdk-nag will catch it in CI → add suppression with reason
-- Adding a new IAM policy → CI validates least-privilege compliance
-- Amplify-managed resources (Cognito, AppSync, internal buckets) → suppressed, documented, unchangeable
-
-**Suppressions location**: `amplify/backend.ts` bottom section, with `applyToNestedStacks: true`.
-
-**Why NOT always-on nag:**
-1. `addStackSuppressions` cannot reliably suppress Amplify Gen2 nested stack resources
-2. Amplify updates may introduce new internal resources with new findings, breaking unrelated deploys
-3. The `[AssemblyError]` mechanism has no "warning-only" mode — it's all-or-nothing
-
-**Key rules for AI agents writing CDK/SAM code:**
-- `resources: ["*"]` MUST have `// Restrict to ... in production` comment
-- cdk-nag suppressions MUST include `reason` explaining why it's acceptable
-- Lambda env vars for external infra MUST use `config.<property>` from `portal-config.ts` (not bare `process.env`)
-- AppSync Data Sources MUST be in the same stack as the API (cross-stack = deploy failure)
-- All Lambda functions: Python 3.13, ARM64, explicit timeout, description field
-- No `@aws-cdk/*-alpha` modules — use L1 + escape hatches instead
-
-**Validation commands:**
-```bash
-# amplify-portal CDK checks
-cd solutions/amplify-portal
-npx tsc --noEmit            # Type check
-npx vitest run              # CDK harness + component tests
-npm run build               # Vite production build
-
-# cdk-nag (CI or manual validation — does NOT block deploy)
-CDK_NAG=1 npx ampx generate outputs 2>&1 | grep -i "error\|non-compliant"
-
-# SAM template checks
-cfn-lint solutions/industry/*/template.yaml
-python scripts/validate-iam-policies.py solutions/industry/*/template.yaml
-
-# Integration tests (requires floci running)
-docker run -d -p 4566:4566 floci/floci:latest
-python -m pytest shared/tests/integration/ -v
-```
-
-## UI Internationalization (i18n) — 8 Languages
-
-The Amplify portal supports 8 languages with instant runtime switching. All new UI components must follow these patterns.
-
-### Supported Languages
-
-| Code | Label | Auto-detect pattern |
-|------|-------|:---:|
-| `ja` | 日本語 | `ja-*` |
-| `en` | English | `en-*` |
-| `ko` | 한국어 | `ko-*` |
-| `zh-CN` | 简体中文 | `zh-CN`, `zh` |
-| `zh-TW` | 繁體中文 | `zh-TW`, `zh-Hant` |
-| `fr` | Français | `fr-*` |
-| `de` | Deutsch | `de-*` |
-| `es` | Español | `es-*` |
-
-### Architecture
-
-```
-src/i18n/
-├── index.tsx          # I18nProvider context + useTranslation hook
-└── locales/
-    ├── index.ts       # Re-exports all locales
-    ├── ja.ts          # Source of truth (defines TranslationKeys type)
-    ├── en.ts          # English translations
-    ├── ko.ts          # Korean
-    ├── zh-CN.ts       # Simplified Chinese
-    ├── zh-TW.ts       # Traditional Chinese
-    ├── fr.ts          # French
-    ├── de.ts          # German
-    └── es.ts          # Spanish
-```
-
-### Design Rules for AI Agents
-
-1. **ja.ts is the type source**: `TranslationKeys` is exported from `ja.ts`. All other locale files must implement `Record<TranslationKeys, string>`
-2. **No hardcoded user-facing strings**: Every visible label, heading, button text, description, error message, and placeholder must use `t("keyName")`
-3. **Technical terms stay in English**: ONTAP, SnapLock, FlexClone, S3 AP, ARP/AI, REST API, Lambda, Cognito, WORM, VPC, IAM, ARN — these are product/technology names and are NOT translated
-4. **Key naming convention**: camelCase, prefixed by component area (`arp*`, `lock*`, `snapshots*`, `nav*`, `group*`)
-5. **New keys**: Add to `ja.ts` first (with type), then to all 7 other locale files
-6. **Language Switcher UI**: Pill-shaped custom dropdown (`LanguageSwitcher.tsx`), not native `<select>`. Shows 🌐 + current language in native script + chevron
-7. **No flags**: Flags represent countries, not languages (per Smashing Magazine UX research). Use language names in native script only
-8. **Persistence**: `localStorage.getItem("portal-locale")` → auto-detect from `navigator.language` if not set
-9. **Graceful fallback**: `t(key)` falls back to English if key is missing in current locale, then to key name itself
-10. **Test environment**: `getInitialLocale()` handles missing `localStorage`/`navigator` gracefully (SSR/jsdom)
-
-### How to Add a New Translatable String
-
-```typescript
-// 1. Add key to ja.ts (source of truth)
-export const ja = {
-  // ... existing keys ...
-  myNewLabel: "新しいラベル",
-} as const;
-
-// 2. Add to all other locale files (en.ts, ko.ts, zh-CN.ts, zh-TW.ts, fr.ts, de.ts, es.ts)
-// TypeScript will show errors until all files have the new key
-
-// 3. Use in component
-import { useTranslation } from "../i18n";
-const { t } = useTranslation();
-return <h2>{t("myNewLabel")}</h2>;
-```
-
-### Language Switcher CSS
-
-The pill-shaped dropdown uses CSS custom properties for theming:
-- `--border-color`, `--surface-color`, `--text-color`, `--hover-bg`, `--accent-color`, `--selected-bg`
-- Animation: `lang-fade-in` (opacity + translateY, 0.12s ease)
-- Z-index: 1000 (above all content)
-
 ## External Dependencies
 
 - **AWS Region**: ap-northeast-1 (Tokyo) — primary deployment target
@@ -726,8 +271,7 @@ The pill-shaped dropdown uses CSS custom properties for theming:
 - No persona names in git content (use role-based descriptions)
 
 ## Security & Privacy (Public Repository)
-
-This is a **public repository**. All committed content is visible to the world.
+公開リポジトリである。コミットした内容は全世界から見える。
 
 ### Placeholder Rules
 
@@ -743,58 +287,35 @@ This is a **public repository**. All committed content is visible to the world.
 | Personal file paths | Relative paths or `${PROJECT_DIR}` |
 | S3 AP Alias | Use parameter reference `!Ref S3AccessPointAlias` |
 
-> **なぜ IP を 2 行に分けているか**: `10.0.0.0/16` のような CIDR はプライベート
-> アドレス空間の例示であり、これを RFC 5737 に置き換えるのは誤りです（実際に
-> プライベートである点が説明の一部だから）。一方、**特定の 1 台**を指す
-> `blockedIp` や「攻撃元ワークステーションの IP」は、まさに PII 監査が守ろうと
-> している対象です。ここは RFC 5737 のドキュメント用レンジを使います。
-> `scripts/portal-probes/` が `203.0.113.99` を選んでいるのも同じ理由です。
+> **なぜ IP を 2 行に分けているか**: `10.0.0.0/16` のような CIDR はプライベートアドレス
+> 空間の例示であり、これを RFC 5737 に置き換えるのは誤り（実際にプライベートである点が
+> 説明の一部だから）。一方、**特定の 1 台**を指す `blockedIp` や「攻撃元ワークステーションの
+> IP」は、まさに PII 監査が守ろうとしている対象なので RFC 5737 のドキュメント用レンジを
+> 使う。`scripts/portal-probes/` が `203.0.113.99` を選んでいるのも同じ理由。
 >
-> 事前 grep 監査（global steering 側の `10\.[0-9]` パターン）は CIDR の例示にも
-> 反応します。**CIDR 例示へのヒットは想定内**で、指摘事項ではありません。
-> 判断基準は「そのアドレスは 1 人の端末を指しているか」です。指しているなら
-> 置換し、ネットワークを指しているなら残します。
+> 判断基準は「そのアドレスは 1 人の端末を指しているか」。指しているなら置換し、
+> ネットワークを指しているなら残す。
 
-### 🚫 Never Commit
+### 機械強制されているもの
 
-- Real AWS account IDs, resource IDs, or IP addresses
-- Screenshots without masking (use `scripts/mask_uc_demos.py`)
-- `.pem` files, SSH keys, `.env` files
-- Personal file paths (`/Users/<username>/...`)
-- Persona names (use role descriptions: "Storage Specialist lens")
-- AWS Support case numbers or internal references
+命名違反（FSxN / FSx ONTAP）、個人のファイルパス、ペルソナ名、サポートケース番号、ベンダー <!-- allow:naming: 禁止語を規則として明示する行 -->
+内部チケット ID、実在しそうな AWS アカウント ID、メールアドレスは、ローカルの commit フック
+がステージ済み差分を検査して `exit 2` で commit を停止する（フックは `.kiro/` にあり
+リポジトリには含まれない）。逐語引用など意図的な場合はその行に `allow:naming` /
+`allow:vendor-ref` を付ける。CI 側は `.github/workflows/agent-output-audit.yml` と
+`gitleaks.yml` が同等の検査を行うので、フックが無い環境でも取りこぼしはない。
 
-### Pre-Commit
+機械では判定できないので人が見るもの:
 
-```bash
-make lint
-make test-quick
-make drift
-git diff --cached | grep -i '/Users/' && echo "LEAK DETECTED" || echo "OK"
-```
-
-## Dependency Updates
-
-| Tool | File | Purpose |
-|------|------|---------|
-| Renovate | `renovate.json` | Automated dependency updates (GitHub Actions, `requirements*.txt`/`pyproject.toml`, Dockerfiles). Major bumps require Dependency Dashboard approval. |
-
-Renovate keeps SHA-pinned Actions pinned (`helpers:pinGitHubActionDigests` + `pinDigests: true` on the `github-actions` packageRule), so it does not conflict with the zizmor/gitleaks/scorecard SHA-pinning policy above.
-
-The [Renovate GitHub App](https://github.com/apps/renovate) **is installed and active** on this repository (account-level install with "All repositories" access, so no per-repo step is needed). It has been opening and merging dependency PRs since 2026-07. Confirm status with data rather than re-checking the app settings:
-
-```bash
-gh pr list --state all --author "app/renovate" --limit 5   # recent dependency PRs
-gh issue list --state open | grep "Dependency Dashboard"    # the dashboard issue
-```
-
-Major-version bumps wait for a checkbox on the Dependency Dashboard issue, so a long "Pending Approval" list is normal operation, not a broken install.
-
+- マスクしていないスクリーンショット（`scripts/mask_uc_demos.py`）
+- `.pem` / SSH 鍵 / `.env`（`gitleaks` も拾うが、そもそもリポジトリに置かない）
+- 役職名ラベルの inline note — 実際のレビューがないのに「〜 lens」「〜 の視点」と書かない。
+  中立なトピック名（`**セキュリティに関する補足**` 等）を使う
 ## Irreversible Operations — Confirm Before Executing
+一部の AWS / ONTAP 操作は取り消せず、いくつかは**親リソース**を数か月ロックする。
+これらに事後検証は成立しない。復旧経路が存在しないからである。
 
-Some AWS and ONTAP operations cannot be undone, and a few of them lock a **parent** resource for months. Verifying afterwards is not a recovery path: for these there is no recovery path.
-
-**Confirm with the account owner before executing, every time:**
+**毎回、実行前にアカウント所有者の承認を得るもの:**
 
 | Operation | Why |
 |---|---|
@@ -806,114 +327,32 @@ Some AWS and ONTAP operations cannot be undone, and a few of them lock a **paren
 | S3 Object Lock `COMPLIANCE` mode | Retention cannot be shortened or removed |
 | Delete a volume, SVM or file system | Data loss |
 
-**Rules:**
+**ルール:**
 
-- **State the blast radius before asking**, not after: which resources become undeletable, for how long, and what it costs per month while locked.
-- **Never accept a default for a retention value.** If the API offers no way to set it, that is a reason to stop and ask, not a reason to proceed.
-- **Read the "cannot be deleted" section of the service documentation before the first call**, not after the first failure.
-- **A verification environment is the worst place for these.** A file system that cannot be deleted for six months is a six-month bill, and verification file systems usually carry other volumes that then cannot be moved either.
-- If an operation returns success but the resource does not change, **do not retry with more flags**. Check `Lifecycle` and stop.
+- **影響範囲を先に述べる。** どのリソースが、いつまで削除不能になり、その間いくらかかるか。
+- **保持期間の既定値を受け入れない。** API に指定手段がないことは、進めてよい理由ではなく
+  止まって聞く理由である。
+- **最初の呼び出しの前に**サービスドキュメントの「削除できない条件」を読む。最初の失敗の後ではなく。
+- **検証環境こそ最悪の置き場所。** 6 か月削除できないファイルシステムは 6 か月の請求で、
+  同居する他のボリュームも動かせなくなる。
+- 成功を返したのにリソースが変わらないとき、**フラグを足して再試行しない。**
+  `Lifecycle` を見て止まる。
 
-## Cost Awareness
-
-### High-Cost Resources (monitor actively)
-
-| Resource | Monthly Cost | Notes |
-|----------|-------------|-------|
-| FSx for ONTAP (128 MBps) | ~$194 | Core infrastructure, always running |
-| NAT Gateway | ~$32 each | Needed for VPC Lambda → Internet |
-| Interface VPC Endpoints | ~$7.20 each | ECR, Logs, STS, SQS, SecretsManager |
-| ECS Fargate (FPolicy) | ~$35 | Set desiredCount=0 when not testing |
-| Transfer Family | ~$82 | Delete when not needed |
-
-### Cost Optimization Patterns
-
-- Use `EnableVpcEndpoints=false` for PoC (saves ~$43/month)
-- Use `DemoMode=true` to test without FSx for ONTAP
-- Disable EventBridge Schedules when not actively testing
-- Set ECS desiredCount=0 for FPolicy server when idle
-- Use `amazon.nova-lite-v1:0` (cheapest Bedrock model) for testing
-
-## Persona Review Lenses
-
-When reviewing changes, consider these perspectives:
-
-| Persona | Focus Areas |
-|---------|-------------|
-| Storage Specialist | Throughput design, shared bandwidth (NFS/SMB/S3AP), tail latency, FlexCache hit rate, Range GET patterns |
-| Partner/SI | PoC ease (30-min deploy), cost estimation, customer-facing docs, DemoMode |
-| Public Sector / Governance | Data classification, audit trails, Human Review, FISC/HIPAA/NARA compliance, incident response |
-| Application Developer | Code readability, TypedDict schemas, shared/ module reuse, Makefile, local testing |
-
-## Key Documentation
-
-| Document | Purpose |
-|----------|---------|
-| [Demo Mode Guide](docs/demo-mode-guide.md) | Run without FSx for ONTAP |
-| [Customization Guide](docs/customization-guide.md) | Adapt patterns to your workload |
-| [Portal Implementation Guide](solutions/amplify-portal/docs/IMPLEMENTATION.md) | Portal architecture, config, component structure, modification log |
-| [Admin Demo Guide (EN)](docs/en/admin-resource-management-demo.md) | 26 admin + user demo scenarios |
-| [管理者向けリソース管理 デモガイド (JA)](docs/ja/admin-resource-management-demo.md) | 同 26 シナリオの日本語版 |
-| [Portal Verification Results (EN)](solutions/amplify-portal/docs/verification-results.en.md) | What is Live E2E vs live-read vs tests-only vs DemoMode, per feature |
-| [ポータル検証結果 (JA)](solutions/amplify-portal/docs/verification-results.md) | 機能ごとの検証区分（実機 E2E / 読み取り / テストのみ / DemoMode） |
-| [Portal Getting Started](solutions/amplify-portal/docs/GETTING-STARTED.md) | First deploy of the portal |
-| [ONTAP Connection Guide](solutions/amplify-portal/docs/ONTAP-CONNECTION-GUIDE.md) | VPC, secret and management LIF wiring |
-| [Portal Tabs Guide](solutions/amplify-portal/docs/portal-tabs-guide.md) | What each sidebar section does |
-| [Admin Capability Map (JA)](solutions/amplify-portal/docs/admin-capability-map.md) / [(EN)](solutions/amplify-portal/docs/admin-capability-map.en.md) | ONTAP System Manager feature coverage |
-| [Resource Management Demo Guide (JA)](solutions/amplify-portal/docs/resource-management-demo-guide.md) / [(EN)](solutions/amplify-portal/docs/resource-management-demo-guide.en.md) | Panel-by-panel walkthrough |
-| [AI Agent Demo Guide (JA)](solutions/amplify-portal/docs/ai-agent-demo-guide.md) / [(EN)](solutions/amplify-portal/docs/ai-agent-demo-guide.en.md) | Agent chat, directory and teams |
-| [Amplify Gen2 CDK Patterns](solutions/amplify-portal/docs/amplify-gen2-cdk-patterns.md) | Cross-stack data sources, VPC Lambda deploy cost, escape hatches |
-| [Portal Cleanup Guide](solutions/amplify-portal/docs/cleanup-guide.md) | Tearing the sandbox and its resources down |
-| [AppSync Auth Troubleshooting](solutions/amplify-portal/docs/TROUBLESHOOTING-APPSYNC-AUTH.md) | When Cognito group authorization fails |
-| [Cost Calculator](docs/cost-calculator.md) | Estimate monthly costs |
-| [Comparison Alternatives](docs/comparison-alternatives.md) | S3 AP vs EFS vs NFS vs DataSync + NFS Read Cache (FlexCache/KNFSD/File Cache) |
-| [PoC Go/No-Go Template](docs/poc-go-nogo-template.md) | PoC success criteria |
-| [Incident Response Playbook](docs/incident-response-playbook.md) | Security incident handling |
-| [S3AP Compatibility Notes](docs/s3ap-compatibility-notes.md) | Known constraints + workarounds |
-| [S3AP Performance](docs/s3ap-performance-considerations.md) | Throughput design guidance |
-| [Local Testing](docs/local-testing-quick-start.md) | sam local + pytest setup |
-| [Partner/SI Checklist](docs/partner-si-delivery-checklist.md) | Customer delivery workflow |
-| [Pattern Selection Guide](docs/pattern-selection-guide.md) | Customer situation → recommended UC |
-| [ONTAP Integration Notes](docs/ontap-integration-notes.md) | NAS coexistence, identity, data protection, OT |
-| [SMB ACL Migration via Backup Operators](docs/smb-acl-migration-backup-operators.md) | Windows file server → FSx for ONTAP with ACLs the copy account cannot read (`SeBackupPrivilege`/`SeRestorePrivilege`, robocopy `/B`, DataSync) |
-| [SnapLock Audit Log Retention FR (JA)](docs/aws-feature-requests/snaplock-audit-log-retention.md) | SL-1〜SL-3: 監査ログ保持期間の指定手段、無言で失敗する `DeleteVolume`、`AuditLogVolume` の表示と実態の不一致 |
-| [SnapLock Audit Log Retention FR (EN)](docs/aws-feature-requests/snaplock-audit-log-retention.en.md) | English version of SL-1 to SL-3 |
-| [S3 Bucket User Guide](docs/s3-bucket-user-guide.md) | Standard S3 vs FSx for ONTAP S3 AP differences |
-| [Bedrock Inference Profiles](docs/bedrock-inference-profiles.md) | Nova/Claude on-demand requirement, IAM (foundation-model + inference-profile), data residency, CI enforcement |
-| [AD-Joined SVM S3 AP Prerequisites](docs/en/ad-joined-svm-s3ap-prerequisites.md) | AD DC reachability, Internet-origin AP + VPC-external Lambda, same-account policy |
-| [File Portal UI Options](docs/file-portal-amplify-gen2.md) | Amplify Gen2 / Nextcloud / Custom Build comparison, selection guide, implementation roadmap |
-| [SaaS Gap Analysis (JA)](docs/aws-feature-requests/file-portal-service-gap.md) | 15 SaaS 比較, AI エージェント動向, プロトコルアクセシビリティ, ペルソナレビュー |
-| [SaaS Gap Analysis (EN)](docs/aws-feature-requests/file-portal-service-gap.en.md) | English version of gap matrix + feature requests |
-| [Lambda / HealthOmics S3 AP Gaps (JA)](docs/aws-feature-requests/lambda-healthomics-s3ap-gaps.md) | FR-5/6/7: Lambda セルフマネージドコードストレージ・AWS HealthOmics と FSx for ONTAP S3 AP の統合ギャップ、AWS Support 提出用テキスト |
-| [Lambda / HealthOmics S3 AP Gaps (EN)](docs/aws-feature-requests/lambda-healthomics-s3ap-gaps.en.md) | English version: integration assessment, requested behavior, workaround architectures |
-| [Nextcloud External Storage Setup](docs/nextcloud-external-storage-s3ap.md) | Nextcloud + FSx for ONTAP S3 AP step-by-step configuration |
-| [Workshop EDA Integration Guide](docs/workshop-eda-integration.md) | AWS Workshop modules mapped to UC patterns (EDA scenarios, Athena, Glue, AgentCore, Quick) |
-| [Quick Desktop MCP Setup](docs/quick-desktop-mcp-setup.md) | AgentCore MCP Gateway + Quick Desktop E2E setup (Import method, IaC, lessons learned) |
-| [AgentCore MCP Demo Guide](docs/demo-agentcore-mcp-quick-desktop.md) | E2E demo with screenshots: list_files, read_file, search_files results |
-| [AgentCore MCP Remaining Issues](docs/agentcore-mcp-remaining-issues.md) | Known issues tracker: Web UI bug, Desktop persistence, CUSTOM_JWT 403 |
-| [AgentCore MCP Tools Reference](docs/agentcore-mcp-tools.md) | Lambda tool definitions (list/read/search), input/output schemas, IAM policy |
-| [KNFSD + S3 AP Dual-Path Architecture](docs/knfsd-s3ap-dual-path-architecture.md) | KNFSD File Cache + S3 AP complementary access for EDA/VFX/HPC/Genomics/Finance/Weather/Energy |
-| [Tamperproof Snapshot Design](docs/tamperproof-snapshot-design.md) | 3-layer design (volume enable / policy retention / individual lock), irreversibility rules, operation patterns |
-| [PoC → Production Guide (EN)](docs/en/portal-poc-to-production.md) | DemoMode → production FSx for ONTAP connectivity migration checklist |
-| [PoC → 本番移行ガイド (JA)](docs/ja/portal-poc-to-production.md) | DemoMode から本番接続への移行手順（ネットワーク/認証/シークレット/監査/コスト） |
-| [Scaling Guide (EN)](docs/en/portal-scaling-guide.md) | Capacity planning, throughput sharing, QoS, component scaling, growth estimation |
-| [スケーリングガイド (JA)](docs/ja/portal-scaling-guide.md) | キャパシティプランニング、スループット共有、QoS、スケーリング特性 |
-| [Accessibility Statement](docs/en/portal-accessibility.md) | ARIA, keyboard navigation, screen reader compatibility, WCAG 2.1 AA note |
-| [構成図インデックス (JA)](docs/architecture-diagrams.md) | 全 13 図のライト / ダーク両テーマ一覧、命名規則、再生成手順 |
-| [Architecture Diagram Index (EN)](docs/architecture-diagrams.en.md) | All 13 figures in light / dark, naming convention, regeneration steps |
-
+> この表のうち機械判定できるものは `~/.kiro/hooks/guard-irreversible-ops.json` が実行前に
+> `exit 2` でブロックする（削除系と、payload が外部ファイルで中身が読めない場合は確認を求める）。
+> フックは判断を代行しない。上のルールは残る。詳細な罠は `pitfalls-snaplock` が持つ。
 ## Agent Output Standards
+命名（FSx for ONTAP のみ）、ベンダー中立性、公開物の PII 安全、JA/EN parity、技術リファレンスの
+必須要素は、いずれもユーザーレベルのグローバル steering が持つ。以前はここに全文をミラーして
+いたが、同じ規約を 2 か所に置くと片方が古くなるので参照に置き換えた。
 
-> ユーザーレベル Kiro グローバル steering のミラー。steering 未ロードの環境でも従えるようにする。
-
-> CI: `.github/workflows/agent-output-audit.yml`（命名/中立性/リーク/parity）と `gitleaks.yml`（シークレット）。
-
-### Naming (NetApp / AWS)
-
-- 初出は **Amazon FSx for NetApp ONTAP**、以降 **FSx for ONTAP**。`FSxN` / 単独 `FSx` / `FSx ONTAP` は不可。アクセスポイントは **FSx for ONTAP S3 AP**。
-- NetApp Workload Factory / NetApp Console / BlueXP は提案しない。native 等価物（CloudWatch, ONTAP REST API, FabricPool, AWS DataSync, Snapshot/FlexClone/SnapMirror）に置換。
-- 例外: 外部引用タイトルの逐語引用（その行に `allow:naming` コメントを付与）。
-- 例外: **制約の根拠として**これらの製品名を挙げる場合（「なぜ使わないのか」を書く文書）はその行に `allow:vendor-ref` を付与。婉曲表現にすると読者が検証できないため。提案は不可、制約の記録は可。
+| 対象 | 参照先 |
+|---|---|
+| 命名 / 中立性 / PII / JA・EN parity | グローバル `yoshiki-ai-development-principles`（常時ロード） |
+| 記事と技術ドキュメントの品質バー | グローバル `documentation-and-article-quality` |
+| ガバナンスと責任ある AI | グローバル `governance-responsible-ai` |
+| CI | `.github/workflows/agent-output-audit.yml`（命名/中立性/リーク/parity）、`gitleaks.yml` |
+| コミット時の機械強制 | `.kiro/hooks/scripts/commit_gate.py` |
 
 ### FSx for ONTAP の管理インターフェース（プロジェクト全体の前提）
 
@@ -935,137 +374,3 @@ When reviewing changes, consider these perspectives:
 | ポータルの利点を「VPN 不要」と書く | 利点は**委譲**（管理者以外に SSH を渡さず操作を渡せる）と**記録**（Cognito 主体つき） |
 
 System Manager を **UI デザインの参照元**として挙げるのは可（「カード型ナビゲーションを踏襲」等）。到達可能性の主張と混ざらないようにする。
-
-### Vendor neutrality (right-tool-for-the-job)
-
-- ベンダー対決/優劣表現は禁止（"best", "beats X", "X より優れている", "競合ツール", "優位性", "game-changer"）。選択肢として提示し、推奨案自身の制約も含めてトレードオフを対称に記載。
-
-### Public-output safety
-
-- 個人名/ペルソナ名・メール・AWS アカウントID・内部IP/ホスト名・サポートケース番号・ベンダー内部チケットID をコミットしない。role ベース表記（"Storage Specialist lens"）と "an internal product request (tracked)" を使う。
-- プロセスメタデータのノイズ禁止（"Persona Review Summary"・レビューラウンド・日付・レンズ数）。レビュー知見は inline の role-based lens note（`> **Topic** (Role lens): ...`）として織り込み、provenance は `.private/`（gitignore）へ。
-
-### Bilingual docs (JA primary + EN)
-
-- JA/EN parity を維持（セクション構成/数の一致、inline note の対応）。片方を変更したら同じ変更で両方に反映。
-
-### Technical reference / guide docs
-
-- 必須要素: エグゼクティブサマリの結論、FAQ/よくある誤解、選択フローチャート（mermaid 可）、OT/IT セキュリティ考慮（該当時）、段階的導入ステップ、Related Documents（逆リンク）、≥10 の inline role-based lens レビュー。
-
-### Before committing docs
-
-```bash
-gitleaks detect --config .gitleaks.toml --no-git --source .
-# CI が agent-output チェックをミラー: .github/workflows/agent-output-audit.yml
-```
-
-## Architecture Diagrams (draw.io + Official AWS Icons)
-
-> 詳細ルールはユーザーレベル Kiro global steering `global-architecture-diagram-standards.md` を参照。
-> ここはこのリポジトリ固有のパス・コマンドと、必ず守る最小セット。
-
-### Layout
-
-```
-docs/diagrams/                     # .drawio（Part1 は手書きソース / Part2・3 は生成物）
-├── file-portal-overview.drawio            # Part1: JA authoring（直接編集する）
-├── file-portal-architecture.drawio
-├── nextcloud-only-architecture.drawio
-├── amplify-nextcloud-combined-architecture.drawio
-├── part2-*.drawio / part3-*.drawio        # 生成物（手編集禁止 / spec は scripts/ 側）
-├── *-en.drawio                            # 生成物（手編集禁止）
-└── dark/*.drawio                          # 生成物（手編集禁止 / ライト版から派生）
-docs/images/            *.svg              # ライト。GitHub docs 用（相対パス参照）
-docs/images/            *-dark.svg         # ダーク
-docs/images/png/        *@2x.png           # ライト。ブログ用（絶対 raw URL 参照）
-docs/images/png/        *-dark@2x.png      # ダーク
-```
-
-### テーマ（ライト = 既定 / ダーク = 併記）
-
-全図を 2 テーマで公開する。**ライトが既定**で、README・docs・ブログに表示するのは常にライト版。ダーク版は同じ内容の選択肢として、図ごとにリンクを併記し、[構成図インデックス](docs/architecture-diagrams.md)（JA / EN）に一覧を置く。
-
-ダーク版は CSS ではなく**別ソースとして生成する**。draw.io の SVG は `light-dark()` で自前の配色を反転させるが、埋め込み済み AWS アイコンは追随しない（実測: 24 要素中 0 個）。反転だけでは濃紺の線画が黒背景に乗って判読不能になるため、`Res_*_48_Light` → `Res_*_48_Dark`（白い線画）へアイコン素材ごと差し替える。`Arch_*` サービスアイコンは公式に単色タイル 1 種類のみなので両テーマ共通。
-
-エクスポート後は `scripts/pin-svg-theme.py` が `light-dark()` を第 1 引数（= ソースが指定した配色）に解決し、閲覧環境のダークモード設定で勝手に反転しないよう固定する。ライトソースならライト、ダークソースならダークに固定される。
-
-図には 2 系統ある。**編集先を間違えないこと**。
-
-| 系統 | ソース | JA→EN | 編集対象 |
-|------|--------|-------|----------|
-| Part1（4 図） | `docs/diagrams/*.drawio` を直接手書き | `generate-en-diagrams.py`（XML 文字列置換 + `TRANSLATIONS`） | `.drawio` |
-| Part2/Part3（9 図 × JA/EN） | `scripts/build-part2-part3-diagrams.py` の宣言的 spec | 同スクリプトの `EN` 辞書 → `translate_diagram()` で spec ごと翻訳 | **スクリプト**（`.drawio` は毎回上書き） |
-
-Part2/3 が spec レベルで翻訳するのは、**EN ラベルは JA より幅が広く、レイアウト検査を EN でも再実行する必要があるため**。完成 XML への文字列置換ではラベル衝突が無言で残る（実際に `agent-teams` の EN ステップラベルが桁溢れし、`check_edge_labels` が検出した）。
-
-### Commands
-
-```bash
-# 1. 公式アイコンパッケージを取得（リポジトリ外に展開すること）
-#    現行版の URL は必ず https://aws.amazon.com/architecture/icons/ から再取得
-curl -s https://aws.amazon.com/architecture/icons/ | grep -oE 'https://[^"]*Icon-package[^"]*\.zip'
-unzip -q Icon-package_*.zip -d /tmp/awsicons -x '__MACOSX/*'
-
-# 2. Part1: 公式アイコン・規定サイズ・公式サービス名・単色プリセット矢印を適用
-python3 scripts/apply-official-aws-icons.py --icon-root /tmp/awsicons
-
-# 3. Part1: EN 版を JA から生成（CJK 残存で fail するゲート付き）
-python3 scripts/generate-en-diagrams.py
-
-# 4. Part2/Part3: spec から JA + EN を同時生成（レイアウト検査は EN でも再実行）
-python3 scripts/build-part2-part3-diagrams.py --icon-root /tmp/awsicons
-
-# 5. ダークテーマのソースをライト版から生成（アイコン素材ごと差し替え）
-python3 scripts/make-dark-diagrams.py --icon-root /tmp/awsicons
-
-# 6. ライト + ダークを SVG + PNG@2x にエクスポート（テーマ固定まで実行される）
-bash scripts/export-diagrams.sh
-
-# 7. 目視確認用に 2000px 以下へ縮小（エージェントが読める形にする）
-python3 scripts/preview-diagram.py            # 全 part2/part3
-python3 scripts/preview-diagram.py part3-agentchat-modes
-python3 scripts/preview-diagram.py --glob 'docs/images/png/*-dark@2x.png' --out-dir /tmp/dark-previews
-```
-
-`scripts/apply-official-aws-icons.py` と `scripts/make-dark-diagrams.py` は冪等。Part1 の JA 図を編集したら 2→3→5→6→7、Part2/3 の spec を編集したら 4→5→6→7 を再実行する。**ダーク生成（5）はライト版の変更後に必ず実行する**（漏れはコミット前に `make-dark-diagrams.py --icon-root <dir> --check` を走らせると exit 1 で検出できる。アイコンパッケージはリポジトリに含めないため CI では実行できない = ローカルでの確認が必須）。
-`-en.drawio`、`part2-*` / `part3-*` の `.drawio`、`dark/` 配下を直接編集してはいけない（次回生成で上書きされる）。
-
-### 必ず守る最小セット
-
-| 項目 | ルール |
-|------|--------|
-| アイコン世代 | 公式 Asset Package の現行四半期版のみ。draw.io 同梱 `mxgraph.aws4` は 2019 世代なので使わない |
-| サイズ | サービス 80×80（`Arch_*_64.svg` の native）、リソース 48×48（`Res_*_48.svg`）。リスケール禁止、混在禁止 |
-| ラベル | 公式サービス名 + `Amazon`/`AWS` 前置を必須。略称禁止（`ALB` → `Elastic Load Balancing`）。2 行以内 |
-| ラベル例外 | 非 AWS 要素（`Web ブラウザ` / `NFS クライアント` / `Nextcloud` 等）は前置不要 |
-| 矢印 | 単色プリセット Open Arrow のみ（`endArrow=open;endFill=0;strokeColor=#232F3E`）。色分け・線幅変更・破線での意味付けは禁止 |
-| 注記 | `補足` 見出し + `※1`/`※2`（EN は `*1`/`*2`）。太字見出し（体言止め）+ 次行に詳細。段落文で書かない |
-| 検証 | `ET.parse()` 通過だけでは不十分。**必ず PNG をレンダリングして目視確認**（JA/EN 個別に） |
-| 目視の手順 | `@2x` PNG は 2000px を超えるためエージェントが直接読めない。`scripts/preview-diagram.py` で縮小してから読む（`/tmp` 出力。コミットしない） |
-| 一括目視 | 枚数が多いときはコンタクトシートを 1 枚作る。6 列 × 300px セルなら 2000px 制限に収まる（5 列 × 370px は 2358px で拒否された） |
-| テーマ | ライトが既定。図を追加・変更したらダーク版も同時に更新し、表示側にはライトを出してダークをリンクで併記する |
-| ダークの配色 | アイコンは `Res_*_48_Dark` に差し替え。背景・面・文字は `make-dark-diagrams.py` の `PALETTE` に集約（個別図でハードコードしない） |
-| 公開 | アイコン素材そのものをリポジトリにコミットしない（埋め込み済み完成図のみ可） |
-
-### Common Pitfalls（このリポジトリで実際に踏んだもの）
-
-| Pitfall | Solution |
-|---------|----------|
-| `xml.sax.saxutils.escape()` が `"` をエスケープせず XML 破損 | HTML 属性は単引用符にし、`escape(s, {'"': '&quot;'})` を使う。または定数を事前エスケープ済み文字列にする |
-| XML 破損時 drawio が該当セル以降を無言で捨てる（export は成功する） | 書き込み後に `ET.parse()` ゲート必須。さらに PNG 目視 |
-| スクリプトが「N 個追加」と報告するが実際は未挿入 | 構築したリストを数えず、出力に `id="..."` が存在するかを検証する |
-| エッジラベルが中点に置かれアイコンに重なる | `<mxGeometry x="-0.4" relative="1">` + `<mxPoint as="offset" y="16"/>` で退避。縦線は `x` オフセット |
-| アイコン拡大でラベル衝突 | 座標をスケール。横は長い公式名のため 1.6 前後必要、縦は 1.25 程度に圧縮（非対称スケール） |
-| EN ラベルが JA より長く衝突 | EN 版は個別にレンダリング確認する。Part2/3 は spec ごと翻訳して EN でも検査を再実行する（`translate_diagram()`） |
-| 画像読み込みが `image dimensions exceed max allowed size ... 2000 pixels` で失敗 | `@2x` エクスポートは長辺 2000px 超が普通。`python3 scripts/preview-diagram.py <name>` で縮小コピーを作り、そちらを読む。**PNG を直接読もうとしてセッションを落とさない** |
-| 縦線のエッジラベルがノードラベルの 3 行目に見える | アイコンのラベルは真下に描かれ縦線の経路上にある。`vertical_label_shortfall()` が自動で下へ退避（`check_vertical_edge_labels` が明示 `at`/`dy` の取り違えを検出） |
-| 注記が枠外へはみ出す / 枠が足りない | `whiteSpace=wrap` はエクスポート時に効かない。`_wrap_note()` で明示改行し、枠高は折り返し後の行数から算出する |
-| CJK の折り返しで `の` 直後の半角スペースが消える | トークン化で「CJK 1 文字 + 後続スペース」を 1 トークンにする。`findall` の選択肢から漏れた空白は落ちる |
-| ダーク版で AWS リソースアイコンが見えない | `Res_*_48_Light`（濃紺の線画）が残っている。`make-dark-diagrams.py` を通して `Res_*_48_Dark` に差し替える |
-| SVG が閲覧環境のダークモードで勝手に反転する | `pin-svg-theme.py` 未適用。draw.io は `light-dark()` + `color-scheme: light dark` を出力するため、固定しないと配色が反転する（アイコンだけ追随せず判読不能になる） |
-| ライト版を直したのにダーク版が古い | `make-dark-diagrams.py` の再実行漏れ。コミット前に `--check` を走らせると exit 1 で検出できる（アイコンパッケージが必要なので CI では代替できない） |
-| `drawio` が PATH にない（macOS） | `/Applications/draw.io.app/Contents/MacOS/draw.io` を直接呼ぶ |
-| ヘルパースクリプトを別ディレクトリへ移動して repo root 解決が壊れる | `dirname` からの相対階層を見直し、ソースディレクトリ存在チェックを入れる |
-| ブログの画像が 404 | ブログは `raw.githubusercontent.com/.../main/...` 参照。`docs/images/` を main に push してから公開する |
-| ラベル変更後に alt text が古いまま | alt text は図の記述なので公式サービス名に追随させる（本文プロースの機能名はそのままでよい） |

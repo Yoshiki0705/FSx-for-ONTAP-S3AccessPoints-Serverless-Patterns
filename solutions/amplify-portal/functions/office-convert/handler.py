@@ -59,7 +59,10 @@ def handler(event, context):
         return {"url": None, "error": f"Unsupported file type: {ext}"}
 
     # Check cache first
-    file_hash = hashlib.md5(key.encode()).hexdigest()
+    # Cache key, not a security primitive: this only has to be a stable short name
+    # for the converted PDF. `usedforsecurity=False` says so to both the reader and
+    # to hashlib on FIPS-enabled builds, where an unqualified md5() raises.
+    file_hash = hashlib.md5(key.encode(), usedforsecurity=False).hexdigest()
     cache_key = f"{CACHE_PREFIX}{file_hash}.pdf"
 
     try:

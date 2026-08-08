@@ -95,7 +95,7 @@ def main() -> int:
     issues = 0
     for tpl in templates:
         with open(tpl, "r", encoding="utf-8") as f:
-            data = yaml.load(f, Loader=CfnLoader)
+            data = yaml.load(f, Loader=CfnLoader)  # nosec B506 - CfnLoader subclasses yaml.SafeLoader; bandit cannot see through the subclass
 
         cond_lambdas = find_conditional_lambdas(data)
         if not cond_lambdas:
