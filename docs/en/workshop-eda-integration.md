@@ -1,5 +1,7 @@
 # AWS Workshop: FSx for ONTAP S3 AP × EDA Workflow Integration Guide
 
+🌐 **Language / 言語**: [日本語](../workshop-eda-integration.md) | **English**
+
 > **Workshop Link**: [FSx for NetApp ONTAP S3 Access Points Workshop](https://catalog.us-east-1.prod.workshops.aws/workshops/9cd82e0b-8348-456b-932a-818b9e5825a1/en-US)
 
 This document maps AWS Workshop Studio EDA hands-on modules to patterns in this repository, providing a guide for incorporating workshop-validated scenarios into each UC pattern.
@@ -110,7 +112,7 @@ EC2 (EDA simulations) --NFS--> FSx for ONTAP <--S3 API-- AgentCore Gateway <--MC
 
 **Integration with UC30**:
 - Add AgentCore Gateway architecture to `docs/architecture.md`
-- Document MCP tool definitions (list/read/search) in `docs/agentcore-mcp-tools.md`
+- Document MCP tool definitions (list/read/search) in `docs/en/agentcore-mcp-tools.md`
 - Add "Knowledge Base vs AgentCore" selection guide
 
 ---

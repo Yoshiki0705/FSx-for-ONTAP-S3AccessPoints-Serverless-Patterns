@@ -1,5 +1,7 @@
 # Resource management demo guide
 
+🌐 **Language / 言語**: [日本語](resource-management-demo-guide.md) | **English**
+
 > Steps for driving the 20 panels under `Admin → Resource management`.
 > For each panel: which ONTAP REST API it calls, and what confirms success.
 

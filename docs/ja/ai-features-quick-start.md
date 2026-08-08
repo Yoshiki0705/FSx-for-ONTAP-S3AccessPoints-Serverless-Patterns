@@ -1,5 +1,7 @@
 # AI 機能クイックスタート — ファイルポータル
 
+🌐 **Language / 言語**: **日本語** | [English](../en/ai-features-quick-start.md)
+
 Bedrock Q&A、Rekognition 画像解析、Athena SQL、ファイルアップロードを 15 分以内で体験するガイド。
 
 ---

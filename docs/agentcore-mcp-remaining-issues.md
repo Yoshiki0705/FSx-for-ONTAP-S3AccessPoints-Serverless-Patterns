@@ -1,5 +1,7 @@
 # AgentCore MCP Gateway × Amazon Quick — 残課題トラッカー
 
+🌐 **Language / 言語**: **日本語** | [English](en/agentcore-mcp-remaining-issues.md)
+
 > **最終更新**: 2026-07-22
 > **検証バージョン**: Quick Desktop v0.1000.1495 / Quick Web (ap-northeast-1) / AgentCore Gateway GA (us-east-1)
 

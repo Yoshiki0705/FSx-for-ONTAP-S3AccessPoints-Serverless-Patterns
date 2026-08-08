@@ -1,5 +1,7 @@
 # FPolicy Setup Guide
 
+🌐 **Language / 言語**: [日本語](fpolicy-setup-guide.md) | **English** | [한국어](fpolicy-setup-guide-ko.md) | [简体中文](fpolicy-setup-guide-zh-CN.md) | [繁體中文](fpolicy-setup-guide-zh-TW.md) | [Français](fpolicy-setup-guide-fr.md) | [Deutsch](fpolicy-setup-guide-de.md) | [Español](fpolicy-setup-guide-es.md)
+
 **Phase 10 — ONTAP FPolicy Event-Driven Integration**
 
 ## Overview
@@ -135,6 +137,5 @@ aws sqs receive-message --queue-url <QUEUE_URL> --max-number-of-messages 5
 
 - [Event-Driven README (Quickstart)](../event-driven/README.md)
 - [FPolicy Configuration Reference](../event-driven/fpolicy-configuration-reference.md)
-- [FPolicy E2E Verification Report](../event-driven/fpolicy-e2e-verification-report.md)
 - [FPolicy Server Deployment Architecture](../event-driven/fpolicy-server-deployment-architecture.md)
 - [NetApp ONTAP FPolicy Docs](https://docs.netapp.com/us-en/ontap/nas-audit/fpolicy-config-types-concept.html)

@@ -1,5 +1,7 @@
 # Architecture Diagram Index (Light / Dark)
 
+🌐 **Language / 言語**: [日本語](architecture-diagrams.md) | **English**
+
 🌐 **Language**: [日本語](architecture-diagrams.md) | English
 
 Every architecture diagram in this repository is published in two themes with identical content: a **light theme (white background)** and a **dark theme (dark background)**.

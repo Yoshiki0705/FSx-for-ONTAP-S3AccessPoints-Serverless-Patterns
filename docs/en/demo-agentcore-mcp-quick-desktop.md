@@ -1,5 +1,7 @@
 # Demo Guide: Amazon Quick Desktop × AgentCore MCP Gateway × FSx for ONTAP
 
+🌐 **Language / 言語**: [日本語](../demo-agentcore-mcp-quick-desktop.md) | **English**
+
 > ⚠️ **This demo uses a PoC configuration (no-auth Gateway).** Do not connect to volumes containing sensitive data. Production requires CUSTOM_JWT authentication + VPC protection.
 >
 > **Data residency note**: File content is transferred cross-region between Lambda (us-east-1) → S3 AP (ap-northeast-1).
@@ -212,5 +214,5 @@ aws cognito-idp delete-user-pool \
 |----------|---------|
 | [Quick Desktop MCP Setup](quick-desktop-mcp-setup.md) | Detailed setup + IaC |
 | [AgentCore MCP Tools Reference](agentcore-mcp-tools.md) | Lambda tool specifications |
-| [Workshop EDA Integration Guide](../workshop-eda-integration.md) | Full workshop module mapping |
+| [Workshop EDA Integration Guide](workshop-eda-integration.md) | Full workshop module mapping |
 | [AWS Workshop (Module 09)](https://catalog.us-east-1.prod.workshops.aws/workshops/9cd82e0b-8348-456b-932a-818b9e5825a1/en-US/09-agentcore) | AgentCore Gateway hands-on |

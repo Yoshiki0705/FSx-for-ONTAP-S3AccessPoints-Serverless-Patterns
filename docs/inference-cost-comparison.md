@@ -189,7 +189,6 @@ Parameters:
 
 ## 関連ドキュメント
 
-- [Phase 4 設計書](.kiro/specs/fsxn-s3ap-serverless-patterns-phase4/design.md)
 - [ストリーミング vs ポーリング選択ガイド](streaming-vs-polling-guide.md)
 - [コスト構造分析](cost-analysis.md)
 - [AWS SageMaker 料金](https://aws.amazon.com/sagemaker/pricing/)

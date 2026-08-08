@@ -1,5 +1,7 @@
 # ファイルポータル UI の選択肢 — Amplify Gen2 / Nextcloud / カスタムビルド
 
+🌐 **Language / 言語**: **日本語** | [English](file-portal-amplify-gen2.en.md)
+
 ## エグゼクティブサマリ
 
 FSx for ONTAP ボリューム上のファイルを **Web ブラウザから閲覧・処理指示・結果確認**するためのフロントエンドには、複数のアーキテクチャ選択肢があります。

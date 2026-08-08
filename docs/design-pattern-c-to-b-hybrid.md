@@ -450,7 +450,7 @@ transitional state, not a permanent one.
 ## 8. Cross-References
 
 - [`docs/output-destination-patterns.md`](output-destination-patterns.md) — Current Pattern A/B/C catalog
-- [`docs/verification-results-phase7-outputdestination.md`](verification-results-phase7-outputdestination.md) — Phase 7 Theme E verification (blueprint for this design)
+- ``docs/verification-results-phase7-outputdestination.md`` — Phase 7 Theme E verification (blueprint for this design)
 - [`docs/aws-feature-requests/fsxn-s3ap-improvements.md`](aws-feature-requests/fsxn-s3ap-improvements.md) — FR-2 (Athena OutputLocation support on S3AP)
 - [`docs/phase7-summary.md`](phase7-summary.md) — Phase 7 completion summary, lists B-P8-2 as a candidate
 - [`shared/output_writer.py`](../shared/output_writer.py) — OutputWriter implementation

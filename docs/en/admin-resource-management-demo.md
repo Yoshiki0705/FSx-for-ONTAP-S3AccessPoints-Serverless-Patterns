@@ -1,5 +1,7 @@
 # Admin Resource Management — Demo Guide
 
+🌐 **Language / 言語**: [日本語](../ja/admin-resource-management-demo.md) | **English**
+
 **English** | [日本語](../ja/admin-resource-management-demo.md)
 
 > E2E verified on 2026-07-26 against FSx for ONTAP (fs-0123456789abcdef1, ONTAP 9.17.1)
@@ -574,4 +576,4 @@ Prerequisite: enable **Folder Watch** under **Admin > Resources > AI settings** 
 | [管理者向けリソース管理 — デモガイド (JA)](../ja/admin-resource-management-demo.md) | Japanese version of this document |
 | [PoC to Production Guide](portal-poc-to-production.md) | Moving from DemoMode to a real connection |
 | [Scaling Guide](portal-scaling-guide.md) | Capacity planning and throughput sharing |
-| [Tamperproof Snapshot Design](../tamperproof-snapshot-design.md) | Three-layer design and the irreversibility rules |
+| [Tamperproof Snapshot Design](../tamperproof-snapshot-design.md) (Japanese) | Three-layer design and the irreversibility rules |

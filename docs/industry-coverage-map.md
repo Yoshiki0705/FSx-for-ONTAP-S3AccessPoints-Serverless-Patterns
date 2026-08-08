@@ -1,5 +1,7 @@
 # 業界カバレッジマップ
 
+🌐 **Language / 言語**: **日本語** | [English](industry-coverage-map.en.md)
+
 > **最終更新**: 2026-06-03
 
 本ドキュメントは、AWS 公式 Industries 分類に対する FSx for ONTAP S3 Access Points サーバーレスパターンの対応状況を一覧化する。

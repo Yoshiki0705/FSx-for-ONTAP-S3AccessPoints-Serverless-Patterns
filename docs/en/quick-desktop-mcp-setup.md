@@ -1,5 +1,7 @@
 # Amazon Quick Desktop × AgentCore MCP Gateway Setup Guide
 
+🌐 **Language / 言語**: [日本語](../quick-desktop-mcp-setup.md) | **English**
+
 > ⚠️ **This document describes a PoC-only configuration.** Gateway authentication is NONE (no auth) — do not connect to production data. For production, apply CUSTOM_JWT + Authorization Policy or VPC-internal deployment + Security Groups.
 
 > **Audience**: SAs / Engineers who want to analyze EDA/business data on FSx for ONTAP via MCP from Amazon Quick

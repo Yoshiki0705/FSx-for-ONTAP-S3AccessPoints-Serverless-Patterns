@@ -1,5 +1,7 @@
 # FSx for ONTAP Management Interfaces — What You Can Reach, and What You Cannot
 
+🌐 **Language / 言語**: [日本語](../ja/fsx-ontap-management-interfaces.md) | **English**
+
 > Purpose: to settle, with citations, which interfaces are actually usable when
 > operating Amazon FSx for NetApp ONTAP (hereafter FSx for ONTAP). Every document,
 > implementation and article in this repository is written on this basis.
@@ -134,5 +136,5 @@ The portal is a layer on top of the REST API. It does not replace the REST API; 
 | [Admin Capability Map](../../solutions/amplify-portal/docs/admin-capability-map.en.md) | What each interface covers, and what the portal implements |
 | [ONTAP Connection Guide](../../solutions/amplify-portal/docs/ONTAP-CONNECTION-GUIDE.md) | VPC, secret and management LIF wiring |
 | [Verification results](../../solutions/amplify-portal/docs/verification-results.en.md) | How far each feature has actually been verified |
-| [Comparison of alternatives](../comparison-alternatives.md) | S3 AP / EFS / NFS / DataSync and read-cache choices |
-| [ONTAP integration notes](../ontap-integration-notes.md) | NAS coexistence, identity, data protection, OT |
+| [Comparison of alternatives](../comparison-alternatives.md) (Japanese) | S3 AP / EFS / NFS / DataSync and read-cache choices |
+| [ONTAP integration notes](../ontap-integration-notes.en.md) | NAS coexistence, identity, data protection, OT |

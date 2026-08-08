@@ -545,15 +545,21 @@ def _templates_under(*relative: str) -> int:
 
 
 def tracked_files() -> list[str]:
-    """Paths git tracks, which is what "in the repository" means.
+    """Paths that are, or are about to be, in the repository.
 
     Walking the working tree instead counts files CI cannot see. The first
-    version of this did, and reported 229 test files against CI's 228: the extra
-    one was `.private/test_s3ap_write.py`, gitignored and never pushed. A count
-    that differs between a laptop and the pipeline is not a count of anything.
+    version did, and reported 229 test files against CI's 228: the extra one was
+    `.private/test_s3ap_write.py`, gitignored and never pushed. A count that
+    differs between a laptop and the pipeline is not a count of anything.
+
+    `--others --exclude-standard` includes files that exist but are not staged
+    yet, which matters for the order people actually work in: adding a test file
+    and running `make drift` before `git add` would otherwise report the old
+    count locally and the new one in CI. Ignored paths stay excluded, so
+    `.private/` is still invisible either way.
     """
     result = subprocess.run(
-        ["git", "-C", str(ROOT), "ls-files"],
+        ["git", "-C", str(ROOT), "ls-files", "--cached", "--others", "--exclude-standard"],
         capture_output=True,
         text=True,
         check=False,

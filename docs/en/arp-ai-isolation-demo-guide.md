@@ -1,5 +1,7 @@
 # ARP/AI Isolation Demo Guide
 
+🌐 **Language / 言語**: [日本語](../ja/arp-ai-isolation-demo-guide.md) | **English**
+
 > Demonstrates the portal's incident response capabilities: detecting ransomware activity via ARP/AI, then isolating compromised users/IPs directly from the browser — without external tools.
 
 ## Prerequisites

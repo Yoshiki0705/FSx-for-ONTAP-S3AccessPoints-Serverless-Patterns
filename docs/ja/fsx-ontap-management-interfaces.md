@@ -1,5 +1,7 @@
 # FSx for ONTAP の管理インターフェース — 何に到達できて、何に到達できないか
 
+🌐 **Language / 言語**: **日本語** | [English](../en/fsx-ontap-management-interfaces.md)
+
 > 目的: Amazon FSx for NetApp ONTAP（以降 FSx for ONTAP）を運用するときに
 > 実際に使えるインターフェースを、公式ドキュメントの根拠付きで確定させます。
 > 本リポジトリのドキュメント・実装・記事は、すべてこの前提で書きます。
@@ -133,6 +135,6 @@ flowchart TD
 |-------------|------|
 | [管理機能マップ](../../solutions/amplify-portal/docs/admin-capability-map.md) | 各インターフェースの担当範囲とポータルの実装状況 |
 | [ONTAP 接続ガイド](../../solutions/amplify-portal/docs/ONTAP-CONNECTION-GUIDE.md) | VPC・シークレット・管理 LIF の配線 |
-| [検証状況](../../solutions/amplify-portal/docs/verification-results.md) | どの機能がどの水準まで確認済みか |
+| [検証状況](../../solutions/amplify-portal/docs/verification-results.en.md) | どの機能がどの水準まで確認済みか |
 | [代替手段の比較](../comparison-alternatives.md) | S3 AP / EFS / NFS / DataSync と読み取りキャッシュの選択 |
 | [ONTAP 連携メモ](../ontap-integration-notes.md) | NAS 併用、ID、データ保護、OT |

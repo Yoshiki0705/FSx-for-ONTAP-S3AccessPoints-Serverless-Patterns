@@ -1,5 +1,7 @@
 # 스트리밍 vs 폴링 선택 가이드
 
+🌐 **Language / 言語**: [日本語](streaming-vs-polling-guide.md) | [English](streaming-vs-polling-guide-en.md) | **한국어** | [简体中文](streaming-vs-polling-guide-zh-CN.md) | [繁體中文](streaming-vs-polling-guide-zh-TW.md) | [Français](streaming-vs-polling-guide-fr.md) | [Deutsch](streaming-vs-polling-guide-de.md) | [Español](streaming-vs-polling-guide-es.md)
+
 본 가이드에서는 FSx for ONTAP S3 Access Points를 활용한 서버리스 자동화 패턴의 두 가지 아키텍처 패턴 — **EventBridge 폴링**과 **Kinesis 스트리밍** — 을 비교하고, 워크로드에 최적인 패턴을 선택하기 위한 판단 기준을 제공합니다.
 
 ## 개요

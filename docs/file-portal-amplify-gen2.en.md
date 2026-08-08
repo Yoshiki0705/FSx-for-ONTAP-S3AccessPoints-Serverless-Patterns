@@ -1,5 +1,7 @@
 # File Portal UI Options — Amplify Gen2 / Nextcloud / Custom Build
 
+🌐 **Language / 言語**: [日本語](file-portal-amplify-gen2.md) | **English**
+
 ## Executive Summary
 
 Teams that need a **web-based interface** for browsing, requesting processing, and viewing results on FSx for ONTAP volumes have several architectural options.

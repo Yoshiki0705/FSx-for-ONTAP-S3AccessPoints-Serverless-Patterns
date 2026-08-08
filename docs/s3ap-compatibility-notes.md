@@ -1,5 +1,7 @@
 # S3AP Compatibility Notes
 
+🌐 **Language / 言語**: **日本語** | [English](s3ap-compatibility-notes.en.md)
+
 ## What FSx for ONTAP S3 Access Points Provide
 
 FSx for ONTAP S3 Access Points provide an S3-facing access boundary for file data stored in FSx for ONTAP. Data remains on FSx for ONTAP and can continue to be accessed through NFS and SMB.
