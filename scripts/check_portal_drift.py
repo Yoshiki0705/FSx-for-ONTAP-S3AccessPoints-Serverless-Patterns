@@ -28,6 +28,7 @@ used in `docs/` and the globs only covered files that are committed.
 from __future__ import annotations
 
 import re
+import subprocess
 import sys
 from dataclasses import dataclass
 from pathlib import Path
@@ -543,14 +544,36 @@ def _templates_under(*relative: str) -> int:
     return total
 
 
-def _test_files(pattern: str, *skip: str) -> int:
-    """Test files matching `pattern`, excluding paths containing any of `skip`."""
-    return sum(
-        1
-        for path in ROOT.rglob(pattern)
-        if not any(part in ("node_modules", ".venv", ".hypothesis") for part in path.parts)
-        and not any(s in path.parts for s in skip)
+def tracked_files() -> list[str]:
+    """Paths git tracks, which is what "in the repository" means.
+
+    Walking the working tree instead counts files CI cannot see. The first
+    version of this did, and reported 229 test files against CI's 228: the extra
+    one was `.private/test_s3ap_write.py`, gitignored and never pushed. A count
+    that differs between a laptop and the pipeline is not a count of anything.
+    """
+    result = subprocess.run(
+        ["git", "-C", str(ROOT), "ls-files"],
+        capture_output=True,
+        text=True,
+        check=False,
     )
+    if result.returncode != 0:
+        return []
+    return result.stdout.split("\n")
+
+
+def _test_files(suffix: str, prefix: str = "", *skip: str) -> int:
+    """Tracked test files whose basename matches, excluding `skip` directories."""
+    total = 0
+    for path in tracked_files():
+        name = path.rpartition("/")[2]
+        if not name.endswith(suffix) or not name.startswith(prefix):
+            continue
+        if any(part in skip for part in path.split("/")):
+            continue
+        total += 1
+    return total
 
 
 # Counts stated in prose that name a directory or a suite. Each entry pairs a
@@ -607,14 +630,14 @@ _COUNTED_IN_PROSE = [
     (
         "pytest-files",
         r"Python tests across (\d+) files",
-        lambda: _test_files("test_*.py", "e2e", "load"),
-        "test_*.py on disk, excluding e2e and load",
+        lambda: _test_files(".py", "test_", "e2e", "load"),
+        "tracked test_*.py, excluding e2e and load",
     ),
     (
         "vitest-files",
         r"vitest tests across (\d+) files",
-        lambda: _test_files("*.test.ts") + _test_files("*.test.tsx"),
-        "*.test.ts(x) on disk",
+        lambda: _test_files(".test.ts") + _test_files(".test.tsx"),
+        "tracked *.test.ts(x)",
     ),
 ]
 

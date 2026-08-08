@@ -543,7 +543,7 @@ COUNT_PHRASINGS = {
         "**6 operations optimization patterns (OPS1-OPS6)**",
         "├── operations/             # Operational optimization patterns (6, all built)",
     ),
-    "pytest-files": (229, "~4,000 Python tests across 229 files", None),
+    "pytest-files": (228, "~4,000 Python tests across 228 files", None),
     "vitest-files": (177, "177 vitest tests across 14 files", None),
 }
 
@@ -655,13 +655,27 @@ def test_the_test_file_counts_exclude_the_suites_that_cannot_run_here(drift):
     and is not.
     """
     counted = _claim(drift, "pytest-files")["count"]()
-    on_disk = [
-        path for path in drift.ROOT.rglob("test_*.py") if not {"node_modules", ".venv", ".hypothesis"} & set(path.parts)
-    ]
-    excluded = [path for path in on_disk if {"e2e", "load"} & set(path.parts)]
+    tracked = [p for p in drift.tracked_files() if p.rpartition("/")[2].startswith("test_") and p.endswith(".py")]
+    excluded = [path for path in tracked if {"e2e", "load"} & set(path.split("/"))]
 
     assert excluded, "the exclusion stopped applying to anything; confirm the suites still exist"
-    assert counted == len(on_disk) - len(excluded)
+    assert counted == len(tracked) - len(excluded)
+
+
+def test_only_committed_files_are_counted(drift):
+    """A file CI cannot see must not raise the number a document has to match.
+
+    The first version walked the working tree and counted
+    `.private/test_s3ap_write.py`, which is gitignored. AGENTS.md was corrected
+    to 229 to match a laptop, and CI — seeing 228 — failed. A count that differs
+    between a checkout and the pipeline is not a count of anything, so the source
+    of truth is what git tracks.
+    """
+    tracked = drift.tracked_files()
+    assert tracked, "git reported nothing; the counter has no source"
+    assert not [path for path in tracked if path.startswith(".private/")], (
+        ".private is gitignored, so nothing under it may appear here"
+    )
 
 
 def test_agents_md_is_checked(drift):
