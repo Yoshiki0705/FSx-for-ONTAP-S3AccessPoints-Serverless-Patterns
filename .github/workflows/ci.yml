@@ -279,13 +279,18 @@ jobs:
         # known tool version.
         run: pip install "$(grep -m1 '^bandit==' requirements-dev.txt)" "$(grep -m1 '^pip-audit==' requirements-dev.txt)"
       - name: Run Bandit scan
-        run: |
-          bandit -r shared/ solutions/ \
-            -ll -c .bandit \
-            -f json -o bandit-report.json || true
-          bandit -r shared/ solutions/industry/legal-compliance/ \
-            solutions/industry/financial-idp/ solutions/industry/manufacturing-analytics/ \
-            -ll -c .bandit
+        # Runs the Makefile target so the pipeline and a laptop cannot scan
+        # different trees. What this replaces: a comprehensive scan ending in
+        # `|| true`, which wrote a report and failed nothing, plus a blocking scan
+        # covering `shared/` and three of the twenty-eight industry patterns. Two
+        # SQL injection vectors and two High findings sat in the gap between them,
+        # and `make security` could not have caught them either — the target was
+        # missing from `.PHONY` and collided with the `security/` directory, so make
+        # answered "up to date" without running bandit at all.
+        run: make security
+      - name: Build Bandit report for the artifact
+        if: always()
+        run: make security-report
       - name: Run pip-audit
         run: pip-audit -r requirements.txt
       - name: Upload Bandit report

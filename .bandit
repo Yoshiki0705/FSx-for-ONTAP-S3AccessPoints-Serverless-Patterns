@@ -12,6 +12,12 @@ exclude_dirs:
   - node_modules
   - venv
   - .venv
+  # Amplify's synth output. Every finding under here is a duplicate of the source
+  # file it was built from, or belongs to an Amplify-generated asset that is not
+  # ours to change. Scanning it reports the same issue twice and points the second
+  # report at a path that disappears on the next `ampx sandbox`.
+  - .amplify
+  - cdk.out
 
 skips:
   - B101

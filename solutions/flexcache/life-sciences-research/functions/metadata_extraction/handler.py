@@ -120,8 +120,11 @@ def _extract_experiment_metadata(key: str, s3ap_alias: str) -> dict[str, Any]:
                 "columns_preview": columns[:10],
                 "estimated_rows": len(lines) - 1,
             }
-    except Exception:
-        pass
+    except Exception as e:
+        # Previously `pass`. Returning no column metadata is an acceptable outcome;
+        # doing so without a trace is not, because the caller cannot tell an
+        # unparseable header from a header that happened to be empty.
+        logger.warning("Could not read CSV header metadata: %s: %s", type(e).__name__, e)
 
     return {"data_type": "tabular"}
 

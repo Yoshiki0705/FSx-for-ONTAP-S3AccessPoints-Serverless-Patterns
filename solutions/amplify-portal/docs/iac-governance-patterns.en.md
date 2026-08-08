@@ -44,7 +44,7 @@ Any failure → merge blocked
 | Security rules | cfn-guard (security/) | ✅ Integrated in CI |
 | AWS best practices | cdk-nag (AwsSolutionsChecks) | ⚠️ Opt-in via `CDK_NAG=1` (not in CI) |
 | IAM permission validation | Access Analyzer ValidatePolicy | ✅ CI workflow added |
-| Structural regression | CDK harness tests (35 tests) | ✅ Integrated with vitest |
+| Structural regression | CDK harness tests (38 tests) | ✅ Integrated with vitest |
 | Secret leakage | gitleaks | ✅ pre-commit hook |
 | GitHub Actions security | zizmor | ✅ pre-commit hook |
 | Dependency updates | Renovate | ✅ Automated PRs |

@@ -420,3 +420,45 @@ describe("Shared Python layer attachment", () => {
     expect(backendSource).toContain("sources ${sharedSourcesFingerprint}");
   });
 });
+
+describe("GraphQL authorization", () => {
+  const SCHEMA_PATH = resolve(HERE, "../../amplify/data/resource.ts");
+  const schemaSource = readFileSync(SCHEMA_PATH, "utf-8");
+
+  /** The `.authorization(...)` call belonging to one schema entry. */
+  function authorizationFor(operation: string): string {
+    const start = schemaSource.indexOf(`  ${operation}: a`);
+    expect(start, `${operation} not found in the schema`).toBeGreaterThan(-1);
+    const call = schemaSource.indexOf(".authorization(", start);
+    expect(call, `${operation} declares no authorization`).toBeGreaterThan(-1);
+    return schemaSource.slice(call, schemaSource.indexOf("\n", call));
+  }
+
+  // runAthenaQuery executes its `sql` argument as given. There is no parameterised
+  // form of StartQueryExecution, so the group boundary is the only control: the
+  // Lambda role holds `glue:Get*` on `*`, which makes the whole Data Catalog
+  // enumerable, and an S3 read matching `*athena-results*`, which reaches any bucket
+  // in the account whose name contains that string. It shipped as
+  // `allow.authenticated()`, so every signed-in user could run arbitrary SQL while
+  // four less privileged operations in the same schema already required the group.
+  //
+  // Pinned here because nothing else would notice it changing back: the endpoint
+  // keeps working either way, and the difference is only visible to a reader who
+  // compares this line against the other four.
+  it("requires the storage-admin group to run arbitrary SQL", () => {
+    expect(authorizationFor("runAthenaQuery")).toContain('allow.groups(["storage-admin"])');
+  });
+
+  it("does not leave arbitrary SQL open to any authenticated user", () => {
+    expect(authorizationFor("runAthenaQuery")).not.toContain("allow.authenticated()");
+  });
+
+  // The server refusing is correct but not sufficient: a section that stays in the
+  // sidebar and answers every query with an authorization error tells the user the
+  // account can do something it cannot. Resource Management had exactly this problem
+  // before it was hidden, and the fix is only half applied if the UI forgets.
+  it("hides the Analytics section from non-admins in the UI", () => {
+    const appSource = readFileSync(resolve(HERE, "../../src/App.tsx"), "utf-8");
+    expect(appSource).toContain('hiddenSections.add("analytics")');
+  });
+});

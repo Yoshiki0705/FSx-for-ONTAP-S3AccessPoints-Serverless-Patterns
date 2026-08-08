@@ -103,8 +103,12 @@ def handler(event, context):
                 }
             ],
         )
-    except Exception:
-        pass
+    except Exception as e:
+        # Previously `pass`. A canary that cannot publish its metric leaves the
+        # alarm with no datapoints, and whether that pages anyone depends on the
+        # alarm's missing-data treatment — so the failure has to be visible in the
+        # log at least. Printing matches the rest of this script's output.
+        print(f"WARNING: failed to publish CanaryHealthCheck metric: {type(e).__name__}: {e}")
 
     # Summary
     print(f"\n{'=' * 50}")

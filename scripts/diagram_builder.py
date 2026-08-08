@@ -583,7 +583,10 @@ def write(diagram: Diagram, icons: IconResolver, out_dir: Path) -> Path:
     xml = build(diagram, icons)
     path = out_dir / f"{diagram.id}.drawio"
     path.write_text(xml, encoding="utf-8")
-    ET.parse(path)  # hard gate: must be well-formed
+    # Hard gate: drawio discards everything after a malformed cell and still
+    # exports, so a broken write is invisible without re-parsing. This is our
+    # own output, not untrusted XML.
+    ET.parse(path)  # nosec B314
     return path
 
 

@@ -56,6 +56,13 @@ jobs:
         run: python3 scripts/check_doc_pairs.py
       - name: Check the generated dispatch parameter types match the handlers
         run: python3 scripts/portal_action_types.py --check
+      # AGENTS.md is loaded on every agent turn and cannot be made conditional, so
+      # it had grown to 78 KB carrying notes relevant only to one kind of work.
+      # Those notes now live in docs/agent/, and this keeps AGENTS.md from absorbing
+      # them again and its pointers from going stale. `.kiro/` is not published, so
+      # the loader checks skip here; the size and pointer checks still apply.
+      - name: Check the agent context budget and that its pointers resolve
+        run: python3 scripts/check_agent_context_budget.py
 
   handler-name-check:
     name: "Handler undefined-name sweep"

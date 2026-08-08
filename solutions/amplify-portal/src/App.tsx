@@ -195,6 +195,10 @@ function App() {
   // `null` means the session has not resolved yet; hide it until it has rather
   // than show the section and take it away.
   if (isStorageAdmin !== true) hiddenSections.add("resources");
+  // Analytics runs whatever SQL is typed into it, so runAthenaQuery now requires the
+  // same group. Hidden here for the same reason as above: without this the section
+  // stays in the sidebar and every query comes back as an authorization error.
+  if (isStorageAdmin !== true) hiddenSections.add("analytics");
 
   if (authStatus !== "authenticated") {
     return <LoadingSkeleton />;
@@ -323,7 +327,11 @@ function App() {
         )}
         {activeSection === "versions" && <VersionHistory mode="diff" />}
         {activeSection === "audit" && <AuditLog />}
-        {activeSection === "analytics" && <AthenaQueryPanel />}
+        {/* Guarded again here, not only in the nav: sections are reachable by URL
+            hash, and hiding the button alone left a non-admin on a blank page. */}
+        {activeSection === "analytics" && (isStorageAdmin === true ? (
+          <AthenaQueryPanel />
+        ) : isStorageAdmin === false ? <AdminOnly /> : <LoadingSkeleton />)}
 
         {/* Data Protection sections */}
         {activeSection === "snapshots" && <VersionHistory mode="browse" />}

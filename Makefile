@@ -8,9 +8,21 @@
 #   make deploy-uc1 — Deploy UC1 (requires samconfig.toml)
 #   make clean      — Remove build artifacts
 
-.PHONY: install test lint clean help \
-	lint-python lint-python-check lint-python-format format-python lint-cfn \
-	drift drift-published
+# Every target is declared, not just the ones that looked like they needed it.
+# `security` was omitted and collides with the `security/` directory, so make
+# reported "`security' is up to date" and ran bandit zero times. A gate that
+# reports success without executing is worse than no gate: `make security` is in
+# the pre-commit list and in AGENTS.md, and it had been passing by doing nothing.
+# Listing every target closes the class rather than the instance — a future
+# target named after any existing path would fail the same silent way.
+.PHONY: \
+	help install test test-quick test-uc1 test-uc6 test-sap test-fc1 \
+	test-content-edge-delivery test-media-ivs-vod-publishing \
+	test-genai-kb-selfservice-curation test-ha-lifekeeper lint lint-python lint-python-check \
+	lint-python-format format-python lint-cfn drift drift-published security build-uc1 \
+	build-sap deploy-uc1 deploy-sap clean build-SharedLayer build-uc12 deploy-uc12 test-ops1 \
+	test-ops4 test-ops3 test-ops2 test-ops5 test-ops6 test-ops lint-ops lint-cfn-ops \
+	build-ops1 deploy-ops1 security-report
 
 # Target Python version — must match the Lambda runtime in the SAM templates
 # (`Runtime: python3.13`). Declared once here so `install`, the interpreter
@@ -36,6 +48,16 @@ ifneq (,$(wildcard .venv/bin/ruff))
   VENV_RUFF := .venv/bin/ruff
 else
   VENV_RUFF := ruff
+endif
+
+# Same reasoning for bandit, and the same omission had the same effect: the
+# `security` recipe called a bare `bandit`, which is not on PATH here, so the
+# first run after the target started working at all died with "No such file or
+# directory". requirements-dev.txt pins bandit==1.9.4 into .venv; use it.
+ifneq (,$(wildcard .venv/bin/bandit))
+  VENV_BANDIT := .venv/bin/bandit
+else
+  VENV_BANDIT := bandit
 endif
 
 # Default target
@@ -190,6 +212,14 @@ drift:
 # dead because ../../docs/ from that directory is solutions/docs/, which does not
 # exist. A dead relative link renders as ordinary text until someone clicks it.
 	$(PYTHON) scripts/check_doc_pairs.py
+# AGENTS.md is loaded on every turn and cannot be made conditional, so it had grown
+# to 78 KB carrying pitfall tables that matter only while doing that one kind of
+# work. Splitting it into task-triggered steering is undone by one useful paragraph
+# at a time unless something objects. This also catches the failure that made the
+# split necessary: `inclusion: auto` without `name` and `description` is never
+# registered, so the file is never read and nothing says so.
+	$(PYTHON) -m pytest scripts/tests/test_agent_context_budget.py --tb=short -q
+	$(PYTHON) scripts/check_agent_context_budget.py
 
 # Fetches the published posts from Hatena and dev.to, so it needs network and is
 # not part of `make lint`. Run it after shipping a feature that makes an article's
@@ -200,9 +230,22 @@ drift-published:
 # ============================================================
 # Security
 # ============================================================
+# Every directory that carries Python, not a subset. `infrastructure/` and
+# `scripts/` were outside the old list, and CI's blocking scan covered only
+# `shared/` plus three of the twenty-eight industry patterns — its comprehensive
+# run ended in `|| true`, so it wrote a JSON artifact and failed nothing. Both SQL
+# injection vectors found in this repository sat in that gap. Declared once here so
+# the pipeline and a laptop cannot scan different trees.
+BANDIT_PATHS := shared/ solutions/ operations/ infrastructure/ scripts/
+
 security:
-	bandit -r shared/ solutions/ operations/ \
-		-ll -c .bandit
+	$(VENV_BANDIT) -r $(BANDIT_PATHS) -ll -c .bandit
+
+# Same scan, machine-readable, for upload as a CI artifact. Non-blocking on
+# purpose: `security` above is the gate, and having two blocking scans of the same
+# tree means fixing the same finding twice.
+security-report:
+	$(VENV_BANDIT) -r $(BANDIT_PATHS) -ll -c .bandit -f json -o bandit-report.json || true
 
 # ============================================================
 # Build & Deploy (SAM)
