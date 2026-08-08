@@ -1,5 +1,7 @@
 # Office ファイルプレビュー — 設計調査と選択肢
 
+🌐 **Language / 言語**: [日本語](office-preview-design.md) | [English](office-preview-design.en.md)
+
 ## 要件
 
 ポータルの「All Files」セクションで `.docx`, `.xlsx`, `.pptx`, `.pdf` をブラウザ内でプレビューしたい。現在は Presigned URL 経由のダウンロードのみ（画像ファイルはインラインプレビュー済み）。
@@ -8,13 +10,13 @@
 
 | アプローチ | コールドスタート | コスト | 制約 | 推奨度 |
 |-----------|:---:|------|------|:---:|
-| **A. Lambda Container Image + LibreOffice** | 3-8s (初回) | ~$0.002/変換 | イメージサイズ ~500MB、x86_64 のみ | ⭐⭐⭐ |
-| **B. Lambda Layer (Brotli 圧縮)** | 1-2s (解凍) | ~$0.001/変換 | 250MB 制限に収まる (95MB 圧縮) | ⭐⭐⭐ |
+| **A. Lambda Container Image + LibreOffice** | 3-8s (初回) | ~$0.002/変換 | イメージサイズ 約 833MB、x86_64 のみ | ⭐⭐⭐ |
+| **B. Lambda Layer (Brotli 圧縮)** | 1-2s (解凍) | ~$0.001/変換 | 250MB 制限に収まる (95MB 圧縮) が **x86_64 ビルドのみ**。本プロジェクトの ARM64 統一と両立しない（後述） | ⭐ |
 | **C. Textract → テキスト表示** | 0.5s | $1.50/1000 ページ | テキスト + テーブルのみ（レイアウト消失） | ⭐⭐ |
 | **D. クライアントサイド (pdf.js + docx-preview)** | 0s | $0 | PDF/DOCX のみ、xlsx 非対応 | ⭐⭐ |
 | **E. 外部 SaaS (CloudConvert, etc.)** | 0s | $0.01/変換 | データが外部に送信される（コンプライアンス問題） | ⭐ |
 
-## 推奨: B → D のハイブリッドアプローチ
+## 推奨: D → A のハイブリッドアプローチ
 
 ### Phase 1（即時対応可能）: クライアントサイドプレビュー
 

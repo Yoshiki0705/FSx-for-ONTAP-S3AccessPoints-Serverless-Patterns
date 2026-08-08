@@ -22,7 +22,7 @@ cd solutions/amplify-portal
 npm install
 cp amplify/portal-config.example.ts amplify/portal-config.ts
 # Edit portal-config.ts: set s3ApAlias to your AP alias or bucket name
-SKIP_CDK_NAG=1 npx ampx sandbox --once
+npx ampx sandbox --once
 ```
 
 Wait ~4 minutes for deployment. You'll see:
@@ -117,7 +117,7 @@ Click file → AppSync askAboutFile mutation → Lambda
 
 ```bash
 cd solutions/amplify-portal
-SKIP_CDK_NAG=1 npx ampx sandbox delete --yes
+npx ampx sandbox delete --yes
 ```
 
 ---

@@ -1,6 +1,8 @@
 # IaC ガバナンスパターン — AI 時代のガードレール設計
 
-> CDK Conference Japan 2026 Keynote「IaC in the Agentic World」(Momo Kornher, CDK Team) + 関連セッションの知見を反映。
+🌐 **Language / 言語**: [日本語](iac-governance-patterns.md) | [English](iac-governance-patterns.en.md)
+
+> CDK Conference Japan 2026 Keynote「IaC in the Agentic World」(CDK チーム) + 関連セッションの知見を反映。
 
 ## 1. IaC as AI Guardrail パターン
 
@@ -12,18 +14,27 @@ AI エージェント（Kiro, DevOps Agent, GitHub Copilot 等）がインフラ
 AI Agent が CDK/SAM コードを生成
     │
     ▼
-cdk synth (CloudFormation テンプレート生成)
+PR を開く
     │
-    ├── cdk-nag: AwsSolutionsChecks (コンプライアンス)
-    ├── cfn-lint: テンプレート構文検証
-    ├── cfn-guard: カスタムルール (security/ 配下)
-    ├── IAM Access Analyzer: ポリシー過剰検知
-    └── CDK ハーネステスト: 構造アサーション
+    ├── cfn-lint: テンプレート構文検証         ── PR ゲート
+    ├── cfn-guard: カスタムルール (security/)  ── PR ゲート
+    ├── IAM Access Analyzer: ポリシー過剰検知  ── PR ゲート
+    ├── CDK ハーネステスト: 構造アサーション   ── PR ゲート
+    ├── ruff / pytest / vitest                 ── PR ゲート
+    └── cdk-nag: AwsSolutionsChecks            ── 手動（下記参照）
     │
     ▼
-すべて通過 → デプロイ許可
-いずれか失敗 → PR ブロック
+PR ゲートがすべて通過 → マージ可能
+いずれか失敗 → マージをブロック
 ```
+
+> **cdk-nag は現時点で PR ゲートではありません。** `backend.ts` の適用は `CDK_NAG=1` のときだけ有効になる opt-in で（`backend.ts` の `const enableNag = process.env.CDK_NAG === "1"`）、`.github/workflows/` のどのワークフローもこの変数を設定していません。したがって実行は手動です。
+>
+> ```bash
+> CDK_NAG=1 npx ampx generate outputs
+> ```
+>
+> opt-in にしている理由は Amplify Gen2 の制約です。cdk-nag を Aspect として常時適用すると、利用者が設定できない Amplify 管理リソース（Cognito / AppSync / 内部 S3 バケット / DynamoDB）の findings で `[AssemblyError]` になり、デプロイ自体が止まります。詳細は AGENTS.md の「cdk-nag Design Decision」を参照してください。
 
 ### このプロジェクトでの実装状況
 
@@ -31,9 +42,9 @@ cdk synth (CloudFormation テンプレート生成)
 |------------|-------|:---:|
 | テンプレート構文 | cfn-lint | ✅ CI 統合済み |
 | セキュリティルール | cfn-guard (security/) | ✅ CI 統合済み |
-| AWS ベストプラクティス | cdk-nag (AwsSolutionsChecks) | ✅ backend.ts に適用 |
+| AWS ベストプラクティス | cdk-nag (AwsSolutionsChecks) | ⚠️ `CDK_NAG=1` で opt-in（CI 未統合） |
 | IAM 権限検証 | Access Analyzer ValidatePolicy | ✅ CI workflow 追加済み |
-| 構造リグレッション | CDK ハーネステスト (17 tests) | ✅ vitest 統合済み |
+| 構造リグレッション | CDK ハーネステスト (35 tests) | ✅ vitest 統合済み |
 | シークレットリーク | gitleaks | ✅ pre-commit hook |
 | GitHub Actions セキュリティ | zizmor | ✅ pre-commit hook |
 | 依存関係更新 | Renovate | ✅ 自動 PR |
@@ -42,8 +53,8 @@ cdk synth (CloudFormation テンプレート生成)
 ### AI エージェントに対するガードレールの意味
 
 1. **AI が Lambda を追加** → CDK ハーネステストが Lambda 数をチェック（意図しない追加を検知）
-2. **AI が IAM wildcard を使用** → cdk-nag が AwsSolutions-IAM5 を発火 + validate-iam-policies.py が警告
-3. **AI が古いランタイムを指定** → cdk-nag が AwsSolutions-L1 を発火
+2. **AI が IAM wildcard を使用** → `validate-iam-policies.py` が CI で警告（cdk-nag の AwsSolutions-IAM5 は `CDK_NAG=1` を付けたときのみ）
+3. **AI が古いランタイムを指定** → cdk-nag が AwsSolutions-L1 を発火（同じく opt-in。CI で自動検知はされない）
 4. **AI がシークレットをハードコード** → gitleaks が pre-commit でブロック
 5. **AI が Amplify Gen2 のパターンを間違える** → amplify-gen2-cdk-patterns.md で学習ソースを提供
 
@@ -51,8 +62,10 @@ cdk synth (CloudFormation テンプレート生成)
 
 - **Deny by default**: cdk-nag の suppression は明示的な理由付きでのみ許可
 - **Document exceptions**: wildcard リソースには必ず `// Restrict to ... in production` コメント
-- **Track drift**: suppressions の数が増えたら CDK ハーネステストで上限チェック（現在 ≤15）
+- **Track drift**: IAM の wildcard リソース宣言数に上限を設ける（`backend-assertions.test.ts` の `expect(cdkWildcards.length).toBeLessThanOrEqual(15)`）。**これは wildcard の数の上限であり、suppression の数の上限ではありません。** suppression 数を制限する仕組みは現時点でありません
 - **AI にコンテキストを渡す**: AGENTS.md と steering files で「何が許可され何が禁止か」を明示
+
+> **suppression の網羅性について**: Amplify Gen2 のネストスタック内リソースは `addStackSuppressions` で確実に抑制できません（AGENTS.md に記録あり）。これが cdk-nag を常時適用にできない直接の理由でもあります。したがって「全 findings が理由付き suppression で解消されている」とは言えません。自作コード側の findings は解消済み、Amplify 管理リソース側は抑制しきれない、という状態です。
 
 ---
 
@@ -60,7 +73,7 @@ cdk synth (CloudFormation テンプレート生成)
 
 ### 判断基準
 
-CDK Conference セッション「Alphaモジュール使っていいのかい！？」(watany) の知見:
+CDK Conference セッション「Alphaモジュール使っていいのかい！？」の知見:
 
 | 判断軸 | 使ってよい | 避けるべき |
 |--------|:---:|:---:|
@@ -163,7 +176,7 @@ AI がコードを書く時代に IaC が重要性を増す理由: **コード�
 
 ## 参考
 
-- CDK Conference Japan 2026 Keynote: "IaC in the Agentic World" (Momo Kornher)
-- CDK Conference Japan 2026: "Alphaモジュール使っていいのかい" (watany)
-- CDK Conference Japan 2026: "ドリフトを絶対に許さないCDK運用" (アキキー)
+- CDK Conference Japan 2026 Keynote: "IaC in the Agentic World" (CDK チーム)
+- CDK Conference Japan 2026: "Alphaモジュール使っていいのかい"
+- CDK Conference Japan 2026: "ドリフトを絶対に許さないCDK運用"
 - [Firefly.ai: AI Won't Kill IaC — It Will Make It Non-Negotiable](https://www.firefly.ai/blog/2026-predictions-ai-wont-kill-iac-it-will-make-it-non-negotiable)

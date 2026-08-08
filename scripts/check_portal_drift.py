@@ -563,6 +563,17 @@ def tracked_files() -> list[str]:
     return result.stdout.split("\n")
 
 
+def _count_in(path: Path, pattern: str) -> int:
+    """Occurrences of `pattern` in `path`, or 0 if the file has moved.
+
+    Returning 0 rather than raising lets `check_count_claims` report a broken
+    reader, which names the real problem: a rename nobody propagated.
+    """
+    if not path.is_file():
+        return 0
+    return len(re.findall(pattern, path.read_text(), re.MULTILINE))
+
+
 def _test_files(suffix: str, prefix: str = "", *skip: str) -> int:
     """Tracked test files whose basename matches, excluding `skip` directories."""
     total = 0
@@ -626,6 +637,21 @@ _COUNTED_IN_PROSE = [
         _either_order(r"operation(?:s|al) optimization patterns?"),
         lambda: _templates_under("operations"),
         "operations/*/template.yaml",
+    ),
+    (
+        "cdk-harness-tests",
+        r"CDK (?:harness tests|ハーネステスト)[^|\n]*?\((?:構造アサーション\s*)?(\d+)\s*(?:tests|assertions)",
+        lambda: _count_in(
+            PORTAL / "tests" / "infrastructure" / "backend-assertions.test.ts",
+            r"^[ \t]*it\(",
+        ),
+        "it( blocks in tests/infrastructure/backend-assertions.test.ts",
+    ),
+    (
+        "portal-lambda-count",
+        r"Lambda\s*(?:x|×)\s*(\d+)",
+        lambda: _count_in(PORTAL / "amplify" / "backend.ts", r"new lambda\.Function\("),
+        "new lambda.Function( in amplify/backend.ts",
     ),
     (
         "pytest-files",

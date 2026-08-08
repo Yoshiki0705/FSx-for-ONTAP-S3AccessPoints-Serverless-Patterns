@@ -264,10 +264,10 @@ pip install -r requirements-dev.txt
 ### テスト
 
 ```bash
-# ユニットテスト + プロパティベーステスト (851 tests)
+# ユニットテスト + プロパティベーステスト (1223 tests)
 pytest shared/tests/ -v
 
-# Amplify ポータル CDK ハーネス + コンポーネント (17 tests)
+# Amplify ポータル CDK ハーネス + コンポーネント (177 tests)
 cd solutions/amplify-portal && npx vitest run
 
 # S3 統合テスト (floci, 9 tests / 0.26s)
