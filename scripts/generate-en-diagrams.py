@@ -149,7 +149,7 @@ def main() -> int:
         dst.write_text(out_xml, encoding="utf-8")
 
         try:
-            ET.parse(dst)
+            ET.parse(dst)  # nosec B314 - parses XML this repository generated, not untrusted input
             xml_ok = "XML OK"
         except ET.ParseError as exc:
             xml_ok = f"XML BROKEN -> {exc}"

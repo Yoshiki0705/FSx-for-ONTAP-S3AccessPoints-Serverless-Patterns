@@ -35,14 +35,14 @@ In Amplify Gen2 you can reach the CDK stack through the return value of `defineB
 // ❌ FAILS: Data Source in a different stack
 const infraStack = new Stack(app, "InfraStack");
 const sfnDataSource = new HttpDataSource(infraStack, "SfnDS", { ... });
-// → AppSync API は dataStack にある → resolver が Data Source を見つけられない
+// → The AppSync API lives in dataStack → the resolver cannot find the data source
 ```
 
 ```typescript
 // ✅ WORKS: Data Source in the SAME stack as AppSync API
 const dataStack = Stack.of(api);
 const sfnDataSource = api.addHttpDataSource("SfnDS", endpoint, { ... });
-// → 同一スタック内なので resolver binding が成功
+// → Same stack, so the resolver binding succeeds
 ```
 
 **Root cause**: an AppSync resolver references its data source by logical ID within the CloudFormation template. A cross-stack reference cannot resolve that logical ID.
@@ -64,7 +64,7 @@ VPC Lambda functions (ListSnapshots and similar) take time to create and delete 
 #### Case 3: synth with environment variables unset → Lambda crashes at startup
 
 ```typescript
-// ❌ Lambda が空文字列で API を呼ぶ → ランタイムエラー
+// ❌ The Lambda calls the API with an empty string → runtime error
 environment: { ONTAP_MGMT_IP: process.env.ONTAP_MGMT_IP || "" }
 ```
 

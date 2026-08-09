@@ -149,8 +149,8 @@ Information to provide to NetApp/AWS support during incidents:
 - Volume name (junction path)
 - S3 AP name and NetworkOrigin (Internet/VPC)
 - Failing object key (redacted if sensitive)
-- NFS/SMB からの同一ファイルアクセス結果
-- ONTAP REST API レスポンス (該当する場合)
+- The result of accessing the same file over NFS/SMB
+- The ONTAP REST API response, where one applies
 - CloudWatch Lambda execution ID
 - Step Functions execution ARN
 - FSx CloudWatch metrics (DataReadBytes, NetworkThroughput)

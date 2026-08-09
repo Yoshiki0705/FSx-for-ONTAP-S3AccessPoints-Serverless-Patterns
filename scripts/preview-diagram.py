@@ -33,7 +33,9 @@ from PIL import Image
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_GLOB = "docs/images/png/part[23]-*.png"
-DEFAULT_OUT = Path("/tmp/diagram-previews")
+# Previews are deliberately written outside the repository so they cannot be
+# committed; AGENTS.md documents them as /tmp output.
+DEFAULT_OUT = Path("/tmp/diagram-previews")  # nosec B108
 DEFAULT_MAX_DIM = 1800
 
 

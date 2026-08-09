@@ -29,6 +29,7 @@ import boto3
 
 from shared.exceptions import lambda_error_handler
 from shared.observability import EmfMetrics, trace_lambda_handler, xray_subsegment
+from shared.sql import like_operand, sql_literal
 
 logger = logging.getLogger(__name__)
 
@@ -42,7 +43,7 @@ QUERIES = {
             AVG(cell_count) AS avg_cell_count,
             APPROX_PERCENTILE(cell_count, 0.95) AS p95_cell_count
         FROM "{database}"."{table}"
-        WHERE file_key LIKE '{prefix}%'
+        WHERE file_key LIKE {prefix_pattern} ESCAPE '\\'
           AND cell_count IS NOT NULL
     """,
     "bounding_box_outliers": """
@@ -61,11 +62,11 @@ QUERIES = {
                     bounding_box.max_y - bounding_box.min_y, 0.75
                 ) AS q3_height
             FROM "{database}"."{table}"
-            WHERE file_key LIKE '{prefix}%'
+            WHERE file_key LIKE {prefix_pattern} ESCAPE '\\'
         )
         SELECT t.file_key
         FROM "{database}"."{table}" t, stats s
-        WHERE t.file_key LIKE '{prefix}%'
+        WHERE t.file_key LIKE {prefix_pattern} ESCAPE '\\'
           AND (
               (t.bounding_box.max_x - t.bounding_box.min_x)
                   > s.q3_width + 1.5 * (s.q3_width - s.q1_width)
@@ -76,7 +77,7 @@ QUERIES = {
     "naming_violations": """
         SELECT file_key
         FROM "{database}"."{table}"
-        WHERE file_key LIKE '{prefix}%'
+        WHERE file_key LIKE {prefix_pattern} ESCAPE '\\'
           AND (
               file_key LIKE '%-%'
               OR REGEXP_LIKE(file_key, '[^a-zA-Z0-9_./]')
@@ -85,7 +86,7 @@ QUERIES = {
     "invalid_files_count": """
         SELECT COUNT(*) AS invalid_count
         FROM "{database}"."{table}"
-        WHERE file_key LIKE '{prefix}%'
+        WHERE file_key LIKE {prefix_pattern} ESCAPE '\\'
           AND cell_count IS NULL
     """,
 }
@@ -278,10 +279,15 @@ def handler(event, context):
     last_query_execution_id = ""
 
     for query_name, query_template in QUERIES.items():
+        # `metadata_prefix` arrives in the event, so it is data rather than
+        # configuration. Rendering it as a literal stops a quote from ending the
+        # statement, and escaping LIKE metacharacters stops a `%` or `_` in an
+        # object key from silently widening the match. `database` and `table` come
+        # from the environment and stay as they are.
         query = query_template.format(
             database=database,
             table=table,
-            prefix=metadata_prefix,
+            prefix_pattern=sql_literal(like_operand(metadata_prefix) + "%"),
         )
         logger.info("Executing Athena query: %s", query_name)
 

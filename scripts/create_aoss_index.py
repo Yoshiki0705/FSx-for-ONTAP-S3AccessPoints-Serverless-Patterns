@@ -48,7 +48,9 @@ for k, v in dict(request.headers).items():
     req.add_header(k, v)
 
 try:
-    resp = urllib.request.urlopen(req)
+    if not url.startswith("https://"):
+        raise ValueError(f"refusing a non-https endpoint: {url}")
+    resp = urllib.request.urlopen(req)  # nosec B310 - scheme asserted above
     print(f"Index created: {resp.status}")
     print(resp.read().decode())
 except urllib.error.HTTPError as e:

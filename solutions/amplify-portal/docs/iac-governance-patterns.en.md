@@ -44,7 +44,7 @@ Any failure → merge blocked
 | Security rules | cfn-guard (security/) | ✅ Integrated in CI |
 | AWS best practices | cdk-nag (AwsSolutionsChecks) | ⚠️ Opt-in via `CDK_NAG=1` (not in CI) |
 | IAM permission validation | Access Analyzer ValidatePolicy | ✅ CI workflow added |
-| Structural regression | CDK harness tests (35 tests) | ✅ Integrated with vitest |
+| Structural regression | CDK harness tests (38 tests) | ✅ Integrated with vitest |
 | Secret leakage | gitleaks | ✅ pre-commit hook |
 | GitHub Actions security | zizmor | ✅ pre-commit hook |
 | Dependency updates | Renovate | ✅ Automated PRs |
@@ -118,11 +118,11 @@ When a sandbox environment is changed by hand (editing a Lambda environment vari
 ### Recommendation: run `cdk diff` periodically
 
 ```yaml
-# .github/workflows/drift-check.yml (週次)
+# .github/workflows/drift-check.yml (weekly)
 name: Drift Detection
 on:
   schedule:
-    - cron: "0 9 * * 1"  # 毎週月曜 9:00 UTC
+    - cron: "0 9 * * 1"  # Mondays at 09:00 UTC
   workflow_dispatch:
 
 jobs:

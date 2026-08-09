@@ -289,7 +289,7 @@ def validate_template(template_path: str) -> list[ValidationResult]:
     content = path.read_text(encoding="utf-8")
 
     try:
-        template = yaml.load(content, Loader=_get_cfn_loader())
+        template = yaml.load(content, Loader=_get_cfn_loader())  # nosec B506 - CfnLoader subclasses yaml.SafeLoader; bandit cannot see through the subclass
     except yaml.YAMLError as e:
         return [
             ValidationResult(

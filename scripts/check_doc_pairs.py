@@ -78,7 +78,11 @@ RELATIVE_LINK = re.compile(r"\]\((?!https?://|/)([^)#\s]+\.md)")
 # would make a single missing switcher in a generated file fail this check
 # without telling anyone which generator to fix.
 PAIR_DIRS = ("docs", "docs/ja", "docs/guides", "solutions/amplify-portal/docs")
-LINK_DIRS = ("docs", "docs/ja", "docs/en", "docs/guides", "solutions/amplify-portal/docs")
+# `docs/agent/` is link-checked but not pair-checked. It holds the agent-facing notes
+# that used to live in AGENTS.md, a single mixed-language file with no translation to
+# pair with. Its links do need checking: they arrived as root-relative paths and 54 of
+# them resolved to `docs/docs/...` the moment the content moved one directory down.
+LINK_DIRS = ("docs", "docs/ja", "docs/en", "docs/guides", "docs/agent", "solutions/amplify-portal/docs")
 
 
 def _switcher(path: pathlib.Path) -> bool:
