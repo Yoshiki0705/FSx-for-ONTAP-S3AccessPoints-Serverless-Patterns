@@ -10,7 +10,7 @@
 ┌──────────────────────────────────────────────────────────────────┐
 │ Amplify Gen2 Backend (CDK)                                        │
 │                                                                    │
-│  AppSync → Lambda (VPC 内) → ONTAP REST API (HTTPS/443)          │
+│  AppSync → Lambda (in VPC) → ONTAP REST API (HTTPS/443)         │
 │                 │                    │                              │
 │                 │                    ├── https://<mgmt-ip>/api/...  │
 │                 │                    │   (Basic Auth: fsxadmin)     │
@@ -35,12 +35,12 @@
 ### How to look up the IP addresses
 
 ```bash
-# ファイルシステム管理 IP（本ポータルが使用）
+# File system management IP (the one this portal uses)
 aws fsx describe-file-systems --file-system-ids <fs-id> \
   --query "FileSystems[0].OntapConfiguration.Endpoints.Management.IpAddresses[0]" \
   --output text
 
-# SVM 管理 LIF IP（本ポータルでは使用しない）
+# SVM management LIF IP (not used by this portal)
 aws fsx describe-storage-virtual-machines \
   --filters "Name=file-system-id,Values=<fs-id>" \
   --query "StorageVirtualMachines[0].Endpoints.Management.IpAddresses[0]" \
@@ -74,13 +74,13 @@ aws secretsmanager create-secret \
 When you change the FSx for ONTAP `fsxadmin` password, **always update both sides together**:
 
 ```bash
-# Step 1: FSx for ONTAP 側のパスワード変更
+# Step 1: change the password on the FSx for ONTAP side
 aws fsx update-file-system \
   --file-system-id <fs-id> \
   --ontap-configuration '{"FsxAdminPassword":"NewSecureP@ss2026!"}' \
   --region <your-region>
 
-# Step 2: Secrets Manager の値を同期
+# Step 2: sync the value in Secrets Manager
 aws secretsmanager put-secret-value \
   --secret-id fsx-ontap-fsxadmin-credentials \
   --secret-string '{"username":"fsxadmin","password":"NewSecureP@ss2026!"}' \
@@ -103,9 +103,9 @@ aws secretsmanager put-secret-value \
 ### Checking in CloudWatch Logs
 
 ```bash
-# Lambda ログでONTAP API エラーを検索
+# Search the Lambda logs for ONTAP API errors
 aws logs filter-log-events \
-  --log-group-name "/aws/lambda/<ResourceMgmtFunction名>" \
+  --log-group-name "/aws/lambda/<ResourceMgmtFunction name>" \
   --start-time $(( $(date +%s) - 300 ))000 \
   --region <your-region> \
   --query 'events[*].message' --output text \
@@ -181,38 +181,38 @@ Creating a SnapMirror relationship normally goes `volume create -type DP` → `s
 When Amplify Gen2 has multiple authentication providers configured (Cognito User Pools + IAM), failing to pass `authMode` explicitly to `generateClient<Schema>()` means the Cognito ID Token is not sent to AppSync, producing a "User is not authorized" error.
 
 ```typescript
-// ❌ 動作しない（authMode 未指定）
+// ❌ Does not work: no authMode given
 const client = generateClient<Schema>();
 
-// ✅ 正しい（Cognito token を確実に送信）
+// ✅ Correct: the Cognito token is sent
 const client = generateClient<Schema>({ authMode: "userPool" });
 ```
 
 ## Deploying to a new environment (end to end)
 
 ```bash
-# 1. リポジトリ取得
+# 1. Get the repository
 git clone https://github.com/Yoshiki0705/FSx-for-ONTAP-S3AccessPoints-Serverless-Patterns.git
 cd FSx-for-ONTAP-S3AccessPoints-Serverless-Patterns/solutions/amplify-portal
 
-# 2. 依存関係
+# 2. Dependencies
 npm install
 
-# 3. 設定ファイル（FSx for ONTAP の情報を自動取得）
+# 3. Config file (FSx for ONTAP details are discovered for you)
 ./scripts/setup-prerequisites.sh --fs-id <your-fs-id>
 cp amplify/portal-config.example.ts amplify/portal-config.ts
-# 出力された値を portal-config.ts に転記
+# Copy the printed values into portal-config.ts
 
-# 4. Secrets Manager にクレデンシャル登録
+# 4. Register the credentials in Secrets Manager
 aws secretsmanager create-secret \
   --name fsx-ontap-fsxadmin-credentials \
   --secret-string '{"username":"fsxadmin","password":"<your-password>"}'
 
-# 5. 起動
+# 5. Start
 npm start
 
-# 6. 初回ユーザー作成（自動で Cognito サインアップ画面が表示される）
-# ブラウザで http://localhost:5173 → Create Account
+# 6. Create the first user (the Cognito sign-up screen opens on its own)
+# In a browser: http://localhost:5173 → Create Account
 ```
 
 ## Patterns for using this alongside other SaaS tools

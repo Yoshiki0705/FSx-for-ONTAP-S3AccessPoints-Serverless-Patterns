@@ -31,6 +31,7 @@ import boto3
 from shared.exceptions import lambda_error_handler
 from shared.observability import EmfMetrics, trace_lambda_handler
 from shared.retry_handler import RetryConfig, categorize_error, retry_with_backoff
+from shared.sql import sql_literal
 
 logger = logging.getLogger(__name__)
 
@@ -249,14 +250,19 @@ def query_athena_scada(
     database = os.environ.get("ATHENA_DATABASE", "scada_db")
     output_location = os.environ.get("ATHENA_OUTPUT_LOCATION", "s3://athena-results/")
 
+    # `equipment_id` is read out of an object on the watched volume and the dates
+    # travel with it, so all three are data rather than configuration. Athena has
+    # no bind-parameter form, so they are rendered as literals. See shared/sql.py.
     query = (
-        f"SELECT timestamp, equipment_id, voltage, nominal_voltage, "
-        f"phase_a_load, phase_b_load, phase_c_load, "
-        f"frequency, nominal_frequency "
-        f"FROM scada_readings "
-        f"WHERE equipment_id = '{equipment_id}' "
-        f"AND timestamp BETWEEN '{start_date}' AND '{end_date}' "
-        f"ORDER BY timestamp"
+        # nosec must sit on the first fragment: bandit reports the start of the
+        # concatenation, not the closing parenthesis.
+        "SELECT timestamp, equipment_id, voltage, nominal_voltage, "  # nosec B608
+        "phase_a_load, phase_b_load, phase_c_load, "
+        "frequency, nominal_frequency "
+        "FROM scada_readings "
+        f"WHERE equipment_id = {sql_literal(equipment_id)} "
+        f"AND timestamp BETWEEN {sql_literal(start_date)} AND {sql_literal(end_date)} "
+        "ORDER BY timestamp"
     )
 
     @retry_with_backoff(config=RetryConfig(max_attempts=3))

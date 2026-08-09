@@ -82,3 +82,17 @@ solutions/industry/transportation-maintenance
 solutions/industry/travel-document-processing
 solutions/industry/utilities-asset-inspection
 solutions/sap/erp-adjacent
+
+# The portal's Lambda handlers. These sit one level deeper than a pattern
+# (functions/<name>/tests/ rather than <pattern>/tests/), which is the only reason
+# they were missed when this file replaced the two hand-maintained lists: 422 tests
+# that ran in no gate at all — not `make test`, not any CI job — and executed only
+# if someone remembered the per-directory command in AGENTS.md. They need the same
+# process isolation as the patterns, since every one of them defines `handler` or
+# `index`.
+solutions/amplify-portal/functions/agent-chat
+solutions/amplify-portal/functions/audit-log
+solutions/amplify-portal/functions/data-protection
+solutions/amplify-portal/functions/list-files
+solutions/amplify-portal/functions/office-convert
+solutions/amplify-portal/functions/resource-management

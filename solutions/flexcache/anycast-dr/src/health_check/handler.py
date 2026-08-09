@@ -74,7 +74,9 @@ def _simulate_health_check(endpoint: str, check_type: str) -> dict[str, Any]:
     import random
 
     # エンドポイント名からシード生成（再現性のため）
-    seed = int(hashlib.md5(endpoint.encode()).hexdigest()[:8], 16)
+    # Deterministic seed for the simulation, not a security primitive: the same
+    # endpoint must produce the same sequence so a demo run is reproducible.
+    seed = int(hashlib.md5(endpoint.encode(), usedforsecurity=False).hexdigest()[:8], 16)
     rng = random.Random(seed + int(time.time() // 300))
 
     is_healthy = rng.random() > 0.1  # 90% の確率で healthy

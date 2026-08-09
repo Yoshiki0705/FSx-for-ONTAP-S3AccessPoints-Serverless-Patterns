@@ -54,9 +54,9 @@ If XLSX/PPTX support becomes necessary:
 ```dockerfile
 FROM public.ecr.aws/shelf/lambda-libreoffice-base:26.2-python3.13-x86_64
 
-# 必須。LibreOffice は初回起動時にユーザープロファイルを書き込むが、Lambda の
-# ファイルシステムは /tmp 以外が読み取り専用のため、これを省くと
-# "User installation could not be completed" で終了コード 77 になる。
+# Required. LibreOffice writes a user profile on first launch, and every
+# path outside /tmp is read-only in Lambda, so omitting this ends in
+# "User installation could not be completed" and exit code 77.
 ENV HOME=/tmp
 
 COPY handler.py ${LAMBDA_TASK_ROOT}
@@ -76,11 +76,11 @@ The implemented Dockerfile lives at [`functions/office-convert/Dockerfile`](../f
 ```
 Browser → AppSync → Lambda (Container, x86_64)
                       ↓
-                S3 AP GetObject (Office ファイル取得)
+                S3 AP GetObject (fetch the Office file)
                       ↓
                 LibreOffice --convert-to pdf
                       ↓
-                S3 PutObject (PDF を一時バケットに保存)
+                S3 PutObject (store the PDF in the cache bucket)
                       ↓
                 Presigned URL → Browser (<iframe>)
 ```

@@ -152,7 +152,7 @@ Driving Data        Data Validation    Scene Classification    Dataset
 ### Local Testing (Phase 6A)
 
 ```bash
-# SAM CLI でローカルテスト
+# Local test with the SAM CLI
 sam local invoke \
   --template autonomous-driving/template-deploy.yaml \
   --event events/uc09-autonomous-driving/discovery-event.json \
@@ -187,7 +187,7 @@ Creates a new S3 bucket (`${AWS::StackName}-output-${AWS::AccountId}`) and
 writes AI artifacts there.
 
 ```bash
-# 前提: AWS SAM CLI が必要です。sam build がコードと共有レイヤーを自動でパッケージングします。
+# Prerequisite: AWS SAM CLI. `sam build` packages the code and the shared layer automatically.
 sam build
 
 sam deploy \
@@ -214,7 +214,7 @@ sam deploy \
 - Strongly recommend specifying `S3AccessPointName` (grant IAM permissions for both Alias and ARN formats)
 - Object size limit is 50 GB (AWS specification). A single PutObject is capped at 5 GB, so multipart upload is required above 5 GB
 - For AWS specification constraints, see
-  [the "AWS Specification Constraints and Workarounds" section in the project README](../../README.md#aws-仕様上の制約と回避策)
+  [the "AWS Specification Constraints and Workarounds" section in the project README](../../README.en.md#key-s3-access-point-constraints)
   and [`docs/output-destination-patterns.md`](../../docs/output-destination-patterns.md)
 
 ---

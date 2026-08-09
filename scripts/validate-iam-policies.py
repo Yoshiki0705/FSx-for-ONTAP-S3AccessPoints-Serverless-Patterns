@@ -93,7 +93,7 @@ def extract_iam_policies(template_path: Path) -> list[dict]:
         if template_path.suffix == ".json":
             template = json.load(f)
         else:
-            template = yaml.load(f, Loader=CfnLoader)
+            template = yaml.load(f, Loader=CfnLoader)  # nosec B506 - CfnLoader subclasses yaml.SafeLoader; bandit cannot see through the subclass
 
     if not template or "Resources" not in template:
         return []

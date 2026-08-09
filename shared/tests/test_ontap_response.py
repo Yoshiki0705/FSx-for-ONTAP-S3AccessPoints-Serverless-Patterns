@@ -42,6 +42,11 @@ class MockOntapClient:
         self.calls: list[tuple[str, str, dict | None]] = []
         # Ordered responses: consume sequentially for paths that get called multiple times
         self._ordered_responses: dict[str, list[dict]] = {}
+        # Failures, keyed by path fragment. Until this existed the mock could only
+        # describe ONTAP answering, so no test could describe ONTAP failing — which
+        # is how two `except Exception: pass` blocks in list_active_blocks went
+        # unnoticed while reporting "no blocks" for "could not check".
+        self._errors: dict[str, Exception] = {}
 
     def set_ordered_responses(self, path_fragment: str, responses: list[dict]):
         """Set sequential responses for a path (consumed in order)."""
@@ -53,6 +58,10 @@ class MockOntapClient:
         full_key = f"{method} {path}"
         if params:
             full_key += " " + str(params)
+
+        for pattern, error in self._errors.items():
+            if pattern in full_key:
+                raise error
 
         # Check ordered responses first
         for pattern, resp_list in self._ordered_responses.items():
@@ -433,6 +442,43 @@ class TestListActiveBlocks:
         assert len(result["nfs_blocks"]) == 1
         assert "10.0.5.99" in result["nfs_blocks"][0]["client_match"]
         assert result["total"] == 2
+        assert result["partial"] is False
+        assert result["errors"] == []
+
+    def test_an_smb_lookup_failure_is_not_reported_as_no_blocks(self, mock_client):
+        """An ONTAP failure must not read as "nothing is blocked".
+
+        Both were `except Exception: pass`, so a failed lookup returned an empty
+        list and `total: 0` — the same answer as a clean SVM. An operator checking
+        after a containment action would conclude the block had not taken effect,
+        or worse, that it was no longer needed. The handler has a test for reporting
+        this failure, but it mocks this method, so the swallow kept the real code
+        from ever reaching that path.
+        """
+        mock_client._errors["/name-services/name-mappings"] = RuntimeError("ONTAP 503")
+        mock_client._responses["/protocols/nfs/export-policies"] = {"records": [], "num_records": 0}
+        arp = ArpResponseActions(mock_client)
+
+        result = arp.list_active_blocks(svm_name="svm1")
+
+        assert result["partial"] is True
+        assert any("smb_blocks" in e and "ONTAP 503" in e for e in result["errors"])
+        assert result["smb_blocks"] == []
+
+    def test_an_nfs_lookup_failure_is_surfaced_independently(self, mock_client):
+        """One side failing must not hide that the other side succeeded."""
+        mock_client._responses["/name-services/name-mappings"] = {
+            "records": [{"pattern": "CORP\\\\jdoe", "index": 1, "replacement": "nobody"}],
+            "num_records": 1,
+        }
+        mock_client._errors["/protocols/nfs/export-policies"] = RuntimeError("ONTAP 500")
+        arp = ArpResponseActions(mock_client)
+
+        result = arp.list_active_blocks(svm_name="svm1")
+
+        assert result["partial"] is True
+        assert len(result["smb_blocks"]) == 1
+        assert any("nfs_blocks" in e for e in result["errors"])
 
 
 # --- Unblock Tests ---

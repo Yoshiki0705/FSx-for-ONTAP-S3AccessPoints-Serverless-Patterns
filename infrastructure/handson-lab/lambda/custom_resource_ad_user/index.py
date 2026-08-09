@@ -193,12 +193,20 @@ def send_response(
 
     logger.info("Response: %s", response_body)
 
+    # CloudFormation supplies this pre-signed S3 URL in the event. Asserting the
+    # scheme keeps a malformed or forged event from turning this into a `file:`
+    # read, which is what bandit's B310 warns about; the check is cheap and the
+    # value is never operator-supplied, so failing loudly is the right response.
+    response_url = event["ResponseURL"]
+    if not response_url.startswith("https://"):
+        raise ValueError("ResponseURL must be an https URL")
+
     request = urllib.request.Request(
-        event["ResponseURL"],
+        response_url,
         data=response_body.encode("utf-8"),
         headers={"Content-Type": ""},
         method="PUT",
     )
 
-    with urllib.request.urlopen(request) as response:
+    with urllib.request.urlopen(request) as response:  # nosec B310 - scheme asserted above
         logger.info("Response status: %s", response.status)

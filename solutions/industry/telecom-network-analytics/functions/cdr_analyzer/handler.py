@@ -41,6 +41,7 @@ from shared.exceptions import lambda_error_handler
 from shared.observability import EmfMetrics, trace_lambda_handler, xray_subsegment
 from shared.retry_handler import RetryConfig, RetryExhaustedError, execute_with_retry
 from shared.s3ap_helper import S3ApHelper
+from shared.sql import sql_literal
 
 logger = logging.getLogger(__name__)
 
@@ -295,8 +296,12 @@ def compute_traffic_statistics(records: list[dict[str, Any]]) -> dict[str, Any]:
                         break
                     except ValueError:
                         continue
-            except Exception:
-                pass
+            except Exception as e:
+                # Previously `pass`. A record whose timestamp matches none of the
+                # formats above is dropped from the hourly volume, which understates
+                # traffic without saying so. Logging at debug keeps a malformed feed
+                # from flooding the log while leaving the drop traceable.
+                logger.debug("Skipped a record with an unusable timestamp: %s: %s", type(e).__name__, e)
 
         # 通話時間
         duration = record.get("duration", 0.0)
@@ -337,6 +342,9 @@ def run_athena_traffic_query(
     Returns:
         dict | None: Athena クエリ結果 (利用可能な場合)。None の場合はローカル計算を使用。
     """
+    # `file_key` is the object's own key, so it is data rather than configuration:
+    # whoever can write a file into the watched volume chooses it. Athena has no
+    # bind-parameter form, so it is rendered as a literal. See shared/sql.py.
     query = f"""
     SELECT
         date_trunc('hour', from_iso8601_timestamp(timestamp)) AS hour_bucket,
@@ -344,10 +352,10 @@ def run_athena_traffic_query(
         AVG(duration) AS avg_duration,
         MAX(concurrent_calls) AS peak_concurrent
     FROM cdr_records
-    WHERE file_key = '{file_key}'
+    WHERE file_key = {sql_literal(file_key)}
     GROUP BY date_trunc('hour', from_iso8601_timestamp(timestamp))
     ORDER BY hour_bucket
-    """
+    """  # nosec B608 - the only interpolated value goes through sql_literal()
 
     def _start_query():
         return athena_client.start_query_execution(

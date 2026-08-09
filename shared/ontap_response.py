@@ -598,6 +598,7 @@ class ArpResponseActions:
             Dict with lists of active SMB and NFS blocks.
         """
         svm_uuid = self._get_svm_uuid(svm_name)
+        errors: list[str] = []
 
         smb_blocks: list[dict] = []
         try:
@@ -615,8 +616,15 @@ class ArpResponseActions:
                             "replacement": replacement,
                         }
                     )
-        except Exception:
-            pass
+        except Exception as e:
+            # Previously `pass`. An ONTAP failure here made the return value
+            # indistinguishable from "there are no blocks": an operator checking
+            # after a containment action would read total 0 and conclude nothing was
+            # blocked. The handler already has a failure path and a test for it, but
+            # that test mocks this method, so swallowing here kept the real code from
+            # ever reaching it.
+            logger.error("Failed to list SMB name-mapping blocks: %s: %s", type(e).__name__, e)
+            errors.append(f"smb_blocks: {type(e).__name__}: {e}")
 
         nfs_blocks: list[dict] = []
         try:
@@ -640,8 +648,9 @@ class ArpResponseActions:
                                     "client_match": client_entry["match"],
                                 }
                             )
-        except Exception:
-            pass
+        except Exception as e:
+            logger.error("Failed to list NFS export-policy blocks: %s: %s", type(e).__name__, e)
+            errors.append(f"nfs_blocks: {type(e).__name__}: {e}")
 
         return {
             "action": "list_active_blocks",
@@ -649,6 +658,11 @@ class ArpResponseActions:
             "smb_blocks": smb_blocks,
             "nfs_blocks": nfs_blocks,
             "total": len(smb_blocks) + len(nfs_blocks),
+            # `partial` is the field that matters: without it, an empty list means
+            # both "nothing is blocked" and "we could not find out". Callers that
+            # only read smb_blocks/nfs_blocks/total keep working unchanged.
+            "partial": bool(errors),
+            "errors": errors,
         }
 
     # ------------------------------------------------------------------

@@ -113,7 +113,12 @@ class FPolicyServer:
         """サーバーを起動し、接続を待ち受ける."""
         server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        server.bind(("0.0.0.0", self.port))
+        # Binding all interfaces is how a container accepts traffic: the task's IP
+        # is assigned at run time and is not knowable here. Reachability is bounded
+        # by the security group, which admits only the FSx for ONTAP ENI subnets on
+        # this port. Binding a single interface would require resolving the task IP
+        # at startup and would still not narrow who may connect.
+        server.bind(("0.0.0.0", self.port))  # nosec B104
         server.listen(5)
         self._running = True
 

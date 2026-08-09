@@ -174,9 +174,13 @@ class _TextExtractor(HTMLParser):
 def _fetch(url: str) -> str:
     last: Exception | None = None
     for attempt in range(1, ATTEMPTS + 1):
+        if not url.startswith("https://"):
+            raise ValueError(f"refusing a non-https article URL: {url}")
         request = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
         try:
-            with urllib.request.urlopen(request, timeout=TIMEOUT_SECONDS) as response:  # noqa: S310
+            with urllib.request.urlopen(  # nosec B310 - scheme asserted above  # noqa: S310
+                request, timeout=TIMEOUT_SECONDS
+            ) as response:
                 return response.read().decode("utf-8", errors="replace")
         except (urllib.error.URLError, urllib.error.HTTPError, OSError) as error:
             last = error

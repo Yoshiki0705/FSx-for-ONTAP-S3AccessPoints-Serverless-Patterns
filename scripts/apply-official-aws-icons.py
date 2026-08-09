@@ -307,7 +307,13 @@ def convert(path: Path, icon_root: Path) -> dict[str, int]:
     path.write_text(xml, encoding="utf-8")
 
     try:
-        ET.parse(path)
+        # Parsing the file this function just wrote, on the line above, to catch
+        # the failure mode that motivated the check: drawio silently discards
+        # everything after a malformed cell and still exports successfully, so a
+        # broken write is invisible without re-parsing. The input is our own
+        # output, not untrusted XML, so defusedxml would add a dependency for a
+        # threat that is not present here.
+        ET.parse(path)  # nosec B314
         status = "XML OK"
     except ET.ParseError as exc:
         status = f"XML BROKEN -> {exc}"
