@@ -45,7 +45,7 @@ docker buildx build --platform linux/arm64 \
 ### 1.2 CloudFormation Deploy
 
 ```bash
-# 前提: AWS SAM CLI が必要です。sam build がコードと共有レイヤーを自動でパッケージングします。
+# Prerequisite: AWS SAM CLI. `sam build` packages the code and the shared layer automatically.
 sam build
 
 sam deploy \

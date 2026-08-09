@@ -175,7 +175,7 @@ created ("no data movement" pattern).
 
 **Deployment Example**:
 ```bash
-# 前提: AWS SAM CLI が必要です。sam build がコードと共有レイヤーを自動でパッケージングします。
+# Prerequisite: AWS SAM CLI. `sam build` packages the code and the shared layer automatically.
 sam build
 
 sam deploy \
@@ -195,7 +195,7 @@ sam deploy \
 ```
 
 For AWS specification constraints, see
-[the "AWS Specification Constraints and Workarounds" section in the project README](../../README.md#aws-仕様上の制約と回避策)
+[the "AWS Specification Constraints and Workarounds" section in the project README](../../README.en.md#key-s3-access-point-constraints)
 and [`docs/output-destination-patterns.md`](../../docs/output-destination-patterns.md).
 
 ---

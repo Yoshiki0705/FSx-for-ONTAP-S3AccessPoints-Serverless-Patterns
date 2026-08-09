@@ -61,9 +61,9 @@ Today **Renovate** updates `aws-cdk-lib` automatically, and CI validates the fol
 
 ```
 Renovate PR (aws-cdk-lib bump)
-    → cfn-lint (テンプレート構文)
-    → cdk-nag (コンプライアンス)
-    → CDK ハーネステスト (構造アサーション 38 tests)
+    → cfn-lint (template syntax)
+    → cdk-nag (compliance)
+    → CDK harness tests (38 structural assertions)
     → IAM policy validation (Access Analyzer)
     → Unit tests (2,162+ tests)
 ```

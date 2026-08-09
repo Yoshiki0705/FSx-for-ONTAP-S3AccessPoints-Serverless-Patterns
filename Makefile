@@ -220,6 +220,14 @@ drift:
 # registered, so the file is never read and nothing says so.
 	$(PYTHON) -m pytest scripts/tests/test_agent_context_budget.py --tb=short -q
 	$(PYTHON) scripts/check_agent_context_budget.py
+# A missed translation leaves no trace: the .en.md file renders, its links resolve,
+# and only a reader who does not read Japanese notices. 96 lines were sitting in 37
+# files, 24 of them the same `# 前提: AWS SAM CLI ...` comment copied into every
+# pattern's demo guide. Japanese that belongs in an English document — statutes,
+# the language switcher, links that say they go to the Japanese version — is
+# allowlisted with its reason.
+	$(PYTHON) -m pytest scripts/tests/test_en_doc_language.py --tb=short -q
+	$(PYTHON) scripts/check_en_doc_language.py
 
 # Fetches the published posts from Hatena and dev.to, so it needs network and is
 # not part of `make lint`. Run it after shipping a feature that makes an article's

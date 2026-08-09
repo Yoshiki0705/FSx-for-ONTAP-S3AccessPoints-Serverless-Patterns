@@ -27,7 +27,7 @@
 ### 0:10 - 0:15 Deployment (5 min)
 
 ```bash
-# 前提: AWS SAM CLI が必要です。sam build がコードと共有レイヤーを自動でパッケージングします。
+# Prerequisite: AWS SAM CLI. `sam build` packages the code and the shared layer automatically.
 sam build
 
 sam deploy \
@@ -46,11 +46,11 @@ sam deploy \
 ### 0:15 - 0:22 Processing Execution (7 min)
 
 ```bash
-# サンプル PDF（機密情報含む）アップロード
+# Upload the sample PDF (it contains classified content)
 aws s3 cp sample-foia-request.pdf \
   s3://<s3-ap-arn>/archives/2026/05/req-001.pdf
 
-# Step Functions 実行
+# Run the state machine
 aws stepfunctions start-execution \
   --state-machine-arn <uc16-StateMachineArn> \
   --input '{"opensearch_enabled": "none"}'
@@ -66,7 +66,7 @@ Check results:
 ### 0:22 - 0:27 FOIA Deadline Tracking (5 min)
 
 ```bash
-# FOIA 請求登録
+# Register a FOIA request
 aws dynamodb put-item \
   --table-name <fsxn-uc16-demo>-foia-requests \
   --item '{
@@ -76,7 +76,7 @@ aws dynamodb put-item \
     "requester": {"S": "jane@example.com"}
   }'
 
-# FOIA Deadline Lambda 手動実行
+# Invoke the FOIA deadline Lambda by hand
 aws lambda invoke \
   --function-name <fsxn-uc16-demo>-foia-deadline \
   --payload '{}' \
@@ -120,7 +120,7 @@ writes AI artifacts there. Only the Discovery Lambda manifest is written to the 
 (as before).
 
 ```bash
-# 前提: AWS SAM CLI が必要です。sam build がコードと共有レイヤーを自動でパッケージングします。
+# Prerequisite: AWS SAM CLI. `sam build` packages the code and the shared layer automatically.
 sam build
 
 sam deploy \
@@ -162,7 +162,7 @@ allowing the entire chain to operate with a consistent destination.
 - FoiaDeadlineReminder Lambda uses only DynamoDB + SNS and is not affected
 - OpenSearch index is managed separately by the `OpenSearchMode` parameter (independent of `OutputDestination`)
 - For AWS specification constraints, see
-  [the "AWS Specification Constraints and Workarounds" section in the project README](../../README.md#aws-仕様上の制約と回避策)
+  [the "AWS Specification Constraints and Workarounds" section in the project README](../../README.en.md#key-s3-access-point-constraints)
   and [`docs/output-destination-patterns.md`](../../docs/output-destination-patterns.md)
 
 ---

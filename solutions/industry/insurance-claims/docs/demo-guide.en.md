@@ -181,7 +181,7 @@ view damage evaluation JSON, OCR results, and claims reports within the claims c
 ```
 
 For AWS specification constraints and workarounds, refer to the ["AWS Specification Constraints and Workarounds"
-section in the project README](../../README.md#aws-仕様上の制約と回避策).
+section in the project README](../../README.en.md#key-s3-access-point-constraints).
 
 ### 1. Insurance Claims Report — Assessor Summary
 

@@ -35,7 +35,7 @@ Place sample data on the FSx for ONTAP volume.
 ### Step 4: SAM Build & Deploy
 
 ```bash
-# 前提: AWS SAM CLI が必要です。sam build がコードと共有レイヤーを自動でパッケージングします。
+# Prerequisite: AWS SAM CLI. `sam build` packages the code and the shared layer automatically.
 sam build
 cp samconfig.toml.example samconfig.toml
 sam deploy \

@@ -118,11 +118,11 @@ When a sandbox environment is changed by hand (editing a Lambda environment vari
 ### Recommendation: run `cdk diff` periodically
 
 ```yaml
-# .github/workflows/drift-check.yml (週次)
+# .github/workflows/drift-check.yml (weekly)
 name: Drift Detection
 on:
   schedule:
-    - cron: "0 9 * * 1"  # 毎週月曜 9:00 UTC
+    - cron: "0 9 * * 1"  # Mondays at 09:00 UTC
   workflow_dispatch:
 
 jobs:
