@@ -26,23 +26,23 @@ None of the following can be recovered.
 ## Quick Reference
 
 ```bash
-# === Amplify Sandbox 削除（推奨: 最初にこれ） ===
+# === Delete the Amplify sandbox (do this first) ===
 cd solutions/amplify-portal
 npx ampx sandbox delete --yes
-# → 約 5-10 分。Cognito, AppSync, DynamoDB, Lambda, S3 すべて削除される
+# → 5-10 minutes. Cognito, AppSync, DynamoDB, Lambda and S3 all go
 
-# === プロジェクト関連 CloudFormation スタックの一括削除 ===
+# === Delete the project's CloudFormation stacks together ===
 ./scripts/cleanup_stacks.sh --all-project
-# → fsxn- プレフィックスのスタックを対話的に削除
+# → Deletes stacks with the fsxn- prefix, asking about each
 
-# === 個別スタック削除 ===
+# === Delete one stack ===
 aws cloudformation delete-stack --stack-name <stack-name> --region ap-northeast-1
 
-# === スタンドアロン Lambda の削除 ===
+# === Delete the standalone Lambdas ===
 aws lambda delete-function --function-name agentcore-mcp-eda-tools --region ap-northeast-1
 aws lambda delete-function --function-name fsxn-duckdb-query --region ap-northeast-1
 
-# === 削除完了の確認 ===
+# === Confirm everything is gone ===
 aws cloudformation list-stacks \
   --stack-status-filter CREATE_COMPLETE UPDATE_COMPLETE DELETE_IN_PROGRESS DELETE_FAILED \
   --query 'StackSummaries[?starts_with(StackName, `fsxn-`) || starts_with(StackName, `amplify-fsxn`)].[StackName,StackStatus]' \
@@ -113,10 +113,10 @@ aws lambda delete-function --function-name fsxn-duckdb-query --region ap-northea
 Stacks left behind after a past deletion failure (the resources themselves no longer exist):
 
 ```bash
-# 自動修復（ブロッカー検出 + リトライ）
+# Self-repair: find what is blocking the delete, then retry
 ./scripts/cleanup_stacks.sh
 
-# または FORCE_DELETE_STACK で強制削除
+# Or force it with FORCE_DELETE_STACK
 aws cloudformation delete-stack --stack-name <stack-name> --region ap-northeast-1 --deletion-mode FORCE_DELETE_STACK
 ```
 
@@ -128,7 +128,7 @@ If any buckets remain after the Amplify sandbox is deleted:
 
 ```bash
 aws s3 ls | grep -i "fsxn\|amplify-fsxn"
-# 残っていれば:
+# If anything is left:
 # aws s3 rb s3://<bucket-name> --force
 ```
 
@@ -142,9 +142,9 @@ To build the environment again after cleanup:
 cd solutions/amplify-portal
 npm install
 cp amplify/portal-config.example.ts amplify/portal-config.ts
-# portal-config.ts を編集
-make sandbox  # 初回 10-15 分、CDK bootstrap 含む
-make dev      # ローカル開発サーバー起動
+# Edit portal-config.ts
+make sandbox  # 10-15 minutes the first time, CDK bootstrap included
+make dev      # Start the local dev server
 ```
 
 ## Troubleshooting

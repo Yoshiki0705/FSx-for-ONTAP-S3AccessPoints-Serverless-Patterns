@@ -21,17 +21,17 @@
 ## Quick start (DemoMode — without FSx for ONTAP)
 
 ```bash
-# 1. リポジトリをクローン
+# 1. Clone the repository
 git clone https://github.com/Yoshiki0705/FSx-for-ONTAP-S3AccessPoints-Serverless-Patterns.git
 cd FSx-for-ONTAP-S3AccessPoints-Serverless-Patterns/solutions/amplify-portal
 
-# 2. 依存関係インストール
+# 2. Install dependencies
 npm install
 
-# 3. 設定ファイル作成（DemoMode: VPC/ONTAP は空のまま）
+# 3. Create the config file (DemoMode: leave VPC/ONTAP empty)
 cp amplify/portal-config.example.ts amplify/portal-config.ts
 
-# 4. 起動（sandbox + dev server が同時に起動）
+# 4. Start (sandbox and dev server come up together)
 npm start
 ```
 
@@ -46,7 +46,7 @@ The admin and data-protection features report "ONTAP connection required".
 ### Step 1: Check the prerequisites
 
 ```bash
-# FSx for ONTAP のファイルシステム ID を指定して自動検出
+# Auto-discover by passing the FSx for ONTAP file system ID
 ./scripts/setup-prerequisites.sh --fs-id fs-0123456789abcdef0
 ```
 
@@ -62,20 +62,20 @@ For a Lambda inside the VPC to reach AWS services, the following VPC endpoints a
 | `com.amazonaws.<region>.secretsmanager` | Interface | Retrieving ONTAP credentials |
 
 ```bash
-# S3 Gateway Endpoint の確認（通常はデフォルト VPC に存在）
+# Check for the S3 Gateway Endpoint (usually present in a default VPC)
 aws ec2 describe-vpc-endpoints \
   --filters "Name=vpc-id,Values=<vpc-id>" "Name=service-name,Values=com.amazonaws.<region>.s3" \
   --query "VpcEndpoints[0].{Id:VpcEndpointId,RouteTables:RouteTableIds}"
 
-# Lambda サブネットのルートテーブルが含まれているか確認
+# Verify the Lambda subnets' route tables are associated with it
 aws ec2 describe-route-tables \
   --filters "Name=association.subnet-id,Values=<subnet-id>" \
   --query "RouteTables[0].RouteTableId"
 
-# 含まれていない場合は追加
+# Add them if they are not
 aws ec2 modify-vpc-endpoint --vpc-endpoint-id <vpce-id> --add-route-table-ids <rtb-id>
 
-# Secrets Manager Interface Endpoint がない場合は作成
+# Create the Secrets Manager Interface Endpoint if it does not exist
 aws ec2 create-vpc-endpoint \
   --vpc-id <vpc-id> \
   --service-name com.amazonaws.<region>.secretsmanager \
@@ -107,25 +107,25 @@ Fill in the values obtained in Step 1:
 
 ```typescript
 export const config: PortalConfig = {
-  region: "ap-northeast-1",  // FSx for ONTAP のリージョン
-  s3ApAlias: "your-s3ap-alias-xxx-s3alias",  // FSx Console > S3 Access Points タブ
+  region: "ap-northeast-1",  // Region of the FSx for ONTAP file system
+  s3ApAlias: "your-s3ap-alias-xxx-s3alias",  // FSx Console > S3 Access Points tab
 
-  // VPC (admin/data-protection 機能に必須)
+  // VPC (required by the admin and data-protection features)
   vpcId: "vpc-0123456789abcdef0",
   vpcSubnetIds: ["subnet-0123456789abcdef0"],
   vpcSecurityGroupIds: ["sg-0123456789abcdef0"],
-  // vpcId を設定する場合は必須。vpcSubnetIds に紐づくルートテーブルを指定します。
-  // 未設定のまま vpcId を設定すると synth が失敗します（理由は後述）。
+  // Required when vpcId is set. Give the route tables associated with vpcSubnetIds.
+  // Setting vpcId without these makes synth fail; the reason is below.
   vpcRouteTableIds: ["rtb-0123456789abcdef0"],
   allowNoBlockExpiry: false,
 
-  // ONTAP 接続
+  // ONTAP connection
   ontapMgmtIp: "172.30.x.x",  // management LIF IP
   ontapSecretName: "fsx-ontap-fsxadmin-credentials",
   ontapSvmName: "svm1",
   ontapVolumeName: "vol1",
 
-  // ... 他はデフォルトのまま
+  // ... leave the rest at their defaults
 };
 ```
 
@@ -245,10 +245,10 @@ Items to confirm when taking this from DemoMode/sandbox to production:
 ## Deleting the environment
 
 ```bash
-# sandbox 環境を完全削除（CloudFormation スタック + 全リソース）
+# Delete the sandbox entirely (CloudFormation stack and every resource)
 npx ampx sandbox delete
 
-# S3 Object Lock テストバケットも削除する場合
+# To delete the S3 Object Lock test bucket as well
 aws s3 rb s3://fsxn-portal-objectlock-demo --force
 ```
 

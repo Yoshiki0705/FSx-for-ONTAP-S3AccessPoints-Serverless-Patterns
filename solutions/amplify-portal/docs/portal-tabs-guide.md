@@ -368,7 +368,7 @@ CloudTrail S3 データイベントを Athena で検索。フィルター: フ�
 | ツール | チェック内容 |
 |--------|------------|
 | cdk-nag (AwsSolutionsChecks) | IAM 過剰権限、暗号化、ログ保持 |
-| CDK ハーネステスト (35 assertions) | Lambda 数、ランタイム、環境変数 |
+| CDK ハーネステスト (38 assertions) | Lambda 数、ランタイム、環境変数 |
 | IAM Access Analyzer | ポリシーの SECURITY_WARNING 検知 |
 | floci 統合テスト (9 tests) | S3 ListObjectsV2 + Delimiter 動作 |
 

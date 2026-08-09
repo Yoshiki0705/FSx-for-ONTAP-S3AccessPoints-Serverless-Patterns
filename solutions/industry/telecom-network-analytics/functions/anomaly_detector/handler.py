@@ -224,10 +224,15 @@ def load_baseline_from_s3(
                         baseline_data["equipment_failures_count"].append(float(result["equipment_failures_count"]))
                     if "capacity_breaches_count" in result:
                         baseline_data["capacity_breaches_count"].append(float(result["capacity_breaches_count"]))
-                except Exception:
+                except Exception as e:
+                    # Previously `continue`. Every skipped object shrinks the sample
+                    # the thresholds are computed from, so a systematic read failure
+                    # would quietly narrow the baseline instead of failing.
+                    logger.warning("Skipped baseline object %s: %s: %s", obj.get("Key", "?"), type(e).__name__, e)
                     continue
 
-        except Exception:
+        except Exception as e:
+            logger.warning("Could not list baseline objects under %s: %s: %s", prefix, type(e).__name__, e)
             continue
 
     # ベースライン統計を計算

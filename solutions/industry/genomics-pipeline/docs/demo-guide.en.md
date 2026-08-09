@@ -1,4 +1,4 @@
-# Sequencing QC・Variant Aggregation — Demo Guide
+# Sequencing QC and Variant Aggregation — Demo Guide
 
 🌐 **Language / 언어 / 语言 / 語言 / Langue / Sprache / Idioma**: [日本語](demo-guide.md) | English | [한국어](demo-guide.ko.md) | [简体中文](demo-guide.zh-CN.md) | [繁體中文](demo-guide.zh-TW.md) | [Français](demo-guide.fr.md) | [Deutsch](demo-guide.de.md) | [Español](demo-guide.es.md)
 

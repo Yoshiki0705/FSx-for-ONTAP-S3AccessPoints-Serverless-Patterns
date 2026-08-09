@@ -197,3 +197,6 @@ params/*.json
 docs/screenshots/portal-demo/originals/
 infrastructure/knfsd-file-cache/terraform/terraform.tfvars
 infrastructure/knfsd-file-cache/.ami-id
+
+# Written by `make security-report` for upload as a CI artifact.
+bandit-report.json

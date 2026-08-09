@@ -434,7 +434,19 @@ const schema = a.schema({
         executionId: a.string(),
       })
     )
-    .authorization((allow) => [allow.authenticated()])
+    // This endpoint executes the `sql` argument as given — it is an ad-hoc query
+    // console, not a parameterised query, so the authorization boundary is the only
+    // control there is. It was `allow.authenticated()`, which let any signed-in user
+    // run arbitrary SQL: the Lambda role carries `glue:Get*` on `*`, so the whole
+    // Data Catalog was enumerable, and its S3 read includes `*athena-results*`,
+    // which matches any bucket in the account whose name contains that string —
+    // typically other workloads' past query output.
+    //
+    // Four other operations in this schema already require this group. Arbitrary SQL
+    // is at least as privileged as any of them, so it requires it too. The Analytics
+    // section in App.tsx is hidden for non-admins to match, because a visible menu
+    // that only returns authorization errors is worse than an absent one.
+    .authorization((allow) => [allow.groups(["storage-admin"])])
     .handler(
       a.handler.custom({
         dataSource: "AthenaQueryLambdaDataSource",

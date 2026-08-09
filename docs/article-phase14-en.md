@@ -390,7 +390,7 @@ When S3 AP becomes unavailable (e.g., during throughput capacity changes):
 - **re:Post contributions**: 10 (1 question + 9 answers)
 - **AWS Support cases**: 1 resolved (S3 AP ServiceUnavailable — throughput change related)
 - **Operational discoveries**: 1 (throughput change → S3 AP disruption, now resolved)
-- **Cost savings**: ~$346/month (v4-test-demo + FPolicy server + VPC Endpoints + EC2 停止)
+- **Cost savings**: ~$346/month (v4-test-demo + FPolicy server + VPC Endpoints + stopping EC2)
 - **SQS Replay Storm Simulation**: 10,000 events, 0% loss in downstream SQS/consumer path
 
 ---

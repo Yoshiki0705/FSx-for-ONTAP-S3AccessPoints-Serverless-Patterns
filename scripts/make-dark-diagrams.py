@@ -187,7 +187,7 @@ def main() -> int:
         xml, stats = convert(src, icon_map)
 
         try:
-            ET.fromstring(xml)
+            ET.fromstring(xml)  # nosec B314 - parses XML this repository generated, not untrusted input
             status = "XML OK"
         except ET.ParseError as exc:
             status = f"XML BROKEN -> {exc}"

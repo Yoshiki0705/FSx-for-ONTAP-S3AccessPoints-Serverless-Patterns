@@ -72,7 +72,10 @@ def main() -> int:
         detail = lam.get_layer_version_by_arn(Arn=arn)
         print(f"  description: {detail.get('Description', '')}")
 
-        with urllib.request.urlopen(detail["Content"]["Location"]) as response:  # noqa: S310
+        # Presigned URL returned by the Lambda API; the caller does not choose it.
+        with urllib.request.urlopen(  # nosec B310  # noqa: S310
+            detail["Content"]["Location"]
+        ) as response:
             archive = zipfile.ZipFile(io.BytesIO(response.read()))
 
         names = archive.namelist()
