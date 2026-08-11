@@ -52,6 +52,8 @@
 | [Pattern Selection Guide](pattern-selection-guide.md) | Customer situation → recommended UC |
 | [ONTAP Integration Notes](ontap-integration-notes.md) | NAS coexistence, identity, data protection, OT |
 | [SMB ACL Migration via Backup Operators](smb-acl-migration-backup-operators.md) | Windows file server → FSx for ONTAP with ACLs the copy account cannot read (`SeBackupPrivilege`/`SeRestorePrivilege`, robocopy `/B`, DataSync) |
+| [SaaS → FSx for ONTAP 移行と連携 (JA)](ja/saas-to-fsx-ontap-migration.md) | Box / Dropbox / OneDrive / Google Drive / Wasabi 等からの移行。DataSync が扱える群と扱えない群の判定、コラボレーション SaaS のテナント単位 管理者 API、権限・ネイティブ形式・付随データの写像、Nextcloud の `urn:oid` 罠、Bedrock KB による非移行の連携 |
+| [SaaS → FSx for ONTAP migration and integration (EN)](en/saas-to-fsx-ontap-migration.md) | English version: the group test for DataSync coverage, tenant-wide admin APIs, the three mappings, and the no-migration path |
 | [SnapLock Audit Log Retention FR (JA)](aws-feature-requests/snaplock-audit-log-retention.md) | SL-1〜SL-3: 監査ログ保持期間の指定手段、無言で失敗する `DeleteVolume`、`AuditLogVolume` の表示と実態の不一致 |
 | [SnapLock Audit Log Retention FR (EN)](aws-feature-requests/snaplock-audit-log-retention.en.md) | English version of SL-1 to SL-3 |
 | [S3 Bucket User Guide](s3-bucket-user-guide.md) | Standard S3 vs FSx for ONTAP S3 AP differences |
