@@ -22,7 +22,7 @@
 	lint-python-format format-python lint-cfn drift drift-published security build-uc1 \
 	build-sap deploy-uc1 deploy-sap clean build-SharedLayer build-uc12 deploy-uc12 test-ops1 \
 	test-ops4 test-ops3 test-ops2 test-ops5 test-ops6 test-ops lint-ops lint-cfn-ops \
-	build-ops1 deploy-ops1 security-report
+	build-ops1 deploy-ops1 security-report propose-cleanup
 
 # Target Python version — must match the Lambda runtime in the SAM templates
 # (`Runtime: python3.13`). Declared once here so `install`, the interpreter
@@ -70,6 +70,7 @@ help:
 	@echo "  make lint-cfn      — Run cfn-lint only"
 	@echo "  make lint-python   — Run ruff only"
 	@echo "  make security      — Run bandit security scan"
+	@echo "  make propose-cleanup — Report the backlog, then what is standing and its cost (read-only)"
 	@echo "  make clean         — Remove build artifacts"
 	@echo ""
 	@echo "Python: $(PYTHON) (auto-detects .venv/bin/python; override: PYTHON=...)"
@@ -186,6 +187,20 @@ format-python:
 # build; only errors (E) do.
 lint-cfn:
 	cfn-lint --non-zero-exit-code error
+
+# ============================================================
+# Cleanup proposal
+# ============================================================
+# Read-only. Needs AWS credentials, so it is not a CI gate. Reports the open items
+# in docs/ROADMAP.md and withholds the proposal while any remain — the remaining
+# verification work needs the environment, and an FSx for ONTAP file system is
+# slow to rebuild. Pass ARGS="--anyway" to inventory regardless.
+#
+# It never deletes. Deletion lives in scripts/cleanup_generic_ucs.py and
+# scripts/teardown-uc29-uc30.sh, and a test asserts this script calls nothing
+# that changes state.
+propose-cleanup:
+	$(PYTHON) scripts/propose_cleanup.py $(ARGS)
 
 # ============================================================
 # Drift checks

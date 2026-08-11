@@ -22,6 +22,27 @@
 
 検証時のコスト注意点は [cost-calculator.md](cost-calculator.md)、`DemoMode=true` で FSx for ONTAP なしに動かす手順は [demo-mode-guide.md](demo-mode-guide.md) を参照。
 
+### このファイルは撤去の判断材料でもある
+
+`make propose-cleanup` はこのファイルの未完了マーカー（📋 / ⚠️）を読み、**1 つでも残っている
+間はクリーンアップを提案しません**。全部消えたら、稼働中のリソースと Price List API で引いた
+月額、撤去順の提案を出します。読み取り専用で、削除は一切しません（削除は
+`scripts/cleanup_generic_ucs.py` と `scripts/teardown-uc29-uc30.sh`）。
+
+```bash
+make propose-cleanup                    # 残課題を出して、あれば提案は保留
+make propose-cleanup ARGS="--anyway"    # 残課題があっても棚卸しだけ見る
+```
+
+つまり**このファイルを更新しないと撤去の判断ができません**。項目が終わったら ✅ にすること。
+
+> **撤去に関する既知のブロッカー**: 検証用ファイルシステムの一方に SnapLock ENTERPRISE
+> ボリューム（`PrivilegedDelete=PERMANENTLY_DISABLED`）が 1 本あります。この終端状態は
+> ENTERPRISE を COMPLIANCE 相当にするため、privileged delete も残っていません。削除可否は
+> FSx API の `AuditLogVolume` ではなく ONTAP の `snaplock.is_audit_log` と
+> `snaplock.expiry_time` で判断します。詳細は
+> [tamperproof-snapshot-design.md](tamperproof-snapshot-design.md)。
+
 ---
 
 ## 📝 AWS Feature Requests
