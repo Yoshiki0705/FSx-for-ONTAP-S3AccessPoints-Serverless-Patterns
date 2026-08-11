@@ -162,9 +162,22 @@ describe("Backend Infrastructure Structure", () => {
       expect(presignedUrlSource).toContain("3600");
     });
 
-    it("cdk-nag is applied", () => {
+    it("cdk-nag is wired through the v3 policy validation API", () => {
       expect(backendSource).toContain("AwsSolutionsChecks");
-      expect(backendSource).toContain("NagSuppressions");
+      // cdk-nag v3 removed NagSuppressions and moved off IAspect. Naming the
+      // replacements keeps a future revert from passing this file unnoticed.
+      expect(backendSource).toContain("Validations.of(dataStack).acknowledge(");
+      // The call forms, not the words: the comment above the code names both
+      // removed APIs so that a reader knows what moved.
+      expect(backendSource).not.toContain("NagSuppressions.");
+      expect(backendSource).not.toContain("Aspects.of(");
+    });
+
+    it("registers the pack on the app root, not on the stack", () => {
+      // Validations.addPlugins throws unless the scope is a Stage or an App, and
+      // the throw happens during synth — after CDK_NAG=1 has already been set in
+      // CI, so a stack-scoped registration would only fail in the nag job.
+      expect(backendSource).toContain("Validations.of(dataStack.node.root).addPlugins(");
     });
   });
 

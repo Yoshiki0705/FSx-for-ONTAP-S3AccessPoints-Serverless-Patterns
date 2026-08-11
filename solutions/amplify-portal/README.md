@@ -189,7 +189,7 @@ sequenceDiagram
 | **AI metadata badges** | Inline classification labels, Rekognition tags, entity counts |
 | **QR code access** | Presigned URL → QR PNG for OT/manufacturing tablets |
 | **Presigned URL sharing** | TTL-configurable share links (5min–1hr) |
-| **cdk-nag compliance** | AwsSolutionsChecks enforced at synth time |
+| **cdk-nag compliance** | AwsSolutionsChecks, run in CI via `CDK_NAG=1` (not during deploy) |
 | **Fallback UI** | Graceful info panel when ONTAP is not connected (no white screen) |
 
 > **Detailed section guide**: [docs/portal-tabs-guide.md](docs/portal-tabs-guide.md)

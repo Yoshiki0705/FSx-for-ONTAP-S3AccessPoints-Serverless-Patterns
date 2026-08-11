@@ -170,7 +170,7 @@ sequenceDiagram
 | **AI metadata badges** | インライン分類ラベル、Rekognition タグ、エンティティ数 |
 | **QR code access** | Presigned URL → QR PNG（OT/製造現場タブレット向け） |
 | **Presigned URL sharing** | TTL 設定可能な共有リンク（5分〜1時間） |
-| **cdk-nag compliance** | synth 時に AwsSolutionsChecks を強制 |
+| **cdk-nag compliance** | AwsSolutionsChecks を CI で `CDK_NAG=1` 実行（デプロイ時は適用しない） |
 | **Fallback UI** | ONTAP 未接続時のグレースフル情報パネル（白画面なし） |
 
 > **詳細なセクションガイド**: [docs/portal-tabs-guide.md](docs/portal-tabs-guide.md)
