@@ -32,6 +32,12 @@ from check_ontap_connection import (  # noqa: E402
     run_checks,
 )
 
+
+def _portal_amplify_dir() -> Path:
+    """Where the portal's config files live, relative to this test."""
+    return Path(__file__).resolve().parents[2] / "solutions" / "amplify-portal" / "amplify"
+
+
 CONFIG = {
     "ontapMgmtIp": "10.0.1.10",
     "ontapSecretName": "fsx-ontap-fsxadmin-credentials",
@@ -340,10 +346,33 @@ class TestItReadsTheRealConfigShape:
             "ontapVolumeName": "vol1",
         }
 
-    def test_the_repository_config_parses(self):
-        """Against the file itself, so a rename fails here rather than in the field."""
-        config_path = (
-            Path(__file__).resolve().parents[2] / "solutions" / "amplify-portal" / "amplify" / "portal-config.ts"
-        )
-        parsed = parse_portal_config(config_path.read_text(encoding="utf-8"))
+    def test_the_shipped_example_config_parses(self):
+        """Against the tracked example, so a rename fails here rather than in the field.
+
+        The example rather than `portal-config.ts`: that file is gitignored, because it holds
+        one environment's values. A test that read it passed on the machine that had one and
+        failed in CI, which is the wrong way round. The example is what every new deployment
+        is copied from, so it is the shape worth guarding.
+
+        Its four values are empty, because a fresh copy is DemoMode. That makes this two
+        assertions in one: the parser still recognises the shipped shape, and an unconfigured
+        deployment is reported as unconfigured rather than passing quietly.
+        """
+        example = _portal_amplify_dir() / "portal-config.example.ts"
+        parsed = parse_portal_config(example.read_text(encoding="utf-8"))
+
+        # Found, so the pattern still matches the file. Empty, so stage 1 must fail.
+        assert set(parsed) == set(CONFIG), f"the parser no longer finds all four: {sorted(parsed)}"
+        stage = check_configuration(parsed)
+        assert stage.outcome is Outcome.FAIL
+        for key in CONFIG:
+            assert key in stage.detail
+
+    @pytest.mark.skipif(
+        not (_portal_amplify_dir() / "portal-config.ts").exists(),
+        reason="portal-config.ts is gitignored; present only on a machine with a deployment",
+    )
+    def test_a_real_config_reports_configured(self):
+        """Where a deployment's own config exists, stage 1 should pass on it."""
+        parsed = parse_portal_config((_portal_amplify_dir() / "portal-config.ts").read_text(encoding="utf-8"))
         assert check_configuration(parsed).outcome is Outcome.OK
