@@ -137,7 +137,7 @@ permissions:
   contents: read
 
 steps:
-  - uses: aws-actions/configure-aws-credentials@v4
+  - uses: aws-actions/configure-aws-credentials@v6
     with:
       role-to-assume: arn:aws:iam::{ACCOUNT_ID}:role/github-actions-deploy-role
       aws-region: ap-northeast-1

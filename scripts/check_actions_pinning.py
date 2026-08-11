@@ -1,83 +1,170 @@
 #!/usr/bin/env python3
-"""Check that third-party GitHub Actions are pinned to SHA hashes.
+"""Check GitHub Actions pinning, and that no workflow sits where it never runs.
 
-Supply-chain security requirement: all non-GitHub-owned actions must use
-full SHA pinning (e.g., `uses: owner/action@<sha> # vX.Y.Z`).
+Two checks, both learned from real gaps in this repository.
 
-GitHub-owned actions (actions/*, github/*) are allowed to use tag references
-since they are first-party and signed.
+1. Every action must be pinned to a full 40-character commit SHA, with the
+   version in a trailing comment (`uses: owner/action@<sha> # vX.Y.Z`).
+
+   This used to exempt `actions/*` and `github/*` as "first-party and signed".
+   That exemption did not describe the repository: all nine actions in use are
+   SHA-pinned, Renovate is configured with `helpers:pinGitHubActionDigests` and
+   `pinDigests: true` to keep them that way, and the supply-chain policy makes
+   no first-party exception. A checker that permits what the policy forbids
+   cannot detect a regression, so the exemption is gone. First-party actions
+   are compromised the same way third-party ones are — by a moved tag.
+
+2. Workflow files must live in `.github/workflows` at the repository root.
+
+   GitHub only reads workflows from that one directory. A file at
+   `infrastructure/handson-lab/.github/workflows/validate.yml` looked like a
+   cfn-lint gate for seven templates, was never executed once, and those
+   templates were also outside the `templates:` globs in `.cfnlintrc` — so
+   they had no gate at all. Nothing reported this, because a workflow that
+   never runs never fails.
 """
 
+from __future__ import annotations
+
+import argparse
 import re
 import sys
 from pathlib import Path
 
-# First-party orgs that are exempt from SHA pinning requirement
-EXEMPT_ORGS = {"actions", "github"}
-
-# Pattern matching `uses: owner/action@ref`
-USES_PATTERN = re.compile(r"^\s*uses:\s+([^@\s]+)@([^\s#]+)")
+# Pattern matching `uses: owner/action@ref`.
+#
+# The `- ` is not optional decoration. This pattern used to be `^\s*uses:`,
+# which does not match the one-line step form `- uses: actions/checkout@v4`
+# because `-` is not whitespace. Both forms are in use here, so the checker was
+# reading roughly half the `uses:` lines and reporting the rest as clean.
+USES_PATTERN = re.compile(r"^\s*(?:-\s+)?uses:\s+([^@\s]+)@([^\s#]+)")
 
 # SHA pattern (40 hex chars)
 SHA_PATTERN = re.compile(r"^[0-9a-f]{40}$")
 
+# The trailing `# vX.Y.Z` that says which version a SHA corresponds to. Without
+# it a bump is unreviewable: nobody can tell v4 from v7 by looking at a hash.
+VERSION_COMMENT_PATTERN = re.compile(r"#\s*v[0-9]+(\.[0-9]+)*\b")
 
-def check_workflow(filepath: Path) -> list[str]:
-    """Check a single workflow file for unpinned actions."""
+WORKFLOW_SUFFIXES = (".yml", ".yaml")
+
+
+def check_workflow(filepath: Path, display: Path | None = None) -> list[str]:
+    """Check a single workflow file for unpinned actions.
+
+    Args:
+        filepath: Workflow file to read.
+        display: Path to show in findings, when it differs from ``filepath``
+            (a repository-relative path reads better than an absolute one).
+
+    Returns:
+        One formatted finding per problem line. Empty when the file is clean.
+    """
     findings = []
+    shown = display or filepath
     with open(filepath, encoding="utf-8") as f:
         for line_no, line in enumerate(f, 1):
             match = USES_PATTERN.search(line)
             if not match:
                 continue
 
-            action_ref = match.group(1)  # e.g., "ossf/scorecard-action"
-            version_ref = match.group(2)  # e.g., "v2.4.3" or "abc123..."
+            action_ref = match.group(1)
+            version_ref = match.group(2)
 
-            # Extract org from action reference
-            org = action_ref.split("/")[0] if "/" in action_ref else ""
-
-            # Skip first-party actions
-            if org in EXEMPT_ORGS:
-                continue
-
-            # Check if pinned to SHA
             if not SHA_PATTERN.match(version_ref):
+                findings.append(f"  {shown}:{line_no} — {action_ref}@{version_ref}\n    not pinned to a commit SHA")
+            elif not VERSION_COMMENT_PATTERN.search(line):
                 findings.append(
-                    f"  {filepath}:{line_no} — {action_ref}@{version_ref}\n"
-                    f"    ⚠️  Third-party action not pinned to SHA hash"
+                    f"  {shown}:{line_no} — {action_ref}@{version_ref[:12]}...\n"
+                    f"    pinned, but no trailing `# vX.Y.Z` saying which version this is"
                 )
 
     return findings
 
 
-def main() -> int:
-    print("🔍 Checking GitHub Actions SHA pinning...")
+def find_misplaced_workflows(root: Path) -> list[Path]:
+    """Find workflow files GitHub will never execute.
 
-    workflow_dir = Path(".github/workflows")
+    Args:
+        root: Repository root. Only ``root/.github/workflows`` is honoured by
+            GitHub; a ``.github/workflows`` anywhere else is inert.
+
+    Returns:
+        Paths to workflow files outside the root workflows directory, excluding
+        anything vendored under ``node_modules``.
+    """
+    canonical = (root / ".github" / "workflows").resolve()
+    misplaced = []
+    for path in sorted(root.rglob(".github/workflows/*")):
+        if path.suffix not in WORKFLOW_SUFFIXES or not path.is_file():
+            continue
+        if "node_modules" in path.parts:
+            continue
+        if path.parent.resolve() == canonical:
+            continue
+        misplaced.append(path)
+    return misplaced
+
+
+def main(argv: list[str] | None = None) -> int:
+    """Run both checks against a repository root.
+
+    Args:
+        argv: Command-line arguments. ``None`` reads ``sys.argv``.
+
+    Returns:
+        ``0`` when every action is SHA-pinned with a version comment and every
+        workflow sits in the directory GitHub reads; ``1`` otherwise.
+    """
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "--root",
+        type=Path,
+        default=Path("."),
+        help="Repository root to check (default: current directory)",
+    )
+    args = parser.parse_args(argv)
+    root: Path = args.root
+
+    print("Checking GitHub Actions pinning...")
+
+    workflow_dir = root / ".github" / "workflows"
     if not workflow_dir.exists():
-        print("   No .github/workflows/ directory found — skipping")
+        print(f"   No {workflow_dir} directory found — skipping")
         return 0
 
+    workflow_files = sorted(p for p in workflow_dir.iterdir() if p.suffix in WORKFLOW_SUFFIXES and p.is_file())
+
     all_findings: list[str] = []
-    files_checked = 0
+    for workflow_file in workflow_files:
+        all_findings.extend(check_workflow(workflow_file, display=workflow_file.relative_to(root)))
 
-    for workflow_file in sorted(workflow_dir.glob("*.yml")) + sorted(workflow_dir.glob("*.yaml")):
-        files_checked += 1
-        findings = check_workflow(workflow_file)
-        all_findings.extend(findings)
+    misplaced = find_misplaced_workflows(root)
 
-    print(f"   Checked {files_checked} workflow files\n")
+    print(f"   Checked {len(workflow_files)} workflow files\n")
+
+    if misplaced:
+        print(f"{len(misplaced)} workflow file(s) in a directory GitHub never reads:")
+        for path in misplaced:
+            print(f"  {path.relative_to(root)}")
+        print(
+            "\n   GitHub only runs workflows from `.github/workflows` at the repository\n"
+            "   root. Move the job there, or fold what it checked into a gate that runs\n"
+            "   (for example the `templates:` globs in .cfnlintrc) and delete the file."
+        )
 
     if all_findings:
-        print(f"❌ {len(all_findings)} unpinned third-party action(s) found:")
+        print(f"{len(all_findings)} action pinning problem(s):")
         for f in all_findings:
             print(f)
-        print("\n💡 Pin actions to SHA: `uses: owner/action@<full-sha> # vX.Y.Z`")
-        print("   Find SHA: gh api repos/OWNER/REPO/git/refs/tags/TAG --jq '.object.sha'")
+        print("\n   Pin actions as: `uses: owner/action@<full-sha> # vX.Y.Z`")
+        print("   Find the SHA: gh api repos/OWNER/REPO/git/ref/tags/TAG --jq '.object.sha'")
+
+    if all_findings or misplaced:
         return 1
 
-    print("✅ All third-party actions are SHA-pinned")
+    print("All actions are SHA-pinned with a version comment, and every workflow is")
+    print("in a directory GitHub reads.")
     return 0
 
 

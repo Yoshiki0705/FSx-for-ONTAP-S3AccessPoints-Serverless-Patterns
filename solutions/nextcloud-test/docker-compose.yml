@@ -7,7 +7,7 @@
 
 services:
   nextcloud:
-    image: nextcloud:29
+    image: nextcloud:34
     container_name: nextcloud-s3ap-test
     ports:
       - "8080:80"
@@ -26,7 +26,11 @@ services:
     restart: unless-stopped
 
   db:
-    image: mariadb:11
+    # Pinned to 11.8 deliberately. Nextcloud 34 supports MariaDB 10.6 / 10.11 /
+    # 11.4 / 11.8 — MariaDB 12 is not on that list, so do not accept a major
+    # bump here without checking the Nextcloud system requirements first.
+    # https://docs.nextcloud.com/server/stable/admin_manual/installation/system_requirements.html
+    image: mariadb:11.8
     container_name: nextcloud-db
     environment:
       - MYSQL_ROOT_PASSWORD=rootpass
