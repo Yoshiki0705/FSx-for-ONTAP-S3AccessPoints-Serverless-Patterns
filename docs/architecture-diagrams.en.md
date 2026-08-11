@@ -41,6 +41,13 @@ Only the colours differ — layout, labels, and notes match across both. Each fi
 | Semantic search | Vector search with Bedrock Knowledge Bases and OpenSearch Service | [View](images/part3-semantic-search-en.svg) | [View](images/part3-semantic-search-en-dark.svg) |
 | Multi-agent coordination | How Supervisor / Collaborator / Reviewer split the work | [View](images/part3-agent-teams-en.svg) | [View](images/part3-agent-teams-en-dark.svg) |
 
+## Migrating from SaaS
+
+| Figure | What it shows | Light (default) | Dark |
+|--------|---------------|:---:|:---:|
+| Group A, two routes | For sources with a storage endpoint: DataSync direct, or two-hop via Amazon S3 | [View](images/saas-migration-group-a-routes-en.svg) | [View](images/saas-migration-group-a-routes-en-dark.svg) |
+| Group B, central execution | A migration worker calling admin APIs, partitioned by Step Functions | [View](images/saas-migration-group-b-worker-en.svg) | [View](images/saas-migration-group-b-worker-en-dark.svg) |
+
 ## File formats and naming
 
 | Use | Path | Notes |

@@ -51,6 +51,10 @@ flowchart TD
 
 ### 群 A — ストレージエンドポイントを持つ（DataSync で扱える）
 
+![群 A（ストレージエンドポイントを持つ移行元）の DataSync 2 経路。同じ移行元から、AWS DataSync のエージェントを立てて Amazon FSx for NetApp ONTAP へ直行する経路と、エージェントレスで Amazon S3 に一時保管してから Amazon FSx for NetApp ONTAP へ渡す経路。](../images/saas-migration-group-a-routes.svg)
+
+> ダークテーマ: [群 A の 2 経路（ダーク）](../images/saas-migration-group-a-routes-dark.svg)
+
 [DataSync のロケーション種別](https://docs.aws.amazon.com/datasync/latest/userguide/create-locations-cli.html)で扱えるものです。
 
 | 移行元 | エンドポイント種別 | DataSync ロケーション | FSx for ONTAP 宛の要件 |
@@ -82,6 +86,10 @@ flowchart TD
 DataSync では扱えません。これらは per-user のコラボレーション API を持つだけで、ストレージエンドポイントを公開していないためです。
 
 **ただし、利用者ごとの OAuth 同意は不要です。** 各サービスがテナント単位の管理者認可を提供しています。
+
+![群 B（コラボレーション SaaS）の中央実行構成。AWS Step Functions が対象を一覧化して分割し、VPC 内の AWS Lambda 移行ワーカーが AWS Secrets Manager から認証情報を取得して Amazon VPC NAT Gateway 経由で SaaS テナントの管理者 API を呼び、NFS / SMB で Amazon FSx for NetApp ONTAP へ書き込む。移行後の活用は Amazon S3 access point 経由。](../images/saas-migration-group-b-worker.svg)
+
+> ダークテーマ: [群 B の中央実行構成（ダーク）](../images/saas-migration-group-b-worker-dark.svg)
 
 | SaaS | 中央実行の仕組み | 利用者の同意 |
 |---|---|---|

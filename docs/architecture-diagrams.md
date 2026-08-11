@@ -41,6 +41,13 @@
 | セマンティック検索 | Bedrock Knowledge Bases と OpenSearch Service によるベクトル検索 | [表示](images/part3-semantic-search.svg) | [表示](images/part3-semantic-search-dark.svg) |
 | マルチエージェント協調 | Supervisor / Collaborator / Reviewer の役割分担 | [表示](images/part3-agent-teams.svg) | [表示](images/part3-agent-teams-dark.svg) |
 
+## SaaS からの移行
+
+| 図 | 内容 | ライト（既定） | ダーク |
+|----|------|:---:|:---:|
+| 群 A の 2 経路 | ストレージエンドポイントを持つ移行元の、DataSync 直行と S3 経由 2 段 | [表示](images/saas-migration-group-a-routes.svg) | [表示](images/saas-migration-group-a-routes-dark.svg) |
+| 群 B の中央実行構成 | 管理者 API を呼ぶ移行ワーカーを Step Functions で分割実行する | [表示](images/saas-migration-group-b-worker.svg) | [表示](images/saas-migration-group-b-worker-dark.svg) |
+
 ## ファイル形式と命名規則
 
 | 用途 | パス | 備考 |
