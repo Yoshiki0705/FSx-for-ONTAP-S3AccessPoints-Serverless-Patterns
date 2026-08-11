@@ -44,7 +44,7 @@ PR ゲートがすべて通過 → マージ可能
 | セキュリティルール | cfn-guard (security/) | ✅ CI 統合済み |
 | AWS ベストプラクティス | cdk-nag (AwsSolutionsChecks) | ⚠️ `CDK_NAG=1` で opt-in（CI 未統合） |
 | IAM 権限検証 | Access Analyzer ValidatePolicy | ✅ CI workflow 追加済み |
-| 構造リグレッション | CDK ハーネステスト (38 tests) | ✅ vitest 統合済み |
+| 構造リグレッション | CDK ハーネステスト (46 tests) | ✅ vitest 統合済み |
 | シークレットリーク | gitleaks | ✅ pre-commit hook |
 | GitHub Actions セキュリティ | zizmor | ✅ pre-commit hook |
 | 依存関係更新 | Renovate | ✅ 自動 PR |
@@ -65,7 +65,7 @@ PR ゲートがすべて通過 → マージ可能
 - **Track drift**: IAM の wildcard リソース宣言数に上限を設ける（`backend-assertions.test.ts` の `expect(cdkWildcards.length).toBeLessThanOrEqual(15)`）。**これは wildcard の数の上限であり、suppression の数の上限ではありません。** suppression 数を制限する仕組みは現時点でありません
 - **AI にコンテキストを渡す**: AGENTS.md と steering files で「何が許可され何が禁止か」を明示
 
-> **suppression の網羅性について**: Amplify Gen2 のネストスタック内リソースは `addStackSuppressions` で確実に抑制できません（AGENTS.md に記録あり）。これが cdk-nag を常時適用にできない直接の理由でもあります。したがって「全 findings が理由付き suppression で解消されている」とは言えません。自作コード側の findings は解消済み、Amplify 管理リソース側は抑制しきれない、という状態です。
+> **acknowledgment の網羅性について**: Amplify Gen2 のネストスタック内リソースを確実に抑制できません。これが cdk-nag を常時適用にできない直接の理由でもあります。したがって「全 findings が理由付き acknowledgment で解消されている」とは言えません。自作コード側の findings は解消済み、Amplify 管理リソース側は抑制しきれない、という状態です。cdk-nag v3 で `NagSuppressions` は削除され `Validations.of(scope).acknowledge(...)` になりました。scope 配下へ伝播することは通常のスタックで検証済み（`tests/infrastructure/cdk-nag-v3.test.ts`）ですが、**Amplify のネストスタックに対しては未検証**です。
 
 ---
 

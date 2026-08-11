@@ -168,7 +168,7 @@ sequenceDiagram
 | **Badges de metadatos AI** | Etiquetas de clasificación en línea, tags de Rekognition, conteo de entidades |
 | **Acceso por código QR** | URL prefirmada → QR PNG para tablets OT/manufactura |
 | **Compartición por URL prefirmada** | Enlaces compartidos con TTL configurable (5min–1h) |
-| **Cumplimiento cdk-nag** | AwsSolutionsChecks aplicado en synth |
+| **Cumplimiento cdk-nag** | AwsSolutionsChecks se ejecuta en CI con `CDK_NAG=1` (no en el despliegue) |
 | **UI de respaldo** | Panel informativo cuando ONTAP no está conectado (sin pantalla blanca) |
 
 > **Guía detallada de secciones**: [docs/portal-tabs-guide.md](docs/portal-tabs-guide.md)

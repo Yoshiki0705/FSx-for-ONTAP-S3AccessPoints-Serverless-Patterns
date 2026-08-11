@@ -1,0 +1,23 @@
+# The Dockerfile runs `npm ci` before `COPY . .`, so without this the host's
+# node_modules is copied over the one just installed in the image. On a macOS or
+# Windows host that replaces linux/arm64 binaries with the host's, and the build
+# fails or — worse — succeeds with the wrong native modules.
+node_modules
+dist
+
+# Local state that has no place in an image.
+.amplify
+amplify_outputs.json
+.env
+.env.*
+coverage
+playwright-report
+test-results
+*.log
+
+# Not needed to build the frontend.
+.git
+.gitignore
+docs
+tests
+e2e

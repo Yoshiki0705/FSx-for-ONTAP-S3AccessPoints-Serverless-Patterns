@@ -168,7 +168,7 @@ sequenceDiagram
 | **AI-Metadaten-Badges** | Inline-Klassifizierungslabels, Rekognition-Tags, Entity-Anzahl |
 | **QR-Code-Zugriff** | Presigned URL → QR-PNG für OT-/Fertigungs-Tablets |
 | **Presigned URL-Freigabe** | TTL-konfigurierbare Freigabelinks (5min–1h) |
-| **cdk-nag Compliance** | AwsSolutionsChecks bei synth erzwungen |
+| **cdk-nag Compliance** | AwsSolutionsChecks läuft in CI über `CDK_NAG=1` (nicht beim Deploy) |
 | **Fallback-UI** | Informationspanel wenn ONTAP nicht verbunden (kein weißer Bildschirm) |
 
 > **Detaillierter Bereichsguide**: [docs/portal-tabs-guide.md](docs/portal-tabs-guide.md)
