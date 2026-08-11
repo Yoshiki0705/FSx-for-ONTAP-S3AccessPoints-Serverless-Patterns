@@ -60,8 +60,31 @@ Serve it over HTTPS instead.
 | Deploy to Amplify Hosting | connect the branch ([Hosting guide](../../../docs/en/amplify-hosting-production-guide.md)) | to check something close to production |
 | Tunnel the local server | `cloudflared tunnel --url http://localhost:5173` or similar | to see a local change on a device straight away; the URL is temporary |
 
-> Cognito does not pin a hostname, so sign-in works either way. A tunnel URL changes on
-> every run, so keep it to your own device rather than sharing it.
+> Cognito does not pin a hostname, so sign-in works either way (confirmed through a tunnel).
+> A tunnel URL changes on every run, so keep it to your own device rather than sharing it.
+
+**Vite refuses a tunnel's hostname by default.** When the `Host` header carries a name it does
+not recognise, Vite answers
+
+```
+Blocked request. This host ("...trycloudflare.com") is not allowed.
+```
+
+which is what stops a page from rebinding DNS to your dev server and reading your source.
+`server.allowedHosts` in `vite.config.ts` already lists the tunnel domains above, so
+**cloudflared, ngrok and localtunnel work as-is**; add to the same array for any other tunnel.
+It is not set to `true`: that would drop the protection whenever the dev server runs, tunnel or
+no tunnel.
+
+Steps:
+
+```bash
+# Terminal 1: dev server (starts the sandbox alongside it)
+npm start
+
+# Terminal 2: the tunnel. Open the https://… it prints on the handset
+cloudflared tunnel --url http://localhost:5173
+```
 
 What to check is in [section 4 of the user
 guide](../../../docs/en/portal-user-guide.md); the layout rules are under "On a phone"

@@ -60,8 +60,30 @@ HTTPS で配信する方法を選ぶ。
 | Amplify Hosting にデプロイ | ブランチを接続（[Hosting ガイド](../../../docs/ja/amplify-hosting-production-guide.md)） | 本番に近い形で確認したいとき |
 | ローカルをトンネル経由で公開 | `cloudflared tunnel --url http://localhost:5173` 等 | 手元の変更をすぐ実機で見たいとき。URL は一時的 |
 
-> Cognito はホスト名を固定していないため、どちらでもサインインできる。トンネルの URL は
-> 実行ごとに変わるので、共有せず自分の端末からの確認にとどめる。
+> Cognito はホスト名を固定していないため、どちらでもサインインできる（トンネル経由で実際に確認済み）。
+> トンネルの URL は実行ごとに変わるので、共有せず自分の端末からの確認にとどめる。
+
+**Vite はトンネルのホスト名を既定で拒否する。** リクエストの `Host` ヘッダに見知らぬ名前が
+来ると Vite は
+
+```
+Blocked request. This host ("...trycloudflare.com") is not allowed.
+```
+
+を返す。DNS リバインディングで開発サーバのソースを読まれるのを防ぐための挙動である。
+`vite.config.ts` の `server.allowedHosts` に上記トンネルのドメインを登録済みなので、
+**cloudflared / ngrok / localtunnel はそのまま通る**。それ以外のトンネルを使う場合は同じ配列に
+追加する。`true`（全ホスト許可）にはしていない。トンネルを使っていないときも保護がなくなるため。
+
+手順:
+
+```bash
+# ターミナル 1: 開発サーバ（sandbox も同時に起動）
+npm start
+
+# ターミナル 2: トンネル。出力された https://… を実機のブラウザで開く
+cloudflared tunnel --url http://localhost:5173
+```
 
 確認する内容は[ユーザーガイドの「4. スマートフォンで使う」](../../../docs/ja/portal-user-guide.md)、
 レイアウトの仕様は[セクション構成ガイドの「モバイル対応」](./portal-tabs-guide.md)にある。
