@@ -56,6 +56,12 @@ jobs:
         run: python3 scripts/check_doc_pairs.py
       - name: Check the generated dispatch parameter types match the handlers
         run: python3 scripts/portal_action_types.py --check
+      # Renovate manages pyproject.toml and requirements.txt as separate managers.
+      # It raised boto3 in one and not the other, and nothing failed: the tests run
+      # against requirements.txt while the package metadata claimed the other
+      # version.
+      - name: Check runtime pins agree between pyproject.toml and requirements.txt
+        run: python3 scripts/check_runtime_pins_agree.py
       # AGENTS.md is loaded on every agent turn and cannot be made conditional, so
       # it had grown to 78 KB carrying notes relevant only to one kind of work.
       # Those notes now live in docs/agent/, and this keeps AGENTS.md from absorbing

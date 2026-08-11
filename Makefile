@@ -211,6 +211,12 @@ propose-cleanup:
 drift:
 	$(PYTHON) -m pytest scripts/tests/test_stale_claim_rules.py --tb=short -q
 	$(PYTHON) scripts/check_portal_drift.py
+# boto3 and urllib3 are pinned in pyproject.toml and requirements.txt both, and
+# Renovate manages the two as separate managers. It raised boto3 in pyproject.toml
+# and left requirements.txt a patch behind; nothing failed, because the tests run
+# against one file and the package metadata claims the other.
+	$(PYTHON) -m pytest scripts/tests/test_check_runtime_pins_agree.py --tb=short -q
+	$(PYTHON) scripts/check_runtime_pins_agree.py
 # The generic dispatch endpoints take an untyped `params` blob, so nothing checks
 # that a component sends what its action requires. A lock button shipped that had
 # never worked once: it sent a name and a duration where the action reads a UUID
