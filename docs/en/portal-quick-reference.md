@@ -124,5 +124,5 @@ One-page cheat sheet for daily portal operations. Print or bookmark this page.
 | End user (daily tasks) | [User Guide](portal-user-guide.md) |
 | Security / Compliance officer | [Compliance Guide](portal-compliance-guide.md) |
 | Storage administrator | [Admin Demo Guide](admin-resource-management-demo.md) |
-| IT administrator (deploy) | [Getting Started](../../solutions/amplify-portal/docs/GETTING-STARTED.md) |
-| Developer (customize) | [Implementation Guide](../../solutions/amplify-portal/docs/IMPLEMENTATION.md) |
+| IT administrator (deploy) | [Getting Started](../../solutions/amplify-portal/docs/GETTING-STARTED.en.md) |
+| Developer (customize) | [Implementation Guide](../../solutions/amplify-portal/docs/IMPLEMENTATION.en.md) |

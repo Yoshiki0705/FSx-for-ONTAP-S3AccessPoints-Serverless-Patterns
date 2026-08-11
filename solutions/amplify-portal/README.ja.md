@@ -12,13 +12,13 @@ AWS はビルディングブロック（S3 API、Cognito、AppSync）を提供�
 
 ## ドキュメント
 
-- **[ユーザーガイド](../../docs/en/portal-user-guide.md)** — 日常的なポータル利用のためのエンドユーザーガイド（デプロイ知識不要）
+- **[ユーザーガイド](../../docs/ja/portal-user-guide.md)** — 日常的なポータル利用のためのエンドユーザーガイド（デプロイ知識不要）
 - **[はじめに](docs/GETTING-STARTED.md)** — セットアップ、DemoMode、VPC Endpoints、本番チェックリスト
 - **[実装ガイド](docs/IMPLEMENTATION.md)** — アーキテクチャ、設定ファイル、コンポーネント構成、デプロイ、変更ログ
 - **[管理機能マップ](docs/admin-capability-map.md)** — 各インターフェースの担当範囲、20 パネルの実装状況、System Manager の機能領域との対応、ONTAP REST エンドポイント対応
 - **[リソース管理デモガイド](docs/resource-management-demo-guide.md)** — 20 パネルの操作手順（FlexCache / FlexClone / SnapMirror / ローカルユーザー / 名前マッピング / Vscan / FPolicy / クラスター・SVM ピアリング / クラスター情報を含む）
 - **[管理者デモガイド](../../docs/en/admin-resource-management-demo.md)** — リソース管理 + ARP/AI の E2E デモシナリオ
-- **[AI Agent デモガイド](docs/ai-agent-demo-guide.en.md)** — AI Agent Chat、セマンティック検索、ガードレール、HITL
+- **[AI Agent デモガイド](docs/ai-agent-demo-guide.md)** — AI Agent Chat、セマンティック検索、ガードレール、HITL
 - **[構成図インデックス](../../docs/architecture-diagrams.md)** — 全 13 枚の構成図（ライトテーマ / ダークテーマ）
 
 ## 主な機能
@@ -137,7 +137,7 @@ sequenceDiagram
 
 | グループ | セクション | 用途 |
 |-------|---------|---------|
-| **Browse** | All Files | 閲覧、プレビュー、AI Q&A、共有リンク、QR アクセス |
+| **Browse** | All Files | 閲覧、並べ替え、絞り込み、複数選択、プレビュー、AI Q&A、共有リンク、QR アクセス |
 | | Favorites | ピン留めファイル（DynamoDB、ユーザーごと） |
 | | Recent | 最近アクセスしたファイル |
 | | Folder Watch | 監視対象プレフィックスと受信したファイルイベント（管理トグル） |
@@ -542,7 +542,7 @@ amplify-portal/
 ├── monitoring/
 │   └── dashboard.ts               # CloudWatch Dashboard CDK コンストラクト
 ├── docs/
-│   ├── portal-tabs-guide.md       # 6 タブ詳細ガイド（スクリーンショット付き）
+│   ├── portal-tabs-guide.md       # 17 セクション詳細ガイド（4 グループ、スクリーンショット付き）
 │   └── screenshots/               # ポータル UI スクリーンショット
 ├── tests/
 │   └── components/App.test.tsx     # タブレンダリング + ナビゲーションテスト
@@ -661,7 +661,7 @@ Amplify Gen2 は活発に進化しています。`@aws-amplify/*` パッケー�
 - [ファイルポータル UI オプション（Amplify / Nextcloud / Custom）](../../docs/file-portal-amplify-gen2.md)
 - [デプロイランブック (EN)](../../docs/en/portal-deployment-runbook.md) | [JA](../../docs/ja/portal-deployment-runbook.md)
 - [スクリーンショット付きデモガイド (EN)](../../docs/en/portal-demo-guide.md) | [JA](../../docs/ja/portal-demo-guide.md)
-- [SaaS ギャップ分析 & 機能リクエスト (JA)](../../docs/aws-feature-requests/file-portal-service-gap.md) | [EN](../../docs/aws-feature-requests/file-portal-service-gap.en.md)
+- [SaaS ギャップ分析 & 機能リクエスト (JA)](../../docs/aws-feature-requests/file-portal-service-gap.md) | [EN](../../docs/aws-feature-requests/file-portal-service-gap.md)
 - [全文検索設計判断](../../.private/design-decisions/c4-fulltext-search-comparison.md) (gitignored — private)
 - [ポータルロードマップ (P0-P4)](../../.private/file-portal-roadmap.md) (gitignored — private)
 - [Quick Desktop MCP セットアップ（AgentCore Gateway）](../../docs/quick-desktop-mcp-setup.md)

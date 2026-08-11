@@ -1109,7 +1109,12 @@ class TestSettingsSurviveABadValue:
         import sys
 
         env = {**os.environ, "DEFAULT_BLOCK_TTL_HOURS": "undefined"}
-        env["PYTHONPATH"] = str(Path(__file__).parent.parent)
+        # Both the function directory and the repository root: the handler imports
+        # `shared.ontap_diagnosis`, which reaches the Lambda through SharedPythonLayer and
+        # a subprocess through PYTHONPATH. With only the function directory the import
+        # fails here for a reason that has nothing to do with what this test asserts.
+        repo_root = Path(__file__).resolve().parents[5]
+        env["PYTHONPATH"] = os.pathsep.join([str(Path(__file__).parent.parent), str(repo_root)])
         result = subprocess.run(
             [sys.executable, "-c", "import handler; print(handler.DEFAULT_BLOCK_TTL_HOURS)"],
             capture_output=True,
@@ -1206,15 +1211,26 @@ class TestRetentionPolicyGuard:
         assert "cannot be deleted or shortened" in result["error"]
         assert http.calls == []
 
-    def test_s3_object_lock_refused_without_ack(self):
+    def test_s3_object_lock_is_redirected_to_its_owner(self):
+        """This endpoint refuses the S3 target instead of half-doing it.
+
+        The bucket name and the bucket permissions both live on
+        resource-management. The copy that used to be here read an OUTPUT_BUCKET
+        no template set, under a role with no S3 permissions, so it could only
+        fail — and it failed as "OUTPUT_BUCKET not configured", which reads as a
+        missing setting rather than a request sent to the wrong place.
+        """
         from handler import _update_retention_policy
 
         http = self._RecordingHttp()
         result = _update_retention_policy(http, {}, {"target": "s3_object_lock", "mode": "COMPLIANCE", "days": 30})
 
         assert result["success"] is False
-        assert "acknowledgeIrreversible" in result["error"]
-        assert "COMPLIANCE" in result["error"]
+        assert "adminQuery" in result["error"]
+        # No acknowledgement is demanded for something it will not do: asking the
+        # operator to confirm an irreversible consequence and then declining is a
+        # worse experience than declining first.
+        assert "acknowledgeIrreversible" not in result["error"]
         assert http.calls == []
 
     def test_ack_must_be_true_not_truthy(self):
@@ -1235,7 +1251,9 @@ class TestRetentionPolicyGuard:
         [
             ({"target": "nonsense", "days": 30}, "Invalid target"),
             ({"target": "snaplock", "days": 0}, "days must be > 0"),
-            ({"target": "s3_object_lock", "days": 30, "mode": "LENIENT"}, "Invalid mode"),
+            # The S3 mode is no longer validated here: the target is refused before
+            # any of its parameters are looked at, which is why that case now
+            # belongs to test_s3_object_lock_is_redirected_to_its_owner.
         ],
     )
     def test_validation_runs_before_the_guard(self, event, expected):

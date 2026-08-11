@@ -12,7 +12,7 @@ AWS 提供了构建模块（S3 API、Cognito、AppSync），但没有提供集�
 
 ## 文档
 
-- **[用户指南](../../docs/en/portal-user-guide.md)** — 日常门户使用的最终用户指南（无需部署知识）
+- **[用户指南](../../docs/zh-CN/portal-user-guide.md)** — 日常门户使用的最终用户指南（无需部署知识）
 - **[快速入门](docs/GETTING-STARTED.md)** — 设置、DemoMode、VPC Endpoints、生产检查清单
 - **[实施指南](docs/IMPLEMENTATION.md)** — 架构、配置文件、组件结构、部署、变更日志
 - **[管理员演示指南](../../docs/en/admin-resource-management-demo.md)** — 资源管理 + ARP/AI E2E 演示场景
@@ -135,7 +135,7 @@ sequenceDiagram
 
 | 分组 | 部分 | 用途 |
 |-------|---------|---------|
-| **Browse** | All Files | 浏览、预览、AI Q&A、共享链接、QR 访问 |
+| **Browse** | All Files | 浏览、排序、筛选、多选、预览、AI Q&A、共享链接、QR 访问 |
 | | Favorites | 固定文件（DynamoDB，每用户） |
 | | Recent | 最近访问的文件 |
 | | Folder Watch | 监视的前缀和已接收的文件事件（管理开关） |
@@ -171,7 +171,7 @@ sequenceDiagram
 | **cdk-nag 合规** | 在 CI 中通过 `CDK_NAG=1` 运行 AwsSolutionsChecks（部署时不启用） |
 | **备用 UI** | ONTAP 未连接时显示信息面板（无白屏） |
 
-> **详细部分指南**：[docs/portal-tabs-guide.md](docs/portal-tabs-guide.md)
+> **详细部分指南**：[docs/portal-tabs-guide.en.md](docs/portal-tabs-guide.en.md)
 
 ---
 
@@ -540,7 +540,7 @@ amplify-portal/
 ├── monitoring/
 │   └── dashboard.ts               # CloudWatch Dashboard CDK 构造
 ├── docs/
-│   ├── portal-tabs-guide.md       # 6 标签详细指南（含截图）
+│   ├── portal-tabs-guide.md       # 17 个板块详细指南（4 组，含截图）
 │   └── screenshots/               # 门户 UI 截图
 ├── tests/
 │   └── components/App.test.tsx     # 标签渲染 + 导航测试

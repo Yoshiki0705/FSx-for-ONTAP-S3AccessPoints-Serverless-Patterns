@@ -182,4 +182,4 @@ feat/* → プレビュー環境（PR 作成時に自動デプロイ）
 
 - [ローカル開発セットアップ](../../solutions/amplify-portal/README.md)
 - [Storage Browser デモガイド](./storage-browser-demo-guide.md)
-- [S3 AP 互換性ノート](../s3ap-compatibility-notes.en.md)
+- [S3 AP 互換性ノート](../s3ap-compatibility-notes.md)

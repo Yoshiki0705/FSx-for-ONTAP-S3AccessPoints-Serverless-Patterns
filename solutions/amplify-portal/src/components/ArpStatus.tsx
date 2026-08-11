@@ -1,8 +1,9 @@
 import { useQuery } from "@tanstack/react-query";
 import { dispatch } from "../lib/dispatch";
-import { errorMessage, unwrap } from "../lib/portalQuery";
+import { errorMessage, failureDiagnosis, unwrap } from "../lib/portalQuery";
 import { useTranslation } from "../i18n";
 import { ArpResponseActions } from "./ArpResponseActions";
+import { OntapFailureNotice } from "./OntapFailureNotice";
 
 interface ArpData {
   state: string;
@@ -53,28 +54,12 @@ export function ArpStatus() {
     );
   }
 
-  // Fallback: ONTAP not connected
+  // No ARP data. Which of the five reasons it was is the handler's to say.
   if (error) {
     return (
       <div className="protection-section">
         <h2>🛡️ {t("arpTitle")}</h2>
-        <div className="protection-info">
-          <h3>📡 {t("arpOntapRequired")}</h3>
-          <p>{t("arpOntapRequiredDesc")}</p>
-          <ul>
-            <li>{t("envVarsRequired")}: <code>ONTAP_MGMT_IP</code>,
-                <code>ONTAP_SECRET_NAME</code>, <code>VOLUME_NAME</code>, <code>SVM_NAME</code></li>
-            <li>{t("vpcLambdaReq")}</li>
-          </ul>
-          <p className="integration-note">
-            <strong>{t("demoModeNote")}</strong>: {t("arpDemoModeNote")}
-          </p>
-          <details>
-            <summary>{t("errorDetails")}</summary>
-            <pre style={{ fontSize: "0.8rem", overflow: "auto", padding: "0.5rem",
-                         background: "#f5f5f5", borderRadius: "4px" }}>{error}</pre>
-          </details>
-        </div>
+        <OntapFailureNotice error={error} {...failureDiagnosis(queryError)} />
       </div>
     );
   }

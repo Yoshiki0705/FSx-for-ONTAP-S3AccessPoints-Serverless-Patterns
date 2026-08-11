@@ -289,7 +289,7 @@ export const storage = defineStorage({
 
 **現状**: Presigned URLs は FSx for ONTAP S3 AP の互換性テーブルで "Not supported" と記載されている（[Access point compatibility](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/access-points-for-fsxn-object-api-support.html)）。
 
-**しかし、実際には動作する**。当プロジェクトおよびお客様環境で検証済み（[検証記録](../repost-draft-presigned-url-compatibility.md), [互換性ノート](../s3ap-compatibility-notes.en.md#presigned-url-support)）。AWS Support に確認した結果:
+**しかし、実際には動作する**。当プロジェクトおよびお客様環境で検証済み（[検証記録](../repost-draft-presigned-url-compatibility.md), [互換性ノート](../s3ap-compatibility-notes.md#presigned-url-support)）。AWS Support に確認した結果:
 
 1. **Presigning はクライアントサイド操作** — `aws s3 presign` は SigV4 署名をローカルで計算するだけ。ネットワークリクエストは発生しない。
 2. **生成された URL は標準の GetObject** — 署名が Authorization ヘッダーではなくクエリパラメータに埋め込まれるだけ。

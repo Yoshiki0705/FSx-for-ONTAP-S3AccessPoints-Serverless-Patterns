@@ -285,8 +285,8 @@ export function VolumeManager() {
                 <div className="info-message" style={{ marginTop: "0.5rem" }}>
                   ⚠️ {t("rmSnaplockRetentionWarning")}
                   {" "}
-                  <a href="https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/how-snaplock-works.html" target="_blank" rel="noopener noreferrer" style={{ color: "#2563eb" }}>
-                    📖 SnapLock documentation
+                  <a href="https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/how-snaplock-works.html" target="_blank" rel="noopener noreferrer" style={{ color: "var(--color-primary-text)" }}>
+                    📖 {t("rmSnaplockDocs")}
                   </a>
                 </div>
               </>

@@ -81,13 +81,13 @@ aws cognito-idp admin-add-user-to-group \
 
 ## Issue: "User is not authorized" from ONTAP REST API (Lambda-Level)
 
-> **Canonical reference**: for the full connection architecture, password management, and lockout recovery procedure, see [ONTAP-CONNECTION-GUIDE.md](./ONTAP-CONNECTION-GUIDE.md).
+> **Canonical reference**: for the full connection architecture, password management, and lockout recovery procedure, see [ONTAP-CONNECTION-GUIDE.md](./ONTAP-CONNECTION-GUIDE.en.md).
 
 ### Summary
 
 - The two main causes of a 401 from the ONTAP REST API: **a password mismatch** or **an account lockout**
 - Recovery: reset the password with `aws fsx update-file-system`, then sync Secrets Manager
-- Full procedure and architecture diagram: [ONTAP-CONNECTION-GUIDE.md](./ONTAP-CONNECTION-GUIDE.md)
+- Full procedure and architecture diagram: [ONTAP-CONNECTION-GUIDE.md](./ONTAP-CONNECTION-GUIDE.en.md)
 
 ---
 

@@ -171,7 +171,7 @@ ListObjectsV2, PutObject, GetObject, HeadObject and DeleteObject all succeeded
 from outside the VPC.
 
 This is one instance of [the ONTAP and AWS management planes being two different
-sources of truth for the same resource](../ontap-integration-notes.md). A domain
+sources of truth for the same resource](../ontap-integration-notes.en.md). A domain
 join can be completed entirely on the ONTAP side, and the AWS-side view does not
 always follow.
 

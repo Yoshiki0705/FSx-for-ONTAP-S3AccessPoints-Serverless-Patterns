@@ -71,6 +71,83 @@ def _get_credentials():
 # to a different endpoint — a "delete this share" call could reach a cluster
 # resource instead. Rather than trusting ~110 call sites to remember, the check
 # lives in the one function they all go through.
+# ─── Failure classification ───────────────────────────────────────────────────
+#
+# Every action here reports a failed ONTAP call the same way: it copies `_message`
+# into its own response shape and returns. That is why "User is not authorized."
+# reached the portal as a bare sentence, and why the panels — which could only tell
+# "we have data" from "we do not" — offered VPC advice for a rejected password.
+#
+# Rewriting ninety-odd return statements to carry the class would be a large diff
+# for a small idea. Instead the classification is recorded where the status is
+# actually seen, and `handler` attaches it to whatever the action returned. The
+# attachment is conditional on the returned `error` being the one that was recorded,
+# so a validation failure that happens after an earlier tolerated request error is
+# not mislabelled as an ONTAP problem.
+#
+# The slot is per-invocation: cleared on entry to `handler`. A Lambda container
+# serves one request at a time, so there is no interleaving to worry about.
+_LAST_DIAGNOSIS: dict[str, object] = {}
+
+
+def _record_diagnosis(status: int, body, fallback_message: str) -> None:
+    """Remember how the most recent ONTAP call failed."""
+    try:
+        from shared.ontap_diagnosis import diagnose_response
+
+        diagnosis = diagnose_response(status, body or b"", expected_records=False)
+    except Exception:  # noqa: BLE001 - the layer is optional at import time
+        diagnosis = None
+
+    if diagnosis is None:
+        _LAST_DIAGNOSIS.clear()
+        return
+
+    payload = diagnosis.as_dict()
+    # The action's own message is what the reader has always seen; the class is the
+    # new part. Keeping the message means no existing panel changes wording twice.
+    _LAST_DIAGNOSIS.clear()
+    _LAST_DIAGNOSIS.update({key: value for key, value in payload.items() if key != "error"})
+    _LAST_DIAGNOSIS["_for_message"] = fallback_message
+
+
+def _not_configured(missing: list[str]) -> dict:
+    """The response when the deployment did not supply the connection details."""
+    try:
+        from shared.ontap_diagnosis import not_configured
+
+        return not_configured(missing).as_dict()
+    except Exception:  # noqa: BLE001 - keep the old wording if the layer is absent
+        return {"error": "ONTAP connection not configured"}
+
+
+def _unreachable(error: BaseException) -> dict:
+    """The response when nothing answered, rather than the bare exception text.
+
+    A refused connection used to surface as `str(exc)` — a urllib3 repr — which reads
+    like a bug in the portal rather than a route or a security group.
+    """
+    try:
+        from shared.ontap_diagnosis import diagnose_exception
+
+        return diagnose_exception(error, mgmt_ip=MGMT_IP).as_dict()
+    except Exception:  # noqa: BLE001 - keep the old wording if the layer is absent
+        return {"error": str(error)}
+
+
+def _with_diagnosis(result):
+    """Attach the recorded class to a response that reports the failure it came from."""
+    if not isinstance(result, dict) or not _LAST_DIAGNOSIS:
+        return result
+    error = result.get("error")
+    if not isinstance(error, str) or _LAST_DIAGNOSIS.get("_for_message") not in error:
+        return result
+    for key, value in _LAST_DIAGNOSIS.items():
+        if key != "_for_message":
+            result.setdefault(key, value)
+    return result
+
+
 _UNSAFE_PATH_CHARS = re.compile(r"[\x00-\x1f\x7f\\]")
 
 
@@ -225,11 +302,25 @@ def _ontap_request(http, headers, method, path, body=None):
     data = json.loads(resp.data) if resp.data else {}
     if resp.status >= 400:
         error_msg = data.get("error", {}).get("message", f"HTTP {resp.status}")
+        # About ninety call sites copy `_message` into their own response and drop
+        # everything else, so the class is recorded here instead of threaded through
+        # each of them. `handler` attaches it on the way out.
+        _record_diagnosis(resp.status, resp.data, error_msg)
         return {"_error": True, "_status": resp.status, "_message": error_msg}
     return data
 
 
 def handler(event, context):
+    """Route the action, then say which of the five ways it failed, if it did.
+
+    The routing is `_dispatch`; this wrapper exists so the failure class is attached in
+    one place rather than at every return statement inside it.
+    """
+    _LAST_DIAGNOSIS.clear()
+    return _with_diagnosis(_dispatch(event, context))
+
+
+def _dispatch(event, context):
     """Route to appropriate handler based on action."""
     action = event.get("action", "")
     user_id = event.get("userId", "unknown")
@@ -241,7 +332,15 @@ def handler(event, context):
         return _update_portal_settings(event, user_id)
 
     if not all([MGMT_IP, SECRET_NAME]):
-        return {"error": "ONTAP connection not configured"}
+        missing = [
+            name
+            for name, value in (
+                ("ONTAP_MGMT_IP", MGMT_IP),
+                ("ONTAP_SECRET_NAME", SECRET_NAME),
+            )
+            if not value
+        ]
+        return _not_configured(missing)
 
     try:
         username, password = _get_credentials()
@@ -510,6 +609,12 @@ def handler(event, context):
         else:
             return {"error": f"Unknown action: {action}"}
 
+    except urllib3.exceptions.HTTPError as e:
+        # Nothing answered on TCP/443: routing, security group, or a LIF that is not
+        # listening. This is the one class the portal's old advice was written for, and
+        # the only one where inspecting the VPC is the right next step.
+        logger.error("No response from ONTAP: %s: %s", type(e).__name__, e)
+        return _unreachable(e)
     except Exception as e:
         logger.error(f"Resource management error: {e}")
         return {"error": str(e)}

@@ -235,7 +235,7 @@ When changing FSx for ONTAP throughput capacity, **S3 Access Points may become t
 
 ## References
 
-- [Deployment Profiles](deployment-profiles.md) — FPolicy-specific PoC/Prod/Compliance classification
-- [Governance Checklist](governance-checklist.md) — For regulated/public sector
-- [Partner/SI Delivery Checklist](partner-si-delivery-checklist.md) — Proposal/build checklist
-- [Trigger Mode Decision Guide](trigger-mode-decision-guide.md) — Mode selection
+- [Deployment Profiles](deployment-profiles.en.md) — FPolicy-specific PoC/Prod/Compliance classification
+- [Governance Checklist](governance-checklist.en.md) — For regulated/public sector
+- [Partner/SI Delivery Checklist](partner-si-delivery-checklist.en.md) — Proposal/build checklist
+- [Trigger Mode Decision Guide](trigger-mode-decision-guide.en.md) — Mode selection

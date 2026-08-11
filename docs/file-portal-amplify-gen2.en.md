@@ -558,11 +558,11 @@ A: Yes. DemoMode uses a regular S3 bucket. All three frontend options can connec
 
 - [Nextcloud External Storage Setup Guide](./nextcloud-external-storage-s3ap.en.md) — Step-by-step Nextcloud + FSx for ONTAP S3 AP configuration
 - [Comparison Alternatives (S3 AP vs EFS vs NFS)](./comparison-alternatives.md) — Backend architecture comparison
-- [S3AP Compatibility Notes](./s3ap-compatibility-notes.md) — Known constraints including Presigned URL limitation
-- [Demo Mode Guide](./demo-mode-guide.md) — Running without FSx for ONTAP
+- [S3AP Compatibility Notes](./s3ap-compatibility-notes.en.md) — Known constraints including Presigned URL limitation
+- [Demo Mode Guide](./demo-mode-guide.en.md) — Running without FSx for ONTAP
 - [Cost Calculator](./cost-calculator.md) — Full infrastructure cost estimation
-- [Pattern Selection Guide](./pattern-selection-guide.md) — Which UC pattern fits your workload
-- [S3AP Performance Considerations](./s3ap-performance-considerations.md) — Throughput design guidance
+- [Pattern Selection Guide](./pattern-selection-guide.en.md) — Which UC pattern fits your workload
+- [S3AP Performance Considerations](./s3ap-performance-considerations.en.md) — Throughput design guidance
 - [AD-Joined SVM S3 AP Prerequisites](./en/ad-joined-svm-s3ap-prerequisites.md) — AD DC reachability requirements
 
 ---

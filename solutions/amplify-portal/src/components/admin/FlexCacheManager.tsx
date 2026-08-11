@@ -83,7 +83,7 @@ export function FlexCacheManager() {
 
   const handleCreate = async () => {
     if (!newName || !newOriginVolume) {
-      setError(t("fcacheNameRequired") || "キャッシュ名とオリジンボリューム名は必須です");
+      setError(t("fcacheNameRequired"));
       return;
     }
     setError(null); setCreating(true);
@@ -100,7 +100,7 @@ export function FlexCacheManager() {
         },
       });
       if (data?.success) {
-        setSuccess(t("fcacheCreated") || "FlexCache を作成しました（バックグラウンドで構築中）");
+        setSuccess(t("fcacheCreated"));
         setShowCreate(false);
         setNewName(""); setNewOriginVolume(""); setNewOriginSvm(""); setNewSizeGiB(100); setNewPath("");
         setPrepopulatePaths("");
@@ -125,7 +125,7 @@ export function FlexCacheManager() {
         params: { uuid: cache.uuid, name: cache.name },
       });
       if (data?.success) {
-        setSuccess(t("fcacheDeleted") || `FlexCache "${cache.name}" を削除しました`);
+        setSuccess(t("fcacheDeleted"));
         clearSuccess(); loadCaches();
       } else {
         setError(data?.error || t("fcacheDeleteFailed"));
@@ -154,29 +154,29 @@ export function FlexCacheManager() {
           which is gitignored precisely because it holds internal addresses. Publishing
           one to the browser bundle would leak it to every signed-in user.
         */}
-        🖥️ {t("fcacheTargetFs") || "接続先"}: default
+        🖥️ {t("fcacheTargetFs")}: default
       </div>
 
       <div className="lu-toolbar">
         <span className="lu-count">{caches.length} FlexCache volumes</span>
         <button className="rm-btn-primary" onClick={() => setShowCreate(true)} disabled={creating}>
-          + FlexCache {t("rmCreate") || "作成"}
+          + FlexCache {t("rmCreate")}
         </button>
       </div>
 
       {showCreate && (
         <div className="rm-create-form">
-          <h4>FlexCache {t("rmCreate") || "作成"}</h4>
+          <h4>FlexCache {t("rmCreate")}</h4>
           <p className="rm-hint" style={{ marginBottom: "0.75rem" }}>
-            {t("fcacheCreateDesc") || "オリジンボリュームの読み取りデータをローカルにキャッシュするボリュームを作成します。推奨サイズはオリジンの 10%〜20% です。"}
+            {t("fcacheCreateDesc")}
           </p>
           <div className="rm-form-row">
-            <label>{t("fcacheNameLabel") || "キャッシュ名"} *</label>
+            <label>{t("fcacheNameLabel")} *</label>
             <input type="text" value={newName} onChange={e => setNewName(e.target.value)}
               placeholder="flexcache_eda_tokyo" disabled={creating} />
           </div>
           <div className="rm-form-row">
-            <label>{t("fcacheOriginLabel") || "オリジンボリューム名"} *</label>
+            <label>{t("fcacheOriginLabel")} *</label>
             <>
               <input type="text" list="origin-volumes" value={newOriginVolume} onChange={e => setNewOriginVolume(e.target.value)}
                 placeholder="vol_production" disabled={creating} />
@@ -186,29 +186,29 @@ export function FlexCacheManager() {
             </>
           </div>
           <div className="rm-form-row">
-            <label>{t("fcacheOriginSvmLabel") || "オリジン SVM（同一 SVM なら空欄可）"}</label>
+            <label>{t("fcacheOriginSvmLabel")}</label>
             <input type="text" value={newOriginSvm} onChange={e => setNewOriginSvm(e.target.value)}
-              placeholder={t("fcacheOriginSvmPlaceholder") || "同一 SVM の場合は空欄"} disabled={creating} />
+              placeholder={t("fcacheOriginSvmPlaceholder")} disabled={creating} />
           </div>
           <div className="rm-form-row">
-            <label>{t("fcacheSizeLabel") || "サイズ"} (GiB)</label>
+            <label>{t("fcacheSizeLabel")} (GiB)</label>
             <input type="number" min={1} max={100000} value={newSizeGiB}
               onChange={e => setNewSizeGiB(Number(e.target.value))} disabled={creating} />
             <span className="rm-hint" style={{ marginLeft: "0.5rem", fontSize: "0.8rem" }}>
-              {t("fcacheSizeHint") || "推奨: オリジンの 10%。最小 1 GiB"}
+              {t("fcacheSizeHint")}
             </span>
           </div>
           <div className="rm-form-row">
-            <label>{t("fcachePathLabel") || "ジャンクションパス"}</label>
+            <label>{t("fcachePathLabel")}</label>
             <input type="text" value={newPath} onChange={e => setNewPath(e.target.value)}
               placeholder={`/${newName || "flexcache_name"}`} disabled={creating} />
           </div>
           <div className="rm-form-row">
-            <label>{t("fcachePrepopulateLabel") || "プリポピュレートパス"}</label>
+            <label>{t("fcachePrepopulateLabel")}</label>
             <input type="text" value={prepopulatePaths} onChange={e => setPrepopulatePaths(e.target.value)}
               placeholder="/data/models/, /cache/datasets/" disabled={creating} />
             <span className="rm-hint" style={{ marginLeft: "0.5rem", fontSize: "0.8rem" }}>
-              {t("fcachePrepopulateHint") || "カンマ区切りで事前読み込みするパスを指定（オプション）"}
+              {t("fcachePrepopulateHint")}
             </span>
           </div>
           <div className="rm-form-actions">
@@ -216,43 +216,43 @@ export function FlexCacheManager() {
               className="rm-btn-primary"
               onClick={handleCreate}
               disabled={creating}
-              aria-label={creating ? (t("fcacheCreating") || "作成中") : (t("rmCreate") || "作成")}
+              aria-label={creating ? (t("fcacheCreating")) : (t("rmCreate"))}
             >
               {creating ? (
-                <><span className="spinner" aria-hidden="true"></span> {t("fcacheCreating") || "作成中..."}</>
+                <><span className="spinner" aria-hidden="true"></span> {t("fcacheCreating")}</>
               ) : (
-                t("rmCreate") || "作成"
+                t("rmCreate")
               )}
             </button>
             <button className="rm-btn-secondary" onClick={() => setShowCreate(false)} disabled={creating}>
-              {t("cancel") || "キャンセル"}
+              {t("cancel")}
             </button>
           </div>
           {creating && (
-            <p className="rm-hint" style={{ marginTop: "0.5rem", color: "var(--accent-color, #0066cc)" }}>
-              ⏳ {t("fcacheCreatingHint") || "ONTAP に FlexCache 作成を要求しています...（数十秒〜数分かかります）"}
+            <p className="rm-hint" style={{ marginTop: "0.5rem", color: "var(--color-primary-text)" }}>
+              ⏳ {t("fcacheCreatingHint")}
             </p>
           )}
           {!creating && (
             <p className="rm-hint" style={{ marginTop: "0.5rem" }}>
-              ⚠️ {t("fcacheAsyncNote") || "FlexCache 作成はバックグラウンドで実行されます（数十秒〜数分）。作成後、一覧に表示されるまで少し時間がかかることがあります。"}
+              ⚠️ {t("fcacheAsyncNote")}
             </p>
           )}
         </div>
       )}
 
       {loading ? (
-        <div className="rm-loading">{t("ontapConnecting") || "接続中..."}</div>
+        <div className="rm-loading">{t("ontapConnecting")}</div>
       ) : caches.length === 0 && !showCreate ? (
         <div className="vs-setup-guide">
-          <p className="rm-empty">{t("fcacheNoCaches") || "FlexCache ボリュームがありません"}</p>
+          <p className="rm-empty">{t("fcacheNoCaches")}</p>
           <div className="vs-guide-section">
-            <h4>💡 {t("fcacheAboutTitle") || "FlexCache とは"}</h4>
+            <h4>💡 {t("fcacheAboutTitle")}</h4>
             <p className="rm-hint">
-              {t("fcacheAboutDesc") || "FlexCache はリモートボリュームのデータをローカルにキャッシュする読み取り高速化機能です。複数サイトからのアクセスが多いワークロード（EDA/CAD、ビルドパイプライン、AI 推論データ等）で、ネットワーク越しのレイテンシを削減します。"}
+              {t("fcacheAboutDesc")}
             </p>
             <p className="rm-hint">
-              {t("fcacheCreateGuide") || "上の「+ FlexCache 作成」ボタンからオリジンボリュームを指定して作成できます。"}
+              {t("fcacheCreateGuide")}
             </p>
             <p className="rm-hint">
               <a href="https://docs.netapp.com/us-en/ontap/flexcache/index.html" target="_blank" rel="noopener noreferrer">
@@ -274,19 +274,19 @@ export function FlexCacheManager() {
                   <span className="lu-group-name">⚡ {cache.name}</span>
                   <span className="lu-group-desc" style={{ display: "flex", alignItems: "center", gap: "0.5rem", flexWrap: "wrap" }}>
                     {cache.origins.length > 0 && (
-                      <span style={{ background: "var(--surface-color, #f0f4f8)", padding: "2px 8px", borderRadius: "4px", fontSize: "0.8rem" }}>
+                      <span style={{ background: "var(--color-surface-subtle)", padding: "2px 8px", borderRadius: "4px", fontSize: "0.8rem" }}>
                         📦 {cache.origins[0].volumeName}@{cache.origins[0].svmName}
                       </span>
                     )}
-                    <span style={{ color: "var(--accent-color, #0066cc)" }}>→</span>
-                    <span style={{ background: "var(--surface-color, #f0f4f8)", padding: "2px 8px", borderRadius: "4px", fontSize: "0.8rem" }}>
+                    <span style={{ color: "var(--color-primary-text)" }}>→</span>
+                    <span style={{ background: "var(--color-surface-subtle)", padding: "2px 8px", borderRadius: "4px", fontSize: "0.8rem" }}>
                       ⚡ {cache.name}@{cache.svmName}
                     </span>
-                    <span style={{ fontSize: "0.75rem", color: "#666" }}>
+                    <span style={{ fontSize: "0.75rem", color: "var(--color-text-secondary)" }}>
                       {cache.sizeGiB} GiB | {cache.path}
                     </span>
                     {cache.origins.length > 0 && (
-                      <span style={{ fontSize: "0.7rem", color: "#718096", marginLeft: "0.5rem" }} title="Cache metrics available via ONTAP REST API /storage/flexcache/flexcaches/{uuid}?fields=cache_hit_ratio">
+                      <span style={{ fontSize: "0.7rem", color: "var(--color-text-secondary)", marginLeft: "0.5rem" }} title="Cache metrics available via ONTAP REST API /storage/flexcache/flexcaches/{uuid}?fields=cache_hit_ratio">
                         📊 {t("fcacheMetricsHint")}
                       </span>
                     )}
@@ -300,7 +300,7 @@ export function FlexCacheManager() {
                   </button>
                   {confirmDelete === cache.uuid ? (
                     <span style={{ display: "inline-flex", gap: "0.25rem", alignItems: "center" }}>
-                      <span style={{ color: "#e53e3e", fontSize: "0.75rem" }}>{t("rmReallyDelete")}</span>
+                      <span style={{ color: "var(--color-error-text)", fontSize: "0.75rem" }}>{t("rmReallyDelete")}</span>
                       <button className="rm-btn-danger-sm" onClick={() => { setConfirmDelete(null); handleDelete(cache); }} disabled={deleting === cache.uuid}>
                         {deleting === cache.uuid ? "..." : t("rmExecute")}
                       </button>
@@ -308,7 +308,7 @@ export function FlexCacheManager() {
                     </span>
                   ) : (
                     <button className="rm-btn-danger-sm" onClick={() => setConfirmDelete(cache.uuid)} disabled={deleting === cache.uuid}>
-                      {deleting === cache.uuid ? "削除中..." : (t("rmDelete") || "削除")}
+                      {deleting === cache.uuid ? t("rmDeleting") : t("rmDelete")}
                     </button>
                   )}
                 </div>

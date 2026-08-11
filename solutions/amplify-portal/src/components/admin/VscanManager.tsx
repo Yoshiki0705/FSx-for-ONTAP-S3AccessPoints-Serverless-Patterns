@@ -103,7 +103,7 @@ export function VscanManager() {
     <div className="vs-setup-guide">
       {/* The "not configured" warning only makes sense while Vscan is off. */}
       {!enabled && (
-        <div className="rm-error" style={{ background: "#fff3cd", borderColor: "#ffc107", color: "#856404" }}>
+        <div className="rm-error" style={{ background: "var(--color-warning-bg)", borderColor: "var(--color-warning)", color: "var(--color-warning-text)" }}>
           ⚠️ {t("vsNotConfigured")}
         </div>
       )}

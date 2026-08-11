@@ -225,6 +225,49 @@ Query CloudTrail S3 data events to answer "who accessed what, and when."
 
 ---
 
+### 4. Using it on a phone
+
+> 📱 **For a step-by-step walkthrough with a screenshot of every screen, see the
+> [phone walkthrough](portal-mobile-guide.md).** This section is the summary.
+
+There is no separate app. Open the **same URL as on the desktop** in your phone's
+browser (verified in Safari on iOS and Chrome on Android).
+
+<img src="../../solutions/amplify-portal/docs/screenshots/portal-files-mobile-dark.png" alt="The file list on a phone, dark theme" width="300">
+
+**Steps**
+
+1. Open the URL your administrator gave you
+2. Sign in with your email and password, plus a TOTP code if MFA is on. Your password
+   manager's autofill works as usual
+3. Along the top edge you get **☰**, the theme control, the language control and sign
+   out (⏻). The sidebar starts hidden
+4. Tap **☰** to open the navigation over the content. Choosing a section closes it
+   again; to close it without choosing, tap the dimmed area
+5. To open a file, tap the icon on its row (📄 / 🖼️ / 📕 / 📝). The preview rises from
+   the bottom of the screen as a sheet; **✕** closes it
+6. To act on several files at once, tap the checkbox at the left of each row. The count
+   and the available actions appear above the list
+
+**What differs from the desktop**
+
+| Item | On a phone |
+|------|-----------|
+| Sidebar | a drawer over the content, opened and closed with **☰** |
+| Size and Modified columns | dropped, there is not enough width; you can still sort by name |
+| Email address | hidden (sign out is the icon alone) |
+| File preview | a sheet from the bottom edge, up to 70% of the screen. A PDF is easier to read in landscape |
+| AI assistant panel | opens as a drawer from the right |
+
+> **About 🖥️ in the theme control**: it is not a "switch to desktop view" button. The
+> three choices are ☀️ light, 🌙 dark and 🖥️ **match the device**, and 🖥️ follows your
+> iOS or Android appearance setting, including its automatic switch at night.
+
+> **Data use**: downloading a folder as a ZIP transfers everything under it. On a
+> cellular connection, check how many files and how large they are first.
+
+---
+
 ## Tips & FAQ
 
 **Q: I see "ONTAP Connection Required" in some panels.**
@@ -240,7 +283,7 @@ A: Share links use presigned URLs with a time-to-live you choose (5 min, 15 min,
 A: They should appear immediately (ONTAP guarantees cross-protocol strong consistency). Try refreshing the file list. If still missing, the file may be in a subfolder — check the path.
 
 **Q: Can I use the portal on mobile?**
-A: Yes. The sidebar collapses on narrow screens. All features work on mobile browsers, though the experience is optimized for desktop.
+A: Yes. The steps are under "4. Using it on a phone" in Getting started.
 
 **Q: How do I change my password?**
 A: Use the Cognito Hosted UI or ask your administrator to reset it via:
@@ -254,13 +297,13 @@ aws cognito-idp admin-set-user-password --user-pool-id <pool-id> --username <you
 
 | Document | Audience | Purpose |
 |----------|----------|---------|
-| [Getting Started (Deploy)](../../solutions/amplify-portal/docs/GETTING-STARTED.md) | Administrators | Deploy the portal from scratch |
+| [Getting Started (Deploy)](../../solutions/amplify-portal/docs/GETTING-STARTED.en.md) | Administrators | Deploy the portal from scratch |
 | [Admin Demo Guide](admin-resource-management-demo.md) | Storage admins | E2E demo of admin operations |
 | [Compliance Guide](portal-compliance-guide.md) | Security/Compliance | Verify regulatory controls |
 | [Quick Reference](portal-quick-reference.md) | All roles | 1-page cheat sheet |
 | [AI Features Quick Start](ai-features-quick-start.md) | All users | Try Bedrock, Rekognition, Athena |
-| [AI Agent Demo Guide](../../solutions/amplify-portal/docs/ai-agent-demo-guide.md) | All users | E2E demo of the AI agent features |
-| [Implementation Guide](../../solutions/amplify-portal/docs/IMPLEMENTATION.md) | Developers | Architecture and customization |
+| [AI Agent Demo Guide](../../solutions/amplify-portal/docs/ai-agent-demo-guide.en.md) | All users | E2E demo of the AI agent features |
+| [Implementation Guide](../../solutions/amplify-portal/docs/IMPLEMENTATION.en.md) | Developers | Architecture and customization |
 | [Portal Authorization Model](portal-authorization-model.md) | Security teams | Cognito groups, IAM, file-level access |
 | [Storage Browser Demo](storage-browser-demo-guide.md) | All users | Upload/download via Storage Browser |
 | [PoC → Production Guide](portal-poc-to-production.md) | Administrators | Migrate from DemoMode to production FSx for ONTAP |

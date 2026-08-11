@@ -12,7 +12,7 @@ Ver también: [Guía de selección de UI del portal de archivos (Amplify / Nextc
 
 ## Documentación
 
-- **[Guía del usuario](../../docs/en/portal-user-guide.md)** — Guía del usuario final para el uso diario del portal (sin necesidad de conocimientos de despliegue)
+- **[Guía del usuario](../../docs/es/portal-user-guide.md)** — Guía del usuario final para el uso diario del portal (sin necesidad de conocimientos de despliegue)
 - **[Primeros pasos](docs/GETTING-STARTED.md)** — Configuración, DemoMode, VPC Endpoints, checklist de producción
 - **[Guía de implementación](docs/IMPLEMENTATION.md)** — Arquitectura, archivos de configuración, estructura de componentes, despliegue, registro de cambios
 - **[Guía de demo para administradores](../../docs/en/admin-resource-management-demo.md)** — Escenarios de demo E2E de gestión de recursos + ARP/AI
@@ -135,7 +135,7 @@ sequenceDiagram
 
 | Grupo | Sección | Propósito |
 |-------|---------|---------|
-| **Browse** | All Files | Explorar, previsualizar, AI Q&A, enlaces compartidos, acceso QR |
+| **Browse** | All Files | Explorar, ordenar, filtrar, selección múltiple, previsualizar, AI Q&A, enlaces compartidos, acceso QR |
 | | Favorites | Archivos fijados (DynamoDB, por usuario) |
 | | Recent | Archivos accedidos recientemente |
 | | Folder Watch | Prefijos vigilados y eventos de archivo recibidos (interruptor de admin) |
@@ -171,7 +171,7 @@ sequenceDiagram
 | **Cumplimiento cdk-nag** | AwsSolutionsChecks se ejecuta en CI con `CDK_NAG=1` (no en el despliegue) |
 | **UI de respaldo** | Panel informativo cuando ONTAP no está conectado (sin pantalla blanca) |
 
-> **Guía detallada de secciones**: [docs/portal-tabs-guide.md](docs/portal-tabs-guide.md)
+> **Guía detallada de secciones**: [docs/portal-tabs-guide.en.md](docs/portal-tabs-guide.en.md)
 
 ---
 
@@ -507,7 +507,7 @@ amplify-portal/
 ├── monitoring/
 │   └── dashboard.ts               # Construct CDK CloudWatch Dashboard
 ├── docs/
-│   ├── portal-tabs-guide.md       # Guía detallada de 6 pestañas con capturas de pantalla
+│   ├── portal-tabs-guide.md       # Guía detallada de 17 secciones (4 grupos) con capturas de pantalla
 │   └── screenshots/               # Capturas de pantalla UI del portal
 ├── tests/
 │   └── components/App.test.tsx     # Tests de renderizado de pestañas + navegación

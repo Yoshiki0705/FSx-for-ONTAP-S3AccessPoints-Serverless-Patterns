@@ -82,4 +82,4 @@ If you encounter accessibility barriers, please:
 ## Related Documents
 
 - [User Guide](./portal-user-guide.md)
-- [Implementation Guide](../../solutions/amplify-portal/docs/IMPLEMENTATION.md)
+- [Implementation Guide](../../solutions/amplify-portal/docs/IMPLEMENTATION.en.md)

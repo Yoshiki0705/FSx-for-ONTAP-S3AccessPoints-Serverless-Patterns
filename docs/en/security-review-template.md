@@ -56,7 +56,7 @@ Before signing off, confirm:
 
 - [ ] All "Status" checkboxes above are checked (controls verified)
 - [ ] All "Accepted?" residual risks have been explicitly accepted or mitigated
-- [ ] Production checklist in [GETTING-STARTED.md](../../solutions/amplify-portal/docs/GETTING-STARTED.md) has been followed (13 items)
+- [ ] Production checklist in [GETTING-STARTED.md](../../solutions/amplify-portal/docs/GETTING-STARTED.en.md) has been followed (13 items)
 - [ ] `CDK_NAG=1` run produces no new un-suppressed findings
 - [ ] Penetration test scheduled (or waived with justification)
 - [ ] Incident response runbook reviewed ([ARP isolation guide](./arp-ai-isolation-demo-guide.md))
@@ -76,7 +76,7 @@ Before signing off, confirm:
 
 ## References
 
-- [Production Checklist](../../solutions/amplify-portal/docs/GETTING-STARTED.md#本番移行チェックリスト)
+- [Production Checklist](../../solutions/amplify-portal/docs/GETTING-STARTED.en.md#本番移行チェックリスト)
 - [Authorization Model](./portal-authorization-model.md)
 - [External IdP Setup](./external-idp-setup.md)
 - [Well-Architected Review](./well-architected-review.md)

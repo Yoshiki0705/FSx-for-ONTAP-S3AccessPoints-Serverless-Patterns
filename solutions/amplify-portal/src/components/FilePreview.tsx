@@ -36,6 +36,38 @@ interface FilePreviewProps {
 }
 
 /**
+ * The glyph that opens a file, as a button.
+ *
+ * All four preview paths used `<span role="button" onClick>` with no tabIndex and no
+ * key handler. `role="button"` announces a button and does nothing else: the element
+ * is not focusable, so opening a file -- the thing a listing exists for -- could not
+ * be reached by keyboard at all (WCAG 2.1.1, Level A). A real button brings focus,
+ * Enter and Space, and the disabled and focus-visible styling with it.
+ *
+ * The emoji is marked decorative so a screen reader announces the label instead of
+ * "page facing up".
+ */
+function PreviewTrigger({
+  glyph,
+  label,
+  title,
+  loading,
+  onActivate,
+}: {
+  glyph: string;
+  label: string;
+  title: string;
+  loading: boolean;
+  onActivate: () => void;
+}) {
+  return (
+    <button type="button" className="file-preview-btn" onClick={onActivate} title={title} aria-label={label}>
+      <span aria-hidden="true">{loading ? "⏳" : glyph}</span>
+    </button>
+  );
+}
+
+/**
  * Inline file preview with presigned URL image loading.
  *
  * For image files: shows 🖼️ icon. On click, fetches a presigned URL
@@ -129,17 +161,17 @@ export function FilePreview({ fileKey, fileName, onSelect }: FilePreviewProps) {
 
   if (!isPreviewable) {
     return (
-      <span
-        className="icon file-preview-trigger"
-        onClick={() => {
-          onSelect?.(fileKey, fileName);
-          handleDownload();
-        }}
-        title={t("fpvClickDownload")}
-        role="button"
-        aria-label={`Download ${fileName}`}
-      >
-        {loading ? "⏳" : "📄"}
+      <span className="icon file-preview-trigger">
+        <PreviewTrigger
+          glyph="📄"
+          loading={loading}
+          title={t("fpvClickDownload")}
+          label={t("fpvAriaDownload").replace("{name}", fileName)}
+          onActivate={() => {
+            onSelect?.(fileKey, fileName);
+            handleDownload();
+          }}
+        />
       </span>
     );
   }
@@ -148,24 +180,22 @@ export function FilePreview({ fileKey, fileName, onSelect }: FilePreviewProps) {
   if (isPdf) {
     return (
       <span className="icon file-preview-trigger" style={{ position: "relative" }}>
-        <span
-          onClick={() => {
+        <PreviewTrigger
+          glyph="📕"
+          loading={loading}
+          title={t("fpvClickPdf")}
+          label={t("fpvAriaPdf").replace("{name}", fileName)}
+          onActivate={() => {
             onSelect?.(fileKey, fileName);
             fetchPresignedUrl();
           }}
-          role="button"
-          aria-label={`Preview PDF: ${fileName}`}
-          title={t("fpvClickPdf")}
-          style={{ cursor: "pointer" }}
-        >
-          {loading ? "⏳" : "📕"}
-        </span>
+        />
 
         {showPreview && previewUrl && (
           <span
             className="file-preview-popover file-preview-document"
             role="dialog"
-            aria-label={`PDF preview: ${fileName}`}
+            aria-label={t("fpvAriaPdfDialog").replace("{name}", fileName)}
           >
             <PdfViewer
               url={previewUrl}
@@ -182,24 +212,22 @@ export function FilePreview({ fileKey, fileName, onSelect }: FilePreviewProps) {
   if (isDocx) {
     return (
       <span className="icon file-preview-trigger" style={{ position: "relative" }}>
-        <span
-          onClick={() => {
+        <PreviewTrigger
+          glyph="📝"
+          loading={loading}
+          title={t("fpvClickDoc")}
+          label={t("fpvAriaDocx").replace("{name}", fileName)}
+          onActivate={() => {
             onSelect?.(fileKey, fileName);
             fetchPresignedUrl();
           }}
-          role="button"
-          aria-label={`Preview DOCX: ${fileName}`}
-          title={t("fpvClickDoc")}
-          style={{ cursor: "pointer" }}
-        >
-          {loading ? "⏳" : "📝"}
-        </span>
+        />
 
         {showPreview && previewUrl && (
           <span
             className="file-preview-popover file-preview-document"
             role="dialog"
-            aria-label={`Document preview: ${fileName}`}
+            aria-label={t("fpvAriaDocDialog").replace("{name}", fileName)}
           >
             <span className="preview-header">
               <span className="preview-title">{fileName}</span>
@@ -224,24 +252,22 @@ export function FilePreview({ fileKey, fileName, onSelect }: FilePreviewProps) {
 
   return (
     <span className="icon file-preview-trigger" style={{ position: "relative" }}>
-      <span
-        onClick={() => {
+      <PreviewTrigger
+        glyph="🖼️"
+        loading={loading}
+        title={t("fpvClickPreview")}
+        label={t("fpvAriaImage").replace("{name}", fileName)}
+        onActivate={() => {
           onSelect?.(fileKey, fileName);
           fetchPresignedUrl();
         }}
-        role="button"
-        aria-label={`Preview ${fileName}`}
-        title={t("fpvClickPreview")}
-        style={{ cursor: "pointer" }}
-      >
-        {loading ? "⏳" : "🖼️"}
-      </span>
+      />
 
       {showPreview && previewUrl && (
         <span
           className="file-preview-popover"
           role="dialog"
-          aria-label={`Image preview: ${fileName}`}
+          aria-label={t("fpvAriaImageDialog").replace("{name}", fileName)}
         >
           <span className="preview-header">
             <span className="preview-title">{fileName}</span>
@@ -355,7 +381,7 @@ function DocxPreviewPane({ url }: { url: string }) {
     <div
       ref={containerCallback}
       className="docx-preview-container"
-      style={{ maxHeight: "500px", overflow: "auto", background: "white", padding: "1rem" }}
+      style={{ maxHeight: "500px", overflow: "auto", background: "var(--color-surface)", padding: "1rem" }}
     >
       {!rendering && <p className="loading">{t("fpvLoadingDoc")}</p>}
     </div>

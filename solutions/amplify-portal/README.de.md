@@ -12,7 +12,7 @@ Siehe auch: [UI-Auswahlguide für das Dateiportal (Amplify / Nextcloud / Custom)
 
 ## Dokumentation
 
-- **[Benutzerhandbuch](../../docs/en/portal-user-guide.md)** — Endbenutzerhandbuch für die tägliche Portalnutzung (keine Deployment-Kenntnisse erforderlich)
+- **[Benutzerhandbuch](../../docs/de/portal-user-guide.md)** — Endbenutzerhandbuch für die tägliche Portalnutzung (keine Deployment-Kenntnisse erforderlich)
 - **[Erste Schritte](docs/GETTING-STARTED.md)** — Einrichtung, DemoMode, VPC Endpoints, Produktions-Checkliste
 - **[Implementierungsguide](docs/IMPLEMENTATION.md)** — Architektur, Konfigurationsdateien, Komponentenstruktur, Deployment, Änderungsprotokoll
 - **[Admin-Demo-Guide](../../docs/en/admin-resource-management-demo.md)** — E2E-Demo-Szenarien für Ressourcenverwaltung + ARP/AI
@@ -135,7 +135,7 @@ sequenceDiagram
 
 | Gruppe | Bereich | Zweck |
 |-------|---------|---------|
-| **Browse** | All Files | Durchsuchen, Vorschau, AI Q&A, Freigabelinks, QR-Zugriff |
+| **Browse** | All Files | Durchsuchen, Sortieren, Filtern, Mehrfachauswahl, Vorschau, AI Q&A, Freigabelinks, QR-Zugriff |
 | | Favorites | Angeheftete Dateien (DynamoDB, pro Benutzer) |
 | | Recent | Kürzlich aufgerufene Dateien |
 | | Folder Watch | Überwachte Prefixe und empfangene Dateiereignisse (Admin-Schalter) |
@@ -171,7 +171,7 @@ sequenceDiagram
 | **cdk-nag Compliance** | AwsSolutionsChecks läuft in CI über `CDK_NAG=1` (nicht beim Deploy) |
 | **Fallback-UI** | Informationspanel wenn ONTAP nicht verbunden (kein weißer Bildschirm) |
 
-> **Detaillierter Bereichsguide**: [docs/portal-tabs-guide.md](docs/portal-tabs-guide.md)
+> **Detaillierter Bereichsguide**: [docs/portal-tabs-guide.en.md](docs/portal-tabs-guide.en.md)
 
 ---
 
@@ -507,7 +507,7 @@ amplify-portal/
 ├── monitoring/
 │   └── dashboard.ts               # CloudWatch Dashboard CDK-Konstrukt
 ├── docs/
-│   ├── portal-tabs-guide.md       # 6-Tab-Detailguide mit Screenshots
+│   ├── portal-tabs-guide.md       # Detailguide zu 17 Bereichen (4 Gruppen) mit Screenshots
 │   └── screenshots/               # Portal-UI-Screenshots
 ├── tests/
 │   └── components/App.test.tsx     # Tab-Rendering + Navigationstests

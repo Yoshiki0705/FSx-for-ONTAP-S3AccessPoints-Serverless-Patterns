@@ -156,8 +156,8 @@ After deployment, verify each layer:
 
 ## Related Documents
 
-- [Getting Started Guide](../../solutions/amplify-portal/docs/GETTING-STARTED.md)
-- [Implementation Guide](../../solutions/amplify-portal/docs/IMPLEMENTATION.md)
+- [Getting Started Guide](../../solutions/amplify-portal/docs/GETTING-STARTED.en.md)
+- [Implementation Guide](../../solutions/amplify-portal/docs/IMPLEMENTATION.en.md)
 - [Security Review Template](security-review-template.md)
 - [Scaling Guide](./portal-scaling-guide.md)
 - [DemoMode Guide](../demo-mode-guide.en.md)

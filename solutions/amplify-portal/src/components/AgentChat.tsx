@@ -63,11 +63,31 @@ interface AgentResponse {
 
 // --- Agent Role Colors (from RAG reference MultiAgentTraceTimeline) ---
 
+// Token references rather than hex, because these end up in an inline `style` and an
+// inline style is the one place a theme cannot reach afterwards. The cards were six
+// pale fills; under the dark theme they stayed pale and took the dark theme's light
+// text with them, which is a 1.1:1 title on a white card.
 const AGENT_COLORS: Record<string, { bg: string; text: string; border: string }> = {
-  "file-explorer": { bg: "#ebf8ff", text: "#2b6cb0", border: "#bee3f8" },
-  "knowledge-analyst": { bg: "#faf5ff", text: "#6b46c1", border: "#e9d8fd" },
-  "safety-controller": { bg: "#fff5f5", text: "#c53030", border: "#fed7d7" },
-  "general": { bg: "#f7fafc", text: "#4a5568", border: "#e2e8f0" },
+  "file-explorer": {
+    bg: "var(--color-primary-light)",
+    text: "var(--color-primary-text)",
+    border: "var(--color-primary)",
+  },
+  "knowledge-analyst": {
+    bg: "var(--color-accent-alt-bg)",
+    text: "var(--color-accent-alt-text)",
+    border: "var(--color-accent-alt)",
+  },
+  "safety-controller": {
+    bg: "var(--color-error-bg)",
+    text: "var(--color-error-text)",
+    border: "var(--color-error)",
+  },
+  general: {
+    bg: "var(--color-surface-subtle)",
+    text: "var(--color-text-secondary)",
+    border: "var(--color-border-strong)",
+  },
 };
 
 const AGENT_ICONS: Record<string, string> = {
@@ -89,7 +109,9 @@ interface TaskCard {
   descKey: TranslationKeys;
   promptKey: TranslationKeys;
   agent: string;
-  color: string;
+  /** Named for the property it sets. It was `color` and fed `background`, which is
+      how it survived a pass that mapped colours by the property they land on. */
+  background: string;
 }
 
 const TASK_CARDS: TaskCard[] = [
@@ -100,7 +122,7 @@ const TASK_CARDS: TaskCard[] = [
     descKey: "cardBrowseDesc",
     promptKey: "agentSuggestList",
     agent: "file-explorer",
-    color: "#ebf8ff",
+    background: "var(--color-primary-light)",
   },
   {
     id: "search",
@@ -109,7 +131,7 @@ const TASK_CARDS: TaskCard[] = [
     descKey: "cardSearchDesc",
     promptKey: "agentSuggestSearch",
     agent: "file-explorer",
-    color: "#f0fff4",
+    background: "var(--color-success-bg)",
   },
   {
     id: "knowledge",
@@ -118,7 +140,7 @@ const TASK_CARDS: TaskCard[] = [
     descKey: "cardKnowledgeDesc",
     promptKey: "cardKnowledgePrompt",
     agent: "knowledge-analyst",
-    color: "#faf5ff",
+    background: "var(--color-accent-alt-bg)",
   },
   {
     id: "analyze",
@@ -127,7 +149,7 @@ const TASK_CARDS: TaskCard[] = [
     descKey: "cardAnalyzeDesc",
     promptKey: "agentSuggestAnalyze",
     agent: "knowledge-analyst",
-    color: "#fffbeb",
+    background: "var(--color-warning-bg)",
   },
   {
     id: "protect",
@@ -136,7 +158,7 @@ const TASK_CARDS: TaskCard[] = [
     descKey: "cardProtectDesc",
     promptKey: "cardProtectPrompt",
     agent: "safety-controller",
-    color: "#fff5f5",
+    background: "var(--color-error-bg)",
   },
   {
     id: "recent",
@@ -145,7 +167,7 @@ const TASK_CARDS: TaskCard[] = [
     descKey: "cardRecentDesc",
     promptKey: "agentSuggestRecent",
     agent: "file-explorer",
-    color: "#f7fafc",
+    background: "var(--color-surface-subtle)",
   },
 ];
 
@@ -641,7 +663,7 @@ export function AgentChat({
                 <button
                   key={card.id}
                   className="agent-task-card"
-                  style={{ background: card.color }}
+                  style={{ background: card.background }}
                   onClick={() => sendMessage(t(card.promptKey))}
                 >
                   <div className="card-top">

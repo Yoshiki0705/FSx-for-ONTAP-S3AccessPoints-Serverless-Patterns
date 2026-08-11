@@ -23,6 +23,7 @@
 |---|---|---|
 | FSx 없이 데모 체험 | [Demo Mode Guide](docs/demo-mode-guide.md) | 5분 |
 | 웹 포털로 파일 브라우징 | [File Portal UI (Amplify / Nextcloud)](docs/file-portal-amplify-gen2.en.md) | 10분 |
+| 포털 **사용하기** (로그인~브라우징~스마트폰) | [사용자 가이드](docs/ko/portal-user-guide.md) | 10분 |
 | AWS에 패턴 배포 | [Deployment Guide](docs/guides/deployment-guide.md) | 30분 |
 | 워크로드에 맞는 패턴 찾기 | [Pattern Selection Guide](docs/pattern-selection-guide.md) | 15분 |
 | 비용 견적 | [Cost Calculator](docs/cost-calculator.md) | 5분 |

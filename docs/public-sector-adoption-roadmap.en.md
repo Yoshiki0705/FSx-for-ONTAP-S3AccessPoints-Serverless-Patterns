@@ -26,7 +26,7 @@ PoC/Validation  →   Limited Production  →  Organization-wide Deployment
 | Phase B: Limited Production | Level 3 (Monitored) | Establish observability with Dashboard + Alarm + Runbook |
 | Phase C: Organization-wide Deployment | Level 4 (Production) | StackSets + CI/CD + SLO + DR + Audit compliance |
 
-Details: [Production Readiness Maturity Model](production-readiness.md)
+Details: [Production Readiness Maturity Model](production-readiness.en.md)
 
 ---
 
@@ -230,8 +230,8 @@ Additional verification items when considering the FlexCache Anycast/DR pattern 
 
 ## References
 
-- [Governance Checklist](governance-checklist.md)
-- [Production Readiness](production-readiness.md)
-- [Partner/SI Delivery Checklist](partner-si-delivery-checklist.md)
-- [Deployment Profiles](deployment-profiles.md)
-- [Customer Discovery Template](customer-discovery-template.md)
+- [Governance Checklist](governance-checklist.en.md)
+- [Production Readiness](production-readiness.en.md)
+- [Partner/SI Delivery Checklist](partner-si-delivery-checklist.en.md)
+- [Deployment Profiles](deployment-profiles.en.md)
+- [Customer Discovery Template](customer-discovery-template.en.md)

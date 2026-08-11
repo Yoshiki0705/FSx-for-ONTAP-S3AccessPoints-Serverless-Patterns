@@ -26,7 +26,11 @@ import boto3
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
-APPSYNC_URL = os.environ.get("APPSYNC_API_URL", "")
+# No APPSYNC_API_URL: this writes the notification row to DynamoDB directly rather
+# than going back through the API. A read of it survived here after that change,
+# defaulting to "" and used nowhere — which made it look like an environment
+# variable the infrastructure had forgotten to set. Removed so that the list of
+# variables this function reads is the list it needs.
 TABLE_NAME = os.environ.get("NOTIFICATION_TABLE_NAME", "")
 
 

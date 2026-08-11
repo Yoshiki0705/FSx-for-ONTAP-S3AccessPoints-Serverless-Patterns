@@ -202,5 +202,5 @@ The `ArpResponseActions` component in Data Protection always renders its contain
 - [PoC → Production Guide](./portal-poc-to-production.md) — Authentication setup (MFA, groups, SAML federation) for production
 - [Scaling Guide](./portal-scaling-guide.md) — How auth scales (Cognito 1M users, rate limits)
 - [Accessibility Statement](./portal-accessibility.md) — How ARIA roles interact with authorization states
-- [Implementation Guide](../../solutions/amplify-portal/docs/IMPLEMENTATION.md) — Generic Dispatch authorization schema
+- [Implementation Guide](../../solutions/amplify-portal/docs/IMPLEMENTATION.en.md) — Generic Dispatch authorization schema
 - [Compliance Guide](./portal-compliance-guide.md) — Auditor procedures for verifying access controls

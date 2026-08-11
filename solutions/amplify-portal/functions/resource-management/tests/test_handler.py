@@ -2745,3 +2745,133 @@ class TestIrreversibleAcknowledgement:
         assert result["success"] is False
         assert "acknowledgeIrreversible" in result["error"]
         assert not any(method == "PATCH" for method, _url, _kwargs in mock_http.calls)
+
+
+class TestFailureClassification:
+    """Which of the five ways it failed, not just that it failed.
+
+    The portal reported "Volume 'vol1' not found on SVM 'fsxsvm01'" for a volume the AWS
+    control plane listed as CREATED, and offered advice about subnets and security
+    groups. ONTAP had actually answered 401 with "User is not authorized." Naming the
+    wrong layer costs more than saying nothing, because the reader believes it.
+    """
+
+    def test_rejected_credentials_are_reported_as_such(self, mock_secrets):
+        """A 401 is the secret's contents, not the network."""
+        from handler import handler
+
+        mock_http = MockHttp(
+            {"/storage/volumes": {"status": 401, "data": {"error": {"message": "User is not authorized."}}}}
+        )
+        with patch("handler.urllib3.PoolManager") as mock_pool:
+            mock_pool.return_value = mock_http
+            result = handler({"action": "listVolumes"}, None)
+
+        assert result["errorClass"] == "CREDENTIALS_REJECTED"
+        assert result["errorStatus"] == 401
+        # The message the panel has always shown is left alone; the class is the new part.
+        assert result["error"] == "User is not authorized."
+
+    def test_a_403_lands_in_the_same_class_as_a_401(self, mock_secrets):
+        """Which one arrived is worth recording, but both send the reader to the secret."""
+        from handler import handler
+
+        mock_http = MockHttp({"/storage/volumes": {"status": 403, "data": {"error": {"message": "not authorized"}}}})
+        with patch("handler.urllib3.PoolManager") as mock_pool:
+            mock_pool.return_value = mock_http
+            result = handler({"action": "listVolumes"}, None)
+
+        assert result["errorClass"] == "CREDENTIALS_REJECTED"
+        assert result["errorStatus"] == 403
+
+    def test_other_ontap_errors_carry_the_status_and_code(self, mock_secrets):
+        """The code is the first thing a support case asks for."""
+        from handler import handler
+
+        mock_http = MockHttp(
+            {
+                "/storage/volumes": {
+                    "status": 500,
+                    "data": {"error": {"message": "internal error", "code": "6684732"}},
+                }
+            }
+        )
+        with patch("handler.urllib3.PoolManager") as mock_pool:
+            mock_pool.return_value = mock_http
+            result = handler({"action": "listVolumes"}, None)
+
+        assert result["errorClass"] == "ONTAP_ERROR"
+        assert result["errorStatus"] == 500
+        assert result["errorCode"] == "6684732"
+
+    def test_a_later_validation_failure_is_not_labelled_an_ontap_failure(self, mock_secrets):
+        """The recorded class only attaches to the error it was recorded for.
+
+        This action reads a policy, tolerates the read failing, and then refuses for a
+        different reason. Attaching the read's class here would tell the reader to go and
+        check a password over a missing acknowledgement.
+        """
+        from handler import handler
+
+        mock_http = MockHttp(
+            {"/storage/snapshot-policies": {"status": 401, "data": {"error": {"message": "User is not authorized."}}}}
+        )
+        with patch("handler.urllib3.PoolManager") as mock_pool:
+            mock_pool.return_value = mock_http
+            result = handler(
+                {
+                    "action": "assignSnapshotPolicy",
+                    "volumeUuid": "uuid-1",
+                    "policyName": "nightly_worm",
+                },
+                None,
+            )
+
+        assert result["success"] is False
+        assert "acknowledgeIrreversible" in result["error"]
+        assert "errorClass" not in result
+
+    def test_the_class_does_not_survive_into_the_next_invocation(self, mock_secrets):
+        """The slot is per-request. A warm container must not report a stale cause."""
+        from handler import handler
+
+        failing = MockHttp(
+            {"/storage/volumes": {"status": 401, "data": {"error": {"message": "User is not authorized."}}}}
+        )
+        with patch("handler.urllib3.PoolManager") as mock_pool:
+            mock_pool.return_value = failing
+            assert handler({"action": "listVolumes"}, None)["errorClass"] == "CREDENTIALS_REJECTED"
+
+        # Same container, an action that fails for a reason ONTAP never saw.
+        with patch("handler.urllib3.PoolManager") as mock_pool:
+            mock_pool.return_value = MockHttp()
+            result = handler({"action": "nonsense"}, None)
+
+        assert "Unknown action" in result["error"]
+        assert "errorClass" not in result
+
+    def test_an_unconfigured_deployment_names_what_is_missing(self, mock_secrets):
+        """ "ONTAP connection not configured" did not say which variable was blank."""
+        import handler as handler_module
+
+        with patch.object(handler_module, "MGMT_IP", ""):
+            result = handler_module.handler({"action": "listVolumes"}, None)
+
+        assert result["errorClass"] == "NOT_CONFIGURED"
+        assert "ONTAP_MGMT_IP" in result["error"]
+
+    def test_nothing_answering_is_not_reported_as_a_missing_volume(self, mock_secrets):
+        """The only class where inspecting the VPC is the right next step."""
+        import handler as handler_module
+        import urllib3
+
+        class RefusingHttp:
+            def request(self, *_args, **_kwargs):
+                raise urllib3.exceptions.NewConnectionError(None, "connection refused")
+
+        with patch("handler.urllib3.PoolManager") as mock_pool:
+            mock_pool.return_value = RefusingHttp()
+            result = handler_module.handler({"action": "listVolumes"}, None)
+
+        assert result["errorClass"] == "UNREACHABLE"
+        assert "management LIF" in result["error"]

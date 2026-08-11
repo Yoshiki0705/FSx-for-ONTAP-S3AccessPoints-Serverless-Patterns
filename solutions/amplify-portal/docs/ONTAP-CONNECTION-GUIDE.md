@@ -71,25 +71,97 @@ aws secretsmanager create-secret \
 
 ### パスワード変更手順
 
-FSx for ONTAP の `fsxadmin` パスワードを変更する場合、**必ず両方を同時に更新**してください:
+FSx for ONTAP の `fsxadmin` パスワードを変更する場合、**必ず両方を更新**してください。**Step 1 の成功を確認してから Step 2 を打つこと**（理由は下記）:
 
 ```bash
-# Step 1: FSx for ONTAP 側のパスワード変更
-aws fsx update-file-system \
-  --file-system-id <fs-id> \
-  --ontap-configuration '{"FsxAdminPassword":"NewSecureP@ss2026!"}' \
-  --region <your-region>
+NEWPW='NewSecureP@ss2026!'
 
-# Step 2: Secrets Manager の値を同期
-aws secretsmanager put-secret-value \
-  --secret-id fsx-ontap-fsxadmin-credentials \
-  --secret-string '{"username":"fsxadmin","password":"NewSecureP@ss2026!"}' \
-  --region <your-region>
+# Step 1: FSx for ONTAP 側のパスワード変更
+# 成功したときだけ Step 2 に進む。&& でつなぐか、if で明示的に分岐する
+if aws fsx update-file-system \
+     --file-system-id <fs-id> \
+     --ontap-configuration "{\"FsxAdminPassword\":\"$NEWPW\"}" \
+     --region <your-region>; then
+  # Step 2: Secrets Manager の値を同期
+  aws secretsmanager put-secret-value \
+    --secret-id fsx-ontap-fsxadmin-credentials \
+    --secret-string "{\"username\":\"fsxadmin\",\"password\":\"$NEWPW\"}" \
+    --region <your-region>
+else
+  echo "Step 1 が失敗したのでシークレットは変更しない"
+fi
 ```
+
+> **なぜ分岐が必要か**: この 2 つを無条件に並べて実行し、**Step 1 だけが失敗して Step 2 が成功した**ことがある。結果として、シークレットには ONTAP が一度も受け取っていない値が入り、**不一致は解消されるどころか悪化した**。復旧は「もう一度 Step 1 を通してから Step 2」でしかない。Step 1 は同期的にバリデーションを返すので、確認は容易である。
+
+**パスワードの制約**（Step 1 が拒否する条件。エラーは同期的に返る）:
+
+| 条件 | 内容 |
+|------|------|
+| 長さ | 8〜128 文字 |
+| 必須 | 英字を 1 文字以上、数字を 1 文字以上 |
+| **禁止** | **文字列 `admin` を含んではならない** |
+
+> 最後の 1 行は見落としやすい。`fsxadmin` にちなんだ名前（`Fsxadmin-...` 等）を付けると、この規則に触れて Step 1 が
+> `Provided FsxAdminPassword is not valid` で失敗する。実際に踏んだ。
 
 > **注意**: Step 1 と Step 2 の間にポータルが API 呼び出しを行うと、古いパスワードで認証失敗します。ONTAP は認証失敗を記録し、一定回数超過でアカウントをロックアウトする場合があります。
 
+変更後は preflight で確認します:
+
+```bash
+make ontap-preflight FS_ID=<fs-id> LAMBDA=<ResourceMgmtFunction の名前>
+# → 6. [PASS] ONTAP auth / ONTAP accepted the credentials and answered.
+```
+
 ## トラブルシューティング
+
+### まず `make ontap-preflight` を実行する
+
+ONTAP パネルにデータが出ないとき、原因は 6 つの段のどれかにある。**画面のメッセージから逆算しないこと**（後述の理由により、以前のポータルは違う段を指していた）。次のコマンドが 6 段を順に検査し、壊れている段を名指しする。
+
+```bash
+# 段 1・5（設定とシークレット）
+make ontap-preflight
+
+# 段 2〜4 を追加（ファイルシステム / SVM / ボリュームの実在確認）
+make ontap-preflight FS_ID=fs-0123456789abcdef0
+
+# 段 6 を追加（ONTAP が認証情報を受け付けるか）
+make ontap-preflight FS_ID=fs-0123456789abcdef0 LAMBDA=<ResourceMgmtFunction の名前>
+```
+
+| 段 | 検査内容 | 失敗したときに見る場所 |
+|:--:|---------|---------------------|
+| 1 | `portal-config.ts` に 4 つの値があるか | `amplify/portal-config.ts` |
+| 2 | ファイルシステムが AVAILABLE で、**管理 IP がそのファイルシステムのものか** | `ontapMgmtIp` |
+| 3 | 設定した SVM 名が実在するか | `ontapSvmName` |
+| 4 | 設定したボリューム名がその SVM にあるか | `ontapVolumeName` |
+| 5 | シークレットが読めて JSON で、パスワードに前後の空白がないか | Secrets Manager |
+| 6 | **ONTAP が認証情報を受け付けるか** | 下の HTTP 401 の節 |
+
+段 6 だけは手元の端末から検査できない。管理 LIF はプライベートなので、`LAMBDA=` でデプロイ済み関数に代理で呼ばせる。指定しない場合、段 6 は PASS ではなく **SKIP** と表示される。実際に壊れていた段を一度も試さずに全段グリーンと出すほうが、何も出さないより悪いため。
+
+#### 画面はこう表示される
+
+認証情報が拒否されたときの実際の表示。見出しが原因を名指しし、✅ の行が「ネットワークは調べなくてよい」と明示し、対処コマンドは FSx 側と Secrets Manager 側の 2 段そろっている（片方だけではポータルは直らないため）。エラー詳細には ONTAP 自身のメッセージ・HTTP ステータス・エラーコードがそのまま入る（サポートケースに逐語で貼れるようにするため、ここは翻訳していない）。
+
+![認証情報が拒否されたときの表示（ライトテーマ）](screenshots/portal-ontap-credentials-rejected.png)
+
+ダークテーマ:
+
+![認証情報が拒否されたときの表示（ダークテーマ）](screenshots/portal-ontap-credentials-rejected-dark.png)
+
+パスワードを揃えたあとの同じパネル。preflight が全段 PASS になり、スナップショットが一覧される:
+
+![復旧後のスナップショット一覧](screenshots/portal-snapshots-recovered.png)
+
+> **なぜこの順序が重要か**: 検証環境で実際に起きた事象は「段 1〜5 がすべて PASS し、段 6 だけが FAIL」だった。`aws fsx describe-volumes` はボリュームを CREATED として返し、リクエストは TLS でクラスタに到達していた。原因は Secrets Manager と ONTAP のパスワード不一致である。にもかかわらずポータルは「📡 ONTAP 接続が必要」という見出しで VPC・サブネット・セキュリティグループの確認を促していた。**間違った層を名指しすることは、何も言わないより高くつく。読者はそれを信じるからである。**
+>
+> 現在は各パネルが原因を 5 クラス（`NOT_CONFIGURED` / `UNREACHABLE` / `CREDENTIALS_REJECTED` / `NOT_FOUND` / `ONTAP_ERROR`）に分類して表示し、認証情報が拒否された場合は「ネットワークを調べる必要はない」と明示する。分類は `shared/ontap_diagnosis.py` にある。
+
+> **利用者から報告を受けて調べている場合**: 利用者に頼むもの（画面の見出し・エラー詳細の中身）と、
+> 症状から確認先を引く逆引き表は [引き渡しと問い合わせ対応ガイド](portal-handover-guide.md#利用者の言葉--確認するもの) にある。
 
 ### HTTP 401 "User is not authorized"
 
@@ -228,8 +300,6 @@ npm start
 
 
 ## 将来の改善計画 (Future Improvements)
-
-以下は 20 ペルソナレビューで特定された改善項目です:
 
 ### パフォーマンス可視化
 - **キャッシュヒット率表示** (EDA/VFX ペルソナ): ONTAP REST API の `cache_hit_ratio` フィールドを使用してリアルタイムのヒット率をダッシュボード表示

@@ -125,6 +125,12 @@ SCALARS: dict[str, str] = {
     "mandatory": "boolean",
     "generatePassphrase": "boolean",
     "acknowledgeIrreversible": "true",
+    # Declared `true` rather than `boolean` for the same reason as the
+    # acknowledgement above: these are flags a caller opts into. `overwrite: false`
+    # reads as "do not overwrite", which is already the default, so allowing it
+    # invites a call site to pass the value of a checkbox and believe it means
+    # something. Omitting the property is the only way to say no.
+    "overwrite": "true",
     "allSvms": "boolean",
     "isShared": "boolean",
     "force": "boolean",

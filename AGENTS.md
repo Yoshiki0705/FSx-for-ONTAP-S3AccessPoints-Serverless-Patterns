@@ -12,7 +12,7 @@ CloudFormation/SAM template sharing the Python modules in `shared/`.
 **Two pillars**: `solutions/` (S3 AP data processing) + `operations/` (file system operational
 optimization).
 
-**Test coverage**: ~4,200 Python tests across 237 files + ~190 vitest tests across 15 files.
+**Test coverage**: ~4,310 Python tests across 242 files + ~282 vitest tests across 20 files.
 
 > ファイル数は `make drift` がツリーと照合するので、古くなれば fail する。テスト総数は
 > `make test` / ポータルハンドラの個別実行 / vitest の 3 系統の合計なので概数。誰も保守
@@ -52,7 +52,7 @@ make test-quick     # 主要パターンのテスト（コミット前に必須�
 make test           # 全テスト
 make lint           # ruff check + ruff format --check（CI と同じ 2 段）
 make format-python  # フォーマット差分の修正
-make drift          # ドキュメント/コード乖離、i18n 網羅、ポータルの action-parameter 契約
+make drift          # ドキュメント/コード乖離、i18n 網羅、テーマトークン、action-parameter 契約
 make security       # セキュリティスキャン
 make clean          # ビルド成果物の削除
 
@@ -210,7 +210,9 @@ Surface findings explicitly and fix them before finalizing. The cost of one more
 2. `make lint` — `ruff check` と `ruff format --check` の両方。CI が別ステップなので、
    片方だけではローカルを通って CI で落ちる。差分は `make format-python`
 3. `cfn-lint` — 変更したテンプレート
-4. `make drift` — action インベントリ、i18n 網羅、陳腐化ルール、ポータルの action-parameter 契約
+4. `make drift` — action インベントリ、i18n 網羅、陳腐化ルール、テーマトークン（色リテラル /
+   インラインスタイル / 未定義トークン / ロケールの過剰エスケープ）、画像とリンクの解決、
+   ポータルの action-parameter 契約
 
 変更内容に応じて:
 
@@ -221,7 +223,8 @@ Surface findings explicitly and fix them before finalizing. The cost of one more
 | README | Governance Note と Performance Considerations があるか |
 | 新しい出力 | `data_classification` フィールドを含める |
 | ポータルの dispatch 呼び出し | `src/lib/dispatch.ts` を経由する（`client.mutations.*` を直接呼ばない）。handler のパラメータを変えたら `src/lib/dispatchActions.ts` を再生成する（`make drift` が一致するまで fail する）。ブランドは ONTAP から値が到着する場所（レスポンスの interface）で付ける。呼び出し側で付けると、その場にある任意の文字列を受け入れてしまい、防ぎたい間違いそのものになる |
-| ユーザー向け UI 文字列 | `ja.ts` に先に追加してから他 7 言語。`t("key")` を使う。JSX テキスト・`aria-label`・`title`・`placeholder` にハードコードしない。製品名・SQL リテラル・技術用語（ONTAP, FlexCache, SnapLock, S3 AP）は翻訳しない |
+| ユーザー向け UI 文字列 | `ja.ts` に先に追加してから他 7 言語。`t("key")` を使う。JSX テキスト・`aria-label`・`title`・`placeholder` にハードコードしない。製品名・SQL リテラル・技術用語（ONTAP, FlexCache, SnapLock, S3 AP）は翻訳しない。`t("key") \|\| "既定値"` と書かない（`t()` は末尾が `?? key` なので常に truthy で、右辺は到達しない） |
+| ポータルの色 | `var(--color-*)` を使う。**値ではなく役割で対応付ける**（`white` は `color` なら `--color-text-inverse`、`background` なら `--color-surface`）。JSX の `style={{ }}` に色リテラルを書かない（インラインは後から上書きできないので、そのテーマに固定される）。新しいトークンは `:root` と `[data-theme="dark"]` の**両方**に定義する |
 | 制約の解消（ドキュメントが「自分で作れ」と書いていたものを実装した） | `make drift-published` も走らせる。公開記事の記述はリポジトリ内のチェックでは見えない |
 | `solutions/amplify-portal/amplify/**` | IAM Policy Validation ワークフローが `solutions/industry/` と `infrastructure/` の**全**テンプレートを走査する。失敗は既存の負債かもしれないので、`git diff --name-only` で自分の変更範囲を確認してから引き受ける |
 

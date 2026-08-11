@@ -22,6 +22,7 @@ import { AgentCreator } from "./components/AgentCreator";
 import { AgentTeams } from "./components/AgentTeams";
 import { SemanticSearch } from "./components/SemanticSearch";
 import { LanguageSwitcher } from "./components/LanguageSwitcher";
+import { ThemeToggle } from "./components/ThemeToggle";
 import { WelcomeModal } from "./components/WelcomeModal";
 import { useTranslation } from "./i18n";
 import { useStorageAdmin } from "./hooks/useStorageAdmin";
@@ -29,12 +30,17 @@ import { dispatch } from "./lib/dispatch";
 import { portalSettings } from "./portal-settings";
 
 import type { TranslationKeys } from "./i18n";
+import { currentLocation, hashFor, type Section } from "./lib/portalLocation";
 
-type Section =
-  | "files" | "favorites" | "recent" | "watch" | "upload"
-  | "process" | "agent" | "search" | "history" | "analytics"
-  | "snapshots" | "arp" | "lock"
-  | "versions" | "audit" | "resources" | "agentDir";
+/** The width at which the sidebar stops being a column and becomes a drawer.
+ *  Kept in step with the `max-width: 768px` block in index.css. */
+const NARROW_VIEWPORT = 768;
+
+/** Whether the sidebar overlays the content rather than sitting beside it. */
+function isNarrowViewport(): boolean {
+  // Guarded for the test environment, which has no window during module init.
+  return typeof window !== "undefined" && window.innerWidth <= NARROW_VIEWPORT;
+}
 
 const NAV_ITEMS: { id: Section; icon: string; labelKey: TranslationKeys; group: "browse" | "actions" | "protection" | "admin" }[] = [
   // Browse group
@@ -82,15 +88,6 @@ const GROUP_LABELS: Record<string, TranslationKeys> = {
  * - Responsive — sidebar collapses on mobile
  */
 
-/** Sections that may appear in the URL hash. */
-const SECTIONS: Section[] = ["files","favorites","recent","upload","process","agent","search","history","analytics","snapshots","arp","lock","versions","audit","resources","agentDir"];
-
-/** The hash without its leading "#", if it names a section. */
-function sectionFromHash(): Section | null {
-  const hash = window.location.hash.replace("#", "");
-  return SECTIONS.includes(hash as Section) ? (hash as Section) : null;
-}
-
 /** Folder holding the given object key, as a prefix with a trailing slash. */
 function parentPrefixOf(fileKey: string): string {
   const parts = fileKey.split("/");
@@ -100,16 +97,23 @@ function parentPrefixOf(fileKey: string): string {
 
 function App() {
   // Navigation state is persisted in the URL hash so a refresh restores the section.
-  const [activeSection, setActiveSection] = useState<Section>(() => sectionFromHash() ?? "files");
+  const [activeSection, setActiveSection] = useState<Section>(
+    () => currentLocation()?.section ?? "files"
+  );
+  const [selectedPrefix, setSelectedPrefix] = useState(() => currentLocation()?.prefix ?? "");
 
   // State is the source of truth; the hash mirrors it. Writing the hash from the
   // click handler instead would mutate a value outside the component during the
   // render pass React attributes it to.
+  //
+  // Assigning to `location.hash` adds a history entry, which is what makes the back
+  // button walk up the folders it walked down.
+  const addressedHash = hashFor(activeSection, selectedPrefix);
   useEffect(() => {
-    if (sectionFromHash() !== activeSection) {
-      window.location.hash = activeSection;
+    if (window.location.hash.replace(/^#/, "") !== addressedHash) {
+      window.location.hash = addressedHash;
     }
-  }, [activeSection]);
+  }, [addressedHash]);
 
   // Listen for hash changes from other components (Lock panel navigation) and from
   // the browser's back/forward buttons. No activeSection dependency: setting state
@@ -117,14 +121,17 @@ function App() {
   // not needed, and the listener no longer detaches on every navigation.
   useEffect(() => {
     const onHashChange = () => {
-      const section = sectionFromHash();
-      if (section) setActiveSection(section);
+      const location = currentLocation();
+      if (!location) return;
+      setActiveSection(location.section);
+      // Only the explorer's address carries a folder, so a hash naming another
+      // section must not reset the prefix that section was handed.
+      if (location.section === "files") setSelectedPrefix(location.prefix);
     };
     window.addEventListener("hashchange", onHashChange);
     return () => window.removeEventListener("hashchange", onHashChange);
   }, []);
 
-  const [selectedPrefix, setSelectedPrefix] = useState("");
   const [prefixNonce, setPrefixNonce] = useState(0);
   const [activeJobArn, setActiveJobArn] = useState<string | null>(null);
   const [selectedFileKey, setSelectedFileKey] = useState<string | null>(null);
@@ -136,7 +143,42 @@ function App() {
     setActiveSection("files");
   };
   const [selectedFileName, setSelectedFileName] = useState<string | null>(null);
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  // Collapsed to start on a narrow screen, because there the sidebar is not a column
+  // beside the content but a drawer on top of it. Defaulting it open meant a phone
+  // opened the portal to a full-height navigation panel covering the file list, with
+  // no indication that anything was behind it.
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(isNarrowViewport);
+  // Tracked rather than read once, because turning a phone sideways crosses the
+  // breakpoint: 390x844 is a drawer and 844x390 is a column. Read once at mount, a
+  // rotated phone kept whichever arrangement it started in.
+  const [narrowLayout, setNarrowLayout] = useState(isNarrowViewport);
+
+  useEffect(() => {
+    const query = window.matchMedia?.(`(max-width: ${NARROW_VIEWPORT}px)`);
+    if (!query) return;
+    const onChange = (event: MediaQueryListEvent) => {
+      setNarrowLayout(event.matches);
+      // Follow the arrangement rather than the previous state: crossing into a drawer
+      // should not leave it covering the content, and crossing out of one should not
+      // leave the column hidden with no visible way back to it.
+      setSidebarCollapsed(event.matches);
+    };
+    query.addEventListener("change", onChange);
+    return () => query.removeEventListener("change", onChange);
+  }, []);
+
+  // Escape closes the drawer. Without it the only way out is the toggle, and while the
+  // drawer is open the toggle is the one control the scrim does not cover -- which is
+  // easy to get wrong and leaves a keyboard user stuck in a panel over the content.
+  useEffect(() => {
+    if (!narrowLayout || sidebarCollapsed) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setSidebarCollapsed(true);
+    };
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [narrowLayout, sidebarCollapsed]);
+
   const { user, signOut, authStatus } = useAuthenticator();
   const { t } = useTranslation();
 
@@ -220,14 +262,32 @@ function App() {
         </button>
         <h1 className="portal-title">{t("appTitle")}</h1>
         <div className="topbar-spacer" />
+        <ThemeToggle />
         <LanguageSwitcher />
         <div className="topbar-user">
           <span className="user-email">{user?.signInDetails?.loginId}</span>
-          <button onClick={signOut} className="sign-out-btn">
-            {t("signOut")}
+          {/* The label is a span so the narrowest breakpoint can drop it and leave the
+              icon. aria-label carries the name either way -- at 390px the topbar has
+              room for the nav toggle, the theme control, the language control and one
+              more button, and squeezing the text instead set this to 44x120px with
+              "サインアウト" running vertically. */}
+          <button onClick={signOut} className="sign-out-btn" aria-label={t("signOut")}>
+            <span aria-hidden="true" className="sign-out-icon">
+              ⏻
+            </span>
+            <span className="sign-out-label">{t("signOut")}</span>
           </button>
         </div>
       </header>
+
+      {/* Dims the content the drawer covers, and closes it when tapped. Rendered only
+          while the drawer is actually over something: on a wide screen the sidebar is a
+          column and there is nothing to dismiss. Hidden from the accessibility tree
+          because it duplicates the toggle button and the Escape key, which are the
+          paths a keyboard user already has. */}
+      {!sidebarCollapsed && narrowLayout && (
+        <div className="sidebar-scrim" aria-hidden="true" onClick={() => setSidebarCollapsed(true)} />
+      )}
 
       {/* Left sidebar: Navigation */}
       <nav className="portal-sidebar" aria-label="Main navigation">
@@ -238,7 +298,12 @@ function App() {
               <button
                 key={item.id}
                 className={`sidebar-item ${activeSection === item.id ? "active" : ""}`}
-                onClick={() => setActiveSection(item.id)}
+                onClick={() => {
+                  setActiveSection(item.id);
+                  // On a phone the drawer is on top of the content, so leaving it
+                  // open means the section just chosen is the one thing not visible.
+                  if (narrowLayout) setSidebarCollapsed(true);
+                }}
                 aria-current={activeSection === item.id ? "page" : undefined}
               >
                 <span className="sidebar-icon">{item.icon}</span>
@@ -255,6 +320,7 @@ function App() {
           <FileExplorer
             initialPrefix={selectedPrefix}
             prefixNonce={prefixNonce}
+            onNavigate={setSelectedPrefix}
             onSelectPrefix={(prefix) => {
               setSelectedPrefix(prefix);
               setActiveSection("process");

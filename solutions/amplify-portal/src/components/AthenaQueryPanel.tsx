@@ -64,12 +64,12 @@ export function AthenaQueryPanel() {
             aria-label={t("aqDatabaseAria")}
             title={t("aqDatabaseHint")}
           />
-          <span style={{ fontSize: "0.75rem", color: "var(--text-secondary, #666)", whiteSpace: "nowrap" }}>
+          <span style={{ fontSize: "0.75rem", color: "var(--color-text-secondary)", whiteSpace: "nowrap" }}>
             {t("aqDatabaseArrow")}
           </span>
         </div>
       </div>
-      <p style={{ margin: "0 0 0.75rem", fontSize: "0.8rem", color: "var(--text-secondary, #666)" }}>
+      <p style={{ margin: "0 0 0.75rem", fontSize: "0.8rem", color: "var(--color-text-secondary)" }}>
         📦 <strong>{t("aqDatabaseAria")}</strong>:{" "}
         {withNodes(t("aqDatabaseExplain"), {
           db: <code>default</code>,
@@ -85,12 +85,12 @@ export function AthenaQueryPanel() {
         }}
       />
 
-      <div className="athena-guidance" style={{ marginBottom: "1rem", padding: "0.75rem", background: "var(--surface-secondary, #f8f9fa)", borderRadius: "6px", fontSize: "0.85rem" }}>
+      <div className="athena-guidance" style={{ marginBottom: "1rem", padding: "0.75rem", background: "var(--color-surface-subtle)", borderRadius: "6px", fontSize: "0.85rem" }}>
         <p style={{ margin: "0 0 0.5rem" }}>
           <strong>💡 {t("athenaGuidanceTitle")}</strong>: {t("aqGuidanceBody")}
         </p>
         <details>
-          <summary style={{ cursor: "pointer", color: "var(--accent-color, #0066cc)" }}>
+          <summary style={{ cursor: "pointer", color: "var(--color-primary-text)" }}>
             📝 {t("aqExamplesToggle")}
           </summary>
           <div style={{ marginTop: "0.5rem" }}>
@@ -107,7 +107,7 @@ export function AthenaQueryPanel() {
               -- {t("aqExampleRecent")}<br/>
               <code>SELECT key, last_modified FROM default.s3_objects WHERE last_modified &gt; current_date - interval '7' day</code>
             </p>
-            <p style={{ margin: "0.5rem 0 0", fontSize: "0.8rem", color: "var(--text-secondary, #666)" }}>
+            <p style={{ margin: "0.5rem 0 0", fontSize: "0.8rem", color: "var(--color-text-secondary)" }}>
               ※ {withNodes(t("aqExamplesNote"), { cmd: <code>SHOW TABLES IN default</code> })}
             </p>
           </div>
@@ -131,7 +131,7 @@ export function AthenaQueryPanel() {
 
       {error && (
         <div className={`athena-error ${status === "SETUP_REQUIRED" ? "athena-setup-hint" : ""}`}
-             style={status === "SETUP_REQUIRED" ? { background: "#fff3cd", borderColor: "#ffc107", color: "#856404", padding: "1rem", borderRadius: "6px", border: "1px solid" } : undefined}>
+             style={status === "SETUP_REQUIRED" ? { background: "var(--color-warning-bg)", borderColor: "var(--color-warning)", color: "var(--color-warning-text)", padding: "1rem", borderRadius: "6px", border: "1px solid" } : undefined}>
           {status === "SETUP_REQUIRED" && <strong>⚙️ {t("aqSetupRequired")}</strong>}
           {status === "SETUP_REQUIRED" && <br/>}
           {error}
@@ -147,7 +147,7 @@ export function AthenaQueryPanel() {
                 </li>
                 <li>{t("aqSetupStep3")}</li>
               </ol>
-              <p style={{ fontSize: "0.8rem", color: "#666" }}>
+              <p style={{ fontSize: "0.8rem", color: "var(--color-text-secondary)" }}>
                 {withNodes(t("aqSetupEnvHint"), {
                   file: <code>portal-config.ts</code>,
                   env: <code>ATHENA_OUTPUT_LOCATION</code>,

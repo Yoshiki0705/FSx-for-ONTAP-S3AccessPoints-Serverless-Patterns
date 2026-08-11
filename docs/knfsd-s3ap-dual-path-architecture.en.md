@@ -733,8 +733,8 @@ A: Amazon File Cache is a Lustre-compatible managed cache and requires a Lustre 
 ## Related Documentation
 
 - [Comparing Alternative Architectures — NFS Read Cache section](./comparison-alternatives.md)
-- [ONTAP Integration Notes — KNFSD section](./ontap-integration-notes.md)
-- [S3 AP Performance Considerations — KNFSD bandwidth sharing design](./s3ap-performance-considerations.md)
+- [ONTAP Integration Notes — KNFSD section](./ontap-integration-notes.en.md)
+- [S3 AP Performance Considerations — KNFSD bandwidth sharing design](./s3ap-performance-considerations.en.md)
 - [KNFSD File Cache GitHub](https://github.com/awslabs/knfsd-file-cache)
 - [KNFSD File Cache Launch Blog](https://aws.amazon.com/blogs/media/introducing-knfsd-file-cache-extending-your-nfs-storage-into-the-cloud/)
 - [AWS Solutions Guidance: KNFSD File Cache](https://docs.aws.amazon.com/solutions/knfsd-file-cache-on-aws/)

@@ -1,6 +1,6 @@
 # Getting Started — FSx for ONTAP File Portal
 
-🌐 **Language / 言語**: [日本語](GETTING-STARTED.md) | [English](GETTING-STARTED.en.md)
+🌐 **Language / 言語**: **日本語** | [English](GETTING-STARTED.en.md)
 
 > 30 分で動作確認可能。DemoMode なら FSx for ONTAP なしで始められます。
 
@@ -39,7 +39,32 @@ npm start
 ファイルブラウズ・AI 処理・アップロードは DemoMode で動作します。
 admin/data-protection 機能は「ONTAP 接続が必要」と表示されます。
 
-> **エンドユーザー向け**: デプロイ完了後、ポータルを使い始めるユーザーには [ユーザーガイド](../../../docs/ja/portal-user-guide.md)（[EN](../../../docs/en/portal-user-guide.md)）を案内してください。デプロイ手順の知識は不要で、日常操作だけをカバーしています。
+> **エンドユーザー向け**: デプロイ完了後、ポータルを使い始めるユーザーには
+> [ユーザーガイド](../../../docs/ja/portal-user-guide.md)（[EN](../../../docs/en/portal-user-guide.md)）または
+> スマホ利用者向けの [スマートフォン操作ガイド](../../../docs/ja/portal-mobile-guide.md)（[EN](../../../docs/en/portal-mobile-guide.md)）を案内してください。
+> どちらもデプロイ手順の知識は不要で、日常操作だけをカバーしています。
+> **この文書自体は渡さないでください。** 渡すもの一式と問い合わせ対応は
+> [引き渡しと問い合わせ対応ガイド](portal-handover-guide.md) にあります。
+
+### スマートフォン実機で確認する
+
+**`npm run dev -- --host` で LAN の IP を開く方法では、サインインできない。** ポータルは
+Amplify の SRP 認証で `crypto.subtle` を、共有リンクとアップロードリンクのコピーで
+`navigator.clipboard` を使う。どちらもブラウザが **secure context** に限定している API で、
+`http://localhost` は例外扱いだが `http://192.168.x.x` は該当しない。
+
+HTTPS で配信する方法を選ぶ。
+
+| 方法 | コマンド | 向き |
+|------|---------|------|
+| Amplify Hosting にデプロイ | ブランチを接続（[Hosting ガイド](../../../docs/ja/amplify-hosting-production-guide.md)） | 本番に近い形で確認したいとき |
+| ローカルをトンネル経由で公開 | `cloudflared tunnel --url http://localhost:5173` 等 | 手元の変更をすぐ実機で見たいとき。URL は一時的 |
+
+> Cognito はホスト名を固定していないため、どちらでもサインインできる。トンネルの URL は
+> 実行ごとに変わるので、共有せず自分の端末からの確認にとどめる。
+
+確認する内容は[ユーザーガイドの「4. スマートフォンで使う」](../../../docs/ja/portal-user-guide.md)、
+レイアウトの仕様は[セクション構成ガイドの「モバイル対応」](./portal-tabs-guide.md)にある。
 
 ## フルセットアップ（FSx for ONTAP 接続あり）
 
@@ -135,41 +160,24 @@ DynamoDB ゲートウェイエンドポイントを作成するための設定�
 
 Lambda の ENI にはパブリック IP が付かないため、デフォルトルートが Internet Gateway 向きのサブネットでは外向き通信ができません。Secrets Manager はインターフェイスエンドポイントで到達できますが、DynamoDB には経路がありません。ゲートウェイエンドポイントは時間課金・データ処理課金がありません。
 
-**未設定のまま `vpcId` を設定した場合、synth が失敗します。** ドキュメントに書くだけでは不十分だからです。エンドポイントがないと、デプロイは成功したように見える一方で**ブロックの有効期限が一切動きません**。ブロックはクラスタに設定されるものの台帳への書き込みが失敗し、定期スイープはそのブロックを認識できません。レスポンスは `expiryTracked: false` を返すので黙って壊れるわけではありませんが、気づくのは個々の操作のレスポンスを読んだ人だけで、「ブロックは自動で解除される」と考えている運用者には届きません。
-
-意図的に有効期限なしで運用する場合は `allowNoBlockExpiry: true` を設定してください。
-
-サブネットに紐づくルートテーブルの確認:
-
-```bash
-aws ec2 describe-route-tables \
-  --filters "Name=association.subnet-id,Values=<subnet-id>" \
-  --query "RouteTables[].RouteTableId" --output text
-```
-
-明示的な関連付けがないサブネットは VPC のメインルートテーブルを使います:
-
-```bash
-aws ec2 describe-route-tables \
-  --filters "Name=vpc-id,Values=<vpc-id>" "Name=association.main,Values=true" \
-  --query "RouteTables[].RouteTableId" --output text
-```
-
-### Step 5: 起動
-
-```bash
-npm start
-```
-
-初回は CloudFormation スタック作成のため 3-5 分かかります。
-`Deployment completed` + `http://localhost:5173` が表示されたら完了。
-
-### Step 6: 動作確認
+**未設定のまま `vpcId` を設定した場合、synth が失敗します。** ドキュメントに書くだけでは不十分だからです。エンドポイントがないと、デプロイは成功したように見える一方で**ブロックの有効期限### Step 6: 動作確認
 
 1. **ファイルブラウズ**: Browse > All Files にフォルダが表示される
 2. **SMB 共有**: Admin > Resources > SMB 共有 に共有一覧が表示される
 3. **Lock パネル**: Data Protection > Lock でタブが表示される
 4. **ARP/AI**: Data Protection > ARP/AI でボリュームの保護状態が表示される
+## 手作業のままにしている設定と、その理由
+
+再現性のため、原則としてすべて IaC 側に置いています。以下は**意図的に外に出している**ものです。
+
+| 設定 | 置き場所 | 手作業のままにする理由 |
+|------|---------|--------------------|
+| `storage-admin` への所属 | `admin-add-user-to-group` | 誰に管理権限を渡すかは環境ごとの判断。グループの作成自体は IaC 済み |
+| ONTAP の認証情報 | Secrets Manager（Step 3） | パスワードをリポジトリにも CloudFormation テンプレートにも入れないため |
+| S3 Object Lock 用バケット | 別途作成（`s3ObjectLockBucket`） | ポータルのスタックに含めると、Object Lock で保護されたオブジェクトが残っている間スタックを削除できなくなる。ライフサイクルを分離しておく |
+| VPC Endpoint のルートテーブル関連付け | `modify-vpc-endpoint`（Step 2） | Endpoint は他のスタックと共有されることがあり、ポータル側から関連付けを変更すると影響範囲が読めない |
+
+> `storage-admin` の**グループ作成**は以前ここに無く、IaC にもありませんでした。長く動かしている環境には手作業で作られたものが残っているため動き、新規デプロイでは管理セクションが消える、という差が出ていました。現在は `defineAuth` が作成し、`make drift` が「認可が参照するグループを `defineAuth` が宣言しているか」を検査します。
 
 ## このポータルの前提と位置づけ
 
@@ -260,5 +268,14 @@ aws s3 rb s3://fsxn-portal-objectlock-demo --force
 - [Admin Resource Management Demo Guide](../../../docs/en/admin-resource-management-demo.md) — 全管理機能の操作手順
 - [AI Agent Demo Guide](./ai-agent-demo-guide.md) — AI エージェント機能の E2E デモ
 - [DemoMode Guide](../../../docs/demo-mode-guide.md) — FSx for ONTAP なしでの検証方法
+- [セクション構成ガイド](./portal-tabs-guide.md) — サイドバー 17 セクションの機能一覧、テーマ、モバイル対応
 - [IMPLEMENTATION.md](./IMPLEMENTATION.md) — 設計意図と変更履歴
 - [認可モデル](../../../docs/ja/portal-authorization-model.md) — Cognito グループによるアクセス制御
+## 次のステップ
+
+**動いたら、次は利用者に渡す作業です。** 渡すもの（URL / アカウント / 操作ガイド）と、
+利用者から質問が来たときにどこを見るかは、[引き渡しと問い合わせ対応ガイド](portal-handover-guide.md) にまとめてあります。
+この文書（Getting Started）は**利用者に渡さないでください**。読者が違います。
+
+- **[引き渡しと問い合わせ対応ガイド](portal-handover-guide.md)** — 渡す 3 点、管理場所の一覧、利用者の言葉 → 確認するものの逆引き、定型返信
+- [PoC → 本番移行ガイド](../../../docs/ja/portal-poc-to-production.md) — DemoMode から本番接続への移行チェックリスト
