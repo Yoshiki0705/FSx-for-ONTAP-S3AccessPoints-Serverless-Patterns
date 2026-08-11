@@ -45,6 +45,27 @@ make propose-cleanup ARGS="--anyway"    # 残課題があっても棚卸しだ�
 
 ---
 
+## 🔬 実機で確認できていない挙動
+
+パターン単位のデプロイとは別に、**設計判断の根拠になるのに実測がない**もの。ここに書いていない
+未検証事項は `make propose-cleanup` のゲートに乗らないため、撤去判断から漏れます。
+
+| # | 項目 | 状態 | 必要なもの |
+|---|---|---|---|
+| V-1 | 本番相当負荷でのスループット共有（NFS / SMB / S3 AP の同時アクセス） | 📋 未実測 | 負荷生成環境。[s3ap-performance-considerations.md](s3ap-performance-considerations.md) の設計指針の裏付け |
+| V-2 | マルチテナント S3 AP ルーティング（テナントごとの AP と認可の分離） | 📋 未実測 | 複数 SVM / 複数 AP |
+| V-3 | 外部 IdP（SAML / OIDC）と Cognito の連携 | 📋 未実測 | IdP テナント。ガイドは概要のみ |
+| V-4 | SnapMirror による DR フェイルオーバー | 📋 未実測 | **破壊的**。専用の検証用ファイルシステムで行う |
+| V-5 | AD 参加 SVM への S3 AP データ操作 | ⚠️ 一部実測（2026-08-11） | 下記 |
+
+V-5 の実測済みの範囲: WINDOWS タイプ Internet-origin AP に対する HeadBucket / ListObjectsV2 /
+PutObject / GetObject / HeadObject / DeleteObject が VPC 外から成功すること、および **FSx API の
+`ActiveDirectoryConfiguration` が判定に使えないこと**（`null` でもデータ操作は通る）。
+未実測: AD DC 到達不能時の症状の再現（ONTAP 管理 LIF がプライベートなため VPC 内からの実行が必要）。
+記録は [ad-joined-svm-s3ap-prerequisites.md](ja/ad-joined-svm-s3ap-prerequisites.md)。
+
+---
+
 ## 📝 AWS Feature Requests
 
 | Document | Scope | FRs | Status |
