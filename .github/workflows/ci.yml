@@ -207,8 +207,20 @@ jobs:
           node-version: "24"
           cache: "npm"
           cache-dependency-path: solutions/amplify-portal/package-lock.json
+      # `npm ci`, not `npm install`: this step is the only thing that notices when
+      # package-lock.json drifts out of sync with package.json. It had drifted, and
+      # because this job used `npm install` — which happily re-resolves — the break
+      # was invisible here and showed up only in the two places that use `npm ci`:
+      # the weekly Portal E2E workflow and the Dockerfile.
+      #
+      # The drift returns on its own: a plain `npm install` deletes the four nested
+      # `@opentelemetry/core@2.0.0` entries that `npm ci` requires, because
+      # `@opentelemetry/resources@2.0.0` and `sdk-trace-base@2.0.0` pin core to
+      # exactly 2.0.0 while the hoisted copy is 2.10.0. Restore them with
+      # `npm install --package-lock-only`, which adds the entries and changes no
+      # versions. Keep this step on `npm ci` so a recurrence fails here first.
       - name: Install dependencies
-        run: npm install --ignore-scripts
+        run: npm ci --ignore-scripts
       # backend.ts imports ./portal-config, which is gitignored. tsconfig now
       # includes amplify/, so this step is what makes the backend definition
       # type-checkable at all — previously amplify/ was outside the include list

@@ -82,3 +82,57 @@ done
 `scripts/check_actions_pinning.py` が pin と `# vX.Y.Z` コメントの存在まで検査しますが、
 **コメントの中身が SHA と合っているかは検査できません**（それには API アクセスが必要）。
 上のループはメジャー更新のときだけ手で回す。
+### TypeScript 7 は保留（`typescript-eslint` が明示的に拒否する）
+
+TypeScript 7.0 は 2026-07-08 GA。コンパイラを Go に移植したもので、型検査の意味論は 6.0 と
+同一とされています。実際に `tsc --noEmit` は通りました。**しかし `npm run lint` が起動時に
+落ちます**。
+
+```
+Error: typescript-eslint does not support TS 7.0.
+```
+
+`typescript-eslint` の最新（8.67.0）の peer 範囲は `typescript: >=4.8.4 <6.1.0` で、
+7 を含みません。`npm install` は ERESOLVE 警告を出しつつ入れてしまうため、**入ったことは
+使えることではありません**。lint は PR ゲートなので、上げると PR が通らなくなります。
+
+再確認はこの 2 行で足ります。
+
+```bash
+npm view typescript-eslint peerDependencies --json   # typescript の上限を見る
+npm view typescript version                          # 現行の 7.x
+```
+
+上限が `<8.0.0` 相当に広がったら再度試す。それまで `typescript` は 6 系に留める。
+
+### `npm install` が lockfile を壊し、`npm ci` だけが壊れる
+
+`solutions/amplify-portal` では**プレーンな `npm install` を実行すると `npm ci` が失敗する
+状態に戻ります**。`@opentelemetry/resources@2.0.0` と `sdk-trace-base@2.0.0` が
+`@opentelemetry/core` を 2.0.0 に固定するのに対し、hoist されたコピーは 2.10.0 です。
+`npm install` は入れ子の `core@2.0.0` エントリ（4 件）を lockfile から削除し、`npm ci` は
+その 4 件を要求します。
+
+```bash
+npm install --package-lock-only   # 4 件を復元。バージョン変更は 0 件
+npm ci --dry-run                  # エラーなしを確認
+```
+
+`ci.yml` は以前 `npm install --ignore-scripts` を使っていたため、この不整合が CI に見えず、
+`npm ci` を使う 2 箇所（週次の Portal E2E ワークフローと Dockerfile）だけが壊れていました。
+現在は `npm ci --ignore-scripts` にしてあるので、再発すれば CI が先に落ちます。
+**`npm install` で依存を追加したら、コミット前に `npm ci --dry-run` を通すこと。**
+
+### `npm audit` の 22 件は dev 限定・上流固定（調べ直さない）
+
+`npm audit` は high 17 / moderate 5 を報告しますが、`npm audit --omit=dev` は 0 件です。
+脆弱なコピーはすべて `@aws-amplify/backend-cli` の graphql codegen 系
+（`lodash@4.17.23`、`immutable@3.7.6`、`brace-expansion@1.1.18`）にあり、本番の依存ツリーは
+勧告の範囲外（例: 本番側の `lodash` は 4.18.1 で、勧告は `<=4.17.23`）。
+`npm audit fix --dry-run` は added 0 / removed 0 / changed 0 で、こちら側に打ち手はありません。
+
+```bash
+npm audit --omit=dev   # 0 件であることを確認する。ここが 0 でなければ本物
+```
+
+上流の Amplify がチェーンを更新するまで変化しません。
