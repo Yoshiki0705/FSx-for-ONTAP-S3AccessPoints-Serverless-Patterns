@@ -647,16 +647,16 @@ jobs:
       id-token: write
       contents: read
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
+        uses: aws-actions/configure-aws-credentials@v6
         with:
           role-to-assume: arn:aws:iam::123456789012:role/GitHubActions-Deploy
           aws-region: ap-northeast-1
 
       - name: Setup SAM CLI
-        uses: aws-actions/setup-sam@v2
+        uses: aws-actions/setup-sam@v3
 
       - name: Preflight check
         run: ./shared/scripts/preflight-check.sh --profile production --vpc ${{ vars.VPC_ID }}
