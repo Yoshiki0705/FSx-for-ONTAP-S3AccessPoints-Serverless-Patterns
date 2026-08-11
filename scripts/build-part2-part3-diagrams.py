@@ -59,6 +59,11 @@ S3 = "Arch_Amazon-Simple-Storage-Service_64.svg"
 BEDROCK = "Arch_Amazon-Bedrock_64.svg"
 AGENTCORE = "Arch_Amazon-Bedrock-AgentCore_64.svg"
 OPENSEARCH = "Arch_Amazon-OpenSearch-Service_64.svg"
+DATASYNC = "Arch_AWS-DataSync_64.svg"
+SFN = "Arch_AWS-Step-Functions_64.svg"
+SQS = "Arch_Amazon-Simple-Queue-Service_64.svg"
+DYNAMODB = "Arch_Amazon-DynamoDB_64.svg"
+NATGW = "Res_Amazon-VPC_NAT-Gateway_48.svg"
 
 # state / phase tints. These are plain boxes, not AWS icons, so the icon colour
 # rules do not apply — the tint only aids scanning.
@@ -467,6 +472,61 @@ def part3_agent_teams() -> Diagram:
 # to a spec cannot ship without its English counterpart.
 EN: dict[str, str] = {
     # ---- titles ---------------------------------------------------------------
+    "群 A（ストレージエンドポイントを持つ移行元） — DataSync の 2 経路": (
+        "Group A (sources with a storage endpoint) — the two DataSync routes"
+    ),
+    "群 B（コラボレーション SaaS） — 管理者 API を使う中央実行の構成": (
+        "Group B (collaboration SaaS) — central execution via the admin API"
+    ),
+    "オブジェクトストレージ<br>(S3 互換 / Blob / GCS)": ("Object storage<br>(S3-compatible / Blob / GCS)"),
+    "同じ移行元<br>(S3 互換 / Blob / GCS)": "The same source<br>(S3-compatible / Blob / GCS)",
+    "AWS DataSync<br>(エージェント)": "AWS DataSync<br>(with agent)",
+    "AWS DataSync<br>(エージェントレス)": "AWS DataSync<br>(agentless)",
+    "Amazon S3<br>(一時保管)": "Amazon S3<br>(staging)",
+    "経路 1: 直行": "Route 1: direct",
+    "経路 2: S3 経由": "Route 2: via S3",
+    "Basic モード": "Basic mode",
+    "Enhanced モード": "Enhanced mode",
+    "エージェント不要": "No agent",
+    "FSx for ONTAP 宛は常にエージェントと Basic モードが必要": (
+        "An FSx for ONTAP destination always needs an agent and Basic mode"
+    ),
+    "エージェントレスの Enhanced モードは宛先が Amazon S3 のときだけ有効になる": (
+        "Agentless Enhanced mode applies only when the destination is Amazon S3"
+    ),
+    "S3 を経由すると両区間がエージェントレスになる": ("Staging through S3 makes both legs agentless"),
+    "代わりに S3 の一時保管費と 2 回分の転送を払う。容量と期間で有利不利が逆転する": (
+        "In exchange you pay for S3 staging and transfer twice. Which wins flips with volume and duration"
+    ),
+    "コラボレーション SaaS はこの図の対象外": ("Collaboration SaaS is out of scope for this figure"),
+    "Box / Dropbox / OneDrive / Google Drive は DataSync のソースにならない（群 B）": (
+        "Box / Dropbox / OneDrive / Google Drive are not DataSync sources (group B)"
+    ),
+    "SaaS テナント<br>(Microsoft 365 / Box 等)": "SaaS tenant<br>(Microsoft 365 / Box, etc.)",
+    "AWS Lambda<br>(移行ワーカー / VPC 内)": "AWS Lambda<br>(migration worker, in VPC)",
+    "SaaS API 呼び出し": "SaaS API calls",
+    "テナント管理者認可": "Tenant admin grant",
+    "対象の一覧化と分割": "Enumerate and fan out targets",
+    "NFS / SMB で書き込み": "Write over NFS / SMB",
+    "移行後の活用経路": "Post-migration access",
+    "認可はテナント単位なので利用者ごとの同意は不要": (
+        "Authorization is tenant-wide, so per-user consent is not required"
+    ),
+    "Graph の application permissions / ドメイン全体の委任 / as-user 等を用いる": (
+        "Uses Graph application permissions, domain-wide delegation, as-user and similar"
+    ),
+    "書き込みは NFS / SMB を主経路にする": "Make NFS / SMB the primary write path",
+    "S3 access point は 50 GiB を超えられず、ACL を書きながら投入できない": (
+        "An S3 access point cannot exceed 50 GiB and cannot write ACLs during ingest"
+    ),
+    "進捗を外部に持たないと再開できない": ("Without externalised progress there is no resume"),
+    "SaaS API のレート制限で必ず中断する。再開位置がなければ全件やり直しになる": (
+        "SaaS API rate limits will interrupt it. With no resume point the whole set restarts"
+    ),
+    "移行用の権限は終了後に取り消す": "Revoke the migration permissions when finished",
+    "テナント全体の読み取り権限を持つアプリ登録は、それ自体が高価値の標的になる": (
+        "An app registration holding tenant-wide read permission is itself a high-value target"
+    ),
     "ストレージ運用機能をポータルに組み込む — 管理操作の経路": (
         "Storage Operations in the Portal — Admin Operation Path"
     ),
@@ -628,7 +688,121 @@ EN: dict[str, str] = {
 }
 
 
+def saas_group_a_routes() -> Diagram:
+    """Group A: the source has a storage endpoint, so DataSync can carry it.
+
+    The figure exists to make one asymmetry visible: an FSx for ONTAP destination
+    always needs an agent, while an Amazon S3 destination does not. Staging
+    through S3 therefore removes the agent from the picture at the price of a
+    second pass, and that trade is the whole decision.
+    """
+    return Diagram(
+        id="saas-migration-group-a-routes",
+        name="SaaS Migration Group A Routes",
+        title="群 A（ストレージエンドポイントを持つ移行元） — DataSync の 2 経路",
+        grid=Grid(col_pitch=300),
+        # One route per row, each starting from its own source box. Edges are drawn
+        # with orthogonal routing, so a single source fanning out to both rows put
+        # two labels on the same horizontal segment and hid one of them.
+        nodes=[
+            # Plain boxes, not icons: the source is another vendor's storage, and
+            # every AWS icon would name a service this is not.
+            Node("source_a", "オブジェクトストレージ<br>(S3 互換 / Blob / GCS)", 0, 0, BOX, fill=GREY, w=210),
+            Node("agent", "AWS DataSync<br>(エージェント)", 1, 0, SERVICE, DATASYNC),
+            Node("fsxn_direct", "Amazon FSx for<br>NetApp ONTAP", 2, 0, SERVICE, FSXN),
+            Node("source_b", "同じ移行元<br>(S3 互換 / Blob / GCS)", 0, 1, BOX, fill=GREY, w=210),
+            Node("agentless", "AWS DataSync<br>(エージェントレス)", 1, 1, SERVICE, DATASYNC),
+            Node("s3", "Amazon S3<br>(一時保管)", 2, 1, SERVICE, S3),
+            Node("fsxn_staged", "Amazon FSx for<br>NetApp ONTAP", 3, 1, SERVICE, FSXN),
+        ],
+        groups=[Group("aws-cloud", "AWS Cloud", (1, 3), (0, 1))],
+        edges=[
+            Edge("source_a", "agent", "経路 1: 直行"),
+            Edge("agent", "fsxn_direct", "Basic モード"),
+            Edge("source_b", "agentless", "経路 2: S3 経由"),
+            Edge("agentless", "s3", "Enhanced モード"),
+            Edge("s3", "fsxn_staged", "エージェント不要"),
+        ],
+        notes=[
+            (
+                "FSx for ONTAP 宛は常にエージェントと Basic モードが必要",
+                "エージェントレスの Enhanced モードは宛先が Amazon S3 のときだけ有効になる",
+            ),
+            (
+                "S3 を経由すると両区間がエージェントレスになる",
+                "代わりに S3 の一時保管費と 2 回分の転送を払う。容量と期間で有利不利が逆転する",
+            ),
+            (
+                "コラボレーション SaaS はこの図の対象外",
+                "Box / Dropbox / OneDrive / Google Drive は DataSync のソースにならない（群 B）",
+            ),
+        ],
+    )
+
+
+def saas_group_b_worker() -> Diagram:
+    """Group B: no storage endpoint, so a worker drives the tenant admin API.
+
+    The point of the figure is that this is one central pipeline, not a per-user
+    setup: the credential at the left is a tenant-wide administrator grant, so an
+    infrastructure team runs the whole migration without collecting consent from
+    each user.
+    """
+    return Diagram(
+        id="saas-migration-group-b-worker",
+        name="SaaS Migration Group B Worker",
+        title="群 B（コラボレーション SaaS） — 管理者 API を使う中央実行の構成",
+        grid=Grid(col_pitch=300),
+        # Every edge joins adjacent or diagonal cells. An edge that spans an
+        # occupied cell is drawn straight through it, which put a label on top of
+        # the Amazon SQS icon in the first version of this figure.
+        # The worker sits at the centre and every edge is orthogonal to an adjacent
+        # cell, which caps it at four connections. Amazon DynamoDB was the fifth,
+        # and a diagonal edge to it was routed straight through the Amazon FSx for
+        # NetApp ONTAP cell. Its role — externalised progress, without which a
+        # rate-limited run cannot resume — is carried by note 3 instead.
+        nodes=[
+            Node("saas", "SaaS テナント<br>(Microsoft 365 / Box 等)", 0, 1, BOX, fill=GREY, w=210),
+            Node("natgw", "Amazon VPC<br>NAT Gateway", 1, 1, RESOURCE, NATGW),
+            Node("secrets", "AWS Secrets Manager", 2, 0, SERVICE, SECRETS),
+            Node("worker", "AWS Lambda<br>(移行ワーカー / VPC 内)", 2, 1, SERVICE, LAMBDA),
+            Node("sfn", "AWS Step Functions", 2, 2, SERVICE, SFN),
+            Node("fsxn", "Amazon FSx for<br>NetApp ONTAP", 3, 1, SERVICE, FSXN),
+            Node("s3ap", "Amazon S3 access point", 4, 1, RESOURCE, S3AP),
+        ],
+        groups=[Group("aws-cloud", "AWS Cloud", (1, 4), (0, 2))],
+        edges=[
+            Edge("worker", "natgw", "SaaS API 呼び出し"),
+            Edge("natgw", "saas", "テナント管理者認可"),
+            Edge("secrets", "worker", "認証情報の取得"),
+            Edge("sfn", "worker", "対象の一覧化と分割"),
+            Edge("worker", "fsxn", "NFS / SMB で書き込み"),
+            Edge("fsxn", "s3ap", "移行後の活用経路"),
+        ],
+        notes=[
+            (
+                "認可はテナント単位なので利用者ごとの同意は不要",
+                "Graph の application permissions / ドメイン全体の委任 / as-user 等を用いる",
+            ),
+            (
+                "書き込みは NFS / SMB を主経路にする",
+                "S3 access point は 50 GiB を超えられず、ACL を書きながら投入できない",
+            ),
+            (
+                "進捗を外部に持たないと再開できない",
+                "SaaS API のレート制限で必ず中断する。再開位置がなければ全件やり直しになる",
+            ),
+            (
+                "移行用の権限は終了後に取り消す",
+                "テナント全体の読み取り権限を持つアプリ登録は、それ自体が高価値の標的になる",
+            ),
+        ],
+    )
+
+
 DIAGRAMS = [
+    saas_group_a_routes,
+    saas_group_b_worker,
     part2_overview,
     part2_arp_lifecycle,
     part2_audit_log,
