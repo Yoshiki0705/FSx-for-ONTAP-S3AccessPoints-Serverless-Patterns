@@ -149,6 +149,21 @@ curl -sku "$CREDS" \
 
 `ad_domain` を見ずに CIFS の有無だけで判定すると、ワークグループ SVM を「AD 参加・ドメイン不明」と誤って扱い、後続の DC チェックも無意味になります。
 
+#### FSx API の `ActiveDirectoryConfiguration` は判定に使えない
+
+`DescribeStorageVirtualMachines` が返す `ActiveDirectoryConfiguration` を判定に使わないでください。**`null` でも WINDOWS タイプ AP のデータ操作は通ります。**
+
+実測（2026-08-11, ap-northeast-1）: `ActiveDirectoryConfiguration: null` の SVM 上の NTFS ボリュームに WINDOWS タイプ（`WindowsUser.Name: administrator`）の Internet-origin AP が 2 つ載っており、VPC 外から HeadBucket / ListObjectsV2 / PutObject / GetObject / HeadObject / DeleteObject の全てが成功しました。
+
+これは [ONTAP と AWS の管理面が同一リソースに対する 2 つの真実の源である](../ontap-integration-notes.md)ことの一例です。AD 参加は ONTAP 側で完結し得るため、AWS 側の表示が追随しないことがあります。したがって:
+
+| 参照する面 | 判定に使えるか | 理由 |
+|---|:---:|---|
+| ONTAP `/protocols/cifs/services` の `ad_domain.fqdn` | ✅ | データ操作を行う層そのもの |
+| FSx `DescribeStorageVirtualMachines` の `ActiveDirectoryConfiguration` | ❌ | `null` でもデータ操作は成功する（実測） |
+
+**pre-flight を FSx API で書くと、動くはずの構成を「AD 未参加」と誤判定して止めます。** `shared/ad_health_check.py` は ONTAP 側を見るため、この誤りは踏みません。
+
 ### 必要なネットワーク接続（SVM ENI → AD DC）
 
 FSx for ONTAP ENI（preferred/standby サブネット）から AD Domain Controller IP への**アウトバウンド**ルール:
@@ -614,6 +629,25 @@ aws fsx describe-file-systems --file-system-ids fs-XXXXX \
 2. **CIFS 有効を AD 参加と同一視していた** — 実在するワークグループ SVM に対し `is_ad_joined=True, ad_domain=None` という矛盾した結果を返し、後続の DC チェックも無意味になっていました
 
 検証は既存リソースを変更せず、デプロイ済み Lambda のロール・サブネット・セキュリティグループを再利用した一時的な関数から実施し、確認後に削除しています。クラスタへの操作は GET のみです。
+
+### WINDOWS タイプ AP のデータ操作（2026-08-11, ap-northeast-1）
+
+NTFS ボリューム上の WINDOWS タイプ（`WindowsUser.Name: administrator`）Internet-origin AP に対し、**VPC 外**（開発端末）から実行しました。
+
+| 操作 | 結果 |
+|---|---|
+| HeadBucket | 成功 |
+| ListObjectsV2 | 成功（空ボリュームでは `Contents` なし） |
+| PutObject | 成功 |
+| GetObject | 成功（書き込んだ内容を一致確認） |
+| HeadObject | 成功（`ContentLength` 一致） |
+| DeleteObject | 成功（オブジェクト数 0 に復帰） |
+
+同 SVM の FSx API 上の `ActiveDirectoryConfiguration` は `null` でした。**つまり「HeadBucket は通るがデータ操作は落ちる」という AD DC 到達不能時の症状は、この構成では再現していません。**
+
+未確認: この SVM の DC 到達性そのもの（ONTAP 管理 LIF はプライベートなため VPC 外からは照会できない）。したがって本記録は「AD DC 到達不能でも動く」ことの証拠ではなく、**FSx API の AD 表示が判定に使えない**ことの証拠です。
+
+書き込みは検証用の 6 バイトのオブジェクト 1 個のみで、確認後に削除しています。既存のオブジェクト・ボリューム・AP の構成は変更していません。
 
 ---
 

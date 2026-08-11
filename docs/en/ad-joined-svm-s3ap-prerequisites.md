@@ -158,6 +158,32 @@ Two SVMs on the same cluster, from a live run:
 Testing CIFS alone treats a workgroup SVM as "AD-joined, domain unknown", which
 also makes the DC check that follows it meaningless.
 
+#### The FSx API's `ActiveDirectoryConfiguration` cannot be used for this
+
+Do not decide from the `ActiveDirectoryConfiguration` that
+`DescribeStorageVirtualMachines` returns. **It can be `null` while data operations
+on a WINDOWS-type AP succeed.**
+
+Measured (2026-08-11, ap-northeast-1): an SVM reporting
+`ActiveDirectoryConfiguration: null` carried two Internet-origin WINDOWS-type APs
+(`WindowsUser.Name: administrator`) on an NTFS volume, and HeadBucket,
+ListObjectsV2, PutObject, GetObject, HeadObject and DeleteObject all succeeded
+from outside the VPC.
+
+This is one instance of [the ONTAP and AWS management planes being two different
+sources of truth for the same resource](../ontap-integration-notes.md). A domain
+join can be completed entirely on the ONTAP side, and the AWS-side view does not
+always follow.
+
+| Plane consulted | Usable as the verdict | Why |
+|---|:---:|---|
+| ONTAP `/protocols/cifs/services` → `ad_domain.fqdn` | ✅ | It is the layer that serves the data operations |
+| FSx `DescribeStorageVirtualMachines` → `ActiveDirectoryConfiguration` | ❌ | Measured `null` on a configuration whose data plane works |
+
+**A pre-flight written against the FSx API refuses configurations that work**,
+reporting "not AD-joined" for something that serves data. `shared/ad_health_check.py`
+reads the ONTAP side and does not make this mistake.
+
 ### Required Network Connectivity (SVM ENIs → AD DC)
 
 These are **outbound** rules from FSx for ONTAP ENIs (in the preferred/standby subnets) to AD Domain Controller IPs:
@@ -697,6 +723,32 @@ The run found two implementation bugs, both fixed:
 Verification changed nothing that existed: a temporary function reusing the deployed
 Lambda's role, subnet and security group, deleted afterwards. The cluster saw only
 GETs.
+
+### WINDOWS-type AP data operations (2026-08-11, ap-northeast-1)
+
+Run from **outside the VPC** (a developer workstation) against Internet-origin
+WINDOWS-type APs (`WindowsUser.Name: administrator`) on an NTFS volume.
+
+| Operation | Result |
+|---|---|
+| HeadBucket | succeeded |
+| ListObjectsV2 | succeeded (no `Contents` on an empty volume) |
+| PutObject | succeeded |
+| GetObject | succeeded (content matched what was written) |
+| HeadObject | succeeded (`ContentLength` matched) |
+| DeleteObject | succeeded (object count returned to 0) |
+
+The same SVM reported `ActiveDirectoryConfiguration: null` from the FSx API. **The
+AD-DC-unreachable symptom — HeadBucket succeeding while data operations fail — did
+not reproduce on this configuration.**
+
+Not established: whether a DC is reachable for this SVM. The ONTAP management LIF
+is private, so it cannot be queried from outside the VPC. This record is therefore
+not evidence that data operations work without a reachable DC; it is evidence that
+**the FSx API's AD field cannot be used as the verdict.**
+
+The only write was one 6-byte verification object, deleted after the round-trip. No
+existing object, volume or AP configuration was changed.
 
 ---
 
