@@ -253,6 +253,34 @@ jobs:
       - name: Production build
         run: npm run build
 
+
+  # solutions/storage-browser-demo is the repository's second npm project and had
+  # no job at all. It sat on React 18, Vite 6 and TypeScript 5.6 while the portal
+  # moved to 19/8/6, and nothing would have reported it breaking. Its `build`
+  # script runs `tsc && vite build`, so one step covers types and bundling.
+  storage-browser-demo-build:
+    name: "Stage 2c: Storage Browser demo (tsc + vite build)"
+    runs-on: ubuntu-latest
+    if: always()
+    defaults:
+      run:
+        working-directory: solutions/storage-browser-demo
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "24"
+          cache: "npm"
+          cache-dependency-path: solutions/storage-browser-demo/package-lock.json
+      # npm ci for the same reason as the portal job: it is what fails when the
+      # lockfile stops matching package.json.
+      - name: Install dependencies
+        run: npm ci --ignore-scripts
+      - name: Production build
+        run: npm run build
+
   security-cfn:
     name: "Stage 3: cfn-guard Security"
     runs-on: ubuntu-latest
@@ -315,24 +343,42 @@ jobs:
   final-status:
     name: "CI Final Status"
     runs-on: ubuntu-latest
-    needs: [lint, test, runtime-compat, staleness-checks, portal-test, security-cfn, security-python]
+    needs:
+      - lint
+      - test
+      - runtime-compat
+      - staleness-checks
+      - portal-test
+      - storage-browser-demo-build
+      - security-cfn
+      - security-python
     if: always()
     steps:
+      # Every stage listed in `needs` must appear in the failure condition. It used
+      # to print staleness-checks and portal-test while excluding both from the
+      # test, so this job could announce "All CI stages passed" with either of them
+      # red — the exact failure mode of a summary that reports rather than gates.
       - name: Check all stages
         run: |
-          if [[ "${{ needs.lint.result }}" == "failure" ]] || \
-             [[ "${{ needs.test.result }}" == "failure" ]] || \
-             [[ "${{ needs.runtime-compat.result }}" == "failure" ]] || \
-             [[ "${{ needs.security-cfn.result }}" == "failure" ]] || \
-             [[ "${{ needs.security-python.result }}" == "failure" ]]; then
-            echo "❌ One or more CI stages failed"
-            echo "  Lint: ${{ needs.lint.result }}"
-            echo "  Test: ${{ needs.test.result }}"
-            echo "  Runtime Compat: ${{ needs.runtime-compat.result }}"
-            echo "  Staleness: ${{ needs.staleness-checks.result }}"
-            echo "  Portal: ${{ needs.portal-test.result }}"
-            echo "  Security (CFN): ${{ needs.security-cfn.result }}"
-            echo "  Security (Python): ${{ needs.security-python.result }}"
+          FAILED=""
+          for stage in \
+            "Lint:${{ needs.lint.result }}" \
+            "Test:${{ needs.test.result }}" \
+            "Runtime Compat:${{ needs.runtime-compat.result }}" \
+            "Staleness:${{ needs.staleness-checks.result }}" \
+            "Portal:${{ needs.portal-test.result }}" \
+            "Storage Browser demo:${{ needs.storage-browser-demo-build.result }}" \
+            "Security (CFN):${{ needs.security-cfn.result }}" \
+            "Security (Python):${{ needs.security-python.result }}"; do
+            name="${stage%%:*}"
+            result="${stage##*:}"
+            echo "  ${name}: ${result}"
+            if [[ "$result" == "failure" ]]; then
+              FAILED="${FAILED}${name}, "
+            fi
+          done
+          if [[ -n "$FAILED" ]]; then
+            echo "❌ Failed stage(s): ${FAILED%, }"
             exit 1
           fi
           echo "✅ All CI stages passed"
