@@ -75,7 +75,10 @@ BOX = "box"
 # people, and third-party products.
 PREFIX_EXEMPT = re.compile(
     r"^(Web ブラウザ|Web browser|利用者|Users|NFS |SMB |Nextcloud|オンプレ|On-prem"
-    r"|ユーザー|User|管理者|Admin|ブラウザ|Browser)"
+    r"|ユーザー|User|管理者|Admin|ブラウザ|Browser"
+    # Sources outside AWS. A migration figure has to name what the data is coming
+    # from, and "Amazon" in front of another vendor's storage would be wrong.
+    r"|オブジェクトストレージ|Object storage|SaaS)"
 )
 ABBREVIATIONS = {"ALB": "Elastic Load Balancing", "ELB": "Elastic Load Balancing"}
 
