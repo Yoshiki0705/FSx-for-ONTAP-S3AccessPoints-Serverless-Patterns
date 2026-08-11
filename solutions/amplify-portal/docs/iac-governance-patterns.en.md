@@ -44,7 +44,7 @@ Any failure → merge blocked
 | Security rules | cfn-guard (security/) | ✅ Integrated in CI |
 | AWS best practices | cdk-nag (AwsSolutionsChecks) | ⚠️ Opt-in via `CDK_NAG=1` (not in CI) |
 | IAM permission validation | Access Analyzer ValidatePolicy | ✅ CI workflow added |
-| Structural regression | CDK harness tests (38 tests) | ✅ Integrated with vitest |
+| Structural regression | CDK harness tests (46 tests) | ✅ Integrated with vitest |
 | Secret leakage | gitleaks | ✅ pre-commit hook |
 | GitHub Actions security | zizmor | ✅ pre-commit hook |
 | Dependency updates | Renovate | ✅ Automated PRs |
@@ -65,7 +65,7 @@ Any failure → merge blocked
 - **Track drift**: a ceiling is enforced on IAM wildcard resource declarations (`expect(cdkWildcards.length).toBeLessThanOrEqual(15)` in `backend-assertions.test.ts`). **That is a cap on wildcards, not a cap on suppressions.** Nothing currently limits the number of suppressions
 - **Give the AI context**: `AGENTS.md` and the steering files state explicitly what is allowed and what is forbidden
 
-> **On suppression coverage**: resources inside Amplify Gen2 nested stacks cannot be reliably suppressed with `addStackSuppressions` (recorded in AGENTS.md), which is also the direct reason cdk-nag cannot be always-on. So it is not the case that every finding is resolved by a reasoned suppression. Findings in our own code are resolved; findings on Amplify-managed resources cannot be fully suppressed.
+> **On acknowledgment coverage**: resources inside Amplify Gen2 nested stacks cannot be reliably suppressed, which is also the direct reason cdk-nag cannot be always-on. So it is not the case that every finding is resolved by a reasoned acknowledgment. Findings in our own code are resolved; findings on Amplify-managed resources cannot be fully suppressed. cdk-nag v3 removed `NagSuppressions` in favour of `Validations.of(scope).acknowledge(...)`. That propagation to constructs beneath the scope is verified on an ordinary stack (`tests/infrastructure/cdk-nag-v3.test.ts`); **it is not verified against Amplify's nested stacks**.
 
 ---
 

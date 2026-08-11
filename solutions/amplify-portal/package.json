@@ -40,7 +40,7 @@
     "@types/react-dom": "^19.2.4",
     "@vitejs/plugin-react": "^6.0.5",
     "aws-cdk-lib": "^2.150.0",
-    "cdk-nag": "^2.38.2",
+    "cdk-nag": "^3.0.2",
     "constructs": "^10.0.0",
     "eslint": "^10.8.0",
     "eslint-plugin-react-hooks": "^7.1.1",

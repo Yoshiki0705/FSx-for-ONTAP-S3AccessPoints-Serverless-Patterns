@@ -647,11 +647,13 @@ _COUNTED_IN_PROSE = [
     (
         "cdk-harness-tests",
         r"CDK (?:harness tests|ハーネステスト)[^|\n]*?\((?:構造アサーション\s*)?(\d+)\s*(?:tests|assertions)",
-        lambda: _count_in(
-            PORTAL / "tests" / "infrastructure" / "backend-assertions.test.ts",
-            r"^[ \t]*it\(",
+        # The whole directory, not one file: the harness became two files when the
+        # cdk-nag v3 migration added cdk-nag-v3.test.ts, and a single-file counter
+        # would have kept reporting the smaller number as correct.
+        lambda: sum(
+            _count_in(path, r"^[ \t]*it\(") for path in sorted((PORTAL / "tests" / "infrastructure").glob("*.test.ts"))
         ),
-        "it( blocks in tests/infrastructure/backend-assertions.test.ts",
+        "it( blocks under tests/infrastructure/",
     ),
     (
         "portal-lambda-count",

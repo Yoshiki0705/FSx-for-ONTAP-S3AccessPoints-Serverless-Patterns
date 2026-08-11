@@ -168,7 +168,7 @@ sequenceDiagram
 | **AI 메타데이터 배지** | 인라인 분류 라벨, Rekognition 태그, 엔터티 수 |
 | **QR 코드 액세스** | Presigned URL → QR PNG (OT/제조 태블릿용) |
 | **Presigned URL 공유** | TTL 설정 가능한 공유 링크 (5분~1시간) |
-| **cdk-nag 규정 준수** | synth 시 AwsSolutionsChecks 적용 |
+| **cdk-nag 규정 준수** | CI에서 `CDK_NAG=1`로 AwsSolutionsChecks 실행(배포 시에는 미적용) |
 | **폴백 UI** | ONTAP 미연결 시 안내 패널 표시 (화이트 스크린 없음) |
 
 > **상세 섹션 가이드**: [docs/portal-tabs-guide.md](docs/portal-tabs-guide.md)
