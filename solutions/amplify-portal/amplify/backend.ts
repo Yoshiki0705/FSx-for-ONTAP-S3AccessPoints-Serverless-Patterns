@@ -9,7 +9,7 @@ import * as iam from "aws-cdk-lib/aws-iam";
 import * as lambda from "aws-cdk-lib/aws-lambda";
 import * as ec2 from "aws-cdk-lib/aws-ec2";
 import * as s3 from "aws-cdk-lib/aws-s3";
-import { AssetHashType, Aspects, Duration, RemovalPolicy, Stack } from "aws-cdk-lib";
+import { AssetHashType, Duration, RemovalPolicy, Stack, Validations } from "aws-cdk-lib";
 import * as dynamodb from "aws-cdk-lib/aws-dynamodb";
 import * as cloudwatch from "aws-cdk-lib/aws-cloudwatch";
 import * as cloudwatchActions from "aws-cdk-lib/aws-cloudwatch-actions";
@@ -17,7 +17,7 @@ import * as events from "aws-cdk-lib/aws-events";
 import * as targets from "aws-cdk-lib/aws-events-targets";
 import * as sns from "aws-cdk-lib/aws-sns";
 import * as subscriptions from "aws-cdk-lib/aws-sns-subscriptions";
-import { AwsSolutionsChecks, NagSuppressions } from "cdk-nag";
+import { AwsSolutionsChecks } from "cdk-nag";
 
 /**
  * FSx for ONTAP File Portal — Amplify Gen2 Backend
@@ -1529,11 +1529,11 @@ const glueCatalogFunction = new lambda.Function(
 api.addLambdaDataSource("GlueCatalogLambdaDataSource", glueCatalogFunction);
 
 
-// --- cdk-nag: Apply AWS Solutions Checks ---
 // --- cdk-nag: AWS Solutions Checks ---
-// cdk-nag is NOT applied as a CDK Aspect here because Amplify Gen2 creates resources
+// cdk-nag is NOT registered on every synth because Amplify Gen2 creates resources
 // (AppSync, Cognito, internal S3 buckets, DynamoDB) that produce Non-Compliant findings
-// which are NOT user-configurable, causing [AssemblyError] and blocking deployment.
+// which are NOT user-configurable, and a reported violation interrupts synthesis and
+// blocks deployment.
 //
 // Instead, cdk-nag validation is performed in CI via a separate synth step:
 //   CDK_NAG=1 npx ampx generate outputs --format cdk-nag-report
@@ -1541,16 +1541,27 @@ api.addLambdaDataSource("GlueCatalogLambdaDataSource", glueCatalogFunction);
 //
 // For local validation: npx vitest run (CDK harness tests check our custom resources)
 //
-// Suppressions are documented here for reference (applied when CDK_NAG=1):
+// cdk-nag v3 moved from a CDK `IAspect` to CDK's native policy validation framework
+// (`IPolicyValidationPlugin`), so adding the pack as an Aspect became
+// `Validations.of(...).addPlugins(...)` and `NagSuppressions` was removed in favour of
+// `Validations.of(...).acknowledge(...)`.
+//
+// The plugin is registered on the app root rather than on `dataStack` because a
+// registered pack validates the whole app either way — measured, not assumed: a
+// plugin added on one stack still reports findings in a sibling stack. Putting it on
+// the root says that plainly instead of implying the scope narrows anything.
+// Acknowledgments do narrow by scope, so those stay on `dataStack`.
 const enableNag = process.env.CDK_NAG === "1";
 if (enableNag) {
-  Aspects.of(dataStack).add(new AwsSolutionsChecks({ verbose: true, logIgnores: true }));
+  Validations.of(dataStack.node.root).addPlugins(
+    new AwsSolutionsChecks(dataStack.node.root, { verbose: true }),
+  );
 }
 
-// Known suppressions — these are intentional design decisions, not oversights.
-// Each suppression includes the rationale for future reviewers.
-// apply_to_children: true ensures suppressions propagate to nested stack resources.
-NagSuppressions.addStackSuppressions(dataStack, [
+// Known acknowledgments — these are intentional design decisions, not oversights.
+// Each one includes the rationale for future reviewers. Acknowledging on the stack
+// covers the resources beneath it, including those in nested stacks.
+Validations.of(dataStack).acknowledge(
   {
     id: "AwsSolutions-IAM5",
     reason:
@@ -1596,4 +1607,4 @@ NagSuppressions.addStackSuppressions(dataStack, [
       "S3 bucket SSL-only policy is managed by Amplify Gen2. These are internal deployment " +
       "buckets not directly accessed by users.",
   },
-], true);
+);

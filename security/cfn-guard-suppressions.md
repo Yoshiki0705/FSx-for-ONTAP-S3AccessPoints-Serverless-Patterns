@@ -21,14 +21,17 @@ rule suppress_rekognition_wildcard when %rekognition_actions {
 }
 ```
 
-## cdk-nag suppression 例 (TypeScript)
+## cdk-nag acknowledgment 例 (TypeScript)
+
+cdk-nag v3 は `NagSuppressions` を削除し、CDK 本体の
+`Validations.of(scope).acknowledge(...)` に統合されました。scope が抑制範囲を決めるため、
+リソース単位で抑えたいときはそのリソースを scope にします（`appliesTo` は廃止）。
 
 ```typescript
-NagSuppressions.addResourceSuppressions(rekognitionRole, [
-  {
-    id: 'AwsSolutions-IAM5',
-    reason: 'Rekognition APIs do not support resource-level IAM policies',
-    appliesTo: ['Resource::*'],
-  },
-]);
+import { Validations } from "aws-cdk-lib";
+
+Validations.of(rekognitionRole).acknowledge({
+  id: "AwsSolutions-IAM5",
+  reason: "Rekognition APIs do not support resource-level IAM policies",
+});
 ```

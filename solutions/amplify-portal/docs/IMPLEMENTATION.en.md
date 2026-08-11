@@ -60,7 +60,7 @@ Browser → Amplify (Cognito auth) → AppSync GraphQL
 | `AWSLambdaVPCAccessExecutionRole` | Required for ENI creation in VPC — added conditionally with VPC |
 | `Vpc.fromVpcAttributes` | NOT `fromLookup` — avoids CDK context/account requirement during synth |
 | `Code.fromAsset("functions/...")` | External files (not inline) — keeps template under 1MB |
-| cdk-nag `AwsSolutionsChecks` | CI-only (`CDK_NAG=1`). NOT applied during synth/deploy. Amplify Gen2 resources (AppSync, Cognito, internal S3) produce Non-Compliant findings that are not user-configurable — applying nag as Aspect causes `[AssemblyError]` blocking all deploys. Suppressions in backend.ts document accepted findings. |
+| cdk-nag `AwsSolutionsChecks` | Manual opt-in via `CDK_NAG=1`, not run by any workflow — registered via `Validations.of(root).addPlugins(...)`. NOT applied during synth/deploy: Amplify Gen2 resources (AppSync, Cognito, internal S3) produce findings that are not user-configurable, and a reported violation interrupts synthesis and blocks every deploy. Accepted findings are recorded with `Validations.of(dataStack).acknowledge(...)` in backend.ts. cdk-nag v3 removed `NagSuppressions` and moved off `IAspect`. |
 
 ### `amplify/data/resource.ts` — Generic Dispatch Schema
 

@@ -168,7 +168,7 @@ sequenceDiagram
 | **AI 元数据徽章** | 内联分类标签、Rekognition 标签、实体计数 |
 | **QR 码访问** | Presigned URL → QR PNG（用于 OT/制造平板电脑） |
 | **Presigned URL 共享** | 可配置 TTL 的共享链接（5 分钟~1 小时） |
-| **cdk-nag 合规** | synth 时强制执行 AwsSolutionsChecks |
+| **cdk-nag 合规** | 在 CI 中通过 `CDK_NAG=1` 运行 AwsSolutionsChecks（部署时不启用） |
 | **备用 UI** | ONTAP 未连接时显示信息面板（无白屏） |
 
 > **详细部分指南**：[docs/portal-tabs-guide.md](docs/portal-tabs-guide.md)
