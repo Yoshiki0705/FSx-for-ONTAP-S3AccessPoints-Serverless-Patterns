@@ -51,6 +51,10 @@ flowchart TD
 
 ### Group A — has a storage endpoint (DataSync handles it)
 
+![Two DataSync routes for Group A sources that expose a storage endpoint. From the same source, one route stands up an AWS DataSync agent and writes directly to Amazon FSx for NetApp ONTAP; the other is agentless, staging into Amazon S3 and then handing off to Amazon FSx for NetApp ONTAP.](../images/saas-migration-group-a-routes-en.svg)
+
+> Dark theme: [Group A, two routes (dark)](../images/saas-migration-group-a-routes-en-dark.svg)
+
 These are the [DataSync location types](https://docs.aws.amazon.com/datasync/latest/userguide/create-locations-cli.html).
 
 | Source | Endpoint type | DataSync location | Requirement for an FSx for ONTAP destination |
@@ -82,6 +86,10 @@ These are the [DataSync location types](https://docs.aws.amazon.com/datasync/lat
 DataSync cannot handle these. They expose per-user collaboration APIs and no storage endpoint.
 
 **Per-user OAuth consent is not required, however.** Each service offers tenant-wide administrator authorization.
+
+![Centrally executed configuration for Group B collaboration SaaS. AWS Step Functions enumerates and partitions the targets, an AWS Lambda migration worker inside the VPC retrieves credentials from AWS Secrets Manager and calls the SaaS tenant administrator API through an Amazon VPC NAT Gateway, then writes to Amazon FSx for NetApp ONTAP over NFS / SMB. Post-migration consumption goes through an Amazon S3 access point.](../images/saas-migration-group-b-worker-en.svg)
+
+> Dark theme: [Group B, central execution (dark)](../images/saas-migration-group-b-worker-en-dark.svg)
 
 | SaaS | Mechanism for central execution | User consent |
 |---|---|---|
