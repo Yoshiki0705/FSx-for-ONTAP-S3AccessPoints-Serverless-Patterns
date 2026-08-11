@@ -5,6 +5,11 @@ templates:
   - "solutions/**/template.yaml"
   - "solutions/**/template-deploy.yaml"
   - "operations/**/template.yaml"
+  # The hands-on lab templates used to be linted by a workflow at
+  # infrastructure/handson-lab/.github/workflows/validate.yml. GitHub only reads
+  # workflows from the repository root, so that file never ran and these seven
+  # templates had no gate at all. They are listed here instead.
+  - "infrastructure/handson-lab/cloudformation/*.yaml"
 
 ignore_templates:
   - "shared/cfn/*.yaml"

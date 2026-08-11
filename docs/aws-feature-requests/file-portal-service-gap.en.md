@@ -107,7 +107,7 @@ Comparison with AI features that SaaS vendors have rapidly shipped in 2025-2026.
 
 ### Gap Matrix — Hybrid & Connectivity
 
-> **Data freshness**: Transfer Family FSx for ONTAP S3 AP support GA 2026/1 [5][6][7]. Nextcloud External Storage S3 compatibility verified on Nextcloud 29. ownCloud OCIS multi-storage per OCIS 5.x documentation.
+> **Data freshness**: Transfer Family FSx for ONTAP S3 AP support GA 2026/1 [5][6][7]. Nextcloud External Storage S3 compatibility verified on Nextcloud 29. The local verification stack now runs Nextcloud 34 (`files_external` 1.26.0), where the `amazons3` backend is still offered; the data operations have not been re-verified there. ownCloud OCIS multi-storage per OCIS 5.x documentation.
 > **Reference mapping**: Transfer Family [5][6][7], S3 AP compatibility [4]
 
 | Hybrid/Connectivity | Egnyte | Citrix ShareFile | Nextcloud | ownCloud OCIS | Our Portal |
