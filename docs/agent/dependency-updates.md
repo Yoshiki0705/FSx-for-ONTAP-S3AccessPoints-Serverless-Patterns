@@ -21,6 +21,19 @@ gh issue list --state open | grep "Dependency Dashboard"    # the dashboard issu
 ```
 
 Major-version bumps wait for a checkbox on the Dependency Dashboard issue, so a long "Pending Approval" list is normal operation, not a broken install.
+
+**Pending Approval の行は古いことがあります。** チェックボックスの一覧は Renovate が次に走るまで
+更新されないため、こちら側で手動で上げた依存も残り続けます（実例: `@vitejs/plugin-react` 6 /
+`vite` 8 / react 19 は既に適用済みなのに一覧に残っていた）。**行を見るのではなく、同じ issue の
+"Detected Dependencies" にある矢印を見ます。**
+
+```bash
+gh issue view <dashboard#> --json body --jq .body |
+  grep -E '`[^`]+ [^`]+` → \[Updates' | head -20    # 矢印がある＝本当に未適用
+```
+
+行があるのに矢印が無ければ適用済みで、次回の Renovate 実行で行も消えます。チェックボックスを
+押す前にこちらで確認してください。
 ## メジャー更新を承認する前に確認すること
 
 Dependency Dashboard のチェックボックスを押すと Renovate が PR を作りますが、破壊的変更の
