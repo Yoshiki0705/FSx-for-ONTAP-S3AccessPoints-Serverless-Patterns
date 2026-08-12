@@ -3368,6 +3368,91 @@ button[type="submit"]:disabled {
   color: var(--color-primary-text);
 }
 
+/* Headline state of a protection panel: a dot, a title, and one line of detail.
+   ArpStatus and SnaplockStatus both build this, and neither had any rule for it,
+   so the two spans ran together as one sentence — "Not EnabledEnable with: ..."
+   — and the dot had no size and drew nothing. Stacked here rather than in each
+   component so the two panels cannot drift apart again. */
+.status-indicator-large {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 1rem;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+}
+
+.status-dot {
+  width: 0.75rem;
+  height: 0.75rem;
+  border-radius: 50%;
+  flex-shrink: 0;
+  /* Aligns with the cap height of the title rather than the top of its line box. */
+  margin-top: 0.3rem;
+  background: var(--color-text-secondary);
+}
+
+.status-dot-active {
+  background: var(--color-success);
+}
+
+.status-dot-learning {
+  background: var(--color-primary);
+}
+
+.status-dot-warning {
+  background: var(--color-warning);
+}
+
+.status-dot-disabled {
+  background: var(--color-border-strong);
+}
+
+.status-label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  min-width: 0;
+}
+
+.status-title {
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.status-subtitle {
+  font-size: 0.85rem;
+  color: var(--color-text-secondary);
+  line-height: 1.5;
+  /* The disabled state puts an ONTAP CLI command here, which has no spaces to
+     wrap at on a phone. */
+  overflow-wrap: anywhere;
+}
+
+/* Retention state of one snapshot, in the locked-snapshot and version tables.
+   Also used with no rule of its own until now. */
+.lock-badge {
+  display: inline-block;
+  padding: 0.1rem 0.5rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  white-space: nowrap;
+  background: var(--color-bg);
+  color: var(--color-text-secondary);
+}
+
+.lock-badge.locked {
+  background: var(--color-warning-bg);
+  color: var(--color-warning-text);
+}
+
+.lock-badge.unlocked {
+  background: var(--color-surface-subtle);
+  color: var(--color-text-secondary);
+}
+
 /* ===== ONTAP failure notice =====
    Why a panel has no ONTAP data. The two <pre> blocks used to carry inline colours
    at four call sites, which is how they drifted apart. */
@@ -3690,6 +3775,11 @@ button[type="submit"]:disabled {
   align-items: center;
   gap: 0.5rem;
   margin-left: auto;
+  /* Without this the row cannot break, so the controls past the first are squeezed
+     until they are clipped by the viewport rather than moved below it. On the qtree
+     panel that put "+ Create qtree" half off the screen on a phone. There is room on
+     a desktop, where wrapping never triggers. */
+  flex-wrap: wrap;
 }
 
 .admin-table {
@@ -3717,6 +3807,50 @@ button[type="submit"]:disabled {
 
 .admin-table tr:hover {
   background: var(--color-bg);
+}
+
+/* A row the storage reports rather than one a user made -- the volume's own root among
+   its qtrees. Muted so it does not read as a record whose name failed to load. */
+.admin-table .row-derived {
+  color: var(--color-text-secondary);
+  font-style: italic;
+}
+
+/* Thirteen admin panels share .admin-table and it had no narrow-width rules at all, so
+   any of them with five columns ran past the right edge of a phone. On the qtree panel
+   that carried the row's delete button off the screen, where it could not be tapped.
+   Generic rather than per-table: what forces the width is a value with nowhere to wrap
+   -- a volume or qtree name has no spaces -- and that is true of every one of them. */
+@media (max-width: 768px) {
+  .admin-table {
+    font-size: 0.8rem;
+  }
+
+  .admin-table th,
+  .admin-table td {
+    padding: 0.45rem 0.35rem;
+    /* `break-word` would not do it: it still refuses to break a single long word that
+       has a line to itself, which is exactly the case here. */
+    overflow-wrap: anywhere;
+  }
+
+  /* The cell is a flex row, so the direction is what stacks the buttons. `display:
+     block` on them does nothing -- a flex container blockifies its children and keeps
+     them on the main axis regardless. Same reasoning as .snapshot-table above. */
+  .admin-table .action-cell {
+    flex-direction: column;
+  }
+
+  /* The dropdown keeps its 250px minimum. Relaxing it here looked necessary and was
+     not: with the row able to wrap, 250px fits at 320px wide with the delete button
+     still inside. The rule would also have been dead, since .volume-selector-dropdown
+     is defined again further down and a media query adds no specificity. */
+  .admin-panel .panel-actions {
+    /* Full width so the wrapped rows start at the left edge instead of being pushed
+       right by the `margin-left: auto` that positions this beside the heading. */
+    width: 100%;
+    margin-left: 0;
+  }
 }
 
 /* Form elements for admin panels */
@@ -3771,6 +3905,19 @@ button[type="submit"]:disabled {
 .form-group small {
   font-size: 0.72rem;
   color: var(--color-text-secondary);
+}
+
+/* A value the form states rather than asks for — the qtree panel's target volume,
+   which follows the selection in the panel header. Padded like an input so it sits
+   on the same baseline as the editable fields beside it, but with no border or
+   background, so it does not read as something to tap. */
+.form-static-value {
+  margin: 0;
+  padding: 0.5rem 0;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--color-text);
+  overflow-wrap: anywhere;
 }
 
 /* Capacity bar */
@@ -3947,6 +4094,15 @@ button[type="submit"]:disabled {
   }
   .form-row {
     flex-direction: column;
+    /* Also reset align-items, which `.form-row` sets to flex-end.
+       On a row that means "line the inputs up along their bottom edges", which is
+       what it was for. Turning the direction to column silently repurposes it: the
+       cross axis is now horizontal, so flex-end became "push every field to the
+       right edge, shrunk to its own content width". Measured at 402px CSS width,
+       the four fields in the qtree form came out 250/193/140/193px wide with left
+       edges at 233/291/343/291 inside a 466px row — a ragged right-hand column
+       rather than a form. This affects every create form in the admin panels. */
+    align-items: stretch;
   }
 }
 
