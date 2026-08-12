@@ -50,7 +50,7 @@ affects** — the answers to "what is this?".
 | How it is served | Shape of the URL | How to obtain it | Permanence |
 |------------------|------------------|------------------|-----------|
 | Amplify Hosting | `https://<branch>.<app-id>.amplifyapp.com`, or a custom domain | `aws amplify list-apps`, then `aws amplify list-branches --app-id <app-id>` | **Permanent. This is the one to hand over** |
-| Local plus a tunnel | `https://<random>.trycloudflare.com` and similar | The output of `cloudflared tunnel --url http://localhost:5173` | **Changes every run. Do not hand it over** — it is for checking on your own handset |
+| Local plus a tunnel | `https://<random>.trycloudflare.com` and similar | The output of `npm run phone` ([steps](GETTING-STARTED.en.md)) | **Changes every run. Do not hand it over** — it is for checking on your own handset |
 | Local | `http://localhost:5173` | The output of `npm start` | Your machine only. **Not reachable from anyone else's** |
 
 **It has to be `https://`.** Sign-in (SRP) uses `crypto.subtle` and copying a share link uses

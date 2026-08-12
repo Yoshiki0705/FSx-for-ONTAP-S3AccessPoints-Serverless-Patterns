@@ -58,10 +58,91 @@ HTTPS で配信する方法を選ぶ。
 | 方法 | コマンド | 向き |
 |------|---------|------|
 | Amplify Hosting にデプロイ | ブランチを接続（[Hosting ガイド](../../../docs/ja/amplify-hosting-production-guide.md)） | 本番に近い形で確認したいとき |
-| ローカルをトンネル経由で公開 | `cloudflared tunnel --url http://localhost:5173` 等 | 手元の変更をすぐ実機で見たいとき。URL は一時的 |
+| ローカルをトンネル経由で公開 | `npm run phone` | 手元の変更をすぐ実機で見たいとき。URL は一時的 |
 
 > Cognito はホスト名を固定していないため、どちらでもサインインできる（トンネル経由で実際に確認済み）。
 > トンネルの URL は実行ごとに変わるので、共有せず自分の端末からの確認にとどめる。
+
+#### 一度だけの準備
+
+| 用意するもの | コマンド | なぜ必要か |
+|---|---|---|
+| `cloudflared` | `brew install cloudflared`（macOS）／[その他 OS](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/downloads/) | HTTPS のトンネルを張る。アカウント登録は不要 |
+| `amplify_outputs.json` | `npx ampx sandbox` を一度実行 | `src/main.tsx` が静的 import しているので、無いと開発サーバがそもそも起動しない。sandbox が生成し、gitignore されている（環境ごとに 1 つ） |
+| `amplify/portal-config.ts` | 自動（無ければ example から複製される） | DemoMode なら値は空のままでよい |
+
+`amplify_outputs.json` が要る点が、クローン直後に手順どおり進めても実機で真っ白になる主因である。
+
+#### 毎回のコマンド
+
+```bash
+cd solutions/amplify-portal
+npm run phone
+```
+
+開発サーバとトンネルの起動、**トンネルが実際にアプリへ到達しているかの検証**までを 1 コマンドで行う。
+実際の出力:
+
+```text
+▶ Preflight
+  ✔ node v26.4.0
+  ✔ node_modules
+  ✔ amplify/portal-config.ts
+  ✔ amplify_outputs.json
+  ✔ cloudflared 2026.7.3
+
+▶ Dev server
+  … starting vite on port 5173
+  ✔ serving on http://localhost:5173 (pid 43373)
+
+▶ Tunnel
+  … waiting for cloudflared to publish a hostname
+  ✔ https://threaded-opening-actress-courses.trycloudflare.com
+
+▶ Verify the tunnel reaches the app
+  … waiting for DNS to publish threaded-opening-actress-courses.trycloudflare.com . ✔
+  … fetching
+  ✔ HTTP 200 and the page is the portal
+
+════════════════════════════════════════════════════════
+  Open on the phone:
+
+    https://threaded-opening-actress-courses.trycloudflare.com
+
+════════════════════════════════════════════════════════
+```
+
+最後に出た URL を実機のブラウザで開く。`Ctrl+C` で開発サーバとトンネルの両方が止まる
+（**すでに別のターミナルで動かしていた開発サーバは止めない**）。
+
+主なオプション:
+
+```bash
+npm run phone -- --port 4173                       # 別のポートで配信する
+npm run phone -- --url https://xxx.ngrok-free.app  # 自分で張ったトンネルを検証だけする
+npm run phone -- --help
+```
+
+`brew install qrencode` を入れておくと、URL の QR コードを端末で読める形で出力する。
+
+#### スクリプトが検証していること
+
+「起動したのに実機で見えない」の原因はどれも同じ見え方をするので、切り分けを自動化してある。
+
+| 検出する状態 | 出るメッセージ | 対処 |
+|---|---|---|
+| `amplify_outputs.json` が無い | `amplify_outputs.json is missing` | `npx ampx sandbox` を一度実行する |
+| Vite がトンネルのホスト名を拒否 | `Vite refused the tunnel hostname` + 該当ホスト名 | `vite.config.ts` の `server.allowedHosts` に追加（下記） |
+| トンネルは生きているが配信元に届かない | `could not reach http://localhost:5173 (HTTP 502)` | 開発サーバが落ちているか、別のポートで動いている |
+| この PC だけ名前解決できない | `this machine cannot resolve …, but public DNS can` | トンネル自体は正常。実機は別のリゾルバなので開ける。PC を直すなら DNS キャッシュを消す |
+
+最後の 1 件は再現しにくいが実際に踏む。cloudflared はホスト名を**まだ引けない時点で**表示するため
+（cloudflared 自身も "it may take some time to be reachable" と出す）、そこで手元から引くと
+**NXDOMAIN が家庭用ルータのリゾルバにキャッシュされ**、公開 DNS には載っているのに作成した
+PC からだけ数分間開けなくなる。スクリプトは先に公開リゾルバ（1.1.1.1）へ問い合わせ、
+レコードが載ってから初めてローカルの名前解決を行うことでこれを避けている。
+
+#### Vite のホスト名拒否について
 
 **Vite はトンネルのホスト名を既定で拒否する。** リクエストの `Host` ヘッダに見知らぬ名前が
 来ると Vite は
@@ -75,7 +156,10 @@ Blocked request. This host ("...trycloudflare.com") is not allowed.
 **cloudflared / ngrok / localtunnel はそのまま通る**。それ以外のトンネルを使う場合は同じ配列に
 追加する。`true`（全ホスト許可）にはしていない。トンネルを使っていないときも保護がなくなるため。
 
-手順:
+#### スクリプトを使わない場合
+
+`npm run phone` は次の 2 つをまとめたものなので、個別に動かしても同じ状態にはなる。
+ただし上表の検証は自分で行うことになる。
 
 ```bash
 # ターミナル 1: 開発サーバ（sandbox も同時に起動）

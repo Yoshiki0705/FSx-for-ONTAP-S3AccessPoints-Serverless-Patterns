@@ -49,7 +49,7 @@
 | 配信方法 | URL の形 | 取得方法 | 恒久性 |
 |---------|---------|---------|-------|
 | Amplify Hosting | `https://<branch>.<app-id>.amplifyapp.com`（またはカスタムドメイン） | `aws amplify list-apps` → `aws amplify list-branches --app-id <app-id>` | **恒久。利用者に渡すのはこれ** |
-| ローカル + トンネル | `https://<ランダム>.trycloudflare.com` 等 | `cloudflared tunnel --url http://localhost:5173` の出力 | **実行ごとに変わる。渡さない**（自分の実機確認用） |
+| ローカル + トンネル | `https://<ランダム>.trycloudflare.com` 等 | `npm run phone` の出力（[手順](GETTING-STARTED.md)） | **実行ごとに変わる。渡さない**（自分の実機確認用） |
 | ローカル | `http://localhost:5173` | `npm start` の出力 | 自分の端末のみ。**他人の端末からは開けない** |
 
 **`https://` である必要があります。** ポータルはサインイン（SRP 認証）で `crypto.subtle`、

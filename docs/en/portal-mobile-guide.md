@@ -14,6 +14,7 @@
 | What you want | Section |
 |---------------|---------|
 | Just open it and sign in | [1. Sign in](#1-sign-in) |
+| Dismiss the notice that appeared first, or see it again | [The notice on first sign-in](#the-notice-on-first-sign-in) |
 | Know what is where on screen | [2. The layout](#2-the-layout) |
 | Open a folder, find a file | [3. Moving through folders](#3-moving-through-folders) |
 | Share, rename or delete one file | [4. Acting on one file](#4-acting-on-one-file) |
@@ -62,6 +63,31 @@ not make the page zoom in.
 > **This screen is English only.** Everything after sign-in follows your chosen language. The sign-in
 > screen comes from the authentication component and is not currently translated.
 
+### The notice on first sign-in
+
+**The first time only**, signing in brings up a "Welcome to File Portal" notice in the middle of the
+screen. It sits over the file list, so **the list is not usable until you dismiss it.**
+
+<img src="../../solutions/amplify-portal/docs/screenshots/portal-mobile-onboarding.png" alt="The first-run notice on a phone" width="320">
+
+There are three cards, covering what the portal is for.
+
+| Card | Subject |
+|------|---------|
+| 📂 | Browsing files |
+| ⚡ | Running AI processing |
+| 🔒 | Protecting data — snapshots, locks, ARP |
+
+| Control | What happens |
+|---------|--------------|
+| **Next →** | Moves to the next card. On the third it becomes **Get Started 🚀**, which closes the notice |
+| **●●●** (the dots) | Jumps straight to that card |
+| Outside the notice (the dimmed area) | Closes it, part-way through if you like |
+| **Don't show again** | Tick it before closing and the notice stops appearing |
+
+> **"Don't show again" is remembered per browser.** Another device, another browser, or private
+> browsing will show it again. That is not a fault.
+
 ---
 
 ## 2. The layout
@@ -84,6 +110,10 @@ when you ask for it.
 
 > **The buttons above the list stack vertically.** "Process this folder", "New folder" and the rest wrap
 > two per line, so **you scroll once to reach the file list**. After the first time you know where it is.
+
+> **The last row of the list sits behind the browser toolbar.** Safari on iOS and Chrome on Android
+> overlay the address bar at the bottom of the screen, and a row goes under it. **Scroll down a little
+> and the toolbar shrinks out of the way.** It is not a fault in the portal.
 
 ---
 
@@ -283,6 +313,13 @@ A: Tap **☰** at the top left. The menu starts hidden on a phone.
 **Q: The list looks empty.**
 A: The buttons above it stack vertically, so the file list is below them. Scroll down.
 
+**Q: The last row is hidden behind the bottom of the screen.**
+A: The browser's address bar is over it. Scroll down a little and the address bar shrinks.
+
+**Q: I want to see the first-run notice again.**
+A: If you closed it with "Don't show again" ticked, it will not return in that browser. Open the portal
+in another browser, or in private browsing, and it appears again.
+
 **Q: I tapped a file name and it downloaded instead of previewing.**
 A: That type has no preview. Images, PDFs and text open in place; anything else downloads.
 
@@ -321,11 +358,29 @@ immediately.** A single screenshot will often carry all of them.
 |------|--------|
 | Layout and rendering | Checked under Chrome device emulation at 390×844, an iPhone-class width |
 | Reachability of controls (inside the viewport, at least 44px) | Measured in the same environment |
-| A physical iPhone or Android handset | **Not verified** |
+| A physical iPhone (Safari on iOS, 402×874 CSS px) | Checked over the range in the table below |
+| A physical Android handset | **Not verified** |
 
-The screenshots come from the emulated environment. A real handset's browser chrome — address bar
-height and so on — differs. If a step does not behave as described on real hardware, that difference
-is worth reporting.
+### What the iPhone covered
+
+| Section | Status |
+|---------|--------|
+| [1. Sign in](#1-sign-in) / [The notice on first sign-in](#the-notice-on-first-sign-in) | Checked |
+| [2. The layout](#2-the-layout) — the control row, the wrapping of the list | Checked |
+| [8. Looking at an earlier state](#8-looking-at-an-earlier-state) — the snapshot list and its filter tabs | Checked |
+| [9. Changing the display](#9-changing-the-display) — the eight languages, light and dark | Checked |
+| The data-protection lock screen (all three tabs) | Checked |
+| Resource management (storage health, listing and creating qtrees) | Checked |
+| Menu / folder navigation / row menu / multi-select / upload / AI processing | **Emulation only** |
+
+**The handset found one defect, since fixed.** Qtrees under resource management stayed on
+"Loading…" indefinitely: the panel treated "no volume chosen yet" as loading, and the loading state
+hid the very control that chooses a volume. It affected the desktop equally. After the fix, creating
+and listing a qtree were both confirmed on the handset.
+
+Of the screenshots, the first-run notice is from the handset; the rest come from the emulated
+environment. A real handset's browser chrome — address bar height and so on — differs. If a step does
+not behave as described on real hardware, that difference is worth reporting.
 
 ---
 

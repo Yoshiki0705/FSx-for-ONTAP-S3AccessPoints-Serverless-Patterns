@@ -58,10 +58,93 @@ Serve it over HTTPS instead.
 | Approach | Command | When |
 |----------|---------|------|
 | Deploy to Amplify Hosting | connect the branch ([Hosting guide](../../../docs/en/amplify-hosting-production-guide.md)) | to check something close to production |
-| Tunnel the local server | `cloudflared tunnel --url http://localhost:5173` or similar | to see a local change on a device straight away; the URL is temporary |
+| Tunnel the local server | `npm run phone` | to see a local change on a device straight away; the URL is temporary |
 
 > Cognito does not pin a hostname, so sign-in works either way (confirmed through a tunnel).
 > A tunnel URL changes on every run, so keep it to your own device rather than sharing it.
+
+#### One-time setup
+
+| What | Command | Why it is needed |
+|---|---|---|
+| `cloudflared` | `brew install cloudflared` (macOS) / [other platforms](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/downloads/) | opens the HTTPS tunnel; no account required |
+| `amplify_outputs.json` | run `npx ampx sandbox` once | `src/main.tsx` imports it statically, so the dev server cannot start without it. The sandbox generates it and it is gitignored (one per environment) |
+| `amplify/portal-config.ts` | automatic (copied from the example if absent) | in DemoMode the values can stay empty |
+
+Needing `amplify_outputs.json` is the main reason a fresh clone still shows a blank page on the
+handset after following the steps.
+
+#### Every time
+
+```bash
+cd solutions/amplify-portal
+npm run phone
+```
+
+One command starts the dev server, opens the tunnel, and **verifies that the tunnel actually
+reaches the app**. Real output:
+
+```text
+▶ Preflight
+  ✔ node v26.4.0
+  ✔ node_modules
+  ✔ amplify/portal-config.ts
+  ✔ amplify_outputs.json
+  ✔ cloudflared 2026.7.3
+
+▶ Dev server
+  … starting vite on port 5173
+  ✔ serving on http://localhost:5173 (pid 43373)
+
+▶ Tunnel
+  … waiting for cloudflared to publish a hostname
+  ✔ https://threaded-opening-actress-courses.trycloudflare.com
+
+▶ Verify the tunnel reaches the app
+  … waiting for DNS to publish threaded-opening-actress-courses.trycloudflare.com . ✔
+  … fetching
+  ✔ HTTP 200 and the page is the portal
+
+════════════════════════════════════════════════════════
+  Open on the phone:
+
+    https://threaded-opening-actress-courses.trycloudflare.com
+
+════════════════════════════════════════════════════════
+```
+
+Open the last URL in the handset's browser. `Ctrl+C` stops both the dev server and the tunnel
+(**a dev server that was already running in another terminal is left alone**).
+
+Options:
+
+```bash
+npm run phone -- --port 4173                       # serve on a different port
+npm run phone -- --url https://xxx.ngrok-free.app  # only verify a tunnel you started
+npm run phone -- --help
+```
+
+With `brew install qrencode` present, it also prints the URL as a scannable QR code.
+
+#### What the script verifies
+
+Every cause of "it started but the handset shows nothing" looks identical from the outside, so
+the triage is automated.
+
+| Detected state | Message | What to do |
+|---|---|---|
+| `amplify_outputs.json` absent | `amplify_outputs.json is missing` | run `npx ampx sandbox` once |
+| Vite rejected the tunnel hostname | `Vite refused the tunnel hostname` plus the hostname | add the domain to `server.allowedHosts` in `vite.config.ts` (below) |
+| tunnel is up but cannot reach the origin | `could not reach http://localhost:5173 (HTTP 502)` | the dev server died, or is on another port |
+| only this machine cannot resolve it | `this machine cannot resolve …, but public DNS can` | the tunnel is fine; the handset uses another resolver and will load it. To fix this machine, flush the DNS cache |
+
+The last one is hard to reproduce but does happen. cloudflared prints the hostname **before it
+resolves** (it says so itself: "it may take some time to be reachable"), so looking it up locally
+at that moment **caches the NXDOMAIN in a home-router resolver** — leaving the machine that
+created the tunnel unable to open it for minutes while public DNS already has the record. The
+script asks a public resolver (1.1.1.1) first and only resolves locally once the record exists.
+
+#### About Vite's host rejection
 
 **Vite refuses a tunnel's hostname by default.** When the `Host` header carries a name it does
 not recognise, Vite answers
@@ -76,7 +159,10 @@ which is what stops a page from rebinding DNS to your dev server and reading you
 It is not set to `true`: that would drop the protection whenever the dev server runs, tunnel or
 no tunnel.
 
-Steps:
+#### Without the script
+
+`npm run phone` bundles the two commands below, so running them separately reaches the same
+state. The verification in the table above then falls to you.
 
 ```bash
 # Terminal 1: dev server (starts the sandbox alongside it)

@@ -12,7 +12,7 @@ CloudFormation/SAM template sharing the Python modules in `shared/`.
 **Two pillars**: `solutions/` (S3 AP data processing) + `operations/` (file system operational
 optimization).
 
-**Test coverage**: ~4,310 Python tests across 242 files + ~282 vitest tests across 20 files.
+**Test coverage**: ~4,340 Python tests across 244 files + ~293 vitest tests across 21 files.
 
 > ファイル数は `make drift` がツリーと照合するので、古くなれば fail する。テスト総数は
 > `make test` / ポータルハンドラの個別実行 / vitest の 3 系統の合計なので概数。誰も保守
@@ -69,6 +69,18 @@ python3 scripts/check_portal_action_params.py --list-opaque        # 読めな�
 python3 scripts/portal_action_types.py --check                     # 生成モジュールと handler の一致
 make drift-published                                               # 公開記事の陳腐化（要ネットワーク、PR ゲートではない）
 ```
+
+ポータル（`solutions/amplify-portal/`）を動かす:
+
+```bash
+npx ampx sandbox   # 一度だけ。amplify_outputs.json を生成する（gitignore、これが無いと起動しない）
+npm start          # sandbox + vite（http://localhost:5173）
+npm run phone      # ↑ + HTTPS トンネル。実機で開ける URL を出す前に到達性を検証する
+```
+
+`http://<LAN-IP>` では実機でサインインできない（`crypto.subtle` / `navigator.clipboard` が
+secure context 限定）。トンネルの前提と失敗パターンは
+[GETTING-STARTED](solutions/amplify-portal/docs/GETTING-STARTED.md) にある。
 
 KNFSD（Terraform、`infrastructure/knfsd-file-cache/`）は `scripts/{deploy,validate-cache,cleanup}.sh`。
 ## Project Layout
