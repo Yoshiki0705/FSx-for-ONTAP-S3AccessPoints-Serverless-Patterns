@@ -369,7 +369,27 @@ const sharedSourcesFingerprint = (() => {
   return hash.digest("hex").slice(0, 12);
 })();
 
-const sharedPythonLayer = new lambda.LayerVersion(dataStack, "SharedPythonLayer", {
+// The fingerprint is in the logical ID, not only the description.
+//
+// A LayerVersion is immutable, so changing its content is a *replacement* — and
+// `ampx sandbox` deploys with `DisableRollback=true`, which CloudFormation refuses to
+// combine with a replacement: `Replacement type updates not supported on stack with
+// disable-rollback`. The stack then sits in UPDATE_FAILED, from which neither
+// `continue-update-rollback` nor `rollback-stack` is available, and the only recorded
+// recovery was `sandbox delete` and recreate — which destroys the Cognito users and
+// the DynamoDB tables.
+//
+// With the fingerprint in the ID, changed content is a different resource: a create
+// plus a delete, never a replacement. A create is accepted under disable-rollback (the
+// Pillow layer below was created in the very deployment that this refusal broke), and
+// it also cannot be hotswapped away, which is the other half of the problem — hotswap
+// silently skips LayerVersion content changes and reports success, so the deployed
+// layer drifts from `shared/` until some unrelated change forces a real update and
+// fails on someone who did not cause it.
+//
+// Observed here: the deployed layer was `[sources c85e93ad58e4]` while the working
+// tree hashed to `4dc7cbd5285c`.
+const sharedPythonLayer = new lambda.LayerVersion(dataStack, `SharedPythonLayer${sharedSourcesFingerprint}`, {
   description:
     "Repository shared/ Python modules (ONTAP client and ARP containment actions) " +
     `at /opt/python/shared [sources ${sharedSourcesFingerprint}]`,
@@ -452,7 +472,10 @@ const pillowPin = (() => {
   return match[1];
 })();
 
-const pillowLayer = new lambda.LayerVersion(dataStack, "PillowLayer", {
+// The pinned version is in the logical ID for the reason given above the shared layer:
+// bumping Pillow would otherwise be a replacement, and a replacement is what the
+// sandbox refuses.
+const pillowLayer = new lambda.LayerVersion(dataStack, `PillowLayer${pillowPin.replace(/\./g, "")}`, {
   description: `Pillow ${pillowPin} for ARM64 Python 3.13, at /opt/python (thumbnail generation)`,
   compatibleRuntimes: [lambda.Runtime.PYTHON_3_13],
   compatibleArchitectures: [lambda.Architecture.ARM_64],

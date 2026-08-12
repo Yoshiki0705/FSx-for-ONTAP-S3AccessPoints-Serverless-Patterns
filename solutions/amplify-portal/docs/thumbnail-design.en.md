@@ -131,8 +131,36 @@ Prices change, so confirm with the Pricing API before quoting any figure.
 - **No RAW or EXR.** Pillow either cannot read them or needs plugins this layer does
   not carry.
 - **No video thumbnails.** Frame extraction is a different dependency (ffmpeg).
-- **Not yet seen on a device.** The unit tests pass; the rendering against a real
-  folder on FSx for ONTAP has not been checked.
+- **Not yet seen in the UI.** The backend is verified against real FSx for ONTAP
+  (below); a row actually showing a picture in a browser or on a handset is not.
+
+## Verified against a real deployment
+
+Deployed to the ap-northeast-1 sandbox and driven by invoking the Lambda directly.
+
+| Check | Result |
+|---|---|
+| Generation | 2 of 3 JPEGs rendered; the first thumbnail is 1,168 bytes |
+| Downscaling | `192x144`, aspect ratio preserved (192px edge requested) |
+| **EXIF** | **0 entries** — no metadata carried over, on real data |
+| Cache | a second call did not add objects to the cache, so nothing was regenerated |
+| Unsupported extension | `.pdf` skipped as `unsupported type`, without a download |
+| Image extension, other content | `tokyo_aerial.jpg` skipped as `not a readable image` — and that file really is **JSON text with a `.jpg` extension**, so the refusal is correct |
+| Layers | `PillowLayer1220E379832F` and `SharedPythonLayer4dc7cbd5285c…`, matching the working tree's fingerprint |
+
+The last row was luck worth keeping. The demo data contains a file whose extension is an
+image and whose content is metadata JSON, so the decision to put it in `skipped` rather
+than fail the page paid off immediately.
+
+### What the deployment ran into
+
+`ampx sandbox` updates the stack with `DisableRollback=true`, and CloudFormation
+**refuses to replace a LayerVersion whose content changed** under that setting, so the
+first deploy stopped at `UPDATE_FAILED`. The recorded recovery was `sandbox delete` and
+recreate, which destroys the Cognito users and DynamoDB tables. Putting the fingerprint
+in the layer's **logical ID** turns the replacement into a create plus a delete, and
+that recovered the stack without deleting anything. See
+`docs/agent/portal-cdk-quality-gates.md`.
 
 ## References
 

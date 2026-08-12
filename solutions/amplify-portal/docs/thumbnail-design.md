@@ -102,7 +102,27 @@ FileExplorer（1 ページ分のキーをまとめる）
 - **SVG は対象外**。Pillow がラスタライズしないため。`FilePreview` が「開ける」形式の一覧とは別のリストを持っており、`tests/hooks/useThumbnails.test.ts` が両者の一致を検査している
 - **RAW と EXR は対象外**。Pillow が読めない、またはこのレイヤーに無いプラグインを要する
 - **動画のサムネイルは無い**。フレーム抽出は別の依存（ffmpeg）になる
-- **実機での見た目は未確認**。ユニットテストは通っているが、実 ONTAP のフォルダに対する表示は確認していない
+- **UI での見た目は未確認**。バックエンドは実 ONTAP に対して確認済み（下記）だが、ブラウザ/実機で行に絵が出ているところは未確認
+
+## 実環境での確認結果
+
+ap-northeast-1 の sandbox にデプロイし、Lambda を直接叩いて確認した。
+
+| 確認項目 | 結果 |
+|---|---|
+| 生成 | JPEG 3 件中 2 件を生成。1 件目のサムネイルは 1,168 バイト |
+| 縮小 | `192x144`。元画像のアスペクト比を保持（一辺 192px 指定） |
+| **EXIF** | **0 エントリ**。実データでもメタデータを持ち越していない |
+| キャッシュ | 2 回目の呼び出しでキャッシュのオブジェクト数が増えない（再生成していない） |
+| 対応外の拡張子 | `.pdf` を `unsupported type` でダウンロードせずに skip |
+| 中身が画像でないファイル | `tokyo_aerial.jpg` を `not a readable image` で skip。**実際にこのファイルは拡張子が `.jpg` の JSON テキスト**で、判定は正しい |
+| レイヤー | `PillowLayer1220E379832F` と `SharedPythonLayer4dc7cbd5285c…`（作業ツリーの fingerprint と一致） |
+
+最後の 1 行が偶然の当たりだった。デモデータに「拡張子だけ画像で中身がメタデータ JSON」のファイルが実在し、`skipped` に落として一覧を壊さない設計がそのまま効いた。
+
+### デプロイで踏んだ問題
+
+`ampx sandbox` は `DisableRollback=true` でスタックを更新するため、**内容が変わった LayerVersion の置換を CloudFormation が拒否**し、初回のデプロイは `UPDATE_FAILED` で止まった。記録されていた復旧手段は `sandbox delete` → 再作成（Cognito ユーザーと DynamoDB が消える）だけだったが、**論理 ID にフィンガープリントを入れて置換を作成 + 削除に変える**ことで、削除せずに復旧した。詳細は `docs/agent/portal-cdk-quality-gates.md`。
 
 ## 参考
 
