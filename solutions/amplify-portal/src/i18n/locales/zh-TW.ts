@@ -348,6 +348,7 @@ arpResponseSweepNote: "封鎖會在設定的期限過後自動解除。如需提
   rmCreateQtree: "建立 Qtree",
   rmQtreeCreated: "Qtree 已建立",
   rmNoQtrees: "未找到 Qtree",
+  rmQtreeVolumeRoot: "（磁碟區根目錄）",
   rmFilterByVolume: "依磁碟區篩選",
   rmVolumeSearchPlaceholder: "輸入磁碟區名稱搜尋...",
   rmVolumeSearchHint: "顯示前20個結果。新增搜尋關鍵字以取得更精確的結果。",

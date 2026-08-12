@@ -355,6 +355,7 @@ arpResponseSweepNote: "Blocks lift themselves once their expiry passes. To lift 
   rmCreateQtree: "Create Qtree",
   rmQtreeCreated: "Qtree created",
   rmNoQtrees: "No qtrees found",
+  rmQtreeVolumeRoot: "(volume root)",
   rmFilterByVolume: "Filter by volume",
   rmVolumeSearchPlaceholder: "Type to search volumes...",
   rmVolumeSearchHint: "Showing top 20 results. Refine your search keyword for more specific results.",

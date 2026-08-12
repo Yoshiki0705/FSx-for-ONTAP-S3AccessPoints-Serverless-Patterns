@@ -349,6 +349,7 @@ arpResponseSweepNote: "Les blocages se lèvent d'eux-mêmes à l'échéance. Pou
   rmCreateQtree: "Créer un Qtree",
   rmQtreeCreated: "Qtree créé",
   rmNoQtrees: "Aucun Qtree trouvé",
+  rmQtreeVolumeRoot: "(racine du volume)",
   rmFilterByVolume: "Filtrer par volume",
   rmVolumeSearchPlaceholder: "Saisir pour rechercher des volumes...",
   rmVolumeSearchHint: "Affichage des 20 premiers résultats. Affinez votre recherche pour des résultats plus précis.",

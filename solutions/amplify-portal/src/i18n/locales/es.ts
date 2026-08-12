@@ -349,6 +349,7 @@ arpResponseSweepNote: "Los bloqueos se levantan por sí solos al vencer el plazo
   rmCreateQtree: "Crear Qtree",
   rmQtreeCreated: "Qtree creado",
   rmNoQtrees: "No se encontraron Qtrees",
+  rmQtreeVolumeRoot: "(raíz del volumen)",
   rmFilterByVolume: "Filtrar por volumen",
   rmVolumeSearchPlaceholder: "Escriba para buscar volúmenes...",
   rmVolumeSearchHint: "Mostrando los 20 primeros resultados. Refine su búsqueda para resultados más específicos.",

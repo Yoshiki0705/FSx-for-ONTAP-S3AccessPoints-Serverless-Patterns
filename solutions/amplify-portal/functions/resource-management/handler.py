@@ -1337,7 +1337,7 @@ def _list_quota_rules(http, headers, event):
     vol_name = event.get("volumeName", "")
     params = f"svm.name={_qval(svm)}&fields=type,qtree.name,users.name,group.name,space,files,volume.name"
     if vol_name:
-        params += f"&volume.name={vol_name}"
+        params += f"&volume.name={_qval(vol_name)}"
     params += "&max_records=50"
 
     data = _ontap_request(http, headers, "GET", f"/storage/quota/rules?{params}")
@@ -1375,7 +1375,7 @@ def _get_quota_report(http, headers, event):
     vol_name = event.get("volumeName", "")
     params = f"svm.name={_qval(svm)}&fields=space,files,users.name,group.name,qtree.name,type,volume.name"
     if vol_name:
-        params += f"&volume.name={vol_name}"
+        params += f"&volume.name={_qval(vol_name)}"
     params += "&max_records=50"
 
     data = _ontap_request(http, headers, "GET", f"/storage/quota/reports?{params}")
@@ -1628,7 +1628,7 @@ def _list_qtrees(http, headers, event):
     vol_name = event.get("volumeName", "")
     params = f"svm.name={_qval(svm)}&fields=name,id,volume.name,security_style,export_policy.name,unix_permissions"
     if vol_name:
-        params += f"&volume.name={vol_name}"
+        params += f"&volume.name={_qval(vol_name)}"
     params += "&max_records=100"
 
     data = _ontap_request(http, headers, "GET", f"/storage/qtrees?{params}")

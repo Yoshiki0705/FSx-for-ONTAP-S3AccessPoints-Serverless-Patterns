@@ -349,6 +349,7 @@ arpResponseSweepNote: "Sperren heben sich nach Ablauf der Frist selbst auf. Für
   rmCreateQtree: "Qtree erstellen",
   rmQtreeCreated: "Qtree erstellt",
   rmNoQtrees: "Keine Qtrees gefunden",
+  rmQtreeVolumeRoot: "(Volume-Root)",
   rmFilterByVolume: "Nach Volume filtern",
   rmVolumeSearchPlaceholder: "Volumes suchen...",
   rmVolumeSearchHint: "Zeigt die ersten 20 Ergebnisse. Verfeinern Sie Ihre Suche für genauere Ergebnisse.",

@@ -349,6 +349,7 @@ arpResponseSweepNote: "차단은 지정한 기한이 지나면 자동으로 해�
   rmCreateQtree: "Qtree 생성",
   rmQtreeCreated: "Qtree 생성됨",
   rmNoQtrees: "Qtree가 없습니다",
+  rmQtreeVolumeRoot: "(볼륨 루트)",
   rmFilterByVolume: "볼륨별 필터",
   rmVolumeSearchPlaceholder: "볼륨 이름을 입력하여 검색...",
   rmVolumeSearchHint: "상위 20개 결과를 표시합니다. 더 구체적인 결과를 위해 검색어를 추가하세요.",

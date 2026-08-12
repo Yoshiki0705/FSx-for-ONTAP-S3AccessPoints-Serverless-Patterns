@@ -348,6 +348,7 @@ arpResponseSweepNote: "阻止会在设定的期限过后自动解除。如需提
   rmCreateQtree: "创建 Qtree",
   rmQtreeCreated: "Qtree 已创建",
   rmNoQtrees: "未找到 Qtree",
+  rmQtreeVolumeRoot: "（卷根目录）",
   rmFilterByVolume: "按卷筛选",
   rmVolumeSearchPlaceholder: "输入卷名搜索...",
   rmVolumeSearchHint: "显示前20个结果。添加搜索关键词以获取更精确的结果。",

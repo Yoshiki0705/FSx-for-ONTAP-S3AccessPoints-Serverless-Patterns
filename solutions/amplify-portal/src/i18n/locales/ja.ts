@@ -358,6 +358,7 @@ arpResponseSweepNote: "ブロックは指定した期限が過ぎると自動で
   rmCreateQtree: "Qtree 作成",
   rmQtreeCreated: "Qtree 作成完了",
   rmNoQtrees: "Qtree がありません",
+  rmQtreeVolumeRoot: "(ボリュームルート)",
   rmFilterByVolume: "ボリュームで絞り込み",
   rmVolumeSearchPlaceholder: "ボリューム名を入力して検索...",
   rmVolumeSearchHint: "表示は上位20件です。さらに絞り込むには検索キーワードを追加してください。",
