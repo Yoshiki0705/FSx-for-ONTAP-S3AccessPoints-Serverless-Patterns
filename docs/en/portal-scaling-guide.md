@@ -131,4 +131,4 @@ For most portal deployments (< 100 concurrent users), default limits are suffici
 - [PoC to Production Guide](./portal-poc-to-production.md)
 - [S3 AP Performance Considerations](../s3ap-performance-considerations.en.md)
 - [Cost Calculator](../cost-calculator.md) (Japanese)
-- [Implementation Guide](../../solutions/amplify-portal/docs/IMPLEMENTATION.md)
+- [Implementation Guide](../../solutions/amplify-portal/docs/IMPLEMENTATION.en.md)

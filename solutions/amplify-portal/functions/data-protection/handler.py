@@ -51,6 +51,8 @@ import boto3
 import urllib3
 from botocore.config import Config as BotoConfig
 
+from shared.ontap_diagnosis import OntapDiagnosis, diagnose_exception, diagnose_response
+
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 logger = logging.getLogger()
@@ -164,6 +166,17 @@ STATE_CHANGING_ACTIONS = frozenset(
 # the record of a containment action outlives the containment itself.
 LEDGER_RETENTION_DAYS = _env_int("CONTAINMENT_LEDGER_RETENTION_DAYS", 400)
 
+# Where S3 Object Lock is administered, named in the message that redirects there.
+#
+# One capability, one owner. resource-management holds the configured bucket name
+# (S3_OBJECT_LOCK_BUCKET) and the s3:*BucketObjectLockConfiguration permissions;
+# this function holds neither. A second copy lived here reading an OUTPUT_BUCKET
+# that no template set, under a role with no S3 permissions at all — so it was
+# reachable through the API and could only fail, while reporting the failure as
+# missing configuration. Pointing at the owner is more useful than a copy that
+# cannot work.
+_S3_OBJECT_LOCK_OWNER = "adminQuery/adminMutation"
+
 
 def _get_credentials():
     """Retrieve ONTAP credentials from Secrets Manager."""
@@ -193,14 +206,37 @@ def _seg(value) -> str:
 
 
 def _ontap_get(http, headers, path, params=""):
-    """Make GET request to ONTAP REST API."""
+    """Make GET request to ONTAP REST API.
+
+    The status is read rather than ignored. It was not, and the consequence was that a
+    rejected password reached the UI as "Volume 'vol1' not found on SVM 'fsxsvm01'" --
+    ONTAP's 401 body has no `records` key, so the caller's emptiness check claimed the
+    volume did not exist and the panel advised checking the network.
+
+    Returns the parsed body on success, or a dict carrying `_diagnosis` for the caller to
+    pass through. The existing `error` key is preserved so callers that only read that
+    keep working.
+    """
     if _is_unsafe_path(path):
         logger.warning("Refused ONTAP request with unsafe path: %r", path[:200])
         return {"error": {"message": "Invalid characters in request path"}}
     url = f"https://{MGMT_IP}/api{path}"
     if params:
         url += f"?{params}"
-    resp = http.request("GET", url, headers=headers)
+    try:
+        resp = http.request("GET", url, headers=headers)
+    except urllib3.exceptions.HTTPError as error:
+        diagnosis = diagnose_exception(error, mgmt_ip=MGMT_IP)
+        logger.warning("ONTAP unreachable: %s", diagnosis.message)
+        return {"error": {"message": diagnosis.message}, "_diagnosis": diagnosis}
+
+    # `expected_records=False`: this helper serves both collection queries and
+    # single-object GETs, and an object has no `records`. Emptiness is judged by the
+    # callers that know which they asked for.
+    diagnosis = diagnose_response(resp.status, resp.data, expected_records=False)
+    if diagnosis is not None:
+        logger.warning("ONTAP GET %s failed: class=%s status=%s", path, diagnosis.failure.value, diagnosis.status)
+        return {"error": {"message": diagnosis.message}, "_diagnosis": diagnosis}
     return json.loads(resp.data)
 
 
@@ -230,8 +266,10 @@ def handler(event, context):
             return _get_arp_suspects(http, headers, event)
         elif action == "getSnapLockConfig":
             return _get_snaplock_config(http, headers, event)
-        elif action == "getS3ObjectLockStatus":
-            return _get_s3_object_lock_status(event)
+        # No getS3ObjectLockStatus here: resource-management owns it. This handler
+        # carried a second implementation that read an OUTPUT_BUCKET nobody set and
+        # ran under a role with no S3 permissions at all, so it could only ever
+        # report an empty list. See _S3_OBJECT_LOCK_OWNER below.
         elif action == "getProtectionSummary":
             return _get_protection_summary(http, headers, event)
         # Write operations (storage-admin only — enforced at AppSync layer)
@@ -271,16 +309,49 @@ def handler(event, context):
         else:
             return {"error": f"Unknown action: {action}"}
 
+    except OntapLookupFailed as e:
+        # Carries the class, so the panel can advise on the credentials or the name
+        # instead of on the network.
+        return e.diagnosis.as_dict()
     except Exception as e:
         logger.error(f"Data protection handler error: {e}")
-        return {"error": str(e)}
+        return {"error": str(e), "errorClass": "ONTAP_ERROR"}
+
+
+class OntapLookupFailed(Exception):
+    """A volume lookup that failed, carrying why rather than only that it did.
+
+    `ValueError(f"Volume '{VOLUME_NAME}' not found")` was raised for every outcome here,
+    including a rejected password, and the handler's `except Exception` turned it into
+    that sentence on screen.
+    """
+
+    def __init__(self, diagnosis: OntapDiagnosis) -> None:
+        super().__init__(diagnosis.message)
+        self.diagnosis = diagnosis
 
 
 def _get_volume_uuid(http, headers) -> str:
-    """Resolve volume UUID from name."""
+    """Resolve volume UUID from name.
+
+    Raises:
+        OntapLookupFailed: with the classified reason -- credentials, reachability, or a
+            name that genuinely is not on this cluster.
+    """
     data = _ontap_get(http, headers, "/storage/volumes", f"name={VOLUME_NAME}&svm.name={SVM_NAME}&fields=uuid")
+    if isinstance(data.get("_diagnosis"), OntapDiagnosis):
+        raise OntapLookupFailed(data["_diagnosis"])
     if not data.get("records"):
-        raise ValueError(f"Volume '{VOLUME_NAME}' not found")
+        # A 200 with an empty collection: the connection and the credentials are fine and
+        # the name is not on this cluster. Judged here rather than in _ontap_get because
+        # only the caller knows it asked for a collection.
+        diagnosis = diagnose_response(
+            200,
+            json.dumps(data),
+            subject=f"volume '{VOLUME_NAME}' on SVM '{SVM_NAME}'",
+        )
+        assert diagnosis is not None  # an empty collection always yields one
+        raise OntapLookupFailed(diagnosis)
     return data["records"][0]["uuid"]
 
 
@@ -465,9 +536,11 @@ def _get_protection_summary(http, headers, event):
     arp = data.get("anti_ransomware", {})
     snaplock = data.get("snaplock", {})
 
-    # Get S3 Object Lock status for output buckets
-    s3_lock = _get_s3_object_lock_status(event)
-
+    # No S3 Object Lock here. The summary used to carry an `s3ObjectLock` key
+    # filled in by a local reader that had neither the bucket name nor the S3
+    # permissions, so the value was an empty result every time — a field reporting
+    # "nothing is locked" for a bucket it could not look at. Ask the admin endpoint
+    # (see _S3_OBJECT_LOCK_OWNER) for that state instead.
     return {
         "arp": {
             "state": arp.get("state", "disabled"),
@@ -481,94 +554,9 @@ def _get_protection_summary(http, headers, event):
             "type": snaplock.get("type", "non_snaplock"),
             "isEnabled": snaplock.get("type", "non_snaplock") != "non_snaplock",
         },
-        "s3ObjectLock": s3_lock,
         "volumeName": VOLUME_NAME,
         "error": None,
     }
-
-
-def _get_s3_object_lock_status(event):
-    """Get S3 Object Lock configuration for managed buckets.
-
-    Uses AWS S3 API:
-    - GetObjectLockConfiguration: bucket-level lock config
-    - GetBucketVersioning: required for Object Lock
-
-    Checks both the S3 AP-associated bucket (FSx for ONTAP volume)
-    and any output buckets configured for AI processing results.
-
-    Environment:
-        S3_AP_ALIAS: S3 AP alias (to identify the associated bucket)
-        OUTPUT_BUCKET: Optional S3 bucket for AI outputs
-    """
-    s3 = boto3.client("s3", region_name=os.environ.get("AWS_REGION", "ap-northeast-1"))
-    output_bucket = os.environ.get("OUTPUT_BUCKET", "")
-    ap_alias = os.environ.get("S3_AP_ALIAS", "")
-
-    results = {
-        "buckets": [],
-        "error": None,
-    }
-
-    # Check output bucket (standard S3 bucket where Object Lock can be configured)
-    buckets_to_check = []
-    if output_bucket:
-        buckets_to_check.append({"name": output_bucket, "purpose": "AI output archive"})
-
-    for bucket_info in buckets_to_check:
-        bucket_name = bucket_info["name"]
-        try:
-            # Get Object Lock configuration
-            lock_config = s3.get_object_lock_configuration(Bucket=bucket_name)
-            lock_rule = lock_config.get("ObjectLockConfiguration", {})
-            rule = lock_rule.get("Rule", {}).get("DefaultRetention", {})
-
-            results["buckets"].append(
-                {
-                    "bucketName": bucket_name,
-                    "purpose": bucket_info["purpose"],
-                    "objectLockEnabled": lock_rule.get("ObjectLockEnabled") == "Enabled",
-                    "defaultRetention": {
-                        "mode": rule.get("Mode", "NONE"),  # GOVERNANCE or COMPLIANCE
-                        "days": rule.get("Days"),
-                        "years": rule.get("Years"),
-                    },
-                }
-            )
-        except s3.exceptions.ClientError as e:
-            error_code = e.response["Error"]["Code"]
-            if error_code == "ObjectLockConfigurationNotFoundError":
-                results["buckets"].append(
-                    {
-                        "bucketName": bucket_name,
-                        "purpose": bucket_info["purpose"],
-                        "objectLockEnabled": False,
-                        "defaultRetention": None,
-                    }
-                )
-            else:
-                results["buckets"].append(
-                    {
-                        "bucketName": bucket_name,
-                        "purpose": bucket_info["purpose"],
-                        "objectLockEnabled": None,
-                        "error": str(e),
-                    }
-                )
-
-    # Note: FSx for ONTAP S3 AP does not support GetObjectLockConfiguration
-    # (Object Lock is an S3-native feature, not available via S3 AP).
-    # ONTAP-side immutability is managed via SnapLock (separate section).
-    if ap_alias:
-        results["s3ApNote"] = (
-            "FSx for ONTAP S3 AP uses SnapLock for WORM protection "
-            "(not S3 Object Lock). See the SnapLock section for volume-level immutability."
-        )
-
-    return results
-
-
-# ─── Write Operations (Storage Admin) ────────────────────────────────────────
 
 
 def _create_snapshot(http, headers, event):
@@ -667,19 +655,37 @@ def _update_arp_state(http, headers, event):
 
 
 def _update_retention_policy(http, headers, event):
-    """Update retention policy (SnapLock or S3 Object Lock).
+    """Set the SnapLock default retention period.
 
-    target: "snaplock" or "s3_object_lock"
-    mode: "GOVERNANCE" or "COMPLIANCE" (S3) / retention period (SnapLock)
+    target: "snaplock". "s3_object_lock" is accepted and refused, with a pointer at
+        the endpoint that owns it, because callers were written against a version
+        that claimed to handle both.
     days: retention days
+
+    No `mode`: it only ever meant something to the S3 target, and reading it here
+    put it in the generated parameter types as though this action used it.
     """
     target = event.get("target", "")
-    mode = event.get("mode", "")
     days = event.get("days", 0)
     user_id = event.get("userId", "unknown")
 
     if target not in ("snaplock", "s3_object_lock"):
         return {"success": False, "error": f"Invalid target: {target}. Use 'snaplock' or 's3_object_lock'"}
+
+    # S3 Object Lock is not this function's to set. The bucket name and the
+    # PutBucketObjectLockConfiguration permission both live on resource-management;
+    # this role has no S3 permissions, so the path here could only fail. It used to
+    # fail as "OUTPUT_BUCKET not configured", which reads as something the operator
+    # forgot rather than something addressed to the wrong endpoint.
+    if target == "s3_object_lock":
+        return {
+            "success": False,
+            "error": (
+                "S3 Object Lock retention is set through the admin endpoint "
+                f"({_S3_OBJECT_LOCK_OWNER}), which holds the bucket configuration and "
+                "the bucket permissions. This endpoint sets SnapLock retention only."
+            ),
+        }
 
     # Validated before the guard so that a malformed request is told what is wrong
     # with it rather than being asked to acknowledge a consequence stated in terms
@@ -687,32 +693,20 @@ def _update_retention_policy(http, headers, event):
     # reachable on their own.
     if days <= 0:
         return {"success": False, "error": "days must be > 0"}
-    if target == "s3_object_lock" and mode not in ("GOVERNANCE", "COMPLIANCE"):
-        return {"success": False, "error": f"Invalid mode: {mode}. Use GOVERNANCE or COMPLIANCE"}
 
-    if target == "snaplock":
-        # Raising the default retention decides how long every file committed
-        # from now on stays undeletable, and it cannot be shortened afterwards.
-        refused = _require_ack(
-            event,
-            f"Files committed to WORM from now on will be locked for {days} days and cannot "
-            "be deleted or shortened before that expires. Lowering this later does not "
-            "release files already committed.",
-        )
-        if refused:
-            return refused
-        return _update_snaplock_retention(http, headers, days, user_id)
-
-    # Only s3_object_lock remains, the target having been validated above.
+    # Only snaplock remains, s3_object_lock having been redirected above.
+    #
+    # Raising the default retention decides how long every file committed from now
+    # on stays undeletable, and it cannot be shortened afterwards.
     refused = _require_ack(
         event,
-        f"Objects stored from now on will be retained for {days} days in {mode} mode. "
-        "COMPLIANCE retention cannot be shortened or removed by anyone, including the "
-        "account root.",
+        f"Files committed to WORM from now on will be locked for {days} days and cannot "
+        "be deleted or shortened before that expires. Lowering this later does not "
+        "release files already committed.",
     )
     if refused:
         return refused
-    return _update_s3_object_lock(mode, days, user_id)
+    return _update_snaplock_retention(http, headers, days, user_id)
 
 
 def _update_snaplock_retention(http, headers, days, user_id):
@@ -745,49 +739,6 @@ def _update_snaplock_retention(http, headers, days, user_id):
         resp_data = json.loads(resp.data)
         error_msg = resp_data.get("error", {}).get("message", f"HTTP {resp.status}")
         return {"success": False, "error": error_msg}
-
-
-def _update_s3_object_lock(mode, days, user_id):
-    """Update S3 Object Lock default retention on the output bucket.
-
-    AWS S3: PutObjectLockConfiguration
-    """
-    output_bucket = os.environ.get("OUTPUT_BUCKET", "")
-    if not output_bucket:
-        return {"success": False, "error": "OUTPUT_BUCKET not configured"}
-
-    if mode not in ("GOVERNANCE", "COMPLIANCE"):
-        return {"success": False, "error": f"Invalid mode: {mode}. Use GOVERNANCE or COMPLIANCE"}
-
-    if days <= 0:
-        return {"success": False, "error": "days must be > 0"}
-
-    s3 = boto3.client("s3", region_name=os.environ.get("AWS_REGION", "ap-northeast-1"))
-
-    try:
-        s3.put_object_lock_configuration(
-            Bucket=output_bucket,
-            ObjectLockConfiguration={
-                "ObjectLockEnabled": "Enabled",
-                "Rule": {
-                    "DefaultRetention": {
-                        "Mode": mode,
-                        "Days": days,
-                    }
-                },
-            },
-        )
-        logger.info(f"S3 Object Lock updated: {output_bucket} → {mode} {days}d by {user_id}")
-        return {"success": True, "error": None}
-    except Exception as e:
-        return {"success": False, "error": str(e)}
-
-
-# ─── ARP/AI Response Actions (Isolation/Containment) ─────────────────────────
-#
-# These use shared/ontap_response.ArpResponseActions which wraps OntapClient.
-# Provides the same containment capabilities as DII Storage Workload Security
-# but executed from the portal UI without external tools.
 
 
 def _get_arp_response_client():

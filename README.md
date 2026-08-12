@@ -24,6 +24,7 @@
 | FSx なしでデモを試す | [Demo Mode Guide](docs/demo-mode-guide.md) | 5 分 |
 | Web ポータルでファイルを閲覧・処理 | [File Portal UI (Amplify / Nextcloud)](docs/file-portal-amplify-gen2.md) | 10 分 |
 | ポータルのデモを見る (スクリーンショット付き) | [Portal Demo Guide (JA)](docs/ja/portal-demo-guide.md) / [EN](docs/en/portal-demo-guide.md) | 5 分 |
+| ポータルを**使う**（サインイン〜閲覧〜スマートフォン） | [ユーザーガイド (JA)](docs/ja/portal-user-guide.md) / [EN](docs/en/portal-user-guide.md) | 10 分 |
 | ポータルのセクション構成を理解する | [Portal Sections Guide](solutions/amplify-portal/docs/portal-tabs-guide.md) | 5 分 |
 | 構成図を見る（ライト / ダーク） | [構成図インデックス](docs/architecture-diagrams.md) | 5 分 |
 | ポータルを自環境にデプロイ | [Deployment Runbook (JA)](docs/ja/portal-deployment-runbook.md) / [EN](docs/en/portal-deployment-runbook.md) | 15 分 |
@@ -167,6 +168,7 @@ graph TB
 
 | ドキュメント | 内容 |
 |---|---|
+| **[ユーザーガイド (JA)](docs/ja/portal-user-guide.md) / [EN](docs/en/portal-user-guide.md)** | 招待された利用者向け。サインイン、閲覧、プレビュー、ダウンロード、**スマートフォンでの利用**。ko / zh-CN / zh-TW / fr / de / es もあり |
 | [Portal Demo Guide (JA)](docs/ja/portal-demo-guide.md) / [EN](docs/en/portal-demo-guide.md) | スクリーンショット付きデモフロー (15 分) |
 | [Deployment Runbook (JA)](docs/ja/portal-deployment-runbook.md) / [EN](docs/en/portal-deployment-runbook.md) | デプロイ・削除の運用手順 + トラブルシューティング |
 | [Portal Authorization Design (JA)](docs/ja/portal-authorization-design.md) / [EN](docs/en/portal-authorization-design.md) | RBAC 設計 (Viewer/Contributor/Storage Admin/Auditor) |

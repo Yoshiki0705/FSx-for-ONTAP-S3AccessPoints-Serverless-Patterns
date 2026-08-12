@@ -124,8 +124,8 @@ Additional questions when considering FlexCache / FlexClone / RAG patterns:
 
 ## References
 
-- [Choose Your Path](../README.md#choose-your-path)
-- [Production Readiness](production-readiness.md)
-- [Governance Checklist](governance-checklist.md)
-- [Partner/SI Delivery Checklist](partner-si-delivery-checklist.md)
-- [Trigger Mode Decision Guide](trigger-mode-decision-guide.md)
+- [Choose Your Path](../README.en.md#choose-your-path)
+- [Production Readiness](production-readiness.en.md)
+- [Governance Checklist](governance-checklist.en.md)
+- [Partner/SI Delivery Checklist](partner-si-delivery-checklist.en.md)
+- [Trigger Mode Decision Guide](trigger-mode-decision-guide.en.md)

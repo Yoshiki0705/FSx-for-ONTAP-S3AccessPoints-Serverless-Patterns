@@ -221,6 +221,19 @@ def load_baseline() -> set[str]:
     return {line.rstrip("\n") for line in BASELINE.read_text().split("\n") if line.strip() and not line.startswith("#")}
 
 
+_STRING_LITERAL = re.compile(r'"(?:[^"\\]|\\.)*"|\'(?:[^\'\\]|\\.)*\'|`(?:[^`\\]|\\.)*`')
+_JSX_TEXT = re.compile(r">([^<>{}]+)<")
+
+
+def _translatable_literals(text: str) -> list[str]:
+    """The parts of a line that reach the user: string literals and JSX text.
+
+    Everything else on the line -- identifiers, a t() key, a className -- is not
+    rendered, so CJK found outside these is not a bypass.
+    """
+    return _STRING_LITERAL.findall(text) + _JSX_TEXT.findall(text)
+
+
 def check_hardcoded_strings(baseline: set[str] | None = None) -> tuple[list[Finding], list[str]]:
     """Find user-facing text that bypasses the translation layer.
 
@@ -228,9 +241,17 @@ def check_hardcoded_strings(baseline: set[str] | None = None) -> tuple[list[Find
     these, so the check fails only on lines absent from the baseline. Failing on
     the whole backlog would mean turning the check off, which protects nothing.
 
-    A line that also calls `t(...)` is a fallback rather than a bypass: the key
-    exists and the literal only shows if a locale is missing it. Those are
-    reported as a count, not as failures.
+    A line that also calls `t(...)` used to be waved through as a fallback, on the
+    reasoning that the literal only shows when a locale lacks the key. That is not
+    how this t() behaves: it ends `?? key`, so it returns the key name -- a non-empty
+    string -- and `t("x") || "literal"` never reaches the literal at all.
+
+    The exemption cost more than it saved. Twenty-nine dead Japanese fallbacks sat in
+    one component and were counted as benign, and a ternary next to them
+    (`deleting ? "削除中..." : t("rmDelete")`) got the same pass because the line
+    mentioned t() somewhere. The check now looks for a CJK *string literal*, so a
+    line may call t() as often as it likes and is still reported if it also carries
+    untranslated text of its own.
     """
     known = baseline if baseline is not None else load_baseline()
     findings: list[Finding] = []
@@ -247,7 +268,9 @@ def check_hardcoded_strings(baseline: set[str] | None = None) -> tuple[list[Find
         for number, text in _strip_comments_and_imports(path.read_text()):
             if not CJK.search(text):
                 continue
-            if "t(" in text:
+            # Only text inside a string literal or a JSX text node counts. A t() call
+            # on the same line no longer excuses it.
+            if not any(CJK.search(literal) for literal in _translatable_literals(text)):
                 fallbacks += 1
                 continue
             # An exemption may sit on the line or immediately above it, so a long
@@ -277,7 +300,8 @@ def check_hardcoded_strings(baseline: set[str] | None = None) -> tuple[list[Find
                 "add a key to src/i18n/locales/ja.ts and the other seven locales. If the text "
                 "must stay as it is in every locale — a language name in its own script, for "
                 "instance — mark the line with '// i18n-exempt: <reason>' rather than baselining "
-                f"it. {fallbacks} t()-with-fallback and {exempted} exempted line(s) are not "
+                f"it. {fallbacks} line(s) whose CJK is not in a rendered string, and "
+                f"{exempted} exempted line(s), are not "
                 "counted here.",
             )
         )
@@ -711,6 +735,940 @@ COUNT_GLOBS = [
 ]
 
 
+def check_cognito_groups() -> list[Finding]:
+    """Every group an authorization rule names must be one `defineAuth` creates.
+
+    `allow.groups(["storage-admin"])` synthesises and deploys whether or not the
+    group exists, and a request from a member of a group that does not exist is
+    simply unauthorised. That shipped: five endpoints were guarded on
+    `storage-admin` while `defineAuth` declared no groups at all, so the group
+    existed only where somebody had created it with the CLI. A sandbox that had
+    been running a while had it and worked; a freshly deployed one did not, and
+    the symptom was not an error but the administrative sections quietly missing
+    — which reads as "not built yet" rather than "misconfigured".
+
+    The reverse is not checked. A declared group with no rule naming it is how a
+    group is introduced before the endpoints that will use it.
+    """
+    data = PORTAL / "amplify" / "data" / "resource.ts"
+    auth = PORTAL / "amplify" / "auth" / "resource.ts"
+    if not data.exists() or not auth.exists():
+        return [Finding("cognito-group", "amplify/", "auth or data resource definition is missing")]
+
+    referenced: dict[str, int] = {}
+    for number, line in enumerate(data.read_text(encoding="utf-8").splitlines(), start=1):
+        for match in re.finditer(r"allow\.groups\(\[([^\]]*)\]\)", line):
+            for name in re.findall(r'"([^"]+)"', match.group(1)):
+                referenced.setdefault(name, number)
+
+    # The declaration is a `groups:` array in the defineAuth call. Read as a block
+    # so a list spanning several lines is seen whole.
+    auth_text = auth.read_text(encoding="utf-8")
+    declared: set[str] = set()
+    block = re.search(r"^\s*groups:\s*\[(.*?)\]", auth_text, re.MULTILINE | re.DOTALL)
+    if block:
+        declared = set(re.findall(r'"([^"]+)"', block.group(1)))
+
+    return [
+        Finding(
+            "cognito-group",
+            f"amplify/data/resource.ts:{line}",
+            f'authorization names the group "{name}", which amplify/auth/resource.ts does not '
+            f"declare. Add it to `groups` in defineAuth, or a fresh deploy will have no such "
+            f"group and every caller will be unauthorised. Declared: {sorted(declared) or 'none'}",
+        )
+        for name, line in sorted(referenced.items())
+        if name not in declared
+    ]
+
+
+def check_orphan_env_reads() -> list[Finding]:
+    """Environment variables a deployed handler reads that no template sets.
+
+    Two of these were found together, and neither announced itself. One was a
+    leftover: the notification bridge kept reading an `APPSYNC_API_URL` from
+    before it wrote to DynamoDB directly, defaulting to "" and used nowhere. The
+    other was worse — a second copy of the S3 Object Lock reader in the
+    data-protection handler, on an `OUTPUT_BUCKET` no template set, under a role
+    with no S3 permissions. It was reachable through the API and could only fail,
+    and it failed as "OUTPUT_BUCKET not configured", which points the operator at
+    a setting rather than at the wrong endpoint.
+
+    Only reads that fall back to an empty value are reported. A read with a real
+    default is a tunable — `MAX_ZIP_FILES` falling back to 500 gives the ZIP
+    export the limit the documentation states, and nothing is broken by the
+    template staying silent about it. A read that falls back to "" is different in
+    kind: the empty string is not a setting anyone chose, and every feature behind
+    one of these is written as `if not value: return` or fails downstream.
+
+    Only functions wired into `backend.ts` are considered: `office-convert` and
+    `secure-viewer` are checked in but not deployed, and their variables are
+    correctly absent.
+
+    Set anywhere in `backend.ts` counts as set. Associating a variable with the
+    one function that receives it would need the TypeScript parsed rather than
+    scanned, and the failure this catches is a name nothing provides at all.
+    """
+    backend = PORTAL / "amplify" / "backend.ts"
+    if not backend.exists():
+        return [Finding("orphan-env", "amplify/backend.ts", "backend definition is missing")]
+    backend_text = backend.read_text(encoding="utf-8")
+
+    provided = set(re.findall(r"^\s+([A-Z][A-Z_0-9]*):", backend_text, re.MULTILINE))
+    # Lambda provides these to every function; no template mentions them.
+    runtime_supplied = {"AWS_REGION", "AWS_LAMBDA_FUNCTION_NAME", "AWS_EXECUTION_ENV"}
+
+    findings: list[Finding] = []
+    for directory in sorted((PORTAL / "functions").iterdir()):
+        if not directory.is_dir() or f'functions/{directory.name}"' not in backend_text:
+            continue
+        for source in sorted(directory.glob("*.py")):
+            for number, line in enumerate(source.read_text(encoding="utf-8").splitlines(), start=1):
+                for match in re.finditer(r'os\.environ(?:\.get)?\(?\[?"([A-Z][A-Z_0-9]*)"', line):
+                    name = match.group(1)
+                    if name in provided or name in runtime_supplied:
+                        continue
+                    # Whether a fallback was supplied at all, and whether it is the
+                    # empty string. Tested on the text after the name rather than by
+                    # matching a literal, because a default can be an expression:
+                    # `str(500 * 1024 * 1024)` is a real limit, and a pattern looking
+                    # only for a quoted value reads it as no default and reports the
+                    # ZIP export as switched off.
+                    rest = line[match.end() :].lstrip()
+                    if rest.startswith(",") and rest[1:].lstrip()[:2] not in ('""', "''"):
+                        continue  # a tunable with a working default, not a dead feature
+                    findings.append(
+                        Finding(
+                            "orphan-env",
+                            f"functions/{directory.name}/{source.name}:{number}",
+                            f'reads "{name}" with an empty fallback, and amplify/backend.ts never '
+                            f"sets it. Either set it on this function, or delete the read: the "
+                            f"feature behind it is switched off in a way that looks like the "
+                            f"operator forgot a setting.",
+                        )
+                    )
+    return findings
+
+
+# Colour literals still written directly into a rule, rather than taken from a
+# token. Four remain -- an overlay that stays dark, a saturated purple fill, and the
+# two amber shades of a starred item -- and each carries a comment at its line
+# saying why. The number is a ceiling so it can only fall: a new panel that
+# hardcodes a light background is invisible until somebody opens the portal in dark
+# mode, which is exactly the kind of rot the theme was added to stop.
+THEME_LITERAL_BUDGET = 4
+
+# Properties whose value has to follow the theme. `box-shadow` and `fill` are
+# deliberately out: shadows go through --color-shadow already, and the SVG fills are
+# on brand marks that do not change.
+#
+# Not anchored to the start of the line, and stopping at `}` as well as `;`. This
+# stylesheet writes status rules on one line -- `.state-online { background: #dcfce7;
+# color: #166534; }` -- and an anchored pattern sees the selector, not the
+# declaration. It reported 5 literals while 201 were present, so the budget passed
+# for a year of edits that each added a light-only colour.
+_THEMED_PROPERTY = re.compile(
+    r"\b(background(?:-color)?|color|border[a-z-]*|outline(?:-color)?)\s*:(?P<value>[^;}]*)",
+    re.IGNORECASE,
+)
+_COLOUR_LITERAL = re.compile(r"#[0-9a-fA-F]{3,8}\b|\bwhite\b|\bblack\b")
+
+
+def check_theme_literals() -> list[Finding]:
+    """Colour literals in the portal stylesheet that no token stands behind.
+
+    The stylesheet had 612 of these across 167 distinct values, which is why there
+    was no dark theme for so long: adding one meant finding and pairing every last
+    literal. They are now roles — `--color-surface`, `--color-text-secondary`,
+    `--color-error-bg` — and the few that remain are listed against a budget.
+
+    Reported as a count rather than per-line on purpose. The individual lines are
+    fine; what matters is that the total does not grow, because the failure mode is
+    silent. A component that writes `background: #fff` looks correct to whoever
+    wrote it and is a white slab to everyone using the dark theme.
+
+    The palette definitions themselves are skipped: they are where the literals are
+    supposed to be.
+    """
+    stylesheet = PORTAL / "src" / "index.css"
+    if not stylesheet.exists():
+        return [Finding("theme-literal", "src/index.css", "the portal stylesheet is missing")]
+
+    offenders: list[str] = []
+    inside_palette = False
+    for number, line in enumerate(stylesheet.read_text(encoding="utf-8").splitlines(), start=1):
+        stripped = line.strip()
+        # The palette blocks are the selectors that define the tokens.
+        if stripped.startswith((":root", '[data-theme="dark"]')):
+            inside_palette = True
+        elif inside_palette and stripped == "}":
+            inside_palette = False
+        if inside_palette or stripped.startswith("--"):
+            continue
+        for match in _THEMED_PROPERTY.finditer(line):
+            # A literal inside a var() fallback still applies when the property is
+            # unset, so it counts.
+            for literal in _COLOUR_LITERAL.findall(match.group("value")):
+                offenders.append(f"src/index.css:{number} {match.group(1)}: {literal}")
+
+    if len(offenders) <= THEME_LITERAL_BUDGET:
+        return []
+    return [
+        Finding(
+            "theme-literal",
+            "src/index.css",
+            f"{len(offenders)} colour literals outside the palette, over the budget of "
+            f"{THEME_LITERAL_BUDGET}. Use a role token so the value follows the theme; a "
+            f"hardcoded light colour is invisible until someone opens the portal in dark "
+            f"mode. If one genuinely belongs in both themes, lower the budget instead by "
+            f"replacing another. Offenders:\n      " + "\n      ".join(offenders),
+        )
+    ]
+
+
+# An inline style, written as a JSX `style={{ ... }}` value.
+_INLINE_COLOUR = re.compile(
+    r"\b(background(?:Color)?|color|border(?:Color|Top|Bottom|Left|Right|LeftColor)?)"
+    r"\s*:\s*\"(?P<value>[^\"]*)\"",
+)
+
+
+def check_inline_style_literals() -> list[Finding]:
+    """Colour literals in inline styles, which no theme can reach.
+
+    A rule in the stylesheet can at least be overridden by a later selector. An
+    inline style cannot: it wins against everything short of `!important`, so a
+    literal here is a permanent light-mode fill.
+
+    This is the second place the theme leaked, and it leaked because the check
+    above reads one file. Six agent task cards kept their pale fills under the dark
+    theme and inherited the dark theme's light text, leaving a 1.1:1 title -- text
+    the same colour as the card. Every gate the repository has was green.
+
+    No budget. Unlike the stylesheet there is no case for a literal here: a value
+    that genuinely belongs in both themes can be a token whose two definitions
+    happen to match.
+    """
+    findings: list[Finding] = []
+    for path in sorted((PORTAL / "src").rglob("*.ts*")):
+        for number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), start=1):
+            for match in _INLINE_COLOUR.finditer(line):
+                for literal in _COLOUR_LITERAL.findall(match.group("value")):
+                    findings.append(
+                        Finding(
+                            "inline-colour",
+                            f"{path.relative_to(PORTAL)}:{number}",
+                            f"inline style sets {match.group(1)} to the literal {literal}. An "
+                            f"inline style cannot be restyled, so this stays as written in every "
+                            f"theme. Use var(--color-...) -- an inline style may hold one.",
+                        )
+                    )
+    return findings
+
+
+_VAR_REFERENCE = re.compile(r"var\(\s*(--[a-z][a-z0-9-]*)")
+# MULTILINE because the definitions are collected with findall over the whole file.
+# Without it only the first line can match, every token reads as undefined, and 969
+# findings is indistinguishable from the check being broken -- which it was.
+_VAR_DEFINITION = re.compile(r"^\s*(--[a-z][a-z0-9-]*)\s*:", re.MULTILINE)
+
+
+def check_undefined_tokens() -> list[Finding]:
+    """`var(--name)` where nothing defines `--name`.
+
+    The quietest of the three. `var(--text-secondary, #666)` reads as themed and is
+    the literal every single time, because the token is called --color-text-secondary
+    and nothing declares the shorter name. Without a fallback it is worse: the
+    declaration is invalid, the property is dropped, and the text inherits whatever
+    it happens to sit on.
+
+    Ten such names were in use, across 71 references. They are the reason a check on
+    literals alone is not enough -- these have no literal to find at the reference,
+    and the fallback that carries the real value sits inside a construct that looks
+    like the fix.
+
+    Also catches the reverse, which is how the names got there: a component invents
+    --surface-color, the palette calls it --color-surface, and both spellings look
+    equally plausible at the call site.
+    """
+    stylesheet = PORTAL / "src" / "index.css"
+    if not stylesheet.exists():
+        return [Finding("undefined-token", "src/index.css", "the portal stylesheet is missing")]
+
+    defined = set(_VAR_DEFINITION.findall(stylesheet.read_text(encoding="utf-8")))
+    findings: list[Finding] = []
+    for path in sorted((PORTAL / "src").rglob("*")):
+        if path.suffix not in {".css", ".ts", ".tsx"} or not path.is_file():
+            continue
+        for number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), start=1):
+            if _VAR_DEFINITION.match(line):
+                continue
+            for name in _VAR_REFERENCE.findall(line):
+                if name in defined:
+                    continue
+                near = sorted(d for d in defined if name.lstrip("-") in d or d.lstrip("-") in name)
+                findings.append(
+                    Finding(
+                        "undefined-token",
+                        f"{path.relative_to(PORTAL)}:{number}",
+                        f"reads {name}, which the palette never defines, so this resolves to its "
+                        f"fallback every time -- or to nothing, dropping the declaration."
+                        + (f" Did you mean {near[0]}?" if near else ""),
+                    )
+                )
+    return findings
+
+
+# In a TypeScript double-quoted string, `\\"` is a backslash followed by a quote, and
+# `\\\\` is two backslashes. Neither is anything a UI string wants to say.
+_OVER_ESCAPED = re.compile(r'\\\\(?:\\"|\\\\)')
+
+
+def check_locale_escaping() -> list[Finding]:
+    """Locale strings escaped one level too many.
+
+    37 strings across all eight locales read `\\\\"` where they meant `\\"`, so the
+    rendered text was `Delete user \\"admin\\"?` -- the backslashes on screen, in a
+    confirmation dialog, in every language. The same doubling hit the one string that
+    wants a real backslash: `DOMAIN\\\\\\\\user` rendered as `DOMAIN\\\\user`.
+
+    Nothing caught it because it is not a missing key, not an untranslated string and
+    not a type error: the key exists in all eight locales, the types agree, and the
+    value is a valid string. Only its content is wrong, and reviewing a diff of
+    escaped CJK is exactly where an eye slides past.
+
+    Consistent across every locale and only on strings containing a quote or a
+    backslash, which is the signature of an escaping pass that ran twice.
+    """
+    findings: list[Finding] = []
+    locales = PORTAL / "src" / "i18n" / "locales"
+    if not locales.is_dir():
+        return [Finding("locale-escaping", "src/i18n/locales", "the locale directory is missing")]
+    for path in sorted(locales.glob("*.ts")):
+        for number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), start=1):
+            if _OVER_ESCAPED.search(line):
+                findings.append(
+                    Finding(
+                        "locale-escaping",
+                        f"{path.relative_to(PORTAL)}:{number}",
+                        "escaped one level too many, so the backslash is rendered to the user. "
+                        'Write \\" for a quote and \\\\ for a backslash: '
+                        f"{line.strip()[:90]}",
+                    )
+                )
+    return findings
+
+
+_USE_QUERY = re.compile(r"\buseQuery\s*\(")
+# Start-of-line so a stray `enabled` inside a queryFn body is not read as the option.
+_ENABLED_OPTION = re.compile(r"^\s*enabled\s*:", re.MULTILINE)
+# `const { ... } = useQuery(` or `const name = useQuery(`. Applied to the text before
+# the call, rightmost match, so only the declaration that receives it is considered.
+_QUERY_BINDING = re.compile(r"(?:const|let)\s+(\{[^{}]*\}|[A-Za-z_$][\w$]*)\s*(?::[^=]+)?=\s*$")
+_PENDING_FIELD = re.compile(r"\bisPending\b|\bstatus\b")
+# Both comment forms: inside JSX the marker has to be `{/* ... */}`, because `//` there
+# would be rendered as text. Accepting only `//` made the rule impossible to satisfy on
+# exactly the reads that are written in markup.
+#
+# `[ \t]*` and not `\s*` after the colon: `\s` matches a newline, so a bare marker with
+# nothing after it found the first word of the next line and read as a reason. That made
+# `// query-gate-checked:` a mute switch, which is what requiring a reason prevents.
+_GATE_EXEMPT = re.compile(r"/[/*][ \t]*query-gate-checked:[ \t]*\S")
+
+
+# A `/` after one of these opens a regular expression rather than dividing. Enough to
+# tell the two apart in this codebase, where every regex literal follows a call paren,
+# an `=`, a comma or a `return`.
+_REGEX_PRECEDES = set("(,=:[!&|?{};+-*%^~")
+# ...but not when what follows rules a pattern out. `/>` closes a JSX tag and `/=`
+# divides in place; both sit after a `}` or a quote, which is in the set above. Reading
+# either as a regex blanked the rest of its line, taking a `)}` with it.
+_NOT_REGEX_AFTER = {">", "=", "/", "*", " ", "\t", "\n", ""}
+
+
+def _blank_strings_and_comments(source: str) -> str:
+    """The source with strings, comments and regex literals blanked, offsets intact.
+
+    Brace matching below would otherwise be thrown by a bracket inside any of them, and
+    `enabled:` written in a comment would read as the option. Lengths are preserved so
+    every offset still maps to the same line.
+
+    All three kinds have to be handled, and each was found by breaking:
+
+    - strings only: the apostrophe in a prose comment opened a string that never closed
+      and blanked the rest of the file;
+    - strings and comments: ``text.split(/(\\*\\*[^*]+\\*\\*|`[^`]+`)/g)`` put a
+      backtick inside a regex, which opened a template literal that ran to the end.
+
+    Both times the checker then found nothing and reported it as a pass, which is why
+    `_masking_is_sound` runs over the result.
+    """
+    out = list(source)
+    index = 0
+    end = len(source)
+    previous = ""
+    while index < end:
+        char = source[index]
+        two = source[index : index + 2]
+        if two == "//":
+            while index < end and source[index] != "\n":
+                out[index] = " "
+                index += 1
+        elif two == "/*":
+            while index < end and source[index : index + 2] != "*/":
+                if source[index] != "\n":
+                    out[index] = " "
+                index += 1
+            for offset in range(index, min(index + 2, end)):
+                out[offset] = " "
+            index += 2
+        elif char in "\"'`" or (
+            char == "/" and previous in _REGEX_PRECEDES and source[index + 1 : index + 2] not in _NOT_REGEX_AFTER
+        ):
+            closer = char
+            in_class = False
+            index += 1
+            while index < end:
+                current = source[index]
+                if current == "\\":
+                    out[index] = " "
+                    if index + 1 < end and source[index + 1] != "\n":
+                        out[index + 1] = " "
+                    index += 2
+                    continue
+                if closer == "/":
+                    # A `/` inside a character class does not end the pattern.
+                    if current == "[":
+                        in_class = True
+                    elif current == "]":
+                        in_class = False
+                    elif current == "\n":
+                        break  # An unterminated regex is a mis-read `/`; give up on it.
+                if current == closer and not in_class:
+                    break
+                if current != "\n":
+                    out[index] = " "
+                index += 1
+            index += 1
+        else:
+            if not char.isspace():
+                previous = char
+            index += 1
+    return "".join(out)
+
+
+def _masking_is_sound(masked: str) -> bool:
+    """Whether the masked source still has balanced brackets.
+
+    Independent of what the caller is looking for. A runaway string or comment blanks
+    real code, which leaves an opening bracket without its partner, so this catches a
+    mis-read of any cause -- including one nobody has hit yet. Counting the construct
+    under test instead would not: a `useQuery(` written inside a doc comment is
+    correctly blanked and would read as a loss.
+    """
+    pairs = {")": "(", "]": "[", "}": "{"}
+    stack: list[str] = []
+    for char in masked:
+        if char in "([{":
+            stack.append(char)
+        elif char in pairs:
+            if not stack or stack.pop() != pairs[char]:
+                return False
+    return not stack
+
+
+def _call_extent(text: str, open_paren: int) -> int:
+    """Index of the `)` closing the call that opens at `open_paren`, or -1."""
+    depth = 0
+    for index in range(open_paren, len(text)):
+        char = text[index]
+        if char in "([{":
+            depth += 1
+        elif char in ")]}":
+            depth -= 1
+            if depth == 0:
+                return index
+    return -1
+
+
+_COMMENT_ONLY = re.compile(r"^\s*(?://|/?\*|\{?/\*)")
+
+
+def _marker_window(lines: list[str], number: int) -> str:
+    """The read's own line, the one above it, and any comment block continuing upward.
+
+    One line of lookback is not enough: the reason for an exemption rarely fits on one,
+    and a marker on the first line of a two-line comment was missed by the version that
+    looked back exactly one line -- which reads as an unmarked violation, the opposite
+    of what the author wrote.
+    """
+    first = max(0, number - 2)
+    while first > 0 and _COMMENT_ONLY.match(lines[first - 1]):
+        first -= 1
+    return "\n".join(lines[first:number])
+
+
+def check_query_gate_reads() -> list[Finding]:
+    """`isPending` read from a useQuery that declares `enabled`.
+
+    A disabled query is `status: "pending"` with `fetchStatus: "idle"`, because it has
+    no data and never asked for any. So `isPending` on a gated query does not mean "a
+    request is in flight", it means "nothing has loaded yet" -- and while the gate is
+    shut that is permanently true.
+
+    The qtree panel shipped this. It gated on a chosen volume, read `isPending` as
+    `loading`, and returned a spinner for the whole panel while loading -- so the
+    volume dropdown, the only thing that could open the gate, was never rendered. No
+    request was ever made and the spinner never cleared. `tsc`, the linter and every
+    other check here passed: the types are right, the query is correct, and the bug is
+    entirely in what the flag was taken to mean.
+
+    `isFetching` is false while a query is disabled, which is what a loading flag
+    wants. A read that genuinely needs "no data yet" has to check the gate itself on
+    the same path, and can say so with `// query-gate-checked: <reason>` on the read
+    or the line above it.
+    """
+    findings: list[Finding] = []
+    for path in sorted((PORTAL / "src").rglob("*.ts*")):
+        source = path.read_text(encoding="utf-8")
+        if "useQuery" not in source:
+            continue
+        masked = _blank_strings_and_comments(source)
+        lines = source.splitlines()
+
+        # A reader that quietly stops seeing calls reports a clean tree, which is the
+        # failure this whole check exists to prevent.
+        if not _masking_is_sound(masked):
+            findings.append(
+                Finding(
+                    "query-gate-read",
+                    str(path.relative_to(PORTAL)),
+                    "brackets do not balance after masking strings, comments and regex "
+                    "literals, so a string or comment ran past its end and blanked real "
+                    "code. This file is not being checked. Fix "
+                    "_blank_strings_and_comments in this script, not the file.",
+                )
+            )
+            continue
+        for call in _USE_QUERY.finditer(masked):
+            close = _call_extent(masked, masked.index("(", call.start()))
+            if close < 0:
+                continue
+            options = masked[call.end() : close]
+            if not _ENABLED_OPTION.search(options):
+                continue
+
+            binding = _QUERY_BINDING.search(masked[: call.start()])
+            if not binding:
+                continue
+            target = binding.group(1)
+
+            # Destructured: the pending flag is named in the pattern itself. Object
+            # form: it is read later as `name.isPending`.
+            if target.startswith("{"):
+                # Offset of the field inside the pattern, not of the pattern, so the
+                # report names the line the flag is on and the marker has one place
+                # to go in either shape.
+                reads = [
+                    (binding.start(1) + field.start(), field.group(0)) for field in _PENDING_FIELD.finditer(target)
+                ]
+            else:
+                reads = [
+                    (match.start(), match.group(1))
+                    for match in re.finditer(rf"\b{re.escape(target)}\.(isPending|status)\b", masked)
+                ]
+
+            for offset, field in reads:
+                number = masked.count("\n", 0, offset) + 1
+                if _GATE_EXEMPT.search(_marker_window(lines, number)):
+                    continue
+                findings.append(
+                    Finding(
+                        "query-gate-read",
+                        f"{path.relative_to(PORTAL)}:{number}",
+                        f"reads {field} from a useQuery that sets `enabled`. A disabled query "
+                        f"stays pending forever, so this is true whenever the gate is shut, not "
+                        f"only while a request is running. Use isFetching for a loading flag -- "
+                        f"or, if this path already checks the same condition as `enabled`, say so "
+                        f"with `// query-gate-checked: <reason>` above the read, or "
+                        f"`{{/* query-gate-checked: <reason> */}}` inside JSX.",
+                    )
+                )
+    return findings
+
+
+_PALETTE_BLOCK = re.compile(r"(:root|\[data-theme=\"dark\"\])\s*\{(.*?)\n\}", re.DOTALL)
+_TOKEN_DEFINITION = re.compile(r"(--[a-z0-9-]+)\s*:\s*([^;]+);")
+_RULE_BLOCK = re.compile(r"([^{}]*)\{([^{}]*)\}")
+_BLOCK_BACKGROUND = re.compile(r"(?<![-a-z])background(?:-color)?\s*:\s*([^;]+)")
+_BLOCK_COLOUR = re.compile(r"(?<![-a-z])color\s*:\s*([^;]+)")
+_BLOCK_FONT_SIZE = re.compile(r"(?<![-a-z])font-size\s*:\s*([\d.]+)rem")
+_BLOCK_FONT_WEIGHT = re.compile(r"(?<![-a-z])font-weight\s*:\s*(\d+)")
+_HEX = re.compile(r"#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$")
+_TOKEN_REFERENCE = re.compile(r"var\((--[a-z0-9-]+)\)$")
+
+
+def _resolve(value: str, tokens: dict[str, str], depth: int = 0) -> tuple[int, int, int] | None:
+    """A colour as RGB, following token references. None when it is not a plain hex."""
+    value = value.strip()
+    if depth > 4:
+        return None
+    if reference := _TOKEN_REFERENCE.match(value):
+        target = tokens.get(reference.group(1))
+        return _resolve(target, tokens, depth + 1) if target else None
+    if match := _HEX.match(value):
+        digits = match.group(1)
+        if len(digits) == 3:
+            digits = "".join(c * 2 for c in digits)
+        return int(digits[0:2], 16), int(digits[2:4], 16), int(digits[4:6], 16)
+    return None
+
+
+def _contrast(first: tuple[int, int, int], second: tuple[int, int, int]) -> float:
+    def relative(colour: tuple[int, int, int]) -> float:
+        def channel(value: float) -> float:
+            value /= 255
+            return value / 12.92 if value <= 0.03928 else ((value + 0.055) / 1.055) ** 2.4
+
+        red, green, blue = (channel(c) for c in colour)
+        return 0.2126 * red + 0.7152 * green + 0.0722 * blue
+
+    lighter, darker = sorted((relative(first), relative(second)), reverse=True)
+    return (lighter + 0.05) / (darker + 0.05)
+
+
+def check_theme_contrast() -> list[Finding]:
+    """Text and its fill, in both themes, against the WCAG AA threshold.
+
+    Tokens made the theme switchable and did not make it legible. The dark palette
+    lightens the accent fills -- it has to, or they vanish against a dark page -- and
+    inverse text stayed white on top of them: every primary button at 3.4:1, the
+    approve button at 2.8:1. Nothing was a light slab, so the fill rules above were
+    all satisfied, and it is the kind of thing that reads as merely "a bit soft"
+    rather than as a defect.
+
+    The fix those numbers forced was --color-on-primary / -success / -error: text that
+    flips with the theme while the fill it sits on does not.
+
+    Only pairs written in the *same rule* are compared. A `color` whose background
+    comes from a different selector needs the cascade to resolve, which needs a
+    browser; that half runs against the live portal. This half needs no browser and so
+    can run on every commit, which is the half that catches a new button.
+
+    Translucent fills are skipped: `rgba(0, 0, 0, 0.05)` over a card is a real
+    technique, and treating it as opaque black reports 1.2:1 for text that is
+    comfortably legible. Those are the browser sweep's business.
+    """
+    stylesheet = PORTAL / "src" / "index.css"
+    if not stylesheet.exists():
+        return [Finding("theme-contrast", "src/index.css", "the portal stylesheet is missing")]
+    css = stylesheet.read_text(encoding="utf-8")
+
+    palettes: dict[str, dict[str, str]] = {}
+    for match in _PALETTE_BLOCK.finditer(css):
+        palettes[match.group(1)] = dict(_TOKEN_DEFINITION.findall(match.group(2)))
+    if len(palettes) != 2:
+        return [
+            Finding(
+                "theme-contrast",
+                "src/index.css",
+                f'expected a :root and a [data-theme="dark"] palette, found {sorted(palettes)}',
+            )
+        ]
+
+    findings: list[Finding] = []
+    for block in _RULE_BLOCK.finditer(css):
+        selector, body = block.group(1), block.group(2)
+        background = _BLOCK_BACKGROUND.search(body)
+        colour = _BLOCK_COLOUR.search(body)
+        if not background or not colour:
+            continue
+        # A named threshold needs the rendered size; use what the block declares and
+        # fall back to the stricter one, which is the default for body text anyway.
+        size = _BLOCK_FONT_SIZE.search(body)
+        weight = _BLOCK_FONT_WEIGHT.search(body)
+        points = float(size.group(1)) * 16 if size else 16.0
+        bold = int(weight.group(1)) >= 700 if weight else False
+        threshold = 3.0 if points >= 24 or (bold and points >= 18.66) else 4.5
+
+        name = selector.strip().splitlines()[-1].strip() if selector.strip() else "(unknown)"
+        for label, tokens in (("light", palettes[":root"]), ("dark", palettes['[data-theme="dark"]'])):
+            text = _resolve(colour.group(1), tokens)
+            fill = _resolve(background.group(1), tokens)
+            if not text or not fill:
+                continue
+            ratio = _contrast(text, fill)
+            if ratio < threshold:
+                findings.append(
+                    Finding(
+                        "theme-contrast",
+                        f"src/index.css ({label})",
+                        f"{name}: {colour.group(1).strip()} on {background.group(1).strip()} is "
+                        f"{ratio:.1f}:1, under {threshold}:1. An accent fill that lightens for the "
+                        f"dark theme cannot carry --color-text-inverse; use the matching "
+                        f"--color-on-* token, which flips with the theme.",
+                    )
+                )
+    return findings
+
+
+_DECLARATION = re.compile(r"([a-z-]+)\s*:\s*([^;]+)")
+
+
+@dataclass(frozen=True)
+class _CssRule:
+    selector: str
+    declarations: dict[str, str]
+    important: frozenset[str]
+    position: int
+    line: int
+    media: str | None
+    specificity: tuple[int, int, int]
+    target: str
+
+    def __hash__(self) -> int:  # dict is unhashable; identity is enough here
+        return hash((self.selector, self.position))
+
+
+def _specificity(selector: str) -> tuple[int, int, int]:
+    """(ids, classes, elements). Enough to compare two selectors for this purpose."""
+    selector = re.sub(r"::[a-z-]+", "", selector)
+    ids = len(re.findall(r"#[\w-]+", selector))
+    classes = len(re.findall(r"\.[\w-]+", selector)) + len(re.findall(r"\[[^\]]+\]", selector))
+    classes += len(re.findall(r":(?!not\()[a-z-]+", selector))
+    elements = len(re.findall(r"(?:^|[\s>+~])([a-z][\w-]*)", selector))
+    return ids, classes, elements
+
+
+def _parse_rules(css: str) -> list[_CssRule]:
+    """Every rule in source order, with the media query it sits in."""
+    rules: list[_CssRule] = []
+    media: list[str] = []
+    index = 0
+    while index < len(css):
+        brace = css.find("{", index)
+        if brace == -1:
+            break
+        close = css.find("}", index)
+        if close != -1 and close < brace:
+            if media:
+                media.pop()
+            index = close + 1
+            continue
+        prelude = css[index:brace].strip().splitlines()
+        head = prelude[-1].strip() if prelude else ""
+        if head.startswith("@media"):
+            media.append(head)
+            index = brace + 1
+            continue
+        if head.startswith("@"):
+            index = brace + 1
+            continue
+        end = css.find("}", brace)
+        body = css[brace + 1 : end] if end != -1 else ""
+        declarations = {m.group(1): m.group(2).strip() for m in _DECLARATION.finditer(body)}
+        important = frozenset(key for key, value in declarations.items() if "!important" in value)
+        for selector in (s.strip() for s in head.split(",")):
+            if not selector:
+                continue
+            rules.append(
+                _CssRule(
+                    selector=selector,
+                    declarations=declarations,
+                    important=important,
+                    position=brace,
+                    line=css.count("\n", 0, brace) + 1,
+                    media=media[-1] if media else None,
+                    specificity=_specificity(selector),
+                    target=re.split(r"[\s>+~]+", selector.strip())[-1],
+                )
+            )
+        index = end + 1 if end != -1 else brace + 1
+    return rules
+
+
+def _same_element(loser: _CssRule, winner: _CssRule) -> bool:
+    """Whether the winner styles the same box as the loser, unconditionally.
+
+    Three pairings look like overrides and are not:
+
+      * `.snapshot-table th` against `.snapshot-table` -- a descendant is a different
+        element, and its font-size is not competing. Four of the eight first-pass
+        findings were this.
+      * `.file-select:checked::before` against `.file-select` -- a pseudo-element is a
+        box of its own.
+      * `.portal-layout:not(.sidebar-collapsed) .portal-sidebar` against
+        `.portal-sidebar` -- a state selector overriding a default is how the drawer is
+        built, not a mistake.
+
+    So the ancestor chain has to match exactly, and only the final compound may carry
+    extra classes. That deliberately gives up one real case: a variant with an extra
+    ancestor, such as `.lock-dialog .dialog-content` shadowing a responsive
+    `.dialog-content`, leaves the responsive rule dead for that variant alone. It is
+    indistinguishable in shape from the state-selector pattern above, and a rule that
+    reports both would be turned off for the noise.
+    """
+    if "::" in winner.selector:
+        return False
+    loser_chain = re.split(r"\s*[\s>+~]\s*", loser.selector.strip())
+    winner_chain = re.split(r"\s*[\s>+~]\s*", winner.selector.strip())
+    if len(loser_chain) != len(winner_chain):
+        return False
+    if loser_chain[:-1] != winner_chain[:-1]:
+        return False
+    a, b = loser_chain[-1], winner_chain[-1]
+    if a == b:
+        return True
+    return b.startswith(a) and b[len(a) :].startswith((".", ":", "["))
+
+
+def check_dead_media_overrides() -> list[Finding]:
+    """Responsive rules that the cascade discards.
+
+    A media query adds no specificity. A rule inside `@media (max-width: 768px)` is
+    therefore beaten by the same selector appearing later in the file, and by any more
+    specific selector anywhere in it -- and the declaration stays present, valid and
+    ignored, which is why this is worth a check rather than a comment.
+
+    Two of these were live at once, both in the mobile layout:
+
+      * `.portal-layout { grid-template-columns: minmax(0, 1fr) }` lost to
+        `.portal-layout.sidebar-collapsed { … 0px 1fr auto }` 200 lines earlier -- two
+        classes against one. Since collapsed is the default state on a phone, the
+        three-column desktop grid was applied against a one-area template and the
+        topbar came out 40px wide.
+      * `.file-select { min-width: 24px }` lost `margin` to a rule 900 lines later.
+
+    Both were found by reading computed styles in a browser, one at a time.
+
+    `!important` is honoured in both directions, so the field-size floor -- which uses
+    it deliberately, because the browser zooms below 16px regardless of which
+    component owns the field -- is not reported.
+    """
+    stylesheet = PORTAL / "src" / "index.css"
+    if not stylesheet.exists():
+        return [Finding("dead-media-override", "src/index.css", "the portal stylesheet is missing")]
+
+    rules = _parse_rules(stylesheet.read_text(encoding="utf-8"))
+    findings: list[Finding] = []
+    seen: set[str] = set()
+    for rule in rules:
+        if not rule.media or "max-width" not in rule.media:
+            continue
+        for prop, value in rule.declarations.items():
+            for other in rules:
+                if other is rule:
+                    continue
+                # A rule outside any query always competes. A rule inside one competes
+                # only when it applies at exactly the same widths -- the same condition
+                # text. Two blocks with the same breakpoint are common in a long
+                # stylesheet, and the later silently wins for the whole range.
+                #
+                # This was the gap that let a second, redundant bottom-sheet rule be
+                # written for `.file-preview-popover` at `max-width: 768px` while an
+                # existing one 700 lines later was doing the work. Overlapping but
+                # unequal ranges are deliberately not compared: `max-width: 480px`
+                # beating `max-width: 768px` below 480 is how breakpoints are meant to
+                # nest, and reporting it would bury the real cases.
+                if other.media is not None and other.media != rule.media:
+                    continue
+                if prop not in other.declarations or other.declarations[prop] == value:
+                    continue
+                if prop in rule.important and prop not in other.important:
+                    continue
+                if not _same_element(rule, other):
+                    continue
+                beaten = (other.selector == rule.selector and other.position > rule.position) or (
+                    other.specificity > rule.specificity
+                )
+                if not beaten:
+                    continue
+                # Already handled if this media block restates it in a form that
+                # actually beats the winner. That is the cascade's own rule: higher
+                # specificity, or equal specificity and later in the file.
+                #
+                # Both halves were learned from a wrong answer. `sibling is not rule`
+                # is needed because a selector's specificity is trivially >= its own,
+                # so the rule rescued itself whenever the winner won on order. And
+                # requiring the sibling to out-position the winner is needed because
+                # two identical dead rules in two blocks with the same media text
+                # rescued each other, and the pair reported nothing.
+                if any(
+                    sibling is not rule
+                    and sibling.media == rule.media
+                    and prop in sibling.declarations
+                    and _same_element(other, sibling)
+                    and (
+                        sibling.specificity > other.specificity
+                        or (sibling.specificity == other.specificity and sibling.position > other.position)
+                    )
+                    for sibling in rules
+                ):
+                    continue
+                key = f"{rule.line}:{rule.selector}:{prop}"
+                if key in seen:
+                    continue
+                seen.add(key)
+                findings.append(
+                    Finding(
+                        "dead-media-override",
+                        f"src/index.css:{rule.line}",
+                        f"inside {rule.media}, `{rule.selector} {{ {prop} }}` is discarded: line "
+                        f"{other.line} `{other.selector}` wins on "
+                        f"{'source order' if other.selector == rule.selector else 'specificity'}. A "
+                        f"media query adds no specificity. Name the stronger selector here too, or "
+                        f"move this rule below the one it has to beat.",
+                    )
+                )
+    return findings
+
+
+_NARROW_CONSTANT = re.compile(r"const NARROW_VIEWPORT\s*=\s*(\d+)")
+
+
+def check_breakpoint_agreement() -> list[Finding]:
+    """The width in App.tsx against the width the stylesheet switches at.
+
+    Two sources for one number. The stylesheet decides when the sidebar becomes a
+    drawer over the content; App.tsx decides when it should start closed and close
+    itself after a section is picked. Move one and not the other and there is a band of
+    widths where the drawer covers the content and nothing dismisses it -- which is the
+    state the portal shipped in at every width, so it is not a hypothetical failure.
+
+    A comment saying "keep these in step" is what was there before.
+    """
+    app = PORTAL / "src" / "App.tsx"
+    stylesheet = PORTAL / "src" / "index.css"
+    if not app.exists() or not stylesheet.exists():
+        return [Finding("breakpoint", "src", "App.tsx or index.css is missing")]
+
+    match = _NARROW_CONSTANT.search(app.read_text(encoding="utf-8"))
+    if not match:
+        return [
+            Finding(
+                "breakpoint",
+                "src/App.tsx",
+                "NARROW_VIEWPORT is gone. If the drawer no longer needs a width in "
+                "JavaScript, delete this check; if it was renamed, point the check at the "
+                "new name. Silently not finding it is the one outcome that helps nobody.",
+            )
+        ]
+
+    declared = int(match.group(1))
+    widths = {int(w) for w in re.findall(r"@media\s*\(max-width:\s*(\d+)px\)", stylesheet.read_text(encoding="utf-8"))}
+    if declared in widths:
+        return []
+    return [
+        Finding(
+            "breakpoint",
+            "src/App.tsx",
+            f"NARROW_VIEWPORT is {declared}px and the stylesheet has no "
+            f"`@media (max-width: {declared}px)` block; it breaks at {sorted(widths)}. Between "
+            f"the two values the sidebar is a drawer over the content that nothing closes.",
+        )
+    ]
+
+
 def check_count_claims() -> list[Finding]:
     """Numbers a document asserts about the portal, against the implementation.
 
@@ -792,7 +1750,22 @@ def main() -> int:
         return 0
 
     hardcoded, _ = check_hardcoded_strings()
-    findings = check_action_inventories() + hardcoded + check_doc_contradictions() + check_count_claims()
+    findings = (
+        check_action_inventories()
+        + hardcoded
+        + check_doc_contradictions()
+        + check_count_claims()
+        + check_cognito_groups()
+        + check_orphan_env_reads()
+        + check_theme_literals()
+        + check_inline_style_literals()
+        + check_undefined_tokens()
+        + check_theme_contrast()
+        + check_dead_media_overrides()
+        + check_breakpoint_agreement()
+        + check_locale_escaping()
+        + check_query_gate_reads()
+    )
 
     if not findings:
         print(f"PORTAL DRIFT: PASS ({len(_ALL_PORTAL_ACTIONS)} actions across the portal handlers)")

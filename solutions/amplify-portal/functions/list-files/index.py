@@ -1,7 +1,13 @@
+from __future__ import annotations
+
 import json
+import logging
 import os
 
 import boto3
+
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
 
 s3 = boto3.client("s3")
 
@@ -46,6 +52,81 @@ def _allowed_prefixes(user_groups: list[str]) -> list[str]:
     for group in user_groups:
         prefixes.extend(GROUP_PATH_PREFIXES.get(group, []))
     return sorted(set(prefixes))
+
+
+# The trash lives under this prefix in the same bucket. Permanent deletion is
+# confined to it: to destroy an object you first move it here, which turns one
+# careless click into two deliberate ones.
+TRASH_PREFIX = ".trash/"
+
+# S3's own limit. A longer key is rejected here so the failure names the key rather
+# than arriving as an opaque ClientError.
+MAX_KEY_BYTES = 1024
+
+
+def _reject_key(key: str, allowed: list[str], *, field: str) -> dict | None:
+    """Why this key may not be used, or None if it may.
+
+    Every action that names an object runs its keys through here. Three classes of
+    problem, and the order matters only in what the caller is told first.
+
+    Shape. An empty key, a leading separator, a doubled separator, a control
+    character, or anything over S3's length limit. None of these can be produced by
+    the UI, so a request carrying one is not a mistake worth guessing at.
+
+    A `..` segment. S3 keys are literal — `a/../b` is a key, not a path, and no
+    resolution happens. That is exactly why it is refused: it means one thing to
+    the prefix comparison below and another to a person, and a key that reads as an
+    escape has no legitimate use in this portal.
+
+    Scope. `GROUP_PATH_PREFIXES` is the multi-tenancy boundary. It was applied to
+    the notification inbox alone, so where per-team prefixes were configured, a
+    caller could rename, trash or restore an object under another team's prefix by
+    naming it directly, and mint a presigned PUT into it. The endpoint is
+    authenticated but the key was never checked against the caller.
+
+    Args:
+        key: The object key from the request.
+        allowed: Prefixes this caller may touch; empty means unrestricted.
+        field: Request field the key arrived in, named in the message.
+
+    Returns:
+        A failure payload fragment, or None when the key is acceptable.
+    """
+    if not key:
+        return {"error": f"{field} is required"}
+    if len(key.encode("utf-8")) > MAX_KEY_BYTES:
+        return {"error": f"{field} exceeds the {MAX_KEY_BYTES}-byte key limit"}
+    if key.startswith("/") or "//" in key:
+        return {"error": f"{field} must not start with or contain an empty path segment"}
+    if any(segment == ".." for segment in key.split("/")):
+        return {"error": f"{field} must not contain a '..' segment"}
+    if any(character < " " or character == "\x7f" for character in key):
+        return {"error": f"{field} must not contain control characters"}
+    if allowed and not any(key.startswith(prefix) for prefix in allowed):
+        # Names the boundary without listing every other tenant's prefixes.
+        return {"error": f"{field} is outside the prefixes your groups may access"}
+    return None
+
+
+def _scoped_trash_key(key: str) -> str:
+    """Where `key` goes when trashed."""
+    return f"{TRASH_PREFIX}{key}"
+
+
+def _object_exists(bucket: str, key: str) -> bool:
+    """Whether the object is there, used to refuse a silent overwrite.
+
+    A missing object and a denied HeadObject are both reported as "not there" by
+    the API, so this cannot distinguish them. That is acceptable for its one
+    purpose: if the head is denied, the copy that follows is denied too, and the
+    caller sees that error instead of a wrong answer from here.
+    """
+    try:
+        s3.head_object(Bucket=bucket, Key=key)
+        return True
+    except Exception:
+        return False
 
 
 def _list_notifications(event, user_groups):
@@ -154,12 +235,23 @@ def handler(event, context):
     if not ap_alias:
         return {"files": [], "isTruncated": False, "nextContinuationToken": None, "resolvedAp": "", "scope": "none"}
 
+    # The caller's boundary, resolved once and applied to every key below. Reading it
+    # per action is how the notification inbox came to be the only place it applied.
+    allowed = _allowed_prefixes(user_groups if isinstance(user_groups, list) else [])
+
     # UX-3: Trash file (Copy to .trash/, then delete original)
     if action == "trashFile":
         key = event.get("key", "")
-        if not key:
-            return {"success": False, "trashKey": "", "error": "No key specified"}
-        trash_key = f".trash/{key}"
+        refused = _reject_key(key, allowed, field="key")
+        if refused:
+            return {"success": False, "trashKey": "", **refused}
+        if key.endswith("/"):
+            return {
+                "success": False,
+                "trashKey": "",
+                "error": "key names a folder. Trashing a folder would copy the marker and leave its contents behind",
+            }
+        trash_key = _scoped_trash_key(key)
         try:
             s3.copy_object(Bucket=ap_alias, CopySource=f"{ap_alias}/{key}", Key=trash_key)
             s3.delete_object(Bucket=ap_alias, Key=key)
@@ -170,15 +262,112 @@ def handler(event, context):
     # UX-3: Restore from trash (Copy from .trash/ back, then delete trash copy)
     if action == "restoreFromTrash":
         trash_key = event.get("trashKey", "")
-        if not trash_key or not trash_key.startswith(".trash/"):
-            return {"success": False, "restoredKey": "", "error": "Invalid trash key"}
-        original_key = trash_key.replace(".trash/", "", 1)
+        if not trash_key.startswith(TRASH_PREFIX):
+            return {"success": False, "restoredKey": "", "error": f"trashKey must start with {TRASH_PREFIX}"}
+        original_key = trash_key[len(TRASH_PREFIX) :]
+        # The original key is what is checked, not the trash key: the boundary is
+        # about where the object lands. `.trash/` prefixes everything, so comparing
+        # the trash key against a tenant prefix would never match.
+        refused = _reject_key(original_key, allowed, field="trashKey")
+        if refused:
+            return {"success": False, "restoredKey": "", **refused}
+        if _object_exists(ap_alias, original_key):
+            return {
+                "success": False,
+                "restoredKey": "",
+                "error": f"{original_key} already exists. Rename or move it before restoring",
+            }
         try:
             s3.copy_object(Bucket=ap_alias, CopySource=f"{ap_alias}/{trash_key}", Key=original_key)
             s3.delete_object(Bucket=ap_alias, Key=trash_key)
             return {"success": True, "restoredKey": original_key, "error": None}
         except Exception as e:
             return {"success": False, "restoredKey": "", "error": str(e)}
+
+    # Create a folder. S3 has no directories: a folder is a zero-byte object whose
+    # key ends in "/", which is what makes it visible as a CommonPrefix before
+    # anything has been put in it.
+    if action == "createFolder":
+        key = event.get("key", "")
+        if key and not key.endswith("/"):
+            key = f"{key}/"
+        refused = _reject_key(key, allowed, field="key")
+        if refused:
+            return {"success": False, "key": "", **refused}
+        if _object_exists(ap_alias, key):
+            return {"success": False, "key": "", "error": f"{key} already exists"}
+        try:
+            s3.put_object(Bucket=ap_alias, Key=key, Body=b"")
+            return {"success": True, "key": key, "error": None}
+        except Exception as e:
+            return {"success": False, "key": "", "error": str(e)}
+
+    # Copy and move share their checks and differ by one delete, so they are one
+    # branch. A move is a copy the source does not survive.
+    if action in ("copyFile", "moveFile"):
+        src_key = event.get("sourceKey", "")
+        dst_key = event.get("destinationKey", "")
+        for candidate, field in ((src_key, "sourceKey"), (dst_key, "destinationKey")):
+            refused = _reject_key(candidate, allowed, field=field)
+            if refused:
+                return {"success": False, "newKey": "", **refused}
+        if src_key.endswith("/") or dst_key.endswith("/"):
+            return {
+                "success": False,
+                "newKey": "",
+                "error": (
+                    "folders are not supported. Copying a prefix means copying every object "
+                    "under it, which can fail halfway and leave two partial folders"
+                ),
+            }
+        if src_key == dst_key:
+            return {"success": False, "newKey": "", "error": "sourceKey and destinationKey are the same"}
+        # Overwriting is possible but never implicit: the destination holding
+        # something is the one case where a copy destroys data.
+        if not event.get("overwrite") and _object_exists(ap_alias, dst_key):
+            return {
+                "success": False,
+                "newKey": "",
+                "error": f"{dst_key} already exists. Pass overwrite to replace it",
+            }
+        try:
+            s3.copy_object(Bucket=ap_alias, CopySource=f"{ap_alias}/{src_key}", Key=dst_key)
+            if action == "moveFile":
+                # Deleted only after the copy returns. The other order loses the
+                # object when the copy fails.
+                s3.delete_object(Bucket=ap_alias, Key=src_key)
+            return {"success": True, "newKey": dst_key, "error": None}
+        except Exception as e:
+            return {"success": False, "newKey": "", "error": str(e)}
+
+    # Permanent deletion. Confined to the trash and gated on an explicit
+    # acknowledgement, because nothing here can undo it: the object is not
+    # versioned, so there is no previous version to roll back to.
+    if action == "deleteFileForever":
+        key = event.get("key", "")
+        if not key.startswith(TRASH_PREFIX):
+            return {
+                "success": False,
+                "error": (
+                    f"only objects under {TRASH_PREFIX} can be deleted permanently. Move the file to the trash first"
+                ),
+            }
+        refused = _reject_key(key[len(TRASH_PREFIX) :], allowed, field="key")
+        if refused:
+            return {"success": False, **refused}
+        if event.get("acknowledgeIrreversible") is not True:
+            return {
+                "success": False,
+                "error": (
+                    f"deleting {key} cannot be undone — the object is not versioned, so no "
+                    "earlier copy remains. Set acknowledgeIrreversible to proceed"
+                ),
+            }
+        try:
+            s3.delete_object(Bucket=ap_alias, Key=key)
+            return {"success": True, "deletedKey": key, "error": None}
+        except Exception as e:
+            return {"success": False, "error": str(e)}
 
     # UX-7: Create upload link (PutObject Presigned URL for external file request)
     if action == "createUploadLink":
@@ -188,6 +377,12 @@ def handler(event, context):
         import uuid as _uuid
 
         dest_key = f"{dest_prefix.rstrip('/')}/{file_name or _uuid.uuid4().hex[:8]}"
+        # Checked like any other write. The URL this returns is a credential for
+        # exactly one key, so an unchecked destination hands out write access to
+        # somewhere the caller cannot otherwise reach.
+        refused = _reject_key(dest_key, allowed, field="destinationPrefix")
+        if refused:
+            return {"uploadUrl": "", "destinationKey": "", "expiresIn": 0, **refused}
         try:
             url = s3.generate_presigned_url(
                 "put_object",
@@ -202,14 +397,37 @@ def handler(event, context):
     if action == "renameFile":
         src_key = event.get("sourceKey", "")
         dst_key = event.get("destinationKey", "")
-        if not src_key or not dst_key:
-            return {"success": False, "newKey": "", "error": "sourceKey and destinationKey required"}
+        for candidate, field in ((src_key, "sourceKey"), (dst_key, "destinationKey")):
+            refused = _reject_key(candidate, allowed, field=field)
+            if refused:
+                return {"success": False, "newKey": "", **refused}
+        if not event.get("overwrite") and _object_exists(ap_alias, dst_key):
+            return {
+                "success": False,
+                "newKey": "",
+                "error": f"{dst_key} already exists. Pass overwrite to replace it",
+            }
         try:
             s3.copy_object(Bucket=ap_alias, CopySource=f"{ap_alias}/{src_key}", Key=dst_key)
             s3.delete_object(Bucket=ap_alias, Key=src_key)
             return {"success": True, "newKey": dst_key, "error": None}
         except Exception as e:
             return {"success": False, "newKey": "", "error": str(e)}
+
+    # Listing is bounded by the same prefixes as every write. Without this, a caller
+    # restricted to `team-a/` could read `team-b/` by asking for it: the endpoint
+    # requires a session but the prefix arrived unchecked. Browsing the root is still
+    # allowed and shows only what the caller may see, which is what makes the
+    # restriction navigable rather than a dead end.
+    if allowed and prefix:
+        if not any(prefix.startswith(p) or p.startswith(prefix) for p in allowed):
+            return {
+                "files": [],
+                "isTruncated": False,
+                "nextContinuationToken": None,
+                "resolvedAp": ap_alias,
+                "scope": "denied",
+            }
 
     params = {
         "Bucket": ap_alias,
@@ -252,11 +470,14 @@ def handler(event, context):
             "scope": scope,
         }
     except Exception as e:
-        print(f"Error listing files: {e}")
+        # logger, not print: a print goes to the log stream without a level, so it
+        # cannot be filtered out of an alarm or found by one.
+        logger.exception("listFiles failed for prefix %s", prefix)
         return {
             "files": [],
             "isTruncated": False,
             "nextContinuationToken": None,
             "resolvedAp": ap_alias,
             "scope": "error",
+            "error": str(e),
         }

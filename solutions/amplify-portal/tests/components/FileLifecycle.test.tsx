@@ -17,8 +17,14 @@ import {
   TRASH_PREFIX,
 } from "../../src/components/FileLifecycle";
 import { I18nProvider } from "../../src/i18n";
+import { ToastProvider } from "../../src/lib/toast";
 
-const renderUi = (ui: ReactElement) => render(<I18nProvider>{ui}</I18nProvider>);
+const renderUi = (ui: ReactElement) =>
+  render(
+    <I18nProvider>
+      <ToastProvider>{ui}</ToastProvider>
+    </I18nProvider>
+  );
 
 beforeEach(() => {
   fileMutate.mockReset();
@@ -94,24 +100,20 @@ describe("FileRowActions trash", () => {
     currentPrefix: "reports/",
   };
 
-  it("does nothing when the confirm is dismissed", () => {
-    vi.spyOn(window, "confirm").mockReturnValue(false);
+  it("asks nothing beforehand and offers to undo instead", async () => {
+    const confirm = vi.spyOn(window, "confirm");
+    fileMutate.mockResolvedValue({ success: true, trashKey: ".trash/reports/q3.pdf" });
     renderUi(<FileRowActions {...props} onChanged={vi.fn()} />);
     fireEvent.click(screen.getByLabelText("Move to trash"));
 
-    expect(fileMutate).not.toHaveBeenCalled();
-  });
-
-  it("names the file in the confirm prompt", () => {
-    const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
-    renderUi(<FileRowActions {...props} onChanged={vi.fn()} />);
-    fireEvent.click(screen.getByLabelText("Move to trash"));
-
-    expect(confirm.mock.calls[0][0]).toContain("q3.pdf");
+    // A dialog asks before the fact and asks every time. The undo answers after,
+    // when a mistake is visible, and the object is still there to put back.
+    await waitFor(() => expect(screen.getByText(/Moved q3.pdf to the trash/i)).toBeInTheDocument());
+    expect(confirm).not.toHaveBeenCalled();
+    expect(screen.getByRole("button", { name: "Undo" })).toBeInTheDocument();
   });
 
   it("reloads the listing after a successful move", async () => {
-    vi.spyOn(window, "confirm").mockReturnValue(true);
     fileMutate.mockResolvedValue({ success: true, trashKey: ".trash/reports/q3.pdf" });
     const onChanged = vi.fn();
     renderUi(<FileRowActions {...props} onChanged={onChanged} />);
@@ -122,6 +124,49 @@ describe("FileRowActions trash", () => {
       action: "trashFile",
       params: { key: "reports/q3.pdf" },
     });
+  });
+
+  it("puts the file back when the undo is taken", async () => {
+    fileMutate.mockResolvedValue({ success: true, trashKey: ".trash/reports/q3.pdf" });
+    const onChanged = vi.fn();
+    renderUi(<FileRowActions {...props} onChanged={onChanged} />);
+    fireEvent.click(screen.getByLabelText("Move to trash"));
+
+    const undo = await waitFor(() => screen.getByRole("button", { name: "Undo" }));
+    fireEvent.click(undo);
+
+    await waitFor(() => expect(fileMutate).toHaveBeenCalledTimes(2));
+    // The key the backend reported, not one recomputed at the call site: only the
+    // response knows where the object actually landed.
+    expect(fileMutate.mock.calls[1][0]).toEqual({
+      action: "restoreFromTrash",
+      params: { trashKey: ".trash/reports/q3.pdf" },
+    });
+    await waitFor(() => expect(screen.queryByRole("button", { name: "Undo" })).toBeNull());
+  });
+
+  it("offers no undo when the backend did not say where the file went", async () => {
+    // Without a trash key there is nothing to restore, and an undo button that
+    // cannot work is worse than none.
+    fileMutate.mockResolvedValue({ success: true });
+    renderUi(<FileRowActions {...props} onChanged={vi.fn()} />);
+    fireEvent.click(screen.getByLabelText("Move to trash"));
+
+    await waitFor(() => expect(screen.getByText(/Moved q3.pdf to the trash/i)).toBeInTheDocument());
+    expect(screen.queryByRole("button", { name: "Undo" })).toBeNull();
+  });
+
+  it("reports a failed undo on the notice rather than losing it", async () => {
+    fileMutate.mockResolvedValueOnce({ success: true, trashKey: ".trash/reports/q3.pdf" });
+    fileMutate.mockResolvedValueOnce({ success: false, error: "AccessDenied" });
+    renderUi(<FileRowActions {...props} onChanged={vi.fn()} />);
+    fireEvent.click(screen.getByLabelText("Move to trash"));
+
+    fireEvent.click(await waitFor(() => screen.getByRole("button", { name: "Undo" })));
+
+    await waitFor(() => expect(screen.getByRole("alert")).toHaveTextContent("AccessDenied"));
+    // The offer is withdrawn: retrying the same call would fail the same way.
+    expect(screen.queryByRole("button", { name: "Undo" })).toBeNull();
   });
 });
 

@@ -220,15 +220,15 @@ aws stepfunctions list-executions \
 
 #### 全 UC ワークフロー成功画面
 
-![Step Functions 全ワークフロー成功](../screenshots/masked/step-functions-all-succeeded.png)
+![Step Functions 全ワークフロー成功](../screenshots/masked/phase1/phase1-step-functions-all-succeeded.png)
 
 #### UC1 E2E 実行成功画面
 
-![UC1 Step Functions 成功](../screenshots/masked/step-functions-uc1-succeeded.png)
+![UC1 Step Functions 成功](../screenshots/masked/phase1/phase1-step-functions-uc1-succeeded.png)
 
 #### Lambda 関数一覧
 
-![Lambda 全関数](../screenshots/masked/lambda-all-functions.png)
+![Lambda 全関数](../screenshots/masked/phase1/phase1-lambda-all-functions.png)
 
 ### S3 出力バケットの確認
 

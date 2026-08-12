@@ -154,4 +154,4 @@ The requests corresponding to SL-1 to SL-3, and the remaining questions, are sti
 
 - [Tamperproof Snapshot Design Guide](../tamperproof-snapshot-design.md) — SnapLock volumes versus snapshot locking, and the pre-flight checklist
 - [FR-1 to FR-4 (already submitted)](./fsxn-s3ap-improvements.md) — FSx for ONTAP S3 AP core features
-- [Lambda / HealthOmics integration gaps](./lambda-healthomics-s3ap-gaps.md) — a different scope
+- [Lambda / HealthOmics integration gaps](./lambda-healthomics-s3ap-gaps.en.md) — a different scope

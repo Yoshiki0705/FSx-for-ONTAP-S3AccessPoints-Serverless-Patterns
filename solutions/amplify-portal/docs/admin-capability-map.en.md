@@ -305,7 +305,7 @@ two levels above.
 ## Related documents
 
 - [Resource management demo guide](resource-management-demo-guide.en.md) — per-panel steps
-- [Implementation guide](IMPLEMENTATION.md) — architecture and configuration
-- [ONTAP connection guide](ONTAP-CONNECTION-GUIDE.md) — connecting to the management endpoint
+- [Implementation guide](IMPLEMENTATION.en.md) — architecture and configuration
+- [ONTAP connection guide](ONTAP-CONNECTION-GUIDE.en.md) — connecting to the management endpoint
 - [AI agent demo guide](ai-agent-demo-guide.en.md)
 - [Operations optimisation patterns](../../../operations/README.md) — metric retention and capacity analysis

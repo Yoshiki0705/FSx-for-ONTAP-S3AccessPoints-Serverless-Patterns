@@ -39,25 +39,77 @@ export interface PortalResponse {
   errors?: readonly { message: string }[];
 }
 
+/** The fields a handler adds beside `error` to say *which* way it failed. */
+export interface FailureDiagnosis {
+  /** One of the classes in shared/ontap_diagnosis.py. */
+  errorClass?: string;
+  /** The HTTP status, when the far side answered at all. */
+  errorStatus?: number;
+  /** ONTAP's own error code. */
+  errorCode?: string;
+}
+
+/** The payload fields `unwrap` inspects, on top of whatever the caller asked for. */
+type FailurePayload = { error?: string } & FailureDiagnosis;
+
+/**
+ * A resolver-reported failure, with the diagnosis attached.
+ *
+ * Promoting the payload error to a rejection is what makes TanStack's `error`
+ * channel mean "this did not work" (see the module comment). Doing that with a
+ * bare `Error` also threw away everything except the message, so a panel could
+ * only ever render one piece of guidance for five different causes — which is how
+ * a rejected password came to be displayed as a VPC problem.
+ */
+export class DispatchError extends Error implements FailureDiagnosis {
+  readonly errorClass?: string;
+  readonly errorStatus?: number;
+  readonly errorCode?: string;
+
+  constructor(message: string, diagnosis: FailureDiagnosis = {}) {
+    super(message);
+    this.name = "DispatchError";
+    this.errorClass = diagnosis.errorClass;
+    this.errorStatus = diagnosis.errorStatus;
+    this.errorCode = diagnosis.errorCode;
+  }
+}
+
 /**
  * Parse a dispatch response, rejecting when the operation reported a failure.
  *
  * @param pending The in-flight operation, already invoked.
  * @returns The parsed payload, or null when the operation returned no data.
- * @throws Error when the payload carries an `error` field, or when the payload is
- *   absent and GraphQL reported errors.
+ * @throws DispatchError when the payload carries an `error` field, or when the
+ *   payload is absent and GraphQL reported errors.
  */
 export async function unwrap<T>(pending: Promise<PortalResponse>): Promise<T | null> {
   const response = await pending;
-  const data = parseResponse<T & { error?: string }>(response);
+  const data = parseResponse<T & FailurePayload>(response);
 
   if (data?.error) {
-    throw new Error(data.error);
+    throw new DispatchError(data.error, data);
   }
   if (!data && response.errors?.length) {
-    throw new Error(response.errors.map((e) => e.message).join(", "));
+    throw new DispatchError(response.errors.map((e) => e.message).join(", "));
   }
   return data;
+}
+
+/**
+ * The diagnosis a query error carries, or an empty object.
+ *
+ * Empty rather than null so a call site can spread it into the notice without a
+ * branch: a handler that has not been migrated, or an older deployment, then
+ * simply renders the general guidance.
+ */
+export function failureDiagnosis(error: unknown): FailureDiagnosis {
+  if (!(error instanceof DispatchError)) return {};
+  return {
+    errorClass: error.errorClass,
+    errorStatus: error.errorStatus,
+    errorCode: error.errorCode,
+  };
 }
 
 /**

@@ -3,7 +3,47 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!--
+      Tints the browser chrome to match the page, so the status bar and address bar do
+      not stay white above a dark page on a phone. Two entries rather than one: the
+      browser picks by the OS preference, which is also what the theme falls back to
+      when the user has not chosen. There is deliberately no web app manifest -- this
+      is a website, and claiming standalone display would hide the address bar that
+      tells the user which portal they are signed in to.
+    -->
+    <meta name="theme-color" media="(prefers-color-scheme: light)" content="#ffffff" />
+    <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#14171c" />
     <title>FSx for ONTAP File Portal</title>
+    <script>
+      /*
+       * Resolve the theme before the first paint.
+       *
+       * Inline and synchronous on purpose. Deferring this to the app means the page
+       * paints light and then flips, which is a flash of the wrong colours on every
+       * load for anyone who prefers dark. Being here also means the stylesheet needs
+       * only one dark block: `data-theme` is always set, so there is no
+       * "unspecified" state for a media query to cover, and no second copy of the
+       * palette to keep in step.
+       *
+       * Kept in the document rather than a module so it cannot be reordered behind
+       * the bundle. The stored value is read defensively: a browser with storage
+       * blocked should still get a theme.
+       */
+      (function () {
+        var choice = null;
+        try {
+          choice = localStorage.getItem("portal-theme");
+        } catch (e) {
+          /* storage unavailable; fall through to the system preference */
+        }
+        if (choice !== "dark" && choice !== "light") {
+          choice = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches
+            ? "dark"
+            : "light";
+        }
+        document.documentElement.setAttribute("data-theme", choice);
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

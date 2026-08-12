@@ -47,8 +47,8 @@ A guide for 1-day workshops conducted by partners/SIs for customers.
 5. Q&A (10 min)
 
 ### Materials
-- [S3AP Authorization Model](s3ap-authorization-model.md)
-- [Trigger Mode Decision Guide](trigger-mode-decision-guide.md)
+- [S3AP Authorization Model](s3ap-authorization-model.en.md)
+- [Trigger Mode Decision Guide](trigger-mode-decision-guide.en.md)
 - README architecture diagrams
 
 ---
@@ -93,7 +93,7 @@ A guide for 1-day workshops conducted by partners/SIs for customers.
 ## Session 4: Security & Governance Review (60 min)
 
 ### Agenda
-1. Review [Governance Checklist](governance-checklist.md) (20 min)
+1. Review [Governance Checklist](governance-checklist.en.md) (20 min)
 2. Data classification discussion (15 min)
 3. Human-in-the-loop requirement determination (10 min)
 4. Compliance requirement confirmation (15 min)
@@ -108,8 +108,8 @@ A guide for 1-day workshops conducted by partners/SIs for customers.
 ## Session 5: Production Planning (45 min)
 
 ### Agenda
-1. Confirm [Production Readiness](production-readiness.md) Level (10 min)
-2. Select [Deployment Profile](deployment-profiles.md) (10 min)
+1. Confirm [Production Readiness](production-readiness.en.md) Level (10 min)
+2. Select [Deployment Profile](deployment-profiles.en.md) (10 min)
 3. Define success criteria (10 min)
 4. Agree on timeline and next steps (15 min)
 
@@ -158,7 +158,7 @@ One week before the workshop, request that customer participants prepare the fol
 - [ ] Create S3 Access Point
 - [ ] Place test files
 - [ ] Verify network reachability (VPC, Security Group)
-- [ ] Conduct hearing using [Customer Discovery Template](customer-discovery-template.md)
+- [ ] Conduct hearing using [Customer Discovery Template](customer-discovery-template.en.md)
 
 ### Day Before
 - [ ] Pre-deployment test of CloudFormation template
@@ -170,8 +170,8 @@ One week before the workshop, request that customer participants prepare the fol
 
 ## References
 
-- [Choose Your Path](../README.md#choose-your-path)
-- [Partner/SI Delivery Checklist](partner-si-delivery-checklist.md)
-- [Customer Discovery Template](customer-discovery-template.md)
-- [Production Readiness](production-readiness.md)
-- [Governance Checklist](governance-checklist.md)
+- [Choose Your Path](../README.en.md#choose-your-path)
+- [Partner/SI Delivery Checklist](partner-si-delivery-checklist.en.md)
+- [Customer Discovery Template](customer-discovery-template.en.md)
+- [Production Readiness](production-readiness.en.md)
+- [Governance Checklist](governance-checklist.en.md)

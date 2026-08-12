@@ -156,7 +156,7 @@ export function SnaplockManager() {
           {!config.isEnabled && (
             <div className="info-message" style={{ marginTop: "1rem" }}>
               <strong>ℹ️ {t("slNewVolumeOnly")}</strong>
-              <p style={{ margin: "0.5rem 0 0", fontSize: "0.85rem", color: "var(--text-secondary)" }}>
+              <p style={{ margin: "0.5rem 0 0", fontSize: "0.85rem", color: "var(--color-text-secondary)" }}>
                 {t("slNewVolumeOnlyWhy")} {t("slNewVolumeOnlyHow")}
               </p>
             </div>

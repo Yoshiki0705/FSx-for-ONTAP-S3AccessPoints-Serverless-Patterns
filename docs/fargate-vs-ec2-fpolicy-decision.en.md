@@ -87,5 +87,5 @@ Switchable via the `ComputeType` parameter.
 
 ## References
 
-- [Deployment Profiles](deployment-profiles.md)
-- [solutions/event-driven/fpolicy/ README](../solutions/event-driven/fpolicy/README.md)
+- [Deployment Profiles](deployment-profiles.en.md)
+- [solutions/event-driven/fpolicy/ README](../solutions/event-driven/fpolicy/README.en.md)

@@ -23,6 +23,7 @@
 |---|---|---|
 | Essayer une démo sans FSx | [Demo Mode Guide](docs/demo-mode-guide.md) | 5 min |
 | Parcourir les fichiers via un portail web | [File Portal UI (Amplify / Nextcloud)](docs/file-portal-amplify-gen2.en.md) | 10 min |
+| **Utiliser** le portail (connexion, navigation, téléphone) | [Guide utilisateur](docs/fr/portal-user-guide.md) | 10 min |
 | Déployer un pattern sur AWS | [Deployment Guide](docs/guides/deployment-guide.md) | 30 min |
 | Trouver le pattern adapté à ma charge | [Pattern Selection Guide](docs/pattern-selection-guide.md) | 15 min |
 | Estimer les coûts | [Cost Calculator](docs/cost-calculator.md) | 5 min |

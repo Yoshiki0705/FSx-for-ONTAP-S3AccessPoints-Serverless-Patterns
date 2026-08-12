@@ -250,7 +250,29 @@ const listFilesRole = new iam.Role(dataStack, "ListFilesLambdaRole", {
     S3APAccess: new iam.PolicyDocument({
       statements: [
         new iam.PolicyStatement({
-          actions: ["s3:ListBucket", "s3:GetObject", "s3:GetBucketLocation", "s3:PutObject", "s3:DeleteObject", "s3:CopyObject"],
+          // Rename, move-to-trash and restore are all CopyObject followed by
+          // DeleteObject, and CopyObject is not an IAM action — the list here
+          // used to claim `s3:CopyObject`, which does not exist and so granted
+          // nothing. What the call actually needs is GetObject on the source,
+          // PutObject on the destination, and the tagging pair: S3 reads the
+          // source object's tags to carry them across, and writes them on the
+          // copy.
+          //
+          // Observed before this was added: renaming a file returned
+          // "not authorized to perform: s3:GetObjectTagging", and so did
+          // restoring one from the trash. Moving the same object to the trash
+          // succeeded, so the requirement is not raised on every copy — which is
+          // why the gap survived: the operation exercised first happened to be
+          // the one that works.
+          actions: [
+            "s3:ListBucket",
+            "s3:GetBucketLocation",
+            "s3:GetObject",
+            "s3:GetObjectTagging",
+            "s3:PutObject",
+            "s3:PutObjectTagging",
+            "s3:DeleteObject",
+          ],
           resources: config.s3ApResourceArns,
         }),
       ],
@@ -657,6 +679,10 @@ const listSnapshotsFunction = new lambda.Function(
     handler: "index.handler",
     code: functionCode("functions/snapshots"),
     role: listSnapshotsRole,
+    // Reads shared.ontap_diagnosis, which classifies an ONTAP failure instead of
+    // reporting every one of them as a missing volume. Without the layer the import
+    // fails at cold start and the panel shows a blank error.
+    layers: [sharedPythonLayer],
     environment: {
       ONTAP_MGMT_IP: config.ontapMgmtIp,
       ONTAP_SECRET_NAME: config.ontapSecretName,
@@ -679,9 +705,13 @@ api.addLambdaDataSource("ListSnapshotsLambdaDataSource", listSnapshotsFunction);
 // Provides: blockSmbUser, unblockSmbUser, blockNfsIp, unblockNfsIp,
 //           containThreat, listActiveBlocks, disconnectSessions, listSvms,
 //           sweepExpiredBlocks, getSnapshotsWithLockStatus, getArpStatus,
-//           getArpSuspects, getSnapLockConfig, getS3ObjectLockStatus,
+//           getArpSuspects, getSnapLockConfig,
 //           getProtectionSummary, createSnapshot, deleteSnapshot,
 //           updateArpState, updateRetentionPolicy
+// Not here: getS3ObjectLockStatus, and updateRetentionPolicy's s3_object_lock
+// target. Both belong to resource-management, which holds the configured bucket
+// and the s3:*BucketObjectLockConfiguration permissions; this role has no S3
+// permissions at all. A second copy lived here and could only ever fail.
 const arpResponseRole = new iam.Role(dataStack, "ArpResponseLambdaRole", {
   assumedBy: new iam.ServicePrincipal("lambda.amazonaws.com"),
   managedPolicies: [

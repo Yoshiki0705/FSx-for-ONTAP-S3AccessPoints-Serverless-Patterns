@@ -285,7 +285,7 @@ Lambda Duration is high
 - [Accessing your data via Amazon S3 access points](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/accessing-data-via-s3-access-points.html)
 - [Access point compatibility (Supported S3 operations)](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/access-points-for-fsxn-object-api-support.html)
 - [S3 AP dual-layer authorization model](s3ap-authorization-model.en.md)
-- [Deployment Profiles](deployment-profiles.md)
+- [Deployment Profiles](deployment-profiles.en.md)
 
 ## Sharing Bandwidth with KNFSD File Cache
 
@@ -349,5 +349,5 @@ Separate read-heavy bursts from S3 AP post-processing by time of day:
 > **Observability note**: Monitor KNFSD's CloudWatch metrics (particularly `cache_hit_ratio` and `read_throughput_source`) alongside the FSx `DataReadBytes` metric on the same dashboard, so bandwidth contention is detected early. KNFSD exposes 70+ metrics via OTel, so integration with Prometheus/Grafana is also possible.
 
 > **See also**: For the detailed architecture guide, see [KNFSD + S3 AP Dual-Path Architecture](./knfsd-s3ap-dual-path-architecture.en.md).
-- [S3AP Dual-Layer Authorization Model](s3ap-authorization-model.md)
-- [Deployment Profiles](deployment-profiles.md)
+- [S3AP Dual-Layer Authorization Model](s3ap-authorization-model.en.md)
+- [Deployment Profiles](deployment-profiles.en.md)

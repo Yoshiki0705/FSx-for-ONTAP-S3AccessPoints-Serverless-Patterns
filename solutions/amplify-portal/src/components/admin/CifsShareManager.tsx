@@ -146,7 +146,7 @@ export function CifsShareManager() {
         <summary style={{ cursor: "pointer", fontWeight: 500 }}>
           ℹ️ {t("rmCaShareExplanationTitle")}
         </summary>
-        <div style={{ marginTop: "0.5rem", padding: "0.5rem", background: "#f8f9fa", borderRadius: "4px" }}>
+        <div style={{ marginTop: "0.5rem", padding: "0.5rem", background: "var(--color-surface-subtle)", borderRadius: "4px" }}>
           <p style={{ margin: "0 0 0.5rem" }}>{t("rmCaShareExplanationDesc")}</p>
           <a href="https://docs.netapp.com/us-en/ontap/smb-hyper-v-sql/configure-solutions-concept.html"
             target="_blank" rel="noopener noreferrer" style={{ fontSize: "0.8rem" }}>

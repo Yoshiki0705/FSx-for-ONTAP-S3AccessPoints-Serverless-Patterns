@@ -95,5 +95,5 @@ curl -k -u fsxadmin:PASSWORD \
 
 ## Reference Links
 
-- [Deployment Profiles](deployment-profiles.md)
+- [Deployment Profiles](deployment-profiles.en.md)
 - [ONTAP Persistent Store — NetApp Documentation](https://docs.netapp.com/us-en/ontap/nas-audit/persistent-stores.html)

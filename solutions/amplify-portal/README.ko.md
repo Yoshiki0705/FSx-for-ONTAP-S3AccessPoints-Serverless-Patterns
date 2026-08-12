@@ -12,7 +12,7 @@ AWS는 빌딩 블록(S3 API, Cognito, AppSync)을 제공하지만, FSx for ONTAP
 
 ## 문서
 
-- **[사용자 가이드](../../docs/en/portal-user-guide.md)** — 일상적인 포털 사용을 위한 최종 사용자 가이드 (배포 지식 불필요)
+- **[사용자 가이드](../../docs/ko/portal-user-guide.md)** — 일상적인 포털 사용을 위한 최종 사용자 가이드 (배포 지식 불필요)
 - **[시작하기](docs/GETTING-STARTED.md)** — 설정, DemoMode, VPC Endpoints, 프로덕션 체크리스트
 - **[구현 가이드](docs/IMPLEMENTATION.md)** — 아키텍처, 설정 파일, 컴포넌트 구조, 배포, 변경 로그
 - **[관리자 데모 가이드](../../docs/en/admin-resource-management-demo.md)** — 리소스 관리 + ARP/AI E2E 데모 시나리오
@@ -135,7 +135,7 @@ sequenceDiagram
 
 | 그룹 | 섹션 | 용도 |
 |-------|---------|---------|
-| **Browse** | All Files | 탐색, 미리보기, AI Q&A, 공유 링크, QR 액세스 |
+| **Browse** | All Files | 탐색, 정렬, 필터, 다중 선택, 미리보기, AI Q&A, 공유 링크, QR 액세스 |
 | | Favorites | 핀 고정 파일 (DynamoDB, 사용자별) |
 | | Recent | 최근 액세스한 파일 |
 | | Folder Watch | 감시 대상 프리픽스와 수신된 파일 이벤트 (관리 토글) |
@@ -171,7 +171,7 @@ sequenceDiagram
 | **cdk-nag 규정 준수** | CI에서 `CDK_NAG=1`로 AwsSolutionsChecks 실행(배포 시에는 미적용) |
 | **폴백 UI** | ONTAP 미연결 시 안내 패널 표시 (화이트 스크린 없음) |
 
-> **상세 섹션 가이드**: [docs/portal-tabs-guide.md](docs/portal-tabs-guide.md)
+> **상세 섹션 가이드**: [docs/portal-tabs-guide.en.md](docs/portal-tabs-guide.en.md)
 
 ---
 
@@ -540,7 +540,7 @@ amplify-portal/
 ├── monitoring/
 │   └── dashboard.ts               # CloudWatch Dashboard CDK 구조체
 ├── docs/
-│   ├── portal-tabs-guide.md       # 6개 탭 상세 가이드 (스크린샷 포함)
+│   ├── portal-tabs-guide.md       # 17개 섹션 상세 가이드 (4 그룹, 스크린샷 포함)
 │   └── screenshots/               # 포털 UI 스크린샷
 ├── tests/
 │   └── components/App.test.tsx     # 탭 렌더링 + 네비게이션 테스트

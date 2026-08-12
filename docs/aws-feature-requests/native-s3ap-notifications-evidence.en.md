@@ -178,6 +178,6 @@ These make it a genuinely functional workaround, but all of it is complexity tha
 ## References
 
 - [FSx for ONTAP S3 AP Improvements Feature Requests](fsxn-s3ap-improvements.md)
-- [Trigger Mode Decision Guide](../trigger-mode-decision-guide.md)
-- [Deployment Profiles](../deployment-profiles.md)
-- [FPolicy Event-Driven pattern](../../solutions/event-driven/fpolicy/README.md)
+- [Trigger Mode Decision Guide](../trigger-mode-decision-guide.en.md)
+- [Deployment Profiles](../deployment-profiles.en.md)
+- [FPolicy Event-Driven pattern](../../solutions/event-driven/fpolicy/README.en.md)

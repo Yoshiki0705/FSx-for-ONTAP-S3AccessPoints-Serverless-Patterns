@@ -182,6 +182,47 @@ CloudTrail S3-Datenereignisse abfragen, um zu beantworten: „Wer hat auf was zu
 
 ---
 
+### 4. Nutzung auf dem Smartphone
+
+Es gibt keine eigene App. Öffnen Sie **dieselbe URL wie am Desktop** im Browser des
+Smartphones (geprüft mit Safari unter iOS und Chrome unter Android).
+
+<img src="../../solutions/amplify-portal/docs/screenshots/portal-files-mobile-dark.png" alt="Die Dateiliste auf dem Smartphone, dunkles Thema" width="300">
+
+**Vorgehen**
+
+1. Öffnen Sie die URL, die Sie von der Administration erhalten haben
+2. Melden Sie sich mit E-Mail und Kennwort an, bei aktivierter MFA zusätzlich mit einem
+   TOTP-Code. Das automatische Ausfüllen Ihres Kennwortmanagers funktioniert wie gewohnt
+3. Am oberen Rand liegen **☰**, die Themenauswahl, die Sprachauswahl und die Abmeldung
+   (⏻). Die Seitenleiste ist zunächst verborgen
+4. **☰** öffnet die Navigation über dem Inhalt. Die Wahl eines Bereichs schließt sie
+   wieder; zum Schließen ohne Auswahl tippen Sie auf die abgedunkelte Fläche
+5. Zum Öffnen einer Datei tippen Sie auf das Symbol in ihrer Zeile (📄 / 🖼️ / 📕 / 📝).
+   Die Vorschau erscheint als Blatt vom unteren Rand und wird mit **✕** geschlossen
+6. Für mehrere Dateien tippen Sie auf das Kontrollfeld links in jeder Zeile. Anzahl und
+   verfügbare Aktionen erscheinen über der Liste
+
+**Unterschiede zum Desktop**
+
+| Element | Auf dem Smartphone |
+|---------|-------------------|
+| Seitenleiste | eine Schublade über dem Inhalt, mit **☰** geöffnet und geschlossen |
+| Spalten Größe und Geändert | entfallen aus Platzmangel; nach Name lässt sich weiter sortieren |
+| E-Mail-Adresse | ausgeblendet (die Abmeldung ist nur noch ein Symbol) |
+| Dateivorschau | ein Blatt vom unteren Rand, bis zu 70 % des Bildschirms. Ein PDF liest sich im Querformat besser |
+| KI-Assistenzbereich | öffnet als Schublade von rechts |
+
+> **Zum 🖥️ in der Themenauswahl**: Es ist keine Schaltfläche „zur Desktop-Ansicht
+> wechseln". Die drei Möglichkeiten sind ☀️ hell, 🌙 dunkel und 🖥️ **dem Gerät folgen**;
+> letzteres folgt der Darstellungseinstellung von iOS oder Android, einschließlich des
+> automatischen Wechsels am Abend.
+
+> **Datenverbrauch**: Der ZIP-Download eines Ordners überträgt dessen gesamten Inhalt.
+> Prüfen Sie im Mobilfunknetz zuerst Anzahl und Größe der Dateien.
+
+---
+
 ## Tipps & FAQ
 
 **F: Ich sehe „ONTAP Connection Required" in einigen Panels.**
@@ -197,7 +238,7 @@ A: Freigabe-Links verwenden Presigned URLs mit einer von Ihnen gewählten Gülti
 A: Sie sollten sofort erscheinen (ONTAP garantiert protokollübergreifende starke Konsistenz). Versuchen Sie, die Dateiliste zu aktualisieren. Falls sie immer noch fehlen, befindet sich die Datei möglicherweise in einem Unterordner — prüfen Sie den Pfad.
 
 **F: Kann ich das Portal auf dem Handy nutzen?**
-A: Ja. Die Seitenleiste wird auf schmalen Bildschirmen eingeklappt. Alle Funktionen funktionieren in mobilen Browsern, obwohl das Erlebnis für den Desktop optimiert ist.
+A: Ja. Das Vorgehen steht unter „4. Nutzung auf dem Smartphone“ im Einstieg.
 
 **F: Wie ändere ich mein Passwort?**
 A: Verwenden Sie die Cognito Hosted UI oder bitten Sie Ihren Administrator um eine Zurücksetzung.

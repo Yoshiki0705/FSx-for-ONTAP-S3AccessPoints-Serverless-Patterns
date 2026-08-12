@@ -364,10 +364,10 @@ Reference points from each UC to this document:
 
 ## Related Documentation
 
-- [S3AP Authorization Model](s3ap-authorization-model.md)
-- [Trigger Mode Decision Guide](trigger-mode-decision-guide.md)
-- [S3AP Benchmark Results](s3ap-benchmark-results.md)
-- [S3AP Performance Considerations](s3ap-performance-considerations.md)
-- [Deployment Profiles](deployment-profiles.md)
-- [Partner/SI Delivery Checklist](partner-si-delivery-checklist.md)
-- [Production Readiness](production-readiness.md)
+- [S3AP Authorization Model](s3ap-authorization-model.en.md)
+- [Trigger Mode Decision Guide](trigger-mode-decision-guide.en.md)
+- [S3AP Benchmark Results](s3ap-benchmark-results.en.md)
+- [S3AP Performance Considerations](s3ap-performance-considerations.en.md)
+- [Deployment Profiles](deployment-profiles.en.md)
+- [Partner/SI Delivery Checklist](partner-si-delivery-checklist.en.md)
+- [Production Readiness](production-readiness.en.md)

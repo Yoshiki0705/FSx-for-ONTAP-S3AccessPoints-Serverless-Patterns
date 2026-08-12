@@ -23,6 +23,7 @@
 |---|---|---|
 | 無需 FSx 體驗展示 | [Demo Mode Guide](docs/demo-mode-guide.md) | 5 分鐘 |
 | 透過 Web 入口瀏覽檔案 | [File Portal UI (Amplify / Nextcloud)](docs/file-portal-amplify-gen2.en.md) | 10 分鐘 |
+| **使用**入口（登入 → 瀏覽 → 手機） | [使用者指南](docs/zh-TW/portal-user-guide.md) | 10 分鐘 |
 | 將模式部署到 AWS | [Deployment Guide](docs/guides/deployment-guide.md) | 30 分鐘 |
 | 為我的工作負載選擇合適的模式 | [Pattern Selection Guide](docs/pattern-selection-guide.md) | 15 分鐘 |
 | 估算成本 | [Cost Calculator](docs/cost-calculator.md) | 5 分鐘 |

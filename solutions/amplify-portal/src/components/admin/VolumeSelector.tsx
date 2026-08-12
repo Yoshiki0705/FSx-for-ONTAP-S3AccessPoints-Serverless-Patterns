@@ -155,7 +155,7 @@ export function VolumeSelector({ onSelect, label, showUuid = false, autoSelectFi
         </select>
       )}
       {enableSearch && volumes.length === 20 && (
-        <small style={{ color: "#666" }}>{t("rmVolumeSearchHint")}</small>
+        <small style={{ color: "var(--color-text-secondary)" }}>{t("rmVolumeSearchHint")}</small>
       )}
     </div>
   );

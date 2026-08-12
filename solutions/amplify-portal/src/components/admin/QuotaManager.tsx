@@ -114,8 +114,11 @@ export function QuotaManager() {
     } catch (err) { setError(err instanceof Error ? err.message : "Delete failed"); }
   };
 
-  if (loading && !volumeName) return <p className="loading">{t("loading")}</p>;
-
+  // No early return on `loading && !volumeName`: this panel's only volume
+  // control is inside the markup below, so hiding the markup while waiting for a
+  // volume would remove the way to supply one. The branch was unreachable here
+  // because `isFetching` is false while a query is disabled, but the same line
+  // read against `isPending` deadlocked the qtree panel.
   return (
     <div className="admin-panel">
       <div className="panel-header">
