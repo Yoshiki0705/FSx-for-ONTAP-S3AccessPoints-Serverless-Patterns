@@ -227,6 +227,14 @@ drift:
 # line excused an untranslated literal beside it. A rule whose pattern misses the
 # shape it is aimed at is indistinguishable from a clean tree.
 	$(PYTHON) -m pytest scripts/tests/test_theme_literal_check.py --tb=short -q
+# The `enabled` / `isPending` rule, also inside check_portal_drift.py. A gated query is
+# pending forever, so reading that as loading is a spinner that never clears: the qtree
+# panel rendered one instead of the volume dropdown it needed someone to use, and no
+# request was ever made. Types, lint and every other gate passed -- the query is correct
+# and only the meaning taken from the flag was wrong. Its tests carry more weight than
+# the rule: three versions of the source reader silently stopped seeing code, and a
+# reader that sees nothing reports a clean tree.
+	$(PYTHON) -m pytest scripts/tests/test_query_gate_rule.py --tb=short -q
 	$(PYTHON) scripts/check_portal_drift.py
 # boto3 and urllib3 are pinned in pyproject.toml and requirements.txt both, and
 # Renovate manages the two as separate managers. It raised boto3 in pyproject.toml

@@ -1059,6 +1059,244 @@ def check_locale_escaping() -> list[Finding]:
     return findings
 
 
+_USE_QUERY = re.compile(r"\buseQuery\s*\(")
+# Start-of-line so a stray `enabled` inside a queryFn body is not read as the option.
+_ENABLED_OPTION = re.compile(r"^\s*enabled\s*:", re.MULTILINE)
+# `const { ... } = useQuery(` or `const name = useQuery(`. Applied to the text before
+# the call, rightmost match, so only the declaration that receives it is considered.
+_QUERY_BINDING = re.compile(r"(?:const|let)\s+(\{[^{}]*\}|[A-Za-z_$][\w$]*)\s*(?::[^=]+)?=\s*$")
+_PENDING_FIELD = re.compile(r"\bisPending\b|\bstatus\b")
+# Both comment forms: inside JSX the marker has to be `{/* ... */}`, because `//` there
+# would be rendered as text. Accepting only `//` made the rule impossible to satisfy on
+# exactly the reads that are written in markup.
+#
+# `[ \t]*` and not `\s*` after the colon: `\s` matches a newline, so a bare marker with
+# nothing after it found the first word of the next line and read as a reason. That made
+# `// query-gate-checked:` a mute switch, which is what requiring a reason prevents.
+_GATE_EXEMPT = re.compile(r"/[/*][ \t]*query-gate-checked:[ \t]*\S")
+
+
+# A `/` after one of these opens a regular expression rather than dividing. Enough to
+# tell the two apart in this codebase, where every regex literal follows a call paren,
+# an `=`, a comma or a `return`.
+_REGEX_PRECEDES = set("(,=:[!&|?{};+-*%^~")
+# ...but not when what follows rules a pattern out. `/>` closes a JSX tag and `/=`
+# divides in place; both sit after a `}` or a quote, which is in the set above. Reading
+# either as a regex blanked the rest of its line, taking a `)}` with it.
+_NOT_REGEX_AFTER = {">", "=", "/", "*", " ", "\t", "\n", ""}
+
+
+def _blank_strings_and_comments(source: str) -> str:
+    """The source with strings, comments and regex literals blanked, offsets intact.
+
+    Brace matching below would otherwise be thrown by a bracket inside any of them, and
+    `enabled:` written in a comment would read as the option. Lengths are preserved so
+    every offset still maps to the same line.
+
+    All three kinds have to be handled, and each was found by breaking:
+
+    - strings only: the apostrophe in a prose comment opened a string that never closed
+      and blanked the rest of the file;
+    - strings and comments: ``text.split(/(\\*\\*[^*]+\\*\\*|`[^`]+`)/g)`` put a
+      backtick inside a regex, which opened a template literal that ran to the end.
+
+    Both times the checker then found nothing and reported it as a pass, which is why
+    `_masking_is_sound` runs over the result.
+    """
+    out = list(source)
+    index = 0
+    end = len(source)
+    previous = ""
+    while index < end:
+        char = source[index]
+        two = source[index : index + 2]
+        if two == "//":
+            while index < end and source[index] != "\n":
+                out[index] = " "
+                index += 1
+        elif two == "/*":
+            while index < end and source[index : index + 2] != "*/":
+                if source[index] != "\n":
+                    out[index] = " "
+                index += 1
+            for offset in range(index, min(index + 2, end)):
+                out[offset] = " "
+            index += 2
+        elif char in "\"'`" or (
+            char == "/" and previous in _REGEX_PRECEDES and source[index + 1 : index + 2] not in _NOT_REGEX_AFTER
+        ):
+            closer = char
+            in_class = False
+            index += 1
+            while index < end:
+                current = source[index]
+                if current == "\\":
+                    out[index] = " "
+                    if index + 1 < end and source[index + 1] != "\n":
+                        out[index + 1] = " "
+                    index += 2
+                    continue
+                if closer == "/":
+                    # A `/` inside a character class does not end the pattern.
+                    if current == "[":
+                        in_class = True
+                    elif current == "]":
+                        in_class = False
+                    elif current == "\n":
+                        break  # An unterminated regex is a mis-read `/`; give up on it.
+                if current == closer and not in_class:
+                    break
+                if current != "\n":
+                    out[index] = " "
+                index += 1
+            index += 1
+        else:
+            if not char.isspace():
+                previous = char
+            index += 1
+    return "".join(out)
+
+
+def _masking_is_sound(masked: str) -> bool:
+    """Whether the masked source still has balanced brackets.
+
+    Independent of what the caller is looking for. A runaway string or comment blanks
+    real code, which leaves an opening bracket without its partner, so this catches a
+    mis-read of any cause -- including one nobody has hit yet. Counting the construct
+    under test instead would not: a `useQuery(` written inside a doc comment is
+    correctly blanked and would read as a loss.
+    """
+    pairs = {")": "(", "]": "[", "}": "{"}
+    stack: list[str] = []
+    for char in masked:
+        if char in "([{":
+            stack.append(char)
+        elif char in pairs:
+            if not stack or stack.pop() != pairs[char]:
+                return False
+    return not stack
+
+
+def _call_extent(text: str, open_paren: int) -> int:
+    """Index of the `)` closing the call that opens at `open_paren`, or -1."""
+    depth = 0
+    for index in range(open_paren, len(text)):
+        char = text[index]
+        if char in "([{":
+            depth += 1
+        elif char in ")]}":
+            depth -= 1
+            if depth == 0:
+                return index
+    return -1
+
+
+_COMMENT_ONLY = re.compile(r"^\s*(?://|/?\*|\{?/\*)")
+
+
+def _marker_window(lines: list[str], number: int) -> str:
+    """The read's own line, the one above it, and any comment block continuing upward.
+
+    One line of lookback is not enough: the reason for an exemption rarely fits on one,
+    and a marker on the first line of a two-line comment was missed by the version that
+    looked back exactly one line -- which reads as an unmarked violation, the opposite
+    of what the author wrote.
+    """
+    first = max(0, number - 2)
+    while first > 0 and _COMMENT_ONLY.match(lines[first - 1]):
+        first -= 1
+    return "\n".join(lines[first:number])
+
+
+def check_query_gate_reads() -> list[Finding]:
+    """`isPending` read from a useQuery that declares `enabled`.
+
+    A disabled query is `status: "pending"` with `fetchStatus: "idle"`, because it has
+    no data and never asked for any. So `isPending` on a gated query does not mean "a
+    request is in flight", it means "nothing has loaded yet" -- and while the gate is
+    shut that is permanently true.
+
+    The qtree panel shipped this. It gated on a chosen volume, read `isPending` as
+    `loading`, and returned a spinner for the whole panel while loading -- so the
+    volume dropdown, the only thing that could open the gate, was never rendered. No
+    request was ever made and the spinner never cleared. `tsc`, the linter and every
+    other check here passed: the types are right, the query is correct, and the bug is
+    entirely in what the flag was taken to mean.
+
+    `isFetching` is false while a query is disabled, which is what a loading flag
+    wants. A read that genuinely needs "no data yet" has to check the gate itself on
+    the same path, and can say so with `// query-gate-checked: <reason>` on the read
+    or the line above it.
+    """
+    findings: list[Finding] = []
+    for path in sorted((PORTAL / "src").rglob("*.ts*")):
+        source = path.read_text(encoding="utf-8")
+        if "useQuery" not in source:
+            continue
+        masked = _blank_strings_and_comments(source)
+        lines = source.splitlines()
+
+        # A reader that quietly stops seeing calls reports a clean tree, which is the
+        # failure this whole check exists to prevent.
+        if not _masking_is_sound(masked):
+            findings.append(
+                Finding(
+                    "query-gate-read",
+                    str(path.relative_to(PORTAL)),
+                    "brackets do not balance after masking strings, comments and regex "
+                    "literals, so a string or comment ran past its end and blanked real "
+                    "code. This file is not being checked. Fix "
+                    "_blank_strings_and_comments in this script, not the file.",
+                )
+            )
+            continue
+        for call in _USE_QUERY.finditer(masked):
+            close = _call_extent(masked, masked.index("(", call.start()))
+            if close < 0:
+                continue
+            options = masked[call.end() : close]
+            if not _ENABLED_OPTION.search(options):
+                continue
+
+            binding = _QUERY_BINDING.search(masked[: call.start()])
+            if not binding:
+                continue
+            target = binding.group(1)
+
+            # Destructured: the pending flag is named in the pattern itself. Object
+            # form: it is read later as `name.isPending`.
+            if target.startswith("{"):
+                # Offset of the field inside the pattern, not of the pattern, so the
+                # report names the line the flag is on and the marker has one place
+                # to go in either shape.
+                reads = [
+                    (binding.start(1) + field.start(), field.group(0)) for field in _PENDING_FIELD.finditer(target)
+                ]
+            else:
+                reads = [
+                    (match.start(), match.group(1))
+                    for match in re.finditer(rf"\b{re.escape(target)}\.(isPending|status)\b", masked)
+                ]
+
+            for offset, field in reads:
+                number = masked.count("\n", 0, offset) + 1
+                if _GATE_EXEMPT.search(_marker_window(lines, number)):
+                    continue
+                findings.append(
+                    Finding(
+                        "query-gate-read",
+                        f"{path.relative_to(PORTAL)}:{number}",
+                        f"reads {field} from a useQuery that sets `enabled`. A disabled query "
+                        f"stays pending forever, so this is true whenever the gate is shut, not "
+                        f"only while a request is running. Use isFetching for a loading flag -- "
+                        f"or, if this path already checks the same condition as `enabled`, say so "
+                        f"with `// query-gate-checked: <reason>` above the read, or "
+                        f"`{{/* query-gate-checked: <reason> */}}` inside JSX.",
+                    )
+                )
+    return findings
+
+
 _PALETTE_BLOCK = re.compile(r"(:root|\[data-theme=\"dark\"\])\s*\{(.*?)\n\}", re.DOTALL)
 _TOKEN_DEFINITION = re.compile(r"(--[a-z0-9-]+)\s*:\s*([^;]+);")
 _RULE_BLOCK = re.compile(r"([^{}]*)\{([^{}]*)\}")
@@ -1526,6 +1764,7 @@ def main() -> int:
         + check_dead_media_overrides()
         + check_breakpoint_agreement()
         + check_locale_escaping()
+        + check_query_gate_reads()
     )
 
     if not findings:
