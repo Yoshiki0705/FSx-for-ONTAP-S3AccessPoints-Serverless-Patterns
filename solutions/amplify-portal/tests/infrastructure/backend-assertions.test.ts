@@ -53,6 +53,7 @@ describe("Backend Infrastructure Structure", () => {
       "ArpResponseFunction",
       "ResourceMgmtFunction",
       "NotificationBridgeFunction",
+      "ThumbnailsFunction",
     ];
 
     it("defines all expected Lambda functions", () => {
@@ -540,7 +541,10 @@ describe("shared layer and shared imports", () => {
   it.each(directoriesImportingShared())(
     "attaches sharedPythonLayer to the function packaging %s",
     (dir) => {
-      expect(declarationFor(dir)).toContain("layers: [sharedPythonLayer]");
+      // Matched inside the `layers:` array rather than as a fixed string: a function
+      // may carry more than one layer, and the thumbnail function does (Pillow as
+      // well). Asserting the single-element form failed on a correct declaration.
+      expect(declarationFor(dir)).toMatch(/layers:\s*\[[^\]]*\bsharedPythonLayer\b/);
     },
   );
 });

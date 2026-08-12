@@ -22,7 +22,7 @@ GitHub Actions (pr-preview.yml)
     ├── npx ampx sandbox --identifier pr-${PR_NUMBER} --once
     │     ├── Cognito User Pool (pr-123-fsxn-portal)
     │     ├── AppSync API (pr-123-fsxn-portal)
-    │     ├── Lambda x18 (pr-123-*)
+    │     ├── Lambda x19 (pr-123-*)
     │     └── DynamoDB tables (pr-123-*)
     │
     ├── npm run build (Vite → dist/)
@@ -45,7 +45,7 @@ GitHub Actions (pr-cleanup.yml)
 |---------|:---:|------|
 | Cognito User Pool | $0 | Free Tier (50,000 MAU) |
 | AppSync API | $0 | Free Tier (250,000 queries/月) |
-| Lambda x18 | $0 | Free Tier (1M requests/月) |
+| Lambda x19 | $0 | Free Tier (1M requests/月) |
 | DynamoDB x5 tables | $0 | On-demand, Free Tier 25 GB |
 | Amplify Hosting | ~$0.01/PR | Build minutes のみ。Hosting デプロイ手順を実装した場合の見積り |
 | **合計** | **~$0/PR（見積り）** | Free Tier 枠を他で消費していない前提。Free Tier はアカウント単位なので同時に複数 PR があるとこの前提は崩れる（常時無料は Cognito の 50,000 MAU のみ） |

@@ -1,0 +1,16 @@
+# The single source of truth for the thumbnail layer's contents.
+#
+# `amplify/backend.ts` reads the version from this file to build the layer, and
+# `requirements-dev.txt` pins the same one so the tests decode images with the build
+# that deploys. `scripts/tests/test_thumbnail_pins_agree.py` asserts the two agree --
+# a test that passes against a different Pillow than production runs is a test of
+# something else.
+#
+# Exact, not a range: the layer is built from a downloaded wheel, and a range would
+# make the layer's contents depend on the day it was built.
+#
+# 12.2.0 rather than the newest release: it is the latest with a cp313
+# manylinux2014_aarch64 wheel, which is what an ARM64 Python 3.13 Lambda needs. A
+# version without one cannot be staged without Docker, and the layer build is
+# deliberately Docker-free so `ampx sandbox` works on a laptop.
+Pillow==12.2.0
