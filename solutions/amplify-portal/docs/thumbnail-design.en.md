@@ -131,8 +131,9 @@ Prices change, so confirm with the Pricing API before quoting any figure.
 - **No RAW or EXR.** Pillow either cannot read them or needs plugins this layer does
   not carry.
 - **No video thumbnails.** Frame extraction is a different dependency (ffmpeg).
-- **Not yet seen in the UI.** The backend is verified against real FSx for ONTAP
-  (below); a row actually showing a picture in a browser or on a handset is not.
+- **Rotation is not visible in the row.** The thumbnail is cropped to a 32px square,
+  so the aspect ratio does not show (the cached object is 108x192 — the rotation is
+  applied).
 
 ## Verified against a real deployment
 
@@ -151,6 +152,14 @@ Deployed to the ap-northeast-1 sandbox and driven by invoking the Lambda directl
 The last row was luck worth keeping. The demo data contains a file whose extension is an
 image and whose content is metadata JSON, so the decision to put it in `skipped` rather
 than fail the page paid off immediately.
+
+### On a handset (iPhone)
+
+<img src="screenshots/portal-mobile-thumbnails.png" alt="A file list on an iPhone showing small pictures of the images" width="360">
+
+Five images have pictures and `estimate.pdf` keeps its 📕. `photo_front.jpg` looks washed
+out because the original is very nearly a single colour (240,240,240) — the rendering is
+faithful.
 
 ### What the deployment ran into
 
