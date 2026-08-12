@@ -163,6 +163,25 @@ Each row carries, from the left: a **checkbox**, a **☆**, a **file icon**, **�
 > **The "size" and "modified" columns are dropped on a narrow screen.** Sorting by name still works.
 > Open the file on a desktop if you need the full attributes.
 
+### Images show a small picture instead of an icon
+
+A row for an image file carries **a small picture of its contents** rather than an icon,
+so you can tell them apart before opening anything.
+
+<img src="../../solutions/amplify-portal/docs/screenshots/portal-mobile-thumbnails.png" alt="A file list on a phone with small pictures of the images" width="320">
+
+In the example above five images have pictures and `estimate.pdf` keeps its 📕.
+
+- **Only images get one.** PDFs and documents keep their icon, which is not a fault
+- **Sometimes there is none.** An unsupported format such as SVG, a file that is too
+  large, or a file whose extension says image while its contents say otherwise, all keep
+  the icon
+- **Opening the file still shows the original.** The list shows a display copy; the file
+  itself is not changed
+- The small pictures exist **to save data**: opening a folder does not download every
+  original at full size
+
+
 ---
 
 ## 4. Acting on one file
@@ -371,6 +390,7 @@ immediately.** A single screenshot will often carry all of them.
 | [9. Changing the display](#9-changing-the-display) — the eight languages, light and dark | Checked |
 | The data-protection lock screen (all three tabs) | Checked |
 | Resource management (storage health, listing and creating qtrees) | Checked |
+| Image thumbnails in [3. Moving through folders](#3-moving-through-folders) — five shown, the PDF keeping its icon | Checked |
 | Menu / folder navigation / row menu / multi-select / upload / AI processing | **Emulation only** |
 
 **The handset found one defect, since fixed.** Qtrees under resource management stayed on
@@ -378,7 +398,7 @@ immediately.** A single screenshot will often carry all of them.
 hid the very control that chooses a volume. It affected the desktop equally. After the fix, creating
 and listing a qtree were both confirmed on the handset.
 
-Of the screenshots, the first-run notice is from the handset; the rest come from the emulated
+Of the screenshots, the first-run notice and the image thumbnails are from the handset; the rest come from the emulated
 environment. A real handset's browser chrome — address bar height and so on — differs. If a step does
 not behave as described on real hardware, that difference is worth reporting.
 

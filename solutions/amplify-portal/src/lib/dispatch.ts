@@ -119,6 +119,8 @@ export const fileQuery = <T,>(call: DispatchCall<"fileQuery">) => dispatchFor<T,
 export const fileMutate = <T,>(call: DispatchCall<"fileMutation">) =>
   dispatchFor<T, "fileMutation">("fileMutation", call);
 export const agentQuery = <T,>(call: DispatchCall<"agentQuery">) => dispatchFor<T, "agentQuery">("agentQuery", call);
+export const thumbnailQuery = <T,>(call: DispatchCall<"thumbnailQuery">) =>
+  dispatchFor<T, "thumbnailQuery">("thumbnailQuery", call);
 
 // No helper for `folderMutation`: the folder download Lambda never reads `action`,
 // so it does one thing whatever it is sent and there is no action set to constrain.

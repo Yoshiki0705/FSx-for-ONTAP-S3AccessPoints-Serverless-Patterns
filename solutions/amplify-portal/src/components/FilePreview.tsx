@@ -33,6 +33,14 @@ interface FilePreviewProps {
   fileKey: string;
   fileName: string;
   onSelect?: (fileKey: string, fileName: string) => void;
+  /**
+   * A backend-generated thumbnail for this file, if the listing has one.
+   *
+   * Supplied by the row rather than fetched here: one request covers the page, and a
+   * component that fetched its own would put the count back to one per row -- which
+   * is the cost this whole path exists to avoid.
+   */
+  thumbnailUrl?: string;
 }
 
 /**
@@ -53,16 +61,41 @@ function PreviewTrigger({
   title,
   loading,
   onActivate,
+  thumbnailUrl,
 }: {
   glyph: string;
   label: string;
   title: string;
   loading: boolean;
   onActivate: () => void;
+  /** A generated thumbnail to show in place of the glyph, when one exists. */
+  thumbnailUrl?: string;
 }) {
+  // A thumbnail URL is signed and time-limited, so one can expire while the page is
+  // open. Falling back to the glyph keeps a working button where a broken-image icon
+  // would otherwise sit, and it covers the same ground as a cache entry deleted
+  // underneath us.
+  const [imageFailed, setImageFailed] = useState(false);
+  const showImage = !!thumbnailUrl && !imageFailed && !loading;
+
   return (
     <button type="button" className="file-preview-btn" onClick={onActivate} title={title} aria-label={label}>
-      <span aria-hidden="true">{loading ? "⏳" : glyph}</span>
+      {showImage ? (
+        // `alt=""` on purpose: the button already carries the file name as its
+        // accessible name, so describing the image again would announce it twice.
+        // `loading="lazy"` matters most on a phone, where a long folder is a long
+        // scroll and the rows below the fold need not be fetched to render it.
+        <img
+          src={thumbnailUrl}
+          alt=""
+          className="file-thumbnail"
+          loading="lazy"
+          decoding="async"
+          onError={() => setImageFailed(true)}
+        />
+      ) : (
+        <span aria-hidden="true">{loading ? "⏳" : glyph}</span>
+      )}
     </button>
   );
 }
@@ -80,7 +113,7 @@ function PreviewTrigger({
  *   Click → AppSync getPresignedUrl → Lambda → boto3 generate_presigned_url
  *   → S3 AP alias (FSx for ONTAP) → signed URL → <img src={url} />
  */
-export function FilePreview({ fileKey, fileName, onSelect }: FilePreviewProps) {
+export function FilePreview({ fileKey, fileName, onSelect, thumbnailUrl }: FilePreviewProps) {
   const { t } = useTranslation();
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -255,6 +288,7 @@ export function FilePreview({ fileKey, fileName, onSelect }: FilePreviewProps) {
       <PreviewTrigger
         glyph="🖼️"
         loading={loading}
+        thumbnailUrl={thumbnailUrl}
         title={t("fpvClickPreview")}
         label={t("fpvAriaImage").replace("{name}", fileName)}
         onActivate={() => {
