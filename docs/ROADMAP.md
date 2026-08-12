@@ -36,12 +36,19 @@ make propose-cleanup ARGS="--anyway"    # 残課題があっても棚卸しだ�
 
 つまり**このファイルを更新しないと撤去の判断ができません**。項目が終わったら ✅ にすること。
 
-> **撤去に関する既知のブロッカー**: 検証用ファイルシステムの一方に SnapLock ENTERPRISE
-> ボリューム（`PrivilegedDelete=PERMANENTLY_DISABLED`）が 1 本あります。この終端状態は
-> ENTERPRISE を COMPLIANCE 相当にするため、privileged delete も残っていません。削除可否は
-> FSx API の `AuditLogVolume` ではなく ONTAP の `snaplock.is_audit_log` と
-> `snaplock.expiry_time` で判断します。詳細は
+> **撤去に関する既知のブロッカー**: 本プロジェクトの検証で作った SnapLock ENTERPRISE
+> ボリューム（`zz_verify_auditlog`、`PrivilegedDelete=PERMANENTLY_DISABLED`）が、**別の方の
+> 名前が付いたファイルシステム上**にあります。この終端状態は ENTERPRISE を COMPLIANCE 相当に
+> するため privileged delete も残っておらず、そのファイルシステムの削除を将来ブロックし得ます。
+> 所有者への共有が必要です。削除可否は FSx API の `AuditLogVolume` ではなく ONTAP の
+> `snaplock.is_audit_log` と `snaplock.expiry_time` で判断します。詳細は
 > [tamperproof-snapshot-design.md](tamperproof-snapshot-design.md)。
+
+> **このアカウントは共有です。** `make propose-cleanup` は名前とタグから所有者を推測して
+> 「本プロジェクト / 共有 / 未特定」に分けて報告します。**未特定のものを消さないこと。**
+> 以前は所有者を区別せず 1 つの合計を出していたため、他の方の NAT Gateway と VPC エンドポイントが
+> 撤去候補に並んでいました。また**純額はクレジットで相殺されて小さく見えます**（実測で総額の
+> 約 1/64）。純額が小さいことは消費が小さいことを意味しません。
 
 ---
 

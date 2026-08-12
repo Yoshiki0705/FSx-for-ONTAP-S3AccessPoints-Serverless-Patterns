@@ -328,6 +328,76 @@ def test_the_irreversible_warning_names_every_terminal_state() -> None:
         assert phrase in pc.IRREVERSIBLE_WARNING
 
 
+def test_an_unrecognised_name_is_not_claimed_as_ours() -> None:
+    # The safe default in a shared account. Reporting an unknown resource as this
+    # project's is how a colleague's NAT gateway ends up in a deletion proposal.
+    assert pc.attribute("someones-vpc-nat-public1a") == pc.OWNER_UNKNOWN
+    assert pc.attribute(None) == pc.OWNER_UNKNOWN
+    assert pc.attribute("") == pc.OWNER_UNKNOWN
+
+
+def test_our_own_naming_and_tags_are_recognised() -> None:
+    assert pc.attribute("fsxn-eda-s3ap") == pc.OWNER_OURS
+    assert pc.attribute("amplify-fsxns3apamplifyportal-sandbox") == pc.OWNER_OURS
+    assert pc.attribute("verification-test-ap") == pc.OWNER_OURS
+    # Templates in this repository tag UseCase and Phase, so a tag outweighs a name
+    # that happens to look foreign.
+    assert pc.attribute("something-else", [{"Key": "UseCase", "Value": "UC6"}]) == pc.OWNER_OURS
+
+
+def test_our_volume_on_a_foreign_file_system_is_shared_not_ours() -> None:
+    # The situation that actually exists: a SnapLock volume from our verification
+    # work sits on a file system named after someone else. Calling the file system
+    # ours would invite deleting it; calling it purely theirs would hide that we
+    # left something irreversible on it.
+    volumes = [
+        {
+            "FileSystemId": "fs-1",
+            "VolumeId": "fsvol-1",
+            "Name": "zz_verify_auditlog",
+            "OntapConfiguration": {"SnaplockConfiguration": {"SnaplockType": "ENTERPRISE"}},
+        }
+    ]
+    filesystem = _filesystem("SINGLE_AZ_1")
+    filesystem["Tags"] = [{"Key": "Name", "Value": "fsxsomeoneelse"}]
+    session = _FakeSession(_FakeFsx([filesystem], volumes))
+    [item] = pc.collect_fsx(session, "ap-northeast-1", PRICES)
+    assert item.owner == pc.OWNER_SHARED
+    assert "zz_verify_auditlog" in item.detail
+
+
+def test_a_file_system_with_no_volumes_of_ours_is_left_unattributed() -> None:
+    filesystem = _filesystem("SINGLE_AZ_1")
+    filesystem["Tags"] = [{"Key": "Name", "Value": "fsxsomeoneelse"}]
+    session = _FakeSession(_FakeFsx([filesystem], []))
+    [item] = pc.collect_fsx(session, "ap-northeast-1", PRICES)
+    assert item.owner == pc.OWNER_UNKNOWN
+
+
+def test_the_report_separates_owners_and_totals_only_ours(capsys: pytest.CaptureFixture[str]) -> None:
+    standing = [
+        pc.Standing(kind="A", identifier="ours", detail="", monthly_usd=10.0, owner=pc.OWNER_OURS),
+        pc.Standing(kind="B", identifier="theirs", detail="", monthly_usd=500.0, owner=pc.OWNER_UNKNOWN),
+    ]
+    pc.report(standing, [], "")
+    out = capsys.readouterr().out
+    assert "Attributable to this project: $10.00/month" in out
+    # The other 500 is still shown, so nothing is hidden — it is just not counted
+    # as a saving available to us.
+    assert "500.00" in out
+
+
+def test_the_report_warns_that_egress_must_be_measured_per_resource(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    # A data transfer line on the bill was traced to a VPN tunnel while the NAT
+    # gateway moved zero bytes. Reading the anomaly's service name as the culprit
+    # would have removed the wrong thing.
+    pc.report([], [], "")
+    out = capsys.readouterr().out
+    assert "TunnelDataOut" in out and "BytesOutToDestination" in out
+
+
 def test_the_suggested_order_defers_to_the_existing_tools() -> None:
     assert "scripts/teardown-uc29-uc30.sh" in pc.SUGGESTED_ORDER
     assert "scripts/cleanup_generic_ucs.py" in pc.SUGGESTED_ORDER
