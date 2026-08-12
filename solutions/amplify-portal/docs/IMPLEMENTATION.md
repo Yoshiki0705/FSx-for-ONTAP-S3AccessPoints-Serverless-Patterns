@@ -9,7 +9,7 @@
 
 ## Design Intent Summary
 
-This portal provides a **browser-based web UI for day-to-day Amazon FSx for NetApp ONTAP (hereafter FSx for ONTAP) operations**, without requiring CLI tools. The interfaces it is compared against are **the ONTAP CLI and the ONTAP REST API** — the two general-purpose management interfaces actually reachable for FSx for ONTAP, both from inside the VPC. Cluster-level configuration, node management and version upgrades are not portal territory: for FSx for ONTAP, AWS performs them through the AWS Management Console and the FSx API. For the exact division of responsibility and the per-panel implementation status, see the [Admin Capability Map](admin-capability-map.en.md) ([日本語](admin-capability-map.md)); for which management interfaces are reachable at all, see [FSx for ONTAP management interfaces](../../../docs/en/fsx-ontap-management-interfaces.md) ([日本語](../../../docs/ja/fsx-ontap-management-interfaces.md)).
+This portal provides a **browser-based web UI for day-to-day Amazon FSx for NetApp ONTAP (hereafter FSx for ONTAP) operations**, without requiring CLI tools. The interfaces it is compared against are **the ONTAP CLI and the ONTAP REST API** — the two general-purpose management interfaces actually reachable for FSx for ONTAP, both from inside the VPC. Cluster-level configuration, node management and version upgrades are not portal territory: for FSx for ONTAP, AWS performs them through the AWS Management Console and the FSx API. For the exact division of responsibility and the per-panel implementation status, see the [Admin Capability Map](admin-capability-map.md) ([日本語](admin-capability-map.md)); for which management interfaces are reachable at all, see [FSx for ONTAP management interfaces](../../../docs/en/fsx-ontap-management-interfaces.md) ([日本語](../../../docs/ja/fsx-ontap-management-interfaces.md)).
 
 Key constraints that shaped the architecture:
 
@@ -372,5 +372,5 @@ Lambda to a live ONTAP cluster is not covered.
 | [Authorization Model](../../../docs/en/portal-authorization-model.md) | Cognito groups, S3 AP identity, role separation |
 | [User Guide](../../../docs/en/portal-user-guide.md) | End-user documentation (8 languages) |
 | [Compliance Guide](../../../docs/en/portal-compliance-guide.md) | Auditor-facing verification procedures |
-| [AI Agent Demo Guide](./ai-agent-demo-guide.en.md) | E2E agent chat demonstration |
+| [AI Agent Demo Guide](./ai-agent-demo-guide.md) | E2E agent chat demonstration |
 | [Admin Demo Guide](../../../docs/en/admin-resource-management-demo.md) | Admin operations walkthrough |

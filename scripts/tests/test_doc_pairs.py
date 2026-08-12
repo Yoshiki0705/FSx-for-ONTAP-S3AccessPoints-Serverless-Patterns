@@ -303,3 +303,238 @@ def test_an_empty_tree_fails_rather_than_passing(pairs, tmp_path, monkeypatch, c
     monkeypatch.setattr(pairs, "ROOT", _repo(tmp_path))
     assert pairs.main() == 1
     assert "found no pairs" in capsys.readouterr().out
+
+
+@pytest.fixture
+def repo_with_assets(pairs, fixture_repo, monkeypatch):
+    """As `fixture_repo`, but images count as published too.
+
+    The base fixture registers only `*.md`, which is right for link checking and
+    wrong for images: every `.png` would look unpublished and be reported for the
+    wrong reason.
+    """
+    monkeypatch.setattr(pairs, "_in_repository", lambda: set(fixture_repo.rglob("*")))
+    return fixture_repo
+
+
+def test_a_dead_image_is_reported(pairs, repo_with_assets):
+    """The shape that sat in both guides pointing at a name that never existed.
+
+    `![Audit Trail](screenshots/portal-audit-trail.png)` -- the files are
+    portal-ja-audit.png and portal-en-audit.png. Images were not checked at all, and a
+    dead one is less visible than a dead link to the person writing it: in a diff it is
+    a plausible filename, and only the rendered page shows the placeholder.
+    """
+    portal = repo_with_assets / "solutions" / "amplify-portal" / "docs"
+    (portal / "guide.md").write_text("# Guide\n\n![Audit](screenshots/absent.png)\n", encoding="utf-8")
+    findings = pairs.check_links()
+    assert len(findings) == 1, findings
+    assert "guide.md:3" in findings[0]
+    assert "image resolves to nothing" in findings[0]
+
+
+def test_an_image_that_exists_is_accepted(pairs, repo_with_assets):
+    portal = repo_with_assets / "solutions" / "amplify-portal" / "docs"
+    (portal / "screenshots").mkdir(exist_ok=True)
+    (portal / "screenshots" / "present.png").write_bytes(b"\x89PNG\r\n")
+    (portal / "guide.md").write_text("# Guide\n\n![Shot](screenshots/present.png)\n", encoding="utf-8")
+    assert pairs.check_links() == []
+
+
+def test_an_image_reached_through_a_parent_directory_is_checked(pairs, repo_with_assets):
+    """The four that were wrong were all `../screenshots/masked/...` paths."""
+    guides = repo_with_assets / "docs" / "guides"
+    (guides / "deploy.md").write_text("# Deploy\n\n![Lambda](../screenshots/masked/absent.png)\n", encoding="utf-8")
+    findings = pairs.check_links()
+    assert len(findings) == 1, findings
+    assert "image resolves to nothing" in findings[0]
+
+
+@pytest.mark.parametrize(
+    "line",
+    [
+        "![Remote](https://example.com/shot.png)",
+        "![Inline](data:image/png;base64,iVBORw0KGgo=)",
+        "An exclamation mark and a link: hey! [see this](../en/other.md)",
+        "`![Not a real image](absent.png)` in a code span",
+    ],
+)
+def test_things_that_are_not_broken_local_images(pairs, repo_with_assets, line):
+    """Absolute URLs, data URIs, and text that only resembles the syntax.
+
+    The last case is the one that matters for the pattern: a filename inside a code
+    span is documentation about a name, not a reference to a file.
+    """
+    guides = repo_with_assets / "docs" / "guides"
+    (repo_with_assets / "docs" / "en" / "other.md").write_text("# Other\n", encoding="utf-8")
+    (guides / "page.md").write_text(f"# Page\n\n{line}\n", encoding="utf-8")
+    assert pairs.check_links() == []
+
+
+def test_a_link_and_an_image_on_one_line_are_both_checked(pairs, repo_with_assets):
+    guides = repo_with_assets / "docs" / "guides"
+    (guides / "page.md").write_text(
+        "# Page\n\nSee [the guide](absent.md) and ![the shot](absent.png)\n", encoding="utf-8"
+    )
+    findings = pairs.check_links()
+    assert len(findings) == 2, findings
+    assert any("link resolves to nothing" in f for f in findings)
+    assert any("image resolves to nothing" in f for f in findings)
+
+
+def test_a_dead_html_image_is_reported(pairs, repo_with_assets):
+    """The `<img src>` form, which markdown allows.
+
+    It is the only way to set a width, so it gets used for phone screenshots -- which
+    render at full size otherwise -- and that is exactly where it is easiest to forget
+    that a markdown-only pattern is not looking at it.
+    """
+    portal = repo_with_assets / "solutions" / "amplify-portal" / "docs"
+    (portal / "guide.md").write_text(
+        '# Guide\n\n<img src="screenshots/absent.png" alt="Phone" width="330">\n', encoding="utf-8"
+    )
+    findings = pairs.check_links()
+    assert len(findings) == 1, findings
+    assert "image resolves to nothing" in findings[0]
+
+
+def test_an_html_image_that_exists_is_accepted(pairs, repo_with_assets):
+    portal = repo_with_assets / "solutions" / "amplify-portal" / "docs"
+    (portal / "screenshots").mkdir(exist_ok=True)
+    (portal / "screenshots" / "phone.png").write_bytes(b"\x89PNG\r\n")
+    (portal / "guide.md").write_text(
+        '# Guide\n\n<img src="screenshots/phone.png" alt="Phone" width="330">\n', encoding="utf-8"
+    )
+    assert pairs.check_links() == []
+
+
+def test_an_absolute_html_image_is_ignored(pairs, repo_with_assets):
+    guides = repo_with_assets / "docs" / "guides"
+    (guides / "page.md").write_text('# Page\n\n<img src="https://example.com/x.png">\n', encoding="utf-8")
+    assert pairs.check_links() == []
+
+
+@pytest.fixture
+def bilingual_repo(pairs, tmp_path, monkeypatch):
+    """A tree with both naming conventions this repository uses.
+
+    `docs/` has a directory per locale. `solutions/amplify-portal/docs/` uses the
+    Japanese file as the base name with an `.en.md` twin. And the portal READMEs invert
+    that: `README.md` is English, `README.ja.md` is Japanese. All three are live, which
+    is why the language of an unsuffixed name has to be inferred from its neighbours.
+    """
+    root = _repo(tmp_path)
+    monkeypatch.setattr(pairs, "ROOT", root)
+    monkeypatch.setattr(pairs, "_in_repository", lambda: set(root.rglob("*.md")))
+    return root
+
+
+def test_an_english_document_linking_the_japanese_twin_is_reported(pairs, bilingual_repo):
+    """165 of these were live, mostly in "Related documents" lists.
+
+    The link resolves, the file is there, and only its language is wrong -- so the one
+    reader who notices is the one who cannot read the result.
+    """
+    docs = bilingual_repo / "docs"
+    (docs / "notes.md").write_text("# メモ\n", encoding="utf-8")
+    (docs / "notes.en.md").write_text("# Notes\n", encoding="utf-8")
+    (docs / "guide.en.md").write_text("# Guide\n\nSee [the notes](notes.md).\n", encoding="utf-8")
+    (docs / "guide.md").write_text("# ガイド\n", encoding="utf-8")
+    findings = pairs.check_link_language()
+    assert len(findings) == 1, findings
+    assert "guide.en.md:3" in findings[0]
+    assert "notes.en.md exists" in findings[0]
+
+
+def test_the_same_language_is_accepted(pairs, bilingual_repo):
+    docs = bilingual_repo / "docs"
+    (docs / "notes.md").write_text("# メモ\n", encoding="utf-8")
+    (docs / "notes.en.md").write_text("# Notes\n", encoding="utf-8")
+    (docs / "guide.en.md").write_text("# Guide\n\nSee [the notes](notes.en.md).\n", encoding="utf-8")
+    (docs / "guide.md").write_text("# ガイド\n", encoding="utf-8")
+    assert pairs.check_link_language() == []
+
+
+def test_a_readme_is_english_when_a_ja_twin_sits_beside_it(pairs, bilingual_repo):
+    """The regression in the check itself.
+
+    Assuming the unsuffixed name is always Japanese made `README.md` read as "language
+    unknown", so the check skipped the exact file whose wrong link prompted it: the
+    English README pointing at the Japanese tabs guide.
+    """
+    portal = bilingual_repo / "solutions" / "amplify-portal"
+    (portal / "docs").mkdir(parents=True, exist_ok=True)
+    (portal / "docs" / "tabs.md").write_text("# タブ\n", encoding="utf-8")
+    (portal / "docs" / "tabs.en.md").write_text("# Tabs\n", encoding="utf-8")
+    (portal / "README.md").write_text("# Portal\n\nSee [the guide](docs/tabs.md).\n", encoding="utf-8")
+    (portal / "README.ja.md").write_text("# ポータル\n", encoding="utf-8")
+    findings = pairs.check_link_language()
+    assert len(findings) == 1, findings
+    assert "README.md:3" in findings[0]
+
+
+def test_the_switcher_is_not_reported(pairs, bilingual_repo):
+    """Linking the other languages is the switcher's entire job."""
+    docs = bilingual_repo / "docs"
+    (docs / "guide.md").write_text("# ガイド\n", encoding="utf-8")
+    (docs / "guide.en.md").write_text(
+        "# Guide\n\n🌐 **Language / 言語**: [日本語](guide.md) | [English](guide.en.md)\n", encoding="utf-8"
+    )
+    assert pairs.check_link_language() == []
+
+
+def test_a_link_that_names_its_language_is_not_reported(pairs, bilingual_repo):
+    """A "(日本語)" beside an English link is an offer, not a mistake."""
+    docs = bilingual_repo / "docs"
+    (docs / "notes.md").write_text("# メモ\n", encoding="utf-8")
+    (docs / "notes.en.md").write_text("# Notes\n", encoding="utf-8")
+    (docs / "guide.md").write_text("# ガイド\n", encoding="utf-8")
+    (docs / "guide.en.md").write_text(
+        "# Guide\n\nSee [the notes](notes.en.md) ([日本語](notes.md)).\n", encoding="utf-8"
+    )
+    assert pairs.check_link_language() == []
+
+
+def test_a_wrapped_link_is_still_examined(pairs, bilingual_repo):
+    """The last one hid this way: a line-based pattern reads it as no link at all."""
+    docs = bilingual_repo / "docs"
+    (docs / "notes.md").write_text("# メモ\n", encoding="utf-8")
+    (docs / "notes.en.md").write_text("# Notes\n", encoding="utf-8")
+    (docs / "guide.md").write_text("# ガイド\n", encoding="utf-8")
+    (docs / "guide.en.md").write_text(
+        "# Guide\n\nSee [two sources of truth for the same\nresource](notes.md) for details.\n",
+        encoding="utf-8",
+    )
+    findings = pairs.check_link_language()
+    assert len(findings) == 1, findings
+
+
+def test_an_untranslated_target_is_accepted(pairs, bilingual_repo):
+    """Nothing to prefer means nothing to report."""
+    docs = bilingual_repo / "docs"
+    (docs / "solo.md").write_text("# Solo\n", encoding="utf-8")
+    (docs / "guide.md").write_text("# ガイド\n", encoding="utf-8")
+    (docs / "guide.en.md").write_text("# Guide\n\nSee [solo](solo.md).\n", encoding="utf-8")
+    assert pairs.check_link_language() == []
+
+
+def test_a_target_outside_the_repository_is_not_offered(pairs, bilingual_repo, monkeypatch):
+    """The Japanese verification results are gitignored.
+
+    "The same document in your language" has to be a document the reader can open.
+    """
+    docs = bilingual_repo / "docs"
+    (docs / "notes.md").write_text("# メモ\n", encoding="utf-8")
+    (docs / "notes.en.md").write_text("# Notes\n", encoding="utf-8")
+    (docs / "guide.md").write_text("# ガイド\n\n[notes](notes.en.md)\n", encoding="utf-8")
+    (docs / "guide.en.md").write_text("# Guide\n", encoding="utf-8")
+    # The Japanese notes exist on disk but are not in the repository, which is the real
+    # situation: solutions/amplify-portal/docs/verification-results.md is gitignored and
+    # only the English version is published. So a Japanese document linking the English
+    # one is correct, and suggesting the Japanese twin would be suggesting a dead link.
+    monkeypatch.setattr(
+        pairs,
+        "_in_repository",
+        lambda: {p for p in bilingual_repo.rglob("*.md") if p.name != "notes.md"},
+    )
+    assert pairs.check_link_language() == []

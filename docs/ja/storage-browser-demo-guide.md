@@ -278,7 +278,7 @@ npm run dev
 |---|---|---|
 | アップロードサイズ | オブジェクト上限 50 GB / 単一 PutObject は 5 GB（FSx for ONTAP S3 AP 制約） | Storage Browser はマルチパートに自動切替するため 5〜50 GB も可。50 GB 超は NFS/SMB 経由で配置 |
 | 公式ロードマップ | "Support for S3 Access Points" が評価中 | 方式 2（managed auth + AP alias）で動作 |
-| Presigned URL ドキュメント | FSx docs で "Not supported" 記載 | 動作確認済み（client-side SigV4）。[詳細](../s3ap-compatibility-notes.en.md) |
+| Presigned URL ドキュメント | FSx docs で "Not supported" 記載 | 動作確認済み（client-side SigV4）。[詳細](../s3ap-compatibility-notes.md) |
 
 ---
 

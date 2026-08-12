@@ -23,8 +23,9 @@ export function QtreeManager() {
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [filterVolume, setFilterVolume] = useState("");
 
-  // Create form state
-  const [newVolumeName, setNewVolumeName] = useState("");
+  // Create form state. No volume of its own: the qtree is created in the volume
+  // the list is filtered to, so there is nothing here for the two to disagree
+  // about. See the form markup below for what the second selector cost.
   const [newName, setNewName] = useState("");
   const [newSecurityStyle, setNewSecurityStyle] = useState("unix");
   const [newExportPolicy, setNewExportPolicy] = useState("default");
@@ -33,9 +34,16 @@ export function QtreeManager() {
 
   // Keyed on the selected volume, so picking a different volume switches lists
   // without a manual reload. Disabled until a volume is chosen.
+  //
+  // `isFetching`, not `isPending`: a disabled query stays `status: "pending"`
+  // forever because it has no data, so `isPending` means "nothing loaded yet",
+  // not "a request is in flight". Reading it as loading rendered the spinner
+  // before any volume was chosen — and the only control that chooses one is
+  // below, so the spinner hid the way out of itself. `isFetching` is false
+  // while the query is disabled, which is what the other panels use.
   const {
     data: qtrees = [],
-    isPending: loading,
+    isFetching: loading,
     error: queryError,
     refetch,
   } = useQuery({
@@ -56,13 +64,13 @@ export function QtreeManager() {
   const error = actionError ?? errorMessage(queryError, "Failed to load qtrees");
 
   const handleCreate = async () => {
-    if (!newVolumeName || !newName) { setError("Volume name and qtree name are required"); return; }
+    if (!filterVolume || !newName) { setError("Volume name and qtree name are required"); return; }
     setError(null);
     try {
       const data = await adminMutate<{ success?: boolean }>({
         action: "createQtree",
         params: {
-          volumeName: newVolumeName, name: newName,
+          volumeName: filterVolume, name: newName,
           securityStyle: newSecurityStyle, exportPolicy: newExportPolicy,
         },
       });
@@ -72,7 +80,12 @@ export function QtreeManager() {
           setShowCreateForm(false);
           setNewName(""); setNewExportPolicy("default");
           clearSuccess();
-          if (newVolumeName === filterVolume) loadQtrees();
+          // Unconditional: the qtree went into the volume the list is showing, so
+          // there is always something new to display. This used to be guarded by
+          // a comparison against the form's own volume, and when they differed
+          // nothing happened -- the success message appeared above a list that
+          // could not contain the new qtree.
+          loadQtrees();
         } else setError(data.error || "Create failed");
       }
     } catch (err) { setError(err instanceof Error ? err.message : "Create failed"); }
@@ -92,8 +105,6 @@ export function QtreeManager() {
     } catch (err) { setError(err instanceof Error ? err.message : "Delete failed"); }
   };
 
-  if (loading && !filterVolume) return <p className="loading">{t("loading")}</p>;
-
   return (
     <div className="admin-panel">
       <div className="panel-header">
@@ -105,7 +116,11 @@ export function QtreeManager() {
             autoSelectFirst
             enableSearch
           />
-          <button onClick={() => setShowCreateForm(!showCreateForm)} className="btn-primary">
+          {/* Disabled until a volume is chosen, because the volume the qtree goes
+              into is now the one selected above. Opening the form without one
+              would offer a field-less form that could only fail on submit. */}
+          <button onClick={() => setShowCreateForm(!showCreateForm)} className="btn-primary"
+            disabled={!filterVolume}>
             + {t("rmCreateQtree")}
           </button>
           <button onClick={loadQtrees} className="refresh-btn">↻</button>
@@ -118,17 +133,30 @@ export function QtreeManager() {
       {showCreateForm && (
         <div className="create-form">
           <div className="form-row">
+            {/* The target volume, shown rather than chosen.
+                A second VolumeSelector stood here. It carried its own selection,
+                independent of the one filtering the list, so creating a qtree
+                could land it in a volume the list was not showing: the success
+                message appeared and the table below it stayed unchanged, which
+                reads as a create that silently failed. Every sibling panel
+                (quota, snaplock, snapshot) already creates against the volume
+                selected in its header; this makes the qtree panel behave the
+                same way. To create somewhere else, switch the volume above. */}
             <div className="form-group">
               <label>{t("rmQtreeVolume")}</label>
-              <VolumeSelector
-                onSelect={(vol) => setNewVolumeName(vol.name)}
-                enableSearch
-              />
+              <p className="form-static-value">{filterVolume}</p>
             </div>
             <div className="form-group">
               <label>{t("rmQtreeName")}</label>
+              {/* A qtree name is a case-sensitive ONTAP identifier, and iOS Safari
+                  defaults text inputs to autocapitalize="sentences" -- so a name
+                  typed on a phone arrives with its first letter changed, and the
+                  qtree is created under a name the user did not type. autoCorrect
+                  and spellCheck are off for the same reason: an identifier is not
+                  prose. */}
               <input type="text" value={newName} onChange={(e) => setNewName(e.target.value)}
-                placeholder="qtree_name" />
+                placeholder="qtree_name"
+                autoCapitalize="none" autoCorrect="off" spellCheck={false} />
             </div>
             <div className="form-group">
               <label>{t("rmSecurityStyle")}</label>
@@ -161,20 +189,42 @@ export function QtreeManager() {
             </tr>
           </thead>
           <tbody>
-            {qtrees.map((q) => (
-              <tr key={q.id}>
-                <td>{q.name}</td>
-                <td>{q.volumeName}</td>
-                <td>{q.securityStyle}</td>
-                <td>{q.exportPolicy}</td>
-                <td className="action-cell">
-                  <button onClick={() => handleDelete(q.volumeName, q.id, q.name)}
-                    className="btn-sm btn-danger">✕</button>
+            {qtrees.map((q) => {
+              // ONTAP reports the volume's own root as a qtree with an empty name, so
+              // every volume has one and it is always the first row. It is not
+              // something anyone created and ONTAP will not delete it, so it is named
+              // here and carries no delete button -- a blank row with a ✕ beside it
+              // read as a qtree whose name had failed to load.
+              const isVolumeRoot = !q.name;
+              return (
+                <tr key={q.id}>
+                  <td>
+                    {isVolumeRoot ? (
+                      <span className="row-derived">{t("rmQtreeVolumeRoot")}</span>
+                    ) : (
+                      q.name
+                    )}
+                  </td>
+                  <td>{q.volumeName}</td>
+                  <td>{q.securityStyle}</td>
+                  <td>{q.exportPolicy}</td>
+                  <td className="action-cell">
+                    {!isVolumeRoot && (
+                      <button onClick={() => handleDelete(q.volumeName, q.id, q.name)}
+                        className="btn-sm btn-danger">✕</button>
+                    )}
+                  </td>
+                </tr>
+              );
+            })}
+            {/* Before a volume is chosen there is nothing to have found, so the
+                prompt is shown rather than "none found". */}
+            {qtrees.length === 0 && (
+              <tr>
+                <td colSpan={5} className="empty-state">
+                  {filterVolume ? t("rmNoQtrees") : t("rmSelectVolumePlaceholder")}
                 </td>
               </tr>
-            ))}
-            {qtrees.length === 0 && (
-              <tr><td colSpan={5} className="empty-state">{t("rmNoQtrees")}</td></tr>
             )}
           </tbody>
         </table>

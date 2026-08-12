@@ -74,6 +74,8 @@ export function AiSettingsManager({ initialSettings, onSettingsChange }: AiSetti
   // rendered state is the cache rather than a copy of it.
   const {
     data: settings = DEFAULT_SETTINGS,
+    // query-gate-checked: `loading` below repeats the `enabled` condition, so the
+    // permanently-pending state of a disabled query is never read as loading.
     isPending,
     error: queryError,
   } = useQuery({

@@ -34,7 +34,7 @@ export function RestoreFromSnapshot({ currentPrefix }: RestoreFromSnapshotProps)
 
   const handleRestore = async () => {
     if (!snapshotName.trim()) {
-      setError("Snapshot name is required");
+      setError(t("rfsNameRequired"));
       return;
     }
 
@@ -55,14 +55,14 @@ export function RestoreFromSnapshot({ currentPrefix }: RestoreFromSnapshotProps)
       });
 
       if (response.data?.executionArn) {
-        setResult(`Restore initiated: ${response.data.executionArn}`);
+        setResult(`${t("rfsInitiated")}: ${response.data.executionArn}`);
         setShowDialog(false);
         setSnapshotName("");
       } else if (response.errors) {
         setError(response.errors.map((e) => e.message).join(", "));
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to initiate restore");
+      setError(err instanceof Error ? err.message : t("rfsFailed"));
     } finally {
       setSubmitting(false);
     }
@@ -79,7 +79,7 @@ export function RestoreFromSnapshot({ currentPrefix }: RestoreFromSnapshotProps)
         onClick={() => setShowDialog(true)}
         title={t("rfsButtonTitle")}
       >
-        📸 Restore from Snapshot
+        📸 {t("rfsTitle")}
       </button>
 
       {result && <div className="success-message">{result}</div>}
@@ -88,10 +88,7 @@ export function RestoreFromSnapshot({ currentPrefix }: RestoreFromSnapshotProps)
         <div className="restore-dialog" role="dialog" aria-labelledby="restore-title">
           <div className="dialog-content">
             <h3 id="restore-title">{t("rfsTitle")}</h3>
-            <p className="dialog-description">
-              Creates a FlexClone volume from the specified snapshot.
-              The clone will have its own S3 Access Point for isolated access.
-            </p>
+            <p className="dialog-description">{t("rfsDescription")}</p>
 
             <div className="form-group">
               <label htmlFor="snapshot-name">{t("rfsSnapshotName")}</label>
@@ -100,7 +97,7 @@ export function RestoreFromSnapshot({ currentPrefix }: RestoreFromSnapshotProps)
                 type="text"
                 value={snapshotName}
                 onChange={(e) => setSnapshotName(e.target.value)}
-                placeholder="e.g., daily.2026-07-18_0010"
+                placeholder={t("rfsSnapshotPlaceholder")}
                 disabled={submitting}
               />
               <small>{t("rfsSnapshotHint")}</small>
@@ -119,7 +116,7 @@ export function RestoreFromSnapshot({ currentPrefix }: RestoreFromSnapshotProps)
                 disabled={submitting || !snapshotName.trim()}
                 className="confirm-btn"
               >
-                {submitting ? "Initiating..." : "Create FlexClone"}
+                {submitting ? t("rfsInitiating") : t("rfsCreateClone")}
               </button>
               <button
                 onClick={() => { setShowDialog(false); setError(null); }}

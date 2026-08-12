@@ -168,5 +168,5 @@ All features work without FSx for ONTAP:
 |----------|---------|
 | [User Guide](portal-user-guide.md) | End-user daily operations |
 | [Quick Reference](portal-quick-reference.md) | 1-page cheat sheet |
-| [Implementation Guide](../../solutions/amplify-portal/docs/IMPLEMENTATION.md) | Architecture details |
+| [Implementation Guide](../../solutions/amplify-portal/docs/IMPLEMENTATION.en.md) | Architecture details |
 | [AI Features Quick Start](ai-features-quick-start.md) | Bedrock Q&A, Rekognition, Athena |

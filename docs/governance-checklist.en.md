@@ -246,8 +246,8 @@ Governance checks need to be re-confirmed periodically, not just at deployment:
 
 ## References
 
-- [Deployment Profiles](deployment-profiles.md)
-- [S3AP Dual-Layer Authorization Model](s3ap-authorization-model.md)
-- [Partner/SI Delivery Checklist](partner-si-delivery-checklist.md)
+- [Deployment Profiles](deployment-profiles.en.md)
+- [S3AP Dual-Layer Authorization Model](s3ap-authorization-model.en.md)
+- [Partner/SI Delivery Checklist](partner-si-delivery-checklist.en.md)
 - [AWS Shared Responsibility Model](https://aws.amazon.com/compliance/shared-responsibility-model/)
 - [Amazon Bedrock Responsible AI](https://aws.amazon.com/bedrock/responsible-ai/)

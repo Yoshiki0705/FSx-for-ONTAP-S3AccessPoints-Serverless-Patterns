@@ -182,6 +182,47 @@ Consultar eventos de datos CloudTrail S3 para responder "quién accedió a qué,
 
 ---
 
+### 4. Uso en el teléfono
+
+No hay una aplicación aparte. Abre **la misma URL que en el escritorio** en el navegador
+del teléfono (verificado con Safari en iOS y Chrome en Android).
+
+<img src="../../solutions/amplify-portal/docs/screenshots/portal-files-mobile-dark.png" alt="La lista de archivos en el teléfono, tema oscuro" width="300">
+
+**Pasos**
+
+1. Abre la URL que te haya facilitado la administración
+2. Inicia sesión con tu correo y contraseña, más un código TOTP si la MFA está activada.
+   El autocompletado de tu gestor de contraseñas funciona con normalidad
+3. En el borde superior están **☰**, el control de tema, el de idioma y cerrar sesión
+   (⏻). La barra lateral empieza oculta
+4. Pulsa **☰** para abrir la navegación sobre el contenido. Elegir una sección la vuelve
+   a cerrar; para cerrarla sin elegir, pulsa la zona atenuada
+5. Para abrir un archivo, pulsa el icono de su fila (📄 / 🖼️ / 📕 / 📝). La vista previa
+   se levanta como una hoja desde la parte inferior y se cierra con **✕**
+6. Para actuar sobre varios archivos, pulsa la casilla a la izquierda de cada fila. El
+   número de elementos y las acciones disponibles aparecen sobre la lista
+
+**Diferencias con el escritorio**
+
+| Elemento | En el teléfono |
+|----------|---------------|
+| Barra lateral | un panel sobre el contenido, que se abre y cierra con **☰** |
+| Columnas Tamaño y Modificado | se omiten por falta de anchura; se puede seguir ordenando por nombre |
+| Dirección de correo | oculta (cerrar sesión queda solo como icono) |
+| Vista previa de archivo | una hoja desde el borde inferior, hasta el 70 % de la pantalla. Un PDF se lee mejor en horizontal |
+| Panel del asistente de IA | se abre como panel desde la derecha |
+
+> **Sobre el 🖥️ del control de tema**: no es un botón para «cambiar a la versión de
+> escritorio». Las tres opciones son ☀️ claro, 🌙 oscuro y 🖥️ **seguir al dispositivo**;
+> esta última sigue el ajuste de apariencia de iOS o Android, incluido su cambio
+> automático por la noche.
+
+> **Consumo de datos**: descargar una carpeta como ZIP transfiere todo su contenido. Con
+> conexión móvil, comprueba primero cuántos archivos son y su tamaño.
+
+---
+
 ## Consejos y preguntas frecuentes
 
 **P: Veo "ONTAP Connection Required" en algunos paneles.**
@@ -197,7 +238,7 @@ R: Los enlaces compartidos usan Presigned URL con un tiempo de vida que usted el
 R: Deberían aparecer inmediatamente (ONTAP garantiza consistencia fuerte entre protocolos). Intente actualizar la lista de archivos. Si aún faltan, el archivo puede estar en una subcarpeta — verifique la ruta.
 
 **P: ¿Puedo usar el portal en el móvil?**
-R: Sí. La barra lateral se colapsa en pantallas estrechas. Todas las funciones operan en navegadores móviles, aunque la experiencia está optimizada para escritorio.
+R: Sí. Los pasos están en «4. Uso en el teléfono», dentro de la introducción.
 
 **P: ¿Cómo cambio mi contraseña?**
 R: Use la Cognito Hosted UI o solicite a su administrador que la restablezca.

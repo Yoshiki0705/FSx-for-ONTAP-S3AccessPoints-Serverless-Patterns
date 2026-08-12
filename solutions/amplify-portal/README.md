@@ -27,13 +27,16 @@ This portal does **not** replace existing SaaS file sharing (Box, SharePoint, Go
 - **Git push deploys** — `git push` triggers build + deploy automatically
 - **CDK extensible** — add any AWS resource when standard features aren't enough
 
-See also: [File Portal UI Selection Guide (Amplify / Nextcloud / Custom)](../../docs/file-portal-amplify-gen2.md)
+See also: [File Portal UI Selection Guide (Amplify / Nextcloud / Custom)](../../docs/file-portal-amplify-gen2.en.md)
 
 ## Documentation
 
 - **[User Guide](../../docs/en/portal-user-guide.md)** — End-user guide for daily portal usage (no deploy knowledge needed)
-- **[Getting Started](docs/GETTING-STARTED.md)** — Setup, DemoMode, VPC Endpoints, production checklist
-- **[Implementation Guide](docs/IMPLEMENTATION.md)** — Architecture, config files, component structure, deployment, modification log
+- **[Phone Walkthrough](../../docs/en/portal-mobile-guide.md)** — the portal on a phone, with a screenshot for every step
+- **[Getting Started](docs/GETTING-STARTED.en.md)** — Setup, DemoMode, VPC Endpoints, production checklist
+- **[ONTAP Connection Guide](docs/ONTAP-CONNECTION-GUIDE.en.md)** — connection architecture, and `make ontap-preflight` when an ONTAP panel shows no data
+- **[Handover & Support Guide](docs/portal-handover-guide.en.md)** — what to send users after the deploy, where each value is managed, and how to answer their questions
+- **[Implementation Guide](docs/IMPLEMENTATION.en.md)** — Architecture, config files, component structure, deployment, modification log
 - **[Admin Capability Map](docs/admin-capability-map.en.md)** — interface coverage, implementation status for all 20 panels, mapping to System Manager capability areas, ONTAP REST endpoint mapping
 - **[Resource Management Demo Guide](docs/resource-management-demo-guide.en.md)** — steps for all 20 panels (including FlexCache / FlexClone / SnapMirror / Local users / Name mapping / Vscan / FPolicy / Cluster and SVM peering / Cluster information)
 - **[Admin Demo Guide](../../docs/en/admin-resource-management-demo.md)** — E2E demo scenarios for Resource Management + ARP/AI
@@ -156,7 +159,7 @@ sequenceDiagram
 
 | Group | Section | Purpose |
 |-------|---------|---------|
-| **Browse** | All Files | Browse, preview, AI Q&A, share links, QR access |
+| **Browse** | All Files | Browse, sort, filter, multi-select, preview, AI Q&A, share links, QR access |
 | | Favorites | Pinned files (DynamoDB, per-user) |
 | | Recent | Recently accessed files |
 | | Folder Watch | Watched prefixes and received file events (admin toggle) |
@@ -192,7 +195,7 @@ sequenceDiagram
 | **cdk-nag compliance** | AwsSolutionsChecks, run in CI via `CDK_NAG=1` (not during deploy) |
 | **Fallback UI** | Graceful info panel when ONTAP is not connected (no white screen) |
 
-> **Detailed section guide**: [docs/portal-tabs-guide.md](docs/portal-tabs-guide.md)
+> **Detailed section guide**: [docs/portal-tabs-guide.en.md](docs/portal-tabs-guide.en.md)
 
 ---
 
@@ -329,7 +332,7 @@ For development without FSx for ONTAP:
 
 > **Upload Tab workflow**: Location 選択 → S3 AP alias をクリック → フォルダナビゲーション → ファイル選択でプレビュー/ダウンロード、またはドラッグ＆ドロップでアップロード。アップロードしたファイルは NFS/SMB から即座に参照可能です（ONTAP の strong consistency）。
 
-> **Throughput note**: S3 AP operations share FSx for ONTAP throughput capacity with NFS/SMB workloads. For concurrent user planning, see [Throughput and Capacity Planning](../../docs/file-portal-amplify-gen2.md#スループットと容量計画).
+> **Throughput note**: S3 AP operations share FSx for ONTAP throughput capacity with NFS/SMB workloads. For concurrent user planning, see [Throughput and Capacity Planning](../../docs/file-portal-amplify-gen2.en.md#スループットと容量計画).
 
 > **Performance note**: The ListFiles Lambda typically responds in 100-300ms for directories with < 100 objects. For directories with 1000 objects (max single page), expect 300-800ms. The Lambda has a 30-second timeout as a safety net, but normal operation is well under 1 second.
 
@@ -561,7 +564,7 @@ amplify-portal/
 ├── monitoring/
 │   └── dashboard.ts               # CloudWatch Dashboard CDK construct
 ├── docs/
-│   ├── portal-tabs-guide.md       # 6-tab detailed guide with screenshots
+│   ├── portal-tabs-guide.md       # 17-section guide (4 groups) with screenshots
 │   └── screenshots/               # Portal UI screenshots
 ├── tests/
 │   └── components/App.test.tsx     # Tab rendering + navigation tests
@@ -677,16 +680,16 @@ This portal is an **optional frontend layer**. It does not modify the core patte
 
 ## Related Documentation
 
-- [File Portal UI Options (Amplify / Nextcloud / Custom)](../../docs/file-portal-amplify-gen2.md)
-- [Deployment Runbook (EN)](../../docs/en/portal-deployment-runbook.md) | [JA](../../docs/ja/portal-deployment-runbook.md)
-- [Demo Guide with Screenshots (EN)](../../docs/en/portal-demo-guide.md) | [JA](../../docs/ja/portal-demo-guide.md)
+- [File Portal UI Options (Amplify / Nextcloud / Custom)](../../docs/file-portal-amplify-gen2.en.md)
+- [Deployment Runbook (EN)](../../docs/en/portal-deployment-runbook.md) | [JA](../../docs/en/portal-deployment-runbook.md)
+- [Demo Guide with Screenshots (EN)](../../docs/en/portal-demo-guide.md) | [JA](../../docs/en/portal-demo-guide.md)
 - [SaaS Gap Analysis & Feature Requests (JA)](../../docs/aws-feature-requests/file-portal-service-gap.md) | [EN](../../docs/aws-feature-requests/file-portal-service-gap.en.md)
 - [Full-text Search Design Decision](../../.private/design-decisions/c4-fulltext-search-comparison.md) (gitignored — private)
 - [Portal Roadmap (P0-P4)](../../.private/file-portal-roadmap.md) (gitignored — private)
 - [Quick Desktop MCP Setup (AgentCore Gateway)](../../docs/quick-desktop-mcp-setup.md)
-- [Nextcloud External Storage Setup](../../docs/nextcloud-external-storage-s3ap.md)
-- [S3AP Compatibility Notes](../../docs/s3ap-compatibility-notes.md)
-- [Demo Mode Guide](../../docs/demo-mode-guide.md)
+- [Nextcloud External Storage Setup](../../docs/nextcloud-external-storage-s3ap.en.md)
+- [S3AP Compatibility Notes](../../docs/s3ap-compatibility-notes.en.md)
+- [Demo Mode Guide](../../docs/demo-mode-guide.en.md)
 - [Storage Browser Demo Guide](../../docs/en/storage-browser-demo-guide.md)
 
 ---

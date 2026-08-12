@@ -77,4 +77,4 @@ bash scripts/export-diagrams.sh
 
 - [File portal UI options (Amplify / Nextcloud / Custom)](file-portal-amplify-gen2.en.md)
 - [Amplify Gen2 portal README](../solutions/amplify-portal/README.md)
-- [Portal implementation guide](../solutions/amplify-portal/docs/IMPLEMENTATION.md)
+- [Portal implementation guide](../solutions/amplify-portal/docs/IMPLEMENTATION.en.md)

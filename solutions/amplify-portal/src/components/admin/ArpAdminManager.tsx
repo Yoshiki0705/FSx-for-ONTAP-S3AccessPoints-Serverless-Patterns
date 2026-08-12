@@ -211,19 +211,19 @@ export function ArpAdminManager() {
       {/* Summary cards */}
       {summary && (
         <div className="form-row" style={{ marginBottom: "1.5rem" }}>
-          <div className="form-group" style={{ textAlign: "center", padding: "0.75rem", border: "1px solid #22c55e", borderRadius: "8px" }}>
-            <div style={{ fontSize: "1.5rem", fontWeight: 700, color: "#22c55e" }}>{summary.enabled}</div>
+          <div className="form-group" style={{ textAlign: "center", padding: "0.75rem", border: "1px solid var(--color-success)", borderRadius: "8px" }}>
+            <div style={{ fontSize: "1.5rem", fontWeight: 700, color: "var(--color-success-text)" }}>{summary.enabled}</div>
             <div>{t("stateEnabled")}</div>
           </div>
-          <div className="form-group" style={{ textAlign: "center", padding: "0.75rem", border: "1px solid #3b82f6", borderRadius: "8px" }}>
-            <div style={{ fontSize: "1.5rem", fontWeight: 700, color: "#3b82f6" }}>{summary.learning}</div>
+          <div className="form-group" style={{ textAlign: "center", padding: "0.75rem", border: "1px solid var(--color-primary)", borderRadius: "8px" }}>
+            <div style={{ fontSize: "1.5rem", fontWeight: 700, color: "var(--color-primary-text)" }}>{summary.learning}</div>
             <div>{t("rmArpLearning")}</div>
           </div>
-          <div className="form-group" style={{ textAlign: "center", padding: "0.75rem", border: "1px solid #9ca3af", borderRadius: "8px" }}>
-            <div style={{ fontSize: "1.5rem", fontWeight: 700, color: "#9ca3af" }}>{summary.disabled}</div>
+          <div className="form-group" style={{ textAlign: "center", padding: "0.75rem", border: "1px solid var(--color-border-strong)", borderRadius: "8px" }}>
+            <div style={{ fontSize: "1.5rem", fontWeight: 700, color: "var(--color-text-secondary)" }}>{summary.disabled}</div>
             <div>{t("stateDisabled")}</div>
           </div>
-          <div className="form-group" style={{ textAlign: "center", padding: "0.75rem", border: "1px solid var(--border-color)", borderRadius: "8px" }}>
+          <div className="form-group" style={{ textAlign: "center", padding: "0.75rem", border: "1px solid var(--color-border-strong)", borderRadius: "8px" }}>
             <div style={{ fontSize: "1.5rem", fontWeight: 700 }}>{summary.total}</div>
             <div>{t("rmArpTotal")}</div>
           </div>
@@ -293,14 +293,14 @@ export function ArpAdminManager() {
                   {getStateLabel(vol.state)}
                 </span>
                 {vol.state === "dry_run" && vol.dryRunStartTime && (
-                  <small style={{ display: "block", color: "#6b7280" }}>
+                  <small style={{ display: "block", color: "var(--color-text-secondary)" }}>
                     {t("rmArpSince")} {new Date(vol.dryRunStartTime).toLocaleDateString()}
                   </small>
                 )}
               </td>
               <td>
                 {vol.attackProbability !== "none" && (
-                  <span className="state-badge" style={{ backgroundColor: vol.attackProbability === "high" ? "#ef4444" : "#f97316", color: "#fff" }}>
+                  <span className="state-badge" style={{ backgroundColor: vol.attackProbability === "high" ? "#ef4444" : "#f97316", color: "var(--color-text-inverse)" }}>
                     {vol.attackProbability}
                   </span>
                 )}

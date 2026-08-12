@@ -6,7 +6,7 @@
 
 This checklist organizes verification items for partners and SIs when proposing, designing, and building FSx for ONTAP S3 Access Points serverless patterns for customers.
 
-> 📄 **For initial proposals**: [Partner/SI One-Pager](partner-si-one-pager.md) — Grasp What / When / How / Where in one page
+> 📄 **For initial proposals**: [Partner/SI One-Pager](partner-si-one-pager.en.md) — Grasp What / When / How / Where in one page
 
 ## How to Use This Checklist
 
@@ -40,7 +40,7 @@ This checklist organizes verification items for partners and SIs when proposing,
 | | Moderate acceptable | EVENT_DRIVEN |
 | | High acceptable | HYBRID |
 
-Details: [Trigger Mode Decision Guide](trigger-mode-decision-guide.md)
+Details: [Trigger Mode Decision Guide](trigger-mode-decision-guide.en.md)
 
 ### Step 3: Deployment Profile Selection
 
@@ -53,7 +53,7 @@ Details: [Trigger Mode Decision Guide](trigger-mode-decision-guide.md)
 | Idempotency guarantee | Not required | DynamoDB | DynamoDB + S3 Object Lock |
 | Audit trail | Not required | Recommended | Required |
 
-Details: [Deployment Profiles](deployment-profiles.md)
+Details: [Deployment Profiles](deployment-profiles.en.md)
 
 ### Step 4: Access Model Design
 
@@ -68,7 +68,7 @@ Details: [Deployment Profiles](deployment-profiles.md)
 
 > **Important**: S3 API access does not bypass ONTAP file system permissions. Least-privilege must be designed on both the AWS side and the ONTAP side.
 
-Details: [S3AP Dual-Layer Authorization Model](s3ap-authorization-model.md)
+Details: [S3AP Dual-Layer Authorization Model](s3ap-authorization-model.en.md)
 
 ### Step 5: Network Model
 
@@ -169,7 +169,7 @@ A: It is suitable for automated processing of SAP peripheral files (IDoc exports
 
 ### Q: What is needed for production use?
 
-A: See the Production profile in [Deployment Profiles](deployment-profiles.md). Key additional requirements: EC2 static IP or NLB, DynamoDB idempotency, full alarm profile, periodic polling for reconciliation.
+A: See the Production profile in [Deployment Profiles](deployment-profiles.en.md). Key additional requirements: EC2 static IP or NLB, DynamoDB idempotency, full alarm profile, periodic polling for reconciliation.
 
 ### Q: Can zero event loss be guaranteed?
 
@@ -208,7 +208,7 @@ Automate document discovery and audit report generation for legal file shares st
 2-4 weeks (Level 1 Sandbox → Level 2 Scheduled)
 
 ### Next Phase Criteria
-See [Production Readiness Exit Criteria](production-readiness.md#exit-criterialevel-completion-conditions)
+See [Production Readiness Exit Criteria](production-readiness.en.md#exit-criterialevel-completion-conditions)
 ```
 
 > The above is an example for UC1. Refer to each UC's Success Metrics and customize according to the customer's business requirements.
@@ -347,29 +347,29 @@ Links to each UC's Success Metrics (Outcome / Metrics / Measurement Method):
 
 | UC | Industry | Success Metrics |
 |----|----------|----------------|
-| UC1 | Legal/Compliance | [solutions/industry/legal-compliance/README.md](../solutions/industry/legal-compliance/README.md#success-metrics) |
-| UC2 | Financial/Insurance (IDP) | [solutions/industry/financial-idp/README.md](../solutions/industry/financial-idp/README.md#success-metrics) |
-| UC3 | Manufacturing | [solutions/industry/manufacturing-analytics/README.md](../solutions/industry/manufacturing-analytics/README.md#success-metrics) |
-| UC4 | Media (VFX) | [solutions/industry/media-vfx/README.md](../solutions/industry/media-vfx/README.md#success-metrics) |
-| UC5 | Healthcare (DICOM) | [solutions/industry/healthcare-dicom/README.md](../solutions/industry/healthcare-dicom/README.md#success-metrics) |
-| UC6 | Semiconductor / EDA | [solutions/industry/semiconductor-eda/README.md](../solutions/industry/semiconductor-eda/README.md#success-metrics) |
-| UC7 | Genomics | [solutions/industry/genomics-pipeline/README.md](../solutions/industry/genomics-pipeline/README.md#success-metrics) |
-| UC8 | Energy | [solutions/industry/energy-seismic/README.md](../solutions/industry/energy-seismic/README.md#success-metrics) |
-| UC9 | Autonomous Driving / ADAS | [solutions/industry/autonomous-driving/README.md](../solutions/industry/autonomous-driving/README.md#success-metrics) |
-| UC10 | Construction / BIM | [solutions/industry/construction-bim/README.md](../solutions/industry/construction-bim/README.md#success-metrics) |
-| UC11 | Retail / EC | [solutions/industry/retail-catalog/README.md](../solutions/industry/retail-catalog/README.md#success-metrics) |
-| UC12 | Logistics | [solutions/industry/logistics-ocr/README.md](../solutions/industry/logistics-ocr/README.md#success-metrics) |
-| UC13 | Education / Research | [solutions/industry/education-research/README.md](../solutions/industry/education-research/README.md#success-metrics) |
-| UC14 | Insurance | [solutions/industry/insurance-claims/README.md](../solutions/industry/insurance-claims/README.md#success-metrics) |
-| UC15 | Defense / Space | [solutions/industry/defense-satellite/README.md](../solutions/industry/defense-satellite/README.md#success-metrics) |
-| UC16 | Government (FOIA) | [solutions/industry/government-archives/README.md](../solutions/industry/government-archives/README.md#success-metrics) |
-| UC17 | Smart City | [solutions/industry/smart-city-geospatial/README.md](../solutions/industry/smart-city-geospatial/README.md#success-metrics) |
+| UC1 | Legal/Compliance | [solutions/industry/legal-compliance/README.md](../solutions/industry/legal-compliance/README.en.md#success-metrics) |
+| UC2 | Financial/Insurance (IDP) | [solutions/industry/financial-idp/README.md](../solutions/industry/financial-idp/README.en.md#success-metrics) |
+| UC3 | Manufacturing | [solutions/industry/manufacturing-analytics/README.md](../solutions/industry/manufacturing-analytics/README.en.md#success-metrics) |
+| UC4 | Media (VFX) | [solutions/industry/media-vfx/README.md](../solutions/industry/media-vfx/README.en.md#success-metrics) |
+| UC5 | Healthcare (DICOM) | [solutions/industry/healthcare-dicom/README.md](../solutions/industry/healthcare-dicom/README.en.md#success-metrics) |
+| UC6 | Semiconductor / EDA | [solutions/industry/semiconductor-eda/README.md](../solutions/industry/semiconductor-eda/README.en.md#success-metrics) |
+| UC7 | Genomics | [solutions/industry/genomics-pipeline/README.md](../solutions/industry/genomics-pipeline/README.en.md#success-metrics) |
+| UC8 | Energy | [solutions/industry/energy-seismic/README.md](../solutions/industry/energy-seismic/README.en.md#success-metrics) |
+| UC9 | Autonomous Driving / ADAS | [solutions/industry/autonomous-driving/README.md](../solutions/industry/autonomous-driving/README.en.md#success-metrics) |
+| UC10 | Construction / BIM | [solutions/industry/construction-bim/README.md](../solutions/industry/construction-bim/README.en.md#success-metrics) |
+| UC11 | Retail / EC | [solutions/industry/retail-catalog/README.md](../solutions/industry/retail-catalog/README.en.md#success-metrics) |
+| UC12 | Logistics | [solutions/industry/logistics-ocr/README.md](../solutions/industry/logistics-ocr/README.en.md#success-metrics) |
+| UC13 | Education / Research | [solutions/industry/education-research/README.md](../solutions/industry/education-research/README.en.md#success-metrics) |
+| UC14 | Insurance | [solutions/industry/insurance-claims/README.md](../solutions/industry/insurance-claims/README.en.md#success-metrics) |
+| UC15 | Defense / Space | [solutions/industry/defense-satellite/README.md](../solutions/industry/defense-satellite/README.en.md#success-metrics) |
+| UC16 | Government (FOIA) | [solutions/industry/government-archives/README.md](../solutions/industry/government-archives/README.en.md#success-metrics) |
+| UC17 | Smart City | [solutions/industry/smart-city-geospatial/README.md](../solutions/industry/smart-city-geospatial/README.en.md#success-metrics) |
 
 ## References
 
-- [Trigger Mode Decision Guide](trigger-mode-decision-guide.md)
-- [Deployment Profiles](deployment-profiles.md)
-- [S3AP Dual-Layer Authorization Model](s3ap-authorization-model.md)
-- [Enterprise Workload Examples](enterprise-workload-examples.md)
-- [S3AP Performance Considerations](s3ap-performance-considerations.md)
+- [Trigger Mode Decision Guide](trigger-mode-decision-guide.en.md)
+- [Deployment Profiles](deployment-profiles.en.md)
+- [S3AP Dual-Layer Authorization Model](s3ap-authorization-model.en.md)
+- [Enterprise Workload Examples](enterprise-workload-examples.en.md)
+- [S3AP Performance Considerations](s3ap-performance-considerations.en.md)
 - [FSx for ONTAP — SAP HANA Configuration Guide](https://docs.aws.amazon.com/sap/latest/sap-hana/sap-hana-amazon-fsx.html)

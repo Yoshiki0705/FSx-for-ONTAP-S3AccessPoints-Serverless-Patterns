@@ -1,0 +1,316 @@
+"""Tests for the boundary and the guards on every write in functions/list-files.
+
+The boundary first. `GROUP_PATH_PREFIXES` is the multi-tenancy line, and it was
+applied to the folder-watch inbox and nowhere else. The endpoints require a session
+but the key arrived unchecked, so where per-team prefixes were configured a caller
+could rename, trash or restore an object under another team's prefix by naming it,
+and mint a presigned PUT into it. Those are the tests that matter most here: a
+browser cannot reach another tenant's files through the UI, and none of these
+actions is reached through the UI alone.
+
+Then the guards that make the new actions safe to expose at all — refusing to
+overwrite silently, refusing folders where a partial copy would leave two half
+directories, and confining permanent deletion to the trash so that destroying
+something takes two deliberate steps instead of one careless one.
+
+Every case drives `handler` with a payload, the way AppSync does, rather than
+calling the private helpers: the guard is only worth anything if it is on the path
+a request actually takes.
+"""
+
+from __future__ import annotations
+
+import importlib.util
+import json
+import os
+import sys
+from pathlib import Path
+from typing import Any
+from unittest.mock import MagicMock, patch
+
+import pytest
+
+MODULE_PATH = Path(__file__).resolve().parent.parent / "index.py"
+
+ALIAS = "team-ap-s3alias"
+# Two tenants sharing one Access Point, which is the arrangement the prefix
+# boundary exists for.
+PREFIXES = {"team-a": ["team-a/"], "team-b": ["team-b/"]}
+
+
+def load_module(env: dict[str, str]) -> Any:
+    """Import index.py fresh, since its constants are read at import time."""
+    with patch.dict(os.environ, env, clear=False):
+        spec = importlib.util.spec_from_file_location("list_files_guardrails", MODULE_PATH)
+        module = importlib.util.module_from_spec(spec)
+        assert spec.loader is not None
+        sys.modules["list_files_guardrails"] = module
+        spec.loader.exec_module(module)
+    return module
+
+
+@pytest.fixture
+def portal() -> Any:
+    """The handler with a tenant boundary configured and S3 stubbed out.
+
+    `head_object` raises by default, so the destination of a copy is treated as
+    absent unless a test says otherwise. That is the ordinary case, and making it
+    the default keeps the overwrite tests to the one line that matters.
+    """
+    module = load_module(
+        {
+            "S3_AP_ALIAS": ALIAS,
+            "GROUP_PATH_PREFIXES": json.dumps(PREFIXES),
+            "GROUP_AP_MAPPING": "{}",
+        }
+    )
+    module.s3 = MagicMock()
+    module.s3.head_object.side_effect = Exception("NoSuchKey")
+    return module
+
+
+def call(module: Any, action: str, groups: list[str] | None = None, **params: Any) -> dict:
+    """Invoke the handler the way the AppSync resolver does.
+
+    Through `handler` rather than the private helpers on purpose: a guard is only
+    worth something if it sits on the path a request actually takes, and the
+    boundary this file is mostly about was missing from exactly that path.
+
+    Args:
+        module: The freshly imported handler module.
+        action: The dispatch action name.
+        groups: Cognito groups for the caller. Defaults to a single tenant.
+        **params: The rest of the payload.
+
+    Returns:
+        The handler's response payload.
+    """
+    return module.handler({"action": action, "groups": groups if groups is not None else ["team-a"], **params}, None)
+
+
+class TestTenantBoundary:
+    """A key outside the caller's prefixes is refused, on every action that takes one."""
+
+    @pytest.mark.parametrize(
+        ("action", "params"),
+        [
+            ("trashFile", {"key": "team-b/secret.txt"}),
+            ("renameFile", {"sourceKey": "team-b/a.txt", "destinationKey": "team-b/b.txt"}),
+            ("restoreFromTrash", {"trashKey": ".trash/team-b/a.txt"}),
+            ("createUploadLink", {"destinationPrefix": "team-b/", "fileName": "x.txt"}),
+            ("copyFile", {"sourceKey": "team-b/a.txt", "destinationKey": "team-b/b.txt"}),
+            ("moveFile", {"sourceKey": "team-b/a.txt", "destinationKey": "team-b/b.txt"}),
+            ("createFolder", {"key": "team-b/new/"}),
+            ("deleteFileForever", {"key": ".trash/team-b/a.txt", "acknowledgeIrreversible": True}),
+        ],
+    )
+    def test_another_tenants_key_is_refused(self, portal: Any, action: str, params: dict) -> None:
+        result = call(portal, action, **params)
+
+        assert result.get("success") is not True
+        assert "outside the prefixes" in result["error"]
+        # Nothing was attempted. A guard that refuses after the write is not a guard.
+        assert portal.s3.copy_object.call_count == 0
+        assert portal.s3.delete_object.call_count == 0
+        assert portal.s3.put_object.call_count == 0
+        assert portal.s3.generate_presigned_url.call_count == 0
+
+    def test_the_callers_own_prefix_is_allowed(self, portal: Any) -> None:
+        result = call(portal, "copyFile", sourceKey="team-a/a.txt", destinationKey="team-a/b.txt")
+
+        assert result["success"] is True
+        portal.s3.copy_object.assert_called_once()
+
+    def test_a_move_may_not_leave_the_prefix(self, portal: Any) -> None:
+        """Both ends are checked, not just the source."""
+        result = call(portal, "moveFile", sourceKey="team-a/a.txt", destinationKey="team-b/a.txt")
+
+        assert result["success"] is False
+        assert "destinationKey" in result["error"]
+        assert portal.s3.copy_object.call_count == 0
+
+    def test_storage_admin_is_not_restricted(self, portal: Any) -> None:
+        result = call(
+            portal, "copyFile", groups=["storage-admin"], sourceKey="team-b/a.txt", destinationKey="team-b/b.txt"
+        )
+
+        assert result["success"] is True
+
+    def test_no_configured_prefixes_means_no_restriction(self) -> None:
+        """The boundary is opt-in; a deployment without it must keep working."""
+        module = load_module({"S3_AP_ALIAS": ALIAS, "GROUP_PATH_PREFIXES": "{}", "GROUP_AP_MAPPING": "{}"})
+        module.s3 = MagicMock()
+        module.s3.head_object.side_effect = Exception("NoSuchKey")
+
+        result = call(module, "copyFile", sourceKey="anywhere/a.txt", destinationKey="anywhere/b.txt")
+
+        assert result["success"] is True
+
+    def test_a_listing_outside_the_boundary_returns_nothing(self, portal: Any) -> None:
+        result = call(portal, "listFiles", prefix="team-b/")
+
+        assert result["files"] == []
+        assert result["scope"] == "denied"
+        assert portal.s3.list_objects_v2.call_count == 0
+
+    def test_the_root_listing_still_works(self, portal: Any) -> None:
+        """Otherwise a restricted user cannot navigate to their own folder."""
+        portal.s3.list_objects_v2.return_value = {"CommonPrefixes": [{"Prefix": "team-a/"}], "Contents": []}
+
+        result = call(portal, "listFiles", prefix="")
+
+        assert result["scope"] != "denied"
+        portal.s3.list_objects_v2.assert_called_once()
+
+    def test_the_restore_target_is_what_is_checked(self, portal: Any) -> None:
+        """`.trash/` prefixes every key, so checking the trash key matches nothing."""
+        result = call(portal, "restoreFromTrash", trashKey=".trash/team-a/a.txt")
+
+        assert result["success"] is True
+        portal.s3.copy_object.assert_called_once()
+        assert portal.s3.copy_object.call_args.kwargs["Key"] == "team-a/a.txt"
+
+
+class TestKeyShape:
+    @pytest.mark.parametrize(
+        ("key", "because"),
+        [
+            ("team-a/../team-b/a.txt", "'..' segment"),
+            ("/team-a/a.txt", "empty path segment"),
+            ("team-a//a.txt", "empty path segment"),
+            ("team-a/a\x00.txt", "control characters"),
+            ("", "is required"),
+        ],
+    )
+    def test_a_malformed_key_is_refused(self, portal: Any, key: str, because: str) -> None:
+        """A `..` segment is refused even though S3 would treat it literally.
+
+        `a/../b` is a key, not a path, and nothing resolves it. That is the reason:
+        it means one thing to the prefix comparison and another to a person reading
+        it, and no legitimate request in this portal produces one.
+        """
+        result = call(portal, "trashFile", key=key)
+
+        assert result["success"] is False
+        assert because in result["error"]
+        assert portal.s3.copy_object.call_count == 0
+
+    def test_an_overlong_key_is_refused_before_s3_sees_it(self, portal: Any) -> None:
+        result = call(portal, "trashFile", key="team-a/" + "x" * 1100)
+
+        assert result["success"] is False
+        assert "key limit" in result["error"]
+
+
+class TestOverwrite:
+    @pytest.mark.parametrize("action", ["copyFile", "moveFile", "renameFile"])
+    def test_an_occupied_destination_is_refused(self, portal: Any, action: str) -> None:
+        portal.s3.head_object.side_effect = None  # the destination is there
+
+        result = call(portal, action, sourceKey="team-a/a.txt", destinationKey="team-a/b.txt")
+
+        assert result["success"] is False
+        assert "already exists" in result["error"]
+        assert portal.s3.copy_object.call_count == 0
+
+    @pytest.mark.parametrize("action", ["copyFile", "moveFile", "renameFile"])
+    def test_overwriting_is_possible_when_asked_for(self, portal: Any, action: str) -> None:
+        portal.s3.head_object.side_effect = None
+
+        result = call(portal, action, sourceKey="team-a/a.txt", destinationKey="team-a/b.txt", overwrite=True)
+
+        assert result["success"] is True
+
+    def test_restoring_onto_an_existing_file_is_refused(self, portal: Any) -> None:
+        """The original came back while the copy sat in the trash."""
+        portal.s3.head_object.side_effect = None
+
+        result = call(portal, "restoreFromTrash", trashKey=".trash/team-a/a.txt")
+
+        assert result["success"] is False
+        assert "already exists" in result["error"]
+        assert portal.s3.copy_object.call_count == 0
+
+
+class TestFolders:
+    @pytest.mark.parametrize(
+        ("action", "params"),
+        [
+            ("copyFile", {"sourceKey": "team-a/dir/", "destinationKey": "team-a/other/"}),
+            ("moveFile", {"sourceKey": "team-a/dir/", "destinationKey": "team-a/other/"}),
+            ("trashFile", {"key": "team-a/dir/"}),
+        ],
+    )
+    def test_a_folder_is_refused_rather_than_half_handled(self, portal: Any, action: str, params: dict) -> None:
+        """One object per call. A prefix would need every object under it, and a run
+        that fails halfway leaves the contents split across two places."""
+        result = call(portal, action, **params)
+
+        assert result["success"] is False
+        assert portal.s3.copy_object.call_count == 0
+
+    def test_creating_a_folder_supplies_the_trailing_separator(self, portal: Any) -> None:
+        """S3 has no directories: the trailing "/" is what makes it one."""
+        result = call(portal, "createFolder", key="team-a/reports")
+
+        assert result["success"] is True
+        assert result["key"] == "team-a/reports/"
+        assert portal.s3.put_object.call_args.kwargs["Key"] == "team-a/reports/"
+
+    def test_creating_a_folder_that_exists_is_refused(self, portal: Any) -> None:
+        portal.s3.head_object.side_effect = None
+
+        result = call(portal, "createFolder", key="team-a/reports/")
+
+        assert result["success"] is False
+        assert "already exists" in result["error"]
+        assert portal.s3.put_object.call_count == 0
+
+
+class TestPermanentDeletion:
+    def test_only_the_trash_may_be_purged(self, portal: Any) -> None:
+        """Destroying something takes two deliberate steps: trash it, then purge it."""
+        result = call(portal, "deleteFileForever", key="team-a/a.txt", acknowledgeIrreversible=True)
+
+        assert result["success"] is False
+        assert ".trash/" in result["error"]
+        assert portal.s3.delete_object.call_count == 0
+
+    def test_the_consequence_is_stated_and_must_be_acknowledged(self, portal: Any) -> None:
+        result = call(portal, "deleteFileForever", key=".trash/team-a/a.txt")
+
+        assert result["success"] is False
+        # Naming the consequence is the point of the flag, not the flag itself.
+        assert "cannot be undone" in result["error"]
+        assert "not versioned" in result["error"]
+        assert portal.s3.delete_object.call_count == 0
+
+    def test_an_acknowledged_purge_proceeds(self, portal: Any) -> None:
+        result = call(portal, "deleteFileForever", key=".trash/team-a/a.txt", acknowledgeIrreversible=True)
+
+        assert result["success"] is True
+        assert portal.s3.delete_object.call_args.kwargs["Key"] == ".trash/team-a/a.txt"
+
+    def test_a_truthy_value_other_than_true_does_not_acknowledge(self, portal: Any) -> None:
+        """`"false"` is a truthy string. The flag is identity-checked against True."""
+        result = call(portal, "deleteFileForever", key=".trash/team-a/a.txt", acknowledgeIrreversible="false")
+
+        assert result["success"] is False
+        assert portal.s3.delete_object.call_count == 0
+
+
+class TestMoveOrdering:
+    def test_the_source_survives_a_failed_copy(self, portal: Any) -> None:
+        """Delete after copy, never before: the other order loses the object."""
+        portal.s3.copy_object.side_effect = Exception("AccessDenied")
+
+        result = call(portal, "moveFile", sourceKey="team-a/a.txt", destinationKey="team-a/b.txt")
+
+        assert result["success"] is False
+        assert portal.s3.delete_object.call_count == 0
+
+    def test_a_copy_leaves_the_source_alone(self, portal: Any) -> None:
+        result = call(portal, "copyFile", sourceKey="team-a/a.txt", destinationKey="team-a/b.txt")
+
+        assert result["success"] is True
+        assert portal.s3.delete_object.call_count == 0

@@ -86,7 +86,7 @@ export function FolderDownload({ currentPrefix }: FolderDownloadProps) {
         onClick={handleDownload}
         disabled={loading}
         title={t("zipDownloadTitle")}
-        style={{ padding: "0.4rem 0.75rem", fontSize: "0.85rem", background: "#f1f5f9", color: "#334155", border: "1px solid #cbd5e1", borderRadius: "6px", cursor: loading ? "wait" : "pointer" }}
+        style={{ padding: "0.4rem 0.75rem", fontSize: "0.85rem", background: "var(--color-surface-subtle)", color: "var(--color-text)", border: "1px solid var(--color-border-strong)", borderRadius: "6px", cursor: loading ? "wait" : "pointer" }}
       >
         {loading ? `⏳ ${t("zipDownloadGenerating")}` : `📦 ${t("zipDownloadBtn")}`}
       </button>
@@ -114,21 +114,21 @@ export function FolderDownload({ currentPrefix }: FolderDownloadProps) {
               <div>{t("zipDownloadFileCount")}: {result.fileCount}</div>
               <div>{t("zipDownloadSize")}: {formatBytes(result.totalBytes || 0)}</div>
               {result.demoMode && (
-                <div style={{ color: "#92400e", marginTop: "0.25rem" }}>⚠️ DemoMode</div>
+                <div style={{ color: "var(--color-warning-text)", marginTop: "0.25rem" }}>⚠️ DemoMode</div>
               )}
               {result.downloadUrl && (
                 <a
                   href={result.downloadUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  style={{ display: "inline-block", marginTop: "0.5rem", color: "#2563eb", textDecoration: "underline" }}
+                  style={{ display: "inline-block", marginTop: "0.5rem", color: "var(--color-primary-text)", textDecoration: "underline" }}
                 >
                   {t("zipDownloadLink")}
                 </a>
               )}
             </>
           ) : (
-            <div style={{ color: "#dc2626" }}>❌ {result.error}</div>
+            <div style={{ color: "var(--color-error-text)" }}>❌ {result.error}</div>
           )}
           <button
             onClick={() => setResult(null)}

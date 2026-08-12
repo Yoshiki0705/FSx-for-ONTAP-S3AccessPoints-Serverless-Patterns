@@ -22,7 +22,7 @@
 	lint-python-format format-python lint-cfn drift drift-published security build-uc1 \
 	build-sap deploy-uc1 deploy-sap clean build-SharedLayer build-uc12 deploy-uc12 test-ops1 \
 	test-ops4 test-ops3 test-ops2 test-ops5 test-ops6 test-ops lint-ops lint-cfn-ops \
-	build-ops1 deploy-ops1 security-report propose-cleanup
+	build-ops1 deploy-ops1 security-report propose-cleanup ontap-preflight
 
 # Target Python version — must match the Lambda runtime in the SAM templates
 # (`Runtime: python3.13`). Declared once here so `install`, the interpreter
@@ -70,6 +70,8 @@ help:
 	@echo "  make lint-cfn      — Run cfn-lint only"
 	@echo "  make lint-python   — Run ruff only"
 	@echo "  make security      — Run bandit security scan"
+	@echo "  make drift         — Docs/code drift, i18n coverage, portal action contracts (offline)"
+	@echo "  make ontap-preflight — Name the broken link in the portal's ONTAP chain (calls AWS)"
 	@echo "  make propose-cleanup — Report the backlog, then what is standing and its cost (read-only)"
 	@echo "  make clean         — Remove build artifacts"
 	@echo ""
@@ -210,6 +212,29 @@ propose-cleanup:
 # target runs them too so a rule change can be checked without the full suite.
 drift:
 	$(PYTHON) -m pytest scripts/tests/test_stale_claim_rules.py --tb=short -q
+# A name the code depends on and no template creates. Both rules below exist because
+# the same shape shipped twice: five endpoints guarded on a Cognito group that
+# `defineAuth` never declared, and handlers reading environment variables nothing
+# set. Neither failed loudly — the group made a fresh deploy's admin sections
+# absent, and the variables made a reachable endpoint fail as though it were
+# unconfigured.
+	$(PYTHON) -m pytest scripts/tests/test_iac_completeness_rules.py --tb=short -q
+# The theme and i18n rules inside check_portal_drift.py. Each was added after the
+# previous version of it passed while the defect was present: the colour-literal rule
+# was anchored to the start of a line and could not see `.state-online { background:
+# #dcfce7; }`, so it reported 5 literals out of 201; it read only the stylesheet, so
+# six agent cards kept light fills in inline styles; and a t() call anywhere on a
+# line excused an untranslated literal beside it. A rule whose pattern misses the
+# shape it is aimed at is indistinguishable from a clean tree.
+	$(PYTHON) -m pytest scripts/tests/test_theme_literal_check.py --tb=short -q
+# The `enabled` / `isPending` rule, also inside check_portal_drift.py. A gated query is
+# pending forever, so reading that as loading is a spinner that never clears: the qtree
+# panel rendered one instead of the volume dropdown it needed someone to use, and no
+# request was ever made. Types, lint and every other gate passed -- the query is correct
+# and only the meaning taken from the flag was wrong. Its tests carry more weight than
+# the rule: three versions of the source reader silently stopped seeing code, and a
+# reader that sees nothing reports a clean tree.
+	$(PYTHON) -m pytest scripts/tests/test_query_gate_rule.py --tb=short -q
 	$(PYTHON) scripts/check_portal_drift.py
 # boto3 and urllib3 are pinned in pyproject.toml and requirements.txt both, and
 # Renovate manages the two as separate managers. It raised boto3 in pyproject.toml
@@ -255,6 +280,35 @@ drift:
 # "you would have to build this yourself" list shorter.
 drift-published:
 	$(PYTHON) scripts/check_published_articles.py
+
+# ============================================================
+# ONTAP connection preflight
+# ============================================================
+# Not a drift check and not offline: it calls AWS. Kept separate so `make drift` stays
+# runnable without credentials.
+#
+# Six things have to line up for the portal's ONTAP panels to show data, and a failure
+# in any of them used to reach the UI as the same sentence -- "Volume 'vol1' not found
+# on SVM 'fsxsvm01'" -- under a heading that blamed the network. On the verification
+# environment that volume existed, the request reached the cluster, and the actual cause
+# was a password Secrets Manager and ONTAP disagreed about. This walks the six in order
+# and names the one that broke.
+#
+#   make ontap-preflight
+#   make ontap-preflight FS_ID=fs-0123456789abcdef0        # adds stages 2-4
+#   make ontap-preflight FS_ID=... LAMBDA=<function-name>  # adds stage 6
+#
+# Stage 6 -- whether ONTAP accepts the credentials -- cannot be reached from a laptop:
+# the management LIF is private. LAMBDA asks the deployed function to make the call.
+# Without it the stage reports SKIP rather than passing, because a green run that never
+# tried the one thing that was wrong is worse than no run.
+PORTAL_CONFIG := solutions/amplify-portal/amplify/portal-config.ts
+
+ontap-preflight:
+	$(PYTHON) scripts/check_ontap_connection.py --config $(PORTAL_CONFIG) \
+		$(if $(FS_ID),--file-system-id $(FS_ID),) \
+		$(if $(LAMBDA),--via-lambda $(LAMBDA),) \
+		$(if $(AWS_DEFAULT_REGION),--region $(AWS_DEFAULT_REGION),)
 
 # ============================================================
 # Security

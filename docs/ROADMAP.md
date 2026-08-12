@@ -92,7 +92,7 @@ FR-7 について: Presigned URL は互換性表では "Not supported" だが実
 |---|---|---|
 | FlexCache/SnapMirror のスクリーンショット + デモガイド追記 | Medium | `docs/en/admin-resource-management-demo.md` に手順追加 |
 | SAML/OIDC Cognito 連携ガイド | Low | Hosting ガイドに概要のみ記載済み |
-| モバイル向け CSS の調整 | Low | 基本的なレスポンシブは動作、実機確認が必要 |
+| モバイル実機での確認 | Low | 390px / 768px / 769px エミュレーションで検証済み（横スクロールなし、入力欄 16px 以上、タップ領域 44px、ドロワー + 暗幕、両テーマ WCAG AA）。実機 iPhone / Android での確認は未実施。手順は[ユーザーガイド](ja/portal-user-guide.md)の「4. スマートフォンで使う」、内部仕様は[セクション構成ガイド](../solutions/amplify-portal/docs/portal-tabs-guide.md)の「モバイル対応」 |
 
 データ取得は全パネルが TanStack Query に移行済み。`react-hooks/set-state-in-effect` と `react-hooks/exhaustive-deps` は `error` に昇格し、`npm run lint` は `--max-warnings 0` です。
 

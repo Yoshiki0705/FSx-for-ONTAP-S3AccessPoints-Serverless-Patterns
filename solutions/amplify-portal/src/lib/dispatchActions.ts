@@ -632,8 +632,6 @@ export interface DataProtectionActionParams {
   /** No parameters. */
   getProtectionSummary: Record<string, never>;
   /** No parameters. */
-  getS3ObjectLockStatus: Record<string, never>;
-  /** No parameters. */
   getSnapLockConfig: Record<string, never>;
   getSnapshotsWithLockStatus: {
     maxResults?: number;
@@ -671,7 +669,6 @@ export interface DataProtectionActionParams {
   updateRetentionPolicy: {
     acknowledgeIrreversible?: true;
     days?: number;
-    mode?: "GOVERNANCE" | "COMPLIANCE";
     target?: "snaplock" | "s3_object_lock";
   };
 }
@@ -708,6 +705,22 @@ export interface SnapshotsActionParams {
 
 /** Actions of functions/list-files, reached by `fileMutation`, `fileQuery`. */
 export interface ListFilesActionParams {
+  copyFile: {
+    continuationToken?: string;
+    destinationKey?: string;
+    groups?: string;
+    maxKeys?: number;
+    overwrite?: true;
+    prefix?: string;
+    sourceKey?: string;
+  };
+  createFolder: {
+    continuationToken?: string;
+    groups?: string;
+    key?: string;
+    maxKeys?: number;
+    prefix?: string;
+  };
   createUploadLink: {
     continuationToken?: string;
     destinationPrefix?: string;
@@ -717,7 +730,16 @@ export interface ListFilesActionParams {
     maxKeys?: number;
     prefix?: string;
   };
+  deleteFileForever: {
+    acknowledgeIrreversible?: true;
+    continuationToken?: string;
+    groups?: string;
+    key?: string;
+    maxKeys?: number;
+    prefix?: string;
+  };
   listFiles: {
+    acknowledgeIrreversible?: true;
     apAlias?: string;
     continuationToken?: string;
     destinationKey?: string;
@@ -728,6 +750,7 @@ export interface ListFilesActionParams {
     key?: string;
     maxKeys?: number;
     maxResults?: number;
+    overwrite?: true;
     prefix?: string;
     sourceKey?: string;
     trashKey?: string;
@@ -748,13 +771,23 @@ export interface ListFilesActionParams {
     prefix?: string;
     watchedPrefixes?: string;
   };
-  renameFile: {
-    destinationKey: string;
-    sourceKey: string;
+  moveFile: {
     continuationToken?: string;
+    destinationKey?: string;
     groups?: string;
     maxKeys?: number;
+    overwrite?: true;
     prefix?: string;
+    sourceKey?: string;
+  };
+  renameFile: {
+    continuationToken?: string;
+    destinationKey?: string;
+    groups?: string;
+    maxKeys?: number;
+    overwrite?: true;
+    prefix?: string;
+    sourceKey?: string;
   };
   restoreFromTrash: {
     continuationToken?: string;
@@ -764,9 +797,9 @@ export interface ListFilesActionParams {
     trashKey?: string;
   };
   trashFile: {
-    key: string;
     continuationToken?: string;
     groups?: string;
+    key?: string;
     maxKeys?: number;
     prefix?: string;
   };

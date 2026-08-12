@@ -182,6 +182,48 @@ Interrogez les événements de données CloudTrail S3 pour répondre à « qui a
 
 ---
 
+### 4. Utilisation sur téléphone
+
+Il n'y a pas d'application dédiée. Ouvrez **la même URL que sur ordinateur** dans le
+navigateur du téléphone (vérifié avec Safari sur iOS et Chrome sur Android).
+
+<img src="../../solutions/amplify-portal/docs/screenshots/portal-files-mobile-dark.png" alt="La liste de fichiers sur téléphone, thème sombre" width="300">
+
+**Procédure**
+
+1. Ouvrez l'URL fournie par votre administrateur
+2. Connectez-vous avec votre e-mail et votre mot de passe, plus un code TOTP si la MFA
+   est activée. Le remplissage automatique de votre gestionnaire de mots de passe
+   fonctionne normalement
+3. En haut de l'écran se trouvent **☰**, le réglage du thème, celui de la langue et la
+   déconnexion (⏻). La barre latérale est masquée au départ
+4. Appuyez sur **☰** pour ouvrir la navigation par-dessus le contenu. Choisir une
+   section la referme ; pour fermer sans choisir, appuyez sur la zone assombrie
+5. Pour ouvrir un fichier, appuyez sur l'icône de sa ligne (📄 / 🖼️ / 📕 / 📝).
+   L'aperçu s'ouvre en panneau depuis le bas de l'écran ; **✕** le referme
+6. Pour agir sur plusieurs fichiers, appuyez sur la case à cocher à gauche de chaque
+   ligne. Le nombre d'éléments et les actions disponibles apparaissent au-dessus de la liste
+
+**Différences avec l'ordinateur**
+
+| Élément | Sur téléphone |
+|---------|--------------|
+| Barre latérale | un panneau par-dessus le contenu, ouvert et fermé avec **☰** |
+| Colonnes Taille et Modifié | supprimées, faute de largeur ; le tri par nom reste possible |
+| Adresse e-mail | masquée (la déconnexion n'est plus qu'une icône) |
+| Aperçu de fichier | un panneau depuis le bas, jusqu'à 70 % de l'écran. Un PDF se lit mieux en paysage |
+| Panneau Assistant IA | s'ouvre en panneau depuis la droite |
+
+> **À propos du 🖥️ du sélecteur de thème** : ce n'est pas un bouton « passer en version
+> ordinateur ». Les trois choix sont ☀️ clair, 🌙 sombre et 🖥️ **suivre l'appareil** ; le
+> dernier suit le réglage d'apparence d'iOS ou d'Android, y compris son basculement
+> automatique le soir.
+
+> **Consommation de données** : le téléchargement d'un dossier en ZIP transfère tout ce
+> qu'il contient. En connexion mobile, vérifiez d'abord le nombre et la taille des fichiers.
+
+---
+
 ## Conseils & FAQ
 
 **Q : Je vois « ONTAP Connection Required » dans certains panneaux.**
@@ -197,7 +239,7 @@ R : Les liens de partage utilisent des Presigned URL avec une durée de vie que 
 R : Ils devraient apparaître immédiatement (ONTAP garantit une cohérence forte inter-protocoles). Essayez de rafraîchir la liste de fichiers. Si le problème persiste, le fichier peut être dans un sous-dossier — vérifiez le chemin.
 
 **Q : Puis-je utiliser le portail sur mobile ?**
-R : Oui. La barre latérale se replie sur les écrans étroits. Toutes les fonctionnalités fonctionnent sur les navigateurs mobiles, bien que l'expérience soit optimisée pour le bureau.
+R : Oui. La procédure figure au point « 4. Utilisation sur téléphone » de la prise en main.
 
 **Q : Comment changer mon mot de passe ?**
 R : Utilisez le Cognito Hosted UI ou demandez à votre administrateur de le réinitialiser.

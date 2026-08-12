@@ -289,7 +289,7 @@ graph TB
 |----------|---------|
 | [UC6 semiconductor-eda README](../../solutions/industry/semiconductor-eda/README.en.md) | GDS/OASIS validation + Amazon Quick integration |
 | [UC30 quick-agentic-workspace README](../../solutions/genai/quick-agentic-workspace/README.en.md) | Full Quick Suite integration pattern |
-| [Event-Driven FPolicy README](../../solutions/event-driven/fpolicy/README.md) | FPolicy event-driven pipeline |
+| [Event-Driven FPolicy README](../../solutions/event-driven/fpolicy/README.en.md) | FPolicy event-driven pipeline |
 | [Hands-on Lab IaC](../../infrastructure/handson-lab/README.md) | Hands-on environment IaC |
 | [verify-quick-s3ap.sh](../../scripts/verify-quick-s3ap.sh) | Quick + S3 AP E2E verification script |
 | [AD-Joined SVM Prerequisites](ad-joined-svm-s3ap-prerequisites.md) | AD configuration prerequisites |

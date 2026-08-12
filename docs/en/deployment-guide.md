@@ -798,7 +798,7 @@ make sfn-test-delete  # If you created a test state machine
 
 ### Detailed documentation
 
-- [Portal Tabs Guide (with screenshots)](../../solutions/amplify-portal/docs/portal-tabs-guide.md)
+- [Portal Tabs Guide (with screenshots)](../../solutions/amplify-portal/docs/portal-tabs-guide.en.md)
 - [Portal README](../../solutions/amplify-portal/README.md)
 - [Amplify Hosting Production Guide](amplify-hosting-production-guide.md)
 

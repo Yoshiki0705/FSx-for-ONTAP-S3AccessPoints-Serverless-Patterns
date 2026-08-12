@@ -1,10 +1,16 @@
 import json
+import logging
 import os
 
 import boto3
 import urllib3
 
+from shared.ontap_diagnosis import diagnose_exception, diagnose_response, not_configured
+
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+
+logger = logging.getLogger()
+logger.setLevel(logging.INFO)
 
 ONTAP_MGMT_IP = os.environ.get("ONTAP_MGMT_IP", "")
 SECRET_NAME = os.environ.get("ONTAP_SECRET_NAME", "")
@@ -37,12 +43,17 @@ def handler(event, context):
     action = event.get("action", "listSnapshots")
     max_results = event.get("maxResults", 10)
 
-    if not all([ONTAP_MGMT_IP, SECRET_NAME, VOLUME_NAME]):
-        return {
-            "snapshots": [],
-            "volumeName": VOLUME_NAME,
-            "error": "ONTAP connection not configured (set ONTAP_MGMT_IP, ONTAP_SECRET_NAME, VOLUME_NAME)",
-        }
+    missing = [
+        name
+        for name, value in (
+            ("ONTAP_MGMT_IP", ONTAP_MGMT_IP),
+            ("ONTAP_SECRET_NAME", SECRET_NAME),
+            ("VOLUME_NAME", VOLUME_NAME),
+        )
+        if not value
+    ]
+    if missing:
+        return {"snapshots": [], "volumeName": VOLUME_NAME, **not_configured(missing).as_dict()}
 
     try:
         username, password = get_credentials()
@@ -56,14 +67,21 @@ def handler(event, context):
             f"?name={VOLUME_NAME}&svm.name={SVM_NAME}&fields=uuid,anti_ransomware,snaplock,snapshot_locking_enabled"
         )
         vol_resp = http.request("GET", vol_url, headers=headers)
-        vol_data = json.loads(vol_resp.data)
 
-        if not vol_data.get("records"):
-            return {
-                "snapshots": [],
-                "volumeName": VOLUME_NAME,
-                "error": f"Volume '{VOLUME_NAME}' not found on SVM '{SVM_NAME}'",
-            }
+        # The status was never read here. An ONTAP 401 body carries no `records`, so a
+        # rejected password arrived as "Volume 'vol1' not found on SVM 'fsxsvm01'" and the
+        # panel then advised checking the VPC subnet and the security group -- neither of
+        # which had anything to do with it.
+        diagnosis = diagnose_response(
+            vol_resp.status,
+            vol_resp.data,
+            subject=f"volume '{VOLUME_NAME}' on SVM '{SVM_NAME}'",
+        )
+        if diagnosis is not None:
+            logger.warning("ONTAP volume lookup failed: class=%s status=%s", diagnosis.failure.value, diagnosis.status)
+            return {"snapshots": [], "volumeName": VOLUME_NAME, **diagnosis.as_dict()}
+
+        vol_data = json.loads(vol_resp.data)
 
         vol_record = vol_data["records"][0]
         vol_uuid = vol_record["uuid"]
@@ -258,10 +276,18 @@ def handler(event, context):
             "error": None,
         }
 
+    except urllib3.exceptions.HTTPError as e:
+        # A request that never produced a response: routing, security group, or a LIF
+        # that is not listening. Separated from the block below because it is the one
+        # failure the panel's original network advice was actually written for.
+        diagnosis = diagnose_exception(e, mgmt_ip=ONTAP_MGMT_IP)
+        logger.warning("ONTAP unreachable: %s", diagnosis.message)
+        return {"snapshots": [], "volumeName": VOLUME_NAME, **diagnosis.as_dict()}
     except Exception as e:
-        print(f"Error listing snapshots: {e}")
+        logger.exception("Error listing snapshots")
         return {
             "snapshots": [],
             "volumeName": VOLUME_NAME,
             "error": str(e),
+            "errorClass": "ONTAP_ERROR",
         }
