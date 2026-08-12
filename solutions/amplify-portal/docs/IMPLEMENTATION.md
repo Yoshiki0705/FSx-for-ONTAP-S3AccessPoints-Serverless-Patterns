@@ -201,6 +201,7 @@ Without this, `JSON.parse(object)` silently produces `{}` → Lambda receives em
 | 2026-07-28 | Folder favorites | Star button (☆/★) on both folders and files. FavoritesView shows 📁/📄 with correct navigation | FileExplorer.tsx, Favorites.tsx, App.tsx |
 | 2026-07-28 | AD/OIDC auth config | Environment-driven OIDC/SAML in auth/resource.ts. authMode in portal-settings. socialProviders in Authenticator | auth/resource.ts, portal-settings.ts, main.tsx |
 | 2026-07-28 | Folder sharing design doc | ZIP generation architecture + AD/OIDC integration plan | docs/folder-sharing-and-auth-design.md |
+| 2026-08-12 | ファイル一覧のサムネイル | バックエンド生成 + ETag キャッシュ。1 ページ 1 回のバッチ呼び出し（行ごとの presigned URL を避ける）。Pillow レイヤー | functions/thumbnails/, useThumbnails.ts, FilePreview.tsx |
 
 ## AI Agent Architecture (Phase 1 + Phase 2)
 

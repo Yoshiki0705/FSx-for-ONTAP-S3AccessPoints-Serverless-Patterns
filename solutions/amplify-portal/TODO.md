@@ -38,8 +38,13 @@ Identified during 30-persona extended review. Code changes required.
 ## Priority: Low (Future)
 
 ### Presigned URL Integration
-- [ ] Connect FilePreview to actual presigned URL for real image thumbnails
-- [ ] Add `getPresignedUrl` AppSync query backed by Lambda
+- [x] Connect FilePreview to actual presigned URL for real image thumbnails
+      Built as a backend path instead: one batched `thumbnailQuery` per page renders
+      downscaled JPEGs into a cache bucket. A URL per row would have cost one
+      invocation per file and made the browser fetch each full-size original.
+      See docs/thumbnail-design.md
+- [x] Add `getPresignedUrl` AppSync query backed by Lambda
+      Already shipped before this list was last read: functions/presigned-url
 
 ### Production Deployment
 - [ ] Amplify Hosting deployment guide (branch-based CI/CD)

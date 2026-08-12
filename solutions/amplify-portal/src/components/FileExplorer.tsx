@@ -25,6 +25,7 @@ import { useTranslation } from "../i18n";
 import { useToast } from "../lib/toast";
 import { isRegulatedPath } from "../utils/regulatedPath";
 import { formatAbsoluteTime, formatRelativeTime } from "../utils/formatTime";
+import { useThumbnails } from "../hooks/useThumbnails";
 
 interface FileExplorerProps {
   onSelectPrefix: (prefix: string) => void;
@@ -265,6 +266,10 @@ export function FileExplorer({
     .sort((a, b) => a.localeCompare(b, locale, { numeric: true, sensitivity: "base" }));
   const regularFiles = allFiles.filter((f) => matches(f.key)).sort(compareOn(sort, locale));
   const hiddenByFilter = allFolders.length + allFiles.length - folders.length - regularFiles.length;
+  // One request for the page, keyed on the image keys it contains. Asking per
+  // row would cost an invocation per row and then make the browser fetch each
+  // full-size original to draw something the width of a fingertip.
+  const { urlFor: thumbnailFor } = useThumbnails(regularFiles.map((file) => file.key));
 
   // What AI processing recorded about the files loaded, in one batched call. Asked
   // for the unfiltered set on purpose: keying this on the filtered set would issue
@@ -682,7 +687,12 @@ export function FileExplorer({
                       what most rows are clicked for. The rest move behind the
                       overflow button, because seven controls on every line are read
                       before the filename is. */}
-                  <FilePreview fileKey={file.key} fileName={fileName} onSelect={onFileSelect} />
+                  <FilePreview
+                    fileKey={file.key}
+                    fileName={fileName}
+                    onSelect={onFileSelect}
+                    thumbnailUrl={thumbnailFor(file.key)}
+                  />
                   <RowMenu fileName={fileName}>
                     <ShareLink fileKey={file.key} fileName={fileName} />
                     <button

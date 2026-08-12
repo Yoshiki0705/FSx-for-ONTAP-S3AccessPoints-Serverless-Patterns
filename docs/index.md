@@ -38,6 +38,7 @@
 | [ONTAP Connection Guide](../solutions/amplify-portal/docs/ONTAP-CONNECTION-GUIDE.md) | VPC, secret and management LIF wiring — start with `make ontap-preflight` when a panel has no data |
 | [Handover & Support Guide](../solutions/amplify-portal/docs/portal-handover-guide.md) | After the deploy: the three things to send a user, where every value is managed, and a reverse index from what the user said to what to check |
 | [Portal Tabs Guide](../solutions/amplify-portal/docs/portal-tabs-guide.md) | What each sidebar section does |
+| [Thumbnail Design (JA)](../solutions/amplify-portal/docs/thumbnail-design.md) / [(EN)](../solutions/amplify-portal/docs/thumbnail-design.en.md) | Why file-list thumbnails are generated in the backend, and what is not generated |
 | [Admin Capability Map (JA)](../solutions/amplify-portal/docs/admin-capability-map.md) / [(EN)](../solutions/amplify-portal/docs/admin-capability-map.en.md) | ONTAP System Manager feature coverage |
 | [Resource Management Demo Guide (JA)](../solutions/amplify-portal/docs/resource-management-demo-guide.md) / [(EN)](../solutions/amplify-portal/docs/resource-management-demo-guide.en.md) | Panel-by-panel walkthrough |
 | [AI Agent Demo Guide (JA)](../solutions/amplify-portal/docs/ai-agent-demo-guide.md) / [(EN)](../solutions/amplify-portal/docs/ai-agent-demo-guide.en.md) | Agent chat, directory and teams |

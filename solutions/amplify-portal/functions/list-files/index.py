@@ -6,6 +6,10 @@ import os
 
 import boto3
 
+from shared.portal_path_scope import MAX_KEY_BYTES  # noqa: F401  (kept for callers/tests)
+from shared.portal_path_scope import allowed_prefixes as _shared_allowed_prefixes
+from shared.portal_path_scope import reject_key as _reject_key
+
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
@@ -39,74 +43,18 @@ def resolve_ap_alias(groups: list[str]) -> str:
 def _allowed_prefixes(user_groups: list[str]) -> list[str]:
     """Path prefixes this caller may see, or [] for no restriction.
 
-    Mirrors `_get_allowed_prefixes` in functions/agent-chat: same environment
-    variable, same storage-admin bypass, same "no configured prefixes means no
-    restriction" reading. Two copies of a boundary can disagree, so if a third
-    consumer appears this belongs in a shared module.
+    Binds this function's environment to the shared boundary. The third consumer
+    arrived -- the thumbnail path -- which is the condition this docstring used to
+    name as the point to extract, so the rule now lives in
+    `shared.portal_path_scope` and there is one definition of it.
     """
-    if not GROUP_PATH_PREFIXES or not user_groups:
-        return []
-    if "storage-admin" in user_groups:
-        return []
-    prefixes: list[str] = []
-    for group in user_groups:
-        prefixes.extend(GROUP_PATH_PREFIXES.get(group, []))
-    return sorted(set(prefixes))
+    return _shared_allowed_prefixes(user_groups, GROUP_PATH_PREFIXES)
 
 
 # The trash lives under this prefix in the same bucket. Permanent deletion is
 # confined to it: to destroy an object you first move it here, which turns one
 # careless click into two deliberate ones.
 TRASH_PREFIX = ".trash/"
-
-# S3's own limit. A longer key is rejected here so the failure names the key rather
-# than arriving as an opaque ClientError.
-MAX_KEY_BYTES = 1024
-
-
-def _reject_key(key: str, allowed: list[str], *, field: str) -> dict | None:
-    """Why this key may not be used, or None if it may.
-
-    Every action that names an object runs its keys through here. Three classes of
-    problem, and the order matters only in what the caller is told first.
-
-    Shape. An empty key, a leading separator, a doubled separator, a control
-    character, or anything over S3's length limit. None of these can be produced by
-    the UI, so a request carrying one is not a mistake worth guessing at.
-
-    A `..` segment. S3 keys are literal — `a/../b` is a key, not a path, and no
-    resolution happens. That is exactly why it is refused: it means one thing to
-    the prefix comparison below and another to a person, and a key that reads as an
-    escape has no legitimate use in this portal.
-
-    Scope. `GROUP_PATH_PREFIXES` is the multi-tenancy boundary. It was applied to
-    the notification inbox alone, so where per-team prefixes were configured, a
-    caller could rename, trash or restore an object under another team's prefix by
-    naming it directly, and mint a presigned PUT into it. The endpoint is
-    authenticated but the key was never checked against the caller.
-
-    Args:
-        key: The object key from the request.
-        allowed: Prefixes this caller may touch; empty means unrestricted.
-        field: Request field the key arrived in, named in the message.
-
-    Returns:
-        A failure payload fragment, or None when the key is acceptable.
-    """
-    if not key:
-        return {"error": f"{field} is required"}
-    if len(key.encode("utf-8")) > MAX_KEY_BYTES:
-        return {"error": f"{field} exceeds the {MAX_KEY_BYTES}-byte key limit"}
-    if key.startswith("/") or "//" in key:
-        return {"error": f"{field} must not start with or contain an empty path segment"}
-    if any(segment == ".." for segment in key.split("/")):
-        return {"error": f"{field} must not contain a '..' segment"}
-    if any(character < " " or character == "\x7f" for character in key):
-        return {"error": f"{field} must not contain control characters"}
-    if allowed and not any(key.startswith(prefix) for prefix in allowed):
-        # Names the boundary without listing every other tenant's prefixes.
-        return {"error": f"{field} is outside the prefixes your groups may access"}
-    return None
 
 
 def _scoped_trash_key(key: str) -> str:

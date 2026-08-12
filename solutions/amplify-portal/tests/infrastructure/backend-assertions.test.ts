@@ -16,7 +16,7 @@
  */
 
 import { describe, it, expect } from "vitest";
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import { resolve } from "node:path";
 
 // import.meta.dirname, not __dirname: this package is "type": "module", so
@@ -53,6 +53,7 @@ describe("Backend Infrastructure Structure", () => {
       "ArpResponseFunction",
       "ResourceMgmtFunction",
       "NotificationBridgeFunction",
+      "ThumbnailsFunction",
     ];
 
     it("defines all expected Lambda functions", () => {
@@ -474,4 +475,76 @@ describe("GraphQL authorization", () => {
     const appSource = readFileSync(resolve(HERE, "../../src/App.tsx"), "utf-8");
     expect(appSource).toContain('hiddenSections.add("analytics")');
   });
+});
+
+/**
+ * A Python import of `shared.` only resolves if the shared layer is attached.
+ *
+ * The asset for a function covers its own directory and nothing else, so
+ * `from shared.x import y` is satisfied at runtime by the layer mounted at
+ * /opt/python and by nothing else. When the pairing is missed the function does not
+ * degrade -- it fails at import, taking every action with it. That has already
+ * happened once here: `functions/data-protection/handler.py` imported
+ * `shared.ontap_client` when no layer existed, so every containment call failed at
+ * import time, and the resulting `IndexError: 4` was misread as an HTTP status.
+ *
+ * Nothing else notices. Unit tests import handlers through the repository root, where
+ * `shared/` is a plain directory, so they pass either way; the difference appears only
+ * in a deployed function. Pairing the two halves here is what makes attaching the
+ * layer to `list-files` and `agent-chat` -- both of which now import the path-scope
+ * boundary -- a checkable change rather than a hopeful one.
+ */
+describe("shared layer and shared imports", () => {
+  const FUNCTIONS_DIR = resolve(HERE, "../../functions");
+
+  /** Function directories whose Python imports the `shared` package. */
+  const directoriesImportingShared = (): string[] =>
+    readdirSync(FUNCTIONS_DIR, { withFileTypes: true })
+      .filter((entry) => entry.isDirectory())
+      .filter((entry) => {
+        const dir = resolve(FUNCTIONS_DIR, entry.name);
+        return readdirSync(dir)
+          .filter((file) => file.endsWith(".py"))
+          .some((file) =>
+            /^\s*(?:from|import)\s+shared[.\s]/m.test(readFileSync(resolve(dir, file), "utf-8")),
+          );
+      })
+      .map((entry) => entry.name)
+      .sort();
+
+  /**
+   * The `new lambda.Function(...)` declaration that packages a directory.
+   *
+   * Located from its `functionCode("functions/<dir>")` argument: backwards to the
+   * nearest `new lambda.Function(`, forwards to the end of that call. Reading the
+   * enclosing declaration rather than the whole file is the point -- searching
+   * `backendSource` for `sharedPythonLayer` would pass on any file that mentions it
+   * once, which every file that declares the layer does.
+   */
+  const declarationFor = (dir: string): string => {
+    const marker = `functionCode("functions/${dir}")`;
+    const at = backendSource.indexOf(marker);
+    expect(at, `no functionCode("functions/${dir}") in backend.ts`).toBeGreaterThan(-1);
+    const opens = backendSource.lastIndexOf("new lambda.Function(", at);
+    expect(opens, `no lambda.Function declaration before ${marker}`).toBeGreaterThan(-1);
+    const closes = backendSource.indexOf("\n});", at);
+    return backendSource.slice(opens, closes === -1 ? undefined : closes);
+  };
+
+  it("finds the directories that import shared", () => {
+    // Guards the detector itself: an empty result would make every assertion below
+    // vacuous, and the regex is the kind of thing that silently stops matching.
+    expect(directoriesImportingShared()).toContain("list-files");
+    expect(directoriesImportingShared()).toContain("agent-chat");
+  });
+
+  it.each(directoriesImportingShared())(
+    "attaches sharedPythonLayer to the function packaging %s",
+    (dir) => {
+      // Matched inside the `layers:` array rather than as a fixed string: a function
+      // may carry more than one layer, and the thumbnail function does (Pillow as
+      // well). Asserting the single-element form failed on a correct declaration.
+      expect(declarationFor(dir)).toMatch(/layers:\s*\[[^\]]*\bsharedPythonLayer\b/);
+    },
+  );
 });
