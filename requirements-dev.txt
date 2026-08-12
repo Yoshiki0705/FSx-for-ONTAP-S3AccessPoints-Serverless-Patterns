@@ -19,3 +19,7 @@ cfn-lint==1.53.3
 pyarrow==25.0.0
 bandit==1.9.4
 pip-audit==2.10.1
+# Decodes images in the thumbnail tests. Must match
+# solutions/amplify-portal/functions/thumbnails/requirements.txt, which is what the
+# Lambda layer is built from; test_thumbnail_pins_agree.py asserts they do.
+Pillow==12.2.0

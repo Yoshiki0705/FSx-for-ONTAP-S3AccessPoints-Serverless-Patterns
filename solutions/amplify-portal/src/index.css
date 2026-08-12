@@ -1692,6 +1692,22 @@ button[type="submit"]:disabled {
   background: var(--color-surface-hover);
 }
 
+/* A generated thumbnail, shown in place of the 🖼️ glyph.
+   Sized to the button it replaces so a row's height does not change when the
+   thumbnail arrives -- the list would otherwise reflow under the reader's finger as
+   images load down the page. `cover` with a square box crops rather than letterboxes,
+   which keeps every row the same height whatever the source aspect ratio. */
+.file-thumbnail {
+  width: 32px;
+  height: 32px;
+  object-fit: cover;
+  border-radius: var(--radius);
+  display: block;
+  /* Visible while the image loads and behind anything with transparency, so a
+     partially loaded row is not a flash of the page background. */
+  background: var(--color-surface-hover);
+}
+
 /* Below, for the same reason as the checkbox above. Opening a file is the row's
    primary action, so it gets the full 44px on a touch screen even though the 32px
    default already clears AA. */

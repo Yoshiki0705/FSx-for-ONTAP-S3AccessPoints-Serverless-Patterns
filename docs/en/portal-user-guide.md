@@ -55,7 +55,7 @@ Your main file browser. Shows the contents of the FSx for ONTAP volume via S3 Ac
 |--------|-----|
 | Navigate folders | Click a folder name |
 | Go up one level | Click `..` at the top of the file list |
-| Preview images | Click the 🖼️ icon next to image files |
+| Preview images | Click the **thumbnail** next to image files (or 🖼️ where none was generated) |
 | Preview PDF | Click the 📕 icon — opens in browser's built-in viewer |
 | Preview Word docs | Click the 📝 icon — renders in-browser |
 | Download a file | Click the 📄 icon |
@@ -63,6 +63,12 @@ Your main file browser. Shows the contents of the FSx for ONTAP volume via S3 Ac
 | Ask AI about a file | Select a file → type a question in the right-side AI panel |
 | Detect objects in images | Select an image → click "Detect Objects" in the AI panel |
 | Process this folder | Click the ⚡ button above the file list |
+
+**Image thumbnails**: a row for an image file carries a small picture of its contents instead of an icon, so you can tell them apart before opening anything.
+
+<img src="../../solutions/amplify-portal/docs/screenshots/portal-mobile-thumbnails.png" alt="A file list showing small pictures of the images" width="360">
+
+Thumbnails are generated once on the server and cached, so opening a folder does not fetch every original at full size. **Only images get one** — PDFs and documents keep their icon, as do unsupported formats such as SVG, files that are too large, and files whose extension says image while their contents say otherwise.
 
 **PHI-protected folders**: If you navigate into a folder named `/dicom/`, `/phi/`, `/pii/`, or similar, the AI processing button shows `🚫 PHI — AI Blocked`. This is a safety guardrail — these folders cannot be sent to AI services regardless of your permissions.
 

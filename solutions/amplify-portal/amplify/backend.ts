@@ -5,6 +5,7 @@ import { config } from "./portal-config";
 import * as crypto from "crypto";
 import * as fs from "fs";
 import * as path from "path";
+import { spawnSync } from "node:child_process";
 import * as iam from "aws-cdk-lib/aws-iam";
 import * as lambda from "aws-cdk-lib/aws-lambda";
 import * as ec2 from "aws-cdk-lib/aws-ec2";
@@ -368,7 +369,27 @@ const sharedSourcesFingerprint = (() => {
   return hash.digest("hex").slice(0, 12);
 })();
 
-const sharedPythonLayer = new lambda.LayerVersion(dataStack, "SharedPythonLayer", {
+// The fingerprint is in the logical ID, not only the description.
+//
+// A LayerVersion is immutable, so changing its content is a *replacement* — and
+// `ampx sandbox` deploys with `DisableRollback=true`, which CloudFormation refuses to
+// combine with a replacement: `Replacement type updates not supported on stack with
+// disable-rollback`. The stack then sits in UPDATE_FAILED, from which neither
+// `continue-update-rollback` nor `rollback-stack` is available, and the only recorded
+// recovery was `sandbox delete` and recreate — which destroys the Cognito users and
+// the DynamoDB tables.
+//
+// With the fingerprint in the ID, changed content is a different resource: a create
+// plus a delete, never a replacement. A create is accepted under disable-rollback (the
+// Pillow layer below was created in the very deployment that this refusal broke), and
+// it also cannot be hotswapped away, which is the other half of the problem — hotswap
+// silently skips LayerVersion content changes and reports success, so the deployed
+// layer drifts from `shared/` until some unrelated change forces a real update and
+// fails on someone who did not cause it.
+//
+// Observed here: the deployed layer was `[sources c85e93ad58e4]` while the working
+// tree hashed to `4dc7cbd5285c`.
+const sharedPythonLayer = new lambda.LayerVersion(dataStack, `SharedPythonLayer${sharedSourcesFingerprint}`, {
   description:
     "Repository shared/ Python modules (ONTAP client and ARP containment actions) " +
     `at /opt/python/shared [sources ${sharedSourcesFingerprint}]`,
@@ -421,6 +442,101 @@ const sharedPythonLayer = new lambda.LayerVersion(dataStack, "SharedPythonLayer"
   }),
 });
 
+/**
+ * Layer carrying Pillow, for the thumbnail function.
+ *
+ * The portal's only third-party Python dependency, and it is here rather than in the
+ * function asset because a compiled wheel is 6 MB and only the thumbnail path needs
+ * it. Attaching it to the listing function instead would put that on the cold start
+ * of every file listing.
+ *
+ * Staged with `pip install --target`, which extracts the wheel in place, so no Docker
+ * and no unzip utility is involved. `--platform manylinux2014_aarch64` with
+ * `--python-version 3.13` fetches the build this runtime needs rather than the host's:
+ * a wheel compiled for macOS arm64 imports on a laptop and fails in Lambda, which is
+ * the kind of difference that only appears after deploying.
+ *
+ * The version comes from the function's `requirements.txt`. Naming it here as well
+ * would put it in two places, and the copy that drifts is the one nothing imports.
+ */
+const thumbnailRequirements = path.resolve(process.cwd(), "functions/thumbnails/requirements.txt");
+const pillowPin = (() => {
+  const source = fs.readFileSync(thumbnailRequirements, "utf-8");
+  const match = source.match(/^Pillow==(\d+\.\d+\.\d+)$/m);
+  if (!match) {
+    throw new Error(
+      `No exact Pillow pin in ${thumbnailRequirements}. ` +
+        "The layer is built from that file; a range would make its contents depend on the build date."
+    );
+  }
+  return match[1];
+})();
+
+// The pinned version is in the logical ID for the reason given above the shared layer:
+// bumping Pillow would otherwise be a replacement, and a replacement is what the
+// sandbox refuses.
+const pillowLayer = new lambda.LayerVersion(dataStack, `PillowLayer${pillowPin.replace(/\./g, "")}`, {
+  description: `Pillow ${pillowPin} for ARM64 Python 3.13, at /opt/python (thumbnail generation)`,
+  compatibleRuntimes: [lambda.Runtime.PYTHON_3_13],
+  compatibleArchitectures: [lambda.Architecture.ARM_64],
+  code: lambda.Code.fromAsset(path.dirname(thumbnailRequirements), {
+    // Only the pin decides the contents, so exclude the handler and its tests: an
+    // edit to the Python would otherwise republish an identical layer.
+    exclude: ["*", "!requirements.txt"],
+    // Hash the staged tree. With a source hash, fixing the bundler would not change
+    // the asset key and CDK would reuse the object it already uploaded.
+    assetHashType: AssetHashType.OUTPUT,
+    bundling: {
+      image: lambda.Runtime.PYTHON_3_13.bundlingImage,
+      command: [],
+      local: {
+        tryBundle(outputDir: string) {
+          const target = path.join(outputDir, "python");
+          fs.mkdirSync(target, { recursive: true });
+          const result = spawnSync(
+            "python3",
+            [
+              "-m",
+              "pip",
+              "install",
+              "--target",
+              target,
+              "--platform",
+              "manylinux2014_aarch64",
+              "--python-version",
+              "3.13",
+              "--implementation",
+              "cp",
+              "--only-binary=:all:",
+              "--no-deps",
+              "--no-compile",
+              "--quiet",
+              `Pillow==${pillowPin}`,
+            ],
+            { stdio: ["ignore", "pipe", "pipe"], encoding: "utf-8" }
+          );
+          if (result.status !== 0) {
+            throw new Error(
+              `Staging Pillow ${pillowPin} failed. This needs python3 with pip and network access.\n` +
+                `${result.stderr || result.stdout || result.error}`
+            );
+          }
+          // Assert the import target exists rather than trusting the exit code: pip
+          // reports success for an empty install if the requirement is already
+          // satisfied somewhere it can see.
+          if (!fs.existsSync(path.join(target, "PIL", "Image.py"))) {
+            throw new Error(
+              `Pillow ${pillowPin} staged no PIL package into ${target}. ` +
+                "The layer would deploy empty and the thumbnail function would fail at import."
+            );
+          }
+          return true;
+        },
+      },
+    },
+  }),
+});
+
 // Cognito group -> path prefixes that group may see. Derived from the group/AP
 // mapping by convention: a group reaches its own folder plus the shared one.
 //
@@ -448,6 +564,10 @@ const listFilesFunction = new lambda.Function(dataStack, "ListFilesFunction", {
     NOTIFICATION_TABLE_NAME: dataResources.tables["FileNotification"].tableName,
     GROUP_PATH_PREFIXES: JSON.stringify(groupPathPrefixes),
   },
+  // `index.py` imports `shared.portal_path_scope`, the path-prefix boundary. The
+  // asset covers only this directory, so without the layer the function fails at
+  // import and every file action with it. `backend-assertions` asserts the pairing.
+  layers: [sharedPythonLayer],
   memorySize: 256,
   timeout: Duration.seconds(30),
   description: "Lists files in FSx for ONTAP S3 AP with group-based AP routing",
@@ -646,6 +766,79 @@ api.addLambdaDataSource(
   "GetPresignedUrlLambdaDataSource",
   getPresignedUrlFunction
 );
+
+// --- Thumbnails: generated once, cached, served as one batch per page ---
+//
+// A separate function rather than an action on the listing one, for the reason the
+// folder-download function is separate: it needs more memory and a longer timeout
+// than a listing, and it carries a 6 MB layer the listing has no use for.
+const thumbnailCacheBucket = new s3.Bucket(dataStack, "ThumbnailCacheBucket", {
+  blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
+  encryption: s3.BucketEncryption.S3_MANAGED,
+  enforceSSL: true,
+  removalPolicy: RemovalPolicy.DESTROY,
+  autoDeleteObjects: true,
+  // A derived artefact, and cheap to rebuild. Expiring it bounds what a stale entry
+  // can cost and keeps the bucket from growing with every file ever viewed. A
+  // thumbnail is re-generated on the next view, so expiry costs one decode.
+  lifecycleRules: [
+    {
+      id: "expire-thumbnails",
+      enabled: true,
+      expiration: Duration.days(30),
+      abortIncompleteMultipartUploadAfter: Duration.days(1),
+    },
+  ],
+});
+
+const thumbnailsRole = new iam.Role(dataStack, "ThumbnailsLambdaRole", {
+  assumedBy: new iam.ServicePrincipal("lambda.amazonaws.com"),
+  managedPolicies: [
+    iam.ManagedPolicy.fromAwsManagedPolicyName(
+      "service-role/AWSLambdaBasicExecutionRole"
+    ),
+  ],
+  inlinePolicies: {
+    S3ApReadAndThumbnailCache: new iam.PolicyDocument({
+      statements: [
+        // Read-only on the source. This function renders pictures of files; it has
+        // no reason to be able to change one.
+        new iam.PolicyStatement({
+          actions: ["s3:GetObject", "s3:ListBucket"],
+          resources: config.s3ApResourceArns,
+        }),
+        new iam.PolicyStatement({
+          actions: ["s3:GetObject", "s3:PutObject"],
+          resources: [`${thumbnailCacheBucket.bucketArn}/*`],
+        }),
+      ],
+    }),
+  },
+});
+
+const thumbnailsFunction = new lambda.Function(dataStack, "ThumbnailsFunction", {
+  runtime: lambda.Runtime.PYTHON_3_13,
+  architecture: lambda.Architecture.ARM_64,
+  handler: "handler.handler",
+  code: functionCode("functions/thumbnails"),
+  role: thumbnailsRole,
+  // Pillow, plus `shared.portal_path_scope` for the same path boundary the listing
+  // applies. Without the second one this endpoint would read any key it was handed.
+  layers: [pillowLayer, sharedPythonLayer],
+  environment: {
+    S3_AP_ALIAS: config.s3ApAlias,
+    GROUP_AP_MAPPING: JSON.stringify(config.groupApMapping || {}),
+    GROUP_PATH_PREFIXES: JSON.stringify(groupPathPrefixes),
+    THUMBNAIL_CACHE_BUCKET: thumbnailCacheBucket.bucketName,
+  },
+  // Decoding holds the whole source image in memory, and the source limit is 25 MB.
+  // Lambda scales CPU with memory, so this is as much about decode time as space.
+  memorySize: 1024,
+  timeout: Duration.seconds(60),
+  description: "Generates and caches image thumbnails for the file list (batched)",
+});
+
+api.addLambdaDataSource("ThumbnailsLambdaDataSource", thumbnailsFunction);
 
 // --- Lambda Data Source for ListSnapshots (ONTAP REST API, VPC) ---
 const listSnapshotsRole = new iam.Role(dataStack, "ListSnapshotsLambdaRole", {
@@ -1112,6 +1305,8 @@ const agentChatFunction = new lambda.Function(
       AGENT_TEAMS_TABLE: agentTeamsTable.tableName,
       GROUP_PATH_PREFIXES: JSON.stringify(groupPathPrefixes),
     },
+    // `handler.py` imports `shared.portal_path_scope` for the path-prefix boundary.
+    layers: [sharedPythonLayer],
     memorySize: 512,
     timeout: Duration.seconds(90),
     description: "AI Agent Chat — Bedrock Converse with tool_use (list/read/search files via S3 AP)",

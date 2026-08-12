@@ -53,6 +53,7 @@ HANDLER_MAPS = {
     "snapshots": "SnapshotsActionParams",
     "list-files": "ListFilesActionParams",
     "agent-chat": "AgentChatActionParams",
+    "thumbnails": "ThumbnailsActionParams",
 }
 
 # Parameter name -> branded type. A branded type is a string or number that plain
@@ -173,6 +174,8 @@ LISTS: dict[str, str] = {
     "domains": "string[]",
     "servers": "string[]",
     "prepopulatePaths": "string[]",
+    # A page of object keys, rendered in one call rather than one call per row.
+    "keys": "string[]",
     "roRule": "string[]",
     "rwRule": "string[]",
     "superuser": "string[]",

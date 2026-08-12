@@ -217,6 +217,24 @@ const schema = a.schema({
     .handler(a.handler.custom({ dataSource: "AgentChatLambdaDataSource", entry: "./resolvers/agent-dispatch.js" })),
 
   // =========================================================================
+  // Generic Dispatch: Thumbnails
+  // Its own Lambda for the same reason folderMutation has one: generation needs
+  // more memory and a longer timeout than a listing, and it carries a Pillow
+  // layer the listing has no use for.
+  //
+  // One call renders a whole page. A URL per file would cost one invocation per
+  // row, and the browser would then fetch each full-size original to draw a
+  // thumbnail of it.
+  // Actions: getThumbnails
+  // =========================================================================
+  thumbnailQuery: a
+    .query()
+    .arguments({ action: a.string().required(), params: a.json() })
+    .returns(a.json())
+    .authorization((allow) => [allow.authenticated()])
+    .handler(a.handler.custom({ dataSource: "ThumbnailsLambdaDataSource", entry: "./resolvers/thumbnails-dispatch.js" })),
+
+  // =========================================================================
   // Individual operations (unique data sources — keep as-is)
   // =========================================================================
   getPresignedUrl: a
