@@ -448,6 +448,10 @@ const listFilesFunction = new lambda.Function(dataStack, "ListFilesFunction", {
     NOTIFICATION_TABLE_NAME: dataResources.tables["FileNotification"].tableName,
     GROUP_PATH_PREFIXES: JSON.stringify(groupPathPrefixes),
   },
+  // `index.py` imports `shared.portal_path_scope`, the path-prefix boundary. The
+  // asset covers only this directory, so without the layer the function fails at
+  // import and every file action with it. `backend-assertions` asserts the pairing.
+  layers: [sharedPythonLayer],
   memorySize: 256,
   timeout: Duration.seconds(30),
   description: "Lists files in FSx for ONTAP S3 AP with group-based AP routing",
@@ -1112,6 +1116,8 @@ const agentChatFunction = new lambda.Function(
       AGENT_TEAMS_TABLE: agentTeamsTable.tableName,
       GROUP_PATH_PREFIXES: JSON.stringify(groupPathPrefixes),
     },
+    // `handler.py` imports `shared.portal_path_scope` for the path-prefix boundary.
+    layers: [sharedPythonLayer],
     memorySize: 512,
     timeout: Duration.seconds(90),
     description: "AI Agent Chat — Bedrock Converse with tool_use (list/read/search files via S3 AP)",

@@ -30,7 +30,7 @@ This project implements a 6-layer defense architecture for infrastructure code q
 | 2 | cdk-nag (AwsSolutionsChecks) | AWS compliance checks (**manual opt-in, not a PR gate**, see below) |
 | 3 | gitleaks + zizmor | Secrets + Actions security |
 | 4 | IAM Access Analyzer | Over-permissive policy detection |
-| 5 | CDK harness tests (46 assertions) | Structural regression prevention |
+| 5 | CDK harness tests (47 assertions) | Structural regression prevention |
 | 6 | floci integration tests (9 tests) | S3 AP runtime behavior |
 
 ### cdk-nag Design Decision (Amplify Gen2 Constraint)

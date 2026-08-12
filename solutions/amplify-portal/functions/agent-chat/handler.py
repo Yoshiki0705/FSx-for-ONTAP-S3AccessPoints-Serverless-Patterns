@@ -30,6 +30,8 @@ from typing import Any
 import boto3
 from botocore.config import Config
 
+from shared.portal_path_scope import allowed_prefixes as _shared_allowed_prefixes
+
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
@@ -467,25 +469,14 @@ def _get_allowed_prefixes(user_groups: list[str] | None) -> list[str]:
     """Get allowed file path prefixes based on user's Cognito groups.
 
     Returns empty list if smart routing is disabled (no restrictions).
+
+    Binds this function's environment to the shared boundary. This was the second of
+    three copies; the rule now has one definition in `shared.portal_path_scope`. The
+    two copies agreed, but by luck rather than by construction -- this one returned
+    `list(set(...))` after an extra early return that no caller could distinguish
+    from the other's `sorted(set(...))`. The order is now defined.
     """
-    if not GROUP_PATH_PREFIXES or not user_groups:
-        return []
-
-    # storage-admin group bypasses all restrictions
-    if "storage-admin" in user_groups:
-        return []
-
-    # Collect all prefixes from the user's groups
-    prefixes: list[str] = []
-    for group in user_groups:
-        group_prefixes = GROUP_PATH_PREFIXES.get(group, [])
-        prefixes.extend(group_prefixes)
-
-    # If user has no group with defined prefixes, no restriction
-    if not prefixes:
-        return []
-
-    return list(set(prefixes))
+    return _shared_allowed_prefixes(user_groups, GROUP_PATH_PREFIXES)
 
 
 # --- DemoMode Mock Data ---
