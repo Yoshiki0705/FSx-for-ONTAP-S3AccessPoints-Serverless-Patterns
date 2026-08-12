@@ -178,7 +178,7 @@ def _eligible(key: str) -> str | None:
     return None
 
 
-def get_thumbnails(event: dict) -> dict:
+def _get_thumbnails(event: dict) -> dict:
     """Thumbnail URLs for a page of files, generating what is missing.
 
     Args:
@@ -194,8 +194,16 @@ def get_thumbnails(event: dict) -> dict:
         return {"error": "THUMBNAIL_CACHE_BUCKET is not configured"}
 
     keys = event.get("keys")
-    if not isinstance(keys, list) or not keys:
+    # Two guards rather than one compound test, and the order is deliberate. The
+    # falsy check comes first because that is the form `check_portal_action_params`
+    # reads as a requirement -- `event.get()` alone never is, since it cannot fail --
+    # so combining them left the generated type declaring `keys` optional on an
+    # action that refuses the request without it. It also tells a caller which
+    # mistake they made.
+    if not keys:
         return {"error": "keys is required"}
+    if not isinstance(keys, list):
+        return {"error": "keys must be a list"}
     if len(keys) > MAX_KEYS_PER_CALL:
         return {"error": f"keys exceeds the {MAX_KEYS_PER_CALL}-key limit for one call"}
 
@@ -307,5 +315,5 @@ def handler(event: dict, context: object) -> dict:
     """
     action = event.get("action", "")
     if action == "getThumbnails":
-        return get_thumbnails(event)
+        return _get_thumbnails(event)
     return {"error": f"Unknown action: {action}"}

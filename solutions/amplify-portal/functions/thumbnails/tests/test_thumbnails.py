@@ -376,12 +376,21 @@ class TestRequestShape:
         module = load_module()
         assert "Unknown action" in module.handler({"action": "nope"}, None)["error"]
 
-    @pytest.mark.parametrize("keys", [None, [], "team-a/x.png", {}])
-    def test_keys_must_be_a_non_empty_list(self, keys):
+    @pytest.mark.parametrize("keys", [None, [], {}, ""])
+    def test_missing_keys_is_reported_as_missing(self, keys):
         module = load_module()
         wire(module)
         result = module.handler({"action": "getThumbnails", "keys": keys, "groups": []}, None)
         assert result["error"] == "keys is required"
+
+    @pytest.mark.parametrize("keys", ["team-a/x.png", 5, {"a": 1}])
+    def test_keys_that_are_present_but_not_a_list_are_reported_as_such(self, keys):
+        """A single key as a bare string is the likely mistake, and "required" would
+        be a misleading thing to tell someone who did supply one."""
+        module = load_module()
+        wire(module)
+        result = module.handler({"action": "getThumbnails", "keys": keys, "groups": []}, None)
+        assert result["error"] == "keys must be a list"
 
     def test_a_non_string_key_is_ignored_rather_than_crashing(self):
         module = load_module()

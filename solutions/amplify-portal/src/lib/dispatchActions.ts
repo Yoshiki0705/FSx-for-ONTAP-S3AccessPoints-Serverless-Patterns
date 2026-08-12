@@ -870,6 +870,14 @@ export interface AgentChatActionParams {
   };
 }
 
+/** Actions of functions/thumbnails, reached by `thumbnailQuery`. */
+export interface ThumbnailsActionParams {
+  getThumbnails: {
+    keys: string[];
+    groups?: string;
+  };
+}
+
 /**
  * Which action map each endpoint uses.
  *
@@ -887,6 +895,7 @@ export type DispatchParams = {
   fileQuery: ListFilesActionParams;
   protectionMutation: SnapshotsActionParams;
   protectionQuery: SnapshotsActionParams;
+  thumbnailQuery: ThumbnailsActionParams;
 };
 
 /** Every endpoint whose actions are constrained. */
