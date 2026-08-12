@@ -13,4 +13,4 @@
 # manylinux2014_aarch64 wheel, which is what an ARM64 Python 3.13 Lambda needs. A
 # version without one cannot be staged without Docker, and the layer build is
 # deliberately Docker-free so `ampx sandbox` works on a laptop.
-Pillow==12.2.0
+Pillow==12.3.0
