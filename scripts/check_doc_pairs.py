@@ -72,6 +72,20 @@ LOCALE_SUFFIX = re.compile(r"[.\-](" + "|".join(LOCALES) + r")\.md$")
 # `](` prefix keeps it unambiguous: an inline code span containing a filename has
 # no such prefix.
 RELATIVE_LINK = re.compile(r"\]\((?!https?://|/)([^)#\s]+\.md)")
+# Image targets, which were not checked at all. A dead one renders as a broken-image
+# placeholder rather than as text, so it is more visible than a dead link to a reader
+# and less visible to the author: it looks fine in a diff.
+# `![Audit Trail](screenshots/portal-audit-trail.png)` sat in both the Japanese and
+# the English guide, pointing at a name that has never existed -- the files are
+# portal-ja-audit.png and portal-en-audit.png.
+RELATIVE_IMAGE = re.compile(r"!\[[^\]]*\]\((?!https?://|/|data:)([^)#\s]+)")
+# The HTML form, which markdown allows and which is the only way to set a width. A
+# phone screenshot is 390px wide and renders at full size otherwise, so this form gets
+# used exactly where it is easiest to forget it is not being checked.
+HTML_IMAGE = re.compile(r"<img[^>]*\ssrc=[\"'](?!https?://|/|data:)([^\"'#]+)")
+# Removed before either pattern runs. Non-greedy so adjacent spans on one line do not
+# merge into a single match that swallows the text between them.
+CODE_SPAN = re.compile(r"`[^`]*`")
 
 # Directories whose pairs are checked. The pattern library under `solutions/`
 # carries 108 eight-locale README sets that are generated, and including them
@@ -140,6 +154,131 @@ def check_switchers() -> list[str]:
     return findings
 
 
+# A markdown link, with its text, allowing the text to wrap. DOTALL matters: a link
+# whose text runs across a line break is still one link, and a line-based pattern reads
+# it as no link at all -- which is how the last of these hid.
+LINK_WITH_TEXT = re.compile(r"\[([^\]]*)\]\((?!https?://|/)([^)#\s]+\.md)", re.DOTALL)
+# Link text, or the line around it, that names a language. Those are deliberate: a
+# "(日本語)" beside an English link is an offer, not a mistake.
+NAMES_A_LANGUAGE = re.compile(
+    r"\(JA\)|\(EN\)|\(KO\)|日本語|Japanese|English|한국어|简体|繁體|Français|Deutsch|Español",
+    re.IGNORECASE,
+)
+
+
+def _locale_of(path: pathlib.Path) -> str | None:
+    """The language a document is written in, under either convention in this repo.
+
+    `docs/` uses a directory per locale; `solutions/amplify-portal/docs/` uses the
+    Japanese file as the base name with an `.en.md` twin. Both are in use, so both are
+    recognised here.
+
+    Takes an absolute path. It was given a repo-relative one at first, and the
+    `.exists()` calls below then resolved against the working directory instead of the
+    tree being examined -- which is invisible in production, where those happen to be
+    the same, and made every fixture in the tests read as "language unknown".
+    """
+    try:
+        parts = path.relative_to(ROOT).parts
+    except ValueError:
+        parts = path.parts
+    for locale in LOCALES + ("ja",):
+        if locale in parts:
+            return locale
+    stem = path.name[: -len(".md")]
+    for locale in LOCALES:
+        if stem.endswith(f".{locale}"):
+            return locale
+    # The language of an unsuffixed name is decided by which twin exists beside it, and
+    # the two families disagree. `solutions/amplify-portal/docs/foo.md` is Japanese with
+    # `foo.en.md` alongside; `solutions/amplify-portal/README.md` is English with
+    # `README.ja.md` alongside. Assuming one convention made the English README read as
+    # "language unknown", so the check skipped the very file whose wrong link prompted
+    # it -- a link to the Japanese tabs guide from the English README.
+    if path.with_name(f"{stem}.ja.md").exists():
+        return "en"
+    if path.with_name(f"{stem}.en.md").exists():
+        return "ja"
+    return None
+
+
+def _sibling_in(target: pathlib.Path, locale: str) -> pathlib.Path | None:
+    """The same document in `locale`, if the repository has one."""
+    stem = target.name[: -len(".md")]
+    for known in LOCALES:
+        if stem.endswith(f".{known}"):
+            stem = stem[: -len(f".{known}")]
+            break
+    candidates = []
+    if locale == "ja":
+        candidates.append(target.with_name(f"{stem}.md"))
+    candidates.append(target.with_name(f"{stem}.{locale}.md"))
+    parts = list(target.parts)
+    for index, part in enumerate(parts):
+        if part in LOCALES + ("ja",):
+            swapped = parts.copy()
+            swapped[index] = locale
+            candidates.append(pathlib.Path(*swapped))
+            break
+    return next((candidate for candidate in candidates if candidate.exists()), None)
+
+
+def check_link_language() -> list[str]:
+    """Cross-references that send the reader into a language they were not reading.
+
+    165 of these were live: an English document linking a Japanese file that had an
+    English twin next to it, mostly in "Related documents" lists -- which is where a
+    reader goes when they want more, and so the worst place to land in a script they
+    cannot read. Every one of the eight portal READMEs pointed at the English user
+    guide, and every one of them, including the English README, pointed at the Japanese
+    tabs guide.
+
+    Nothing caught it because the link resolves: the file is there, the anchor is
+    valid, and only its language is wrong. The one reader who would notice is the one
+    who cannot read the result.
+
+    Two shapes are deliberate and skipped: the language switcher, and a link whose
+    text or line names a language. A target that git ignores is skipped too -- the
+    Japanese verification results are local-only, so "the same document in your
+    language" does not exist for a reader of the repository.
+    """
+    published = _in_repository()
+    findings = []
+    for name in LINK_DIRS + ("solutions/amplify-portal", "docs/aws-feature-requests"):
+        parent = ROOT / name
+        if not parent.is_dir():
+            continue
+        for md in sorted(parent.glob("*.md")):
+            if published and md not in published:
+                continue
+            relative = md.relative_to(ROOT)
+            source_locale = _locale_of(md)
+            if source_locale is None:
+                continue
+            text = md.read_text(encoding="utf-8")
+            lines = text.split("\n")
+            for match in LINK_WITH_TEXT.finditer(text):
+                number = text.count("\n", 0, match.start()) + 1
+                line = lines[number - 1] if number <= len(lines) else ""
+                if SWITCHER.search(line) or NAMES_A_LANGUAGE.search(match.group(1)) or NAMES_A_LANGUAGE.search(line):
+                    continue
+                target = (md.parent / match.group(2)).resolve()
+                if not target.exists():
+                    continue
+                if _locale_of(target) in (None, source_locale):
+                    continue
+                better = _sibling_in(target, source_locale)
+                if not better or better.resolve() == target:
+                    continue
+                if published and better.resolve() not in published:
+                    continue
+                findings.append(
+                    f"{relative}:{number}: this document is {source_locale} but links "
+                    f"{match.group(2)}; {better.relative_to(ROOT)} exists"
+                )
+    return findings
+
+
 def check_links() -> list[str]:
     published = _in_repository()
     findings = []
@@ -151,16 +290,21 @@ def check_links() -> list[str]:
             if published and md not in published:
                 continue
             lines = md.read_text(encoding="utf-8").split("\n")
-            for number, line in enumerate(lines, start=1):
-                for match in RELATIVE_LINK.finditer(line):
-                    target = (md.parent / match.group(1)).resolve()
-                    if not target.exists():
-                        reason = "resolves to nothing"
-                    elif published and target not in published:
-                        reason = "resolves to a file that is not in the repository"
-                    else:
-                        continue
-                    findings.append(f"{md.relative_to(ROOT)}:{number}: link {reason}: {match.group(1)}")
+            for number, raw in enumerate(lines, start=1):
+                # An inline code span quotes a name rather than referring to a file, and
+                # a doc explaining the syntax writes the whole `![alt](path)` form. The
+                # `](` prefix alone does not distinguish that from a real reference.
+                line = CODE_SPAN.sub("", raw)
+                for kind, pattern in (("link", RELATIVE_LINK), ("image", RELATIVE_IMAGE), ("image", HTML_IMAGE)):
+                    for match in pattern.finditer(line):
+                        target = (md.parent / match.group(1)).resolve()
+                        if not target.exists():
+                            reason = "resolves to nothing"
+                        elif published and target not in published:
+                            reason = "resolves to a file that is not in the repository"
+                        else:
+                            continue
+                        findings.append(f"{md.relative_to(ROOT)}:{number}: {kind} {reason}: {match.group(1)}")
     return findings
 
 
@@ -170,7 +314,7 @@ def main() -> int:
         print("DOC PAIRS: FAIL — found no pairs at all, so this check proves nothing")
         return 1
 
-    findings = check_switchers() + check_links()
+    findings = check_switchers() + check_links() + check_link_language()
     if findings:
         print(f"\ndoc-pairs ({len(findings)}):")
         for finding in findings:
@@ -179,7 +323,10 @@ def main() -> int:
         return 1
 
     files = sum(len(group) for group in pairs)
-    print(f"DOC PAIRS: PASS ({len(pairs)} pairs, {files} files, all switchers and relative links resolve)")
+    print(
+        f"DOC PAIRS: PASS ({len(pairs)} pairs, {files} files; switchers, links and images "
+        f"resolve and cross-references stay in the reader's language)"
+    )
     return 0
 
 

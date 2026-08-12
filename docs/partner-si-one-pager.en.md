@@ -26,7 +26,7 @@ Propose to customers who match the following criteria:
 - ✅ Want to leverage AI/ML (Bedrock, Textract, Comprehend, Rekognition)
 - ✅ Need event-driven or scheduled file processing automation
 
-> **Note**: S3 Access Points are NOT read-only. PutObject (5 GB per single PUT, up to 50 GB via multipart), DeleteObject, and MultipartUpload are supported. Constraints: FSX_ONTAP storage class only, SSE-FSX encryption only. See [S3AP Compatibility Notes](s3ap-compatibility-notes.md) for details.
+> **Note**: S3 Access Points are NOT read-only. PutObject (5 GB per single PUT, up to 50 GB via multipart), DeleteObject, and MultipartUpload are supported. Constraints: FSX_ONTAP storage class only, SSE-FSX encryption only. See [S3AP Compatibility Notes](s3ap-compatibility-notes.en.md) for details.
 
 ## How — How to Run a PoC
 
@@ -42,20 +42,20 @@ Step 4: Evaluate against Go/No-Go criteria
 - Level 2 (Scheduled): 1-2 days
 - Level 3 (Monitored): 1-2 weeks
 
-**Detailed steps**: [Partner/SI Delivery Checklist](partner-si-delivery-checklist.md)
+**Detailed steps**: [Partner/SI Delivery Checklist](partner-si-delivery-checklist.en.md)
 
 ## Where — Where to Find Key Resources
 
 | Resource | Path |
 |----------|------|
 | Success Metrics | Each UC's README.md |
-| Governance | [docs/governance-checklist.md](governance-checklist.md) |
-| Production Readiness | [docs/production-readiness.md](production-readiness.md) |
-| Benchmark Data | [docs/s3ap-benchmark-results.md](s3ap-benchmark-results.md) |
-| Customer Discovery | [docs/customer-discovery-template.md](customer-discovery-template.md) |
-| Trigger Selection | [docs/trigger-mode-decision-guide.md](trigger-mode-decision-guide.md) |
-| Public Sector | [docs/public-sector-adoption-roadmap.md](public-sector-adoption-roadmap.md) |
-| Workshop | [docs/workshop-guide.md](workshop-guide.md) |
+| Governance | [docs/governance-checklist.md](governance-checklist.en.md) |
+| Production Readiness | [docs/production-readiness.md](production-readiness.en.md) |
+| Benchmark Data | [docs/s3ap-benchmark-results.md](s3ap-benchmark-results.en.md) |
+| Customer Discovery | [docs/customer-discovery-template.md](customer-discovery-template.en.md) |
+| Trigger Selection | [docs/trigger-mode-decision-guide.md](trigger-mode-decision-guide.en.md) |
+| Public Sector | [docs/public-sector-adoption-roadmap.md](public-sector-adoption-roadmap.en.md) |
+| Workshop | [docs/workshop-guide.md](workshop-guide.en.md) |
 
 ---
 

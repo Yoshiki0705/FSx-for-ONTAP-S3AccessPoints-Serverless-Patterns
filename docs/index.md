@@ -25,6 +25,8 @@
 
 | Document | Purpose |
 |----------|---------|
+| **[Portal User Guide (EN)](en/portal-user-guide.md)** / [(JA)](ja/portal-user-guide.md) | For someone who signs in and uses the portal: sign-in, browsing, previewing, downloading, and **using it on a phone**. Also in ko / zh-CN / zh-TW / fr / de / es |
+| **[Phone walkthrough (EN)](en/portal-mobile-guide.md)** / [(JA)](ja/portal-mobile-guide.md) | The same portal on a phone, one screenshot per step: sign-in, the drawer, row actions, bulk selection, upload, AI, snapshots, language and theme |
 | [Demo Mode Guide](demo-mode-guide.md) | Run without FSx for ONTAP |
 | [Customization Guide](customization-guide.md) | Adapt patterns to your workload |
 | [Portal Implementation Guide](../solutions/amplify-portal/docs/IMPLEMENTATION.md) | Portal architecture, config, component structure, modification log |
@@ -33,7 +35,8 @@
 | [Portal Verification Results (EN)](../solutions/amplify-portal/docs/verification-results.en.md) | What is Live E2E vs live-read vs tests-only vs DemoMode, per feature |
 | ポータル検証結果 (JA) — `solutions/amplify-portal/docs/verification-results.md`（gitignore、ローカルのみ） | 機能ごとの検証区分（実機 E2E / 読み取り / テストのみ / DemoMode）。公開しているのは EN 版 |
 | [Portal Getting Started](../solutions/amplify-portal/docs/GETTING-STARTED.md) | First deploy of the portal |
-| [ONTAP Connection Guide](../solutions/amplify-portal/docs/ONTAP-CONNECTION-GUIDE.md) | VPC, secret and management LIF wiring |
+| [ONTAP Connection Guide](../solutions/amplify-portal/docs/ONTAP-CONNECTION-GUIDE.md) | VPC, secret and management LIF wiring — start with `make ontap-preflight` when a panel has no data |
+| [Handover & Support Guide](../solutions/amplify-portal/docs/portal-handover-guide.md) | After the deploy: the three things to send a user, where every value is managed, and a reverse index from what the user said to what to check |
 | [Portal Tabs Guide](../solutions/amplify-portal/docs/portal-tabs-guide.md) | What each sidebar section does |
 | [Admin Capability Map (JA)](../solutions/amplify-portal/docs/admin-capability-map.md) / [(EN)](../solutions/amplify-portal/docs/admin-capability-map.en.md) | ONTAP System Manager feature coverage |
 | [Resource Management Demo Guide (JA)](../solutions/amplify-portal/docs/resource-management-demo-guide.md) / [(EN)](../solutions/amplify-portal/docs/resource-management-demo-guide.en.md) | Panel-by-panel walkthrough |

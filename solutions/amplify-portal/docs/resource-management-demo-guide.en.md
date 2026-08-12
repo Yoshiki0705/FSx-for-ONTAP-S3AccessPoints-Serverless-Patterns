@@ -21,7 +21,7 @@
 
 When ONTAP is not connected, each panel shows an empty state and setup guidance.
 No error dialog appears. For connection setup, start with the
-[ONTAP connection guide](ONTAP-CONNECTION-GUIDE.md).
+[ONTAP connection guide](ONTAP-CONNECTION-GUIDE.en.md).
 
 ---
 
@@ -476,6 +476,6 @@ Confirms the new panels did not break existing behaviour.
 ## Related documents
 
 - [Admin capability map](admin-capability-map.en.md) — interface ownership and implementation status
-- [ONTAP connection guide](ONTAP-CONNECTION-GUIDE.md)
-- [Implementation guide](IMPLEMENTATION.md)
+- [ONTAP connection guide](ONTAP-CONNECTION-GUIDE.en.md)
+- [Implementation guide](IMPLEMENTATION.en.md)
 - [AI agent demo guide](ai-agent-demo-guide.en.md)

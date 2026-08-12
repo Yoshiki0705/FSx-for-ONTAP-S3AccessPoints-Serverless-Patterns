@@ -1,9 +1,15 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useTranslation } from "../i18n";
-import { errorMessage } from "../lib/portalQuery";
+import {
+  DispatchError,
+  errorMessage,
+  failureDiagnosis,
+  type FailureDiagnosis,
+} from "../lib/portalQuery";
 import { dispatch } from "../lib/dispatch";
 import { daysFromNow, type SnapshotId } from "../lib/dispatchActions";
+import { OntapFailureNotice } from "./OntapFailureNotice";
 import { SnaplockConfirmDialog } from "./SnaplockConfirmDialog";
 import { parseResponse } from "../utils/parseResponse";
 import type { SnaplockIntent } from "../utils/snaplockConsequences";
@@ -61,18 +67,22 @@ export function VersionHistory({ mode = "browse" }: { mode?: "browse" | "diff" }
       // either as an array or as a JSON string that needs a second parse, which the
       // branch below handles. `unknown` states that without disabling the checks that
       // make the branch necessary.
-      const parsed = parseResponse<{
-        snapshots?: unknown;
-        volumeName?: string;
-        error?: string;
-      }>(response);
+      const parsed = parseResponse<
+        {
+          snapshots?: unknown;
+          volumeName?: string;
+          error?: string;
+        } & FailureDiagnosis
+      >(response);
       if (!parsed) {
         if (response.errors?.length) {
-          throw new Error(response.errors.map((e) => e.message).join(", "));
+          throw new DispatchError(response.errors.map((e) => e.message).join(", "));
         }
         return { snapshots: [] as Snapshot[], volumeName: "" };
       }
-      if (parsed.error) throw new Error(parsed.error);
+      // DispatchError, not Error: the class of failure travels with the message so
+      // the notice below can name the one cause instead of guessing at five.
+      if (parsed.error) throw new DispatchError(parsed.error, parsed);
 
       const raw = parsed.snapshots;
       const snapshots = ((): Snapshot[] => {
@@ -221,9 +231,9 @@ export function VersionHistory({ mode = "browse" }: { mode?: "browse" | "diff" }
         />
       )}
       {mode === "diff" && (
-        <div className="version-diff-notice" style={{ padding: "1rem", background: "#fffbeb", border: "1px solid #fbbf24", borderRadius: "8px", marginBottom: "1rem" }}>
+        <div className="version-diff-notice" style={{ padding: "1rem", background: "var(--color-warning-bg)", border: "1px solid var(--color-warning)", borderRadius: "8px", marginBottom: "1rem" }}>
           <strong>🔄 {t("vhDiffTitle")}</strong>
-          <p style={{ margin: "0.25rem 0 0", fontSize: "0.85rem", color: "#78350f" }}>
+          <p style={{ margin: "0.25rem 0 0", fontSize: "0.85rem", color: "var(--color-warning-text)" }}>
             {t("vhDiffNotice")}
           </p>
         </div>
@@ -245,26 +255,7 @@ export function VersionHistory({ mode = "browse" }: { mode?: "browse" | "diff" }
         </button>
       </div>
 
-      {error && (
-        <div className="protection-section" style={{ marginTop: "1rem" }}>
-          <div className="protection-info">
-            <h3>{t("snapshotsOntapRequiredTitle")}</h3>
-            <p>{t("snapshotsOntapRequiredDesc")}</p>
-            <ul>
-              <li>{t("snapshotsOntapRequiredDetail1")}</li>
-              <li>{t("envVarsRequired")}: <code>ONTAP_MGMT_IP</code>, <code>ONTAP_SECRET_NAME</code>, <code>VOLUME_NAME</code>, <code>SVM_NAME</code></li>
-              <li>{t("snapshotsOntapRequiredDetail2")}</li>
-            </ul>
-            <p className="integration-note">
-              <strong>{t("demoModeNote")}</strong>: {t("arpDemoModeNote")}
-            </p>
-            <details>
-              <summary>{t("errorDetails")}</summary>
-              <pre style={{ fontSize: "0.8rem", overflow: "auto", padding: "0.5rem", background: "#f5f5f5", borderRadius: "4px" }}>{error}</pre>
-            </details>
-          </div>
-        </div>
-      )}
+      {error && <OntapFailureNotice error={error} {...failureDiagnosis(queryError)} />}
 
       {!error && snapshots.length === 0 && !loading && (
         <p className="empty-state">{t("snapshotsEmpty")}</p>

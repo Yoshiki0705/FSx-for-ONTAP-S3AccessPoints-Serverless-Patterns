@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect, vi, afterEach } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 
 // Mock Amplify modules
@@ -36,6 +36,7 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import App from "../../src/App";
 import { createPortalQueryClient } from "../../src/lib/queryClient";
 import { I18nProvider } from "../../src/i18n";
+import { ToastProvider } from "../../src/lib/toast";
 
 /**
  * Mirrors main.tsx: the panels fetch through TanStack Query, so the client has
@@ -46,7 +47,9 @@ function renderApp() {
   return render(
     <QueryClientProvider client={createPortalQueryClient()}>
       <I18nProvider>
-        <App />
+        <ToastProvider>
+          <App />
+        </ToastProvider>
       </I18nProvider>
     </QueryClientProvider>
   );
@@ -105,5 +108,69 @@ describe("App", () => {
       name: /collapse navigation/i,
     });
     expect(toggle).toBeInTheDocument();
+  });
+});
+
+
+/**
+ * On a narrow screen the sidebar stops being a column beside the content and becomes
+ * a drawer on top of it, so its default state has to change with it.
+ *
+ * The portal shipped defaulting it open at every width. A phone opened to a
+ * full-height navigation panel covering the file list, with nothing to indicate that
+ * anything was behind it -- and after choosing a section the drawer stayed put, so the
+ * section just chosen was the one thing not visible.
+ */
+describe("App on a narrow viewport", () => {
+  const setWidth = (width: number) => {
+    Object.defineProperty(window, "innerWidth", { value: width, configurable: true, writable: true });
+  };
+
+  afterEach(() => {
+    setWidth(1024);
+  });
+
+  const layout = () => document.querySelector(".portal-layout");
+  const collapsed = () => layout()?.classList.contains("sidebar-collapsed") ?? false;
+
+  it("starts with the drawer closed", () => {
+    setWidth(390);
+    renderApp();
+    expect(collapsed()).toBe(true);
+  });
+
+  it("starts with the sidebar open on a wide viewport", () => {
+    setWidth(1440);
+    renderApp();
+    expect(collapsed()).toBe(false);
+  });
+
+  it("treats the breakpoint itself as narrow", () => {
+    // 768px is where index.css switches the sidebar to a drawer; the two have to
+    // agree on which side of the boundary they are on.
+    setWidth(768);
+    renderApp();
+    expect(collapsed()).toBe(true);
+  });
+
+  it("closes the drawer after a section is chosen", () => {
+    setWidth(390);
+    renderApp();
+    fireEvent.click(screen.getByRole("button", { name: /expand navigation/i }));
+    expect(collapsed()).toBe(false);
+
+    const nav = screen.getByRole("navigation", { name: /Main navigation/i });
+    const items = nav.querySelectorAll("button");
+    fireEvent.click(items[1]);
+
+    expect(collapsed()).toBe(true);
+  });
+
+  it("leaves the sidebar open after a section is chosen on a wide viewport", () => {
+    setWidth(1440);
+    renderApp();
+    const nav = screen.getByRole("navigation", { name: /Main navigation/i });
+    fireEvent.click(nav.querySelectorAll("button")[1]);
+    expect(collapsed()).toBe(false);
   });
 });

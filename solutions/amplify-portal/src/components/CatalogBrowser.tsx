@@ -124,6 +124,7 @@ export function CatalogBrowser({ onSelectTable }: CatalogBrowserProps) {
           <div className="catalog-columns">
             <div className="catalog-column">
               <h5>{t("catalogDatabases")}</h5>
+              {/* query-gate-checked: inside `open &&`, which is the whole `enabled` condition */}
               {databases.isPending ? (
                 <p className="rm-loading-sm">…</p>
               ) : databases.error ? (
@@ -156,7 +157,8 @@ export function CatalogBrowser({ onSelectTable }: CatalogBrowserProps) {
               <h5>{t("catalogTables")}</h5>
               {!selectedDb ? (
                 <p className="rm-empty-sm">{t("catalogPickDatabase")}</p>
-              ) : tables.isPending ? (
+              ) : /* query-gate-checked: `open &&` above and `!selectedDb` here cover `enabled` */
+              tables.isPending ? (
                 <p className="rm-loading-sm">…</p>
               ) : tables.error ? (
                 <div className="error-message">{message(tables.error)}</div>
@@ -184,7 +186,8 @@ export function CatalogBrowser({ onSelectTable }: CatalogBrowserProps) {
               <h5>{t("catalogSchema")}</h5>
               {!selectedTable ? (
                 <p className="rm-empty-sm">{t("catalogPickTable")}</p>
-              ) : schema.isPending ? (
+              ) : /* query-gate-checked: `open &&`, `!selectedDb` and `!selectedTable` cover `enabled` */
+              schema.isPending ? (
                 <p className="rm-loading-sm">…</p>
               ) : schema.error ? (
                 <div className="error-message">{message(schema.error)}</div>

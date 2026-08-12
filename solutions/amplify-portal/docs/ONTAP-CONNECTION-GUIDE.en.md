@@ -71,25 +71,97 @@ aws secretsmanager create-secret \
 
 ### Changing the password
 
-When you change the FSx for ONTAP `fsxadmin` password, **always update both sides together**:
+When you change the FSx for ONTAP `fsxadmin` password, **always update both sides**, and **only run Step 2 once Step 1 has succeeded** (for the reason below):
 
 ```bash
-# Step 1: change the password on the FSx for ONTAP side
-aws fsx update-file-system \
-  --file-system-id <fs-id> \
-  --ontap-configuration '{"FsxAdminPassword":"NewSecureP@ss2026!"}' \
-  --region <your-region>
+NEWPW='NewSecureP@ss2026!'
 
-# Step 2: sync the value in Secrets Manager
-aws secretsmanager put-secret-value \
-  --secret-id fsx-ontap-fsxadmin-credentials \
-  --secret-string '{"username":"fsxadmin","password":"NewSecureP@ss2026!"}' \
-  --region <your-region>
+# Step 1: change the password on the FSx for ONTAP side.
+# Proceed to Step 2 only on success -- chain with && or branch explicitly.
+if aws fsx update-file-system \
+     --file-system-id <fs-id> \
+     --ontap-configuration "{\"FsxAdminPassword\":\"$NEWPW\"}" \
+     --region <your-region>; then
+  # Step 2: sync the value in Secrets Manager
+  aws secretsmanager put-secret-value \
+    --secret-id fsx-ontap-fsxadmin-credentials \
+    --secret-string "{\"username\":\"fsxadmin\",\"password\":\"$NEWPW\"}" \
+    --region <your-region>
+else
+  echo "Step 1 failed, so the secret is left alone"
+fi
 ```
+
+> **Why the branch matters**: running the two unconditionally has produced the case where **Step 1 failed and Step 2 succeeded**. The secret then held a value ONTAP had never received, so the mismatch was not resolved but **made worse**. The only way back is to get Step 1 through and then repeat Step 2. Step 1 validates synchronously, so checking is cheap.
+
+**Password constraints** (Step 1 rejects these synchronously):
+
+| Constraint | Value |
+|------------|-------|
+| Length | 8-128 characters |
+| Required | at least one English letter and one digit |
+| **Forbidden** | **must not contain the string `admin`** |
+
+> The last row is easy to miss. Naming the password after `fsxadmin` (`Fsxadmin-...` and similar) trips it, and Step 1 fails with `Provided FsxAdminPassword is not valid`.
 
 > **Note**: if the portal makes an API call between Step 1 and Step 2, authentication fails with the old password. ONTAP records authentication failures and may lock the account out once a threshold is exceeded.
 
+Confirm afterwards with the preflight:
+
+```bash
+make ontap-preflight FS_ID=<fs-id> LAMBDA=<name of ResourceMgmtFunction>
+# -> 6. [PASS] ONTAP auth / ONTAP accepted the credentials and answered.
+```
+
 ## Troubleshooting
+
+### Start with `make ontap-preflight`
+
+When an ONTAP panel has no data, the cause is in one of six stages. **Do not reason backwards from the message on screen** — for the reason given below, an earlier version of this portal pointed at the wrong stage. This command walks the six in order and names the one that broke.
+
+```bash
+# Stages 1 and 5 (configuration and secret)
+make ontap-preflight
+
+# Adds stages 2-4: the file system, SVM and volume really exist
+make ontap-preflight FS_ID=fs-0123456789abcdef0
+
+# Adds stage 6: does ONTAP accept the credentials
+make ontap-preflight FS_ID=fs-0123456789abcdef0 LAMBDA=<name of ResourceMgmtFunction>
+```
+
+| Stage | What it checks | Where to look on a failure |
+|:-----:|----------------|----------------------------|
+| 1 | The four values are in `portal-config.ts` | `amplify/portal-config.ts` |
+| 2 | The file system is AVAILABLE, and **the management IP is its own** | `ontapMgmtIp` |
+| 3 | The configured SVM name exists | `ontapSvmName` |
+| 4 | The configured volume name is on that SVM | `ontapVolumeName` |
+| 5 | The secret is readable, is JSON, and the password has no surrounding whitespace | Secrets Manager |
+| 6 | **ONTAP accepts the credentials** | The HTTP 401 section below |
+
+Stage 6 cannot be checked from a laptop: the management LIF is private, so `LAMBDA=` asks the deployed function to make the call on your behalf. Without it, stage 6 reports **SKIP** rather than passing — a green run that never tried the one thing that was wrong is worse than no run at all.
+
+#### What the screen shows
+
+The panel when the credentials were refused. The heading names the cause, the ✅ line states that the network does not need investigating, and the remedy is given as both halves — resetting the file system's password without writing the same value into the secret leaves the portal exactly as broken. The error detail carries ONTAP's own message, the HTTP status and the error code verbatim; that part is deliberately not translated, because it goes into a support case as-is.
+
+![The panel when the credentials were refused, light theme](screenshots/portal-ontap-credentials-rejected.png)
+
+Dark theme:
+
+![The panel when the credentials were refused, dark theme](screenshots/portal-ontap-credentials-rejected-dark.png)
+
+The same panel once the two passwords agree, with the preflight reporting every stage as PASS:
+
+![The snapshot list after recovery](screenshots/portal-snapshots-recovered.png)
+
+> **Why the order matters**: on the verification environment, stages 1 to 5 all passed and only stage 6 failed. `aws fsx describe-volumes` listed the volume as CREATED and the request reached the cluster over TLS. The cause was a password that Secrets Manager and ONTAP disagreed about. The portal nevertheless displayed "📡 ONTAP connection required" and advice about the VPC, the subnet and the security group. **Naming the wrong layer costs more than saying nothing, because the reader believes it.**
+>
+> Each panel now classifies the cause into one of five classes (`NOT_CONFIGURED`, `UNREACHABLE`, `CREDENTIALS_REJECTED`, `NOT_FOUND`, `ONTAP_ERROR`) and, when the credentials were refused, states outright that the network does not need investigating. The classification lives in `shared/ontap_diagnosis.py`.
+
+> **If you are investigating a user's report**: what to ask them for (the heading, and the contents of
+> "Error details") and a reverse index from symptom to what to check are in the
+> [handover and support guide](portal-handover-guide.en.md#what-the-user-said--what-to-check).
 
 ### HTTP 401 "User is not authorized"
 

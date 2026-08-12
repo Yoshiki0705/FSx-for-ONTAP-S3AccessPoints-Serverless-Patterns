@@ -14,6 +14,7 @@
     "sandbox": "npx ampx sandbox",
     "sandbox:delete": "npx ampx sandbox delete",
     "start": "./scripts/dev.sh",
+    "phone": "./scripts/phone-preview.sh",
     "start:dev": "npx ampx sandbox & SANDBOX_PID=$!; vite; kill $SANDBOX_PID 2>/dev/null",
     "validate": "./scripts/setup-prerequisites.sh",
     "e2e": "npx playwright test",

@@ -16,7 +16,7 @@ This document maps the architecture design decisions of this repository to the 6
 | Observability | X-Ray tracing + CloudWatch EMF metrics + Dashboard | Phase 3+ |
 | Alarm Automation | BATCH / REALTIME / HIGH_VOLUME profiles | Phase 10 |
 | Runbook | Response procedures for SLO violations | `docs/runbooks/` |
-| Staged Deployment | 4-level Maturity Model | [Production Readiness](production-readiness.md) |
+| Staged Deployment | 4-level Maturity Model | [Production Readiness](production-readiness.en.md) |
 | CI/CD | cfn-lint + pytest + ruff + 6 validators | `scripts/` |
 | Cost Visibility | Business Hours Scheduling + EstimatedMonthlySavings metric | Phase 10 |
 
@@ -24,8 +24,8 @@ This document maps the architecture design decisions of this repository to the 6
 
 | Design Decision | Implementation | Related Documentation |
 |----------------|---------------|----------------------|
-| Least Privilege IAM | S3 AP ARN format + action restrictions | [S3AP Authorization Model](s3ap-authorization-model.md) |
-| Dual-Layer Authorization | IAM + ONTAP file system identity | [S3AP Authorization Model](s3ap-authorization-model.md) |
+| Least Privilege IAM | S3 AP ARN format + action restrictions | [S3AP Authorization Model](s3ap-authorization-model.en.md) |
+| Dual-Layer Authorization | IAM + ONTAP file system identity | [S3AP Authorization Model](s3ap-authorization-model.en.md) |
 | Encryption (at rest) | SSE-FSX (KMS managed) + SSE-KMS (S3 Output) | Each template |
 | Encryption (in transit) | TLS enabled by default | `shared/ontap_client.py` |
 | Secrets Management | Secrets Manager + rotation | Phase 12 |
@@ -33,17 +33,17 @@ This document maps the architecture design decisions of this repository to the 6
 | Block Public Access | Always enabled on S3 AP (cannot be changed) | AWS specification |
 | SCP / Organization | OrgID condition on StackSets execution role | Phase 10 |
 | PII Detection | Comprehend PII detection + redaction | UC2, UC14, UC16 |
-| Audit Logging | CloudTrail + S3 Access Logs + DynamoDB Lineage | [Governance Checklist](governance-checklist.md) |
+| Audit Logging | CloudTrail + S3 Access Logs + DynamoDB Lineage | [Governance Checklist](governance-checklist.en.md) |
 
 ## 3. Reliability
 
 | Design Decision | Implementation | Related Documentation |
 |----------------|---------------|----------------------|
-| Event Durability | Persistent Store (ONTAP 9.14.1+) | [Deployment Profiles](deployment-profiles.md) |
+| Event Durability | Persistent Store (ONTAP 9.14.1+) | [Deployment Profiles](deployment-profiles.en.md) |
 | Idempotency | DynamoDB conditional write | Phase 11+ |
 | DLQ | SQS Dead Letter Queue | Each template |
 | Retry | Step Functions Retry + Lambda retry | Each template |
-| Auto Recovery | ECS Service auto-recovery / ASG | [Fargate vs EC2](fargate-vs-ec2-fpolicy-decision.md) |
+| Auto Recovery | ECS Service auto-recovery / ASG | [Fargate vs EC2](fargate-vs-ec2-fpolicy-decision.en.md) |
 | Multi-AZ | FSx for ONTAP Multi-AZ support | AWS specification |
 | DR | SnapMirror Cross-Region | Phase 5 |
 | Replay Storm Protection | Flow control + backpressure | Phase 12 |
@@ -52,9 +52,9 @@ This document maps the architecture design decisions of this repository to the 6
 
 | Design Decision | Implementation | Related Documentation |
 |----------------|---------------|----------------------|
-| FSx Throughput Dependency Awareness | Map parallelism designed to match FSx provisioned throughput | [S3AP Performance](s3ap-performance-considerations.md) |
+| FSx Throughput Dependency Awareness | Map parallelism designed to match FSx provisioned throughput | [S3AP Performance](s3ap-performance-considerations.en.md) |
 | Dynamic MaxConcurrency | Automatic parallelism calculation based on file count | Phase 10 |
-| Lambda Memory Optimization | Recommended memory size per UC | [S3AP Performance](s3ap-performance-considerations.md) |
+| Lambda Memory Optimization | Recommended memory size per UC | [S3AP Performance](s3ap-performance-considerations.en.md) |
 | ARM64 | Graviton (Lambda + Fargate + EC2) | All templates |
 | Prefix Filtering | Leveraging ListObjectsV2 Prefix | Discovery Lambda |
 | Streaming Processing | Chunk processing for large files | `shared/s3ap_helper.py` |
@@ -69,7 +69,7 @@ This document maps the architecture design decisions of this repository to the 6
 | Graviton | ~20% cost reduction with ARM64 | All templates |
 | Opt-in via Conditions | SageMaker, Kinesis, etc. incur no charges unless enabled | Phase 3 |
 | Cost Visibility | EstimatedMonthlySavings metric | Phase 10 |
-| EC2 vs Fargate Selection | Cost difference $5-7 vs $42-70/month | [Fargate vs EC2](fargate-vs-ec2-fpolicy-decision.md) |
+| EC2 vs Fargate Selection | Cost difference $5-7 vs $42-70/month | [Fargate vs EC2](fargate-vs-ec2-fpolicy-decision.en.md) |
 
 ## 6. Sustainability
 
@@ -99,6 +99,6 @@ This document maps the architecture design decisions of this repository to the 6
 ## Reference Links
 
 - [AWS Well-Architected Framework](https://docs.aws.amazon.com/wellarchitected/latest/framework/welcome.html)
-- [Production Readiness](production-readiness.md)
-- [Governance Checklist](governance-checklist.md)
-- [S3AP Performance Considerations](s3ap-performance-considerations.md)
+- [Production Readiness](production-readiness.en.md)
+- [Governance Checklist](governance-checklist.en.md)
+- [S3AP Performance Considerations](s3ap-performance-considerations.en.md)

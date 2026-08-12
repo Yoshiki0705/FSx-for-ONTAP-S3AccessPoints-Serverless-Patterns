@@ -12,7 +12,7 @@ Voir aussi : [Guide de sélection d'UI du portail de fichiers (Amplify / Nextclo
 
 ## Documentation
 
-- **[Guide utilisateur](../../docs/en/portal-user-guide.md)** — Guide de l'utilisateur final pour l'utilisation quotidienne du portail (aucune connaissance de déploiement requise)
+- **[Guide utilisateur](../../docs/fr/portal-user-guide.md)** — Guide de l'utilisateur final pour l'utilisation quotidienne du portail (aucune connaissance de déploiement requise)
 - **[Démarrage rapide](docs/GETTING-STARTED.md)** — Configuration, DemoMode, VPC Endpoints, checklist de production
 - **[Guide d'implémentation](docs/IMPLEMENTATION.md)** — Architecture, fichiers de configuration, structure des composants, déploiement, journal des modifications
 - **[Guide démo administrateur](../../docs/en/admin-resource-management-demo.md)** — Scénarios démo E2E de gestion des ressources + ARP/AI
@@ -135,7 +135,7 @@ sequenceDiagram
 
 | Groupe | Section | Objectif |
 |-------|---------|---------|
-| **Browse** | All Files | Parcourir, prévisualiser, AI Q&A, liens de partage, accès QR |
+| **Browse** | All Files | Parcourir, trier, filtrer, sélection multiple, prévisualiser, AI Q&A, liens de partage, accès QR |
 | | Favorites | Fichiers épinglés (DynamoDB, par utilisateur) |
 | | Recent | Fichiers récemment consultés |
 | | Folder Watch | Préfixes surveillés et événements de fichiers reçus (bascule admin) |
@@ -171,7 +171,7 @@ sequenceDiagram
 | **Conformité cdk-nag** | AwsSolutionsChecks exécuté en CI via `CDK_NAG=1` (pas au déploiement) |
 | **UI de secours** | Panneau d'information gracieux quand ONTAP n'est pas connecté (pas d'écran blanc) |
 
-> **Guide détaillé des sections** : [docs/portal-tabs-guide.md](docs/portal-tabs-guide.md)
+> **Guide détaillé des sections** : [docs/portal-tabs-guide.en.md](docs/portal-tabs-guide.en.md)
 
 ---
 
@@ -540,7 +540,7 @@ amplify-portal/
 ├── monitoring/
 │   └── dashboard.ts               # Construct CDK CloudWatch Dashboard
 ├── docs/
-│   ├── portal-tabs-guide.md       # Guide détaillé 6 onglets avec captures d'écran
+│   ├── portal-tabs-guide.md       # Guide détaillé des 17 sections (4 groupes) avec captures d'écran
 │   └── screenshots/               # Captures d'écran UI du portail
 ├── tests/
 │   └── components/App.test.tsx     # Tests de rendu d'onglets + navigation

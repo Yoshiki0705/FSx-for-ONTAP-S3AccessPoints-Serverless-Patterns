@@ -39,7 +39,142 @@ Open `http://localhost:5173` in a browser, register a user with Cognito, then si
 File browsing, AI processing and upload all work in DemoMode.
 The admin and data-protection features report "ONTAP connection required".
 
-> **For end users**: once deployment is finished, point the people who will use the portal at the [User Guide](../../../docs/en/portal-user-guide.md) ([日本語](../../../docs/ja/portal-user-guide.md)). It assumes no knowledge of the deployment steps and covers day-to-day operation only.
+> **For end users**: once deployment is finished, point the people who will use the portal at the
+> [User Guide](../../../docs/en/portal-user-guide.md) ([日本語](../../../docs/ja/portal-user-guide.md)), or the
+> [phone walkthrough](../../../docs/en/portal-mobile-guide.md) ([日本語](../../../docs/ja/portal-mobile-guide.md))
+> for anyone on a handset. Both assume no knowledge of the deployment steps and cover day-to-day
+> operation only. **Do not hand them this document.** What to send, and how to answer what comes back,
+> is in the [handover and support guide](portal-handover-guide.en.md).
+
+### Checking it on a real phone
+
+**Opening a LAN address from `npm run dev -- --host` will not let you sign in.** The
+portal uses `crypto.subtle` for Amplify's SRP authentication and `navigator.clipboard`
+for copying share and upload links. Browsers restrict both to a **secure context**;
+`http://localhost` is exempt, and `http://192.168.x.x` is not.
+
+Serve it over HTTPS instead.
+
+| Approach | Command | When |
+|----------|---------|------|
+| Deploy to Amplify Hosting | connect the branch ([Hosting guide](../../../docs/en/amplify-hosting-production-guide.md)) | to check something close to production |
+| Tunnel the local server | `npm run phone` | to see a local change on a device straight away; the URL is temporary |
+
+> Cognito does not pin a hostname, so sign-in works either way (confirmed through a tunnel).
+> A tunnel URL changes on every run, so keep it to your own device rather than sharing it.
+
+#### One-time setup
+
+| What | Command | Why it is needed |
+|---|---|---|
+| `cloudflared` | `brew install cloudflared` (macOS) / [other platforms](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/downloads/) | opens the HTTPS tunnel; no account required |
+| `amplify_outputs.json` | run `npx ampx sandbox` once | `src/main.tsx` imports it statically, so the dev server cannot start without it. The sandbox generates it and it is gitignored (one per environment) |
+| `amplify/portal-config.ts` | automatic (copied from the example if absent) | in DemoMode the values can stay empty |
+
+Needing `amplify_outputs.json` is the main reason a fresh clone still shows a blank page on the
+handset after following the steps.
+
+#### Every time
+
+```bash
+cd solutions/amplify-portal
+npm run phone
+```
+
+One command starts the dev server, opens the tunnel, and **verifies that the tunnel actually
+reaches the app**. Real output:
+
+```text
+▶ Preflight
+  ✔ node v26.4.0
+  ✔ node_modules
+  ✔ amplify/portal-config.ts
+  ✔ amplify_outputs.json
+  ✔ cloudflared 2026.7.3
+
+▶ Dev server
+  … starting vite on port 5173
+  ✔ serving on http://localhost:5173 (pid 43373)
+
+▶ Tunnel
+  … waiting for cloudflared to publish a hostname
+  ✔ https://threaded-opening-actress-courses.trycloudflare.com
+
+▶ Verify the tunnel reaches the app
+  … waiting for DNS to publish threaded-opening-actress-courses.trycloudflare.com . ✔
+  … fetching
+  ✔ HTTP 200 and the page is the portal
+
+════════════════════════════════════════════════════════
+  Open on the phone:
+
+    https://threaded-opening-actress-courses.trycloudflare.com
+
+════════════════════════════════════════════════════════
+```
+
+Open the last URL in the handset's browser. `Ctrl+C` stops both the dev server and the tunnel
+(**a dev server that was already running in another terminal is left alone**).
+
+Options:
+
+```bash
+npm run phone -- --port 4173                       # serve on a different port
+npm run phone -- --url https://xxx.ngrok-free.app  # only verify a tunnel you started
+npm run phone -- --help
+```
+
+With `brew install qrencode` present, it also prints the URL as a scannable QR code.
+
+#### What the script verifies
+
+Every cause of "it started but the handset shows nothing" looks identical from the outside, so
+the triage is automated.
+
+| Detected state | Message | What to do |
+|---|---|---|
+| `amplify_outputs.json` absent | `amplify_outputs.json is missing` | run `npx ampx sandbox` once |
+| Vite rejected the tunnel hostname | `Vite refused the tunnel hostname` plus the hostname | add the domain to `server.allowedHosts` in `vite.config.ts` (below) |
+| tunnel is up but cannot reach the origin | `could not reach http://localhost:5173 (HTTP 502)` | the dev server died, or is on another port |
+| only this machine cannot resolve it | `this machine cannot resolve …, but public DNS can` | the tunnel is fine; the handset uses another resolver and will load it. To fix this machine, flush the DNS cache |
+
+The last one is hard to reproduce but does happen. cloudflared prints the hostname **before it
+resolves** (it says so itself: "it may take some time to be reachable"), so looking it up locally
+at that moment **caches the NXDOMAIN in a home-router resolver** — leaving the machine that
+created the tunnel unable to open it for minutes while public DNS already has the record. The
+script asks a public resolver (1.1.1.1) first and only resolves locally once the record exists.
+
+#### About Vite's host rejection
+
+**Vite refuses a tunnel's hostname by default.** When the `Host` header carries a name it does
+not recognise, Vite answers
+
+```
+Blocked request. This host ("...trycloudflare.com") is not allowed.
+```
+
+which is what stops a page from rebinding DNS to your dev server and reading your source.
+`server.allowedHosts` in `vite.config.ts` already lists the tunnel domains above, so
+**cloudflared, ngrok and localtunnel work as-is**; add to the same array for any other tunnel.
+It is not set to `true`: that would drop the protection whenever the dev server runs, tunnel or
+no tunnel.
+
+#### Without the script
+
+`npm run phone` bundles the two commands below, so running them separately reaches the same
+state. The verification in the table above then falls to you.
+
+```bash
+# Terminal 1: dev server (starts the sandbox alongside it)
+npm start
+
+# Terminal 2: the tunnel. Open the https://… it prints on the handset
+cloudflared tunnel --url http://localhost:5173
+```
+
+What to check is in [section 4 of the user
+guide](../../../docs/en/portal-user-guide.md); the layout rules are under "On a phone"
+in the [section guide](./portal-tabs-guide.en.md).
 
 ## Full setup (with an FSx for ONTAP connection)
 
@@ -164,12 +299,59 @@ npm start
 The first run takes 3-5 minutes because the CloudFormation stack is created.
 It is done once `Deployment completed` and `http://localhost:5173` are shown.
 
-### Step 6: Verify
+### Step 6: Grant administrative rights
+
+The administrative sections (Resources, Analytics) are authorised on the Cognito group `storage-admin`. **The group itself is created by `amplify/auth/resource.ts`**, so nothing is needed by hand there, but **membership is deliberately left manual**: who holds administrative rights is not a decision for infrastructure code.
+
+```bash
+POOL=$(python3 -c "import json;print(json.load(open('amplify_outputs.json'))['auth']['user_pool_id'])")
+
+aws cognito-idp admin-add-user-to-group \
+  --user-pool-id "$POOL" --username <your-email> --group-name storage-admin
+```
+
+**Sign out and back in** afterwards. Group membership is carried in the ID token, so an existing token does not reflect it.
+
+> Without it, the Resources and Analytics sections do not appear in the sidebar. That is deliberate: a menu that only returns authorisation errors is worse than an absent one.
+
+### Step 7: Verify
+
+**Check from the command line first.** Six stages have to line up before an ONTAP panel shows data, and which one is missing is not visible from the screen (for the reason below).
+
+```bash
+# From the repository root
+make ontap-preflight FS_ID=<fs-id> LAMBDA=<name of ResourceMgmtFunction>
+```
+
+Once every stage passes, open the UI:
 
 1. **File browsing**: folders appear under Browse > All Files
 2. **SMB shares**: the share list appears under Admin > Resources > SMB shares
 3. **Lock panel**: the tabs appear under Data Protection > Lock
 4. **ARP/AI**: the protection state of each volume appears under Data Protection > ARP/AI
+
+Leave `LAMBDA=` out and stage 6 — whether ONTAP accepts the credentials — reports **SKIP** rather than passing. The management LIF is private, so it cannot be reached from your machine; the deployed function has to make the call. Its name:
+
+```bash
+aws lambda list-functions \
+  --query "Functions[?contains(FunctionName, 'ResourceMgmtFunction')].FunctionName" \
+  --output text
+```
+
+> **Why not reason backwards from the screen**: with only stage 6 failing — the password in Secrets Manager and the one ONTAP held had diverged — the portal displayed "ONTAP connection required" and advice about the VPC and security groups. The volume existed and the request was reaching the cluster. The panels now classify the cause into five classes, but **immediately after a deploy it is faster to run the preflight than to open the UI**. See the [ONTAP connection guide](ONTAP-CONNECTION-GUIDE.en.md#start-with-make-ontap-preflight).
+
+## Settings left outside the templates, and why
+
+Everything is in infrastructure code by default, for reproducibility. These are **deliberately outside** it.
+
+| Setting | Where it lives | Why it stays manual |
+|---------|---------------|--------------------|
+| Membership of `storage-admin` | `admin-add-user-to-group` | Who gets administrative rights is a per-environment decision. Creating the group is already in the templates |
+| ONTAP credentials | Secrets Manager (Step 3) | So the password enters neither the repository nor a CloudFormation template |
+| The S3 Object Lock bucket | Created separately (`s3ObjectLockBucket`) | Inside the portal's stack, objects under Object Lock retention would block the stack from being deleted for as long as the retention lasts. The lifecycles are kept apart |
+| VPC Endpoint route-table associations | `modify-vpc-endpoint` (Step 2) | The endpoint may be shared with other stacks, and changing its associations from here has a blast radius that cannot be read locally |
+
+> **Creating** the `storage-admin` group used to be in neither this document nor the templates. A long-running environment had one made by hand and worked; a fresh deploy lost the administrative sections. It is created by `defineAuth` now, and `make drift` checks that every group an authorization rule names is one `defineAuth` declares.
 
 ## What this portal assumes, and where it fits
 
@@ -254,11 +436,18 @@ aws s3 rb s3://fsxn-portal-objectlock-demo --force
 
 ## Next steps
 
+**Once it works, the next job is handing it over.** What to send (URL, account, guide) and where to look
+when a user asks something are in the
+[handover and support guide](portal-handover-guide.en.md). **Do not hand this document
+(Getting Started) to a user** — it is written for a different reader.
+
+- **[Handover and support guide](portal-handover-guide.en.md)** — the three things to send, where every value lives, a reverse index from what the user said to what to check, and replies you can copy
 - [PoC → Production Guide](../../../docs/en/portal-poc-to-production.md) — migration checklist from DemoMode to a production connection
 - [Scaling Guide](../../../docs/en/portal-scaling-guide.md) — capacity planning and throughput management
 - [Accessibility](../../../docs/en/portal-accessibility.md) — keyboard navigation, ARIA, screen reader support
 - [Admin Resource Management Demo Guide](../../../docs/en/admin-resource-management-demo.md) — operating steps for every admin feature
 - [AI Agent Demo Guide](./ai-agent-demo-guide.en.md) — E2E demo of the AI agent features
 - [DemoMode Guide](../../../docs/demo-mode-guide.en.md) — how to verify without FSx for ONTAP
+- [Section Guide](./portal-tabs-guide.en.md) — what each of the 17 sidebar sections does, theming, phone layout
 - [IMPLEMENTATION.en.md](./IMPLEMENTATION.en.md) — design intent and modification log
 - [Authorization Model](../../../docs/en/portal-authorization-model.md) — access control via Cognito groups

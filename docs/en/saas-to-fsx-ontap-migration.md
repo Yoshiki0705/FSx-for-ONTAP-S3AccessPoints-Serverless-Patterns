@@ -131,7 +131,7 @@ This is a data-model question rather than an AWS one. Start transferring without
 
 SaaS sharing models (link sharing, external sharing, co-editors, shared drives, team folders) have no mapping target in NTFS or UNIX ACLs. Migration therefore necessarily includes **redesigning permissions**.
 
-This is the decisive difference from an on-premises NAS migration, where NTFS ACLs carry across as they are (`SeBackupPrivilege` / `SeRestorePrivilege` and robocopy `/B` — the procedure is in the [SMB ACL migration guide](../smb-acl-migration-backup-operators.md)). Migrating from SaaS, **ACLs are not carried, they are constructed**.
+This is the decisive difference from an on-premises NAS migration, where NTFS ACLs carry across as they are (`SeBackupPrivilege` / `SeRestorePrivilege` and robocopy `/B` — the procedure is in the [SMB ACL migration guide](../smb-acl-migration-backup-operators.en.md)). Migrating from SaaS, **ACLs are not carried, they are constructed**.
 
 | SaaS-side concept | Mapping target on FSx for ONTAP | Difficulty |
 |---|---|---|
@@ -186,11 +186,11 @@ For bulk migration, **making NFS / SMB the primary route is the stronger choice*
 | Metadata operations on many small files | Tens of ms | Sub-ms |
 | Writable from outside the VPC | Yes (Internet-origin AP) | No |
 
-Further, the whole-object limit on an S3 AP is **checked only at `CompleteMultipartUpload`, after the entire payload has transferred** (about 10 minutes for 50 GiB before it fails). `UploadPart` has no cumulative check, and the Complete error omits `MaxSizeAllowed`. **Validate object size client-side in the migration worker.** Measured values and the reproduction are in [the S3 AP object size limit verification](../s3ap-object-size-limits-verification.md).
+Further, the whole-object limit on an S3 AP is **checked only at `CompleteMultipartUpload`, after the entire payload has transferred** (about 10 minutes for 50 GiB before it fails). `UploadPart` has no cumulative check, and the Complete error omits `MaxSizeAllowed`. **Validate object size client-side in the migration worker.** Measured values and the reproduction are in [the S3 AP object size limit verification](../s3ap-object-size-limits-verification.en.md).
 
 S3 AP suits the post-migration uses — serverless processing, the file portal, access through Transfer Family. The same volume is readable over NFS / SMB and S3 AP simultaneously, so **ingest over NFS / SMB and exploit over S3 AP** divides cleanly.
 
-> **Operations note**: a migration worker inside the VPC (Lambda / ECS) can write to NFS / SMB, but reaches the SaaS APIs through a NAT Gateway or VPC endpoint. An Internet-origin S3 AP is not reachable from a VPC-attached Lambda, so trying to do both in one function gets stuck. That constraint is collected in [the S3 AP compatibility notes](../s3ap-compatibility-notes.md).
+> **Operations note**: a migration worker inside the VPC (Lambda / ECS) can write to NFS / SMB, but reaches the SaaS APIs through a NAT Gateway or VPC endpoint. An Internet-origin S3 AP is not reachable from a VPC-attached Lambda, so trying to do both in one function gets stuck. That constraint is collected in [the S3 AP compatibility notes](../s3ap-compatibility-notes.en.md).
 
 ## ③ If you only need search and AI, you do not have to move the bytes
 
@@ -266,9 +266,9 @@ Stated plainly.
 
 | Document | Content |
 |---|---|
-| [SMB ACL migration guide](../smb-acl-migration-backup-operators.md) | Migration from an on-premises Windows file server (the case where NTFS ACLs can be preserved) |
+| [SMB ACL migration guide](../smb-acl-migration-backup-operators.en.md) | Migration from an on-premises Windows file server (the case where NTFS ACLs can be preserved) |
 | [S3 AP compatibility notes](../s3ap-compatibility-notes.en.md) | Supported operations, NetworkOrigin, VPC configuration constraints |
-| [S3 AP object size limit verification](../s3ap-object-size-limits-verification.md) | Measured 5 GiB / 50 GiB values and how the failures present |
+| [S3 AP object size limit verification](../s3ap-object-size-limits-verification.en.md) | Measured 5 GiB / 50 GiB values and how the failures present |
 | [Comparison of alternatives](../comparison-alternatives.md) (Japanese) | Choosing between S3 AP / EFS / NFS / DataSync |
 | [File portal UI selection guide](../file-portal-amplify-gen2.en.md) | Amplify Gen2 / Nextcloud / custom build comparison |
 | [SaaS gap analysis](../aws-feature-requests/file-portal-service-gap.en.md) | Feature comparison across 15 SaaS (this document continues it on the migration side) |

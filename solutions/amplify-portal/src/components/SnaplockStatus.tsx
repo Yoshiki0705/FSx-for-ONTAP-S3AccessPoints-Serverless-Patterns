@@ -1,9 +1,10 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useTranslation } from "../i18n";
-import { errorMessage, unwrap } from "../lib/portalQuery";
+import { errorMessage, failureDiagnosis, unwrap } from "../lib/portalQuery";
 import { adminMutate, adminQuery, dispatch, protectionMutate, protectionQuery } from "../lib/dispatch";
 import { daysFromNow, type SnapshotId } from "../lib/dispatchActions";
+import { OntapFailureNotice } from "./OntapFailureNotice";
 import { SnaplockConfirmDialog } from "./SnaplockConfirmDialog";
 import type { SnaplockIntent } from "../utils/snaplockConsequences";
 
@@ -166,7 +167,11 @@ export function SnaplockStatus() {
   const s3Buckets = s3BucketsQuery.data ?? [];
 
   const loading = statusQuery.isPending;
-  const error = actionError ?? errorMessage(statusQuery.error, "Failed to load status");
+  // Kept apart because only the load error carries a diagnosis class, and only the
+  // load error means "there is no ONTAP data to show". A failed lock action used to
+  // be able to replace the whole panel with connection advice.
+  const loadError = errorMessage(statusQuery.error, "Failed to load status");
+  const error = actionError ?? loadError;
 
   // The lock and configure handlers report through their own state, so a failed
   // action is never mistaken for a failed load.
@@ -298,7 +303,8 @@ export function SnaplockStatus() {
   }
 
   // ONTAP connection error: still show tabs (S3 Object Lock doesn't need ONTAP)
-  const ontapError = error && !snaplock && !snaplockVolumes.length;
+  const ontapError = loadError && !snaplock && !snaplockVolumes.length ? loadError : null;
+  const ontapDiagnosis = failureDiagnosis(statusQuery.error);
 
   return (
     <div className="protection-section">
@@ -346,14 +352,7 @@ export function SnaplockStatus() {
       {activePanel === "snaplock" && (
         <div className="lock-panel" role="tabpanel" aria-label={t("slkOntapAria")}>
           {ontapError ? (
-            <div className="protection-info">
-              <h3>📡 {t("lockOntapRequired")}</h3>
-              <p>{t("lockOntapRequiredDesc")}</p>
-              <details>
-                <summary>{t("errorDetails")}</summary>
-                <pre style={{ fontSize: "0.8rem", padding: "0.5rem", background: "#f5f5f5", borderRadius: "4px" }}>{error}</pre>
-              </details>
-            </div>
+            <OntapFailureNotice error={ontapError} {...ontapDiagnosis} />
           ) : (
             <>
               {/* Status summary */}
@@ -572,7 +571,7 @@ export function SnaplockStatus() {
             </div>
           )}
 
-          <div style={{ marginTop: "1rem", fontSize: "0.85rem", color: "#666" }}>
+          <div style={{ marginTop: "1rem", fontSize: "0.85rem", color: "var(--color-text-secondary)" }}>
             {t("lockS3NotApplicableDesc")}
           </div>
         </div>
@@ -582,14 +581,7 @@ export function SnaplockStatus() {
       {activePanel === "tamperproof" && (
         <div className="lock-panel" role="tabpanel" aria-label={t("slkTamperAria")}>
           {ontapError ? (
-            <div className="protection-info">
-              <h3>📡 {t("lockOntapRequired")}</h3>
-              <p>{t("lockOntapRequiredDesc")}</p>
-              <details>
-                <summary>{t("errorDetails")}</summary>
-                <pre style={{ fontSize: "0.8rem", padding: "0.5rem", background: "#f5f5f5", borderRadius: "4px" }}>{error}</pre>
-              </details>
-            </div>
+            <OntapFailureNotice error={ontapError} {...ontapDiagnosis} />
           ) : (
             <>
           {/* Status */}
@@ -650,7 +642,7 @@ export function SnaplockStatus() {
                     </button>
                   </div>
                 </div>
-                <small style={{ color: "#666" }}>{t("lockRetentionWarning")}</small>
+                <small style={{ color: "var(--color-text-secondary)" }}>{t("lockRetentionWarning")}</small>
               </div>
 
               {/* Locked snapshots table */}

@@ -27,10 +27,12 @@ This document records **how far each portal feature has been verified against a 
 | Feature | What was confirmed | Source |
 |---------|-------------------|--------|
 | FlexCache create / list / delete | Async creation with progressive refresh, origin display in the list, 3-step delete (unmount → offline → delete) | [admin-resource-management-demo](../../../docs/en/admin-resource-management-demo.md) Scenario 15 |
-| AppSync authorization | Admin endpoints allowed and refused by the `storage-admin` Cognito group; working after a password reset | [TROUBLESHOOTING-APPSYNC-AUTH.md](TROUBLESHOOTING-APPSYNC-AUTH.md) |
+| AppSync authorization | Admin endpoints allowed and refused by the `storage-admin` Cognito group; working after a password reset | [TROUBLESHOOTING-APPSYNC-AUTH.md](TROUBLESHOOTING-APPSYNC-AUTH.en.md) |
 | File Explorer listing | 29 directories shown from the S3 Access Point | Same guide, results table |
 | SMB share encryption toggle | ON / OFF switching and state reflection | Same guide, Scenario 6 |
 | Export policy create / delete | Policy creation, rule addition, deletion | Same guide, Scenario 7 |
+| ONTAP failure classification | On a real environment whose credentials were refused, confirmed the UI shows `CREDENTIALS_REJECTED`, HTTP 401 and the ONTAP error code. After bringing the two passwords into agreement, confirmed the same panel lists 13 snapshots (both states captured as screenshots) | [ONTAP connection guide](ONTAP-CONNECTION-GUIDE.en.md#what-the-screen-shows) |
+| `make ontap-preflight` | All six stages run against a real environment: stages 1-5 PASS and stage 6 FAIL before the repair, every stage PASS after. Verified on **the case it exists for** — only stage 6 failing | Same guide |
 
 ## Live read (write paths not confirmed)
 
@@ -91,12 +93,12 @@ The recorded deploy times disagree across documents. Rather than averaging them,
 | Item | Recorded | Source | Condition |
 |------|----------|--------|-----------|
 | `npx ampx sandbox`, first run | 3-5 min | [README](../README.md) | no VPC (DemoMode) |
-| `npx ampx sandbox`, first run | 8-12 min | [pr-ephemeral-environments.md](pr-ephemeral-environments.md) | — |
-| `make sandbox`, first run | 10-15 min | [cleanup-guide.md](cleanup-guide.md) | includes CDK bootstrap |
-| `npx ampx sandbox`, incremental | 2-3 min | [pr-ephemeral-environments.md](pr-ephemeral-environments.md) | — |
+| `npx ampx sandbox`, first run | 8-12 min | [pr-ephemeral-environments.md](pr-ephemeral-environments.en.md) | — |
+| `make sandbox`, first run | 10-15 min | [cleanup-guide.md](cleanup-guide.en.md) | includes CDK bootstrap |
+| `npx ampx sandbox`, incremental | 2-3 min | [pr-ephemeral-environments.md](pr-ephemeral-environments.en.md) | — |
 | `npm run build` | 0.25-0.51 s | measured in this session | Vite |
 
-> **Why they differ**: a Lambda in a VPC spends time creating and deleting ENIs and is not eligible for hotswap. Adding VPC configuration turns every change into a full deploy and pushes the first run past ten minutes ([amplify-gen2-cdk-patterns.md](amplify-gen2-cdk-patterns.md), case 2). Without a VPC, DemoMode is 3-5 minutes. An unbootstrapped CDK environment adds more on top.
+> **Why they differ**: a Lambda in a VPC spends time creating and deleting ENIs and is not eligible for hotswap. Adding VPC configuration turns every change into a full deploy and pushes the first run past ten minutes ([amplify-gen2-cdk-patterns.md](amplify-gen2-cdk-patterns.en.md), case 2). Without a VPC, DemoMode is 3-5 minutes. An unbootstrapped CDK environment adds more on top.
 
 | Item | Behaviour |
 |------|-----------|
@@ -104,8 +106,21 @@ The recorded deploy times disagree across documents. Rather than averaging them,
 
 > **Lambda Layer caveat**: changing `shared/` updates the Lambda by hotswap and skips the LayerVersion content change (there is no flag to disable hotswap). Recreate the sandbox to be certain the change is live.
 
+## Verified under browser emulation only
+
+Checked under Chrome device emulation at 390×844, not on physical hardware. A real
+handset's browser chrome — address bar height and so on — differs, so this is kept apart
+from the "real system" sections above.
+
+| Item | What was checked |
+|------|------------------|
+| Phone-width layout | Measured that every control is inside the viewport and every tap target is at least 44px. Steps in the [phone walkthrough](../../../docs/en/portal-mobile-guide.md) |
+| Row menu (⋮) | Fixed actions that rendered off the screen; as a bottom sheet all five are reachable (measured 400px → inside the viewport) |
+| Snapshot list | Fixed the browse and lock buttons that rendered off the screen (measured: table 585px → 358px, all 26 controls inside) |
+
 ## Not yet verified
 
+- **Phone use on a physical iPhone or Android handset** (currently emulation only)
 - Throughput sharing under production-like load (concurrent NFS / SMB / S3 AP access)
 - Multi-tenancy (per-Cognito-group S3 AP routing) against a real system
 - External IdP (SAML / OIDC) federation
@@ -118,5 +133,5 @@ The recorded deploy times disagree across documents. Rather than averaging them,
 |----------|----------|
 | [Admin Resource Management — Demo Guide](../../../docs/en/admin-resource-management-demo.md) | The 26 scenarios |
 | [PoC to Production Guide](../../../docs/en/portal-poc-to-production.md) | Moving from DemoMode to a real connection |
-| [ONTAP Connection Guide](ONTAP-CONNECTION-GUIDE.md) | VPC, secret and management LIF configuration |
-| [AppSync Authorization Troubleshooting](TROUBLESHOOTING-APPSYNC-AUTH.md) | When group authorization fails |
+| [ONTAP Connection Guide](ONTAP-CONNECTION-GUIDE.en.md) | VPC, secret and management LIF configuration |
+| [AppSync Authorization Troubleshooting](TROUBLESHOOTING-APPSYNC-AUTH.en.md) | When group authorization fails |

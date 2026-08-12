@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useCallback, type ReactNode } from "react";
+import { createContext, useContext, useState, useCallback, useEffect, type ReactNode } from "react";
 import { ja, en, ko, zhCN, zhTW, fr, de, es, type TranslationKeys } from "./locales";
 
 export type Locale = "ja" | "en" | "ko" | "zh-CN" | "zh-TW" | "fr" | "de" | "es";
@@ -28,10 +28,15 @@ const translations: Record<Locale, Record<TranslationKeys, string>> = {
   es,
 };
 
+/** Whether a string is one of the eight locales. Shared by the two readers below. */
+function isLocale(value: string | null): value is Locale {
+  return value !== null && value in translations;
+}
+
 function getInitialLocale(): Locale {
   try {
     const stored = localStorage.getItem("portal-locale");
-    if (stored && stored in translations) return stored as Locale;
+    if (isLocale(stored)) return stored;
   } catch {
     // localStorage unavailable (SSR or test environment)
   }
@@ -66,6 +71,19 @@ export function I18nProvider({ children }: { children: ReactNode }) {
     try { localStorage.setItem("portal-locale", newLocale); } catch { /* test env */ }
     try { document.documentElement.lang = newLocale; } catch { /* test env */ }
   }, []);
+
+  // `lang` was only written when the user *changed* language, and index.html ships
+  // `lang="ja"`. So an English-speaking visitor got a page announced as Japanese for
+  // the whole session -- WCAG 3.1.1 -- and a screen reader read English text with
+  // Japanese pronunciation rules. Writing it for the resolved locale fixes the case
+  // nobody sees, which is the one that mattered.
+  useEffect(() => {
+    try {
+      document.documentElement.lang = locale;
+    } catch {
+      // no document (test environment)
+    }
+  }, [locale]);
 
   const t = useCallback(
     (key: TranslationKeys): string => {

@@ -18,6 +18,25 @@ export const auth = defineAuth({
     },
   },
 
+  /**
+   * The group that gates every administrative operation.
+   *
+   * `amplify/data/resource.ts` guards the resource-management, ARP, snapshot and
+   * Athena endpoints with `allow.groups(["storage-admin"])`, and `App.tsx` hides
+   * the matching sections when the session lacks it. The group itself was missing
+   * here, so it existed only where somebody had created it by hand: a sandbox
+   * that had been running a while had it, and a freshly deployed one did not.
+   * Nothing failed loudly — the portal came up with the admin sections simply
+   * absent, which reads as "not built yet" rather than "misconfigured".
+   *
+   * Declaring it means a fresh deploy is reachable. Membership is still granted
+   * deliberately, per user:
+   *
+   *   aws cognito-idp admin-add-user-to-group \
+   *     --user-pool-id <pool> --username <user> --group-name storage-admin
+   */
+  groups: ["storage-admin"],
+
   // Multi-factor authentication (recommended for production)
   multifactor: {
     mode: "OPTIONAL",

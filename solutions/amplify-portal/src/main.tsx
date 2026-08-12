@@ -8,6 +8,7 @@ import App from "./App";
 import "./index.css";
 import { I18nProvider } from "./i18n";
 import { queryClient } from "./lib/queryClient";
+import { ToastProvider } from "./lib/toast";
 
 // Configure Amplify with generated outputs
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
@@ -27,9 +28,14 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
     <QueryClientProvider client={queryClient}>
       <I18nProvider>
-        <Authenticator>
-          <App />
-        </Authenticator>
+        {/* Inside I18nProvider, because a notice and its dismiss control are
+            worded in the portal's language; outside Authenticator, so a notice
+            posted during sign-out still has somewhere to render. */}
+        <ToastProvider>
+          <Authenticator>
+            <App />
+          </Authenticator>
+        </ToastProvider>
       </I18nProvider>
     </QueryClientProvider>
   </React.StrictMode>

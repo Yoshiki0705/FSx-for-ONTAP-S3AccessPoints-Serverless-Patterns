@@ -55,11 +55,11 @@ export function EfficiencyPanel() {
       ) : (
         <>
           <div className="form-row" style={{ marginBottom: "1.5rem" }}>
-            <div className="form-group" style={{ textAlign: "center", padding: "1rem", border: "1px solid var(--border-color)", borderRadius: "8px" }}>
+            <div className="form-group" style={{ textAlign: "center", padding: "1rem", border: "1px solid var(--color-border-strong)", borderRadius: "8px" }}>
               <div style={{ fontSize: "2rem", fontWeight: 700 }}>{stats.overallRatio}</div>
               <div>{t("rmOverallRatio")}</div>
             </div>
-            <div className="form-group" style={{ textAlign: "center", padding: "1rem", border: "1px solid var(--border-color)", borderRadius: "8px" }}>
+            <div className="form-group" style={{ textAlign: "center", padding: "1rem", border: "1px solid var(--color-border-strong)", borderRadius: "8px" }}>
               <div style={{ fontSize: "2rem", fontWeight: 700 }}>{stats.overallSavingsPercent}%</div>
               <div>{t("rmOverallSavings")}</div>
             </div>

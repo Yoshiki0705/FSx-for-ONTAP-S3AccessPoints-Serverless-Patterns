@@ -177,7 +177,7 @@ export function AuditLog() {
           </ul>
           <details>
             <summary>{t("errorDetails")}</summary>
-            <pre style={{ fontSize: "0.8rem", overflow: "auto", padding: "0.5rem", background: "#f5f5f5", borderRadius: "4px" }}>{error}</pre>
+            <pre style={{ fontSize: "0.8rem", overflow: "auto", padding: "0.5rem", background: "var(--color-surface-subtle)", borderRadius: "4px" }}>{error}</pre>
           </details>
         </div>
       )}

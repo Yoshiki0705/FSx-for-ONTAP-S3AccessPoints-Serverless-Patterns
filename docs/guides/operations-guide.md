@@ -154,7 +154,7 @@ aws logs filter-log-events \
 
 > **参考**: CloudWatch ログのスクリーンショットは以下を参照してください。
 
-![CloudWatch ログ](../screenshots/masked/cloudwatch-log-groups.png)
+![CloudWatch ログ](../screenshots/masked/phase1/phase1-cloudwatch-log-groups.png)
 
 ### Step Functions 実行履歴の確認
 
