@@ -78,9 +78,29 @@ def test_a_flag_without_its_value_fails_loudly(flag: str):
 
 
 def test_shellcheck_is_clean_when_available():
-    """Skipped where shellcheck is absent; the repository has no shell lint gate in CI."""
+    """Skipped where shellcheck is absent; this is the repository's only shell lint.
+
+    Run at `--severity=style`, the strictest setting, rather than at the default. Not
+    for thoroughness: it is what makes the verdict the same everywhere. This test
+    passed on a laptop and failed in CI, because the two had different shellcheck
+    builds and the local one did not report SC2015 for `[ -n "$x" ] && cmd || true` at
+    all. A gate whose answer depends on which machine ran it is not a gate, so ask for
+    every severity and let the strictest available answer stand.
+
+    The version goes into the failure message for the same reason: the next time the
+    two disagree, the first question is which build each one ran.
+    """
     try:
-        result = subprocess.run(["shellcheck", str(SCRIPT)], capture_output=True, text=True, timeout=60, check=False)
+        version = subprocess.run(
+            ["shellcheck", "--version"], capture_output=True, text=True, timeout=30, check=False
+        ).stdout
+        result = subprocess.run(
+            ["shellcheck", "--severity=style", str(SCRIPT)],
+            capture_output=True,
+            text=True,
+            timeout=60,
+            check=False,
+        )
     except FileNotFoundError:
         pytest.skip("shellcheck not installed")
-    assert result.returncode == 0, result.stdout or result.stderr
+    assert result.returncode == 0, f"{result.stdout or result.stderr}\n--- shellcheck ---\n{version}"

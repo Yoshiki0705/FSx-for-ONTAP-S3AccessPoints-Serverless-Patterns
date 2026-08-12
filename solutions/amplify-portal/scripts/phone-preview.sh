@@ -59,9 +59,21 @@ cleanup() {
   local code=$?
   # Kill only what this script started. A dev server that was already running
   # belongs to another terminal and must survive.
-  [ -n "$TUNNEL_PID" ] && kill "$TUNNEL_PID" 2>/dev/null || true
-  [ -n "$VITE_PID" ] && kill "$VITE_PID" 2>/dev/null || true
-  [ -n "$TUNNEL_LOG" ] && rm -f "$TUNNEL_LOG" || true
+  #
+  # Written as `if` blocks rather than `[ -n "$x" ] && kill ... || true`: that
+  # idiom is the A && B || C shape shellcheck warns about (SC2015), because C
+  # also runs when A succeeds and B fails. Here the intent really is "ignore
+  # every failure", so the `|| true` was harmless -- but only by accident, and
+  # only some shellcheck versions say so, which is a poor thing to rely on.
+  if [ -n "$TUNNEL_PID" ]; then
+    kill "$TUNNEL_PID" 2>/dev/null || true
+  fi
+  if [ -n "$VITE_PID" ]; then
+    kill "$VITE_PID" 2>/dev/null || true
+  fi
+  if [ -n "$TUNNEL_LOG" ]; then
+    rm -f "$TUNNEL_LOG"
+  fi
   wait 2>/dev/null || true
   exit $code
 }
