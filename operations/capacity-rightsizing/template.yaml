@@ -144,6 +144,7 @@ Conditions:
     - !Condition HasNotificationEmail
   IsBedrockEnabled: !Equals [!Ref EnableBedrockSummary, "true"]
   HasVpcConfig: !Not [!Equals [!Select [0, !Ref VpcSubnetIds], ""]]
+  HasOntapSecret: !Not [!Equals [!Ref OntapSecretArn, ""]]
 
 Globals:
   Function:
@@ -230,10 +231,16 @@ Resources:
       Policies:
         - Version: "2012-10-17"
           Statement:
-            - Effect: Allow
-              Action:
-                - secretsmanager:GetSecretValue
-              Resource: !Ref OntapSecretArn
+            # DemoMode では OntapSecretArn が空になる。空文字を Resource に渡すと
+            # IAM が "Resource must be in ARN format or *" で拒否し、スタック全体が
+            # ロールバックする。参照が無いときは文ごと落とす。
+            - !If
+              - HasOntapSecret
+              - Effect: Allow
+                Action:
+                  - secretsmanager:GetSecretValue
+                Resource: !Ref OntapSecretArn
+              - !Ref AWS::NoValue
             - Effect: Allow
               Action:
                 - cloudwatch:GetMetricData
