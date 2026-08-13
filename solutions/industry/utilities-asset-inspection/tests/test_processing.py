@@ -73,7 +73,9 @@ class TestDetectDefectsRekognition:
                 {"Name": "Metal Structure", "Confidence": 92.0},
             ]
         }
-        result = detect_defects_rekognition("test-ap", "test.jpg", 70.0, rekognition_client=mock_client)
+        result = detect_defects_rekognition(
+            "test-ap", "test.jpg", 70.0, rekognition_client=mock_client, s3ap=MagicMock()
+        )
         assert len(result) == 1
         assert result[0]["defect_type"] == "insulator_damage"
         assert result[0]["confidence"] == 85.0
@@ -85,7 +87,9 @@ class TestDetectDefectsRekognition:
                 {"Name": "Tree branch near wire", "Confidence": 78.0},
             ]
         }
-        result = detect_defects_rekognition("test-ap", "test.jpg", 70.0, rekognition_client=mock_client)
+        result = detect_defects_rekognition(
+            "test-ap", "test.jpg", 70.0, rekognition_client=mock_client, s3ap=MagicMock()
+        )
         assert len(result) == 1
         assert result[0]["defect_type"] == "vegetation_encroachment"
 
@@ -97,13 +101,15 @@ class TestDetectDefectsRekognition:
                 {"Name": "Power Line", "Confidence": 95.0},
             ]
         }
-        result = detect_defects_rekognition("test-ap", "test.jpg", 70.0, rekognition_client=mock_client)
+        result = detect_defects_rekognition(
+            "test-ap", "test.jpg", 70.0, rekognition_client=mock_client, s3ap=MagicMock()
+        )
         assert len(result) == 0
 
     def test_confidence_threshold_applied(self):
         mock_client = MagicMock()
         mock_client.detect_labels.return_value = {"Labels": []}
-        detect_defects_rekognition("test-ap", "test.jpg", 70.0, rekognition_client=mock_client)
+        detect_defects_rekognition("test-ap", "test.jpg", 70.0, rekognition_client=mock_client, s3ap=MagicMock())
         call_kwargs = mock_client.detect_labels.call_args[1]
         assert call_kwargs["MinConfidence"] == 70.0
 
@@ -400,3 +406,46 @@ class TestExtractThermalData:
         assert len(result) == 2
         assert result[0]["temperature_differential"] == 5.0
         assert result[1]["temperature_differential"] == 25.0
+
+
+# ─── Step Functions Map の入力形状 ──────────────────────────────────────────
+# Map の ItemProcessor は配列要素を 1 件ずつ渡すので、handler の event は
+# {"objects": [...]} ではなく 1 オブジェクトになる。以前は objects しか読んで
+# いなかったためループが一度も回らず、1 件も処理しないまま SUCCEEDED を返して
+# いた。ユニットテストは batch 形状しか渡していなかったので緑のままだった。
+class TestMapItemInputShape:
+    """Map が渡す単一アイテム形状を handler が受け付けること。"""
+
+    def _single_item(self):
+        return {"Key": "inspections/drone/tower.png", "Size": 2048}
+
+    def test_defect_detector_accepts_a_single_map_item(self):
+        """1 件渡したら 1 件分の per-object 結果を返す（配列で包まない）。"""
+        with patch.object(_defect_module, "detect_defects_rekognition", return_value=[]):
+            out = _defect_module.handler(self._single_item(), MagicMock())
+        # report は status を持つ per-object dict を期待する。
+        assert "status" in out, f"expected a per-object result, got keys={sorted(out)}"
+        assert "results" not in out, "single-item mode must not wrap the result in a list"
+
+    def test_defect_detector_still_accepts_a_batch(self):
+        """後方互換: {"objects": [...]} 形式では従来の集約形状を返す。"""
+        with patch.object(_defect_module, "detect_defects_rekognition", return_value=[]):
+            out = _defect_module.handler({"objects": [self._single_item()]}, MagicMock())
+        assert "results" in out and isinstance(out["results"], list)
+        assert out["success_count"] + out["error_count"] == 1
+
+    def test_thermal_analyzer_accepts_a_single_map_item(self):
+        """thermal は per-object 結果を返す（report が hot_spots をそこから読む）。"""
+        out = _thermal_module.handler(
+            {"Key": "inspections/thermal/tx.png", "Size": 1024, "thermal_metadata": {}},
+            MagicMock(),
+        )
+        assert "status" in out
+        assert "results" not in out
+
+    def test_scada_analyzer_accepts_a_single_map_item(self):
+        """scada は per-object 結果を返す（report が anomalies をそこから読む）。"""
+        with patch.object(_scada_module, "query_athena_scada", return_value=[]):
+            out = _scada_module.handler({"Key": "inspections/scada/log.csv", "Size": 512}, MagicMock())
+        assert "status" in out
+        assert "results" not in out

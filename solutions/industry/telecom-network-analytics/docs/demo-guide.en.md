@@ -137,13 +137,16 @@ aws s3 ls s3://${OUTPUT_BUCKET}/reports/daily/${TODAY}/ --region ap-northeast-1
 | Bedrock invocation failure | Model access not enabled | Enable model access in Bedrock console |
 | `AccessDenied` on S3 AP | Incorrect IAM policy ARN format | Use `arn:aws:s3:{region}:{account}:accesspoint/{name}` format |
 
+> If a deployment or a run misbehaves, see the shared [deployment guide](../../../../docs/en/deployment-guide.md#troubleshooting).
+> It lists the common deployment errors plus the "runs that succeed while producing nothing" symptoms by signature.
+
 ---
 
 ---
 
 ## Screenshots
 
-![Step Functions Graph View (SUCCEEDED)](../../docs/screenshots/masked/uc18-demo/step-functions-graph-view.png)
+![Step Functions Graph View (SUCCEEDED)](../../../../docs/screenshots/masked/uc18-demo/step-functions-execution-succeeded.png)
 
 
 ## Cleanup

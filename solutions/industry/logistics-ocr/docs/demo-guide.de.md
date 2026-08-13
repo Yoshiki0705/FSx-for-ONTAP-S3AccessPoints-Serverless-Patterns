@@ -200,8 +200,8 @@ sam deploy \
 - Angabe von `S3AccessPointName` wird dringend empfohlen (IAM-Berechtigung sowohl für Alias- als auch ARN-Format)
 - Die Objektgrößenobergrenze liegt bei 50 GB (AWS-Spezifikation). Ein einzelnes PutObject ist auf 5 GB begrenzt, daher ist oberhalb von 5 GB ein Multipart-Upload erforderlich
 - AWS-Spezifikationsbeschränkungen siehe
-  [Abschnitt „AWS-Spezifikationsbeschränkungen und Workarounds" in der Projekt-README](../../README.md#aws-仕様上の制約と回避策)
-  und [`docs/output-destination-patterns.md`](../../docs/output-destination-patterns.md)
+  [Abschnitt „AWS-Spezifikationsbeschränkungen und Workarounds" in der Projekt-README](../README.md#aws-仕様上の制約と回避策)
+  und [`docs/output-destination-patterns.md`](../../../../docs/output-destination-patterns.md)
 
 ---
 
@@ -219,15 +219,15 @@ Gleiche Richtlinie wie bei Phase 7 UC15/16/17 und UC6/11/14 Demos: Ziel sind **U
 
 #### UC12 Step Functions Graph view (SUCCEEDED)
 
-![UC12 Step Functions Graph view (SUCCEEDED)](../../docs/screenshots/masked/uc12-demo/uc12-stepfunctions-graph.png)
+![UC12 Step Functions Graph view (SUCCEEDED)](../../../../docs/screenshots/masked/uc12-demo/uc12-stepfunctions-graph.png)
 
 Step Functions Graph view ist der wichtigste Endbenutzer-Bildschirm, der den Ausführungsstatus jedes Lambda / Parallel / Map-States farblich visualisiert.
 
 ### Vorhandene Screenshots (aus Phase 1-6, relevante Teile)
 
-![UC12 Step Functions Graph view (SUCCEEDED)](../../docs/screenshots/masked/uc12-demo/step-functions-graph-succeeded.png)
+![UC12 Step Functions Graph view (SUCCEEDED)](../../../../docs/screenshots/masked/uc12-demo/step-functions-graph-succeeded.png)
 
-![UC12 Step Functions Graph (Zoom-Ansicht — Details zu jedem Schritt)](../../docs/screenshots/masked/uc12-demo/step-functions-graph-zoomed.png)
+![UC12 Step Functions Graph (Zoom-Ansicht — Details zu jedem Schritt)](../../../../docs/screenshots/masked/uc12-demo/step-functions-graph-zoomed.png)
 
 ### UI/UX-Zielbildschirme bei Neuverifizierung (empfohlene Aufnahmeliste)
 
@@ -259,3 +259,10 @@ Step Functions Graph view ist der wichtigste Endbenutzer-Bildschirm, der den Aus
 5. **Bereinigung**:
    - `bash scripts/cleanup_generic_ucs.sh UC12` zum Löschen
    - VPC Lambda ENI-Freigabe dauert 15-30 Minuten (AWS-Spezifikation)
+
+---
+
+## Weiterführende Dokumentation
+
+> Bei Problemen beim Deployment oder beim Lauf siehe den gemeinsamen [Deployment-Leitfaden](../../../../docs/en/deployment-guide.md#troubleshooting).
+> Dort stehen die häufigen Deployment-Fehler sowie die Symptome „Lauf erfolgreich, Ergebnis leer“.

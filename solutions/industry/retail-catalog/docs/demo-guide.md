@@ -180,7 +180,7 @@ UC11 は 2026-05-10 のアップデートで `OutputDestination` パラメータ
 ```
 
 AWS 仕様上の制約と回避策は [プロジェクト README の "AWS 仕様上の制約と回避策"
-セクション](../../README.md#aws-仕様上の制約と回避策) 参照。
+セクション](../README.md#aws-仕様上の制約と回避策) 参照。
 
 ### 1. 商品画像の自動タグ付け結果
 
@@ -190,7 +190,7 @@ EC 管理者が新商品登録時に受け取る AI 分析結果。Rekognition �
 <!-- SCREENSHOT: uc11-product-tags.png
      内容: 商品画像 + AI 検出タグ一覧（信頼度つき）
      マスク: アカウント ID、バケット名 -->
-![UC11: 商品タグ](../../docs/screenshots/masked/uc11-demo/uc11-product-tags.png)
+![UC11: 商品タグ](../../../../docs/screenshots/masked/uc11-demo/uc11-product-tags.png)
 
 ### 2. S3 出力バケット — タグ・品質チェック結果の俯瞰
 
@@ -200,7 +200,7 @@ EC 運用担当者がバッチ処理結果を確認する画面。
 <!-- SCREENSHOT: uc11-s3-output-bucket.png
      内容: S3 コンソールで tags/, quality/ プレフィックス
      マスク: アカウント ID -->
-![UC11: S3 出力バケット](../../docs/screenshots/masked/uc11-demo/uc11-s3-output-bucket.png)
+![UC11: S3 出力バケット](../../../../docs/screenshots/masked/uc11-demo/uc11-s3-output-bucket.png)
 
 ### 実測値（2026-05-10 AWS デプロイ検証）
 
@@ -208,3 +208,10 @@ EC 運用担当者がバッチ処理結果を確認する画面。
 - **Rekognition**: 実画像で 7 ラベル検出（最高信頼度 99.93%）
 - **生成 JSON**: tags/*.json (~750 bytes)、quality/*.json (~420 bytes)
 - **実スタック**: `fsxn-retail-catalog-demo`（ap-northeast-1、2026-05-10 検証時）
+
+---
+
+## 関連ドキュメント
+
+> デプロイや実行でつまずいたときは、パターン共通の[デプロイガイド](../../../../docs/ja/deployment-guide.md#トラブルシューティング)を参照。
+> よくあるデプロイエラーに加えて、「実行は成功するのに結果が空になる」系の症状を症状別にまとめてある。

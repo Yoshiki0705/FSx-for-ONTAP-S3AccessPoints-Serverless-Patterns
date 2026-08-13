@@ -265,6 +265,48 @@ class S3ApHelper:
                 error_code=error_code,
             ) from e
 
+    # Rekognition の DetectLabels / DetectText と Textract の同期 API に bytes を
+    # 直接渡せる上限。S3 参照（S3Object）は FSx for ONTAP の S3 AP では使えないため、
+    # これらのサービスへ渡すデータはいったん取得して inline で渡す必要がある。
+    MAX_INLINE_AI_BYTES = 5 * 1024 * 1024
+
+    def get_object_bytes(self, key: str, max_bytes: int | None = None) -> bytes:
+        """オブジェクトを bytes として取得する。
+
+        Rekognition / Textract に画像や文書を渡すための入口。**これらのサービスは
+        FSx for ONTAP の S3 Access Point 上のオブジェクトを `S3Object` 参照では
+        読めない**（`InvalidS3ObjectException: Unable to get object metadata from S3`
+        になる。AP ポリシーにサービスプリンシパルを許可しても解消しない）。
+        そのため、AP から bytes を取得して `Image={"Bytes": ...}` /
+        `Document={"Bytes": ...}` の形で渡す。
+
+        Args:
+            key: オブジェクトキー
+            max_bytes: 上限バイト数。既定は同期 AI API の inline 上限
+                (:attr:`MAX_INLINE_AI_BYTES`)。上限を超える場合は取得せずに失敗させる。
+
+        Returns:
+            bytes: オブジェクトの内容
+
+        Raises:
+            S3ApHelperError: 取得に失敗した場合、または上限を超えた場合
+        """
+        limit = self.MAX_INLINE_AI_BYTES if max_bytes is None else max_bytes
+
+        # 先に大きさを確認する。上限超過を取得後に気づくと、無駄に転送した上で
+        # サービス側が曖昧なエラーを返すことになる。
+        head = self.head_object(key)
+        size = head.get("ContentLength", 0)
+        if size > limit:
+            raise S3ApHelperError(
+                f"Object '{key}' is {size} bytes, over the {limit} byte inline limit for "
+                "synchronous Rekognition/Textract calls. Use an asynchronous API with a "
+                "real S3 bucket, or downsample before analysis.",
+                error_code="ObjectTooLargeForInlineAnalysis",
+            )
+
+        return self.get_object(key)["Body"].read()
+
     def put_object(
         self,
         key: str,

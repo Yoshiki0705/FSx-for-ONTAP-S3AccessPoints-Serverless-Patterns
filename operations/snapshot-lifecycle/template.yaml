@@ -127,6 +127,7 @@ Conditions:
     - !Condition HasNotificationEmail
   IsBedrockEnabled: !Equals [!Ref EnableBedrockSummary, "true"]
   HasVpcConfig: !Not [!Equals [!Select [0, !Ref VpcSubnetIds], ""]]
+  HasOntapSecret: !Not [!Equals [!Ref OntapSecretArn, ""]]
   IsHumanReviewEnabled: !Or
     - !Equals [!Ref AutomationLevel, "2"]
     - !Equals [!Ref AutomationLevel, "3"]
@@ -223,10 +224,16 @@ Resources:
       Policies:
         - Version: "2012-10-17"
           Statement:
-            - Effect: Allow
-              Action:
-                - secretsmanager:GetSecretValue
-              Resource: !Ref OntapSecretArn
+            # DemoMode では OntapSecretArn が空になる。空文字を Resource に渡すと
+            # IAM が "Resource must be in ARN format or *" で拒否し、スタック全体が
+            # ロールバックする。参照が無いときは文ごと落とす。
+            - !If
+              - HasOntapSecret
+              - Effect: Allow
+                Action:
+                  - secretsmanager:GetSecretValue
+                Resource: !Ref OntapSecretArn
+              - !Ref AWS::NoValue
             - Effect: Allow
               Action:
                 - fsx:DescribeFileSystems
@@ -242,18 +249,21 @@ Resources:
       Description: >
         Analyze snapshot retention compliance, detect policy drift,
         and generate cleanup recommendations.
+      # EnableBedrockSummary=false のとき、この文が唯一の文なので Statement 側で
+      # 落とすと Statement: [] になり IAM が "Syntax errors in policy" で拒否する。
+      # ポリシーごと落とす。
       Policies:
-        - Version: "2012-10-17"
-          Statement:
-            - !If
-              - IsBedrockEnabled
+        - !If
+          - IsBedrockEnabled
+          - Version: "2012-10-17"
+            Statement:
               - Effect: Allow
                 Action:
                   - bedrock:InvokeModel
                 Resource:
                   - !Sub "arn:aws:bedrock:${AWS::Region}::foundation-model/amazon.nova-lite-v1:0"
                   - !Sub "arn:aws:bedrock:${AWS::Region}:${AWS::AccountId}:inference-profile/us.amazon.nova-lite-v1:0"
-              - !Ref AWS::NoValue
+          - !Ref AWS::NoValue
 
   ReportFunction:
     Type: AWS::Serverless::Function

@@ -155,4 +155,4 @@ Alle Lambda-Funktionen unterstützen Opt-in SnapStart:
 - **Effekt**: Kaltstart 1–3s → 100–500ms
 - **Einschränkung**: Gilt nur für Published Versions (nicht für $LATEST)
 
-Details: [SnapStart-Leitfaden](../../docs/snapstart-guide.md)
+Details: [SnapStart-Leitfaden](../../../../docs/snapstart-guide.md)

@@ -134,7 +134,7 @@ aws cloudformation delete-stack --stack-name fsxn-agri-demo --region ap-northeas
 ---
 
 
-![Step Functions Graph View (SUCCEEDED)](../../docs/screenshots/masked/uc21-demo/step-functions-graph-view.png)
+![Step Functions Graph View (SUCCEEDED)](../../../../docs/screenshots/masked/uc21-demo/step-functions-graph-view.png)
 
 ## 撮影ガイド
 
@@ -169,5 +169,11 @@ sam deploy --guided
 - メールアドレス
 - ブラウザのユーザー名表示
 
-> 詳細は [`docs/screenshots/MASK_GUIDE.md`](../../docs/screenshots/MASK_GUIDE.md) を参照。
+> 詳細は [`docs/screenshots/MASK_GUIDE.md`](../../../../docs/screenshots/MASK_GUIDE.md) を参照。
 
+---
+
+## 関連ドキュメント
+
+> デプロイや実行でつまずいたときは、パターン共通の[デプロイガイド](../../../../docs/ja/deployment-guide.md#トラブルシューティング)を参照。
+> よくあるデプロイエラーに加えて、「実行は成功するのに結果が空になる」系の症状を症状別にまとめてある。

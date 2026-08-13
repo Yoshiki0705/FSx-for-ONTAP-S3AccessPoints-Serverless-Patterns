@@ -302,6 +302,13 @@ Resources:
                   - s3:PutObject
                 Resource:
                   - !Sub "arn:aws:s3:::${S3AccessPointOutputAlias}/*"
+                  # FSx for ONTAP の S3 AP は bucket 形式の ARN では認可されない。読み取り側だけ
+                  # accesspoint 形式が併記されていたため、S3 AP への書き込みが AccessDenied に
+                  # なっていた（UC28 の実行で確認）。
+                  - !If
+                    - HasS3AccessPointName
+                    - !Sub "arn:aws:s3:${AWS::Region}:${AWS::AccountId}:accesspoint/${S3AccessPointName}/object/*"
+                    - !Ref AWS::NoValue
               - Sid: SecretsManager
                 Effect: Allow
                 Action:
@@ -341,6 +348,13 @@ Resources:
                   - s3:GetObject
                 Resource:
                   - !Sub "arn:aws:s3:::${S3AccessPointAlias}/*"
+                  # FSx for ONTAP の S3 AP は bucket 形式の ARN では認可されない。ハンドラが自分で
+                  # bytes を取得するようになったため（Rekognition/Textract が S3Object 参照で読めない）
+                  # 読み取り側にも accesspoint 形式が必要になった。無いと HeadObject が 403 になる。
+                  - !If
+                    - HasS3AccessPointName
+                    - !Sub "arn:aws:s3:${AWS::Region}:${AWS::AccountId}:accesspoint/${S3AccessPointName}/object/*"
+                    - !Ref AWS::NoValue
               - Sid: S3AccessPointOutput
                 Effect: Allow
                 Action:
@@ -349,11 +363,22 @@ Resources:
                   - !Sub "arn:aws:s3:::${S3AccessPointOutputAlias}/*"
               # Rekognition does not support resource-level IAM policies (Resource: "*" is required)
               # See: https://docs.aws.amazon.com/rekognition/latest/dg/security_iam_service-with-iam.html
+                  # FSx for ONTAP の S3 AP は bucket 形式の ARN では認可されない。読み取り側だけ
+                  # accesspoint 形式が併記されていたため、S3 AP への書き込みが AccessDenied に
+                  # なっていた（UC28 の実行で確認）。
+                  - !If
+                    - HasS3AccessPointName
+                    - !Sub "arn:aws:s3:${AWS::Region}:${AWS::AccountId}:accesspoint/${S3AccessPointName}/object/*"
+                    - !Ref AWS::NoValue
               - Sid: Rekognition
                 Effect: Allow
                 Action:
                   - rekognition:DetectLabels
                   - rekognition:DetectModerationLabels
+                  # property_analyzer は detect_text も呼ぶ。権限が無く AccessDeniedException
+                  # になっていた（実行して確認）。Rekognition はリソースレベルの
+                  # ポリシーに対応しないため Resource は "*" になる。
+                  - rekognition:DetectText
                 Resource: "*"
               - Sid: Bedrock
                 Effect: Allow
@@ -396,12 +421,26 @@ Resources:
                   - s3:GetObject
                 Resource:
                   - !Sub "arn:aws:s3:::${S3AccessPointAlias}/*"
+                  # FSx for ONTAP の S3 AP は bucket 形式の ARN では認可されない。ハンドラが自分で
+                  # bytes を取得するようになったため（Rekognition/Textract が S3Object 参照で読めない）
+                  # 読み取り側にも accesspoint 形式が必要になった。無いと HeadObject が 403 になる。
+                  - !If
+                    - HasS3AccessPointName
+                    - !Sub "arn:aws:s3:${AWS::Region}:${AWS::AccountId}:accesspoint/${S3AccessPointName}/object/*"
+                    - !Ref AWS::NoValue
               - Sid: S3AccessPointOutput
                 Effect: Allow
                 Action:
                   - s3:PutObject
                 Resource:
                   - !Sub "arn:aws:s3:::${S3AccessPointOutputAlias}/*"
+                  # FSx for ONTAP の S3 AP は bucket 形式の ARN では認可されない。読み取り側だけ
+                  # accesspoint 形式が併記されていたため、S3 AP への書き込みが AccessDenied に
+                  # なっていた（UC28 の実行で確認）。
+                  - !If
+                    - HasS3AccessPointName
+                    - !Sub "arn:aws:s3:${AWS::Region}:${AWS::AccountId}:accesspoint/${S3AccessPointName}/object/*"
+                    - !Ref AWS::NoValue
               - Sid: Textract
                 Effect: Allow
                 Action:
@@ -441,6 +480,13 @@ Resources:
                   - s3:PutObject
                 Resource:
                   - !Sub "arn:aws:s3:::${S3AccessPointOutputAlias}/*"
+                  # FSx for ONTAP の S3 AP は bucket 形式の ARN では認可されない。読み取り側だけ
+                  # accesspoint 形式が併記されていたため、S3 AP への書き込みが AccessDenied に
+                  # なっていた（UC28 の実行で確認）。
+                  - !If
+                    - HasS3AccessPointName
+                    - !Sub "arn:aws:s3:${AWS::Region}:${AWS::AccountId}:accesspoint/${S3AccessPointName}/object/*"
+                    - !Ref AWS::NoValue
               - Sid: SNS
                 Effect: Allow
                 Action:

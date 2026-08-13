@@ -175,25 +175,25 @@ Phase 7 UC15/16/17 und UC6/11/14 folgen demselben Ansatz: **UI/UX-Bildschirme, d
 
 #### UC7 Step Functions Graph view (SUCCEEDED)
 
-![UC7 Step Functions Graph view (SUCCEEDED)](../../docs/screenshots/masked/uc7-demo/uc7-stepfunctions-graph.png)
+![UC7 Step Functions Graph view (SUCCEEDED)](../../../../docs/screenshots/masked/uc7-demo/uc7-stepfunctions-graph.png)
 
 Die Step Functions Graph-Ansicht ist der wichtigste Bildschirm für Endbenutzer, der den Ausführungsstatus jedes Lambda-/Parallel-/Map-Status farblich visualisiert.
 
 #### UC7 Step Functions Graph (SUCCEEDED — Phase 8 Theme D Neuaufnahme)
 
-![UC7 Step Functions Graph (SUCCEEDED)](../../docs/screenshots/masked/uc7-demo/step-functions-graph-succeeded.png)
+![UC7 Step Functions Graph (SUCCEEDED)](../../../../docs/screenshots/masked/uc7-demo/step-functions-graph-succeeded.png)
 
 Nach IAM S3AP-Korrektur neu bereitgestellt. Alle Schritte SUCCEEDED (3:03).
 
 #### UC7 Step Functions Graph (Zoom-Ansicht — Details zu jedem Schritt)
 
-![UC7 Step Functions Graph (Zoom-Ansicht)](../../docs/screenshots/masked/uc7-demo/step-functions-graph-zoomed.png)
+![UC7 Step Functions Graph (Zoom-Ansicht)](../../../../docs/screenshots/masked/uc7-demo/step-functions-graph-zoomed.png)
 
 ### Vorhandene Screenshots (relevante aus Phase 1-6)
 
 #### UC7 Comprehend Medical Genomanalyse-Ergebnisse (Cross-Region us-east-1)
 
-![UC7 Comprehend Medical Genomanalyse-Ergebnisse (Cross-Region us-east-1)](../../docs/screenshots/masked/phase2/phase2-comprehend-medical-genomics-analysis-fullpage.png)
+![UC7 Comprehend Medical Genomanalyse-Ergebnisse (Cross-Region us-east-1)](../../../../docs/screenshots/masked/phase2/phase2-comprehend-medical-genomics-analysis-fullpage.png)
 
 
 ### UI/UX-Zielbildschirme bei Neuverifizierung (empfohlene Aufnahmeliste)
@@ -226,3 +226,10 @@ Nach IAM S3AP-Korrektur neu bereitgestellt. Alle Schritte SUCCEEDED (3:03).
 5. **Bereinigung**:
    - `bash scripts/cleanup_generic_ucs.sh UC7` zum Löschen
    - VPC Lambda ENI-Freigabe dauert 15-30 Minuten (AWS-Spezifikation)
+
+---
+
+## Weiterführende Dokumentation
+
+> Bei Problemen beim Deployment oder beim Lauf siehe den gemeinsamen [Deployment-Leitfaden](../../../../docs/en/deployment-guide.md#troubleshooting).
+> Dort stehen die häufigen Deployment-Fehler sowie die Symptome „Lauf erfolgreich, Ergebnis leer“.

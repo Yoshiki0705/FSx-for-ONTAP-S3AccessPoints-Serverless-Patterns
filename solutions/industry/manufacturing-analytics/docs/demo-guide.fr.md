@@ -193,8 +193,8 @@ sam deploy \
 ```
 
 Pour les contraintes liées aux spécifications AWS, consultez
-[la section "Contraintes des spécifications AWS et solutions de contournement" du README du projet](../../README.md#aws-仕様上の制約と回避策)
-et [`docs/output-destination-patterns.md`](../../docs/output-destination-patterns.md).
+[la section "Contraintes des spécifications AWS et solutions de contournement" du README du projet](../README.md#aws-仕様上の制約と回避策)
+et [`docs/output-destination-patterns.md`](../../../../docs/output-destination-patterns.md).
 
 ---
 
@@ -212,17 +212,17 @@ Même approche que les démos Phase 7 UC15/16/17 et UC6/11/14, ciblant **les éc
 
 #### Vue graphique Step Functions UC3 (SUCCEEDED)
 
-![Vue graphique Step Functions UC3 (SUCCEEDED)](../../docs/screenshots/masked/uc3-demo/uc3-stepfunctions-graph.png)
+![Vue graphique Step Functions UC3 (SUCCEEDED)](../../../../docs/screenshots/masked/uc3-demo/uc3-stepfunctions-graph.png)
 
 La vue graphique Step Functions est l'écran le plus important pour l'utilisateur final, visualisant par couleur l'état d'exécution de chaque état Lambda / Parallel / Map.
 
 ### Captures d'écran existantes (portions pertinentes de Phase 1-6)
 
-![Vue graphique Step Functions UC3 (SUCCEEDED)](../../docs/screenshots/masked/uc3-demo/step-functions-graph-succeeded.png)
+![Vue graphique Step Functions UC3 (SUCCEEDED)](../../../../docs/screenshots/masked/uc3-demo/step-functions-graph-succeeded.png)
 
-![Graphe Step Functions UC3 (affichage développé)](../../docs/screenshots/masked/uc3-demo/step-functions-graph-expanded.png)
+![Graphe Step Functions UC3 (affichage développé)](../../../../docs/screenshots/masked/uc3-demo/step-functions-graph-expanded.png)
 
-![Graphe Step Functions UC3 (affichage zoomé — détails de chaque étape)](../../docs/screenshots/masked/uc3-demo/step-functions-graph-zoomed.png)
+![Graphe Step Functions UC3 (affichage zoomé — détails de chaque étape)](../../../../docs/screenshots/masked/uc3-demo/step-functions-graph-zoomed.png)
 
 ### Écrans UI/UX cibles lors de la revérification (liste de captures recommandées)
 
@@ -254,3 +254,10 @@ La vue graphique Step Functions est l'écran le plus important pour l'utilisateu
 5. **Nettoyage** :
    - Supprimer avec `bash scripts/cleanup_generic_ucs.sh UC3`
    - Libération des ENI Lambda VPC en 15-30 minutes (spécification AWS)
+
+---
+
+## Documentation associée
+
+> En cas de problème de déploiement ou d'exécution, consultez le [guide de déploiement](../../../../docs/en/deployment-guide.md#troubleshooting) commun.
+> Il recense les erreurs de déploiement courantes ainsi que les symptômes « exécution réussie mais résultat vide ».

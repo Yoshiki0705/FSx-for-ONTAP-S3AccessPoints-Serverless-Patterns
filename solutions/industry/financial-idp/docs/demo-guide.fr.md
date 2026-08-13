@@ -196,8 +196,8 @@ sam deploy \
 ```
 
 Pour les contraintes liées aux spécifications AWS, consultez
-[la section "Contraintes des spécifications AWS et solutions de contournement" du README du projet](../../README.md#aws-仕様上の制約と回避策)
-et [`docs/output-destination-patterns.md`](../../docs/output-destination-patterns.md).
+[la section "Contraintes des spécifications AWS et solutions de contournement" du README du projet](../README.md#aws-仕様上の制約と回避策)
+et [`docs/output-destination-patterns.md`](../../../../docs/output-destination-patterns.md).
 
 ---
 
@@ -216,14 +216,14 @@ UI/UX que les utilisateurs finaux voient réellement dans leurs tâches quotidie
 
 #### Vue graphique Step Functions UC2 (SUCCEEDED)
 
-![Vue graphique Step Functions UC2 (SUCCEEDED)](../../docs/screenshots/masked/uc2-demo/uc2-stepfunctions-graph.png)
+![Vue graphique Step Functions UC2 (SUCCEEDED)](../../../../docs/screenshots/masked/uc2-demo/uc2-stepfunctions-graph.png)
 
 La vue graphique Step Functions est l'écran le plus important pour l'utilisateur final, visualisant
 l'état d'exécution de chaque état Lambda / Parallel / Map par couleur.
 
 ### Captures d'écran existantes (portions pertinentes des Phases 1-6)
 
-![Vue graphique Step Functions UC2 (SUCCEEDED)](../../docs/screenshots/masked/uc2-demo/step-functions-graph-succeeded.png)
+![Vue graphique Step Functions UC2 (SUCCEEDED)](../../../../docs/screenshots/masked/uc2-demo/step-functions-graph-succeeded.png)
 
 ### Écrans UI/UX cibles lors de la revérification (liste de captures recommandées)
 
@@ -255,3 +255,10 @@ l'état d'exécution de chaque état Lambda / Parallel / Map par couleur.
 5. **Nettoyage** :
    - `bash scripts/cleanup_generic_ucs.sh UC2` pour supprimer
    - Libération des ENI Lambda VPC en 15-30 minutes (spécification AWS)
+
+---
+
+## Documentation associée
+
+> En cas de problème de déploiement ou d'exécution, consultez le [guide de déploiement](../../../../docs/en/deployment-guide.md#troubleshooting) commun.
+> Il recense les erreurs de déploiement courantes ainsi que les symptômes « exécution réussie mais résultat vide ».

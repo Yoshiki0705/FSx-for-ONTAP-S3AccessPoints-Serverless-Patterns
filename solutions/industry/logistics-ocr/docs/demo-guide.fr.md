@@ -201,8 +201,8 @@ sam deploy \
 - Spécification de `S3AccessPointName` fortement recommandée (autoriser IAM pour les formats Alias et ARN)
 - Les objets de plus de 5 Go ne sont pas possibles avec FSx for ONTAP S3 AP (spécification AWS), multipart upload obligatoire
 - Pour les contraintes liées aux spécifications AWS, voir
-  [la section "Contraintes des spécifications AWS et solutions de contournement" du README du projet](../../README.md#aws-仕様上の制約と回避策)
-  et [`docs/output-destination-patterns.md`](../../docs/output-destination-patterns.md)
+  [la section "Contraintes des spécifications AWS et solutions de contournement" du README du projet](../README.md#aws-仕様上の制約と回避策)
+  et [`docs/output-destination-patterns.md`](../../../../docs/output-destination-patterns.md)
 
 ---
 
@@ -222,16 +222,16 @@ Stack, etc.) sont consolidées dans `docs/verification-results-*.md`.
 
 #### UC12 Step Functions Graph view (SUCCEEDED)
 
-![UC12 Step Functions Graph view (SUCCEEDED)](../../docs/screenshots/masked/uc12-demo/uc12-stepfunctions-graph.png)
+![UC12 Step Functions Graph view (SUCCEEDED)](../../../../docs/screenshots/masked/uc12-demo/uc12-stepfunctions-graph.png)
 
 La vue graphique Step Functions est l'écran le plus important pour l'utilisateur final, visualisant par couleur
 l'état d'exécution de chaque Lambda / Parallel / Map State.
 
 ### Captures d'écran existantes (issues de Phase 1-6)
 
-![UC12 Step Functions Graph view (SUCCEEDED)](../../docs/screenshots/masked/uc12-demo/step-functions-graph-succeeded.png)
+![UC12 Step Functions Graph view (SUCCEEDED)](../../../../docs/screenshots/masked/uc12-demo/step-functions-graph-succeeded.png)
 
-![UC12 Step Functions Graph (vue zoomée — détails de chaque étape)](../../docs/screenshots/masked/uc12-demo/step-functions-graph-zoomed.png)
+![UC12 Step Functions Graph (vue zoomée — détails de chaque étape)](../../../../docs/screenshots/masked/uc12-demo/step-functions-graph-zoomed.png)
 
 ### Écrans UI/UX cibles lors de la revérification (liste de capture recommandée)
 
@@ -263,3 +263,10 @@ l'état d'exécution de chaque Lambda / Parallel / Map State.
 5. **Nettoyage** :
    - `bash scripts/cleanup_generic_ucs.sh UC12` pour supprimer
    - Libération des ENI Lambda VPC en 15-30 minutes (spécification AWS)
+
+---
+
+## Documentation associée
+
+> En cas de problème de déploiement ou d'exécution, consultez le [guide de déploiement](../../../../docs/en/deployment-guide.md#troubleshooting) commun.
+> Il recense les erreurs de déploiement courantes ainsi que les symptômes « exécution réussie mais résultat vide ».

@@ -115,4 +115,4 @@ UC15는 2026-05-11 업데이트에서 `OutputDestination` 파라미터를 지원
 **영향을 받는 Lambda**: Tiling, ObjectDetection, GeoEnrichment(3개 함수).  
 **영향을 받지 않는 Lambda**: Discovery(manifest는 계속 S3AP 직접 기록), ChangeDetection(DynamoDB만), AlertGeneration(SNS만).
 
-자세한 내용은 [`docs/output-destination-patterns.md`](../../docs/output-destination-patterns.md) 참조.
+자세한 내용은 [`docs/output-destination-patterns.md`](../../../../docs/output-destination-patterns.md) 참조.

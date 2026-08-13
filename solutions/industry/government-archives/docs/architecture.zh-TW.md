@@ -110,4 +110,4 @@ UC16 於 2026-05-11 的更新中支援 `OutputDestination` 參數。
 **不受影響的 Lambda**: Discovery（manifest 直接寫入 S3AP）、ComplianceCheck（僅 DynamoDB）、FoiaDeadlineReminder（僅 DynamoDB + SNS）。  
 **與 OpenSearch 的關係**: 索引由 `OpenSearchMode` 參數獨立管理，不受 `OutputDestination` 影響。
 
-詳情請參閱 [`docs/output-destination-patterns.md`](../../docs/output-destination-patterns.md)。
+詳情請參閱 [`docs/output-destination-patterns.md`](../../../../docs/output-destination-patterns.md)。

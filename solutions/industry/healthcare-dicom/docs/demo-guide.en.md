@@ -192,8 +192,8 @@ sam deploy \
 ```
 
 For AWS specification constraints, see
-[the "AWS Specification Constraints and Workarounds" section in the project README](../../README.en.md#key-s3-access-point-constraints)
-and [`docs/output-destination-patterns.md`](../../docs/output-destination-patterns.md).
+[the "AWS Specification Constraints and Workarounds" section in the project README](../README.en.md#key-s3-access-point-constraints)
+and [`docs/output-destination-patterns.md`](../../../../docs/output-destination-patterns.md).
 
 ---
 
@@ -210,15 +210,15 @@ Following the same policy as Phase 7 UC15/16/17 and UC6/11/14 demos, targeting *
 
 #### UC5 Step Functions Graph view (SUCCEEDED)
 
-![UC5 Step Functions Graph view (SUCCEEDED)](../../docs/screenshots/masked/uc5-demo/uc5-stepfunctions-graph.png)
+![UC5 Step Functions Graph view (SUCCEEDED)](../../../../docs/screenshots/masked/uc5-demo/uc5-stepfunctions-graph.png)
 
 Step Functions Graph view is the most important end-user screen that visualizes the execution status of each Lambda / Parallel / Map state with colors.
 
 ### Existing Screenshots (Applicable from Phase 1-6)
 
-![UC5 Step Functions Graph view (SUCCEEDED)](../../docs/screenshots/masked/uc5-demo/step-functions-graph-succeeded.png)
+![UC5 Step Functions Graph view (SUCCEEDED)](../../../../docs/screenshots/masked/uc5-demo/step-functions-graph-succeeded.png)
 
-![UC5 Step Functions Graph (Zoomed view — each step detail)](../../docs/screenshots/masked/uc5-demo/step-functions-graph-zoomed.png)
+![UC5 Step Functions Graph (Zoomed view — each step detail)](../../../../docs/screenshots/masked/uc5-demo/step-functions-graph-zoomed.png)
 
 ### UI/UX Target Screens for Re-verification (Recommended Capture List)
 
@@ -249,3 +249,10 @@ Step Functions Graph view is the most important end-user screen that visualizes 
 5. **Cleanup**:
    - Delete with `bash scripts/cleanup_generic_ucs.sh UC5`
    - VPC Lambda ENI release takes 15-30 minutes (AWS specification)
+
+---
+
+## Related Documentation
+
+> If a deployment or a run misbehaves, see the shared [deployment guide](../../../../docs/en/deployment-guide.md#troubleshooting).
+> It lists the common deployment errors plus the "runs that succeed while producing nothing" symptoms by signature.

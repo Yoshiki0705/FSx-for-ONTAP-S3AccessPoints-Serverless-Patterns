@@ -108,4 +108,4 @@ UC16 は 2026-05-11 のアップデートで `OutputDestination` パラメータ
 **影響を受けない Lambda**: Discovery（manifest は S3AP 直書き）、ComplianceCheck（DynamoDB のみ）、FoiaDeadlineReminder（DynamoDB + SNS のみ）。  
 **OpenSearch との関係**: インデックスは `OpenSearchMode` パラメータで独立管理、`OutputDestination` の影響を受けない。
 
-詳細は [`docs/output-destination-patterns.md`](../../docs/output-destination-patterns.md) 参照。
+詳細は [`docs/output-destination-patterns.md`](../../../../docs/output-destination-patterns.md) 参照。

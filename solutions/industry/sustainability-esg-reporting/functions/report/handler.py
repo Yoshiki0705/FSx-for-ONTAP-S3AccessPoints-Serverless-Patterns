@@ -205,7 +205,10 @@ def handler(event, context):
     s3ap_output = S3ApHelper(os.environ.get("S3_ACCESS_POINT_OUTPUT", os.environ.get("S3_ACCESS_POINT", "")))
     sns_topic_arn = os.environ.get("SNS_TOPIC_ARN", "")
 
-    results = event.get("results", [])
+    # 状態機械は Map の出力を $.metrics_results に置く。以前は "results" だけを読んで
+    # いたため、誰も置かないキーを見て常に空になり、3 件発見しても success も error も
+    # 0 のレポートを出していた。"results" も後方互換で受け付ける。
+    results = event.get("metrics_results") or event.get("results", [])
     discovery_info = event.get("discovery", {})
 
     logger.info("ESG Report generation started: results_count=%d", len(results))

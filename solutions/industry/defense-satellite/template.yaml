@@ -523,6 +523,11 @@ Resources:
                       - !Sub
                         - "arn:aws:s3:::${Alias}/*"
                         - Alias: !If [UseInputApAsOutputAp, !Ref S3AccessPointAlias, !Ref OutputS3APAlias]
+                      # FSx for ONTAP の S3 AP は bucket 形式の ARN では認可されない。
+                      # 読み取り側と同じ accesspoint 形式を書き込み側にも併記する。
+                      - !Sub
+                        - "arn:aws:s3:${AWS::Region}:${AWS::AccountId}:accesspoint/${Name}/object/*"
+                        - Name: !If [UseInputApNameAsOutputApName, !Ref S3AccessPointName, !Ref OutputS3APName]
               - Sid: Rekognition
                 Effect: Allow
                 Action:

@@ -118,6 +118,9 @@ aws stepfunctions start-execution --state-machine-arn $STATE_MACHINE_ARN --regio
 | Textract 失敗 | Cross-Region 設定不備 | us-east-1 接続設定確認 |
 | `AccessDenied` | IAM ARN 形式誤り | accesspoint ARN 形式確認 |
 
+> デプロイや実行でつまずいたときは、パターン共通の[デプロイガイド](../../../../docs/ja/deployment-guide.md#トラブルシューティング)を参照。
+> よくあるデプロイエラーに加えて、「実行は成功するのに結果が空になる」系の症状を症状別にまとめてある。
+
 ---
 
 ## クリーンアップ
@@ -149,7 +152,7 @@ aws cloudformation delete-stack --stack-name fsxn-transport-demo --region ap-nor
 ---
 
 
-![Step Functions Graph View (SUCCEEDED)](../../docs/screenshots/masked/uc22-demo/step-functions-graph-view.png)
+![Step Functions Graph View (SUCCEEDED)](../../../../docs/screenshots/masked/uc22-demo/step-functions-graph-view.png)
 
 ## 撮影ガイド
 
@@ -184,5 +187,5 @@ sam deploy --guided
 - メールアドレス
 - ブラウザのユーザー名表示
 
-> 詳細は [`docs/screenshots/MASK_GUIDE.md`](../../docs/screenshots/MASK_GUIDE.md) を参照。
+> 詳細は [`docs/screenshots/MASK_GUIDE.md`](../../../../docs/screenshots/MASK_GUIDE.md) を参照。
 

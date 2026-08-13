@@ -113,4 +113,4 @@ UC15 supports the `OutputDestination` parameter as of the 2026-05-11 update.
 **Affected Lambdas**: Tiling, ObjectDetection, GeoEnrichment (3 functions).  
 **Unaffected Lambdas**: Discovery (manifest continues to write directly to S3AP), ChangeDetection (DynamoDB only), AlertGeneration (SNS only).
 
-See [`docs/output-destination-patterns.md`](../../docs/output-destination-patterns.md) for details.
+See [`docs/output-destination-patterns.md`](../../../../docs/output-destination-patterns.md) for details.

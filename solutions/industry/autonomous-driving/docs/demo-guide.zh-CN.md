@@ -213,8 +213,8 @@ sam deploy \
 - 强烈建议指定 `S3AccessPointName`（同时授予 Alias 格式和 ARN 格式的 IAM 权限）
 - 对象大小上限为 50 GB（AWS 规范）。单次 PutObject 上限为 5 GB，因此超过 5 GB 必须使用分段上传
 - AWS 规范上的限制请参考
-  [项目 README 的 "AWS 规范上的限制与规避方法" 部分](../../README.md#aws-仕様上の制約と回避策)
-  以及 [`docs/output-destination-patterns.md`](../../docs/output-destination-patterns.md)
+  [项目 README 的 "AWS 规范上的限制与规避方法" 部分](../README.md#aws-仕様上の制約と回避策)
+  以及 [`docs/output-destination-patterns.md`](../../../../docs/output-destination-patterns.md)
 
 ---
 
@@ -231,7 +231,7 @@ sam deploy \
 
 ### 现有截图（来自 Phase 1-6 的相关部分）
 
-![UC9 Step Functions Graph view（SUCCEEDED）](../../docs/screenshots/masked/uc9-demo/step-functions-graph-succeeded.png)
+![UC9 Step Functions Graph view（SUCCEEDED）](../../../../docs/screenshots/masked/uc9-demo/step-functions-graph-succeeded.png)
 
 ### 重新验证时的 UI/UX 目标画面（推荐拍摄列表）
 
@@ -263,3 +263,10 @@ sam deploy \
 5. **清理**：
    - 使用 `bash scripts/cleanup_generic_ucs.sh UC9` 删除
    - VPC Lambda ENI 释放需要 15-30 分钟（AWS 规范）
+
+---
+
+## 相关文档
+
+> 部署或运行出现问题时，请参阅通用[部署指南](../../../../docs/en/deployment-guide.md#troubleshooting)。
+> 其中按症状归纳了常见部署错误，以及“执行成功但结果为空”的情况。

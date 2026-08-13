@@ -195,8 +195,8 @@ sam deploy \
 ```
 
 Pour les contraintes liées aux spécifications AWS, consultez
-[la section "Contraintes des spécifications AWS et solutions de contournement" du README du projet](../../README.md#aws-仕様上の制約と回避策)
-et [`docs/output-destination-patterns.md`](../../docs/output-destination-patterns.md).
+[la section "Contraintes des spécifications AWS et solutions de contournement" du README du projet](../README.md#aws-仕様上の制約と回避策)
+et [`docs/output-destination-patterns.md`](../../../../docs/output-destination-patterns.md).
 
 ---
 
@@ -215,16 +215,16 @@ etc.) sont consolidées dans `docs/verification-results-*.md`.
 
 #### Vue graphique Step Functions UC5 (SUCCEEDED)
 
-![Vue graphique Step Functions UC5 (SUCCEEDED)](../../docs/screenshots/masked/uc5-demo/uc5-stepfunctions-graph.png)
+![Vue graphique Step Functions UC5 (SUCCEEDED)](../../../../docs/screenshots/masked/uc5-demo/uc5-stepfunctions-graph.png)
 
 La vue graphique Step Functions visualise par couleur l'état d'exécution de chaque état Lambda / Parallel / Map,
 écran le plus important pour l'utilisateur final.
 
 ### Captures d'écran existantes (portions pertinentes des Phases 1-6)
 
-![Vue graphique Step Functions UC5 (SUCCEEDED)](../../docs/screenshots/masked/uc5-demo/step-functions-graph-succeeded.png)
+![Vue graphique Step Functions UC5 (SUCCEEDED)](../../../../docs/screenshots/masked/uc5-demo/step-functions-graph-succeeded.png)
 
-![Graphique Step Functions UC5 (vue zoomée — détails de chaque étape)](../../docs/screenshots/masked/uc5-demo/step-functions-graph-zoomed.png)
+![Graphique Step Functions UC5 (vue zoomée — détails de chaque étape)](../../../../docs/screenshots/masked/uc5-demo/step-functions-graph-zoomed.png)
 
 ### Écrans UI/UX cibles lors de la revérification (liste de captures recommandées)
 
@@ -255,3 +255,10 @@ La vue graphique Step Functions visualise par couleur l'état d'exécution de ch
 5. **Nettoyage** :
    - `bash scripts/cleanup_generic_ucs.sh UC5` pour supprimer
    - Libération ENI Lambda VPC en 15-30 minutes (spécification AWS)
+
+---
+
+## Documentation associée
+
+> En cas de problème de déploiement ou d'exécution, consultez le [guide de déploiement](../../../../docs/en/deployment-guide.md#troubleshooting) commun.
+> Il recense les erreurs de déploiement courantes ainsi que les symptômes « exécution réussie mais résultat vide ».

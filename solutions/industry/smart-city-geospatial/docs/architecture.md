@@ -111,4 +111,4 @@ UC17 は 2026-05-11 のアップデートで `OutputDestination` パラメータ
 **影響を受けない Lambda**: Discovery（manifest は S3AP 直書き）、ChangeDetection（DynamoDB のみ）。  
 **Bedrock レポートの優位点**: `text/markdown; charset=utf-8` で書き出されるため、SMB/NFS クライアントのテキストエディタで直接閲覧可能。
 
-詳細は [`docs/output-destination-patterns.md`](../../docs/output-destination-patterns.md) 参照。
+詳細は [`docs/output-destination-patterns.md`](../../../../docs/output-destination-patterns.md) 参照。

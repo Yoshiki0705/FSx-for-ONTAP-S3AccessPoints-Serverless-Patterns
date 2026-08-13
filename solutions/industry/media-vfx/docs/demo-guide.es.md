@@ -196,8 +196,8 @@ sam deploy \
 ```
 
 Para restricciones de especificaciones de AWS, consulte
-[la sección "Restricciones de especificaciones de AWS y soluciones alternativas" del README del proyecto](../../README.md#aws-仕様上の制約と回避策)
-y [`docs/output-destination-patterns.md`](../../docs/output-destination-patterns.md).
+[la sección "Restricciones de especificaciones de AWS y soluciones alternativas" del README del proyecto](../README.md#aws-仕様上の制約と回避策)
+y [`docs/output-destination-patterns.md`](../../../../docs/output-destination-patterns.md).
 
 ---
 
@@ -212,9 +212,9 @@ Siguiendo la misma política que las demostraciones de Phase 7 UC15/16/17 y UC6/
 
 ### Capturas de Pantalla Existentes (de Phase 1-6 aplicables)
 
-![Vista de gráfico de Step Functions UC4 (SUCCEEDED)](../../docs/screenshots/masked/uc4-demo/step-functions-graph-succeeded.png)
+![Vista de gráfico de Step Functions UC4 (SUCCEEDED)](../../../../docs/screenshots/masked/uc4-demo/step-functions-graph-succeeded.png)
 
-![Gráfico de Step Functions UC4 (vista ampliada — detalle de cada paso)](../../docs/screenshots/masked/uc4-demo/step-functions-graph-zoomed.png)
+![Gráfico de Step Functions UC4 (vista ampliada — detalle de cada paso)](../../../../docs/screenshots/masked/uc4-demo/step-functions-graph-zoomed.png)
 
 ### Pantallas UI/UX Objetivo para Re-verificación (lista de captura recomendada)
 
@@ -243,3 +243,10 @@ Siguiendo la misma política que las demostraciones de Phase 7 UC15/16/17 y UC6/
 5. **Limpieza**:
    - Eliminar con `bash scripts/cleanup_generic_ucs.sh UC4`
    - Liberación de ENI de Lambda VPC en 15-30 minutos (especificación de AWS)
+
+---
+
+## Documentación relacionada
+
+> Si el despliegue o la ejecución fallan, consulte la [guía de despliegue](../../../../docs/en/deployment-guide.md#troubleshooting) común.
+> Recoge los errores de despliegue habituales y los síntomas de «ejecución correcta pero sin resultados».

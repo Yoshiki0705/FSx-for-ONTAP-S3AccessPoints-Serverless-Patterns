@@ -12,7 +12,7 @@ CloudFormation/SAM template sharing the Python modules in `shared/`.
 **Two pillars**: `solutions/` (S3 AP data processing) + `operations/` (file system operational
 optimization).
 
-**Test coverage**: ~4,406 Python tests across 247 files + ~318 vitest tests across 23 files.
+**Test coverage**: ~4,432 Python tests across 249 files + ~318 vitest tests across 23 files.
 
 > ファイル数は `make drift` がツリーと照合するので、古くなれば fail する。テスト総数は
 > `make test` / ポータルハンドラの個別実行 / vitest の 3 系統の合計なので概数。誰も保守
@@ -117,7 +117,11 @@ KNFSD（Terraform、`infrastructure/knfsd-file-cache/`）は `scripts/{deploy,va
 
 - **Trigger**: EventBridge Scheduler (polling) OR FPolicy EventBridge Rule (event-driven)
 - **Orchestration**: Step Functions state machine per UC
-- **Compute**: Lambda functions (Python 3.13, ARM64, 256-1024MB)
+- **Compute**: Lambda functions (Python 3.13, 256-1024MB)。**アーキテクチャは統一されていない**:
+  `Architectures: [arm64]` を書いているのは 52 パターン中 14 のみ（operations 6 本と
+  logistics-ocr / sap / edge / ha 等）。残る 38 本は宣言が無いため Lambda 既定の x86_64 で
+  デプロイされる（industry 27・flexcache 8・genai 2・event-driven 1）。純 Python なので
+  動作に影響は無いが、GB 秒あたりの単価は arm64 の方が安い。新規パターンは arm64 を明示する
 - **Storage access**: FSx for ONTAP S3 Access Points (read/write via S3ApHelper)
 - **AI/ML**: Bedrock (Nova/Claude), Textract, Comprehend, Rekognition, SageMaker
 - **Analytics**: Athena + Glue Data Catalog
@@ -130,7 +134,7 @@ KNFSD（Terraform、`infrastructure/knfsd-file-cache/`）は `scripts/{deploy,va
 
 ### Python
 
-- Python 3.13 target (ARM64 Lambda). Source must stay compatible with 3.12 (`requires-python = ">=3.12"`, ruff `target-version = "py312"`, CI matrix 3.11–3.13)
+- Python 3.13 target。Source must stay compatible with 3.12 (`requires-python = ">=3.12"`, ruff `target-version = "py312"`, CI matrix 3.11–3.13)
 - Type hints on all function signatures (use `shared/schemas/events.py` TypedDicts)
 - Docstrings on all public functions (Google style)
 - `from __future__ import annotations` at top of every module

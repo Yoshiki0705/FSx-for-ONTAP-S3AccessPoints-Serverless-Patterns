@@ -333,7 +333,9 @@ def handler(event, context):
 
     thresholds = get_thresholds()
 
-    objects = event.get("objects", [])
+    # Map は配列要素を 1 件ずつ渡す。詳細は defect_detector の同じ箇所を参照。
+    single_item = "objects" not in event
+    objects = [event] if single_item else event.get("objects", [])
     direct_records = event.get("records", [])
 
     logger.info(
@@ -423,6 +425,10 @@ def handler(event, context):
     metrics.put_metric("ErrorCount", float(error_count), "Count")
     metrics.put_metric("AnomalyCount", float(len(all_anomalies)), "Count")
     metrics.flush()
+
+    if single_item:
+        # report は per-object 結果から anomalies を読むので、包まずに 1 件を返す。
+        return results[0]
 
     return {
         "results": results,

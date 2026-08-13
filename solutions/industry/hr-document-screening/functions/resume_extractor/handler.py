@@ -39,6 +39,7 @@ from shared.exceptions import lambda_error_handler
 from shared.observability import EmfMetrics, trace_lambda_handler
 from shared.pii_filter import PiiFilter, is_strict_mode
 from shared.retry_handler import RetryConfig, categorize_error, retry_with_backoff
+from shared.s3ap_helper import S3ApHelper
 
 logger = logging.getLogger(__name__)
 
@@ -75,16 +76,24 @@ def extract_text_textract(
     s3ap_alias: str,
     object_key: str,
     textract_client=None,
+    s3ap=None,
 ) -> str:
     """Textract で履歴書からテキストを抽出する。"""
     if textract_client is None:
         textract_region = os.environ.get("TEXTRACT_REGION", "us-east-1")
         textract_client = boto3.client("textract", region_name=textract_region)
+    if s3ap is None:
+        s3ap = S3ApHelper(s3ap_alias)
+
+    # Textract は FSx for ONTAP の S3 AP 上のオブジェクトを S3Object 参照では読めない
+    # （InvalidS3ObjectException: Unable to get object metadata from S3。AP ポリシーで
+    # サービスプリンシパルを許可しても解消しない）。AP から bytes を取得して inline で渡す。
+    doc_bytes = s3ap.get_object_bytes(key=object_key)
 
     @retry_with_backoff(config=RetryConfig(max_attempts=3))
     def _call_textract():
         return textract_client.detect_document_text(
-            Document={"S3Object": {"Bucket": s3ap_alias, "Name": object_key}},
+            Document={"Bytes": doc_bytes},
         )
 
     response = _call_textract()
@@ -197,7 +206,11 @@ def handler(event, context):
     # For defense-in-depth, consider adding explicit ServerSideEncryption to put_object calls
     # when S3ApHelper supports it. See: shared/s3ap_helper.py
 
-    objects = event.get("objects", [])
+    # Step Functions の Map は配列要素を 1 件ずつ渡すので、event 自体が 1 オブジェクトに
+    # なる。以前は {"objects": [...]} だけを読んでいたため Map 経由ではループが一度も
+    # 回らず、1 件も処理しないまま SUCCEEDED を返していた。batch 形式も受け付ける。
+    single_item = "objects" not in event
+    objects = [event] if single_item else event.get("objects", [])
 
     # PII strict モードではログにファイル名を含めない
     if is_strict_mode():
@@ -281,6 +294,13 @@ def handler(event, context):
     metrics.put_metric("SuccessCount", float(success_count), "Count")
     metrics.put_metric("ErrorCount", float(error_count), "Count")
     metrics.flush()
+
+    if single_item:
+        # report は status を持つ per-object dict の平坦な配列を期待している。
+        # audit_trail は per-object 結果に載せて、集約側で失わないようにする。
+        one = results[0]
+        one.setdefault("audit_trail", pii_filter.get_audit_trail())
+        return one
 
     return {
         "results": results,

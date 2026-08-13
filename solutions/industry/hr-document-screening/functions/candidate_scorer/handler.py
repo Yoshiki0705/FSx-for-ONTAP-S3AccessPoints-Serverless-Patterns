@@ -154,7 +154,11 @@ def handler(event, context):
     # For defense-in-depth, consider adding explicit ServerSideEncryption to put_object calls
     # when S3ApHelper supports it. See: shared/s3ap_helper.py
 
-    results = event.get("results", [])
+    # 2 段目の Map は $.extraction_results の要素を 1 件ずつ渡す。resume_extractor が
+    # per-object の結果を返すようになったため、event 自体が 1 件の抽出結果になる。
+    # {"results": [...]} 形式も引き続き受け付ける。
+    single_item = "results" not in event
+    results = [event] if single_item else event.get("results", [])
     job_requirements = event.get(
         "job_requirements",
         {
@@ -230,6 +234,13 @@ def handler(event, context):
     metrics.put_metric("SuccessCount", float(success_count), "Count")
     metrics.put_metric("ErrorCount", float(error_count), "Count")
     metrics.flush()
+
+    if single_item:
+        # report は $.scored_results を status 付きの per-object dict の平坦な配列として
+        # 読む。audit_trail は per-object 結果に載せて集約側で失わないようにする。
+        one = scored_results[0]
+        one.setdefault("audit_trail", pii_filter.get_audit_trail())
+        return one
 
     return {
         "scored_results": scored_results,

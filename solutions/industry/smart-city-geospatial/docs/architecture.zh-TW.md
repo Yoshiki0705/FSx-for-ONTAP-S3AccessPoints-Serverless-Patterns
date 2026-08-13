@@ -113,4 +113,4 @@ UC17 在 2026-05-11 的更新中新增了 `OutputDestination` 參數支援。
 **不受影響的 Lambda**：Discovery（manifest 直接寫入 S3AP）、ChangeDetection（僅 DynamoDB）。  
 **Bedrock 報告的優勢**：以 `text/markdown; charset=utf-8` 格式寫出，因此可在 SMB/NFS 用戶端的文字編輯器中直接檢視。
 
-詳情請參閱 [`docs/output-destination-patterns.md`](../../docs/output-destination-patterns.md)。
+詳情請參閱 [`docs/output-destination-patterns.md`](../../../../docs/output-destination-patterns.md)。

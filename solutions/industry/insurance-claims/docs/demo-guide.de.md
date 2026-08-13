@@ -180,7 +180,7 @@ des Anspruchsfalls einsehen („no data movement"-Muster, auch aus PII-Schutzper
   ...
 ```
 
-AWS-Spezifikationsbeschränkungen und Workarounds siehe [Abschnitt „AWS-Spezifikationsbeschränkungen und Workarounds" in der Projekt-README](../../README.md#aws-仕様上の制約と回避策).
+AWS-Spezifikationsbeschränkungen und Workarounds siehe [Abschnitt „AWS-Spezifikationsbeschränkungen und Workarounds" in der Projekt-README](../README.md#aws-仕様上の制約と回避策).
 
 ### 1. Versicherungsanspruchsbericht — Übersicht für Schadensregulierer
 
@@ -191,7 +191,7 @@ Beurteilung `MANUAL_REVIEW` + Konfidenz 75%, Sachbearbeiter prüft Punkte, die n
      Inhalt: Versicherungsanspruchsbericht (Anspruchs-ID, Schadensübersicht, Kostenvoranschlagskorrelation, empfohlene Beurteilung)
             + Rekognition-Erkennungslabelliste + Textract-OCR-Ergebnisse
      Maskiert: Konto-ID, Bucket-Name -->
-![UC14: Versicherungsanspruchsbericht](../../docs/screenshots/masked/uc14-demo/uc14-claims-report.png)
+![UC14: Versicherungsanspruchsbericht](../../../../docs/screenshots/masked/uc14-demo/uc14-claims-report.png)
 
 ### 2. S3-Ausgabe-Bucket — Übersicht der Bewertungsartefakte
 
@@ -201,7 +201,7 @@ Bildschirm, auf dem Schadensregulierer Artefakte pro Anspruchsfall überprüfen.
 <!-- SCREENSHOT: uc14-s3-output-bucket.png
      Inhalt: S3-Konsole mit assessments/-, estimates/-, reports/-Präfixen
      Maskiert: Konto-ID -->
-![UC14: S3-Ausgabe-Bucket](../../docs/screenshots/masked/uc14-demo/uc14-s3-output-bucket.png)
+![UC14: S3-Ausgabe-Bucket](../../../../docs/screenshots/masked/uc14-demo/uc14-s3-output-bucket.png)
 
 ### Gemessene Werte (AWS-Deployment-Verifizierung 2026-05-10)
 
@@ -210,3 +210,10 @@ Bildschirm, auf dem Schadensregulierer Artefakte pro Anspruchsfall überprüfen.
 - **Textract**: OCR von `Total: 1270.00 USD` usw. aus Kostenvoranschlags-PDF über Cross-Region us-east-1
 - **Generierte Artefakte**: assessments/*.json, estimates/*.json, reports/*.txt
 - **Tatsächlicher Stack**: `fsxn-insurance-claims-demo` (ap-northeast-1, Verifizierung am 2026-05-10)
+
+---
+
+## Weiterführende Dokumentation
+
+> Bei Problemen beim Deployment oder beim Lauf siehe den gemeinsamen [Deployment-Leitfaden](../../../../docs/en/deployment-guide.md#troubleshooting).
+> Dort stehen die häufigen Deployment-Fehler sowie die Symptome „Lauf erfolgreich, Ergebnis leer“.

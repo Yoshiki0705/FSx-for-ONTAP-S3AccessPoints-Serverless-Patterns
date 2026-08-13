@@ -194,8 +194,8 @@ sam deploy \
 ```
 
 For AWS specification constraints, refer to
-[the "AWS Specification Constraints and Workarounds" section in the project README](../../README.en.md#key-s3-access-point-constraints)
-and [`docs/output-destination-patterns.md`](../../docs/output-destination-patterns.md).
+[the "AWS Specification Constraints and Workarounds" section in the project README](../README.en.md#key-s3-access-point-constraints)
+and [`docs/output-destination-patterns.md`](../../../../docs/output-destination-patterns.md).
 
 ---
 
@@ -212,13 +212,13 @@ Following the same approach as Phase 7 UC15/16/17 and UC6/11/14 demos, we target
 
 #### UC2 Step Functions Graph view (SUCCEEDED)
 
-![UC2 Step Functions Graph view (SUCCEEDED)](../../docs/screenshots/masked/uc2-demo/uc2-stepfunctions-graph.png)
+![UC2 Step Functions Graph view (SUCCEEDED)](../../../../docs/screenshots/masked/uc2-demo/uc2-stepfunctions-graph.png)
 
 Step Functions Graph view is the most critical end-user screen that visualizes the execution status of each Lambda / Parallel / Map state with colors.
 
 ### Existing Screenshots (Applicable from Phase 1-6)
 
-![UC2 Step Functions Graph view (SUCCEEDED)](../../docs/screenshots/masked/uc2-demo/step-functions-graph-succeeded.png)
+![UC2 Step Functions Graph view (SUCCEEDED)](../../../../docs/screenshots/masked/uc2-demo/step-functions-graph-succeeded.png)
 
 ### UI/UX Target Screens for Re-verification (Recommended Capture List)
 
@@ -250,3 +250,10 @@ Step Functions Graph view is the most critical end-user screen that visualizes t
 5. **Cleanup**:
    - Delete with `bash scripts/cleanup_generic_ucs.sh UC2`
    - VPC Lambda ENI release takes 15-30 minutes (AWS specification)
+
+---
+
+## Related Documentation
+
+> If a deployment or a run misbehaves, see the shared [deployment guide](../../../../docs/en/deployment-guide.md#troubleshooting).
+> It lists the common deployment errors plus the "runs that succeed while producing nothing" symptoms by signature.

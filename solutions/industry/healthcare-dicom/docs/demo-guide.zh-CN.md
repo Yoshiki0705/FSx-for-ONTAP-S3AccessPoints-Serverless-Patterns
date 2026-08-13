@@ -194,8 +194,8 @@ sam deploy \
 ```
 
 关于 AWS 规格限制，请参见
-[项目 README 的 "AWS 仕様上の制約と回避策" 部分](../../README.md#aws-仕様上の制約と回避策)
-以及 [`docs/output-destination-patterns.md`](../../docs/output-destination-patterns.md)。
+[项目 README 的 "AWS 仕様上の制約と回避策" 部分](../README.md#aws-仕様上の制約と回避策)
+以及 [`docs/output-destination-patterns.md`](../../../../docs/output-destination-patterns.md)。
 
 ---
 
@@ -214,16 +214,16 @@ sam deploy \
 
 #### UC5 Step Functions Graph view（SUCCEEDED）
 
-![UC5 Step Functions Graph view（SUCCEEDED）](../../docs/screenshots/masked/uc5-demo/uc5-stepfunctions-graph.png)
+![UC5 Step Functions Graph view（SUCCEEDED）](../../../../docs/screenshots/masked/uc5-demo/uc5-stepfunctions-graph.png)
 
 Step Functions Graph view 通过颜色可视化各 Lambda / Parallel / Map 状态的执行状况，
 是最终用户最重要的画面。
 
 ### 现有截图（来自 Phase 1-6 的相关部分）
 
-![UC5 Step Functions Graph view（SUCCEEDED）](../../docs/screenshots/masked/uc5-demo/step-functions-graph-succeeded.png)
+![UC5 Step Functions Graph view（SUCCEEDED）](../../../../docs/screenshots/masked/uc5-demo/step-functions-graph-succeeded.png)
 
-![UC5 Step Functions Graph（缩放显示 — 各步骤详细）](../../docs/screenshots/masked/uc5-demo/step-functions-graph-zoomed.png)
+![UC5 Step Functions Graph（缩放显示 — 各步骤详细）](../../../../docs/screenshots/masked/uc5-demo/step-functions-graph-zoomed.png)
 
 ### 重新验证时的 UI/UX 目标画面（推荐拍摄列表）
 
@@ -254,3 +254,10 @@ Step Functions Graph view 通过颜色可视化各 Lambda / Parallel / Map 状�
 5. **清理**:
    - 使用 `bash scripts/cleanup_generic_ucs.sh UC5` 删除
    - VPC Lambda ENI 释放需要 15-30 分钟（AWS 规格）
+
+---
+
+## 相关文档
+
+> 部署或运行出现问题时，请参阅通用[部署指南](../../../../docs/en/deployment-guide.md#troubleshooting)。
+> 其中按症状归纳了常见部署错误，以及“执行成功但结果为空”的情况。

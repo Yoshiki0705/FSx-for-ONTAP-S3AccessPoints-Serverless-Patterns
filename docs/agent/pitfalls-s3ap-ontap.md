@@ -56,9 +56,47 @@ PutObject, GetObject, ListObjectsV2, HeadObject, DeleteObject, MultipartUpload.
 NOT supported: GetBucketNotificationConfiguration.
 Presigned URLs: Listed as "Not supported" in the AWS compatibility table, but observed working (client-side SigV4 calculation → standard GetObject). AWS Support has since confirmed ONTAP-layer support (v4 from ONTAP 9.11.1, v2 from 9.16.1) and submitted a doc correction — **not yet published**, so continue to avoid production reliance until it is. See docs/s3ap-compatibility-notes.md for details.
 
+### AI サービスは S3 参照で AP を読めない（2026-08-12 実測）
+
+Rekognition と Textract に「S3 上のオブジェクト」として AP を渡すと失敗する。
+
+```python
+# ❌ InvalidS3ObjectException: Unable to get object metadata from S3
+rekognition.detect_labels(Image={"S3Object": {"Bucket": ap_alias, "Name": key}})
+textract.detect_document_text(Document={"S3Object": {"Bucket": ap_alias, "Name": key}})
+
+# ✅ AP から bytes を取得して inline で渡す
+image_bytes = s3ap.get_object_bytes(key=key)      # shared/s3ap_helper.py
+rekognition.detect_labels(Image={"Bytes": image_bytes})
+textract.detect_document_text(Document={"Bytes": doc_bytes})
+```
+
+**AP ポリシーの不足ではない。** `rekognition.amazonaws.com` / `textract.amazonaws.com` /
+`bedrock.amazonaws.com` を AP ポリシーの Principal に許可しても同じエラーになることを確認した
+（確認後ポリシーは削除した）。
+
+**inline に切り替えられない API がある。** 同期 API は `Bytes` を受け付けるが、以下は S3 参照
+しか取らないため、**通常の S3 バケットに置く必要がある**（AWS 公式リファレンスで確認済み。
+`DocumentLocation` と `Video` はいずれもメンバが S3 オブジェクトのみ）:
+
+| API | 受け付ける入力 | 該当パターン |
+|---|---|---|
+| Textract `StartDocumentAnalysis` / `StartDocumentTextDetection`（非同期） | `DocumentLocation.S3Object` のみ | `financial-idp/ocr` |
+| Rekognition Video `StartContentModeration` 等（stored video） | `Video.S3Object` のみ | `edge/media-ivs-vod-publishing/moderation` |
+
+inline 方式は同期 API の上限（5 MB）に収まる必要がある。`S3ApHelper.get_object_bytes()` は
+`head_object` で**取得前に**上限判定して落とす（取得後に気づくと、無駄に転送した上でサービス側が
+曖昧なエラーを返す）。
+
 ### NetworkOrigin (Immutable After Creation)
 
-- `Internet`: Accessible from anywhere with valid credentials. NOT via S3 Gateway VPC Endpoint.
+- `Internet`: Accessible from anywhere with valid credentials.
+  - ⚠️ ここには以前「NOT via S3 Gateway VPC Endpoint」と書いていたが、2026-08-12 の実測と
+    整合しない。NAT を撤去済みでパブリック IP を持たない VPC Lambda（`subnet-0123456789abcdef0`）
+    から Internet-origin AP への ListObjectsV2 / PutObject が成功した。この subnet の主ルート
+    テーブルには S3 ゲートウェイエンドポイントが紐づいており、他に外向き経路が無い。
+    **パケット経路を直接観測したわけではない**ので断定はしないが、「ゲートウェイエンドポイント
+    経由では到達できない」は少なくとも無条件には成立しない。
 - `VPC`: Accessible only from bound VPC via S3 Gateway/Interface Endpoint.
 
 ### AD-Joined SVM: AD DC Reachability Required for Data Operations

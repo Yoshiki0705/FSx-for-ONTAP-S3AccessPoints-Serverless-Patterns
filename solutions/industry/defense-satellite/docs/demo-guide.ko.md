@@ -135,8 +135,8 @@ sam deploy \
 - ChangeDetection Lambda는 DynamoDB만 사용하므로 `OutputDestination`의 영향을 받지 않습니다
 - AlertGeneration Lambda는 SNS만 사용하므로 `OutputDestination`의 영향을 받지 않습니다
 - AWS 사양상의 제약은
-  [프로젝트 README의 "AWS 사양상의 제약과 회피책" 섹션](../../README.md#aws-仕様上の制約と回避策)
-  및 [`docs/output-destination-patterns.md`](../../docs/output-destination-patterns.md) 참조
+  [프로젝트 README의 "AWS 사양상의 제약과 회피책" 섹션](../README.md#aws-仕様上の制約と回避策)
+  및 [`docs/output-destination-patterns.md`](../../../../docs/output-destination-patterns.md) 참조
 
 ---
 
@@ -153,15 +153,15 @@ Phase 7 UC15/16/17과 UC6/11/14의 데모와 동일한 방침으로, **최종 �
 
 ### 기존 스크린샷(Phase 7 검증 시)
 
-![Step Functions Graph view(SUCCEEDED)](../../docs/screenshots/masked/uc15-demo/step-functions-graph-succeeded.png)
+![Step Functions Graph view(SUCCEEDED)](../../../../docs/screenshots/masked/uc15-demo/step-functions-graph-succeeded.png)
 
-![S3 출력 버킷](../../docs/screenshots/masked/uc15-demo/s3-output-bucket.png)
+![S3 출력 버킷](../../../../docs/screenshots/masked/uc15-demo/s3-output-bucket.png)
 
-![S3 Enriched 출력](../../docs/screenshots/masked/uc15-demo/s3-enriched-output.png)
+![S3 Enriched 출력](../../../../docs/screenshots/masked/uc15-demo/s3-enriched-output.png)
 
-![DynamoDB 변경 이력 테이블](../../docs/screenshots/masked/uc15-demo/dynamodb-change-history-table.png)
+![DynamoDB 변경 이력 테이블](../../../../docs/screenshots/masked/uc15-demo/dynamodb-change-history-table.png)
 
-![SNS 알림 토픽](../../docs/screenshots/masked/uc15-demo/sns-notification-topics.png)
+![SNS 알림 토픽](../../../../docs/screenshots/masked/uc15-demo/sns-notification-topics.png)
 ### 재검증 시 UI/UX 대상 화면(권장 촬영 목록)
 
 - S3 출력 버킷(detections/, geo-enriched/, alerts/)
@@ -193,3 +193,10 @@ Phase 7 UC15/16/17과 UC6/11/14의 데모와 동일한 방침으로, **최종 �
 5. **정리**:
    - `bash scripts/cleanup_generic_ucs.sh UC15`로 삭제
    - VPC Lambda ENI 해제에 15-30분 소요(AWS 사양)
+
+---
+
+## 관련 문서
+
+> 배포나 실행에서 문제가 발생하면 공통 [배포 가이드](../../../../docs/en/deployment-guide.md#troubleshooting)를 참조하십시오.
+> 일반적인 배포 오류와 함께 "실행은 성공했지만 결과가 비어 있는" 증상을 증상별로 정리해 두었습니다.

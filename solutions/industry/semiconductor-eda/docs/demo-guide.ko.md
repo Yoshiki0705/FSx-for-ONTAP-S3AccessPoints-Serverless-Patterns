@@ -206,7 +206,7 @@ ORDER BY bounding_box_width DESC;
 
 Phase 7 UC15/16/17과 동일한 방침으로, **설계 엔지니어가 일상 업무에서 실제로 보는 UI/UX 화면**을
 촬영. Step Functions 그래프와 같은 기술자 전용 뷰는 제외(자세한 내용은
-[`docs/verification-results-phase7.md`](../../docs/verification-results-phase7.md) 참조).
+[`docs/phase7-summary.md`](../../../../docs/phase7-summary.md) 참조).
 
 ### 1. FSx for ONTAP Volumes — 설계 파일용 볼륨
 
@@ -216,7 +216,7 @@ NTFS ACL로 관리된 상태로 배치.
 <!-- SCREENSHOT: uc6-fsx-volumes-list.png
      내용: FSx 콘솔에서 ONTAP Volumes 목록(eda_demo_vol 등), Status=Created, Type=ONTAP
      마스크: 계정 ID, SVM ID 실제 값, 파일 시스템 ID -->
-![UC6: FSx Volumes 목록](../../docs/screenshots/masked/uc6-demo/uc6-fsx-volumes-list.png)
+![UC6: FSx Volumes 목록](../../../../docs/screenshots/masked/uc6-demo/uc6-fsx-volumes-list.png)
 
 ### 2. S3 출력 버킷 — 설계 문서·분석 결과 목록
 
@@ -226,7 +226,7 @@ NTFS ACL로 관리된 상태로 배치.
 <!-- SCREENSHOT: uc6-s3-output-bucket.png
      내용: S3 콘솔에서 bucket의 top-level prefix 확인
      마스크: 계정 ID, 버킷 이름 프리픽스 -->
-![UC6: S3 출력 버킷](../../docs/screenshots/masked/uc6-demo/uc6-s3-output-bucket.png)
+![UC6: S3 출력 버킷](../../../../docs/screenshots/masked/uc6-demo/uc6-s3-output-bucket.png)
 
 ### 2. S3 출력 버킷 — 설계 문서·분석 결과 목록
 
@@ -236,7 +236,7 @@ NTFS ACL로 관리된 상태로 배치.
 <!-- SCREENSHOT: uc6-s3-output-bucket.png
      내용: S3 콘솔에서 bucket의 top-level prefix 확인
      마스크: 계정 ID, 버킷 이름 프리픽스 -->
-![UC6: S3 출력 버킷](../../docs/screenshots/masked/uc6-demo/uc6-s3-output-bucket.png)
+![UC6: S3 출력 버킷](../../../../docs/screenshots/masked/uc6-demo/uc6-s3-output-bucket.png)
 
 ### 3. Athena 쿼리 결과 — EDA 메타데이터의 SQL 분석
 
@@ -246,7 +246,7 @@ Workgroup은 `fsxn-eda-uc6-workgroup`, 데이터베이스는 `fsxn-eda-uc6-db`.
 <!-- SCREENSHOT: uc6-athena-query-result.png
      내용: EDA 메타데이터 테이블의 SELECT 결과(file_key, library_name, cell_count, bounding_box)
      마스크: 계정 ID -->
-![UC6: Athena 쿼리 결과](../../docs/screenshots/masked/uc6-demo/uc6-athena-query-result.png)
+![UC6: Athena 쿼리 결과](../../../../docs/screenshots/masked/uc6-demo/uc6-athena-query-result.png)
 
 ### 4. Bedrock 생성 설계 리뷰 보고서
 
@@ -267,7 +267,7 @@ Physical Design Lead를 위한 일본어 리뷰 보고서를 생성함.
        - **Medium**: 명명 규칙 위반이 6건 확인되었습니다.
        - **Low**: 셀 수 분포나 바운딩 박스 이상치에는 문제가 없습니다.
      마스크: 계정 ID -->
-![UC6: Bedrock 설계 리뷰 보고서](../../docs/screenshots/masked/uc6-demo/uc6-bedrock-design-review.png)
+![UC6: Bedrock 설계 리뷰 보고서](../../../../docs/screenshots/masked/uc6-demo/uc6-bedrock-design-review.png)
 
 ### 실측값(2026-05-10 AWS 배포 검증)
 
@@ -392,3 +392,10 @@ Physical Design Lead를 위한 일본어 리뷰 보고서를 생성함.
 ---
 
 *본 문서는 기술 프레젠테이션용 데모 동영상 제작 가이드로 작성되었습니다.*
+
+---
+
+## 관련 문서
+
+> 배포나 실행에서 문제가 발생하면 공통 [배포 가이드](../../../../docs/en/deployment-guide.md#troubleshooting)를 참조하십시오.
+> 일반적인 배포 오류와 함께 "실행은 성공했지만 결과가 비어 있는" 증상을 증상별로 정리해 두었습니다.
