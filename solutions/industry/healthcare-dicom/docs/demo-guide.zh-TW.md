@@ -194,8 +194,8 @@ sam deploy \
 ```
 
 關於 AWS 規格上的限制，請參照
-[專案 README 的「AWS 規格上的限制與因應對策」章節](../../README.md#aws-仕様上の制約と回避策)
-以及 [`docs/output-destination-patterns.md`](../../docs/output-destination-patterns.md)。
+[專案 README 的「AWS 規格上的限制與因應對策」章節](../README.md#aws-仕様上の制約と回避策)
+以及 [`docs/output-destination-patterns.md`](../../../../docs/output-destination-patterns.md)。
 
 ---
 
@@ -214,16 +214,16 @@ sam deploy \
 
 #### UC5 Step Functions Graph view（SUCCEEDED）
 
-![UC5 Step Functions Graph view（SUCCEEDED）](../../docs/screenshots/masked/uc5-demo/uc5-stepfunctions-graph.png)
+![UC5 Step Functions Graph view（SUCCEEDED）](../../../../docs/screenshots/masked/uc5-demo/uc5-stepfunctions-graph.png)
 
 Step Functions Graph view 以顏色視覺化各 Lambda / Parallel / Map 狀態的執行狀況，
 是終端使用者最重要的畫面。
 
 ### 既有螢幕截圖（來自 Phase 1-6 的相關部分）
 
-![UC5 Step Functions Graph view（SUCCEEDED）](../../docs/screenshots/masked/uc5-demo/step-functions-graph-succeeded.png)
+![UC5 Step Functions Graph view（SUCCEEDED）](../../../../docs/screenshots/masked/uc5-demo/step-functions-graph-succeeded.png)
 
-![UC5 Step Functions Graph（縮放顯示 — 各步驟詳細）](../../docs/screenshots/masked/uc5-demo/step-functions-graph-zoomed.png)
+![UC5 Step Functions Graph（縮放顯示 — 各步驟詳細）](../../../../docs/screenshots/masked/uc5-demo/step-functions-graph-zoomed.png)
 
 ### 重新驗證時的 UI/UX 對象畫面（建議拍攝清單）
 
@@ -254,3 +254,10 @@ Step Functions Graph view 以顏色視覺化各 Lambda / Parallel / Map 狀態�
 5. **清理**：
    - `bash scripts/cleanup_generic_ucs.sh UC5` 刪除
    - VPC Lambda ENI 釋放需 15-30 分鐘（AWS 規格）
+
+---
+
+## 相關文件
+
+> 部署或執行發生問題時，請參閱通用[部署指南](../../../../docs/en/deployment-guide.md#troubleshooting)。
+> 其中依症狀整理了常見部署錯誤，以及「執行成功但結果為空」的情況。

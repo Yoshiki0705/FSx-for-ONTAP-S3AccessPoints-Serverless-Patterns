@@ -181,7 +181,7 @@ UC14 在 2026-05-10 的更新中支援了 `OutputDestination` 參數。
 ```
 
 AWS 規格限制與因應對策請參考[專案 README 的「AWS 規格限制與因應對策」
-章節](../../README.md#aws-仕様上の制約と回避策)。
+章節](../README.md#aws-仕様上の制約と回避策)。
 
 ### 1. 保險理賠報告 — 評估人員摘要
 
@@ -192,7 +192,7 @@ AWS 規格限制與因應對策請參考[專案 README 的「AWS 規格限制與
      內容: 保險理賠報告(理賠 ID、損害摘要、估價相關性、建議判定)
             + Rekognition 檢測標籤清單 + Textract OCR 結果
      遮罩: 帳戶 ID、儲存貯體名稱 -->
-![UC14: 保險理賠報告](../../docs/screenshots/masked/uc14-demo/uc14-claims-report.png)
+![UC14: 保險理賠報告](../../../../docs/screenshots/masked/uc14-demo/uc14-claims-report.png)
 
 ### 2. S3 輸出儲存貯體 — 評估成品總覽
 
@@ -202,7 +202,7 @@ AWS 規格限制與因應對策請參考[專案 README 的「AWS 規格限制與
 <!-- SCREENSHOT: uc14-s3-output-bucket.png
      內容: S3 主控台顯示 assessments/, estimates/, reports/ 前綴
      遮罩: 帳戶 ID -->
-![UC14: S3 輸出儲存貯體](../../docs/screenshots/masked/uc14-demo/uc14-s3-output-bucket.png)
+![UC14: S3 輸出儲存貯體](../../../../docs/screenshots/masked/uc14-demo/uc14-s3-output-bucket.png)
 
 ### 實測值(2026-05-10 AWS 部署驗證)
 
@@ -211,3 +211,10 @@ AWS 規格限制與因應對策請參考[專案 README 的「AWS 規格限制與
 - **Textract**: 透過 cross-region us-east-1 從估價單 PDF OCR 出 `Total: 1270.00 USD` 等
 - **生成成品**: assessments/*.json, estimates/*.json, reports/*.txt
 - **實際堆疊**: `fsxn-insurance-claims-demo`(ap-northeast-1,2026-05-10 驗證時)
+
+---
+
+## 相關文件
+
+> 部署或執行發生問題時，請參閱通用[部署指南](../../../../docs/en/deployment-guide.md#troubleshooting)。
+> 其中依症狀整理了常見部署錯誤，以及「執行成功但結果為空」的情況。

@@ -53,7 +53,7 @@ aws stepfunctions start-execution --state-machine-arn $STATE_MACHINE_ARN --regio
 
 ## 스크린샷
 
-![Step Functions Graph View (SUCCEEDED)](../../docs/screenshots/masked/uc20-demo/step-functions-graph-view.png)
+![Step Functions Graph View (SUCCEEDED)](../../../../docs/screenshots/masked/uc20-demo/step-functions-graph-view.png)
 
 
 ## 정리
@@ -61,3 +61,10 @@ aws stepfunctions start-execution --state-machine-arn $STATE_MACHINE_ARN --regio
 ```bash
 aws cloudformation delete-stack --stack-name fsxn-travel-demo --region ap-northeast-1
 ```
+
+---
+
+## 관련 문서
+
+> 배포나 실행에서 문제가 발생하면 공통 [배포 가이드](../../../../docs/en/deployment-guide.md#troubleshooting)를 참조하십시오.
+> 일반적인 배포 오류와 함께 "실행은 성공했지만 결과가 비어 있는" 증상을 증상별로 정리해 두었습니다.

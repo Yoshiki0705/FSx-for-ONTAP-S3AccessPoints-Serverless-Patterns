@@ -206,7 +206,7 @@ ORDER BY bounding_box_width DESC;
 ## Verifizierte UI/UX-Screenshots (Reverifizierung 2026-05-10)
 
 Nach derselben Richtlinie wie Phase 7 UC15/16/17 wurden **UI/UX-Bildschirme aufgenommen, die Design-Ingenieure in ihrer täglichen Arbeit tatsächlich sehen**. Technische Ansichten wie Step Functions-Graphen wurden ausgeschlossen (Details siehe
-[`docs/verification-results-phase7.md`](../../docs/verification-results-phase7.md)).
+[`docs/phase7-summary.md`](../../../../docs/phase7-summary.md)).
 
 ### 1. FSx for ONTAP Volumes — Volume für Design-Dateien
 
@@ -215,7 +215,7 @@ Volume-Liste von ONTAP aus Sicht des Design-Ingenieurs. GDS/OASIS-Dateien werden
 <!-- SCREENSHOT: uc6-fsx-volumes-list.png
      Inhalt: FSx-Konsole mit ONTAP Volumes-Liste (eda_demo_vol etc.), Status=Created, Type=ONTAP
      Maskierung: Konto-ID, tatsächliche SVM-ID, Dateisystem-ID -->
-![UC6: FSx Volumes-Liste](../../docs/screenshots/masked/uc6-demo/uc6-fsx-volumes-list.png)
+![UC6: FSx Volumes-Liste](../../../../docs/screenshots/masked/uc6-demo/uc6-fsx-volumes-list.png)
 
 ### 2. S3-Ausgabe-Bucket — Liste der Design-Dokumente und Analyseergebnisse
 
@@ -225,7 +225,7 @@ Organisiert in 3 Präfixen: `metadata/` / `athena-results/` / `reports/`.
 <!-- SCREENSHOT: uc6-s3-output-bucket.png
      Inhalt: S3-Konsole zur Überprüfung der Top-Level-Präfixe des Buckets
      Maskierung: Konto-ID, Bucket-Namenspräfix -->
-![UC6: S3-Ausgabe-Bucket](../../docs/screenshots/masked/uc6-demo/uc6-s3-output-bucket.png)
+![UC6: S3-Ausgabe-Bucket](../../../../docs/screenshots/masked/uc6-demo/uc6-s3-output-bucket.png)
 
 ### 2. S3-Ausgabe-Bucket — Liste der Design-Dokumente und Analyseergebnisse
 
@@ -235,7 +235,7 @@ Organisiert in 3 Präfixen: `metadata/` / `athena-results/` / `reports/`.
 <!-- SCREENSHOT: uc6-s3-output-bucket.png
      Inhalt: S3-Konsole zur Überprüfung der Top-Level-Präfixe des Buckets
      Maskierung: Konto-ID, Bucket-Namenspräfix -->
-![UC6: S3-Ausgabe-Bucket](../../docs/screenshots/masked/uc6-demo/uc6-s3-output-bucket.png)
+![UC6: S3-Ausgabe-Bucket](../../../../docs/screenshots/masked/uc6-demo/uc6-s3-output-bucket.png)
 
 ### 3. Athena-Abfrageergebnisse — SQL-Analyse von EDA-Metadaten
 
@@ -245,7 +245,7 @@ Workgroup ist `fsxn-eda-uc6-workgroup`, Datenbank ist `fsxn-eda-uc6-db`.
 <!-- SCREENSHOT: uc6-athena-query-result.png
      Inhalt: SELECT-Ergebnisse der EDA-Metadatentabelle (file_key, library_name, cell_count, bounding_box)
      Maskierung: Konto-ID -->
-![UC6: Athena-Abfrageergebnisse](../../docs/screenshots/masked/uc6-demo/uc6-athena-query-result.png)
+![UC6: Athena-Abfrageergebnisse](../../../../docs/screenshots/masked/uc6-demo/uc6-athena-query-result.png)
 
 ### 4. Bedrock-generierter Design-Review-Bericht
 
@@ -266,7 +266,7 @@ einen japanischsprachigen Review-Bericht für Physical Design Leads.
        - **Medium**: 命名規則違反が6件確認されました。
        - **Low**: セル数分布やバウンディングボックス外れ値に問題はありません。
      Maskierung: Konto-ID -->
-![UC6: Bedrock Design-Review-Bericht](../../docs/screenshots/masked/uc6-demo/uc6-bedrock-design-review.png)
+![UC6: Bedrock Design-Review-Bericht](../../../../docs/screenshots/masked/uc6-demo/uc6-bedrock-design-review.png)
 
 ### Gemessene Werte (AWS-Deployment-Verifizierung 2026-05-10)
 
@@ -391,3 +391,10 @@ einen japanischsprachigen Review-Bericht für Physical Design Leads.
 ---
 
 *Dieses Dokument wurde als Produktionsleitfaden für Demo-Videos für technische Präsentationen erstellt.*
+
+---
+
+## Weiterführende Dokumentation
+
+> Bei Problemen beim Deployment oder beim Lauf siehe den gemeinsamen [Deployment-Leitfaden](../../../../docs/en/deployment-guide.md#troubleshooting).
+> Dort stehen die häufigen Deployment-Fehler sowie die Symptome „Lauf erfolgreich, Ergebnis leer“.

@@ -195,8 +195,8 @@ sam deploy \
 ```
 
 關於 AWS 規格限制，請參照
-[專案 README 的「AWS 規格限制與因應對策」章節](../../README.md#aws-仕様上の制約と回避策)
-以及 [`docs/output-destination-patterns.md`](../../docs/output-destination-patterns.md)。
+[專案 README 的「AWS 規格限制與因應對策」章節](../README.md#aws-仕様上の制約と回避策)
+以及 [`docs/output-destination-patterns.md`](../../../../docs/output-destination-patterns.md)。
 
 ---
 
@@ -213,9 +213,9 @@ sam deploy \
 
 ### 既有截圖（來自 Phase 1-6 的相關部分）
 
-![UC4 Step Functions Graph view（SUCCEEDED）](../../docs/screenshots/masked/uc4-demo/step-functions-graph-succeeded.png)
+![UC4 Step Functions Graph view（SUCCEEDED）](../../../../docs/screenshots/masked/uc4-demo/step-functions-graph-succeeded.png)
 
-![UC4 Step Functions Graph（放大顯示 — 各步驟詳細）](../../docs/screenshots/masked/uc4-demo/step-functions-graph-zoomed.png)
+![UC4 Step Functions Graph（放大顯示 — 各步驟詳細）](../../../../docs/screenshots/masked/uc4-demo/step-functions-graph-zoomed.png)
 
 ### 重新驗證時的 UI/UX 目標畫面（建議拍攝清單）
 
@@ -244,3 +244,10 @@ sam deploy \
 5. **清理**：
    - 執行 `bash scripts/cleanup_generic_ucs.sh UC4` 進行刪除
    - VPC Lambda ENI 釋放需 15-30 分鐘（AWS 規格）
+
+---
+
+## 相關文件
+
+> 部署或執行發生問題時，請參閱通用[部署指南](../../../../docs/en/deployment-guide.md#troubleshooting)。
+> 其中依症狀整理了常見部署錯誤，以及「執行成功但結果為空」的情況。

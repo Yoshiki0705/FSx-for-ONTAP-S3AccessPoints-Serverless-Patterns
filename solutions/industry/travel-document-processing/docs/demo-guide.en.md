@@ -77,7 +77,7 @@ aws s3 ls s3://${OUTPUT_BUCKET}/reports/$(date +%Y-%m-%d)/ --region ap-northeast
 
 ## Screenshots
 
-![Step Functions Graph View (SUCCEEDED)](../../docs/screenshots/masked/uc20-demo/step-functions-graph-view.png)
+![Step Functions Graph View (SUCCEEDED)](../../../../docs/screenshots/masked/uc20-demo/step-functions-graph-view.png)
 
 
 ## Cleanup
@@ -86,3 +86,10 @@ aws s3 ls s3://${OUTPUT_BUCKET}/reports/$(date +%Y-%m-%d)/ --region ap-northeast
 aws s3 rm s3://${OUTPUT_BUCKET} --recursive --region ap-northeast-1
 aws cloudformation delete-stack --stack-name fsxn-travel-demo --region ap-northeast-1
 ```
+
+---
+
+## Related Documentation
+
+> If a deployment or a run misbehaves, see the shared [deployment guide](../../../../docs/en/deployment-guide.md#troubleshooting).
+> It lists the common deployment errors plus the "runs that succeed while producing nothing" symptoms by signature.

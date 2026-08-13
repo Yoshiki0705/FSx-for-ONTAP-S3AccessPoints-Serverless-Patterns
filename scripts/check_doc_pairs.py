@@ -99,6 +99,32 @@ PAIR_DIRS = ("docs", "docs/ja", "docs/guides", "solutions/amplify-portal/docs")
 LINK_DIRS = ("docs", "docs/ja", "docs/en", "docs/guides", "docs/agent", "solutions/amplify-portal/docs")
 
 
+def _pattern_doc_dirs() -> tuple[str, ...]:
+    """The per-pattern `docs/` directories, for link resolution only.
+
+    These were outside LINK_DIRS until 2026-08-12, and all 224 demo guides had broken
+    references as a result: they were written `../../docs/...`, which from
+    `solutions/industry/<pattern>/docs/` resolves to `solutions/industry/docs/` -- one
+    level short of the repository root, and a directory that has never existed. Every
+    cross-reference and every embedded screenshot in every demo guide pointed at nothing,
+    in eight languages, and nothing failed because nothing was looking.
+
+    Deliberately not added to LINK_DIRS itself: that tuple also feeds the link-language
+    check, and these guides carry roughly a hundred pre-existing cross-locale references
+    (a Korean guide linking the Japanese README when a Korean one exists). Those are real
+    but are a separate cleanup, and a gate that fails on untouched debt gets disabled.
+
+    Returns:
+        Repository-relative paths, derived from disk so a new pattern is covered as soon
+        as it is added rather than when someone remembers to extend a list.
+    """
+    return tuple(
+        str(path.relative_to(ROOT))
+        for path in sorted((ROOT / "solutions" / "industry").glob("*/docs"))
+        if path.is_dir()
+    )
+
+
 def _switcher(path: pathlib.Path) -> bool:
     return bool(SWITCHER.search(path.read_text(encoding="utf-8")))
 
@@ -282,7 +308,7 @@ def check_link_language() -> list[str]:
 def check_links() -> list[str]:
     published = _in_repository()
     findings = []
-    for name in LINK_DIRS:
+    for name in LINK_DIRS + _pattern_doc_dirs():
         parent = ROOT / name
         if not parent.is_dir():
             continue

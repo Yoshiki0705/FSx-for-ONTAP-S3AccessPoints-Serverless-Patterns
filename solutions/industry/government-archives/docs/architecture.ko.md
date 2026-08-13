@@ -110,4 +110,4 @@ UC16은 2026-05-11 업데이트에서 `OutputDestination` 파라미터를 지원
 **영향을 받지 않는 Lambda**: Discovery(manifest는 S3AP 직접 쓰기), ComplianceCheck(DynamoDB만), FoiaDeadlineReminder(DynamoDB + SNS만).  
 **OpenSearch와의 관계**: 인덱스는 `OpenSearchMode` 파라미터로 독립 관리, `OutputDestination`의 영향을 받지 않음.
 
-자세한 내용은 [`docs/output-destination-patterns.md`](../../docs/output-destination-patterns.md) 참조.
+자세한 내용은 [`docs/output-destination-patterns.md`](../../../../docs/output-destination-patterns.md) 참조.

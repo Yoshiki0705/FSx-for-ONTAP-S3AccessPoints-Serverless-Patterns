@@ -182,7 +182,7 @@ view auto-generated tag JSON within the product image directory structure
 ```
 
 For AWS specification constraints and workarounds, refer to the ["AWS Specification Constraints and Workarounds"
-section in the project README](../../README.en.md#key-s3-access-point-constraints).
+section in the project README](../README.en.md#key-s3-access-point-constraints).
 
 ### 1. Automated Product Image Tagging Results
 
@@ -192,7 +192,7 @@ AI analysis results received by e-commerce managers during new product registrat
 <!-- SCREENSHOT: uc11-product-tags.png
      Content: Product image + AI detected tag list (with confidence scores)
      Masked: Account ID, bucket name -->
-![UC11: Product Tags](../../docs/screenshots/masked/uc11-demo/uc11-product-tags.png)
+![UC11: Product Tags](../../../../docs/screenshots/masked/uc11-demo/uc11-product-tags.png)
 
 ### 2. S3 Output Bucket — Overview of Tag and Quality Check Results
 
@@ -202,7 +202,7 @@ JSON files are generated per product under two prefixes: `tags/` and `quality/`.
 <!-- SCREENSHOT: uc11-s3-output-bucket.png
      Content: S3 console showing tags/, quality/ prefixes
      Masked: Account ID -->
-![UC11: S3 Output Bucket](../../docs/screenshots/masked/uc11-demo/uc11-s3-output-bucket.png)
+![UC11: S3 Output Bucket](../../../../docs/screenshots/masked/uc11-demo/uc11-s3-output-bucket.png)
 
 ### Actual Measurements (2026-05-10 AWS Deployment Verification)
 
@@ -210,3 +210,10 @@ JSON files are generated per product under two prefixes: `tags/` and `quality/`.
 - **Rekognition**: Detected 7 labels from actual images (highest confidence 99.93%)
 - **Generated JSON**: tags/*.json (~750 bytes), quality/*.json (~420 bytes)
 - **Actual Stack**: `fsxn-retail-catalog-demo` (ap-northeast-1, verified on 2026-05-10)
+
+---
+
+## Related Documentation
+
+> If a deployment or a run misbehaves, see the shared [deployment guide](../../../../docs/en/deployment-guide.md#troubleshooting).
+> It lists the common deployment errors plus the "runs that succeed while producing nothing" symptoms by signature.

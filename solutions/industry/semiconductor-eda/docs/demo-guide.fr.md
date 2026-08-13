@@ -208,7 +208,7 @@ ORDER BY bounding_box_width DESC;
 
 Conformément à la même approche que Phase 7 UC15/16/17, capture des **écrans UI/UX que les ingénieurs de conception voient réellement dans leur travail quotidien**.
 Les vues techniques comme les graphes Step Functions sont exclues (détails dans
-[`docs/verification-results-phase7.md`](../../docs/verification-results-phase7.md)).
+[`docs/phase7-summary.md`](../../../../docs/phase7-summary.md)).
 
 ### 1. FSx for ONTAP Volumes — Volume pour fichiers de conception
 
@@ -218,7 +218,7 @@ avec gestion par ACL NTFS.
 <!-- SCREENSHOT: uc6-fsx-volumes-list.png
      内容: FSx コンソールで ONTAP Volumes 一覧（eda_demo_vol 等）、Status=Created、Type=ONTAP
      マスク: アカウント ID、SVM ID の実値、ファイルシステム ID -->
-![UC6: Liste des volumes FSx](../../docs/screenshots/masked/uc6-demo/uc6-fsx-volumes-list.png)
+![UC6: Liste des volumes FSx](../../../../docs/screenshots/masked/uc6-demo/uc6-fsx-volumes-list.png)
 
 ### 2. Bucket de sortie S3 — Liste des documents de conception et résultats d'analyse
 
@@ -228,7 +228,7 @@ Organisé en 3 préfixes : `metadata/` / `athena-results/` / `reports/`.
 <!-- SCREENSHOT: uc6-s3-output-bucket.png
      内容: S3 コンソールで bucket の top-level prefix を確認
      マスク: アカウント ID、バケット名プレフィックス -->
-![UC6: Bucket de sortie S3](../../docs/screenshots/masked/uc6-demo/uc6-s3-output-bucket.png)
+![UC6: Bucket de sortie S3](../../../../docs/screenshots/masked/uc6-demo/uc6-s3-output-bucket.png)
 
 ### 2. Bucket de sortie S3 — Liste des documents de conception et résultats d'analyse
 
@@ -238,7 +238,7 @@ Organisé en 3 préfixes : `metadata/` / `athena-results/` / `reports/`.
 <!-- SCREENSHOT: uc6-s3-output-bucket.png
      内容: S3 コンソールで bucket の top-level prefix を確認
      マスク: アカウント ID、バケット名プレフィックス -->
-![UC6: Bucket de sortie S3](../../docs/screenshots/masked/uc6-demo/uc6-s3-output-bucket.png)
+![UC6: Bucket de sortie S3](../../../../docs/screenshots/masked/uc6-demo/uc6-s3-output-bucket.png)
 
 ### 3. Résultats de requête Athena — Analyse SQL des métadonnées EDA
 
@@ -248,7 +248,7 @@ Workgroup : `fsxn-eda-uc6-workgroup`, base de données : `fsxn-eda-uc6-db`.
 <!-- SCREENSHOT: uc6-athena-query-result.png
      内容: EDA メタデータ表の SELECT 結果（file_key、library_name、cell_count、bounding_box）
      マスク: アカウント ID -->
-![UC6: Résultats de requête Athena](../../docs/screenshots/masked/uc6-demo/uc6-athena-query-result.png)
+![UC6: Résultats de requête Athena](../../../../docs/screenshots/masked/uc6-demo/uc6-athena-query-result.png)
 
 ### 4. Rapport de revue de conception généré par Bedrock
 
@@ -269,7 +269,7 @@ un rapport de revue en japonais destiné au Physical Design Lead.
        - **Medium**: 命名規則違反が6件確認されました。
        - **Low**: セル数分布やバウンディングボックス外れ値に問題はありません。
      マスク: アカウント ID -->
-![UC6: Rapport de revue de conception Bedrock](../../docs/screenshots/masked/uc6-demo/uc6-bedrock-design-review.png)
+![UC6: Rapport de revue de conception Bedrock](../../../../docs/screenshots/masked/uc6-demo/uc6-bedrock-design-review.png)
 
 ### Valeurs mesurées (vérification de déploiement AWS du 2026-05-10)
 
@@ -394,3 +394,10 @@ un rapport de revue en japonais destiné au Physical Design Lead.
 ---
 
 *Ce document a été créé comme guide de production de vidéo de démo pour présentation technique.*
+
+---
+
+## Documentation associée
+
+> En cas de problème de déploiement ou d'exécution, consultez le [guide de déploiement](../../../../docs/en/deployment-guide.md#troubleshooting) commun.
+> Il recense les erreurs de déploiement courantes ainsi que les symptômes « exécution réussie mais résultat vide ».

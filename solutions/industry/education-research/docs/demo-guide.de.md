@@ -173,17 +173,17 @@ Nach demselben Ansatz wie bei den Demos von Phase 7 UC15/16/17 und UC6/11/14 wer
 
 #### UC13 Step Functions Graph view (SUCCEEDED)
 
-![UC13 Step Functions Graph view（SUCCEEDED）](../../docs/screenshots/masked/uc13-demo/uc13-stepfunctions-graph.png)
+![UC13 Step Functions Graph view（SUCCEEDED）](../../../../docs/screenshots/masked/uc13-demo/uc13-stepfunctions-graph.png)
 
 Die Step Functions Graph-Ansicht ist der wichtigste Bildschirm für Endbenutzer, der den Ausführungsstatus jedes Lambda-/Parallel-/Map-Status farblich visualisiert.
 
 ### Vorhandene Screenshots (relevante aus Phase 1-6)
 
-![UC13 Step Functions Graph view（SUCCEEDED）](../../docs/screenshots/masked/uc13-demo/step-functions-graph-succeeded.png)
+![UC13 Step Functions Graph view（SUCCEEDED）](../../../../docs/screenshots/masked/uc13-demo/step-functions-graph-succeeded.png)
 
-![UC13 Step Functions Graph (Gesamtübersicht)](../../docs/screenshots/masked/uc13-demo/step-functions-graph-overview.png)
+![UC13 Step Functions Graph (Gesamtübersicht)](../../../../docs/screenshots/masked/uc13-demo/step-functions-graph-overview.png)
 
-![UC13 Step Functions Graph (Zoom-Ansicht — Details zu jedem Schritt)](../../docs/screenshots/masked/uc13-demo/step-functions-graph-zoomed.png)
+![UC13 Step Functions Graph (Zoom-Ansicht — Details zu jedem Schritt)](../../../../docs/screenshots/masked/uc13-demo/step-functions-graph-zoomed.png)
 
 ### UI/UX-Zielbildschirme bei Neuverifizierung (empfohlene Aufnahmeliste)
 
@@ -215,3 +215,10 @@ Die Step Functions Graph-Ansicht ist der wichtigste Bildschirm für Endbenutzer,
 5. **Bereinigung**:
    - Löschen mit `bash scripts/cleanup_generic_ucs.sh UC13`
    - VPC Lambda ENI-Freigabe dauert 15-30 Minuten (AWS-Spezifikation)
+
+---
+
+## Weiterführende Dokumentation
+
+> Bei Problemen beim Deployment oder beim Lauf siehe den gemeinsamen [Deployment-Leitfaden](../../../../docs/en/deployment-guide.md#troubleshooting).
+> Dort stehen die häufigen Deployment-Fehler sowie die Symptome „Lauf erfolgreich, Ergebnis leer“.

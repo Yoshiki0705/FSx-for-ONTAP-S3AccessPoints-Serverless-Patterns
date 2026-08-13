@@ -181,7 +181,7 @@ UC14는 2026-05-10 업데이트에서 `OutputDestination` 파라미터를 지원
 ```
 
 AWS 사양상 제약 및 회피 방법은 [프로젝트 README의 "AWS 사양상 제약 및 회피 방법"
-섹션](../../README.md#aws-仕様上の制約と回避策) 참조.
+섹션](../README.md#aws-仕様上の制約と回避策) 참조.
 
 ### 1. 보험금 청구 보고서 — 사정 담당자용 요약
 
@@ -192,7 +192,7 @@ AWS 사양상 제약 및 회피 방법은 [프로젝트 README의 "AWS 사양상
      내용: 보험금 청구 보고서(청구 ID, 손해 요약, 견적 상관, 권장 판정)
             + Rekognition 검출 레이블 목록 + Textract OCR 결과
      마스크: 계정 ID, 버킷 이름 -->
-![UC14: 보험금 청구 보고서](../../docs/screenshots/masked/uc14-demo/uc14-claims-report.png)
+![UC14: 보험금 청구 보고서](../../../../docs/screenshots/masked/uc14-demo/uc14-claims-report.png)
 
 ### 2. S3 출력 버킷 — 사정 아티팩트 개요
 
@@ -202,7 +202,7 @@ AWS 사양상 제약 및 회피 방법은 [프로젝트 README의 "AWS 사양상
 <!-- SCREENSHOT: uc14-s3-output-bucket.png
      내용: S3 콘솔에서 assessments/, estimates/, reports/ 프리픽스
      마스크: 계정 ID -->
-![UC14: S3 출력 버킷](../../docs/screenshots/masked/uc14-demo/uc14-s3-output-bucket.png)
+![UC14: S3 출력 버킷](../../../../docs/screenshots/masked/uc14-demo/uc14-s3-output-bucket.png)
 
 ### 실측값(2026-05-10 AWS 배포 검증)
 
@@ -211,3 +211,10 @@ AWS 사양상 제약 및 회피 방법은 [프로젝트 README의 "AWS 사양상
 - **Textract**: cross-region us-east-1 경유로 견적서 PDF에서 `Total: 1270.00 USD` 등 OCR
 - **생성 아티팩트**: assessments/*.json, estimates/*.json, reports/*.txt
 - **실제 스택**: `fsxn-insurance-claims-demo`(ap-northeast-1, 2026-05-10 검증 시)
+
+---
+
+## 관련 문서
+
+> 배포나 실행에서 문제가 발생하면 공통 [배포 가이드](../../../../docs/en/deployment-guide.md#troubleshooting)를 참조하십시오.
+> 일반적인 배포 오류와 함께 "실행은 성공했지만 결과가 비어 있는" 증상을 증상별로 정리해 두었습니다.

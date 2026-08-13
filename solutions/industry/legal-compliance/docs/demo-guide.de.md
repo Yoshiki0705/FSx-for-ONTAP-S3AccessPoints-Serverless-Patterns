@@ -198,8 +198,8 @@ sam deploy \
 ```
 
 Informationen zu AWS-Spezifikationsbeschränkungen finden Sie im
-[Abschnitt „AWS-Spezifikationsbeschränkungen und Workarounds" der Projekt-README](../../README.md#aws-仕様上の制約と回避策)
-sowie in [`docs/output-destination-patterns.md`](../../docs/output-destination-patterns.md).
+[Abschnitt „AWS-Spezifikationsbeschränkungen und Workarounds" der Projekt-README](../README.md#aws-仕様上の制約と回避策)
+sowie in [`docs/output-destination-patterns.md`](../../../../docs/output-destination-patterns.md).
 
 ---
 
@@ -219,39 +219,39 @@ Stack-Ereignisse usw.) werden in `docs/verification-results-*.md` konsolidiert.
 
 #### UC1 Step Functions Graph view (SUCCEEDED)
 
-![UC1 Step Functions Graph view (SUCCEEDED)](../../docs/screenshots/masked/uc1-demo/uc1-stepfunctions-graph.png)
+![UC1 Step Functions Graph view (SUCCEEDED)](../../../../docs/screenshots/masked/uc1-demo/uc1-stepfunctions-graph.png)
 
 Die Step Functions Graph-Ansicht ist der wichtigste Endbenutzer-Bildschirm, der den Ausführungsstatus jedes Lambda / Parallel / Map-Status
 farblich visualisiert.
 
 #### UC1 Step Functions Graph (SUCCEEDED — Phase 8 Theme D/E/N Verifizierung, 2:38:20)
 
-![UC1 Step Functions Graph (SUCCEEDED)](../../docs/screenshots/masked/uc1-demo/step-functions-graph-succeeded.png)
+![UC1 Step Functions Graph (SUCCEEDED)](../../../../docs/screenshots/masked/uc1-demo/step-functions-graph-succeeded.png)
 
 Ausgeführt mit aktiviertem Phase 8 Theme E (event-driven) + Theme N (observability).
 549 ACL-Iterationen, 3871 Events, alle Schritte SUCCEEDED in 2:38:20.
 
 #### UC1 Step Functions Graph (Zoom-Ansicht — Details zu jedem Schritt)
 
-![UC1 Step Functions Graph (Zoom-Ansicht)](../../docs/screenshots/masked/uc1-demo/step-functions-graph-zoomed.png)
+![UC1 Step Functions Graph (Zoom-Ansicht)](../../../../docs/screenshots/masked/uc1-demo/step-functions-graph-zoomed.png)
 
 #### UC1 S3 Access Points for FSx for ONTAP (Konsolenansicht)
 
-![UC1 S3 Access Points for FSx for ONTAP](../../docs/screenshots/masked/uc1-demo/s3-access-points-for-fsx.png)
+![UC1 S3 Access Points for FSx for ONTAP](../../../../docs/screenshots/masked/uc1-demo/s3-access-points-for-fsx.png)
 
 #### UC1 S3 Access Point Details (Übersichtsansicht)
 
-![UC1 S3 Access Point Details](../../docs/screenshots/masked/uc1-demo/s3ap-detail-overview.png)
+![UC1 S3 Access Point Details](../../../../docs/screenshots/masked/uc1-demo/s3ap-detail-overview.png)
 
 ### Vorhandene Screenshots (relevante aus Phase 1-6)
 
 #### UC1 CloudFormation Stack-Deployment abgeschlossen (Verifizierung am 2026-05-02)
 
-![UC1 CloudFormation Stack-Deployment abgeschlossen (Verifizierung am 2026-05-02)](../../docs/screenshots/masked/phase1/phase1-cloudformation-uc1-deployed.png)
+![UC1 CloudFormation Stack-Deployment abgeschlossen (Verifizierung am 2026-05-02)](../../../../docs/screenshots/masked/phase1/phase1-cloudformation-uc1-deployed.png)
 
 #### UC1 Step Functions SUCCEEDED (E2E-Ausführung erfolgreich)
 
-![UC1 Step Functions SUCCEEDED (E2E-Ausführung erfolgreich)](../../docs/screenshots/masked/phase1/phase1-step-functions-uc1-succeeded.png)
+![UC1 Step Functions SUCCEEDED (E2E-Ausführung erfolgreich)](../../../../docs/screenshots/masked/phase1/phase1-step-functions-uc1-succeeded.png)
 
 
 ### UI/UX-Zielbildschirme bei Neuverifizierung (empfohlene Aufnahmeliste)
@@ -320,3 +320,10 @@ Die Verarbeitungszeit von UC1 ist proportional zur Anzahl der Dateien auf dem ON
 - **Event-driven Trigger** (`EnableEventDriven=true`): Automatischer Start beim Hinzufügen von Dateien zu S3AP
 - **CloudWatch Alarms** (`EnableCloudWatchAlarms=true`): Automatische Benachrichtigung bei SFN-Fehler + Lambda-Fehler
 - **EventBridge-Fehlerbenachrichtigung**: Push-Benachrichtigung an SNS Topic bei Ausführungsfehlern
+
+---
+
+## Weiterführende Dokumentation
+
+> Bei Problemen beim Deployment oder beim Lauf siehe den gemeinsamen [Deployment-Leitfaden](../../../../docs/en/deployment-guide.md#troubleshooting).
+> Dort stehen die häufigen Deployment-Fehler sowie die Symptome „Lauf erfolgreich, Ergebnis leer“.

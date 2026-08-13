@@ -179,7 +179,7 @@ UC14 は 2026-05-10 のアップデートで `OutputDestination` パラメータ
 ```
 
 AWS 仕様上の制約と回避策は [プロジェクト README の "AWS 仕様上の制約と回避策"
-セクション](../../README.md#aws-仕様上の制約と回避策) 参照。
+セクション](../README.md#aws-仕様上の制約と回避策) 参照。
 
 ### 1. 保険金請求レポート — 査定担当者向けサマリー
 
@@ -190,7 +190,7 @@ AWS 仕様上の制約と回避策は [プロジェクト README の "AWS 仕様
      内容: 保険金請求レポート（請求 ID、損害サマリー、見積相関、推奨判定）
             + Rekognition 検出ラベル一覧 + Textract OCR 結果
      マスク: アカウント ID、バケット名 -->
-![UC14: 保険金請求レポート](../../docs/screenshots/masked/uc14-demo/uc14-claims-report.png)
+![UC14: 保険金請求レポート](../../../../docs/screenshots/masked/uc14-demo/uc14-claims-report.png)
 
 ### 2. S3 出力バケット — 査定アーティファクトの俯瞰
 
@@ -200,7 +200,7 @@ AWS 仕様上の制約と回避策は [プロジェクト README の "AWS 仕様
 <!-- SCREENSHOT: uc14-s3-output-bucket.png
      内容: S3 コンソールで assessments/, estimates/, reports/ プレフィックス
      マスク: アカウント ID -->
-![UC14: S3 出力バケット](../../docs/screenshots/masked/uc14-demo/uc14-s3-output-bucket.png)
+![UC14: S3 出力バケット](../../../../docs/screenshots/masked/uc14-demo/uc14-s3-output-bucket.png)
 
 ### 実測値（2026-05-10 AWS デプロイ検証）
 
@@ -209,3 +209,10 @@ AWS 仕様上の制約と回避策は [プロジェクト README の "AWS 仕様
 - **Textract**: cross-region us-east-1 経由で見積書 PDF から `Total: 1270.00 USD` 等を OCR
 - **生成アーティファクト**: assessments/*.json, estimates/*.json, reports/*.txt
 - **実スタック**: `fsxn-insurance-claims-demo`（ap-northeast-1、2026-05-10 検証時）
+
+---
+
+## 関連ドキュメント
+
+> デプロイや実行でつまずいたときは、パターン共通の[デプロイガイド](../../../../docs/ja/deployment-guide.md#トラブルシューティング)を参照。
+> よくあるデプロイエラーに加えて、「実行は成功するのに結果が空になる」系の症状を症状別にまとめてある。

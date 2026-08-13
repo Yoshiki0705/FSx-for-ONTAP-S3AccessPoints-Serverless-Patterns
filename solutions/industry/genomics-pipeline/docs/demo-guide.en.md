@@ -175,25 +175,25 @@ Following the same policy as Phase 7 UC15/16/17 and UC6/11/14 demos, targeting *
 
 #### UC7 Step Functions Graph view (SUCCEEDED)
 
-![UC7 Step Functions Graph view (SUCCEEDED)](../../docs/screenshots/masked/uc7-demo/uc7-stepfunctions-graph.png)
+![UC7 Step Functions Graph view (SUCCEEDED)](../../../../docs/screenshots/masked/uc7-demo/uc7-stepfunctions-graph.png)
 
 Step Functions Graph view is the most important end-user screen that visualizes the execution status of each Lambda / Parallel / Map state with colors.
 
 #### UC7 Step Functions Graph (SUCCEEDED — Phase 8 Theme D Re-capture)
 
-![UC7 Step Functions Graph (SUCCEEDED)](../../docs/screenshots/masked/uc7-demo/step-functions-graph-succeeded.png)
+![UC7 Step Functions Graph (SUCCEEDED)](../../../../docs/screenshots/masked/uc7-demo/step-functions-graph-succeeded.png)
 
 Redeployed after IAM S3AP fix. All steps SUCCEEDED (3:03).
 
 #### UC7 Step Functions Graph (Zoomed View — Each Step Detail)
 
-![UC7 Step Functions Graph (Zoomed View)](../../docs/screenshots/masked/uc7-demo/step-functions-graph-zoomed.png)
+![UC7 Step Functions Graph (Zoomed View)](../../../../docs/screenshots/masked/uc7-demo/step-functions-graph-zoomed.png)
 
 ### Existing Screenshots (Relevant from Phase 1-6)
 
 #### UC7 Comprehend Medical Genomics Analysis Results (Cross-Region us-east-1)
 
-![UC7 Comprehend Medical Genomics Analysis Results (Cross-Region us-east-1)](../../docs/screenshots/masked/phase2/phase2-comprehend-medical-genomics-analysis-fullpage.png)
+![UC7 Comprehend Medical Genomics Analysis Results (Cross-Region us-east-1)](../../../../docs/screenshots/masked/phase2/phase2-comprehend-medical-genomics-analysis-fullpage.png)
 
 
 ### UI/UX Target Screens for Re-verification (Recommended Capture List)
@@ -226,3 +226,10 @@ Redeployed after IAM S3AP fix. All steps SUCCEEDED (3:03).
 5. **Cleanup**:
    - Delete with `bash scripts/cleanup_generic_ucs.sh UC7`
    - VPC Lambda ENI release takes 15-30 minutes (AWS specification)
+
+---
+
+## Related Documentation
+
+> If a deployment or a run misbehaves, see the shared [deployment guide](../../../../docs/en/deployment-guide.md#troubleshooting).
+> It lists the common deployment errors plus the "runs that succeed while producing nothing" symptoms by signature.

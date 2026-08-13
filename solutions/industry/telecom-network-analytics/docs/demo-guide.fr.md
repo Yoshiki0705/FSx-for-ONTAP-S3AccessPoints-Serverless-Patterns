@@ -109,7 +109,7 @@ aws s3 ls s3://${OUTPUT_BUCKET}/reports/daily/${TODAY}/ --region ap-northeast-1
 
 ## Captures d'écran
 
-![Step Functions Graph View (SUCCEEDED)](../../docs/screenshots/masked/uc18-demo/step-functions-graph-view.png)
+![Step Functions Graph View (SUCCEEDED)](../../../../docs/screenshots/masked/uc18-demo/step-functions-execution-succeeded.png)
 
 
 ## Nettoyage
@@ -121,3 +121,10 @@ aws cloudformation delete-stack \
   --stack-name fsxn-telecom-demo \
   --region ap-northeast-1
 ```
+
+---
+
+## Documentation associée
+
+> En cas de problème de déploiement ou d'exécution, consultez le [guide de déploiement](../../../../docs/en/deployment-guide.md#troubleshooting) commun.
+> Il recense les erreurs de déploiement courantes ainsi que les symptômes « exécution réussie mais résultat vide ».

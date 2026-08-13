@@ -182,7 +182,7 @@ UC11 在 2026-05-10 的更新中支援 `OutputDestination` 參數。
 ```
 
 AWS 規格限制與因應對策請參閱[專案 README 的「AWS 規格限制與因應對策」
-段落](../../README.md#aws-仕様上の制約と回避策)。
+段落](../README.md#aws-仕様上の制約と回避策)。
 
 ### 1. 商品圖片自動標記結果
 
@@ -192,7 +192,7 @@ AWS 規格限制與因應對策請參閱[專案 README 的「AWS 規格限制與
 <!-- SCREENSHOT: uc11-product-tags.png
      內容：商品圖片 + AI 偵測標籤清單（含信賴度）
      遮罩：帳戶 ID、儲存貯體名稱 -->
-![UC11：商品標籤](../../docs/screenshots/masked/uc11-demo/uc11-product-tags.png)
+![UC11：商品標籤](../../../../docs/screenshots/masked/uc11-demo/uc11-product-tags.png)
 
 ### 2. S3 輸出儲存貯體 — 標籤與品質檢查結果總覽
 
@@ -202,7 +202,7 @@ AWS 規格限制與因應對策請參閱[專案 README 的「AWS 規格限制與
 <!-- SCREENSHOT: uc11-s3-output-bucket.png
      內容：S3 主控台顯示 tags/、quality/ 前綴
      遮罩：帳戶 ID -->
-![UC11：S3 輸出儲存貯體](../../docs/screenshots/masked/uc11-demo/uc11-s3-output-bucket.png)
+![UC11：S3 輸出儲存貯體](../../../../docs/screenshots/masked/uc11-demo/uc11-s3-output-bucket.png)
 
 ### 實測值（2026-05-10 AWS 部署驗證）
 
@@ -210,3 +210,10 @@ AWS 規格限制與因應對策請參閱[專案 README 的「AWS 規格限制與
 - **Rekognition**：從實際圖片偵測到 7 個標籤（最高信賴度 99.93%）
 - **生成 JSON**：tags/*.json (~750 bytes)、quality/*.json (~420 bytes)
 - **實際堆疊**：`fsxn-retail-catalog-demo`（ap-northeast-1，2026-05-10 驗證時）
+
+---
+
+## 相關文件
+
+> 部署或執行發生問題時，請參閱通用[部署指南](../../../../docs/en/deployment-guide.md#troubleshooting)。
+> 其中依症狀整理了常見部署錯誤，以及「執行成功但結果為空」的情況。

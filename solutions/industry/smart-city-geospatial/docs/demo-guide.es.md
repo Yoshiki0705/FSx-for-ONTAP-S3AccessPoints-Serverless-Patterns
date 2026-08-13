@@ -129,8 +129,8 @@ sam deploy \
 - Los informes de Bedrock se escriben como Markdown (`text/markdown; charset=utf-8`), por lo que pueden
   visualizarse directamente con editores de texto de clientes SMB/NFS
 - Para las restricciones de especificación de AWS, consulte
-  [la sección "Restricciones de especificación de AWS y soluciones alternativas" del README del proyecto](../../README.md#aws-仕様上の制約と回避策)
-  y [`docs/output-destination-patterns.md`](../../docs/output-destination-patterns.md)
+  [la sección "Restricciones de especificación de AWS y soluciones alternativas" del README del proyecto](../README.md#aws-仕様上の制約と回避策)
+  y [`docs/output-destination-patterns.md`](../../../../docs/output-destination-patterns.md)
 
 ---
 
@@ -145,11 +145,11 @@ Siguiendo la misma política que las demos de Phase 7 UC15/16/17 y UC6/11/14, se
 
 ### Capturas de pantalla existentes (verificación Phase 7)
 
-![Vista de gráfico de Step Functions (SUCCEEDED)](../../docs/screenshots/masked/uc17-demo/step-functions-graph-succeeded.png)
+![Vista de gráfico de Step Functions (SUCCEEDED)](../../../../docs/screenshots/masked/uc17-demo/step-functions-graph-succeeded.png)
 
-![Bucket de salida S3](../../docs/screenshots/masked/uc17-demo/s3-output-bucket.png)
+![Bucket de salida S3](../../../../docs/screenshots/masked/uc17-demo/s3-output-bucket.png)
 
-![Tabla DynamoDB landuse_history](../../docs/screenshots/masked/uc17-demo/dynamodb-landuse-history-table.png)
+![Tabla DynamoDB landuse_history](../../../../docs/screenshots/masked/uc17-demo/dynamodb-landuse-history-table.png)
 ### Pantallas UI/UX objetivo en reverificación (lista de captura recomendada)
 
 - Bucket de salida S3 (tiles/, land-use/, change-detection/, risk-maps/, reports/)
@@ -182,3 +182,10 @@ Siguiendo la misma política que las demos de Phase 7 UC15/16/17 y UC6/11/14, se
 5. **Limpieza**:
    - Eliminar con `bash scripts/cleanup_generic_ucs.sh UC17`
    - Liberación de ENI de Lambda VPC en 15-30 minutos (especificación de AWS)
+
+---
+
+## Documentación relacionada
+
+> Si el despliegue o la ejecución fallan, consulte la [guía de despliegue](../../../../docs/en/deployment-guide.md#troubleshooting) común.
+> Recoge los errores de despliegue habituales y los síntomas de «ejecución correcta pero sin resultados».

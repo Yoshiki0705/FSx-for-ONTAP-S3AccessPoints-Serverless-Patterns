@@ -175,17 +175,17 @@ Conformément à la même approche que les démos Phase 7 UC15/16/17 et UC6/11/1
 
 #### UC13 Step Functions Graph view (SUCCEEDED)
 
-![UC13 Step Functions Graph view (SUCCEEDED)](../../docs/screenshots/masked/uc13-demo/uc13-stepfunctions-graph.png)
+![UC13 Step Functions Graph view (SUCCEEDED)](../../../../docs/screenshots/masked/uc13-demo/uc13-stepfunctions-graph.png)
 
 La vue graphique Step Functions est l'écran le plus important pour l'utilisateur final, visualisant l'état d'exécution de chaque état Lambda / Parallel / Map par couleur.
 
 ### Captures d'écran existantes (portions pertinentes de Phase 1-6)
 
-![UC13 Step Functions Graph view (SUCCEEDED)](../../docs/screenshots/masked/uc13-demo/step-functions-graph-succeeded.png)
+![UC13 Step Functions Graph view (SUCCEEDED)](../../../../docs/screenshots/masked/uc13-demo/step-functions-graph-succeeded.png)
 
-![UC13 Step Functions Graph (vue d'ensemble complète)](../../docs/screenshots/masked/uc13-demo/step-functions-graph-overview.png)
+![UC13 Step Functions Graph (vue d'ensemble complète)](../../../../docs/screenshots/masked/uc13-demo/step-functions-graph-overview.png)
 
-![UC13 Step Functions Graph (affichage zoomé — détails de chaque étape)](../../docs/screenshots/masked/uc13-demo/step-functions-graph-zoomed.png)
+![UC13 Step Functions Graph (affichage zoomé — détails de chaque étape)](../../../../docs/screenshots/masked/uc13-demo/step-functions-graph-zoomed.png)
 
 ### Écrans UI/UX cibles lors de la revérification (liste de capture recommandée)
 
@@ -217,3 +217,10 @@ La vue graphique Step Functions est l'écran le plus important pour l'utilisateu
 5. **Nettoyage** :
    - `bash scripts/cleanup_generic_ucs.sh UC13` pour supprimer
    - Libération des ENI Lambda VPC en 15-30 minutes (spécification AWS)
+
+---
+
+## Documentation associée
+
+> En cas de problème de déploiement ou d'exécution, consultez le [guide de déploiement](../../../../docs/en/deployment-guide.md#troubleshooting) commun.
+> Il recense les erreurs de déploiement courantes ainsi que les symptômes « exécution réussie mais résultat vide ».

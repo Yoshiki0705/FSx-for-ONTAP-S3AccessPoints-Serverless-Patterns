@@ -155,4 +155,4 @@ SageMaker Endpoint (항상 존재, 유휴 비용 $0)
 - **효과**: 콜드 스타트 1–3초 → 100–500ms
 - **제한**: Published Versions에만 적용 ($LATEST에는 적용되지 않음)
 
-상세: [SnapStart 가이드](../../docs/snapstart-guide.md)
+상세: [SnapStart 가이드](../../../../docs/snapstart-guide.md)

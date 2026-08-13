@@ -162,8 +162,8 @@ EntityExtraction → Redaction → IndexGeneration），因此 `shared/output_wr
 - FoiaDeadlineReminder Lambda 僅使用 DynamoDB + SNS，因此不受影響
 - OpenSearch 索引由 `OpenSearchMode` 參數另行管理（與 `OutputDestination` 獨立）
 - AWS 規格上的限制請參考
-  [專案 README 的「AWS 規格上的限制與因應對策」章節](../../README.md#aws-仕様上の制約と回避策)
-  以及 [`docs/output-destination-patterns.md`](../../docs/output-destination-patterns.md)
+  [專案 README 的「AWS 規格上的限制與因應對策」章節](../README.md#aws-仕様上の制約と回避策)
+  以及 [`docs/output-destination-patterns.md`](../../../../docs/output-destination-patterns.md)
 
 ---
 
@@ -180,11 +180,11 @@ EntityExtraction → Redaction → IndexGeneration），因此 `shared/output_wr
 
 ### 現有螢幕截圖（Phase 7 驗證時）
 
-![Step Functions Graph view（SUCCEEDED）](../../docs/screenshots/masked/uc16-demo/step-functions-graph-succeeded.png)
+![Step Functions Graph view（SUCCEEDED）](../../../../docs/screenshots/masked/uc16-demo/step-functions-graph-succeeded.png)
 
-![S3 輸出儲存貯體](../../docs/screenshots/masked/uc16-demo/s3-output-bucket.png)
+![S3 輸出儲存貯體](../../../../docs/screenshots/masked/uc16-demo/s3-output-bucket.png)
 
-![DynamoDB retention 資料表](../../docs/screenshots/masked/uc16-demo/dynamodb-retention-table.png)
+![DynamoDB retention 資料表](../../../../docs/screenshots/masked/uc16-demo/dynamodb-retention-table.png)
 ### 重新驗證時的 UI/UX 目標畫面（建議拍攝清單）
 
 - S3 輸出儲存貯體（ocr-results/、classified/、redacted/、compliance/）
@@ -219,3 +219,10 @@ EntityExtraction → Redaction → IndexGeneration），因此 `shared/output_wr
 5. **清理**：
    - 使用 `bash scripts/cleanup_generic_ucs.sh UC16` 刪除
    - VPC Lambda ENI 釋放需要 15-30 分鐘（AWS 規格）
+
+---
+
+## 相關文件
+
+> 部署或執行發生問題時，請參閱通用[部署指南](../../../../docs/en/deployment-guide.md#troubleshooting)。
+> 其中依症狀整理了常見部署錯誤，以及「執行成功但結果為空」的情況。

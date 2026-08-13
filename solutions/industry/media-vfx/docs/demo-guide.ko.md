@@ -195,8 +195,8 @@ sam deploy \
 ```
 
 AWS 사양상의 제약 사항에 대해서는
-[프로젝트 README의 "AWS 사양상의 제약과 회피 방법" 섹션](../../README.md#aws-仕様上の制約と回避策)
-및 [`docs/output-destination-patterns.md`](../../docs/output-destination-patterns.md)를 참조하십시오.
+[프로젝트 README의 "AWS 사양상의 제약과 회피 방법" 섹션](../README.md#aws-仕様上の制約と回避策)
+및 [`docs/output-destination-patterns.md`](../../../../docs/output-destination-patterns.md)를 참조하십시오.
 
 ---
 
@@ -213,9 +213,9 @@ Phase 7 UC15/16/17 및 UC6/11/14 데모와 동일한 방침으로, **최종 사�
 
 ### 기존 스크린샷(Phase 1-6에서 해당 분)
 
-![UC4 Step Functions Graph view(SUCCEEDED)](../../docs/screenshots/masked/uc4-demo/step-functions-graph-succeeded.png)
+![UC4 Step Functions Graph view(SUCCEEDED)](../../../../docs/screenshots/masked/uc4-demo/step-functions-graph-succeeded.png)
 
-![UC4 Step Functions Graph(확대 표시 — 각 단계 상세)](../../docs/screenshots/masked/uc4-demo/step-functions-graph-zoomed.png)
+![UC4 Step Functions Graph(확대 표시 — 각 단계 상세)](../../../../docs/screenshots/masked/uc4-demo/step-functions-graph-zoomed.png)
 
 ### 재검증 시 UI/UX 대상 화면(권장 촬영 목록)
 
@@ -244,3 +244,10 @@ Phase 7 UC15/16/17 및 UC6/11/14 데모와 동일한 방침으로, **최종 사�
 5. **정리**:
    - `bash scripts/cleanup_generic_ucs.sh UC4`로 삭제
    - VPC Lambda ENI 해제에 15-30분 소요(AWS 사양)
+
+---
+
+## 관련 문서
+
+> 배포나 실행에서 문제가 발생하면 공통 [배포 가이드](../../../../docs/en/deployment-guide.md#troubleshooting)를 참조하십시오.
+> 일반적인 배포 오류와 함께 "실행은 성공했지만 결과가 비어 있는" 증상을 증상별로 정리해 두었습니다.

@@ -195,8 +195,8 @@ sam deploy \
 ```
 
 关于 AWS 规范限制，请参考
-[项目 README 的 "AWS 仕様上の制約と回避策" 部分](../../README.md#aws-仕様上の制約と回避策)
-以及 [`docs/output-destination-patterns.md`](../../docs/output-destination-patterns.md)。
+[项目 README 的 "AWS 仕様上の制約と回避策" 部分](../README.md#aws-仕様上の制約と回避策)
+以及 [`docs/output-destination-patterns.md`](../../../../docs/output-destination-patterns.md)。
 
 ---
 
@@ -215,14 +215,14 @@ sam deploy \
 
 #### UC2 Step Functions Graph view（SUCCEEDED）
 
-![UC2 Step Functions Graph view（SUCCEEDED）](../../docs/screenshots/masked/uc2-demo/uc2-stepfunctions-graph.png)
+![UC2 Step Functions Graph view（SUCCEEDED）](../../../../docs/screenshots/masked/uc2-demo/uc2-stepfunctions-graph.png)
 
 Step Functions Graph view 通过颜色可视化各 Lambda / Parallel / Map 状态的执行状况，
 是最终用户最重要的画面。
 
 ### 现有截图（来自 Phase 1-6 的相关部分）
 
-![UC2 Step Functions Graph view（SUCCEEDED）](../../docs/screenshots/masked/uc2-demo/step-functions-graph-succeeded.png)
+![UC2 Step Functions Graph view（SUCCEEDED）](../../../../docs/screenshots/masked/uc2-demo/step-functions-graph-succeeded.png)
 
 ### 重新验证时的 UI/UX 目标画面（推荐拍摄列表）
 
@@ -254,3 +254,10 @@ Step Functions Graph view 通过颜色可视化各 Lambda / Parallel / Map 状�
 5. **清理**:
    - 通过 `bash scripts/cleanup_generic_ucs.sh UC2` 删除
    - VPC Lambda ENI 释放需 15-30 分钟（AWS 规范）
+
+---
+
+## 相关文档
+
+> 部署或运行出现问题时，请参阅通用[部署指南](../../../../docs/en/deployment-guide.md#troubleshooting)。
+> 其中按症状归纳了常见部署错误，以及“执行成功但结果为空”的情况。

@@ -246,6 +246,9 @@ aws cloudwatch get-metric-statistics \
 | Bedrock 呼び出し失敗 | モデルアクセス未許可 | Bedrock コンソールでモデルアクセスを有効化 |
 | `AccessDenied` on S3 AP | IAM ポリシーの ARN 形式が誤り | `arn:aws:s3:{region}:{account}:accesspoint/{name}` 形式を使用しているか確認 |
 
+> デプロイや実行でつまずいたときは、パターン共通の[デプロイガイド](../../../../docs/ja/deployment-guide.md#トラブルシューティング)を参照。
+> よくあるデプロイエラーに加えて、「実行は成功するのに結果が空になる」系の症状を症状別にまとめてある。
+
 ---
 
 ## Storyboard（5 セクション / 3〜5 分）
@@ -350,7 +353,7 @@ echo "クリーンアップ完了"
 ---
 
 
-![Step Functions Graph View (SUCCEEDED)](../../docs/screenshots/masked/uc18-demo/step-functions-graph-view.png)
+![Step Functions Graph View (SUCCEEDED)](../../../../docs/screenshots/masked/uc18-demo/step-functions-execution-succeeded.png)
 
 ## 撮影ガイド
 
@@ -385,5 +388,5 @@ sam deploy --guided
 - メールアドレス
 - ブラウザのユーザー名表示
 
-> 詳細は [`docs/screenshots/MASK_GUIDE.md`](../../docs/screenshots/MASK_GUIDE.md) を参照。
+> 詳細は [`docs/screenshots/MASK_GUIDE.md`](../../../../docs/screenshots/MASK_GUIDE.md) を参照。
 

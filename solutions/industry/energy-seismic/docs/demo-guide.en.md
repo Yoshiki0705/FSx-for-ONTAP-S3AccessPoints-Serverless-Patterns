@@ -174,7 +174,7 @@ Following the same approach as Phase 7 UC15/16/17 and UC6/11/14 demos, we target
 
 #### UC8 Step Functions Graph view (SUCCEEDED)
 
-![UC8 Step Functions Graph view (SUCCEEDED)](../../docs/screenshots/masked/uc8-demo/uc8-stepfunctions-graph.png)
+![UC8 Step Functions Graph view (SUCCEEDED)](../../../../docs/screenshots/masked/uc8-demo/uc8-stepfunctions-graph.png)
 
 Step Functions Graph view is the most critical end-user screen that visualizes the execution status of each Lambda / Parallel / Map state with colors.
 
@@ -182,13 +182,13 @@ Step Functions Graph view is the most critical end-user screen that visualizes t
 
 #### UC8 Step Functions Graph (SUCCEEDED — Re-captured After Phase 8 IAM Fix)
 
-![UC8 Step Functions Graph (SUCCEEDED)](../../docs/screenshots/masked/uc8-demo/step-functions-graph-succeeded.png)
+![UC8 Step Functions Graph (SUCCEEDED)](../../../../docs/screenshots/masked/uc8-demo/step-functions-graph-succeeded.png)
 
 Redeployed after IAM S3AP fix. All steps SUCCEEDED (2:59).
 
 #### UC8 Step Functions Graph (Zoomed View — Each Step Detail)
 
-![UC8 Step Functions Graph (Zoomed View)](../../docs/screenshots/masked/uc8-demo/step-functions-graph-zoomed.png)
+![UC8 Step Functions Graph (Zoomed View)](../../../../docs/screenshots/masked/uc8-demo/step-functions-graph-zoomed.png)
 
 ### UI/UX Target Screens for Re-verification (Recommended Capture List)
 
@@ -220,3 +220,10 @@ Redeployed after IAM S3AP fix. All steps SUCCEEDED (2:59).
 5. **Cleanup**:
    - Delete with `bash scripts/cleanup_generic_ucs.sh UC8`
    - VPC Lambda ENI release takes 15-30 minutes (AWS specification)
+
+---
+
+## Related Documentation
+
+> If a deployment or a run misbehaves, see the shared [deployment guide](../../../../docs/en/deployment-guide.md#troubleshooting).
+> It lists the common deployment errors plus the "runs that succeed while producing nothing" symptoms by signature.

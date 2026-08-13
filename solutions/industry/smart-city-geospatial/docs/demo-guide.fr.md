@@ -131,8 +131,8 @@ sam deploy \
 - Les rapports Bedrock sont écrits en Markdown (`text/markdown; charset=utf-8`), donc directement consultables
   avec un éditeur de texte sur les clients SMB/NFS
 - Pour les contraintes liées aux spécifications AWS, consultez
-  [la section "Contraintes des spécifications AWS et solutions de contournement" du README du projet](../../README.md#aws-仕様上の制約と回避策)
-  et [`docs/output-destination-patterns.md`](../../docs/output-destination-patterns.md)
+  [la section "Contraintes des spécifications AWS et solutions de contournement" du README du projet](../README.md#aws-仕様上の制約と回避策)
+  et [`docs/output-destination-patterns.md`](../../../../docs/output-destination-patterns.md)
 
 ---
 
@@ -149,11 +149,11 @@ de pile CloudFormation, etc.) sont consolidées dans `docs/verification-results-
 
 ### Captures d'écran existantes (vérification Phase 7)
 
-![Vue graphique Step Functions (SUCCEEDED)](../../docs/screenshots/masked/uc17-demo/step-functions-graph-succeeded.png)
+![Vue graphique Step Functions (SUCCEEDED)](../../../../docs/screenshots/masked/uc17-demo/step-functions-graph-succeeded.png)
 
-![Bucket de sortie S3](../../docs/screenshots/masked/uc17-demo/s3-output-bucket.png)
+![Bucket de sortie S3](../../../../docs/screenshots/masked/uc17-demo/s3-output-bucket.png)
 
-![Table DynamoDB landuse_history](../../docs/screenshots/masked/uc17-demo/dynamodb-landuse-history-table.png)
+![Table DynamoDB landuse_history](../../../../docs/screenshots/masked/uc17-demo/dynamodb-landuse-history-table.png)
 ### Écrans UI/UX cibles lors de la revérification (liste de captures recommandées)
 
 - Bucket de sortie S3 (tiles/, land-use/, change-detection/, risk-maps/, reports/)
@@ -186,3 +186,10 @@ de pile CloudFormation, etc.) sont consolidées dans `docs/verification-results-
 5. **Nettoyage** :
    - Supprimer avec `bash scripts/cleanup_generic_ucs.sh UC17`
    - Libération des ENI Lambda VPC en 15-30 min (spécification AWS)
+
+---
+
+## Documentation associée
+
+> En cas de problème de déploiement ou d'exécution, consultez le [guide de déploiement](../../../../docs/en/deployment-guide.md#troubleshooting) commun.
+> Il recense les erreurs de déploiement courantes ainsi que les symptômes « exécution réussie mais résultat vide ».

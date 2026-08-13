@@ -198,8 +198,8 @@ sam deploy \
 - `S3AccessPointName` の指定を強く推奨（Alias 形式と ARN 形式の両方で IAM 許可する）
 - オブジェクトサイズ上限は 50 GB（AWS 仕様）。単一 PutObject は 5 GB までなので、5 GB 超はマルチパートアップロード必須
 - AWS 仕様上の制約は
-  [プロジェクト README の "AWS 仕様上の制約と回避策" セクション](../../README.md#aws-仕様上の制約と回避策)
-  および [`docs/output-destination-patterns.md`](../../docs/output-destination-patterns.md) を参照
+  [プロジェクト README の "AWS 仕様上の制約と回避策" セクション](../README.md#aws-仕様上の制約と回避策)
+  および [`docs/output-destination-patterns.md`](../../../../docs/output-destination-patterns.md) を参照
 
 ---
 
@@ -219,16 +219,16 @@ Phase 7 UC15/16/17 と UC6/11/14 のデモと同じ方針で、**エンドユー
 
 #### UC12 Step Functions Graph view（SUCCEEDED）
 
-![UC12 Step Functions Graph view（SUCCEEDED）](../../docs/screenshots/masked/uc12-demo/uc12-stepfunctions-graph.png)
+![UC12 Step Functions Graph view（SUCCEEDED）](../../../../docs/screenshots/masked/uc12-demo/uc12-stepfunctions-graph.png)
 
 Step Functions Graph view は各 Lambda / Parallel / Map ステートの実行状況を
 色で可視化するエンドユーザー最重要画面。
 
 ### 既存スクリーンショット（Phase 1-6 から該当分）
 
-![UC12 Step Functions Graph view（SUCCEEDED）](../../docs/screenshots/masked/uc12-demo/step-functions-graph-succeeded.png)
+![UC12 Step Functions Graph view（SUCCEEDED）](../../../../docs/screenshots/masked/uc12-demo/step-functions-graph-succeeded.png)
 
-![UC12 Step Functions Graph（ズーム表示 — 各ステップ詳細）](../../docs/screenshots/masked/uc12-demo/step-functions-graph-zoomed.png)
+![UC12 Step Functions Graph（ズーム表示 — 各ステップ詳細）](../../../../docs/screenshots/masked/uc12-demo/step-functions-graph-zoomed.png)
 
 ### 再検証時の UI/UX 対象画面（推奨撮影リスト）
 
@@ -260,3 +260,10 @@ Step Functions Graph view は各 Lambda / Parallel / Map ステートの実行�
 5. **クリーンアップ**:
    - `bash scripts/cleanup_generic_ucs.sh UC12` で削除
    - VPC Lambda ENI 解放に 15-30 分（AWS の仕様）
+
+---
+
+## 関連ドキュメント
+
+> デプロイや実行でつまずいたときは、パターン共通の[デプロイガイド](../../../../docs/ja/deployment-guide.md#トラブルシューティング)を参照。
+> よくあるデプロイエラーに加えて、「実行は成功するのに結果が空になる」系の症状を症状別にまとめてある。

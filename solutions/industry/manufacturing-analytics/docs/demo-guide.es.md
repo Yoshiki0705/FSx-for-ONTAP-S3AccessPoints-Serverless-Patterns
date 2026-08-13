@@ -196,8 +196,8 @@ sam deploy \
 ```
 
 Para restricciones de especificaciones de AWS, consulte
-[la sección "Restricciones de especificaciones de AWS y soluciones alternativas" del README del proyecto](../../README.md#aws-仕様上の制約と回避策)
-y [`docs/output-destination-patterns.md`](../../docs/output-destination-patterns.md).
+[la sección "Restricciones de especificaciones de AWS y soluciones alternativas" del README del proyecto](../README.md#aws-仕様上の制約と回避策)
+y [`docs/output-destination-patterns.md`](../../../../docs/output-destination-patterns.md).
 
 ---
 
@@ -215,18 +215,18 @@ Siguiendo la misma política que las demostraciones de Phase 7 UC15/16/17 y UC6/
 
 #### UC3 Step Functions Graph view (SUCCEEDED)
 
-![UC3 Step Functions Graph view (SUCCEEDED)](../../docs/screenshots/masked/uc3-demo/uc3-stepfunctions-graph.png)
+![UC3 Step Functions Graph view (SUCCEEDED)](../../../../docs/screenshots/masked/uc3-demo/uc3-stepfunctions-graph.png)
 
 Step Functions Graph view es la pantalla más importante para usuarios finales que visualiza
 el estado de ejecución de cada Lambda / Parallel / Map state mediante colores.
 
 ### Capturas de pantalla existentes (de Phase 1-6 aplicables)
 
-![UC3 Step Functions Graph view (SUCCEEDED)](../../docs/screenshots/masked/uc3-demo/step-functions-graph-succeeded.png)
+![UC3 Step Functions Graph view (SUCCEEDED)](../../../../docs/screenshots/masked/uc3-demo/step-functions-graph-succeeded.png)
 
-![UC3 Step Functions Graph (vista expandida)](../../docs/screenshots/masked/uc3-demo/step-functions-graph-expanded.png)
+![UC3 Step Functions Graph (vista expandida)](../../../../docs/screenshots/masked/uc3-demo/step-functions-graph-expanded.png)
 
-![UC3 Step Functions Graph (vista ampliada — detalle de cada paso)](../../docs/screenshots/masked/uc3-demo/step-functions-graph-zoomed.png)
+![UC3 Step Functions Graph (vista ampliada — detalle de cada paso)](../../../../docs/screenshots/masked/uc3-demo/step-functions-graph-zoomed.png)
 
 ### Pantallas de UI/UX objetivo en reverificación (lista de captura recomendada)
 
@@ -258,3 +258,10 @@ el estado de ejecución de cada Lambda / Parallel / Map state mediante colores.
 5. **Limpieza**:
    - Eliminar con `bash scripts/cleanup_generic_ucs.sh UC3`
    - Liberación de ENI de Lambda VPC en 15-30 minutos (especificación de AWS)
+
+---
+
+## Documentación relacionada
+
+> Si el despliegue o la ejecución fallan, consulte la [guía de despliegue](../../../../docs/en/deployment-guide.md#troubleshooting) común.
+> Recoge los errores de despliegue habituales y los síntomas de «ejecución correcta pero sin resultados».

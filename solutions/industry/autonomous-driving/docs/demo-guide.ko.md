@@ -214,8 +214,8 @@ sam deploy \
 - `S3AccessPointName` 지정을 강력히 권장(Alias 형식과 ARN 형식 모두 IAM 허가)
 - 객체 크기 상한은 50 GB (AWS 사양). 단일 PutObject는 5 GB까지이므로 5 GB 초과 시 멀티파트 업로드 필수
 - AWS 사양상의 제약은
-  [프로젝트 README의 "AWS 사양상의 제약과 회피책" 섹션](../../README.md#aws-仕様上の制約と回避策)
-  및 [`docs/output-destination-patterns.md`](../../docs/output-destination-patterns.md)를 참조
+  [프로젝트 README의 "AWS 사양상의 제약과 회피책" 섹션](../README.md#aws-仕様上の制約と回避策)
+  및 [`docs/output-destination-patterns.md`](../../../../docs/output-destination-patterns.md)를 참조
 
 ---
 
@@ -232,7 +232,7 @@ Phase 7 UC15/16/17과 UC6/11/14의 데모와 동일한 방침으로, **최종 �
 
 ### 기존 스크린샷(Phase 1-6에서 해당분)
 
-![UC9 Step Functions Graph view(SUCCEEDED)](../../docs/screenshots/masked/uc9-demo/step-functions-graph-succeeded.png)
+![UC9 Step Functions Graph view(SUCCEEDED)](../../../../docs/screenshots/masked/uc9-demo/step-functions-graph-succeeded.png)
 
 ### 재검증 시 UI/UX 대상 화면(권장 촬영 목록)
 
@@ -264,3 +264,10 @@ Phase 7 UC15/16/17과 UC6/11/14의 데모와 동일한 방침으로, **최종 �
 5. **정리**:
    - `bash scripts/cleanup_generic_ucs.sh UC9`로 삭제
    - VPC Lambda ENI 해제에 15-30분(AWS 사양)
+
+---
+
+## 관련 문서
+
+> 배포나 실행에서 문제가 발생하면 공통 [배포 가이드](../../../../docs/en/deployment-guide.md#troubleshooting)를 참조하십시오.
+> 일반적인 배포 오류와 함께 "실행은 성공했지만 결과가 비어 있는" 증상을 증상별로 정리해 두었습니다.

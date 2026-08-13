@@ -215,8 +215,8 @@ sam deploy \
 - Spécification de `S3AccessPointName` fortement recommandée (autoriser IAM pour les formats Alias et ARN)
 - Objets > 5 Go non supportés par FSx for ONTAP S3 AP (spécification AWS), téléchargement multipart obligatoire
 - Pour les contraintes de spécification AWS, voir
-  [la section "Contraintes de spécification AWS et solutions de contournement" du README du projet](../../README.md#aws-仕様上の制約と回避策)
-  et [`docs/output-destination-patterns.md`](../../docs/output-destination-patterns.md)
+  [la section "Contraintes de spécification AWS et solutions de contournement" du README du projet](../README.md#aws-仕様上の制約と回避策)
+  et [`docs/output-destination-patterns.md`](../../../../docs/output-destination-patterns.md)
 
 ---
 
@@ -233,7 +233,7 @@ CloudFormation, etc.) sont consolidées dans `docs/verification-results-*.md`.
 
 ### Captures d'écran existantes (issues de Phase 1-6)
 
-![Vue graphique Step Functions UC9 (SUCCEEDED)](../../docs/screenshots/masked/uc9-demo/step-functions-graph-succeeded.png)
+![Vue graphique Step Functions UC9 (SUCCEEDED)](../../../../docs/screenshots/masked/uc9-demo/step-functions-graph-succeeded.png)
 
 ### Écrans UI/UX cibles lors de la revérification (liste de capture recommandée)
 
@@ -265,3 +265,10 @@ CloudFormation, etc.) sont consolidées dans `docs/verification-results-*.md`.
 5. **Nettoyage** :
    - `bash scripts/cleanup_generic_ucs.sh UC9` pour supprimer
    - Libération des ENI Lambda VPC en 15-30 minutes (spécification AWS)
+
+---
+
+## Documentation associée
+
+> En cas de problème de déploiement ou d'exécution, consultez le [guide de déploiement](../../../../docs/en/deployment-guide.md#troubleshooting) commun.
+> Il recense les erreurs de déploiement courantes ainsi que les symptômes « exécution réussie mais résultat vide ».
