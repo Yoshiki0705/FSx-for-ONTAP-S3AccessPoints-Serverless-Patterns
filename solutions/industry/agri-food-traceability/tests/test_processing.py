@@ -85,7 +85,7 @@ class TestAnalyzeVegetationWithRekognition:
             ]
         }
 
-        result = analyze_vegetation_with_rekognition(mock_client, "test-bucket", "test-key.tif")
+        result = analyze_vegetation_with_rekognition(mock_client, "test-bucket", "test-key.tif", s3ap=MagicMock())
 
         assert result["total_labels"] == 3
         assert len(result["vegetation_labels"]) == 2
@@ -101,7 +101,7 @@ class TestAnalyzeVegetationWithRekognition:
             ]
         }
 
-        result = analyze_vegetation_with_rekognition(mock_client, "test-bucket", "test-key.jpg")
+        result = analyze_vegetation_with_rekognition(mock_client, "test-bucket", "test-key.jpg", s3ap=MagicMock())
 
         assert len(result["vegetation_labels"]) == 0
         assert len(result["other_labels"]) == 2

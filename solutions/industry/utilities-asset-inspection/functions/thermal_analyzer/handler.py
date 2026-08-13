@@ -213,7 +213,9 @@ def handler(event, context):
 
     thermal_threshold = float(os.environ.get("THERMAL_DIFFERENTIAL_THRESHOLD", "10.0"))
 
-    objects = event.get("objects", [])
+    # Map は配列要素を 1 件ずつ渡す。詳細は defect_detector の同じ箇所を参照。
+    single_item = "objects" not in event
+    objects = [event] if single_item else event.get("objects", [])
     logger.info(
         "Thermal analysis started: %d objects, threshold=%.1f°C",
         len(objects),
@@ -308,6 +310,10 @@ def handler(event, context):
     metrics.put_metric("ErrorCount", float(error_count), "Count")
     metrics.put_metric("HotSpotCount", float(len(all_hot_spots)), "Count")
     metrics.flush()
+
+    if single_item:
+        # report は per-object 結果から hot_spots を読むので、包まずに 1 件を返す。
+        return results[0]
 
     return {
         "results": results,

@@ -105,3 +105,30 @@ class TestExtractLeaseTerms:
         text = "\n".join([f"特約条件{i}: 内容あり" for i in range(20)])
         result = extract_lease_terms(text, [])
         assert len(result["special_conditions"]) <= 10
+
+
+# ─── Step Functions Map の入力形状 ──────────────────────────────────────────
+# Map の ItemProcessor は配列要素を 1 件ずつ渡すので、handler の event は
+# {"objects": [...]} ではなく 1 オブジェクトになる。以前は objects しか読んで
+# いなかったためループが一度も回らず、1 件も処理しないまま SUCCEEDED を返して
+# いた。batch 形状しか渡していなかったユニットテストは緑のままだった。
+class TestMapItemInputShape:
+    """Map が渡す単一アイテム形状を handler が受け付けること。"""
+
+    def test_property_analyzer_accepts_a_single_map_item(self):
+        with patch.object(_pa_module, "analyze_image_rekognition", return_value={}):
+            out = _pa_module.handler({"Key": "properties/images/a.png", "Size": 64}, MagicMock())
+        # report は status を持つ per-object dict の平坦な配列を期待する。
+        assert "status" in out, f"expected a per-object result, got keys={sorted(out)}"
+        assert "results" not in out, "single-item mode must not wrap the result in a list"
+
+    def test_property_analyzer_still_accepts_a_batch(self):
+        with patch.object(_pa_module, "analyze_image_rekognition", return_value={}):
+            out = _pa_module.handler({"objects": [{"Key": "properties/images/a.png", "Size": 64}]}, MagicMock())
+        assert "results" in out and isinstance(out["results"], list)
+        assert out["success_count"] + out["error_count"] == 1
+
+    def test_contract_extractor_accepts_a_single_map_item(self):
+        out = _ce_module.handler({"Key": "properties/contracts/a.pdf", "Size": 64}, MagicMock())
+        assert "status" in out
+        assert "results" not in out

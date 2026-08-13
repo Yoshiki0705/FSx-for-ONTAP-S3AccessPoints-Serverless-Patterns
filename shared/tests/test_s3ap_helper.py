@@ -221,6 +221,41 @@ class TestS3ApHelper:
             Key="data/file1.csv",
         )
 
+    # --- get_object_bytes ---
+    # Rekognition と Textract は FSx for ONTAP の S3 AP 上のオブジェクトを S3Object
+    # 参照では読めない（InvalidS3ObjectException になり、AP ポリシーでサービス
+    # プリンシパルを許可しても解消しない）。そのため bytes を取得して inline で渡す
+    # 経路が必要で、その入口がこのメソッド。
+    def test_get_object_bytes_returns_the_body(self, alias_helper: S3ApHelper):
+        """本文を bytes で返すこと。"""
+        body = MagicMock()
+        body.read.return_value = b"payload"
+        alias_helper._s3_client.head_object.return_value = {"ContentLength": 7}
+        alias_helper._s3_client.get_object.return_value = {"Body": body}
+
+        assert alias_helper.get_object_bytes("images/a.png") == b"payload"
+
+    def test_get_object_bytes_refuses_an_object_over_the_inline_limit(self, alias_helper: S3ApHelper):
+        """同期 AI API の inline 上限を超えるものは取得前に落とす。
+
+        取得してから気づくと、無駄に転送した上でサービス側が曖昧なエラーを返す。
+        """
+        alias_helper._s3_client.head_object.return_value = {"ContentLength": S3ApHelper.MAX_INLINE_AI_BYTES + 1}
+
+        with pytest.raises(S3ApHelperError) as excinfo:
+            alias_helper.get_object_bytes("images/huge.tif")
+
+        assert excinfo.value.error_code == "ObjectTooLargeForInlineAnalysis"
+        # 上限超過なら本文は取得しない。
+        alias_helper._s3_client.get_object.assert_not_called()
+
+    def test_get_object_bytes_honours_an_explicit_limit(self, alias_helper: S3ApHelper):
+        """max_bytes を渡したらそちらを使うこと。"""
+        alias_helper._s3_client.head_object.return_value = {"ContentLength": 100}
+
+        with pytest.raises(S3ApHelperError):
+            alias_helper.get_object_bytes("images/a.png", max_bytes=10)
+
     # --- put_object ---
 
     def test_put_object_bytes(self, alias_helper: S3ApHelper):

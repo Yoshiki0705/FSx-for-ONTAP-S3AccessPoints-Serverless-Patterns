@@ -53,7 +53,7 @@ aws stepfunctions start-execution --state-machine-arn $STATE_MACHINE_ARN --regio
 
 ## 截图
 
-![Step Functions Graph View (SUCCEEDED)](../../docs/screenshots/masked/uc20-demo/step-functions-graph-view.png)
+![Step Functions Graph View (SUCCEEDED)](../../../../docs/screenshots/masked/uc20-demo/step-functions-graph-view.png)
 
 
 ## 清理
@@ -61,3 +61,10 @@ aws stepfunctions start-execution --state-machine-arn $STATE_MACHINE_ARN --regio
 ```bash
 aws cloudformation delete-stack --stack-name fsxn-travel-demo --region ap-northeast-1
 ```
+
+---
+
+## 相关文档
+
+> 部署或运行出现问题时，请参阅通用[部署指南](../../../../docs/en/deployment-guide.md#troubleshooting)。
+> 其中按症状归纳了常见部署错误，以及“执行成功但结果为空”的情况。

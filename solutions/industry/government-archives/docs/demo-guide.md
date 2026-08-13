@@ -201,6 +201,9 @@ A. 次ステップとして、Bedrock エージェントで対話型 FOIA 回答
 | SNS 通知が届かない | メールサブスクリプション未確認 | SNS サブスクリプションの確認メールを承認する |
 | Textract Cross-Region エラー | ap-northeast-1 で Textract 未対応のAPI | Textract の一部 API は us-east-1 にルーティングされる（仕様通り） |
 
+> デプロイや実行でつまずいたときは、パターン共通の[デプロイガイド](../../../../docs/ja/deployment-guide.md#トラブルシューティング)を参照。
+> よくあるデプロイエラーに加えて、「実行は成功するのに結果が空になる」系の症状を症状別にまとめてある。
+
 ---
 
 ## 出力先について: OutputDestination で選択可能 (Pattern B)
@@ -260,8 +263,8 @@ EntityExtraction → Redaction → IndexGeneration）のため、`shared/output_
 - FoiaDeadlineReminder Lambda は DynamoDB + SNS のみを使用するため影響を受けません
 - OpenSearch インデックスは `OpenSearchMode` パラメータで別途管理されます（`OutputDestination` とは独立）
 - AWS 仕様上の制約は
-  [プロジェクト README の "AWS 仕様上の制約と回避策" セクション](../../README.md#aws-仕様上の制約と回避策)
-  および [`docs/output-destination-patterns.md`](../../docs/output-destination-patterns.md) を参照
+  [プロジェクト README の "AWS 仕様上の制約と回避策" セクション](../README.md#aws-仕様上の制約と回避策)
+  および [`docs/output-destination-patterns.md`](../../../../docs/output-destination-patterns.md) を参照
 
 ---
 
@@ -301,11 +304,11 @@ Phase 7 UC15/16/17 と UC6/11/14 のデモと同じ方針で、**エンドユー
 
 ### 既存スクリーンショット（Phase 7 検証時）
 
-![Step Functions Graph view（SUCCEEDED）](../../docs/screenshots/masked/uc16-demo/step-functions-graph-succeeded.png)
+![Step Functions Graph view（SUCCEEDED）](../../../../docs/screenshots/masked/uc16-demo/step-functions-graph-succeeded.png)
 
-![S3 出力バケット](../../docs/screenshots/masked/uc16-demo/s3-output-bucket.png)
+![S3 出力バケット](../../../../docs/screenshots/masked/uc16-demo/s3-output-bucket.png)
 
-![DynamoDB retention テーブル](../../docs/screenshots/masked/uc16-demo/dynamodb-retention-table.png)
+![DynamoDB retention テーブル](../../../../docs/screenshots/masked/uc16-demo/dynamodb-retention-table.png)
 
 ### 再検証時の UI/UX 対象画面（推奨撮影リスト）
 

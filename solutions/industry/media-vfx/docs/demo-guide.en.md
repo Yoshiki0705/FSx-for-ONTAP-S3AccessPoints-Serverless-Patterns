@@ -195,8 +195,8 @@ sam deploy \
 ```
 
 For AWS specification constraints, see
-[the "AWS Specification Constraints and Workarounds" section in the project README](../../README.en.md#key-s3-access-point-constraints)
-and [`docs/output-destination-patterns.md`](../../docs/output-destination-patterns.md).
+[the "AWS Specification Constraints and Workarounds" section in the project README](../README.en.md#key-s3-access-point-constraints)
+and [`docs/output-destination-patterns.md`](../../../../docs/output-destination-patterns.md).
 
 ---
 
@@ -213,9 +213,9 @@ stack events, etc.) are consolidated in `docs/verification-results-*.md`.
 
 ### Existing Screenshots (Applicable from Phase 1-6)
 
-![UC4 Step Functions Graph view (SUCCEEDED)](../../docs/screenshots/masked/uc4-demo/step-functions-graph-succeeded.png)
+![UC4 Step Functions Graph view (SUCCEEDED)](../../../../docs/screenshots/masked/uc4-demo/step-functions-graph-succeeded.png)
 
-![UC4 Step Functions Graph (Zoomed view — each step detail)](../../docs/screenshots/masked/uc4-demo/step-functions-graph-zoomed.png)
+![UC4 Step Functions Graph (Zoomed view — each step detail)](../../../../docs/screenshots/masked/uc4-demo/step-functions-graph-zoomed.png)
 
 ### UI/UX Target Screens for Re-verification (Recommended Capture List)
 
@@ -244,3 +244,10 @@ stack events, etc.) are consolidated in `docs/verification-results-*.md`.
 5. **Cleanup**:
    - Delete with `bash scripts/cleanup_generic_ucs.sh UC4`
    - VPC Lambda ENI release takes 15-30 minutes (AWS specification)
+
+---
+
+## Related Documentation
+
+> If a deployment or a run misbehaves, see the shared [deployment guide](../../../../docs/en/deployment-guide.md#troubleshooting).
+> It lists the common deployment errors plus the "runs that succeed while producing nothing" symptoms by signature.

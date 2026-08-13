@@ -95,7 +95,7 @@ aws s3 cp s3://${OUTPUT_BUCKET}/reports/${EXECUTION_ID}/asset-catalog.json \
 
 ## 截图
 
-![Step Functions Graph View (SUCCEEDED)](../../docs/screenshots/masked/uc19-demo/step-functions-graph-view.png)
+![Step Functions Graph View (SUCCEEDED)](../../../../docs/screenshots/masked/uc19-demo/step-functions-graph-view.png)
 
 
 ## 清理
@@ -109,3 +109,10 @@ aws cloudformation wait stack-delete-complete --stack-name fsxn-adtech-demo --re
 ---
 
 *本文档是技术演示视频的制作指南。*
+
+---
+
+## 相关文档
+
+> 部署或运行出现问题时，请参阅通用[部署指南](../../../../docs/en/deployment-guide.md#troubleshooting)。
+> 其中按症状归纳了常见部署错误，以及“执行成功但结果为空”的情况。

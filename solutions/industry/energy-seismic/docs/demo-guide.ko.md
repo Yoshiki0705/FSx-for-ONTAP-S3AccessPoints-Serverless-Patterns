@@ -176,7 +176,7 @@ Phase 7 UC15/16/17과 UC6/11/14의 데모와 동일한 방침으로, **최종 �
 
 #### UC8 Step Functions Graph view(SUCCEEDED)
 
-![UC8 Step Functions Graph view(SUCCEEDED)](../../docs/screenshots/masked/uc8-demo/uc8-stepfunctions-graph.png)
+![UC8 Step Functions Graph view(SUCCEEDED)](../../../../docs/screenshots/masked/uc8-demo/uc8-stepfunctions-graph.png)
 
 Step Functions Graph view는 각 Lambda / Parallel / Map 상태의 실행 상황을
 색으로 시각화하는 최종 사용자 최중요 화면.
@@ -185,13 +185,13 @@ Step Functions Graph view는 각 Lambda / Parallel / Map 상태의 실행 상황
 
 #### UC8 Step Functions Graph(SUCCEEDED — Phase 8 IAM 수정 후 재촬영)
 
-![UC8 Step Functions Graph(SUCCEEDED)](../../docs/screenshots/masked/uc8-demo/step-functions-graph-succeeded.png)
+![UC8 Step Functions Graph(SUCCEEDED)](../../../../docs/screenshots/masked/uc8-demo/step-functions-graph-succeeded.png)
 
 IAM S3AP 수정 후 재배포. 모든 스텝 SUCCEEDED(2:59).
 
 #### UC8 Step Functions Graph(줌 표시 — 각 스텝 상세)
 
-![UC8 Step Functions Graph(줌 표시)](../../docs/screenshots/masked/uc8-demo/step-functions-graph-zoomed.png)
+![UC8 Step Functions Graph(줌 표시)](../../../../docs/screenshots/masked/uc8-demo/step-functions-graph-zoomed.png)
 
 ### 재검증 시 UI/UX 대상 화면(권장 촬영 목록)
 
@@ -223,3 +223,10 @@ IAM S3AP 수정 후 재배포. 모든 스텝 SUCCEEDED(2:59).
 5. **정리**:
    - `bash scripts/cleanup_generic_ucs.sh UC8`로 삭제
    - VPC Lambda ENI 해제에 15-30분(AWS 사양)
+
+---
+
+## 관련 문서
+
+> 배포나 실행에서 문제가 발생하면 공통 [배포 가이드](../../../../docs/en/deployment-guide.md#troubleshooting)를 참조하십시오.
+> 일반적인 배포 오류와 함께 "실행은 성공했지만 결과가 비어 있는" 증상을 증상별로 정리해 두었습니다.

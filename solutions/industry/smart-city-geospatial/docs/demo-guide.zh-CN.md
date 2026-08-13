@@ -131,8 +131,8 @@ sam deploy \
 - Bedrock 报告以 Markdown（`text/markdown; charset=utf-8`）形式写出，因此可通过 SMB/NFS
   客户端的文本编辑器直接查看
 - AWS 规范上的限制请参见
-  [项目 README 的"AWS 规范上的限制与规避措施"部分](../../README.md#aws-仕様上の制約と回避策)
-  以及 [`docs/output-destination-patterns.md`](../../docs/output-destination-patterns.md)
+  [项目 README 的"AWS 规范上的限制与规避措施"部分](../README.md#aws-仕様上の制約と回避策)
+  以及 [`docs/output-destination-patterns.md`](../../../../docs/output-destination-patterns.md)
 
 ---
 
@@ -149,11 +149,11 @@ sam deploy \
 
 ### 现有截图（Phase 7 验证时）
 
-![Step Functions Graph view（SUCCEEDED）](../../docs/screenshots/masked/uc17-demo/step-functions-graph-succeeded.png)
+![Step Functions Graph view（SUCCEEDED）](../../../../docs/screenshots/masked/uc17-demo/step-functions-graph-succeeded.png)
 
-![S3 输出存储桶](../../docs/screenshots/masked/uc17-demo/s3-output-bucket.png)
+![S3 输出存储桶](../../../../docs/screenshots/masked/uc17-demo/s3-output-bucket.png)
 
-![DynamoDB landuse_history 表](../../docs/screenshots/masked/uc17-demo/dynamodb-landuse-history-table.png)
+![DynamoDB landuse_history 表](../../../../docs/screenshots/masked/uc17-demo/dynamodb-landuse-history-table.png)
 ### 重新验证时的 UI/UX 目标界面（推荐截图列表）
 
 - S3 输出存储桶（tiles/、land-use/、change-detection/、risk-maps/、reports/）
@@ -186,3 +186,10 @@ sam deploy \
 5. **清理**：
    - 通过 `bash scripts/cleanup_generic_ucs.sh UC17` 删除
    - VPC Lambda ENI 释放需要 15-30 分钟（AWS 规范）
+
+---
+
+## 相关文档
+
+> 部署或运行出现问题时，请参阅通用[部署指南](../../../../docs/en/deployment-guide.md#troubleshooting)。
+> 其中按症状归纳了常见部署错误，以及“执行成功但结果为空”的情况。

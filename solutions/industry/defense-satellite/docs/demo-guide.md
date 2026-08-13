@@ -178,6 +178,9 @@ A. SageMaker Endpoint は実運用時のみ有効化（`EnableSageMaker=true`）
 | SNS 通知が届かない | メールサブスクリプション未確認 | SNS サブスクリプションの確認メールを承認する |
 | デプロイ時 `ROLLBACK_COMPLETE` | パラメータ不足・権限不足 | CloudFormation イベントでエラー詳細を確認 |
 
+> デプロイや実行でつまずいたときは、パターン共通の[デプロイガイド](../../../../docs/ja/deployment-guide.md#トラブルシューティング)を参照。
+> よくあるデプロイエラーに加えて、「実行は成功するのに結果が空になる」系の症状を症状別にまとめてある。
+
 ---
 
 ## 出力先について: OutputDestination で選択可能 (Pattern B)
@@ -228,8 +231,8 @@ sam deploy \
 - ChangeDetection Lambda は DynamoDB のみを使用するため `OutputDestination` の影響を受けません
 - AlertGeneration Lambda は SNS のみを使用するため `OutputDestination` の影響を受けません
 - AWS 仕様上の制約は
-  [プロジェクト README の "AWS 仕様上の制約と回避策" セクション](../../README.md#aws-仕様上の制約と回避策)
-  および [`docs/output-destination-patterns.md`](../../docs/output-destination-patterns.md) を参照
+  [プロジェクト README の "AWS 仕様上の制約と回避策" セクション](../README.md#aws-仕様上の制約と回避策)
+  および [`docs/output-destination-patterns.md`](../../../../docs/output-destination-patterns.md) を参照
 
 ---
 
@@ -269,15 +272,15 @@ Phase 7 UC15/16/17 と UC6/11/14 のデモと同じ方針で、**エンドユー
 
 ### 既存スクリーンショット（Phase 7 検証時）
 
-![Step Functions Graph view（SUCCEEDED）](../../docs/screenshots/masked/uc15-demo/step-functions-graph-succeeded.png)
+![Step Functions Graph view（SUCCEEDED）](../../../../docs/screenshots/masked/uc15-demo/step-functions-graph-succeeded.png)
 
-![S3 出力バケット](../../docs/screenshots/masked/uc15-demo/s3-output-bucket.png)
+![S3 出力バケット](../../../../docs/screenshots/masked/uc15-demo/s3-output-bucket.png)
 
-![S3 Enriched 出力](../../docs/screenshots/masked/uc15-demo/s3-enriched-output.png)
+![S3 Enriched 出力](../../../../docs/screenshots/masked/uc15-demo/s3-enriched-output.png)
 
-![DynamoDB 変更履歴テーブル](../../docs/screenshots/masked/uc15-demo/dynamodb-change-history-table.png)
+![DynamoDB 変更履歴テーブル](../../../../docs/screenshots/masked/uc15-demo/dynamodb-change-history-table.png)
 
-![SNS 通知トピック](../../docs/screenshots/masked/uc15-demo/sns-notification-topics.png)
+![SNS 通知トピック](../../../../docs/screenshots/masked/uc15-demo/sns-notification-topics.png)
 
 ### 再検証時の UI/UX 対象画面（推奨撮影リスト）
 

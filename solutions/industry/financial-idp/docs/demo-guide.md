@@ -193,8 +193,8 @@ sam deploy \
 ```
 
 AWS 仕様上の制約については
-[プロジェクト README の "AWS 仕様上の制約と回避策" セクション](../../README.md#aws-仕様上の制約と回避策)
-および [`docs/output-destination-patterns.md`](../../docs/output-destination-patterns.md) を参照。
+[プロジェクト README の "AWS 仕様上の制約と回避策" セクション](../README.md#aws-仕様上の制約と回避策)
+および [`docs/output-destination-patterns.md`](../../../../docs/output-destination-patterns.md) を参照。
 
 ---
 
@@ -213,14 +213,14 @@ Phase 7 UC15/16/17 と UC6/11/14 のデモと同じ方針で、**エンドユー
 
 #### UC2 Step Functions Graph view（SUCCEEDED）
 
-![UC2 Step Functions Graph view（SUCCEEDED）](../../docs/screenshots/masked/uc2-demo/uc2-stepfunctions-graph.png)
+![UC2 Step Functions Graph view（SUCCEEDED）](../../../../docs/screenshots/masked/uc2-demo/uc2-stepfunctions-graph.png)
 
 Step Functions Graph view は各 Lambda / Parallel / Map ステートの実行状況を
 色で可視化するエンドユーザー最重要画面。
 
 ### 既存スクリーンショット（Phase 1-6 から該当分）
 
-![UC2 Step Functions Graph view（SUCCEEDED）](../../docs/screenshots/masked/uc2-demo/step-functions-graph-succeeded.png)
+![UC2 Step Functions Graph view（SUCCEEDED）](../../../../docs/screenshots/masked/uc2-demo/step-functions-graph-succeeded.png)
 
 ### 再検証時の UI/UX 対象画面（推奨撮影リスト）
 
@@ -409,5 +409,12 @@ aws cloudformation wait stack-delete-complete --stack-name "${STACK_NAME}"
 
 ### 参考
 
-- [FlexClone Serverless Patterns ガイド](../../docs/guides/flexclone-serverless-patterns.md)
+- [FlexClone Serverless Patterns ガイド](../../../../docs/guides/flexclone-serverless-patterns.md)
 - [AWS Blog: Accelerate development refresh cycles with FSx for ONTAP cloning](https://aws.amazon.com/blogs/storage/accelerate-development-refresh-cycles-and-optimize-cost-with-amazon-fsx-for-netapp-ontap-cloning/)
+
+---
+
+## 関連ドキュメント
+
+> デプロイや実行でつまずいたときは、パターン共通の[デプロイガイド](../../../../docs/ja/deployment-guide.md#トラブルシューティング)を参照。
+> よくあるデプロイエラーに加えて、「実行は成功するのに結果が空になる」系の症状を症状別にまとめてある。

@@ -14,8 +14,12 @@ S3 AP 接続性バリデーション (Requirement 13.5):
 Environment Variables:
     S3_ACCESS_POINT: S3 AP Alias or ARN (入力読み取り用)
     S3_ACCESS_POINT_OUTPUT: S3 AP Alias or ARN (出力書き込み用)
-    GRANT_APPLICATION_PREFIX: 助成金申請書プレフィックス (default: "grant-applications/")
-    ACTIVITY_REPORT_PREFIX: 活動報告書プレフィックス (default: "activity-reports/")
+    GRANT_APPLICATION_PREFIX: 助成金申請書プレフィックス
+        （template.yaml の GrantPrefix から渡る。未設定時の保険が
+        "grant-applications/"）
+    ACTIVITY_REPORT_PREFIX: 活動報告書プレフィックス
+        （template.yaml の OutcomePrefix から渡る。未設定時の保険が
+        "activity-reports/"）
 """
 
 from __future__ import annotations

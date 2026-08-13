@@ -95,7 +95,7 @@ aws s3 cp s3://${OUTPUT_BUCKET}/reports/${EXECUTION_ID}/asset-catalog.json \
 
 ## Capturas de pantalla
 
-![Step Functions Graph View (SUCCEEDED)](../../docs/screenshots/masked/uc19-demo/step-functions-graph-view.png)
+![Step Functions Graph View (SUCCEEDED)](../../../../docs/screenshots/masked/uc19-demo/step-functions-graph-view.png)
 
 
 ## Limpieza
@@ -109,3 +109,10 @@ aws cloudformation wait stack-delete-complete --stack-name fsxn-adtech-demo --re
 ---
 
 *Este documento sirve como guía de producción para videos de demostración de presentaciones técnicas.*
+
+---
+
+## Documentación relacionada
+
+> Si el despliegue o la ejecución fallan, consulte la [guía de despliegue](../../../../docs/en/deployment-guide.md#troubleshooting) común.
+> Recoge los errores de despliegue habituales y los síntomas de «ejecución correcta pero sin resultados».

@@ -182,7 +182,7 @@ dans la structure de répertoires du dossier de réclamation
 ```
 
 Pour les contraintes de spécification AWS et solutions de contournement, voir [la section "Contraintes de spécification AWS et solutions de contournement"
-du README du projet](../../README.md#aws-仕様上の制約と回避策).
+du README du projet](../README.md#aws-仕様上の制約と回避策).
 
 ### 1. Rapport de réclamation d'assurance — Résumé pour l'expert en évaluation
 
@@ -193,7 +193,7 @@ Jugement `MANUAL_REVIEW` + confiance 75%, l'expert examine les éléments non au
      Contenu: Rapport de réclamation d'assurance (ID réclamation, résumé dommages, corrélation devis, jugement recommandé)
             + Liste des labels détectés Rekognition + Résultats OCR Textract
      Masqué: ID compte, nom bucket -->
-![UC14: Rapport de réclamation d'assurance](../../docs/screenshots/masked/uc14-demo/uc14-claims-report.png)
+![UC14: Rapport de réclamation d'assurance](../../../../docs/screenshots/masked/uc14-demo/uc14-claims-report.png)
 
 ### 2. Bucket de sortie S3 — Vue d'ensemble des artefacts d'évaluation
 
@@ -203,7 +203,7 @@ Jugement `MANUAL_REVIEW` + confiance 75%, l'expert examine les éléments non au
 <!-- SCREENSHOT: uc14-s3-output-bucket.png
      Contenu: Console S3 avec préfixes assessments/, estimates/, reports/
      Masqué: ID compte -->
-![UC14: Bucket de sortie S3](../../docs/screenshots/masked/uc14-demo/uc14-s3-output-bucket.png)
+![UC14: Bucket de sortie S3](../../../../docs/screenshots/masked/uc14-demo/uc14-s3-output-bucket.png)
 
 ### Valeurs mesurées (Validation de déploiement AWS 2026-05-10)
 
@@ -212,3 +212,10 @@ Jugement `MANUAL_REVIEW` + confiance 75%, l'expert examine les éléments non au
 - **Textract** : OCR du PDF de devis via cross-region us-east-1, extraction `Total: 1270.00 USD`, etc.
 - **Artefacts générés** : assessments/*.json, estimates/*.json, reports/*.txt
 - **Stack réelle** : `fsxn-insurance-claims-demo` (ap-northeast-1, validation 2026-05-10)
+
+---
+
+## Documentation associée
+
+> En cas de problème de déploiement ou d'exécution, consultez le [guide de déploiement](../../../../docs/en/deployment-guide.md#troubleshooting) commun.
+> Il recense les erreurs de déploiement courantes ainsi que les symptômes « exécution réussie mais résultat vide ».

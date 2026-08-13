@@ -206,7 +206,7 @@ ORDER BY bounding_box_width DESC;
 
 与 Phase 7 UC15/16/17 相同的方针，拍摄**设计工程师在日常工作中实际看到的 UI/UX 画面**。
 排除 Step Functions 图表等面向技术人员的视图（详情参见
-[`docs/verification-results-phase7.md`](../../docs/verification-results-phase7.md)）。
+[`docs/phase7-summary.md`](../../../../docs/phase7-summary.md)）。
 
 ### 1. FSx for ONTAP Volumes — 设计文件用卷
 
@@ -215,7 +215,7 @@ ORDER BY bounding_box_width DESC;
 <!-- SCREENSHOT: uc6-fsx-volumes-list.png
      内容：FSx 控制台中的 ONTAP Volumes 列表（eda_demo_vol 等），Status=Created，Type=ONTAP
      掩码：账户 ID、SVM ID 的实际值、文件系统 ID -->
-![UC6: FSx Volumes 列表](../../docs/screenshots/masked/uc6-demo/uc6-fsx-volumes-list.png)
+![UC6: FSx Volumes 列表](../../../../docs/screenshots/masked/uc6-demo/uc6-fsx-volumes-list.png)
 
 ### 2. S3 输出存储桶 — 设计文档·分析结果列表
 
@@ -225,7 +225,7 @@ ORDER BY bounding_box_width DESC;
 <!-- SCREENSHOT: uc6-s3-output-bucket.png
      内容：S3 控制台中确认 bucket 的 top-level prefix
      掩码：账户 ID、存储桶名称前缀 -->
-![UC6: S3 输出存储桶](../../docs/screenshots/masked/uc6-demo/uc6-s3-output-bucket.png)
+![UC6: S3 输出存储桶](../../../../docs/screenshots/masked/uc6-demo/uc6-s3-output-bucket.png)
 
 ### 2. S3 输出存储桶 — 设计文档·分析结果列表
 
@@ -235,7 +235,7 @@ ORDER BY bounding_box_width DESC;
 <!-- SCREENSHOT: uc6-s3-output-bucket.png
      内容：S3 控制台中确认 bucket 的 top-level prefix
      掩码：账户 ID、存储桶名称前缀 -->
-![UC6: S3 输出存储桶](../../docs/screenshots/masked/uc6-demo/uc6-s3-output-bucket.png)
+![UC6: S3 输出存储桶](../../../../docs/screenshots/masked/uc6-demo/uc6-s3-output-bucket.png)
 
 ### 3. Athena 查询结果 — EDA 元数据的 SQL 分析
 
@@ -245,7 +245,7 @@ Workgroup 为 `fsxn-eda-uc6-workgroup`，数据库为 `fsxn-eda-uc6-db`。
 <!-- SCREENSHOT: uc6-athena-query-result.png
      内容：EDA 元数据表的 SELECT 结果（file_key、library_name、cell_count、bounding_box）
      掩码：账户 ID -->
-![UC6: Athena 查询结果](../../docs/screenshots/masked/uc6-demo/uc6-athena-query-result.png)
+![UC6: Athena 查询结果](../../../../docs/screenshots/masked/uc6-demo/uc6-athena-query-result.png)
 
 ### 4. Bedrock 生成的设计审查报告
 
@@ -266,7 +266,7 @@ Workgroup 为 `fsxn-eda-uc6-workgroup`，数据库为 `fsxn-eda-uc6-db`。
        - **Medium**：确认了 6 个命名规则违规。
        - **Low**：单元数分布和边界框异常值没有问题。
      掩码：账户 ID -->
-![UC6: Bedrock 设计审查报告](../../docs/screenshots/masked/uc6-demo/uc6-bedrock-design-review.png)
+![UC6: Bedrock 设计审查报告](../../../../docs/screenshots/masked/uc6-demo/uc6-bedrock-design-review.png)
 
 ### 实测值（2026-05-10 AWS 部署验证）
 
@@ -391,3 +391,10 @@ Workgroup 为 `fsxn-eda-uc6-workgroup`，数据库为 `fsxn-eda-uc6-db`。
 ---
 
 *本文档作为技术演示视频的制作指南而创建。*
+
+---
+
+## 相关文档
+
+> 部署或运行出现问题时，请参阅通用[部署指南](../../../../docs/en/deployment-guide.md#troubleshooting)。
+> 其中按症状归纳了常见部署错误，以及“执行成功但结果为空”的情况。

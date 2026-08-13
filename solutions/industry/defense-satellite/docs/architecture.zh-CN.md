@@ -115,4 +115,4 @@ UC15 在 2026-05-11 的更新中支持了 `OutputDestination` 参数。
 **受影响的 Lambda**: Tiling、ObjectDetection、GeoEnrichment（3 个函数）。  
 **不受影响的 Lambda**: Discovery（manifest 继续直接写入 S3AP）、ChangeDetection（仅 DynamoDB）、AlertGeneration（仅 SNS）。
 
-详情请参阅 [`docs/output-destination-patterns.md`](../../docs/output-destination-patterns.md)。
+详情请参阅 [`docs/output-destination-patterns.md`](../../../../docs/output-destination-patterns.md)。

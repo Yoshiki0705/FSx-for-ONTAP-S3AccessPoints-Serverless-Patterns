@@ -176,7 +176,7 @@ Phase 7 UC15/16/17 與 UC6/11/14 的示範採用相同方針，以**終端使用
 
 #### UC8 Step Functions Graph view（SUCCEEDED）
 
-![UC8 Step Functions Graph view（SUCCEEDED）](../../docs/screenshots/masked/uc8-demo/uc8-stepfunctions-graph.png)
+![UC8 Step Functions Graph view（SUCCEEDED）](../../../../docs/screenshots/masked/uc8-demo/uc8-stepfunctions-graph.png)
 
 Step Functions Graph view 以顏色視覺化各 Lambda / Parallel / Map 狀態的執行狀況，
 是終端使用者最重要的畫面。
@@ -185,13 +185,13 @@ Step Functions Graph view 以顏色視覺化各 Lambda / Parallel / Map 狀態�
 
 #### UC8 Step Functions Graph（SUCCEEDED — Phase 8 IAM 修正後重新拍攝）
 
-![UC8 Step Functions Graph（SUCCEEDED）](../../docs/screenshots/masked/uc8-demo/step-functions-graph-succeeded.png)
+![UC8 Step Functions Graph（SUCCEEDED）](../../../../docs/screenshots/masked/uc8-demo/step-functions-graph-succeeded.png)
 
 IAM S3AP 修正後重新部署。所有步驟 SUCCEEDED（2:59）。
 
 #### UC8 Step Functions Graph（放大顯示 — 各步驟詳細）
 
-![UC8 Step Functions Graph（放大顯示）](../../docs/screenshots/masked/uc8-demo/step-functions-graph-zoomed.png)
+![UC8 Step Functions Graph（放大顯示）](../../../../docs/screenshots/masked/uc8-demo/step-functions-graph-zoomed.png)
 
 ### 重新驗證時的 UI/UX 目標畫面（建議拍攝清單）
 
@@ -223,3 +223,10 @@ IAM S3AP 修正後重新部署。所有步驟 SUCCEEDED（2:59）。
 5. **清理**：
    - `bash scripts/cleanup_generic_ucs.sh UC8` 刪除
    - VPC Lambda ENI 釋放需 15-30 分鐘（AWS 規格）
+
+---
+
+## 相關文件
+
+> 部署或執行發生問題時，請參閱通用[部署指南](../../../../docs/en/deployment-guide.md#troubleshooting)。
+> 其中依症狀整理了常見部署錯誤，以及「執行成功但結果為空」的情況。

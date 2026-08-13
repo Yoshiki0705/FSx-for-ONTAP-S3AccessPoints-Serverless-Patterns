@@ -181,7 +181,7 @@ visualizar los JSON de etiquetas generadas automáticamente dentro de la estruct
   ...
 ```
 
-Para las restricciones de especificación de AWS y soluciones alternativas, consulte [la sección "Restricciones de especificación de AWS y soluciones alternativas" del README del proyecto](../../README.md#aws-仕様上の制約と回避策).
+Para las restricciones de especificación de AWS y soluciones alternativas, consulte [la sección "Restricciones de especificación de AWS y soluciones alternativas" del README del proyecto](../README.md#aws-仕様上の制約と回避策).
 
 ### 1. Resultados de etiquetado automático de imágenes de productos
 
@@ -191,7 +191,7 @@ Resultados de análisis de IA que recibe el administrador de comercio electróni
 <!-- SCREENSHOT: uc11-product-tags.png
      内容: 商品画像 + AI 検出タグ一覧（信頼度つき）
      マスク: アカウント ID、バケット名 -->
-![UC11: Etiquetas de productos](../../docs/screenshots/masked/uc11-demo/uc11-product-tags.png)
+![UC11: Etiquetas de productos](../../../../docs/screenshots/masked/uc11-demo/uc11-product-tags.png)
 
 ### 2. Bucket de salida S3 — Vista general de resultados de etiquetas y verificación de calidad
 
@@ -201,7 +201,7 @@ Se generan JSON por producto en 2 prefijos: `tags/` y `quality/`.
 <!-- SCREENSHOT: uc11-s3-output-bucket.png
      内容: S3 コンソールで tags/, quality/ プレフィックス
      マスク: アカウント ID -->
-![UC11: Bucket de salida S3](../../docs/screenshots/masked/uc11-demo/uc11-s3-output-bucket.png)
+![UC11: Bucket de salida S3](../../../../docs/screenshots/masked/uc11-demo/uc11-s3-output-bucket.png)
 
 ### Valores medidos (Verificación de despliegue AWS 2026-05-10)
 
@@ -209,3 +209,10 @@ Se generan JSON por producto en 2 prefijos: `tags/` y `quality/`.
 - **Rekognition**: Detección de 7 etiquetas en imagen real (confianza máxima 99.93%)
 - **JSON generados**: tags/*.json (~750 bytes), quality/*.json (~420 bytes)
 - **Stack real**: `fsxn-retail-catalog-demo` (ap-northeast-1, verificación del 2026-05-10)
+
+---
+
+## Documentación relacionada
+
+> Si el despliegue o la ejecución fallan, consulte la [guía de despliegue](../../../../docs/en/deployment-guide.md#troubleshooting) común.
+> Recoge los errores de despliegue habituales y los síntomas de «ejecución correcta pero sin resultados».

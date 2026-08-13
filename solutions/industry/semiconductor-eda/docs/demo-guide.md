@@ -204,7 +204,7 @@ ORDER BY bounding_box_width DESC;
 
 Phase 7 UC15/16/17 と同じ方針で、**設計エンジニアが日常業務で実際に目にする UI/UX 画面**を
 撮影。Step Functions グラフのような技術者向けビューは除外（詳細は
-[`docs/verification-results-phase7.md`](../../docs/verification-results-phase7.md) 参照）。
+[`docs/phase7-summary.md`](../../../../docs/phase7-summary.md) 参照）。
 
 ### 1. FSx for ONTAP Volumes — 設計ファイル用ボリューム
 
@@ -214,7 +214,7 @@ NTFS ACL で管理された状態で配置。
 <!-- SCREENSHOT: uc6-fsx-volumes-list.png
      内容: FSx コンソールで ONTAP Volumes 一覧（eda_demo_vol 等）、Status=Created、Type=ONTAP
      マスク: アカウント ID、SVM ID の実値、ファイルシステム ID -->
-![UC6: FSx Volumes 一覧](../../docs/screenshots/masked/uc6-demo/uc6-fsx-volumes-list.png)
+![UC6: FSx Volumes 一覧](../../../../docs/screenshots/masked/uc6-demo/uc6-fsx-volumes-list.png)
 
 ### 2. S3 出力バケット — 設計ドキュメント・分析結果の一覧
 
@@ -224,7 +224,7 @@ NTFS ACL で管理された状態で配置。
 <!-- SCREENSHOT: uc6-s3-output-bucket.png
      内容: S3 コンソールで bucket の top-level prefix を確認
      マスク: アカウント ID、バケット名プレフィックス -->
-![UC6: S3 出力バケット](../../docs/screenshots/masked/uc6-demo/uc6-s3-output-bucket.png)
+![UC6: S3 出力バケット](../../../../docs/screenshots/masked/uc6-demo/uc6-s3-output-bucket.png)
 
 ### 2. S3 出力バケット — 設計ドキュメント・分析結果の一覧
 
@@ -234,7 +234,7 @@ NTFS ACL で管理された状態で配置。
 <!-- SCREENSHOT: uc6-s3-output-bucket.png
      内容: S3 コンソールで bucket の top-level prefix を確認
      マスク: アカウント ID、バケット名プレフィックス -->
-![UC6: S3 出力バケット](../../docs/screenshots/masked/uc6-demo/uc6-s3-output-bucket.png)
+![UC6: S3 出力バケット](../../../../docs/screenshots/masked/uc6-demo/uc6-s3-output-bucket.png)
 
 ### 3. Athena クエリ結果 — EDA メタデータの SQL 分析
 
@@ -244,7 +244,7 @@ Workgroup は `fsxn-eda-uc6-workgroup`、データベースは `fsxn-eda-uc6-db`
 <!-- SCREENSHOT: uc6-athena-query-result.png
      内容: EDA メタデータ表の SELECT 結果（file_key、library_name、cell_count、bounding_box）
      マスク: アカウント ID -->
-![UC6: Athena クエリ結果](../../docs/screenshots/masked/uc6-demo/uc6-athena-query-result.png)
+![UC6: Athena クエリ結果](../../../../docs/screenshots/masked/uc6-demo/uc6-athena-query-result.png)
 
 ### 4. Bedrock 生成の設計レビューレポート
 
@@ -265,7 +265,7 @@ Physical Design Lead 向けの日本語レビューレポートを生成する�
        - **Medium**: 命名規則違反が6件確認されました。
        - **Low**: セル数分布やバウンディングボックス外れ値に問題はありません。
      マスク: アカウント ID -->
-![UC6: Bedrock 設計レビューレポート](../../docs/screenshots/masked/uc6-demo/uc6-bedrock-design-review.png)
+![UC6: Bedrock 設計レビューレポート](../../../../docs/screenshots/masked/uc6-demo/uc6-bedrock-design-review.png)
 
 ### 実測値（2026-05-10 AWS デプロイ検証）
 
@@ -547,5 +547,12 @@ aws cloudformation wait stack-delete-complete --stack-name "${STACK_NAME}"
 
 ### 参考
 
-- [FlexClone Serverless Patterns ガイド](../../docs/guides/flexclone-serverless-patterns.md)
+- [FlexClone Serverless Patterns ガイド](../../../../docs/guides/flexclone-serverless-patterns.md)
 - [AWS Guidance: Scaling Electronic Design Automation on AWS](https://aws.amazon.com/solutions/guidance/scaling-electronic-design-automation-on-aws/)
+
+---
+
+## 関連ドキュメント
+
+> デプロイや実行でつまずいたときは、パターン共通の[デプロイガイド](../../../../docs/ja/deployment-guide.md#トラブルシューティング)を参照。
+> よくあるデプロイエラーに加えて、「実行は成功するのに結果が空になる」系の症状を症状別にまとめてある。

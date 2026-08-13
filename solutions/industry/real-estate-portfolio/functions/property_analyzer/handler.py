@@ -33,6 +33,7 @@ import boto3
 from shared.exceptions import lambda_error_handler
 from shared.observability import EmfMetrics, trace_lambda_handler
 from shared.retry_handler import RetryConfig, categorize_error, retry_with_backoff
+from shared.s3ap_helper import S3ApHelper
 
 logger = logging.getLogger(__name__)
 
@@ -111,6 +112,7 @@ def analyze_image_rekognition(
     object_key: str,
     confidence_threshold: float,
     rekognition_client=None,
+    s3ap=None,
 ) -> dict:
     """Rekognition で物件画像を分析する。
 
@@ -125,11 +127,18 @@ def analyze_image_rekognition(
     """
     if rekognition_client is None:
         rekognition_client = boto3.client("rekognition")
+    if s3ap is None:
+        s3ap = S3ApHelper(s3ap_alias)
+
+    # Rekognition は FSx for ONTAP の S3 AP 上のオブジェクトを S3Object 参照では読めない
+    # （InvalidS3ObjectException: Unable to get object metadata from S3。AP ポリシーで
+    # サービスプリンシパルを許可しても解消しない）。AP から bytes を取得して inline で渡す。
+    image_bytes = s3ap.get_object_bytes(key=object_key)
 
     @retry_with_backoff(config=RetryConfig(max_attempts=3))
     def _detect_labels():
         return rekognition_client.detect_labels(
-            Image={"S3Object": {"Bucket": s3ap_alias, "Name": object_key}},
+            Image={"Bytes": image_bytes},
             MinConfidence=confidence_threshold,
             MaxLabels=100,
         )
@@ -137,7 +146,7 @@ def analyze_image_rekognition(
     @retry_with_backoff(config=RetryConfig(max_attempts=3))
     def _detect_text():
         return rekognition_client.detect_text(
-            Image={"S3Object": {"Bucket": s3ap_alias, "Name": object_key}},
+            Image={"Bytes": image_bytes},
         )
 
     # ラベル検出
@@ -284,7 +293,9 @@ def handler(event, context):
     s3ap_alias = os.environ.get("S3_ACCESS_POINT", "")
     confidence_threshold = float(os.environ.get("CONFIDENCE_THRESHOLD", "80"))
 
-    objects = event.get("objects", [])
+    # Map は配列要素を 1 件ずつ渡す。詳細は contract_extractor の同じ箇所を参照。
+    single_item = "objects" not in event
+    objects = [event] if single_item else event.get("objects", [])
     logger.info(
         "Property analysis started: %d objects, threshold=%.1f%%",
         len(objects),
@@ -361,6 +372,10 @@ def handler(event, context):
     metrics.put_metric("SuccessCount", float(success_count), "Count")
     metrics.put_metric("ErrorCount", float(error_count), "Count")
     metrics.flush()
+
+    if single_item:
+        # report は status を持つ per-object dict の平坦な配列を期待している。
+        return results[0]
 
     return {
         "results": results,

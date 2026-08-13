@@ -173,18 +173,18 @@ Siguiendo la misma política que las demostraciones de Phase 7 UC15/16/17 y UC6/
 
 #### UC13 Step Functions Graph view (SUCCEEDED)
 
-![UC13 Step Functions Graph view (SUCCEEDED)](../../docs/screenshots/masked/uc13-demo/uc13-stepfunctions-graph.png)
+![UC13 Step Functions Graph view (SUCCEEDED)](../../../../docs/screenshots/masked/uc13-demo/uc13-stepfunctions-graph.png)
 
 Step Functions Graph view es la pantalla más importante para el usuario final que visualiza
 el estado de ejecución de cada Lambda / Parallel / Map state mediante colores.
 
 ### Capturas de pantalla existentes (correspondientes de Phase 1-6)
 
-![UC13 Step Functions Graph view (SUCCEEDED)](../../docs/screenshots/masked/uc13-demo/step-functions-graph-succeeded.png)
+![UC13 Step Functions Graph view (SUCCEEDED)](../../../../docs/screenshots/masked/uc13-demo/step-functions-graph-succeeded.png)
 
-![UC13 Step Functions Graph (vista general completa)](../../docs/screenshots/masked/uc13-demo/step-functions-graph-overview.png)
+![UC13 Step Functions Graph (vista general completa)](../../../../docs/screenshots/masked/uc13-demo/step-functions-graph-overview.png)
 
-![UC13 Step Functions Graph (vista ampliada — detalle de cada paso)](../../docs/screenshots/masked/uc13-demo/step-functions-graph-zoomed.png)
+![UC13 Step Functions Graph (vista ampliada — detalle de cada paso)](../../../../docs/screenshots/masked/uc13-demo/step-functions-graph-zoomed.png)
 
 ### Pantallas de UI/UX objetivo en re-verificación (lista de captura recomendada)
 
@@ -216,3 +216,10 @@ el estado de ejecución de cada Lambda / Parallel / Map state mediante colores.
 5. **Limpieza**:
    - Eliminar con `bash scripts/cleanup_generic_ucs.sh UC13`
    - Liberación de ENI de Lambda VPC en 15-30 minutos (especificación de AWS)
+
+---
+
+## Documentación relacionada
+
+> Si el despliegue o la ejecución fallan, consulte la [guía de despliegue](../../../../docs/en/deployment-guide.md#troubleshooting) común.
+> Recoge los errores de despliegue habituales y los síntomas de «ejecución correcta pero sin resultados».

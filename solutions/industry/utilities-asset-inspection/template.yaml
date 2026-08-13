@@ -132,10 +132,10 @@ Parameters:
     Default: "inspections/scada/"
     Description: SCADA データファイルのプレフィックス
 
-  ThermalImagePrefix:
-    Type: String
-    Default: "inspections/thermal/"
-    Description: 熱画像ファイルのプレフィックス
+  # ThermalImagePrefix は削除した。discovery はサーマル画像をドローン画像プレフィックス
+  # 配下の FLIR 拡張子（.fff / .seq）で判別するので、独立したプレフィックスを受け取る
+  # 実装が無い。宣言されているのに効かないパラメータは「設定したのに反映されない」
+  # という形で操作した人に現れるため残さない。
 
   DefectConfidenceThreshold:
     Type: Number
@@ -308,6 +308,13 @@ Resources:
                   - s3:PutObject
                 Resource:
                   - !Sub "arn:aws:s3:::${S3AccessPointOutputAlias}/*"
+                  # FSx for ONTAP の S3 AP は bucket 形式の ARN では認可されない。読み取り側だけ
+                  # accesspoint 形式が併記されていたため、S3 AP への書き込みが AccessDenied に
+                  # なっていた（UC28 の実行で確認）。
+                  - !If
+                    - HasS3AccessPointName
+                    - !Sub "arn:aws:s3:${AWS::Region}:${AWS::AccountId}:accesspoint/${S3AccessPointName}/object/*"
+                    - !Ref AWS::NoValue
               - Sid: SecretsManager
                 Effect: Allow
                 Action:
@@ -347,6 +354,13 @@ Resources:
                   - s3:GetObject
                 Resource:
                   - !Sub "arn:aws:s3:::${S3AccessPointAlias}/*"
+                  # FSx for ONTAP の S3 AP は bucket 形式の ARN では認可されない。ハンドラが自分で
+                  # bytes を取得するようになったため（Rekognition/Textract が S3Object 参照で読めない）
+                  # 読み取り側にも accesspoint 形式が必要になった。無いと HeadObject が 403 になる。
+                  - !If
+                    - HasS3AccessPointName
+                    - !Sub "arn:aws:s3:${AWS::Region}:${AWS::AccountId}:accesspoint/${S3AccessPointName}/object/*"
+                    - !Ref AWS::NoValue
               - Sid: S3AccessPointOutput
                 Effect: Allow
                 Action:
@@ -355,6 +369,13 @@ Resources:
                   - !Sub "arn:aws:s3:::${S3AccessPointOutputAlias}/*"
               # Rekognition does not support resource-level IAM policies (Resource: "*" is required)
               # See: https://docs.aws.amazon.com/rekognition/latest/dg/security_iam_service-with-iam.html
+                  # FSx for ONTAP の S3 AP は bucket 形式の ARN では認可されない。読み取り側だけ
+                  # accesspoint 形式が併記されていたため、S3 AP への書き込みが AccessDenied に
+                  # なっていた（UC28 の実行で確認）。
+                  - !If
+                    - HasS3AccessPointName
+                    - !Sub "arn:aws:s3:${AWS::Region}:${AWS::AccountId}:accesspoint/${S3AccessPointName}/object/*"
+                    - !Ref AWS::NoValue
               - Sid: Rekognition
                 Effect: Allow
                 Action:
@@ -402,12 +423,26 @@ Resources:
                   - s3:GetObject
                 Resource:
                   - !Sub "arn:aws:s3:::${S3AccessPointAlias}/*"
+                  # FSx for ONTAP の S3 AP は bucket 形式の ARN では認可されない。ハンドラが自分で
+                  # bytes を取得するようになったため（Rekognition/Textract が S3Object 参照で読めない）
+                  # 読み取り側にも accesspoint 形式が必要になった。無いと HeadObject が 403 になる。
+                  - !If
+                    - HasS3AccessPointName
+                    - !Sub "arn:aws:s3:${AWS::Region}:${AWS::AccountId}:accesspoint/${S3AccessPointName}/object/*"
+                    - !Ref AWS::NoValue
               - Sid: S3AccessPointOutput
                 Effect: Allow
                 Action:
                   - s3:PutObject
                 Resource:
                   - !Sub "arn:aws:s3:::${S3AccessPointOutputAlias}/*"
+                  # FSx for ONTAP の S3 AP は bucket 形式の ARN では認可されない。読み取り側だけ
+                  # accesspoint 形式が併記されていたため、S3 AP への書き込みが AccessDenied に
+                  # なっていた（UC28 の実行で確認）。
+                  - !If
+                    - HasS3AccessPointName
+                    - !Sub "arn:aws:s3:${AWS::Region}:${AWS::AccountId}:accesspoint/${S3AccessPointName}/object/*"
+                    - !Ref AWS::NoValue
               - Sid: Bedrock
                 Effect: Allow
                 Action:
@@ -449,6 +484,13 @@ Resources:
                   - s3:GetObject
                 Resource:
                   - !Sub "arn:aws:s3:::${S3AccessPointAlias}/*"
+                  # FSx for ONTAP の S3 AP は bucket 形式の ARN では認可されない。ハンドラが自分で
+                  # bytes を取得するようになったため（Rekognition/Textract が S3Object 参照で読めない）
+                  # 読み取り側にも accesspoint 形式が必要になった。無いと HeadObject が 403 になる。
+                  - !If
+                    - HasS3AccessPointName
+                    - !Sub "arn:aws:s3:${AWS::Region}:${AWS::AccountId}:accesspoint/${S3AccessPointName}/object/*"
+                    - !Ref AWS::NoValue
               - Sid: S3AccessPointOutput
                 Effect: Allow
                 Action:
@@ -457,6 +499,13 @@ Resources:
                   - !Sub "arn:aws:s3:::${S3AccessPointOutputAlias}/*"
               # Rekognition does not support resource-level IAM policies (Resource: "*" is required)
               # See: https://docs.aws.amazon.com/rekognition/latest/dg/security_iam_service-with-iam.html
+                  # FSx for ONTAP の S3 AP は bucket 形式の ARN では認可されない。読み取り側だけ
+                  # accesspoint 形式が併記されていたため、S3 AP への書き込みが AccessDenied に
+                  # なっていた（UC28 の実行で確認）。
+                  - !If
+                    - HasS3AccessPointName
+                    - !Sub "arn:aws:s3:${AWS::Region}:${AWS::AccountId}:accesspoint/${S3AccessPointName}/object/*"
+                    - !Ref AWS::NoValue
               - Sid: Rekognition
                 Effect: Allow
                 Action:
@@ -503,6 +552,13 @@ Resources:
                   - s3:PutObject
                 Resource:
                   - !Sub "arn:aws:s3:::${S3AccessPointOutputAlias}/*"
+                  # FSx for ONTAP の S3 AP は bucket 形式の ARN では認可されない。読み取り側だけ
+                  # accesspoint 形式が併記されていたため、S3 AP への書き込みが AccessDenied に
+                  # なっていた（UC28 の実行で確認）。
+                  - !If
+                    - HasS3AccessPointName
+                    - !Sub "arn:aws:s3:${AWS::Region}:${AWS::AccountId}:accesspoint/${S3AccessPointName}/object/*"
+                    - !Ref AWS::NoValue
               - Sid: SNS
                 Effect: Allow
                 Action:
@@ -543,8 +599,13 @@ Resources:
           S3_ACCESS_POINT: !Ref S3AccessPointAlias
           S3_ACCESS_POINT_OUTPUT: !Ref S3AccessPointOutputAlias
           DRONE_IMAGE_PREFIX: !Ref DroneImagePrefix
-          SCADA_DATA_PREFIX: !Ref ScadaDataPrefix
-          THERMAL_IMAGE_PREFIX: !Ref ThermalImagePrefix
+          # discovery が読むのは SCADA_LOG_PREFIX。以前は SCADA_DATA_PREFIX という
+          # 誰も読まない名前で渡していたため、パラメータが効かずハンドラ側の既定値
+          # ("scada-logs/") が黙って使われていた。
+          SCADA_LOG_PREFIX: !Ref ScadaDataPrefix
+          # THERMAL_IMAGE_PREFIX は渡していたが誰も読まない。discovery はサーマル画像を
+          # ドローン画像プレフィックス配下の FLIR 拡張子（.fff / .seq）で判別するため、
+          # 独立したプレフィックスという概念が実装に存在しない。
           ONTAP_SECRET_NAME: !Ref OntapSecretName
           ONTAP_MANAGEMENT_IP: !Ref OntapManagementIp
           SVM_UUID: !Ref SvmUuid

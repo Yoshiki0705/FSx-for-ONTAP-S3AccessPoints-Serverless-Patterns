@@ -197,8 +197,8 @@ sam deploy \
 ```
 
 Para las restricciones de las especificaciones de AWS, consulte
-[la sección "Restricciones de especificaciones de AWS y soluciones alternativas" del README del proyecto](../../README.md#aws-仕様上の制約と回避策)
-y [`docs/output-destination-patterns.md`](../../docs/output-destination-patterns.md).
+[la sección "Restricciones de especificaciones de AWS y soluciones alternativas" del README del proyecto](../README.md#aws-仕様上の制約と回避策)
+y [`docs/output-destination-patterns.md`](../../../../docs/output-destination-patterns.md).
 
 ---
 
@@ -216,38 +216,38 @@ Siguiendo la misma política que las demostraciones de Phase 7 UC15/16/17 y UC6/
 
 #### Vista de gráfico de Step Functions de UC1 (SUCCEEDED)
 
-![Vista de gráfico de Step Functions de UC1 (SUCCEEDED)](../../docs/screenshots/masked/uc1-demo/uc1-stepfunctions-graph.png)
+![Vista de gráfico de Step Functions de UC1 (SUCCEEDED)](../../../../docs/screenshots/masked/uc1-demo/uc1-stepfunctions-graph.png)
 
 La vista de gráfico de Step Functions es la pantalla más importante para el usuario final que visualiza con colores el estado de ejecución de cada estado Lambda / Parallel / Map.
 
 #### Gráfico de Step Functions de UC1 (SUCCEEDED — Verificación de Phase 8 Theme D/E/N, 2:38:20)
 
-![Gráfico de Step Functions de UC1 (SUCCEEDED)](../../docs/screenshots/masked/uc1-demo/step-functions-graph-succeeded.png)
+![Gráfico de Step Functions de UC1 (SUCCEEDED)](../../../../docs/screenshots/masked/uc1-demo/step-functions-graph-succeeded.png)
 
 Ejecutado con Phase 8 Theme E (event-driven) + Theme N (observability) habilitados.
 549 iteraciones de ACL, 3871 eventos, todos los pasos SUCCEEDED en 2:38:20.
 
 #### Gráfico de Step Functions de UC1 (Vista ampliada — Detalle de cada paso)
 
-![Gráfico de Step Functions de UC1 (Vista ampliada)](../../docs/screenshots/masked/uc1-demo/step-functions-graph-zoomed.png)
+![Gráfico de Step Functions de UC1 (Vista ampliada)](../../../../docs/screenshots/masked/uc1-demo/step-functions-graph-zoomed.png)
 
 #### S3 Access Points para FSx for ONTAP de UC1 (Visualización de consola)
 
-![S3 Access Points para FSx for ONTAP de UC1](../../docs/screenshots/masked/uc1-demo/s3-access-points-for-fsx.png)
+![S3 Access Points para FSx for ONTAP de UC1](../../../../docs/screenshots/masked/uc1-demo/s3-access-points-for-fsx.png)
 
 #### Detalle de S3 Access Point de UC1 (Vista de resumen)
 
-![Detalle de S3 Access Point de UC1](../../docs/screenshots/masked/uc1-demo/s3ap-detail-overview.png)
+![Detalle de S3 Access Point de UC1](../../../../docs/screenshots/masked/uc1-demo/s3ap-detail-overview.png)
 
 ### Capturas de pantalla existentes (partes aplicables de Phase 1-6)
 
 #### Despliegue de stack de CloudFormation de UC1 completado (verificación del 2026-05-02)
 
-![Despliegue de stack de CloudFormation de UC1 completado (verificación del 2026-05-02)](../../docs/screenshots/masked/phase1/phase1-cloudformation-uc1-deployed.png)
+![Despliegue de stack de CloudFormation de UC1 completado (verificación del 2026-05-02)](../../../../docs/screenshots/masked/phase1/phase1-cloudformation-uc1-deployed.png)
 
 #### Step Functions de UC1 SUCCEEDED (ejecución E2E exitosa)
 
-![Step Functions de UC1 SUCCEEDED (ejecución E2E exitosa)](../../docs/screenshots/masked/phase1/phase1-step-functions-uc1-succeeded.png)
+![Step Functions de UC1 SUCCEEDED (ejecución E2E exitosa)](../../../../docs/screenshots/masked/phase1/phase1-step-functions-uc1-succeeded.png)
 
 
 ### Pantallas de UI/UX objetivo en reverificación (lista de captura recomendada)
@@ -316,3 +316,10 @@ El tiempo de procesamiento de UC1 es proporcional al número de archivos en el v
 - **Activador event-driven** (`EnableEventDriven=true`): Inicio automático al agregar archivos a S3AP
 - **CloudWatch Alarms** (`EnableCloudWatchAlarms=true`): Notificación automática de fallos de SFN + errores de Lambda
 - **Notificación de fallos de EventBridge**: Notificación push a SNS Topic en caso de fallo de ejecución
+
+---
+
+## Documentación relacionada
+
+> Si el despliegue o la ejecución fallan, consulte la [guía de despliegue](../../../../docs/en/deployment-guide.md#troubleshooting) común.
+> Recoge los errores de despliegue habituales y los síntomas de «ejecución correcta pero sin resultados».

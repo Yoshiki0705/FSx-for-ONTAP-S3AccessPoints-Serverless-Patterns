@@ -157,4 +157,4 @@ SageMaker Endpoint (持續存在，閒置時成本 $0)
 - **效果**: 冷啟動 1–3 秒 → 100–500ms
 - **限制**: 僅適用於 Published Versions($LATEST 無效)
 
-詳細資訊: [SnapStart 指南](../../docs/snapstart-guide.md)
+詳細資訊: [SnapStart 指南](../../../../docs/snapstart-guide.md)

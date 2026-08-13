@@ -177,26 +177,26 @@ Phase 7 UC15/16/17 與 UC6/11/14 的示範採用相同方針，以**終端使用
 
 #### UC7 Step Functions Graph view（SUCCEEDED）
 
-![UC7 Step Functions Graph view（SUCCEEDED）](../../docs/screenshots/masked/uc7-demo/uc7-stepfunctions-graph.png)
+![UC7 Step Functions Graph view（SUCCEEDED）](../../../../docs/screenshots/masked/uc7-demo/uc7-stepfunctions-graph.png)
 
 Step Functions Graph view 以顏色視覺化各 Lambda / Parallel / Map 狀態的執行狀況，
 是終端使用者最重要的畫面。
 
 #### UC7 Step Functions Graph（SUCCEEDED — Phase 8 Theme D 重新拍攝）
 
-![UC7 Step Functions Graph（SUCCEEDED）](../../docs/screenshots/masked/uc7-demo/step-functions-graph-succeeded.png)
+![UC7 Step Functions Graph（SUCCEEDED）](../../../../docs/screenshots/masked/uc7-demo/step-functions-graph-succeeded.png)
 
 IAM S3AP 修正後重新部署。所有步驟 SUCCEEDED（3:03）。
 
 #### UC7 Step Functions Graph（放大顯示 — 各步驟詳細）
 
-![UC7 Step Functions Graph（放大顯示）](../../docs/screenshots/masked/uc7-demo/step-functions-graph-zoomed.png)
+![UC7 Step Functions Graph（放大顯示）](../../../../docs/screenshots/masked/uc7-demo/step-functions-graph-zoomed.png)
 
 ### 既有螢幕截圖（來自 Phase 1-6 的相關部分）
 
 #### UC7 Comprehend Medical 基因體分析結果（Cross-Region us-east-1）
 
-![UC7 Comprehend Medical 基因體分析結果（Cross-Region us-east-1）](../../docs/screenshots/masked/phase2/phase2-comprehend-medical-genomics-analysis-fullpage.png)
+![UC7 Comprehend Medical 基因體分析結果（Cross-Region us-east-1）](../../../../docs/screenshots/masked/phase2/phase2-comprehend-medical-genomics-analysis-fullpage.png)
 
 
 ### 重新驗證時的 UI/UX 目標畫面（建議拍攝清單）
@@ -229,3 +229,10 @@ IAM S3AP 修正後重新部署。所有步驟 SUCCEEDED（3:03）。
 5. **清理**：
    - `bash scripts/cleanup_generic_ucs.sh UC7` 刪除
    - VPC Lambda ENI 釋放需 15-30 分鐘（AWS 規格）
+
+---
+
+## 相關文件
+
+> 部署或執行發生問題時，請參閱通用[部署指南](../../../../docs/en/deployment-guide.md#troubleshooting)。
+> 其中依症狀整理了常見部署錯誤，以及「執行成功但結果為空」的情況。

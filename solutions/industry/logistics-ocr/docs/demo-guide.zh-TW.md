@@ -200,8 +200,8 @@ sam deploy \
 - 強烈建議指定 `S3AccessPointName`（在 IAM 中同時允許 Alias 格式與 ARN 格式）
 - 物件大小上限為 50 GB（AWS 規格）。單次 PutObject 上限為 5 GB，因此超過 5 GB 必須使用多部分上傳
 - AWS 規格上的限制請參照
-  [專案 README 的「AWS 規格上的限制與因應對策」段落](../../README.md#aws-仕様上の制約と回避策)
-  以及 [`docs/output-destination-patterns.md`](../../docs/output-destination-patterns.md)
+  [專案 README 的「AWS 規格上的限制與因應對策」段落](../README.md#aws-仕様上の制約と回避策)
+  以及 [`docs/output-destination-patterns.md`](../../../../docs/output-destination-patterns.md)
 
 ---
 
@@ -221,16 +221,16 @@ sam deploy \
 
 #### UC12 Step Functions Graph view（SUCCEEDED）
 
-![UC12 Step Functions Graph view（SUCCEEDED）](../../docs/screenshots/masked/uc12-demo/uc12-stepfunctions-graph.png)
+![UC12 Step Functions Graph view（SUCCEEDED）](../../../../docs/screenshots/masked/uc12-demo/uc12-stepfunctions-graph.png)
 
 Step Functions Graph view 是以顏色視覺化各 Lambda / Parallel / Map 狀態執行狀況的
 終端使用者最重要畫面。
 
 ### 既有螢幕截圖（Phase 1-6 的相關部分）
 
-![UC12 Step Functions Graph view（SUCCEEDED）](../../docs/screenshots/masked/uc12-demo/step-functions-graph-succeeded.png)
+![UC12 Step Functions Graph view（SUCCEEDED）](../../../../docs/screenshots/masked/uc12-demo/step-functions-graph-succeeded.png)
 
-![UC12 Step Functions Graph（縮放顯示 — 各步驟詳細）](../../docs/screenshots/masked/uc12-demo/step-functions-graph-zoomed.png)
+![UC12 Step Functions Graph（縮放顯示 — 各步驟詳細）](../../../../docs/screenshots/masked/uc12-demo/step-functions-graph-zoomed.png)
 
 ### 重新驗證時的 UI/UX 對象畫面（建議拍攝清單）
 
@@ -262,3 +262,10 @@ Step Functions Graph view 是以顏色視覺化各 Lambda / Parallel / Map 狀�
 5. **清理**：
    - `bash scripts/cleanup_generic_ucs.sh UC12` 刪除
    - VPC Lambda ENI 釋放需 15-30 分鐘（AWS 規格）
+
+---
+
+## 相關文件
+
+> 部署或執行發生問題時，請參閱通用[部署指南](../../../../docs/en/deployment-guide.md#troubleshooting)。
+> 其中依症狀整理了常見部署錯誤，以及「執行成功但結果為空」的情況。

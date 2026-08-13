@@ -5,6 +5,7 @@ from __future__ import annotations
 import importlib.util
 import sys
 from pathlib import Path
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -140,3 +141,39 @@ class TestParseExperimentData:
         text = "\n".join([f"温度: {i}°C" for i in range(50)])
         result = parse_experiment_data(text)
         assert len(result["parameters"]) <= 20
+
+
+# ─── Step Functions Map の入力形状 ──────────────────────────────────────────
+# Map の ItemProcessor は配列要素を 1 件ずつ渡すので、handler の event は
+# {"objects": [...]} ではなく 1 オブジェクトになる。以前は objects しか読んで
+# いなかったためループが一度も回らず、1 件も処理しないまま SUCCEEDED を返して
+# いた（report の success_count / error_count がどちらも 0）。batch 形状しか
+# 渡していなかったユニットテストは緑のままだった。
+class TestMapItemInputShape:
+    """Map が渡す単一アイテム形状を handler が受け付けること。"""
+
+    def test_sds_extractor_accepts_a_single_map_item(self):
+        """1 件渡したら per-object 結果をそのまま返す（配列で包まない）。"""
+        with (
+            patch.object(_se_module, "extract_text_textract", return_value="SDS text"),
+            patch.object(_se_module, "extract_hazard_info_bedrock", return_value={}),
+        ):
+            out = _se_module.handler({"Key": "sds/a.pdf", "Size": 128}, MagicMock())
+        # report は status を持つ per-object dict の平坦な配列を期待する。
+        assert "status" in out, f"expected a per-object result, got keys={sorted(out)}"
+        assert "results" not in out, "single-item mode must not wrap the result in a list"
+
+    def test_sds_extractor_still_accepts_a_batch(self):
+        """後方互換: {"objects": [...]} 形式では従来の集約形状を返す。"""
+        with (
+            patch.object(_se_module, "extract_text_textract", return_value="SDS text"),
+            patch.object(_se_module, "extract_hazard_info_bedrock", return_value={}),
+        ):
+            out = _se_module.handler({"objects": [{"Key": "sds/a.pdf", "Size": 128}]}, MagicMock())
+        assert "results" in out and isinstance(out["results"], list)
+        assert out["success_count"] + out["error_count"] == 1
+
+    def test_labbook_analyzer_accepts_a_single_map_item(self):
+        out = _la_module.handler({"Key": "labbooks/a.png", "Size": 64}, MagicMock())
+        assert "status" in out
+        assert "results" not in out

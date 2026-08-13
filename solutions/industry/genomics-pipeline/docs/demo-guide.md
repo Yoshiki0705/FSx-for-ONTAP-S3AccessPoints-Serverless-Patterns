@@ -175,26 +175,26 @@ Phase 7 UC15/16/17 と UC6/11/14 のデモと同じ方針で、**エンドユー
 
 #### UC7 Step Functions Graph view（SUCCEEDED）
 
-![UC7 Step Functions Graph view（SUCCEEDED）](../../docs/screenshots/masked/uc7-demo/uc7-stepfunctions-graph.png)
+![UC7 Step Functions Graph view（SUCCEEDED）](../../../../docs/screenshots/masked/uc7-demo/uc7-stepfunctions-graph.png)
 
 Step Functions Graph view は各 Lambda / Parallel / Map ステートの実行状況を
 色で可視化するエンドユーザー最重要画面。
 
 #### UC7 Step Functions Graph（SUCCEEDED — Phase 8 Theme D 再撮影）
 
-![UC7 Step Functions Graph（SUCCEEDED）](../../docs/screenshots/masked/uc7-demo/step-functions-graph-succeeded.png)
+![UC7 Step Functions Graph（SUCCEEDED）](../../../../docs/screenshots/masked/uc7-demo/step-functions-graph-succeeded.png)
 
 IAM S3AP 修正後に再デプロイ。全ステップ SUCCEEDED（3:03）。
 
 #### UC7 Step Functions Graph（ズーム表示 — 各ステップ詳細）
 
-![UC7 Step Functions Graph（ズーム表示）](../../docs/screenshots/masked/uc7-demo/step-functions-graph-zoomed.png)
+![UC7 Step Functions Graph（ズーム表示）](../../../../docs/screenshots/masked/uc7-demo/step-functions-graph-zoomed.png)
 
 ### 既存スクリーンショット（Phase 1-6 から該当分）
 
 #### UC7 Comprehend Medical ゲノミクス解析結果（Cross-Region us-east-1）
 
-![UC7 Comprehend Medical ゲノミクス解析結果（Cross-Region us-east-1）](../../docs/screenshots/masked/phase2/phase2-comprehend-medical-genomics-analysis-fullpage.png)
+![UC7 Comprehend Medical ゲノミクス解析結果（Cross-Region us-east-1）](../../../../docs/screenshots/masked/phase2/phase2-comprehend-medical-genomics-analysis-fullpage.png)
 
 
 ### 再検証時の UI/UX 対象画面（推奨撮影リスト）
@@ -377,5 +377,12 @@ aws cloudformation wait stack-delete-complete --stack-name "${STACK_NAME}"
 
 ### 参考
 
-- [FlexClone Serverless Patterns ガイド](../../docs/guides/flexclone-serverless-patterns.md)
+- [FlexClone Serverless Patterns ガイド](../../../../docs/guides/flexclone-serverless-patterns.md)
 - [AWS Docs: Process files serverlessly using Lambda](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/tutorial-process-files-with-lambda.html)
+
+---
+
+## 関連ドキュメント
+
+> デプロイや実行でつまずいたときは、パターン共通の[デプロイガイド](../../../../docs/ja/deployment-guide.md#トラブルシューティング)を参照。
+> よくあるデプロイエラーに加えて、「実行は成功するのに結果が空になる」系の症状を症状別にまとめてある。

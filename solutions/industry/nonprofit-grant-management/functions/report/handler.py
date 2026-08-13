@@ -206,7 +206,15 @@ def handler(event, context):
     sns_topic_arn = os.environ.get("SNS_TOPIC_ARN", "")
 
     grant_results = event.get("grant_results", [])
-    outcome_results = event.get("outcome_results", [])
+    # 状態機械が置くのは $.outcome_result（単数）で、OutcomeMatching は Map ではなく
+    # 単一の Task なので中身は dict 1 件。以前は "outcome_results" だけを読んでいたため、
+    # 誰も置かないキーを見て常に空になり、成果報告の集計が黙って落ちていた。
+    # 下流は list を前提にしているので dict は 1 要素の list に包む。複数形も受け付ける。
+    outcome_result = event.get("outcome_result")
+    if isinstance(outcome_result, dict):
+        outcome_results = [outcome_result]
+    else:
+        outcome_results = outcome_result or event.get("outcome_results", [])
     discovery_info = event.get("discovery", {})
 
     logger.info(

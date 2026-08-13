@@ -146,17 +146,20 @@ Resources:
       FunctionName: !Sub "${AWS::StackName}-analyze"
       Handler: handler.handler
       CodeUri: functions/analyze/
+      # EnableBedrockSummary=false のとき、この文が唯一の文なので Statement 側で
+      # 落とすと Statement: [] になり IAM が "Syntax errors in policy" で拒否する。
+      # ポリシーごと落とす。
       Policies:
-        - Version: "2012-10-17"
-          Statement:
-            - !If
-              - IsBedrockEnabled
+        - !If
+          - IsBedrockEnabled
+          - Version: "2012-10-17"
+            Statement:
               - Effect: Allow
                 Action: [bedrock:InvokeModel]
                 Resource:
                   - !Sub "arn:aws:bedrock:${AWS::Region}::foundation-model/amazon.nova-lite-v1:0"
                   - !Sub "arn:aws:bedrock:${AWS::Region}:${AWS::AccountId}:inference-profile/us.amazon.nova-lite-v1:0"
-              - !Ref AWS::NoValue
+          - !Ref AWS::NoValue
 
   ReportFunction:
     Type: AWS::Serverless::Function

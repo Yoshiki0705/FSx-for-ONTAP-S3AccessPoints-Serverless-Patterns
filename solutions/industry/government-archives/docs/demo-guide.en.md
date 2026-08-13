@@ -162,8 +162,8 @@ allowing the entire chain to operate with a consistent destination.
 - FoiaDeadlineReminder Lambda uses only DynamoDB + SNS and is not affected
 - OpenSearch index is managed separately by the `OpenSearchMode` parameter (independent of `OutputDestination`)
 - For AWS specification constraints, see
-  [the "AWS Specification Constraints and Workarounds" section in the project README](../../README.en.md#key-s3-access-point-constraints)
-  and [`docs/output-destination-patterns.md`](../../docs/output-destination-patterns.md)
+  [the "AWS Specification Constraints and Workarounds" section in the project README](../README.en.md#key-s3-access-point-constraints)
+  and [`docs/output-destination-patterns.md`](../../../../docs/output-destination-patterns.md)
 
 ---
 
@@ -180,11 +180,11 @@ stack events, etc.) are consolidated in `docs/verification-results-*.md`.
 
 ### Existing Screenshots (Phase 7 verification)
 
-![Step Functions Graph view (SUCCEEDED)](../../docs/screenshots/masked/uc16-demo/step-functions-graph-succeeded.png)
+![Step Functions Graph view (SUCCEEDED)](../../../../docs/screenshots/masked/uc16-demo/step-functions-graph-succeeded.png)
 
-![S3 output bucket](../../docs/screenshots/masked/uc16-demo/s3-output-bucket.png)
+![S3 output bucket](../../../../docs/screenshots/masked/uc16-demo/s3-output-bucket.png)
 
-![DynamoDB retention table](../../docs/screenshots/masked/uc16-demo/dynamodb-retention-table.png)
+![DynamoDB retention table](../../../../docs/screenshots/masked/uc16-demo/dynamodb-retention-table.png)
 ### UI/UX Target Screens for Re-verification (Recommended Capture List)
 
 - S3 output bucket (ocr-results/, classified/, redacted/, compliance/)
@@ -219,3 +219,10 @@ stack events, etc.) are consolidated in `docs/verification-results-*.md`.
 5. **Cleanup**:
    - Delete with `bash scripts/cleanup_generic_ucs.sh UC16`
    - VPC Lambda ENI release takes 15-30 min (AWS specification)
+
+---
+
+## Related Documentation
+
+> If a deployment or a run misbehaves, see the shared [deployment guide](../../../../docs/en/deployment-guide.md#troubleshooting).
+> It lists the common deployment errors plus the "runs that succeed while producing nothing" symptoms by signature.

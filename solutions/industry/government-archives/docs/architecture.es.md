@@ -107,4 +107,4 @@ UC16 soporta el parámetro `OutputDestination` desde la actualización del 2026-
 **Lambdas no afectadas**: Discovery (manifest se escribe directamente en S3AP), ComplianceCheck (solo DynamoDB), FoiaDeadlineReminder (solo DynamoDB + SNS).  
 **Relación con OpenSearch**: El índice se gestiona independientemente mediante el parámetro `OpenSearchMode`, sin verse afectado por `OutputDestination`.
 
-Para más detalles, consulte [`docs/output-destination-patterns.md`](../../docs/output-destination-patterns.md).
+Para más detalles, consulte [`docs/output-destination-patterns.md`](../../../../docs/output-destination-patterns.md).

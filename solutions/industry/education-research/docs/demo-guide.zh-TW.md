@@ -175,18 +175,18 @@ Phase 7 UC15/16/17 與 UC6/11/14 的示範採用相同方針，以**終端使用
 
 #### UC13 Step Functions Graph view（SUCCEEDED）
 
-![UC13 Step Functions Graph view（SUCCEEDED）](../../docs/screenshots/masked/uc13-demo/uc13-stepfunctions-graph.png)
+![UC13 Step Functions Graph view（SUCCEEDED）](../../../../docs/screenshots/masked/uc13-demo/uc13-stepfunctions-graph.png)
 
 Step Functions Graph view 以顏色可視化各 Lambda / Parallel / Map 狀態的執行狀況，
 是終端使用者最重要的畫面。
 
 ### 既有截圖（來自 Phase 1-6 的相關部分）
 
-![UC13 Step Functions Graph view（SUCCEEDED）](../../docs/screenshots/masked/uc13-demo/step-functions-graph-succeeded.png)
+![UC13 Step Functions Graph view（SUCCEEDED）](../../../../docs/screenshots/masked/uc13-demo/step-functions-graph-succeeded.png)
 
-![UC13 Step Functions Graph（整體俯瞰）](../../docs/screenshots/masked/uc13-demo/step-functions-graph-overview.png)
+![UC13 Step Functions Graph（整體俯瞰）](../../../../docs/screenshots/masked/uc13-demo/step-functions-graph-overview.png)
 
-![UC13 Step Functions Graph（縮放顯示 — 各步驟詳細）](../../docs/screenshots/masked/uc13-demo/step-functions-graph-zoomed.png)
+![UC13 Step Functions Graph（縮放顯示 — 各步驟詳細）](../../../../docs/screenshots/masked/uc13-demo/step-functions-graph-zoomed.png)
 
 ### 重新驗證時的 UI/UX 對象畫面（建議拍攝清單）
 
@@ -218,3 +218,10 @@ Step Functions Graph view 以顏色可視化各 Lambda / Parallel / Map 狀態�
 5. **清理**：
    - `bash scripts/cleanup_generic_ucs.sh UC13` 進行刪除
    - VPC Lambda ENI 釋放需 15-30 分鐘（AWS 規格）
+
+---
+
+## 相關文件
+
+> 部署或執行發生問題時，請參閱通用[部署指南](../../../../docs/en/deployment-guide.md#troubleshooting)。
+> 其中依症狀整理了常見部署錯誤，以及「執行成功但結果為空」的情況。

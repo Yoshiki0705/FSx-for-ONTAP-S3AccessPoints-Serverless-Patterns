@@ -198,8 +198,8 @@ sam deploy \
 ```
 
 關於 AWS 規格上的限制，請參照
-[專案 README 的「AWS 規格上的限制與因應對策」章節](../../README.md#aws-仕様上の制約と回避策)
-以及 [`docs/output-destination-patterns.md`](../../docs/output-destination-patterns.md)。
+[專案 README 的「AWS 規格上的限制與因應對策」章節](../README.md#aws-仕様上の制約と回避策)
+以及 [`docs/output-destination-patterns.md`](../../../../docs/output-destination-patterns.md)。
 
 ---
 
@@ -219,39 +219,39 @@ sam deploy \
 
 #### UC1 Step Functions Graph view（SUCCEEDED）
 
-![UC1 Step Functions Graph view（SUCCEEDED）](../../docs/screenshots/masked/uc1-demo/uc1-stepfunctions-graph.png)
+![UC1 Step Functions Graph view（SUCCEEDED）](../../../../docs/screenshots/masked/uc1-demo/uc1-stepfunctions-graph.png)
 
 Step Functions Graph view 以顏色視覺化各 Lambda / Parallel / Map 狀態的執行狀況，
 是終端使用者最重要的畫面。
 
 #### UC1 Step Functions Graph（SUCCEEDED — Phase 8 Theme D/E/N 驗證，2:38:20）
 
-![UC1 Step Functions Graph（SUCCEEDED）](../../docs/screenshots/masked/uc1-demo/step-functions-graph-succeeded.png)
+![UC1 Step Functions Graph（SUCCEEDED）](../../../../docs/screenshots/masked/uc1-demo/step-functions-graph-succeeded.png)
 
 在 Phase 8 Theme E (event-driven) + Theme N (observability) 啟用狀態下執行。
 549 ACL iterations、3871 events、2:38:20 所有步驟 SUCCEEDED。
 
 #### UC1 Step Functions Graph（放大顯示 — 各步驟詳細）
 
-![UC1 Step Functions Graph（放大顯示）](../../docs/screenshots/masked/uc1-demo/step-functions-graph-zoomed.png)
+![UC1 Step Functions Graph（放大顯示）](../../../../docs/screenshots/masked/uc1-demo/step-functions-graph-zoomed.png)
 
 #### UC1 S3 Access Points for FSx for ONTAP（主控台顯示）
 
-![UC1 S3 Access Points for FSx for ONTAP](../../docs/screenshots/masked/uc1-demo/s3-access-points-for-fsx.png)
+![UC1 S3 Access Points for FSx for ONTAP](../../../../docs/screenshots/masked/uc1-demo/s3-access-points-for-fsx.png)
 
 #### UC1 S3 Access Point 詳細（概觀視圖）
 
-![UC1 S3 Access Point 詳細](../../docs/screenshots/masked/uc1-demo/s3ap-detail-overview.png)
+![UC1 S3 Access Point 詳細](../../../../docs/screenshots/masked/uc1-demo/s3ap-detail-overview.png)
 
 ### 既有螢幕截圖（來自 Phase 1-6 的相關部分）
 
 #### UC1 CloudFormation 堆疊部署完成（2026-05-02 驗證時）
 
-![UC1 CloudFormation 堆疊部署完成（2026-05-02 驗證時）](../../docs/screenshots/masked/phase1/phase1-cloudformation-uc1-deployed.png)
+![UC1 CloudFormation 堆疊部署完成（2026-05-02 驗證時）](../../../../docs/screenshots/masked/phase1/phase1-cloudformation-uc1-deployed.png)
 
 #### UC1 Step Functions SUCCEEDED（E2E 執行成功）
 
-![UC1 Step Functions SUCCEEDED（E2E 執行成功）](../../docs/screenshots/masked/phase1/phase1-step-functions-uc1-succeeded.png)
+![UC1 Step Functions SUCCEEDED（E2E 執行成功）](../../../../docs/screenshots/masked/phase1/phase1-step-functions-uc1-succeeded.png)
 
 
 ### 重新驗證時的 UI/UX 對象畫面（建議拍攝清單）
@@ -320,3 +320,10 @@ UC1 的處理時間與 ONTAP 磁碟區上的檔案數量成正比。
 - **Event-driven 觸發** (`EnableEventDriven=true`)：檔案新增至 S3AP 時自動啟動
 - **CloudWatch Alarms** (`EnableCloudWatchAlarms=true`)：SFN 失敗 + Lambda 錯誤的自動通知
 - **EventBridge 失敗通知**：執行失敗時推送通知至 SNS Topic
+
+---
+
+## 相關文件
+
+> 部署或執行發生問題時，請參閱通用[部署指南](../../../../docs/en/deployment-guide.md#troubleshooting)。
+> 其中依症狀整理了常見部署錯誤，以及「執行成功但結果為空」的情況。

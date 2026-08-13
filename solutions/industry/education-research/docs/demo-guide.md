@@ -173,18 +173,18 @@ Phase 7 UC15/16/17 と UC6/11/14 のデモと同じ方針で、**エンドユー
 
 #### UC13 Step Functions Graph view（SUCCEEDED）
 
-![UC13 Step Functions Graph view（SUCCEEDED）](../../docs/screenshots/masked/uc13-demo/uc13-stepfunctions-graph.png)
+![UC13 Step Functions Graph view（SUCCEEDED）](../../../../docs/screenshots/masked/uc13-demo/uc13-stepfunctions-graph.png)
 
 Step Functions Graph view は各 Lambda / Parallel / Map ステートの実行状況を
 色で可視化するエンドユーザー最重要画面。
 
 ### 既存スクリーンショット（Phase 1-6 から該当分）
 
-![UC13 Step Functions Graph view（SUCCEEDED）](../../docs/screenshots/masked/uc13-demo/step-functions-graph-succeeded.png)
+![UC13 Step Functions Graph view（SUCCEEDED）](../../../../docs/screenshots/masked/uc13-demo/step-functions-graph-succeeded.png)
 
-![UC13 Step Functions Graph（全体俯瞰）](../../docs/screenshots/masked/uc13-demo/step-functions-graph-overview.png)
+![UC13 Step Functions Graph（全体俯瞰）](../../../../docs/screenshots/masked/uc13-demo/step-functions-graph-overview.png)
 
-![UC13 Step Functions Graph（ズーム表示 — 各ステップ詳細）](../../docs/screenshots/masked/uc13-demo/step-functions-graph-zoomed.png)
+![UC13 Step Functions Graph（ズーム表示 — 各ステップ詳細）](../../../../docs/screenshots/masked/uc13-demo/step-functions-graph-zoomed.png)
 
 ### 再検証時の UI/UX 対象画面（推奨撮影リスト）
 
@@ -216,3 +216,10 @@ Step Functions Graph view は各 Lambda / Parallel / Map ステートの実行�
 5. **クリーンアップ**:
    - `bash scripts/cleanup_generic_ucs.sh UC13` で削除
    - VPC Lambda ENI 解放に 15-30 分（AWS の仕様）
+
+---
+
+## 関連ドキュメント
+
+> デプロイや実行でつまずいたときは、パターン共通の[デプロイガイド](../../../../docs/ja/deployment-guide.md#トラブルシューティング)を参照。
+> よくあるデプロイエラーに加えて、「実行は成功するのに結果が空になる」系の症状を症状別にまとめてある。

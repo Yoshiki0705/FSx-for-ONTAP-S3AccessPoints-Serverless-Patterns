@@ -135,8 +135,8 @@ sam deploy \
 - ChangeDetection Lambda verwendet nur DynamoDB und wird daher nicht von `OutputDestination` beeinflusst
 - AlertGeneration Lambda verwendet nur SNS und wird daher nicht von `OutputDestination` beeinflusst
 - AWS-Spezifikationsbeschränkungen siehe
-  [Abschnitt "AWS-Spezifikationsbeschränkungen und Workarounds" in der Projekt-README](../../README.md#aws-仕様上の制約と回避策)
-  und [`docs/output-destination-patterns.md`](../../docs/output-destination-patterns.md)
+  [Abschnitt "AWS-Spezifikationsbeschränkungen und Workarounds" in der Projekt-README](../README.md#aws-仕様上の制約と回避策)
+  und [`docs/output-destination-patterns.md`](../../../../docs/output-destination-patterns.md)
 
 ---
 
@@ -153,15 +153,15 @@ Stack-Events usw.) werden in `docs/verification-results-*.md` konsolidiert.
 
 ### Vorhandene Screenshots (Phase 7 Verifizierung)
 
-![Step Functions Graph-Ansicht (SUCCEEDED)](../../docs/screenshots/masked/uc15-demo/step-functions-graph-succeeded.png)
+![Step Functions Graph-Ansicht (SUCCEEDED)](../../../../docs/screenshots/masked/uc15-demo/step-functions-graph-succeeded.png)
 
-![S3-Ausgabe-Bucket](../../docs/screenshots/masked/uc15-demo/s3-output-bucket.png)
+![S3-Ausgabe-Bucket](../../../../docs/screenshots/masked/uc15-demo/s3-output-bucket.png)
 
-![S3 Enriched-Ausgabe](../../docs/screenshots/masked/uc15-demo/s3-enriched-output.png)
+![S3 Enriched-Ausgabe](../../../../docs/screenshots/masked/uc15-demo/s3-enriched-output.png)
 
-![DynamoDB Änderungsverlaufstabelle](../../docs/screenshots/masked/uc15-demo/dynamodb-change-history-table.png)
+![DynamoDB Änderungsverlaufstabelle](../../../../docs/screenshots/masked/uc15-demo/dynamodb-change-history-table.png)
 
-![SNS-Benachrichtigungsthema](../../docs/screenshots/masked/uc15-demo/sns-notification-topics.png)
+![SNS-Benachrichtigungsthema](../../../../docs/screenshots/masked/uc15-demo/sns-notification-topics.png)
 ### UI/UX-Zielbildschirme bei erneuter Verifizierung (empfohlene Aufnahmeliste)
 
 - S3-Ausgabe-Bucket (detections/, geo-enriched/, alerts/)
@@ -193,3 +193,10 @@ Stack-Events usw.) werden in `docs/verification-results-*.md` konsolidiert.
 5. **Bereinigung**:
    - `bash scripts/cleanup_generic_ucs.sh UC15` zum Löschen
    - VPC Lambda ENI-Freigabe dauert 15-30 Minuten (AWS-Spezifikation)
+
+---
+
+## Weiterführende Dokumentation
+
+> Bei Problemen beim Deployment oder beim Lauf siehe den gemeinsamen [Deployment-Leitfaden](../../../../docs/en/deployment-guide.md#troubleshooting).
+> Dort stehen die häufigen Deployment-Fehler sowie die Symptome „Lauf erfolgreich, Ergebnis leer“.

@@ -141,13 +141,16 @@ aws s3 cp s3://${OUTPUT_BUCKET}/reports/${EXECUTION_ID}/asset-catalog.json \
 | Bedrock invocation failure | Model access not enabled | Enable model access in Bedrock console |
 | `AccessDenied` on S3 AP | Incorrect IAM policy ARN format | Use `arn:aws:s3:{region}:{account}:accesspoint/{name}` format |
 
+> If a deployment or a run misbehaves, see the shared [deployment guide](../../../../docs/en/deployment-guide.md#troubleshooting).
+> It lists the common deployment errors plus the "runs that succeed while producing nothing" symptoms by signature.
+
 ---
 
 ---
 
 ## Screenshots
 
-![Step Functions Graph View (SUCCEEDED)](../../docs/screenshots/masked/uc19-demo/step-functions-graph-view.png)
+![Step Functions Graph View (SUCCEEDED)](../../../../docs/screenshots/masked/uc19-demo/step-functions-graph-view.png)
 
 
 ## Cleanup

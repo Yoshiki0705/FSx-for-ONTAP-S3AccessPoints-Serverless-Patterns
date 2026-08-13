@@ -39,13 +39,16 @@ sam deploy \
 | `AccessDenied` | IAM policy ARN format | Use `arn:aws:s3:{region}:{account}:accesspoint/{name}` |
 | AI/ML service error | Region configuration | Check Cross-Region settings |
 
+> En cas de problème de déploiement ou d'exécution, consultez le [guide de déploiement](../../../../docs/en/deployment-guide.md#troubleshooting) commun.
+> Il recense les erreurs de déploiement courantes ainsi que les symptômes « exécution réussie mais résultat vide ».
+
 ---
 
 ---
 
 ## Captures d'écran
 
-![Step Functions Graph View (SUCCEEDED)](../../docs/screenshots/masked/uc23-demo/step-functions-graph-view.png)
+![Step Functions Graph View (SUCCEEDED)](../../../../docs/screenshots/masked/uc23-demo/step-functions-graph-view.png)
 
 
 ## Cleanup

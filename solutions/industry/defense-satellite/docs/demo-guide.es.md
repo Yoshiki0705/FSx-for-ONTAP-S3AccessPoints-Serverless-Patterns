@@ -135,8 +135,8 @@ sam deploy \
 - ChangeDetection Lambda solo usa DynamoDB, por lo que no se ve afectado por `OutputDestination`
 - AlertGeneration Lambda solo usa SNS, por lo que no se ve afectado por `OutputDestination`
 - Para restricciones de especificación de AWS, consulte
-  [la sección "Restricciones de especificación de AWS y soluciones alternativas" del README del proyecto](../../README.md#aws-仕様上の制約と回避策)
-  y [`docs/output-destination-patterns.md`](../../docs/output-destination-patterns.md)
+  [la sección "Restricciones de especificación de AWS y soluciones alternativas" del README del proyecto](../README.md#aws-仕様上の制約と回避策)
+  y [`docs/output-destination-patterns.md`](../../../../docs/output-destination-patterns.md)
 
 ---
 
@@ -153,15 +153,15 @@ de Step Functions, eventos de stack de CloudFormation, etc.) se consolidan en `d
 
 ### Capturas de pantalla existentes (verificación Phase 7)
 
-![Vista de gráfico de Step Functions (SUCCEEDED)](../../docs/screenshots/masked/uc15-demo/step-functions-graph-succeeded.png)
+![Vista de gráfico de Step Functions (SUCCEEDED)](../../../../docs/screenshots/masked/uc15-demo/step-functions-graph-succeeded.png)
 
-![Bucket de salida S3](../../docs/screenshots/masked/uc15-demo/s3-output-bucket.png)
+![Bucket de salida S3](../../../../docs/screenshots/masked/uc15-demo/s3-output-bucket.png)
 
-![Salida Enriched de S3](../../docs/screenshots/masked/uc15-demo/s3-enriched-output.png)
+![Salida Enriched de S3](../../../../docs/screenshots/masked/uc15-demo/s3-enriched-output.png)
 
-![Tabla de historial de cambios de DynamoDB](../../docs/screenshots/masked/uc15-demo/dynamodb-change-history-table.png)
+![Tabla de historial de cambios de DynamoDB](../../../../docs/screenshots/masked/uc15-demo/dynamodb-change-history-table.png)
 
-![Tópico de notificación SNS](../../docs/screenshots/masked/uc15-demo/sns-notification-topics.png)
+![Tópico de notificación SNS](../../../../docs/screenshots/masked/uc15-demo/sns-notification-topics.png)
 ### Pantallas UI/UX objetivo para reverificación (lista de captura recomendada)
 
 - Bucket de salida S3 (detections/, geo-enriched/, alerts/)
@@ -193,3 +193,10 @@ de Step Functions, eventos de stack de CloudFormation, etc.) se consolidan en `d
 5. **Limpieza**:
    - Eliminar con `bash scripts/cleanup_generic_ucs.sh UC15`
    - Liberación de ENI de Lambda VPC en 15-30 minutos (especificación de AWS)
+
+---
+
+## Documentación relacionada
+
+> Si el despliegue o la ejecución fallan, consulte la [guía de despliegue](../../../../docs/en/deployment-guide.md#troubleshooting) común.
+> Recoge los errores de despliegue habituales y los síntomas de «ejecución correcta pero sin resultados».

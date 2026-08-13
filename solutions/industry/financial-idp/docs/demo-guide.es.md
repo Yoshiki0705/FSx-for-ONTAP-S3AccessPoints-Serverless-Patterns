@@ -196,8 +196,8 @@ sam deploy \
 ```
 
 Para las limitaciones de las especificaciones de AWS, consulte
-[la sección "Limitaciones de las especificaciones de AWS y soluciones alternativas" del README del proyecto](../../README.md#aws-仕様上の制約と回避策)
-y [`docs/output-destination-patterns.md`](../../docs/output-destination-patterns.md).
+[la sección "Limitaciones de las especificaciones de AWS y soluciones alternativas" del README del proyecto](../README.md#aws-仕様上の制約と回避策)
+y [`docs/output-destination-patterns.md`](../../../../docs/output-destination-patterns.md).
 
 ---
 
@@ -214,13 +214,13 @@ Siguiendo la misma política que las demostraciones de Phase 7 UC15/16/17 y UC6/
 
 #### Vista de gráfico de Step Functions de UC2 (SUCCEEDED)
 
-![Vista de gráfico de Step Functions de UC2 (SUCCEEDED)](../../docs/screenshots/masked/uc2-demo/uc2-stepfunctions-graph.png)
+![Vista de gráfico de Step Functions de UC2 (SUCCEEDED)](../../../../docs/screenshots/masked/uc2-demo/uc2-stepfunctions-graph.png)
 
 La vista de gráfico de Step Functions es la pantalla más importante para el usuario final, que visualiza con colores el estado de ejecución de cada estado Lambda / Parallel / Map.
 
 ### Capturas de pantalla existentes (de Phase 1-6 aplicables)
 
-![Vista de gráfico de Step Functions de UC2 (SUCCEEDED)](../../docs/screenshots/masked/uc2-demo/step-functions-graph-succeeded.png)
+![Vista de gráfico de Step Functions de UC2 (SUCCEEDED)](../../../../docs/screenshots/masked/uc2-demo/step-functions-graph-succeeded.png)
 
 ### Pantallas de UI/UX objetivo durante la reverificación (lista de capturas recomendadas)
 
@@ -252,3 +252,10 @@ La vista de gráfico de Step Functions es la pantalla más importante para el us
 5. **Limpieza**:
    - Eliminar con `bash scripts/cleanup_generic_ucs.sh UC2`
    - Liberación de ENI de Lambda en VPC toma 15-30 minutos (especificación de AWS)
+
+---
+
+## Documentación relacionada
+
+> Si el despliegue o la ejecución fallan, consulte la [guía de despliegue](../../../../docs/en/deployment-guide.md#troubleshooting) común.
+> Recoge los errores de despliegue habituales y los síntomas de «ejecución correcta pero sin resultados».

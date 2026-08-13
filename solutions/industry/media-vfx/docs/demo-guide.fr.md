@@ -196,8 +196,8 @@ sam deploy \
 ```
 
 Pour les contraintes liées aux spécifications AWS, consultez
-[la section "Contraintes des spécifications AWS et solutions de contournement" du README du projet](../../README.md#aws-仕様上の制約と回避策)
-ainsi que [`docs/output-destination-patterns.md`](../../docs/output-destination-patterns.md).
+[la section "Contraintes des spécifications AWS et solutions de contournement" du README du projet](../README.md#aws-仕様上の制約と回避策)
+ainsi que [`docs/output-destination-patterns.md`](../../../../docs/output-destination-patterns.md).
 
 ---
 
@@ -214,9 +214,9 @@ de stack CloudFormation, etc.) sont consolidées dans `docs/verification-results
 
 ### Captures d'écran existantes (issues des Phases 1-6 applicables)
 
-![Vue graphique Step Functions UC4 (SUCCEEDED)](../../docs/screenshots/masked/uc4-demo/step-functions-graph-succeeded.png)
+![Vue graphique Step Functions UC4 (SUCCEEDED)](../../../../docs/screenshots/masked/uc4-demo/step-functions-graph-succeeded.png)
 
-![Graphique Step Functions UC4 (vue zoomée — détails de chaque étape)](../../docs/screenshots/masked/uc4-demo/step-functions-graph-zoomed.png)
+![Graphique Step Functions UC4 (vue zoomée — détails de chaque étape)](../../../../docs/screenshots/masked/uc4-demo/step-functions-graph-zoomed.png)
 
 ### Écrans UI/UX cibles lors de la re-vérification (liste de captures recommandées)
 
@@ -245,3 +245,10 @@ de stack CloudFormation, etc.) sont consolidées dans `docs/verification-results
 5. **Nettoyage** :
    - `bash scripts/cleanup_generic_ucs.sh UC4` pour supprimer
    - Libération des ENI Lambda VPC en 15-30 minutes (spécification AWS)
+
+---
+
+## Documentation associée
+
+> En cas de problème de déploiement ou d'exécution, consultez le [guide de déploiement](../../../../docs/en/deployment-guide.md#troubleshooting) commun.
+> Il recense les erreurs de déploiement courantes ainsi que les symptômes « exécution réussie mais résultat vide ».

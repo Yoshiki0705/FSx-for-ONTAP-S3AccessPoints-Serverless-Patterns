@@ -196,8 +196,8 @@ sam deploy \
 ```
 
 Für Einschränkungen gemäß AWS-Spezifikationen siehe
-[Abschnitt „AWS-Spezifikationseinschränkungen und Workarounds" in der Projekt-README](../../README.md#aws-仕様上の制約と回避策)
-sowie [`docs/output-destination-patterns.md`](../../docs/output-destination-patterns.md).
+[Abschnitt „AWS-Spezifikationseinschränkungen und Workarounds" in der Projekt-README](../README.md#aws-仕様上の制約と回避策)
+sowie [`docs/output-destination-patterns.md`](../../../../docs/output-destination-patterns.md).
 
 ---
 
@@ -214,9 +214,9 @@ Stack-Events usw.) werden in `docs/verification-results-*.md` konsolidiert.
 
 ### Vorhandene Screenshots (relevante aus Phase 1-6)
 
-![UC4 Step Functions Graph-Ansicht (SUCCEEDED)](../../docs/screenshots/masked/uc4-demo/step-functions-graph-succeeded.png)
+![UC4 Step Functions Graph-Ansicht (SUCCEEDED)](../../../../docs/screenshots/masked/uc4-demo/step-functions-graph-succeeded.png)
 
-![UC4 Step Functions Graph (Zoom-Ansicht — Details zu jedem Schritt)](../../docs/screenshots/masked/uc4-demo/step-functions-graph-zoomed.png)
+![UC4 Step Functions Graph (Zoom-Ansicht — Details zu jedem Schritt)](../../../../docs/screenshots/masked/uc4-demo/step-functions-graph-zoomed.png)
 
 ### UI/UX-Zielbildschirme bei erneuter Verifizierung (empfohlene Aufnahmeliste)
 
@@ -245,3 +245,10 @@ Stack-Events usw.) werden in `docs/verification-results-*.md` konsolidiert.
 5. **Bereinigung**:
    - Löschen mit `bash scripts/cleanup_generic_ucs.sh UC4`
    - VPC Lambda ENI-Freigabe dauert 15-30 Minuten (AWS-Spezifikation)
+
+---
+
+## Weiterführende Dokumentation
+
+> Bei Problemen beim Deployment oder beim Lauf siehe den gemeinsamen [Deployment-Leitfaden](../../../../docs/en/deployment-guide.md#troubleshooting).
+> Dort stehen die häufigen Deployment-Fehler sowie die Symptome „Lauf erfolgreich, Ergebnis leer“.

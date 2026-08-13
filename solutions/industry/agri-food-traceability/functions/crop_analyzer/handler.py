@@ -33,6 +33,7 @@ import boto3
 from shared.exceptions import lambda_error_handler
 from shared.observability import trace_lambda_handler
 from shared.retry_handler import RetryConfig, retry_with_backoff
+from shared.s3ap_helper import S3ApHelper
 
 logger = logging.getLogger(__name__)
 
@@ -95,6 +96,7 @@ def analyze_vegetation_with_rekognition(
     rekognition_client,
     s3_bucket: str,
     s3_key: str,
+    s3ap=None,
 ) -> dict:
     """Rekognition でラベル検出を行い植生関連の情報を返す。
 
@@ -107,10 +109,18 @@ def analyze_vegetation_with_rekognition(
         dict: labels, vegetation_coverage, detected_issues
     """
 
+    if s3ap is None:
+        s3ap = S3ApHelper(s3_bucket)
+
+    # Rekognition は FSx for ONTAP の S3 AP 上のオブジェクトを S3Object 参照では読めない
+    # （InvalidS3ObjectException: Unable to get object metadata from S3。AP ポリシーで
+    # サービスプリンシパルを許可しても解消しない）。AP から bytes を取得して inline で渡す。
+    image_bytes = s3ap.get_object_bytes(key=s3_key)
+
     @retry_with_backoff(config=RetryConfig(max_attempts=3))
     def _detect_labels():
         return rekognition_client.detect_labels(
-            Image={"S3Object": {"Bucket": s3_bucket, "Name": s3_key}},
+            Image={"Bytes": image_bytes},
             MaxLabels=50,
             MinConfidence=50.0,
         )

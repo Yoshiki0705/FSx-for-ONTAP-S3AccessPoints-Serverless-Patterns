@@ -206,7 +206,7 @@ ORDER BY bounding_box_width DESC;
 
 與 Phase 7 UC15/16/17 相同方針，拍攝**設計工程師在日常業務中實際看到的 UI/UX 畫面**。
 排除 Step Functions 圖表等技術人員視圖（詳情請參閱
-[`docs/verification-results-phase7.md`](../../docs/verification-results-phase7.md)）。
+[`docs/phase7-summary.md`](../../../../docs/phase7-summary.md)）。
 
 ### 1. FSx for ONTAP Volumes — 設計檔案用磁碟區
 
@@ -215,7 +215,7 @@ ORDER BY bounding_box_width DESC;
 <!-- SCREENSHOT: uc6-fsx-volumes-list.png
      內容：FSx 主控台中的 ONTAP Volumes 清單（eda_demo_vol 等），Status=Created，Type=ONTAP
      遮罩：帳戶 ID、SVM ID 的實際值、檔案系統 ID -->
-![UC6：FSx Volumes 清單](../../docs/screenshots/masked/uc6-demo/uc6-fsx-volumes-list.png)
+![UC6：FSx Volumes 清單](../../../../docs/screenshots/masked/uc6-demo/uc6-fsx-volumes-list.png)
 
 ### 2. S3 輸出儲存貯體 — 設計文件・分析結果的清單
 
@@ -225,7 +225,7 @@ ORDER BY bounding_box_width DESC;
 <!-- SCREENSHOT: uc6-s3-output-bucket.png
      內容：S3 主控台中確認 bucket 的 top-level prefix
      遮罩：帳戶 ID、儲存貯體名稱前綴 -->
-![UC6：S3 輸出儲存貯體](../../docs/screenshots/masked/uc6-demo/uc6-s3-output-bucket.png)
+![UC6：S3 輸出儲存貯體](../../../../docs/screenshots/masked/uc6-demo/uc6-s3-output-bucket.png)
 
 ### 2. S3 輸出儲存貯體 — 設計文件・分析結果的清單
 
@@ -235,7 +235,7 @@ ORDER BY bounding_box_width DESC;
 <!-- SCREENSHOT: uc6-s3-output-bucket.png
      內容：S3 主控台中確認 bucket 的 top-level prefix
      遮罩：帳戶 ID、儲存貯體名稱前綴 -->
-![UC6：S3 輸出儲存貯體](../../docs/screenshots/masked/uc6-demo/uc6-s3-output-bucket.png)
+![UC6：S3 輸出儲存貯體](../../../../docs/screenshots/masked/uc6-demo/uc6-s3-output-bucket.png)
 
 ### 3. Athena 查詢結果 — EDA 中繼資料的 SQL 分析
 
@@ -245,7 +245,7 @@ Workgroup 為 `fsxn-eda-uc6-workgroup`，資料庫為 `fsxn-eda-uc6-db`。
 <!-- SCREENSHOT: uc6-athena-query-result.png
      內容：EDA 中繼資料表的 SELECT 結果（file_key、library_name、cell_count、bounding_box）
      遮罩：帳戶 ID -->
-![UC6：Athena 查詢結果](../../docs/screenshots/masked/uc6-demo/uc6-athena-query-result.png)
+![UC6：Athena 查詢結果](../../../../docs/screenshots/masked/uc6-demo/uc6-athena-query-result.png)
 
 ### 4. Bedrock 生成的設計審查報告
 
@@ -266,7 +266,7 @@ Workgroup 為 `fsxn-eda-uc6-workgroup`，資料庫為 `fsxn-eda-uc6-db`。
        - **Medium**：確認 6 件命名規則違規。
        - **Low**：儲存格數分布和邊界框離群值無問題。
      遮罩：帳戶 ID -->
-![UC6：Bedrock 設計審查報告](../../docs/screenshots/masked/uc6-demo/uc6-bedrock-design-review.png)
+![UC6：Bedrock 設計審查報告](../../../../docs/screenshots/masked/uc6-demo/uc6-bedrock-design-review.png)
 
 ### 實測值（2026-05-10 AWS 部署驗證）
 
@@ -391,3 +391,10 @@ Workgroup 為 `fsxn-eda-uc6-workgroup`，資料庫為 `fsxn-eda-uc6-db`。
 ---
 
 *本文件作為技術簡報用示範影片的製作指南而建立。*
+
+---
+
+## 相關文件
+
+> 部署或執行發生問題時，請參閱通用[部署指南](../../../../docs/en/deployment-guide.md#troubleshooting)。
+> 其中依症狀整理了常見部署錯誤，以及「執行成功但結果為空」的情況。

@@ -55,7 +55,7 @@ aws stepfunctions start-execution --state-machine-arn $STATE_MACHINE_ARN --regio
 
 ## Capturas de pantalla
 
-![Step Functions Graph View (SUCCEEDED)](../../docs/screenshots/masked/uc22-demo/step-functions-graph-view.png)
+![Step Functions Graph View (SUCCEEDED)](../../../../docs/screenshots/masked/uc22-demo/step-functions-graph-view.png)
 
 
 ## Cleanup
@@ -63,3 +63,10 @@ aws stepfunctions start-execution --state-machine-arn $STATE_MACHINE_ARN --regio
 ```bash
 aws cloudformation delete-stack --stack-name fsxn-transport-demo --region ap-northeast-1
 ```
+
+---
+
+## Documentación relacionada
+
+> Si el despliegue o la ejecución fallan, consulte la [guía de despliegue](../../../../docs/en/deployment-guide.md#troubleshooting) común.
+> Recoge los errores de despliegue habituales y los síntomas de «ejecución correcta pero sin resultados».

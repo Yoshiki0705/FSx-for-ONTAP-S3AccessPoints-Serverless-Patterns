@@ -32,6 +32,7 @@ import boto3
 from shared.exceptions import lambda_error_handler
 from shared.observability import EmfMetrics, trace_lambda_handler, xray_subsegment
 from shared.output_writer import OutputWriter
+from shared.s3ap_helper import S3ApHelper
 
 logger = logging.getLogger(__name__)
 
@@ -254,6 +255,18 @@ def detect_visual_safety_elements(rekognition_client, drawing_images: list[dict]
 
     for image_info in drawing_images:
         try:
+            # Rekognition は FSx for ONTAP の S3 AP を S3Object 参照では読めない
+            # （InvalidS3ObjectException。AP ポリシーで許可しても解消しない）。bucket が
+            # AP エイリアスなら bytes を取得して、下の Bytes 分岐に載せる。
+            if (
+                "bytes" not in image_info
+                and str(image_info.get("bucket", "")).endswith("-ext-s3alias")
+                and image_info.get("key")
+            ):
+                image_info = dict(image_info)
+                image_info["bytes"] = S3ApHelper(image_info["bucket"]).get_object_bytes(key=image_info["key"])
+                image_info.pop("bucket", None)
+
             # S3 から画像を指定して Rekognition に送信
             if "bucket" in image_info and "key" in image_info:
                 with xray_subsegment(

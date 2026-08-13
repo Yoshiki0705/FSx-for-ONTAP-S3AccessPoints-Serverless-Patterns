@@ -175,7 +175,7 @@ Nach demselben Ansatz wie Phase 7 UC15/16/17 und UC6/11/14 Demos werden **UI/UX-
 
 #### UC8 Step Functions Graph view (SUCCEEDED)
 
-![UC8 Step Functions Graph view (SUCCEEDED)](../../docs/screenshots/masked/uc8-demo/uc8-stepfunctions-graph.png)
+![UC8 Step Functions Graph view (SUCCEEDED)](../../../../docs/screenshots/masked/uc8-demo/uc8-stepfunctions-graph.png)
 
 Step Functions Graph view visualisiert den Ausführungsstatus jedes Lambda / Parallel / Map-Status farblich und ist der wichtigste Bildschirm für Endbenutzer.
 
@@ -183,13 +183,13 @@ Step Functions Graph view visualisiert den Ausführungsstatus jedes Lambda / Par
 
 #### UC8 Step Functions Graph (SUCCEEDED — Neuaufnahme nach IAM-Korrektur in Phase 8)
 
-![UC8 Step Functions Graph (SUCCEEDED)](../../docs/screenshots/masked/uc8-demo/step-functions-graph-succeeded.png)
+![UC8 Step Functions Graph (SUCCEEDED)](../../../../docs/screenshots/masked/uc8-demo/step-functions-graph-succeeded.png)
 
 Nach IAM S3AP-Korrektur neu bereitgestellt. Alle Schritte SUCCEEDED (2:59).
 
 #### UC8 Step Functions Graph (Zoom-Ansicht — Details zu jedem Schritt)
 
-![UC8 Step Functions Graph (Zoom-Ansicht)](../../docs/screenshots/masked/uc8-demo/step-functions-graph-zoomed.png)
+![UC8 Step Functions Graph (Zoom-Ansicht)](../../../../docs/screenshots/masked/uc8-demo/step-functions-graph-zoomed.png)
 
 ### UI/UX-Zielbildschirme bei Neuverifizierung (empfohlene Aufnahmeliste)
 
@@ -221,3 +221,10 @@ Nach IAM S3AP-Korrektur neu bereitgestellt. Alle Schritte SUCCEEDED (2:59).
 5. **Cleanup**:
    - Löschen mit `bash scripts/cleanup_generic_ucs.sh UC8`
    - VPC Lambda ENI-Freigabe dauert 15-30 Minuten (AWS-Spezifikation)
+
+---
+
+## Weiterführende Dokumentation
+
+> Bei Problemen beim Deployment oder beim Lauf siehe den gemeinsamen [Deployment-Leitfaden](../../../../docs/en/deployment-guide.md#troubleshooting).
+> Dort stehen die häufigen Deployment-Fehler sowie die Symptome „Lauf erfolgreich, Ergebnis leer“.
