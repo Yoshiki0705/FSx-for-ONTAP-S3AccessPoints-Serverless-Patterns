@@ -4,7 +4,8 @@ FSx for ONTAP S3 Access Points Serverless Patterns プロジェクトの CI/CD �
 
 ## パイプラインアーキテクチャ概要
 
-本プロジェクトでは GitHub Actions を使用した 2 つのワークフローで CI/CD を実現する:
+**CI のみで、このリポジトリは CI から AWS へデプロイしない。** 理由は
+「[デプロイは CI で行わない](#デプロイは-ci-で行わない)」。
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
@@ -15,18 +16,11 @@ FSx for ONTAP S3 Access Points Serverless Patterns プロジェクトの CI/CD �
 │  │ Lint │ → │ Test │ → │ Security │ → │ Report/Gate  │    │
 │  └──────┘   └──────┘   └──────────┘   └──────────────┘    │
 └─────────────────────────────────────────────────────────────┘
-
-┌─────────────────────────────────────────────────────────────┐
-│  Deploy ワークフロー (deploy.yml)                             │
-│  トリガー: Push → main (マージ後)                             │
-│                                                             │
-│  ┌─────────┐   ┌─────────┐   ┌──────────┐   ┌──────────┐ │
-│  │ Detect  │ → │ Staging │ → │  Smoke   │ → │Production│ │
-│  │ Changes │   │ Deploy  │   │  Test    │   │  Deploy  │ │
-│  └─────────┘   └─────────┘   └──────────┘   └──────────┘ │
-│                                              (手動承認必須)  │
-└─────────────────────────────────────────────────────────────┘
 ```
+
+`.github/workflows/` にはこの他にガードレール用のワークフローが複数ある（命名・中立性・
+リーク検査、cfn-guard、IAM ポリシー検証、Bedrock モデルの EOL 検査、Actions の SHA
+ピン留め検査など）。いずれも**検査のみで、AWS リソースを変更しない**。
 
 ## CI ワークフロー ステージ詳細
 
@@ -80,112 +74,60 @@ CloudFormation テンプレートの静的解析を実行する。
 - **アーティファクト**: カバレッジレポートを PR にアップロード
 - **通知**: 失敗時に PR コメントで詳細を報告
 
-## Deploy ワークフロー ステージ詳細
+## デプロイは CI で行わない
 
-### 変更検出
+このリポジトリは 52 個の独立したパターンを収めた参照実装ライブラリで、稼働中のサービス
+ではない。デプロイは**利用者が自分のアカウントで、必要なパターンだけを選んで行う**もので、
+main への push で自動的に行うものではない。したがって staging / production への自動
+デプロイワークフローは持たない。
 
-`git diff` で変更された CloudFormation テンプレートを特定し、影響範囲を限定する。
+### 撤去の経緯（2026-08-13）
 
-### Staging デプロイ
+以前は `deploy.yml` があり、`main` への push で変更された `.yaml` を検出して
+staging へデプロイ → スモークテスト → production へデプロイする構成だった。
+**これは一度も動作したことがなかった。**
 
-- **スタック名**: `{stack-name}-staging` サフィックス
-- **パラメータ**: `params/staging.json` を使用
-- **OIDC 認証**: GitHub Actions → AWS IAM Role（長期クレデンシャル不使用）
+- `role-to-assume` は `arn:aws:iam::${{ vars.AWS_ACCOUNT_ID }}:role/...` を組み立てて
+  いたが、この変数はリポジトリに設定されたことがない。ARN はアカウント ID が空の
+  `arn:aws:iam:::role/...` になり、OIDC の AssumeRole は `Request ARN is invalid` で
+  12 回リトライして失敗する。
+- それでも CI は緑だった。デプロイジョブは「変更された `.yaml` がある」ときだけ走る
+  条件付きで、それまでの push はどれもテンプレートを触っていなかったため、
+  ジョブは skipped、ワークフロー全体は success と報告されていた。
+- テンプレートを 17 本変更した PR が初めてこのジョブを起動し、そこで初めて露見した。
+  ロールバック経路（`Rollback Staging`）も同じ理由で未実行のままだった。
 
-### スモークテスト
+**教訓**: ゲートの成功は、ゲートが走った証拠ではない。条件付きで skip されるジョブは、
+skip されている限り緑を報告し続ける。新しいデプロイ経路を作るなら、
+**通ってはいけない入力で一度落ちること**を確認してから信用する。
 
-- Step Functions テストデータを使用した E2E 検証
-- 失敗時: CloudFormation 自動ロールバック実行
+### 実際のデプロイ手順
 
-### Production デプロイ
-
-- **前提条件**: Staging デプロイ成功 + スモークテスト成功
-- **承認**: GitHub Actions Environment Protection Rules（最低 1 名承認）
-- **パラメータ**: `params/production.json` を使用
-
-## OIDC セットアップ手順
-
-GitHub Actions から AWS リソースにアクセスするために OIDC (OpenID Connect) を使用する。長期クレデンシャル（Access Key）は使用しない。
-
-### 1. AWS IAM Identity Provider 作成
-
-```bash
-aws iam create-open-id-connect-provider \
-  --url https://token.actions.githubusercontent.com \
-  --client-id-list sts.amazonaws.com \
-  --thumbprint-list 6938fd4d98bab03faadb97b34396831e3780aea1
-```
-
-### 2. IAM ロール作成（信頼ポリシー）
-
-信頼ポリシーの `Condition` で対象リポジトリ・ブランチを制限する:
-
-- `token.actions.githubusercontent.com:aud` → `sts.amazonaws.com`
-- `token.actions.githubusercontent.com:sub` → `repo:{OWNER}/{REPO}:ref:refs/heads/main`
+検証済みの手順は [deployment-guide.md](ja/deployment-guide.md)（[EN](en/deployment-guide.md)）
+にある。要点のみ:
 
 ```bash
-aws iam create-role \
-  --role-name github-actions-deploy-role \
-  --assume-role-policy-document file://trust-policy.json
+cd solutions/industry/<pattern>
+cp samconfig.toml.example samconfig.toml   # <PLACEHOLDER> を実値に置換
+sam build && sam deploy
 ```
 
-### 3. ワークフローでの使用
+UC15-UC28 と OPS1-OPS6 の 20 スタックはすべてこの手順で投入し、E2E で結果を確認した。
+ロールバックとクリーンアップの手順も deployment-guide 側にある。
 
-```yaml
-permissions:
-  id-token: write
-  contents: read
+### 自分でパイプラインを作る場合
 
-steps:
-  - uses: aws-actions/configure-aws-credentials@v6
-    with:
-      role-to-assume: arn:aws:iam::{ACCOUNT_ID}:role/github-actions-deploy-role
-      aws-region: ap-northeast-1
-```
-
-## デプロイ用 IAM ロール要件
-
-デプロイロールに必要な権限: `cloudformation:*`, `s3:*`（テンプレートバケット）, `lambda:*`, `iam:PassRole`, `states:*`, `dynamodb:*`, `sagemaker:*`, `events:*`
-
-**重要**: `iam:CreateRole`, `iam:AttachRolePolicy` 等の IAM ロール/ポリシー直接変更権限は付与しない。Permission Boundary を必ず設定し、最小権限の原則を厳守する。
-
-## Environment Protection Rules 設定
-
-### GitHub リポジトリ設定
-
-1. **Settings** → **Environments** → **New environment**
-2. 環境名: `production`
-3. **Protection rules** を設定:
-   - ✅ Required reviewers: 最低 1 名
-   - ✅ Wait timer: 0 分（即時承認可能）
-   - ✅ Deployment branches: `main` のみ
-
-### ワークフローでの参照
-
-```yaml
-jobs:
-  deploy-production:
-    environment: production
-    needs: [smoke-test]
-    steps:
-      - name: Deploy to production
-        run: |
-# 前提: AWS SAM CLI が必要です。sam build がコードと共有レイヤーを自動でパッケージングします。
-sam build
-
-sam deploy \
-            --stack-name ${STACK_NAME} \
-            --parameter-overrides file://params/production.json
-```
+`deployment-guide.md` の「CI/CD 統合」節に、OIDC を使った GitHub Actions の最小例がある。
+長期クレデンシャル（Access Key）を置かず、`permissions: id-token: write` と
+`aws-actions/configure-aws-credentials` を使う形。IAM ロールには
+`iam:CreateRole` / `iam:AttachRolePolicy` を与えず Permission Boundary を設定すること。
 
 ## ブランチ戦略
 
 ```
-feature/xxx ──PR──→ main (staging 自動デプロイ) ──手動承認──→ production
-     │                    │
-     │                    ├── CI テスト自動実行
-     │                    ├── Staging デプロイ
-     │                    └── スモークテスト
+feature/xxx ──PR──→ main ──(必要になったら手元から sam deploy)──→ AWS
+     │                 │
+     │                 └── CI: Lint → Test → Security → Report/Gate
      │
      └── ローカル開発・テスト
 ```
@@ -196,10 +138,8 @@ feature/xxx ──PR──→ main (staging 自動デプロイ) ──手動承�
 2. **PR 作成**: `main` ブランチへの Pull Request
 3. **CI 自動実行**: Lint → Test → Security → Report
 4. **レビュー・マージ**: CI 全パス + レビュー承認後にマージ
-5. **Staging 自動デプロイ**: main マージで自動トリガー
-6. **スモークテスト**: Staging 環境で E2E テスト実行
-7. **Production 手動承認**: Environment Protection Rules による承認
-8. **Production デプロイ**: 承認後に自動実行
+5. **マージ後**: 自動デプロイは行わない。必要なパターンを
+   [deployment-guide.md](ja/deployment-guide.md) の手順で手元からデプロイする
 
 ### ブランチ命名規則
 
@@ -255,49 +195,13 @@ cfn-lint shared/cfn/*.yaml use-cases/*/template-deploy.yaml
    open htmlcov/index.html
    ```
 
-### デプロイタイムアウト
+### デプロイに関する症状
 
-**症状**: CloudFormation スタック更新がタイムアウト
-
-**対処**:
-
-1. CloudFormation イベントを確認:
-   ```bash
-   aws cloudformation describe-stack-events \
-     --stack-name {STACK_NAME} \
-     --query 'StackEvents[?ResourceStatus==`CREATE_FAILED` || ResourceStatus==`UPDATE_FAILED`]'
-   ```
-
-2. 一般的な原因: Lambda パッケージサイズ過大、SageMaker Endpoint 起動遅延、DynamoDB Global Tables レプリケーション設定
-
-### ロールバック手順
-
-**自動ロールバック**: スモークテスト失敗時に CloudFormation `--rollback-configuration` で自動実行。
-
-**手動ロールバック**:
-
-```bash
-# 前回成功コミットを特定してチェックアウト
-git log --oneline -5
-git checkout {COMMIT_HASH}
-
-# 再デプロイ
-# 前提: AWS SAM CLI が必要です。sam build がコードと共有レイヤーを自動でパッケージングします。
-sam build
-
-sam deploy \
-  --stack-name {STACK_NAME} \
-  --parameter-overrides file://params/production.json
-```
-
-### OIDC 認証エラー
-
-**症状**: `Error: Not authorized to perform sts:AssumeRoleWithWebIdentity`
-
-**対処**:
-- IAM ロールの信頼ポリシーで `sub` 条件がリポジトリ名・ブランチと一致しているか確認
-- GitHub Actions の `permissions` ブロックに `id-token: write` が設定されているか確認
-- OIDC プロバイダーのサムプリントが最新か確認
+CI からデプロイしないので、デプロイ時の症状はこのガイドの対象外。CloudFormation の
+タイムアウト、ロールバック手順、スタックの完全削除、S3 AP の `AccessDenied` などは
+[deployment-guide.md のトラブルシューティング](ja/deployment-guide.md#トラブルシューティング)
+（[EN](en/deployment-guide.md#troubleshooting)）にまとめてある。「実行は成功するのに結果が
+空になる」系の症状も同じ場所にある。
 
 ## ローカル開発での CI 再現
 
@@ -318,10 +222,9 @@ pip-audit -r requirements.txt                                       # Audit
 | ファイル | 説明 |
 |---------|------|
 | `.github/workflows/ci.yml` | CI ワークフロー定義 |
-| `.github/workflows/deploy.yml` | Deploy ワークフロー定義 |
 | `security/cfn-guard-rules/` | cfn-guard セキュリティルール |
 | `.bandit` | Bandit 設定ファイル |
-| `params/staging.json` | Staging 環境パラメータ |
+| `params/staging.json` | パラメータファイルの雛形（`flexcache/anycast-dr` がコピー元として参照）|
 | `params/production.json` | Production 環境パラメータ |
 | `requirements-dev.txt` | 開発・テスト依存パッケージ |
 | `pytest.ini` | pytest 設定 |
