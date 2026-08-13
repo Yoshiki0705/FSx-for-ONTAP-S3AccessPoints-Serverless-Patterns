@@ -30,6 +30,7 @@ import boto3
 from shared.exceptions import lambda_error_handler
 from shared.observability import trace_lambda_handler
 from shared.retry_handler import RetryConfig, retry_with_backoff
+from shared.s3ap_helper import S3ApHelper
 
 logger = logging.getLogger(__name__)
 
@@ -48,6 +49,7 @@ def extract_document_data_with_textract(
     textract_client,
     s3_bucket: str,
     s3_key: str,
+    s3ap=None,
 ) -> dict:
     """Textract で文書からテキストと構造化データを抽出する。
 
@@ -60,10 +62,18 @@ def extract_document_data_with_textract(
         dict: raw_text, key_value_pairs, tables
     """
 
+    if s3ap is None:
+        s3ap = S3ApHelper(s3_bucket)
+
+    # Textract は FSx for ONTAP の S3 AP 上のオブジェクトを S3Object 参照では読めない
+    # （InvalidS3ObjectException: Unable to get object metadata from S3。AP ポリシーで
+    # サービスプリンシパルを許可しても解消しない）。AP から bytes を取得して inline で渡す。
+    doc_bytes = s3ap.get_object_bytes(key=s3_key)
+
     @retry_with_backoff(config=RetryConfig(max_attempts=3))
     def _analyze_document():
         return textract_client.analyze_document(
-            Document={"S3Object": {"Bucket": s3_bucket, "Name": s3_key}},
+            Document={"Bytes": doc_bytes},
             FeatureTypes=["FORMS", "TABLES"],
         )
 

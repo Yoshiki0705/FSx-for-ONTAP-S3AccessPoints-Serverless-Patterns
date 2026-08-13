@@ -1353,6 +1353,17 @@ Resources:
                 Resource:
                   - !Sub "arn:aws:s3:::${S3AccessPointAlias}"
                   - !Sub "arn:aws:s3:::${S3AccessPointAlias}/*"
+                  # FSx for ONTAP の S3 AP は bucket 形式の ARN では認可されない。ハンドラが自分で
+                  # bytes を取得するようになったため（Rekognition/Textract が S3Object 参照で読めない）
+                  # 読み取り側にも accesspoint 形式が必要になった。無いと HeadObject が 403 になる。
+                  - !If
+                    - HasS3AccessPointName
+                    - !Sub "arn:aws:s3:${AWS::Region}:${AWS::AccountId}:accesspoint/${S3AccessPointName}"
+                    - !Ref AWS::NoValue
+                  - !If
+                    - HasS3AccessPointName
+                    - !Sub "arn:aws:s3:${AWS::Region}:${AWS::AccountId}:accesspoint/${S3AccessPointName}/object/*"
+                    - !Ref AWS::NoValue
               - Sid: S3WriteOutput
                 Effect: Allow
                 Action:

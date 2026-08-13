@@ -25,6 +25,7 @@ import boto3
 from shared.exceptions import lambda_error_handler
 from shared.observability import EmfMetrics, trace_lambda_handler
 from shared.retry_handler import RetryConfig, categorize_error, retry_with_backoff
+from shared.s3ap_helper import S3ApHelper
 
 logger = logging.getLogger(__name__)
 
@@ -33,16 +34,24 @@ def extract_text_textract(
     s3ap_alias: str,
     object_key: str,
     textract_client=None,
+    s3ap=None,
 ) -> str:
     """Textract でラボノート画像からテキストを抽出する。"""
     if textract_client is None:
         textract_region = os.environ.get("TEXTRACT_REGION", "us-east-1")
         textract_client = boto3.client("textract", region_name=textract_region)
+    if s3ap is None:
+        s3ap = S3ApHelper(s3ap_alias)
+
+    # Textract は FSx for ONTAP の S3 AP 上のオブジェクトを S3Object 参照では読めない
+    # （InvalidS3ObjectException: Unable to get object metadata from S3。AP ポリシーで
+    # サービスプリンシパルを許可しても解消しない）。AP から bytes を取得して inline で渡す。
+    doc_bytes = s3ap.get_object_bytes(key=object_key)
 
     @retry_with_backoff(config=RetryConfig(max_attempts=3))
     def _call_textract():
         return textract_client.detect_document_text(
-            Document={"S3Object": {"Bucket": s3ap_alias, "Name": object_key}},
+            Document={"Bytes": doc_bytes},
         )
 
     response = _call_textract()
@@ -62,15 +71,23 @@ def detect_labels_rekognition(
     s3ap_alias: str,
     object_key: str,
     rekognition_client=None,
+    s3ap=None,
 ) -> list[dict]:
     """Rekognition でラボノート画像のラベルを検出する。"""
     if rekognition_client is None:
         rekognition_client = boto3.client("rekognition")
+    if s3ap is None:
+        s3ap = S3ApHelper(s3ap_alias)
+
+    # Rekognition は FSx for ONTAP の S3 AP 上のオブジェクトを S3Object 参照では読めない
+    # （InvalidS3ObjectException: Unable to get object metadata from S3。AP ポリシーで
+    # サービスプリンシパルを許可しても解消しない）。AP から bytes を取得して inline で渡す。
+    image_bytes = s3ap.get_object_bytes(key=object_key)
 
     @retry_with_backoff(config=RetryConfig(max_attempts=3))
     def _call_rekognition():
         return rekognition_client.detect_labels(
-            Image={"S3Object": {"Bucket": s3ap_alias, "Name": object_key}},
+            Image={"Bytes": image_bytes},
             MinConfidence=70,
             MaxLabels=50,
         )
@@ -146,7 +163,10 @@ def handler(event, context):
 
     s3ap_alias = os.environ.get("S3_ACCESS_POINT", "")
 
-    objects = event.get("objects", [])
+    # Step Functions の Map は配列要素を 1 件ずつ渡すので、event 自体が 1 オブジェクトに
+    # なる。batch 形式も引き続き受け付ける。詳細は sds_extractor の同じ箇所を参照。
+    single_item = "objects" not in event
+    objects = [event] if single_item else event.get("objects", [])
     logger.info("Lab book analysis started: %d images", len(objects))
 
     results: list[dict] = []
@@ -214,6 +234,10 @@ def handler(event, context):
     metrics.put_metric("SuccessCount", float(success_count), "Count")
     metrics.put_metric("ErrorCount", float(error_count), "Count")
     metrics.flush()
+
+    if single_item:
+        # report は status を持つ per-object dict の平坦な配列を期待している。
+        return results[0]
 
     return {
         "results": results,

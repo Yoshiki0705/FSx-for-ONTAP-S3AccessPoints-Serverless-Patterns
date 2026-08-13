@@ -30,6 +30,7 @@ import boto3
 from shared.exceptions import lambda_error_handler
 from shared.observability import EmfMetrics, trace_lambda_handler
 from shared.retry_handler import RetryConfig, categorize_error, retry_with_backoff
+from shared.s3ap_helper import S3ApHelper
 
 logger = logging.getLogger(__name__)
 
@@ -62,16 +63,24 @@ def extract_text_textract(
     s3ap_alias: str,
     object_key: str,
     textract_client=None,
+    s3ap=None,
 ) -> str:
     """Textract で SDS からテキストを抽出する。"""
     if textract_client is None:
         textract_region = os.environ.get("TEXTRACT_REGION", "us-east-1")
         textract_client = boto3.client("textract", region_name=textract_region)
+    if s3ap is None:
+        s3ap = S3ApHelper(s3ap_alias)
+
+    # Textract は FSx for ONTAP の S3 AP 上のオブジェクトを S3Object 参照では読めない
+    # （InvalidS3ObjectException: Unable to get object metadata from S3。AP ポリシーで
+    # サービスプリンシパルを許可しても解消しない）。AP から bytes を取得して inline で渡す。
+    doc_bytes = s3ap.get_object_bytes(key=object_key)
 
     @retry_with_backoff(config=RetryConfig(max_attempts=3))
     def _call_textract():
         return textract_client.detect_document_text(
-            Document={"S3Object": {"Bucket": s3ap_alias, "Name": object_key}},
+            Document={"Bytes": doc_bytes},
         )
 
     response = _call_textract()
@@ -252,7 +261,12 @@ def handler(event, context):
     s3ap_alias = os.environ.get("S3_ACCESS_POINT", "")
     validity_days = int(os.environ.get("SDS_VALIDITY_DAYS", "365"))
 
-    objects = event.get("objects", [])
+    # Step Functions の Map は配列要素を 1 件ずつ渡すので、event 自体が 1 オブジェクトに
+    # なる。以前は {"objects": [...]} だけを読んでいたため、Map 経由では objects が空に
+    # なり、ループが一度も回らないまま SUCCEEDED を返していた（1 件も処理していないのに
+    # success も error も 0）。batch 形式も引き続き受け付ける。
+    single_item = "objects" not in event
+    objects = [event] if single_item else event.get("objects", [])
     logger.info("SDS extraction started: %d documents", len(objects))
 
     results: list[dict] = []
@@ -327,6 +341,11 @@ def handler(event, context):
     metrics.put_metric("SuccessCount", float(success_count), "Count")
     metrics.put_metric("ErrorCount", float(error_count), "Count")
     metrics.flush()
+
+    if single_item:
+        # Map の ResultPath は「各反復の戻り値の配列」になる。report は status を持つ
+        # per-object dict の平坦な配列を期待しているので、包まずに 1 件を返す。
+        return results[0]
 
     return {
         "results": results,
