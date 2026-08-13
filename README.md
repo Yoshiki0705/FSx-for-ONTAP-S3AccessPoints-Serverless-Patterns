@@ -111,7 +111,7 @@
 | [`infrastructure/s3ap-data-collection/`](infrastructure/s3ap-data-collection/) | S3 AP データ収集インフラ（設計 TIPS 組込テンプレート） |
 | [`docs/`](docs/) | 設計ガイド・ベンチマーク（40+ ドキュメント） |
 | [`scripts/`](scripts/) | デプロイ・ベンチマーク・ユーティリティ |
-| [`.github/workflows/`](.github/workflows/) | CI/CD（lint → test → security → deploy） |
+| [`.github/workflows/`](.github/workflows/) | CI（lint → test → security → report）とガードレール検査。デプロイは行わない |
 
 </details>
 

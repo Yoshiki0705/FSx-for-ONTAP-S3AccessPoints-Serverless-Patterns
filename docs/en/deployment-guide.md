@@ -651,8 +651,11 @@ aws ec2 describe-security-groups --group-ids <SG-ID> \
 
 ### GitHub Actions Example
 
+An example for your own repository. **This repository does not deploy from CI**
+(see [ci-cd-guide.md](../ci-cd-guide.md)).
+
 ```yaml
-# .github/workflows/deploy.yml
+# Example: .github/workflows/deploy-pattern.yml in your repository
 name: Deploy Pattern
 on:
   push:
