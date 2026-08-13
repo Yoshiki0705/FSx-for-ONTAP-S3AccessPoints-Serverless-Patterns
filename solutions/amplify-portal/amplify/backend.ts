@@ -451,8 +451,8 @@ const sharedPythonLayer = new lambda.LayerVersion(dataStack, `SharedPythonLayer$
  * of every file listing.
  *
  * Staged with `pip install --target`, which extracts the wheel in place, so no Docker
- * and no unzip utility is involved. `--platform manylinux2014_aarch64` with
- * `--python-version 3.13` fetches the build this runtime needs rather than the host's:
+ * and no unzip utility is involved. The `--platform` tags with
+ * `--python-version 3.13` fetch the build this runtime needs rather than the host's:
  * a wheel compiled for macOS arm64 imports on a laptop and fails in Lambda, which is
  * the kind of difference that only appears after deploying.
  *
@@ -501,8 +501,18 @@ const pillowLayer = new lambda.LayerVersion(dataStack, `PillowLayer${pillowPin.r
               "install",
               "--target",
               target,
+              // Two tags, not one. Pillow 12.3.0 publishes no manylinux2014_aarch64
+              // wheel for cp313 -- only manylinux_2_27/2_28 -- so a single legacy tag
+              // with --only-binary made the version unresolvable: pip reported "no
+              // matching distribution" and did not list 12.3.0 as available at all.
+              // Both tags run on the python3.13 runtime, which is Amazon Linux 2023
+              // (glibc 2.34, so >= the 2.28 the newer tag requires). Listing both lets
+              // pip take whichever the release actually shipped instead of making this
+              // build depend on how upstream tags its wheels.
               "--platform",
               "manylinux2014_aarch64",
+              "--platform",
+              "manylinux_2_28_aarch64",
               "--python-version",
               "3.13",
               "--implementation",
