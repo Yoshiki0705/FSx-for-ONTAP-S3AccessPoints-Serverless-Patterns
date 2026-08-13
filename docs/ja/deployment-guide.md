@@ -646,8 +646,11 @@ aws ec2 describe-security-groups --group-ids <SG-ID> \
 
 ### GitHub Actions 例
 
+自分のリポジトリに置く例。**このリポジトリ自身は CI からデプロイしない**
+（理由は [ci-cd-guide.md](../ci-cd-guide.md)）。
+
 ```yaml
-# .github/workflows/deploy.yml
+# 例: 利用者のリポジトリの .github/workflows/deploy-pattern.yml
 name: Deploy Pattern
 on:
   push:
