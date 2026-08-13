@@ -1,4 +1,20 @@
 #!/bin/bash
+# ⚠️ 2026-08-12: このスクリプトは現状動かない。使う前に読むこと。
+#
+#   すべての industry パターンの template.yaml は正しい SAM テンプレートなので、
+#   デプロイは各ディレクトリで `sam build && sam deploy` を使う。実際に UC15-UC28 の
+#   14 本をその方法でデプロイして確認済み。
+#
+#   このスクリプトが動かない理由:
+#   1. EnableS3GatewayEndpoint / EnableVpcEndpoints を無条件に渡すが、
+#      defense-satellite / government-archives / smart-city-geospatial は宣言していない。
+#      CloudFormation は未宣言パラメータを渡されると即エラーにする
+#      （"Parameters: [X] do not exist in the template"）。ヘッダの使用例に書いてある
+#      `deploy_generic_ucs.sh UC15 UC16 UC17` がそのまま失敗する。
+#   2. transportation-maintenance は template.yaml では宣言しているが、生成物の
+#      template-deploy.yaml から落ちている。
+#   3. 依存する Lambda zip を作る scripts/package_generic_uc.sh も動かない（下記）。
+#
 # Deploy multiple UCs (UC1-UC17) using their template-deploy.yaml files.
 # Uses same UC6 infra (VPC, S3 AP, Secrets Manager).
 #

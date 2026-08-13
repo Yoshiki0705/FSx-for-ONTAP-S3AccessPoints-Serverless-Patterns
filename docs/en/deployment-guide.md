@@ -614,6 +614,20 @@ See [infrastructure/demo-ad-environment.yaml](../../infrastructure/demo-ad-envir
 | `Bedrock InvokeModel AccessDenied` | Model access not enabled in the region | Enable model access in Bedrock console; use cross-region inference profile ID |
 | `AccessDenied` on WINDOWS S3 AP data ops | `WindowsUser.Name` contains domain prefix | Remove domain prefix — use `"Admin"` not `"DOMAIN\\Admin"` |
 | S3 AP creation fails (WINDOWS type) | SVM not joined to AD domain | Join SVM to AD first: `./scripts/demo-ad-join-svm.sh` |
+| Deployment succeeds but every object access fails with `AccessDenied` at runtime | Deployed with `S3AccessPointName` empty. `HasS3AccessPointName` becomes false, dropping the accesspoint-form ARNs from the IAM policy and leaving only the bucket-form ARN, which does not authorize an S3 AP | Pass the access point name. Since 2026-08 the `samconfig.toml.example` files carry a placeholder instead of an empty value |
+| `Invalid value for '--parameter-overrides': Key= is not a valid format` | The empty-value shorthand is not accepted on the command line (measured on SAM CLI 1.162.1) | Use `ParameterKey=Key,ParameterValue=`. Inside `samconfig.toml`, `parameter_overrides` still accepts `Key=` |
+
+### Runs that succeed while producing nothing (encountered during the 2026-08-12 verification)
+
+Both the deployment and the workflow report success, so the only signal is the numbers in the report.
+
+| Symptom | Cause | Resolution |
+|---------|-------|------------|
+| Step Functions `SUCCEEDED`, report shows `total_processed` of N but `success_count` and `error_count` both 0 | The Map ItemProcessor passes one element while the handler reads `event["objects"]` expecting a batch, so the loop body never runs | Accept both shapes: treat a missing `objects` key as `[event]`, and for the single-item case return the per-object result rather than the aggregate wrapper (the report reads `status` off each per-object dict) |
+| Discovery finds 0 objects although the prefix has files | The environment variable name the template sets differs from the one the handler reads. Both sides carry defaults, so each looks healthy alone | `make drift` catches this via `SAMCONFIG CONTRACT` / `PATTERN ENV CONTRACT`. Align the names |
+| Rekognition / Textract returns `InvalidS3ObjectException: Unable to get object metadata from S3` | An S3 reference (`S3Object`) was used for an object behind an S3 AP. Adding service principals to the AP policy does not help (measured) | Fetch the object as bytes and pass `Image={"Bytes": ...}` / `Document={"Bytes": ...}`. Asynchronous Textract and Rekognition Video accept only an S3 reference, so those need a real bucket (`docs/agent/pitfalls-s3ap-ontap.md`) |
+| An ASL Catch fired, yet the report shows 0 successes and 0 failures | The Catch Pass state emits `{"status": "FAILED"}` while handlers emit `"success"` / `"error"`, so the report's counters match neither | Known and unfixed. Either count `FAILED` as a failure in the report, or make the Catch output use the handler's vocabulary |
+| Objects outside the intended scope are scanned and fail in bulk | The `PREFIX_FILTER`-equivalent parameter defaults to empty, so the whole volume is walked | Pass the prefix explicitly |
 
 ### Debugging Connectivity
 
