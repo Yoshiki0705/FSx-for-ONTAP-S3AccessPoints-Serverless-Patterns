@@ -66,3 +66,26 @@ def test_the_layer_reads_the_version_from_the_requirements_file():
     )
     hardcoded = re.search(r"Pillow==\d", source)
     assert not hardcoded, "backend.ts hardcodes a Pillow version instead of reading the pin"
+
+
+def test_the_layer_accepts_more_than_the_legacy_manylinux_tag():
+    """A single legacy platform tag makes the pin's resolvability depend on upstream.
+
+    This is the gap the pin-agreement rules above could not see. Renovate bumped Pillow
+    to 12.3.0 and updated both pin files consistently, so every rule here passed -- but
+    12.3.0 publishes no `manylinux2014_aarch64` wheel for cp313, and the layer build
+    asked for exactly that tag with `--only-binary=:all:`. pip did not fall back; it
+    reported no matching distribution and did not even list 12.3.0 as available. The
+    break was invisible until the layer was built, which happens at deploy time.
+
+    Whether a given release ships a given tag is an upstream fact this repository cannot
+    assert offline. What it can assert is that the build does not narrow itself to the
+    one tag that upstream has already stopped producing.
+    """
+    source = BACKEND.read_text(encoding="utf-8")
+    tags = re.findall(r'"(manylinux[0-9_a-z]*_aarch64)"', source)
+    assert len(tags) >= 2, (
+        f"the layer build passes only {tags or 'no'} platform tag(s). Pillow moved from "
+        "manylinux2014 to manylinux_2_28 for cp313, so a single tag can make an "
+        "otherwise valid pin unresolvable. Pass both."
+    )

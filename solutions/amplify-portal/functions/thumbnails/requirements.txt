@@ -9,8 +9,14 @@
 # Exact, not a range: the layer is built from a downloaded wheel, and a range would
 # make the layer's contents depend on the day it was built.
 #
-# 12.2.0 rather than the newest release: it is the latest with a cp313
-# manylinux2014_aarch64 wheel, which is what an ARM64 Python 3.13 Lambda needs. A
-# version without one cannot be staged without Docker, and the layer build is
-# deliberately Docker-free so `ampx sandbox` works on a laptop.
+# The layer build is deliberately Docker-free so `ampx sandbox` works on a laptop,
+# which means the wheel has to be fetchable with `pip install --platform`. That once
+# constrained the version: this file pinned 12.2.0 because it was the last release with
+# a cp313 `manylinux2014_aarch64` wheel and `backend.ts` asked for exactly that tag.
+# 12.3.0 ships `manylinux_2_27`/`manylinux_2_28` instead, so the bump did not merely
+# change the version, it made it unresolvable -- pip reported no matching distribution.
+#
+# `backend.ts` now passes both platform tags, so a release tagged either way resolves.
+# What remains is only that some cp313 aarch64 manylinux wheel exists; if a future
+# release has none, the layer cannot be staged without Docker and the pin has to hold.
 Pillow==12.3.0
