@@ -316,7 +316,7 @@ aws sagemaker delete-endpoint --endpoint-name <serverless-endpoint>
 - `shared/routing.py`, `shared/cost_validation.py`, `shared/lambdas/auto_stop/`
 - `shared/cfn/scheduled-scaling.yaml`, `shared/cfn/billing-alarm.yaml`, `shared/cfn/auto-stop-resources.yaml`
 - `shared/cfn/global-task-token-store.yaml`, `shared/cfn/multi-region-base.yaml`
-- `.github/workflows/ci.yml`, `.github/workflows/deploy.yml`
+- `.github/workflows/ci.yml`
 - `security/cfn-guard-rules/`
 
 ---
