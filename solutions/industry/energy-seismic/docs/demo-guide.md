@@ -174,7 +174,7 @@ Phase 7 UC15/16/17 と UC6/11/14 のデモと同じ方針で、**エンドユー
 
 #### UC8 Step Functions Graph view（SUCCEEDED）
 
-![UC8 Step Functions Graph view（SUCCEEDED）](../../docs/screenshots/masked/uc8-demo/uc8-stepfunctions-graph.png)
+![UC8 Step Functions Graph view（SUCCEEDED）](../../../../docs/screenshots/masked/uc8-demo/uc8-stepfunctions-graph.png)
 
 Step Functions Graph view は各 Lambda / Parallel / Map ステートの実行状況を
 色で可視化するエンドユーザー最重要画面。
@@ -183,13 +183,13 @@ Step Functions Graph view は各 Lambda / Parallel / Map ステートの実行�
 
 #### UC8 Step Functions Graph（SUCCEEDED — Phase 8 IAM 修正後再撮影）
 
-![UC8 Step Functions Graph（SUCCEEDED）](../../docs/screenshots/masked/uc8-demo/step-functions-graph-succeeded.png)
+![UC8 Step Functions Graph（SUCCEEDED）](../../../../docs/screenshots/masked/uc8-demo/step-functions-graph-succeeded.png)
 
 IAM S3AP 修正後に再デプロイ。全ステップ SUCCEEDED（2:59）。
 
 #### UC8 Step Functions Graph（ズーム表示 — 各ステップ詳細）
 
-![UC8 Step Functions Graph（ズーム表示）](../../docs/screenshots/masked/uc8-demo/step-functions-graph-zoomed.png)
+![UC8 Step Functions Graph（ズーム表示）](../../../../docs/screenshots/masked/uc8-demo/step-functions-graph-zoomed.png)
 
 ### 再検証時の UI/UX 対象画面（推奨撮影リスト）
 
@@ -221,3 +221,10 @@ IAM S3AP 修正後に再デプロイ。全ステップ SUCCEEDED（2:59）。
 5. **クリーンアップ**:
    - `bash scripts/cleanup_generic_ucs.sh UC8` で削除
    - VPC Lambda ENI 解放に 15-30 分（AWS の仕様）
+
+---
+
+## 関連ドキュメント
+
+> デプロイや実行でつまずいたときは、パターン共通の[デプロイガイド](../../../../docs/ja/deployment-guide.md#トラブルシューティング)を参照。
+> よくあるデプロイエラーに加えて、「実行は成功するのに結果が空になる」系の症状を症状別にまとめてある。

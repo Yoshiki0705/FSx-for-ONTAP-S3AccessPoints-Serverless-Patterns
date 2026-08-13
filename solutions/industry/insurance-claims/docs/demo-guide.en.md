@@ -181,7 +181,7 @@ view damage evaluation JSON, OCR results, and claims reports within the claims c
 ```
 
 For AWS specification constraints and workarounds, refer to the ["AWS Specification Constraints and Workarounds"
-section in the project README](../../README.en.md#key-s3-access-point-constraints).
+section in the project README](../README.en.md#key-s3-access-point-constraints).
 
 ### 1. Insurance Claims Report — Assessor Summary
 
@@ -192,7 +192,7 @@ With judgment `MANUAL_REVIEW` + 75% confidence, assessor reviews items that cann
      Content: Insurance claims report (claim ID, damage summary, estimate correlation, recommended judgment)
             + Rekognition detected label list + Textract OCR results
      Masked: Account ID, bucket name -->
-![UC14: Insurance Claims Report](../../docs/screenshots/masked/uc14-demo/uc14-claims-report.png)
+![UC14: Insurance Claims Report](../../../../docs/screenshots/masked/uc14-demo/uc14-claims-report.png)
 
 ### 2. S3 Output Bucket — Assessment Artifacts Overview
 
@@ -202,7 +202,7 @@ Screen where assessors review artifacts per claims case.
 <!-- SCREENSHOT: uc14-s3-output-bucket.png
      Content: S3 console showing assessments/, estimates/, reports/ prefixes
      Masked: Account ID -->
-![UC14: S3 Output Bucket](../../docs/screenshots/masked/uc14-demo/uc14-s3-output-bucket.png)
+![UC14: S3 Output Bucket](../../../../docs/screenshots/masked/uc14-demo/uc14-s3-output-bucket.png)
 
 ### Actual Measurements (2026-05-10 AWS Deployment Verification)
 
@@ -211,3 +211,10 @@ Screen where assessors review artifacts per claims case.
 - **Textract**: OCR'd `Total: 1270.00 USD` etc. from estimate PDF via cross-region us-east-1
 - **Generated Artifacts**: assessments/*.json, estimates/*.json, reports/*.txt
 - **Actual Stack**: `fsxn-insurance-claims-demo` (ap-northeast-1, verified 2026-05-10)
+
+---
+
+## Related Documentation
+
+> If a deployment or a run misbehaves, see the shared [deployment guide](../../../../docs/en/deployment-guide.md#troubleshooting).
+> It lists the common deployment errors plus the "runs that succeed while producing nothing" symptoms by signature.

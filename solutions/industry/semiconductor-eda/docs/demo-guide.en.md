@@ -207,7 +207,7 @@ ORDER BY bounding_box_width DESC;
 
 Following the same approach as Phase 7 UC15/16/17, capturing **UI/UX screens that design engineers actually see in daily work**.
 Technical views like Step Functions graphs are excluded (details in
-[`docs/verification-results-phase7.md`](../../docs/verification-results-phase7.md)).
+[`docs/phase7-summary.md`](../../../../docs/phase7-summary.md)).
 
 ### 1. FSx for ONTAP Volumes — Design File Volumes
 
@@ -217,7 +217,7 @@ managed with NTFS ACLs.
 <!-- SCREENSHOT: uc6-fsx-volumes-list.png
      Content: FSx console showing ONTAP Volumes list (eda_demo_vol etc.), Status=Created, Type=ONTAP
      Masked: Account ID, actual SVM ID values, file system ID -->
-![UC6: FSx Volumes List](../../docs/screenshots/masked/uc6-demo/uc6-fsx-volumes-list.png)
+![UC6: FSx Volumes List](../../../../docs/screenshots/masked/uc6-demo/uc6-fsx-volumes-list.png)
 
 ### 2. S3 Output Bucket — Design Documents and Analysis Results List
 
@@ -227,7 +227,7 @@ Organized into 3 prefixes: `metadata/` / `athena-results/` / `reports/`.
 <!-- SCREENSHOT: uc6-s3-output-bucket.png
      Content: S3 console showing bucket top-level prefixes
      Masked: Account ID, bucket name prefix -->
-![UC6: S3 Output Bucket](../../docs/screenshots/masked/uc6-demo/uc6-s3-output-bucket.png)
+![UC6: S3 Output Bucket](../../../../docs/screenshots/masked/uc6-demo/uc6-s3-output-bucket.png)
 
 ### 2. S3 Output Bucket — Design Documents and Analysis Results List
 
@@ -237,7 +237,7 @@ Organized into 3 prefixes: `metadata/` / `athena-results/` / `reports/`.
 <!-- SCREENSHOT: uc6-s3-output-bucket.png
      Content: S3 console showing bucket top-level prefixes
      Masked: Account ID, bucket name prefix -->
-![UC6: S3 Output Bucket](../../docs/screenshots/masked/uc6-demo/uc6-s3-output-bucket.png)
+![UC6: S3 Output Bucket](../../../../docs/screenshots/masked/uc6-demo/uc6-s3-output-bucket.png)
 
 ### 3. Athena Query Results — SQL Analysis of EDA Metadata
 
@@ -247,7 +247,7 @@ Workgroup is `fsxn-eda-uc6-workgroup`, database is `fsxn-eda-uc6-db`.
 <!-- SCREENSHOT: uc6-athena-query-result.png
      Content: SELECT results from EDA metadata table (file_key, library_name, cell_count, bounding_box)
      Masked: Account ID -->
-![UC6: Athena Query Results](../../docs/screenshots/masked/uc6-demo/uc6-athena-query-result.png)
+![UC6: Athena Query Results](../../../../docs/screenshots/masked/uc6-demo/uc6-athena-query-result.png)
 
 ### 4. Bedrock-Generated Design Review Report
 
@@ -268,7 +268,7 @@ a Japanese design review report for Physical Design Leads.
        - **Medium**: 6 naming convention violations confirmed.
        - **Low**: No issues with cell count distribution or bounding box outliers.
      Masked: Account ID -->
-![UC6: Bedrock Design Review Report](../../docs/screenshots/masked/uc6-demo/uc6-bedrock-design-review.png)
+![UC6: Bedrock Design Review Report](../../../../docs/screenshots/masked/uc6-demo/uc6-bedrock-design-review.png)
 
 ### Measured Values (AWS Deployment Verification 2026-05-10)
 
@@ -393,3 +393,10 @@ a Japanese design review report for Physical Design Leads.
 ---
 
 *This document was created as a production guide for technical presentation demo videos.*
+
+---
+
+## Related Documentation
+
+> If a deployment or a run misbehaves, see the shared [deployment guide](../../../../docs/en/deployment-guide.md#troubleshooting).
+> It lists the common deployment errors plus the "runs that succeed while producing nothing" symptoms by signature.

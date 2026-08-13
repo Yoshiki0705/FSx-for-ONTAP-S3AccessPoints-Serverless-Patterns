@@ -252,6 +252,9 @@ aws cloudwatch get-metric-statistics \
 | `AccessDenied` on S3 AP | IAM ポリシーの ARN 形式が誤り | `arn:aws:s3:{region}:{account}:accesspoint/{name}` 形式を使用しているか確認 |
 | ブランドガイドライン未検出 | S3 キーが間違い | `BrandGuidelinesS3Key` パラメータと output バケット内のファイルパスを確認 |
 
+> デプロイや実行でつまずいたときは、パターン共通の[デプロイガイド](../../../../docs/ja/deployment-guide.md#トラブルシューティング)を参照。
+> よくあるデプロイエラーに加えて、「実行は成功するのに結果が空になる」系の症状を症状別にまとめてある。
+
 ---
 
 ## Storyboard（5 セクション / 3〜5 分）
@@ -356,7 +359,7 @@ echo "クリーンアップ完了"
 ---
 
 
-![Step Functions Graph View (SUCCEEDED)](../../docs/screenshots/masked/uc19-demo/step-functions-graph-view.png)
+![Step Functions Graph View (SUCCEEDED)](../../../../docs/screenshots/masked/uc19-demo/step-functions-graph-view.png)
 
 ## 撮影ガイド
 
@@ -391,5 +394,5 @@ sam deploy --guided
 - メールアドレス
 - ブラウザのユーザー名表示
 
-> 詳細は [`docs/screenshots/MASK_GUIDE.md`](../../docs/screenshots/MASK_GUIDE.md) を参照。
+> 詳細は [`docs/screenshots/MASK_GUIDE.md`](../../../../docs/screenshots/MASK_GUIDE.md) を参照。
 

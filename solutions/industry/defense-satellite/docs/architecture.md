@@ -113,4 +113,4 @@ UC15 は 2026-05-11 のアップデートで `OutputDestination` パラメータ
 **影響を受ける Lambda**: Tiling、ObjectDetection、GeoEnrichment（3 関数）。  
 **影響を受けない Lambda**: Discovery（manifest は引き続き S3AP 直書き）、ChangeDetection（DynamoDB のみ）、AlertGeneration（SNS のみ）。
 
-詳細は [`docs/output-destination-patterns.md`](../../docs/output-destination-patterns.md) 参照。
+詳細は [`docs/output-destination-patterns.md`](../../../../docs/output-destination-patterns.md) 参照。

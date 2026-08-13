@@ -182,7 +182,7 @@ consulter les JSON de balises générées automatiquement dans la structure de r
   ...
 ```
 
-Pour les contraintes des spécifications AWS et les solutions de contournement, consultez la [section « Contraintes des spécifications AWS et solutions de contournement » du README du projet](../../README.md#aws-仕様上の制約と回避策).
+Pour les contraintes des spécifications AWS et les solutions de contournement, consultez la [section « Contraintes des spécifications AWS et solutions de contournement » du README du projet](../README.md#aws-仕様上の制約と回避策).
 
 ### 1. Résultats de balisage automatique des images de produits
 
@@ -192,7 +192,7 @@ Résultats d'analyse IA reçus par le gestionnaire e-commerce lors de l'enregist
 <!-- SCREENSHOT: uc11-product-tags.png
      Contenu : Image produit + Liste des balises détectées par IA (avec niveau de confiance)
      Masqué : ID de compte, nom du bucket -->
-![UC11 : Balises produit](../../docs/screenshots/masked/uc11-demo/uc11-product-tags.png)
+![UC11 : Balises produit](../../../../docs/screenshots/masked/uc11-demo/uc11-product-tags.png)
 
 ### 2. Bucket de sortie S3 — Vue d'ensemble des résultats de balises et de contrôle qualité
 
@@ -202,7 +202,7 @@ Des JSON sont générés pour chaque produit sous 2 préfixes : `tags/` et `qual
 <!-- SCREENSHOT: uc11-s3-output-bucket.png
      Contenu : Console S3 avec préfixes tags/, quality/
      Masqué : ID de compte -->
-![UC11 : Bucket de sortie S3](../../docs/screenshots/masked/uc11-demo/uc11-s3-output-bucket.png)
+![UC11 : Bucket de sortie S3](../../../../docs/screenshots/masked/uc11-demo/uc11-s3-output-bucket.png)
 
 ### Valeurs mesurées (Validation de déploiement AWS 2026-05-10)
 
@@ -210,3 +210,10 @@ Des JSON sont générés pour chaque produit sous 2 préfixes : `tags/` et `qual
 - **Rekognition** : 7 étiquettes détectées sur image réelle (confiance maximale 99,93 %)
 - **JSON générés** : tags/*.json (~750 octets), quality/*.json (~420 octets)
 - **Stack réelle** : `fsxn-retail-catalog-demo` (ap-northeast-1, validation du 2026-05-10)
+
+---
+
+## Documentation associée
+
+> En cas de problème de déploiement ou d'exécution, consultez le [guide de déploiement](../../../../docs/en/deployment-guide.md#troubleshooting) commun.
+> Il recense les erreurs de déploiement courantes ainsi que les symptômes « exécution réussie mais résultat vide ».

@@ -109,7 +109,7 @@ aws s3 ls s3://${OUTPUT_BUCKET}/reports/daily/${TODAY}/ --region ap-northeast-1
 
 ## 截圖
 
-![Step Functions Graph View (SUCCEEDED)](../../docs/screenshots/masked/uc18-demo/step-functions-graph-view.png)
+![Step Functions Graph View (SUCCEEDED)](../../../../docs/screenshots/masked/uc18-demo/step-functions-execution-succeeded.png)
 
 
 ## 清理 (Cleanup)
@@ -121,3 +121,10 @@ aws cloudformation delete-stack \
   --stack-name fsxn-telecom-demo \
   --region ap-northeast-1
 ```
+
+---
+
+## 相關文件
+
+> 部署或執行發生問題時，請參閱通用[部署指南](../../../../docs/en/deployment-guide.md#troubleshooting)。
+> 其中依症狀整理了常見部署錯誤，以及「執行成功但結果為空」的情況。

@@ -6,6 +6,7 @@ import importlib.util
 import os
 import sys
 from pathlib import Path
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -145,3 +146,39 @@ class TestPiiFilter:
         assert is_strict_mode() is False
         # Reset
         os.environ["PII_MODE"] = "strict"
+
+
+# ─── Step Functions Map の入力形状 ──────────────────────────────────────────
+# Map の ItemProcessor は配列要素を 1 件ずつ渡すので、handler の event は
+# {"objects": [...]} ではなく 1 オブジェクトになる。以前は objects しか読んで
+# いなかったためループが一度も回らず、1 件も処理しないまま SUCCEEDED を返して
+# いた。このパターンは Map が 2 段あり、2 段目は 1 段目の出力（$.extraction_results）
+# を要素ごとに渡すので、candidate_scorer 側も単一アイテムを受け付ける必要がある。
+class TestMapItemInputShape:
+    """Map が渡す単一アイテム形状を両段の handler が受け付けること。"""
+
+    def test_resume_extractor_accepts_a_single_map_item(self):
+        with (
+            patch.object(_re_module, "extract_text_textract", return_value="resume text"),
+            patch.object(_re_module, "extract_entities_comprehend", return_value={}),
+        ):
+            out = _re_module.handler({"Key": "hr/resumes/a.pdf", "Size": 64}, MagicMock())
+        # report は status を持つ per-object dict の平坦な配列を期待する。
+        assert "status" in out, f"expected a per-object result, got keys={sorted(out)}"
+        assert "results" not in out, "single-item mode must not wrap the result in a list"
+
+    def test_resume_extractor_still_accepts_a_batch(self):
+        with (
+            patch.object(_re_module, "extract_text_textract", return_value="resume text"),
+            patch.object(_re_module, "extract_entities_comprehend", return_value={}),
+        ):
+            out = _re_module.handler({"objects": [{"Key": "hr/resumes/a.pdf", "Size": 64}]}, MagicMock())
+        assert "results" in out and isinstance(out["results"], list)
+        assert out["success_count"] + out["error_count"] == 1
+
+    def test_candidate_scorer_accepts_a_single_extraction_result(self):
+        """2 段目の Map は 1 段目の per-object 結果を 1 件ずつ渡す。"""
+        item = {"key": "hr/resumes/a.pdf", "status": "error", "error_message": "upstream"}
+        out = _cs_module.handler(item, MagicMock())
+        assert "status" in out, f"expected a per-object result, got keys={sorted(out)}"
+        assert "scored_results" not in out, "single-item mode must not wrap the result in a list"

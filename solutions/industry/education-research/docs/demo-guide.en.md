@@ -173,17 +173,17 @@ Following the same policy as Phase 7 UC15/16/17 and UC6/11/14 demos, targeting *
 
 #### UC13 Step Functions Graph view (SUCCEEDED)
 
-![UC13 Step Functions Graph view (SUCCEEDED)](../../docs/screenshots/masked/uc13-demo/uc13-stepfunctions-graph.png)
+![UC13 Step Functions Graph view (SUCCEEDED)](../../../../docs/screenshots/masked/uc13-demo/uc13-stepfunctions-graph.png)
 
 Step Functions Graph view is the most important end-user screen that visualizes the execution status of each Lambda / Parallel / Map state with colors.
 
 ### Existing Screenshots (Relevant from Phase 1-6)
 
-![UC13 Step Functions Graph view (SUCCEEDED)](../../docs/screenshots/masked/uc13-demo/step-functions-graph-succeeded.png)
+![UC13 Step Functions Graph view (SUCCEEDED)](../../../../docs/screenshots/masked/uc13-demo/step-functions-graph-succeeded.png)
 
-![UC13 Step Functions Graph (Overall Overview)](../../docs/screenshots/masked/uc13-demo/step-functions-graph-overview.png)
+![UC13 Step Functions Graph (Overall Overview)](../../../../docs/screenshots/masked/uc13-demo/step-functions-graph-overview.png)
 
-![UC13 Step Functions Graph (Zoomed Display — Each Step Details)](../../docs/screenshots/masked/uc13-demo/step-functions-graph-zoomed.png)
+![UC13 Step Functions Graph (Zoomed Display — Each Step Details)](../../../../docs/screenshots/masked/uc13-demo/step-functions-graph-zoomed.png)
 
 ### UI/UX Target Screens for Re-verification (Recommended Capture List)
 
@@ -215,3 +215,10 @@ Step Functions Graph view is the most important end-user screen that visualizes 
 5. **Cleanup**:
    - Delete with `bash scripts/cleanup_generic_ucs.sh UC13`
    - VPC Lambda ENI release takes 15-30 minutes (AWS specification)
+
+---
+
+## Related Documentation
+
+> If a deployment or a run misbehaves, see the shared [deployment guide](../../../../docs/en/deployment-guide.md#troubleshooting).
+> It lists the common deployment errors plus the "runs that succeed while producing nothing" symptoms by signature.

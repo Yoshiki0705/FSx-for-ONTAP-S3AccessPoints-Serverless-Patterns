@@ -177,26 +177,26 @@ Phase 7 UC15/16/17과 UC6/11/14의 데모와 동일한 방침으로, **최종 �
 
 #### UC7 Step Functions Graph view（SUCCEEDED）
 
-![UC7 Step Functions Graph view（SUCCEEDED）](../../docs/screenshots/masked/uc7-demo/uc7-stepfunctions-graph.png)
+![UC7 Step Functions Graph view（SUCCEEDED）](../../../../docs/screenshots/masked/uc7-demo/uc7-stepfunctions-graph.png)
 
 Step Functions Graph view는 각 Lambda / Parallel / Map 상태의 실행 상황을
 색으로 시각화하는 최종 사용자 최중요 화면.
 
 #### UC7 Step Functions Graph（SUCCEEDED — Phase 8 Theme D 재촬영）
 
-![UC7 Step Functions Graph（SUCCEEDED）](../../docs/screenshots/masked/uc7-demo/step-functions-graph-succeeded.png)
+![UC7 Step Functions Graph（SUCCEEDED）](../../../../docs/screenshots/masked/uc7-demo/step-functions-graph-succeeded.png)
 
 IAM S3AP 수정 후 재배포. 전체 단계 SUCCEEDED(3:03).
 
 #### UC7 Step Functions Graph（확대 표시 — 각 단계 상세）
 
-![UC7 Step Functions Graph（확대 표시）](../../docs/screenshots/masked/uc7-demo/step-functions-graph-zoomed.png)
+![UC7 Step Functions Graph（확대 표시）](../../../../docs/screenshots/masked/uc7-demo/step-functions-graph-zoomed.png)
 
 ### 기존 스크린샷(Phase 1-6에서 해당 분)
 
 #### UC7 Comprehend Medical 게놈 분석 결과（Cross-Region us-east-1）
 
-![UC7 Comprehend Medical 게놈 분석 결과（Cross-Region us-east-1）](../../docs/screenshots/masked/phase2/phase2-comprehend-medical-genomics-analysis-fullpage.png)
+![UC7 Comprehend Medical 게놈 분석 결과（Cross-Region us-east-1）](../../../../docs/screenshots/masked/phase2/phase2-comprehend-medical-genomics-analysis-fullpage.png)
 
 
 ### 재검증 시 UI/UX 대상 화면(권장 촬영 목록)
@@ -229,3 +229,10 @@ IAM S3AP 수정 후 재배포. 전체 단계 SUCCEEDED(3:03).
 5. **정리**:
    - `bash scripts/cleanup_generic_ucs.sh UC7`로 삭제
    - VPC Lambda ENI 해제에 15-30분(AWS 사양)
+
+---
+
+## 관련 문서
+
+> 배포나 실행에서 문제가 발생하면 공통 [배포 가이드](../../../../docs/en/deployment-guide.md#troubleshooting)를 참조하십시오.
+> 일반적인 배포 오류와 함께 "실행은 성공했지만 결과가 비어 있는" 증상을 증상별로 정리해 두었습니다.

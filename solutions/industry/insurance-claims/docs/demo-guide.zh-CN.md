@@ -181,7 +181,7 @@ UC14 在 2026-05-10 的更新中支持了 `OutputDestination` 参数。
 ```
 
 AWS 规格上的限制和解决方法请参考[项目 README 的"AWS 规格上的限制和解决方法"
-部分](../../README.md#aws-仕様上の制約と回避策)。
+部分](../README.md#aws-仕様上の制約と回避策)。
 
 ### 1. 保险理赔报告 — 面向评估负责人的摘要
 
@@ -192,7 +192,7 @@ AWS 规格上的限制和解决方法请参考[项目 README 的"AWS 规格上�
      内容: 保险理赔报告（理赔 ID、损害摘要、报价相关性、推荐判定）
             + Rekognition 检测标签列表 + Textract OCR 结果
      掩码: 账户 ID、存储桶名称 -->
-![UC14: 保险理赔报告](../../docs/screenshots/masked/uc14-demo/uc14-claims-report.png)
+![UC14: 保险理赔报告](../../../../docs/screenshots/masked/uc14-demo/uc14-claims-report.png)
 
 ### 2. S3 输出存储桶 — 评估成果物概览
 
@@ -202,7 +202,7 @@ AWS 规格上的限制和解决方法请参考[项目 README 的"AWS 规格上�
 <!-- SCREENSHOT: uc14-s3-output-bucket.png
      内容: S3 控制台中的 assessments/, estimates/, reports/ 前缀
      掩码: 账户 ID -->
-![UC14: S3 输出存储桶](../../docs/screenshots/masked/uc14-demo/uc14-s3-output-bucket.png)
+![UC14: S3 输出存储桶](../../../../docs/screenshots/masked/uc14-demo/uc14-s3-output-bucket.png)
 
 ### 实测值（2026-05-10 AWS 部署验证）
 
@@ -211,3 +211,10 @@ AWS 规格上的限制和解决方法请参考[项目 README 的"AWS 规格上�
 - **Textract**: 通过跨区域 us-east-1 从报价单 PDF 中 OCR 提取 `Total: 1270.00 USD` 等
 - **生成成果物**: assessments/*.json, estimates/*.json, reports/*.txt
 - **实际堆栈**: `fsxn-insurance-claims-demo`（ap-northeast-1，2026-05-10 验证时）
+
+---
+
+## 相关文档
+
+> 部署或运行出现问题时，请参阅通用[部署指南](../../../../docs/en/deployment-guide.md#troubleshooting)。
+> 其中按症状归纳了常见部署错误，以及“执行成功但结果为空”的情况。

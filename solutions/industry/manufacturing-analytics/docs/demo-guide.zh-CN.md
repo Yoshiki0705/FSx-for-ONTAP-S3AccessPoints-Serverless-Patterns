@@ -195,8 +195,8 @@ sam deploy \
 ```
 
 关于 AWS 规格限制，请参考
-[项目 README 的 "AWS 仕様上の制約と回避策" 部分](../../README.md#aws-仕様上の制約と回避策)
-以及 [`docs/output-destination-patterns.md`](../../docs/output-destination-patterns.md)。
+[项目 README 的 "AWS 仕様上の制約と回避策" 部分](../README.md#aws-仕様上の制約と回避策)
+以及 [`docs/output-destination-patterns.md`](../../../../docs/output-destination-patterns.md)。
 
 ---
 
@@ -216,18 +216,18 @@ sam deploy \
 
 #### UC3 Step Functions Graph view（SUCCEEDED）
 
-![UC3 Step Functions Graph view（SUCCEEDED）](../../docs/screenshots/masked/uc3-demo/uc3-stepfunctions-graph.png)
+![UC3 Step Functions Graph view（SUCCEEDED）](../../../../docs/screenshots/masked/uc3-demo/uc3-stepfunctions-graph.png)
 
 Step Functions Graph view 是用颜色可视化各 Lambda / Parallel / Map 状态执行情况的
 最终用户最重要画面。
 
 ### 现有截图（来自 Phase 1-6 的相关部分）
 
-![UC3 Step Functions Graph view（SUCCEEDED）](../../docs/screenshots/masked/uc3-demo/step-functions-graph-succeeded.png)
+![UC3 Step Functions Graph view（SUCCEEDED）](../../../../docs/screenshots/masked/uc3-demo/step-functions-graph-succeeded.png)
 
-![UC3 Step Functions Graph（展开显示）](../../docs/screenshots/masked/uc3-demo/step-functions-graph-expanded.png)
+![UC3 Step Functions Graph（展开显示）](../../../../docs/screenshots/masked/uc3-demo/step-functions-graph-expanded.png)
 
-![UC3 Step Functions Graph（缩放显示 — 各步骤详细）](../../docs/screenshots/masked/uc3-demo/step-functions-graph-zoomed.png)
+![UC3 Step Functions Graph（缩放显示 — 各步骤详细）](../../../../docs/screenshots/masked/uc3-demo/step-functions-graph-zoomed.png)
 
 ### 重新验证时的 UI/UX 目标画面（推荐拍摄列表）
 
@@ -259,3 +259,10 @@ Step Functions Graph view 是用颜色可视化各 Lambda / Parallel / Map 状�
 5. **清理**:
    - 使用 `bash scripts/cleanup_generic_ucs.sh UC3` 删除
    - VPC Lambda ENI 释放需要 15-30 分钟（AWS 规格）
+
+---
+
+## 相关文档
+
+> 部署或运行出现问题时，请参阅通用[部署指南](../../../../docs/en/deployment-guide.md#troubleshooting)。
+> 其中按症状归纳了常见部署错误，以及“执行成功但结果为空”的情况。

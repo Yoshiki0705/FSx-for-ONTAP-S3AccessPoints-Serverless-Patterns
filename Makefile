@@ -274,6 +274,29 @@ drift:
 # allowlisted with its reason.
 	$(PYTHON) -m pytest scripts/tests/test_en_doc_language.py --tb=short -q
 	$(PYTHON) scripts/check_en_doc_language.py
+# The OPS handlers import shared/ lazily, inside functions, so a package missing
+# shared/ raises ImportError only in Lambda at first call. The unit tests run from
+# the repo root where shared/ is importable already, so they pass either way. Five
+# of the six patterns shipped with no staging step at all and every test was green;
+# the built artifact held handler.py and nothing else.
+	bash scripts/check_ops_shared_staged.sh
+# A template passing an environment variable under a name its handler does not read.
+# The portal has the opposite rule and exempts reads that carry a default, which is
+# what hid this: nonprofit-grant-management sent GRANT_PREFIX while the handler read
+# GRANT_APPLICATION_PREFIX with a default of its own, so the operator's parameter was
+# discarded without a word and the run discovered nothing. Two more patterns had the
+# same shape, one of them with the parameter entirely unwired.
+	$(PYTHON) -m pytest scripts/tests/test_pattern_env_contract.py --tb=short -q
+	$(PYTHON) scripts/check_pattern_env_contract.py
+# The demo guides tell the operator to copy samconfig.toml.example and deploy, so the
+# example is the documented interface and a defect in it is a defect in that path.
+# 2026-08-12: 17 examples shipped S3AccessPointName= empty, which drops the
+# accesspoint-form ARNs from the IAM policy -- the stack deploys clean and then denies
+# every S3 AP access. 3 more used parameter names the template does not declare (which
+# CloudFormation rejects outright) and 4 patterns had no example at all. cfn-lint cannot
+# see any of this: the template is valid and the example is not a template.
+	$(PYTHON) -m pytest scripts/tests/test_samconfig_contract.py --tb=short -q
+	$(PYTHON) scripts/check_samconfig_contract.py
 
 # Fetches the published posts from Hatena and dev.to, so it needs network and is
 # not part of `make lint`. Run it after shipping a feature that makes an article's

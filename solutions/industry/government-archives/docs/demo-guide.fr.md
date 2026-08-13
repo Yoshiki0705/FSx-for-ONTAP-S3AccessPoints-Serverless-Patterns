@@ -162,8 +162,8 @@ et l'ensemble de la chaîne fonctionne avec une destination cohérente.
 - Le Lambda FoiaDeadlineReminder utilise uniquement DynamoDB + SNS et n'est donc pas affecté
 - L'index OpenSearch est géré séparément par le paramètre `OpenSearchMode` (indépendant de `OutputDestination`)
 - Pour les contraintes liées aux spécifications AWS, consulter
-  [la section "Contraintes liées aux spécifications AWS et solutions de contournement" du README du projet](../../README.md#aws-仕様上の制約と回避策)
-  et [`docs/output-destination-patterns.md`](../../docs/output-destination-patterns.md)
+  [la section "Contraintes liées aux spécifications AWS et solutions de contournement" du README du projet](../README.md#aws-仕様上の制約と回避策)
+  et [`docs/output-destination-patterns.md`](../../../../docs/output-destination-patterns.md)
 
 ---
 
@@ -180,11 +180,11 @@ etc.) sont consolidées dans `docs/verification-results-*.md`.
 
 ### Captures d'écran existantes (vérification Phase 7)
 
-![Vue graphique Step Functions (SUCCEEDED)](../../docs/screenshots/masked/uc16-demo/step-functions-graph-succeeded.png)
+![Vue graphique Step Functions (SUCCEEDED)](../../../../docs/screenshots/masked/uc16-demo/step-functions-graph-succeeded.png)
 
-![Bucket de sortie S3](../../docs/screenshots/masked/uc16-demo/s3-output-bucket.png)
+![Bucket de sortie S3](../../../../docs/screenshots/masked/uc16-demo/s3-output-bucket.png)
 
-![Table DynamoDB retention](../../docs/screenshots/masked/uc16-demo/dynamodb-retention-table.png)
+![Table DynamoDB retention](../../../../docs/screenshots/masked/uc16-demo/dynamodb-retention-table.png)
 ### Écrans UI/UX cibles lors de la revérification (liste de captures recommandées)
 
 - Bucket de sortie S3 (ocr-results/, classified/, redacted/, compliance/)
@@ -219,3 +219,10 @@ etc.) sont consolidées dans `docs/verification-results-*.md`.
 5. **Nettoyage** :
    - Supprimer avec `bash scripts/cleanup_generic_ucs.sh UC16`
    - Libération des ENI Lambda VPC en 15-30 minutes (spécification AWS)
+
+---
+
+## Documentation associée
+
+> En cas de problème de déploiement ou d'exécution, consultez le [guide de déploiement](../../../../docs/en/deployment-guide.md#troubleshooting) commun.
+> Il recense les erreurs de déploiement courantes ainsi que les symptômes « exécution réussie mais résultat vide ».

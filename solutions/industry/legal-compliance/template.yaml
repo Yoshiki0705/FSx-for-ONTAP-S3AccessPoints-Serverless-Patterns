@@ -431,6 +431,10 @@ Resources:
                   - s3:PutObject
                 Resource:
                   - !Sub "arn:aws:s3:::${S3AccessPointOutputAlias}/*"
+                  # FSx for ONTAP の S3 AP は bucket 形式の ARN では認可されない。読み取り側だけ
+                  # accesspoint 形式が併記されていたため、S3 AP への書き込みが AccessDenied に
+                  # なっていた（UC28 の実行で確認）。
+                  - !Sub "arn:aws:s3:${AWS::Region}:${AWS::AccountId}:accesspoint/*/object/*"
               - Sid: SecretsManager
                 Effect: Allow
                 Action:
@@ -548,6 +552,10 @@ Resources:
                   - s3:PutObject
                 Resource:
                   - !Sub "arn:aws:s3:::${S3AccessPointOutputAlias}/*"
+                  # FSx for ONTAP の S3 AP は bucket 形式の ARN では認可されない。読み取り側だけ
+                  # accesspoint 形式が併記されていたため、S3 AP への書き込みが AccessDenied に
+                  # なっていた（UC28 の実行で確認）。
+                  - !Sub "arn:aws:s3:${AWS::Region}:${AWS::AccountId}:accesspoint/*/object/*"
               - Sid: Bedrock
                 Effect: Allow
                 Action:

@@ -181,7 +181,7 @@ automatisch generierte Tag-JSONs innerhalb der Verzeichnisstruktur der Produktbi
   ...
 ```
 
-AWS-Spezifikationsbeschränkungen und Workarounds siehe [Abschnitt "AWS-Spezifikationsbeschränkungen und Workarounds" in der Projekt-README](../../README.md#aws-仕様上の制約と回避策).
+AWS-Spezifikationsbeschränkungen und Workarounds siehe [Abschnitt "AWS-Spezifikationsbeschränkungen und Workarounds" in der Projekt-README](../README.md#aws-仕様上の制約と回避策).
 
 ### 1. Automatische Tagging-Ergebnisse für Produktbilder
 
@@ -191,7 +191,7 @@ KI-Analyseergebnisse, die E-Commerce-Manager bei der Registrierung neuer Produkt
 <!-- SCREENSHOT: uc11-product-tags.png
      Inhalt: Produktbild + KI-erkannte Tag-Liste (mit Konfidenz)
      Maskiert: Konto-ID, Bucket-Name -->
-![UC11: Produkt-Tags](../../docs/screenshots/masked/uc11-demo/uc11-product-tags.png)
+![UC11: Produkt-Tags](../../../../docs/screenshots/masked/uc11-demo/uc11-product-tags.png)
 
 ### 2. S3-Ausgabe-Bucket — Überblick über Tag- und Qualitätsprüfungsergebnisse
 
@@ -201,7 +201,7 @@ Mit den 2 Präfixen `tags/` und `quality/` wird für jedes Produkt ein JSON gene
 <!-- SCREENSHOT: uc11-s3-output-bucket.png
      Inhalt: S3-Konsole mit tags/-, quality/-Präfixen
      Maskiert: Konto-ID -->
-![UC11: S3-Ausgabe-Bucket](../../docs/screenshots/masked/uc11-demo/uc11-s3-output-bucket.png)
+![UC11: S3-Ausgabe-Bucket](../../../../docs/screenshots/masked/uc11-demo/uc11-s3-output-bucket.png)
 
 ### Gemessene Werte (AWS-Deployment-Verifizierung 2026-05-10)
 
@@ -209,3 +209,10 @@ Mit den 2 Präfixen `tags/` und `quality/` wird für jedes Produkt ein JSON gene
 - **Rekognition**: 7 Labels aus tatsächlichem Bild erkannt (höchste Konfidenz 99,93%)
 - **Generierte JSONs**: tags/*.json (~750 Bytes), quality/*.json (~420 Bytes)
 - **Tatsächlicher Stack**: `fsxn-retail-catalog-demo` (ap-northeast-1, Verifizierung 2026-05-10)
+
+---
+
+## Weiterführende Dokumentation
+
+> Bei Problemen beim Deployment oder beim Lauf siehe den gemeinsamen [Deployment-Leitfaden](../../../../docs/en/deployment-guide.md#troubleshooting).
+> Dort stehen die häufigen Deployment-Fehler sowie die Symptome „Lauf erfolgreich, Ergebnis leer“.

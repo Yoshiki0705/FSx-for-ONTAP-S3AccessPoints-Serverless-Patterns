@@ -39,13 +39,16 @@ sam deploy \
 | `AccessDenied` | IAM policy ARN format | Use `arn:aws:s3:{region}:{account}:accesspoint/{name}` |
 | AI/ML service error | Region configuration | Check Cross-Region settings |
 
+> 部署或运行出现问题时，请参阅通用[部署指南](../../../../docs/en/deployment-guide.md#troubleshooting)。
+> 其中按症状归纳了常见部署错误，以及“执行成功但结果为空”的情况。
+
 ---
 
 ---
 
 ## 截图
 
-![Step Functions Graph View (SUCCEEDED)](../../docs/screenshots/masked/uc25-demo/step-functions-graph-view.png)
+![Step Functions Graph View (SUCCEEDED)](../../../../docs/screenshots/masked/uc25-demo/step-functions-graph-view.png)
 
 
 ## Cleanup

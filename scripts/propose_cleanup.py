@@ -38,6 +38,7 @@ import argparse
 import json
 import sys
 from dataclasses import dataclass, field
+from datetime import date
 from pathlib import Path
 from typing import Any
 
@@ -63,6 +64,19 @@ FSX_DEPLOYMENT_OPTION = {
 }
 
 HOURS_PER_MONTH = 730
+
+# Ownership buckets. The account is shared, so "standing cost" and "ours to delete"
+# are different questions and the report must not answer the second with the first.
+OWNER_OURS = "this project"
+OWNER_OTHER = "another owner — do not touch"
+OWNER_SHARED = "shared — ask before touching"
+OWNER_UNKNOWN = "unattributed — identify before acting"
+
+# A resource is treated as ours when its name or tags carry one of these. They come
+# from the repository's own naming: stacks are `fsxn-*`, the portal sandbox is
+# `amplify-fsxns3apamplifyportal-*`, and templates tag `UseCase` and `Phase`.
+OURS_NAME_MARKERS = ("fsxn-", "amplify-fsxns3apamplifyportal", "s3ap", "verify", "verification")
+OURS_TAG_KEYS = ("UseCase", "Phase")
 
 
 # ---------------------------------------------------------------------------
@@ -124,6 +138,11 @@ class Standing:
     price_basis: list[str] = field(default_factory=list)
     # Anything that makes deletion impossible or delayed.
     irreversible: str | None = None
+    # Who the resource appears to belong to. This report used to omit it and
+    # present one total, which in a shared account meant proposing the deletion of
+    # a colleague's NAT gateway and VPC endpoints alongside our own resources. An
+    # unattributed total is not a cleanup proposal, it is a hazard.
+    owner: str = OWNER_UNKNOWN
 
 
 def _unit_prices(pricing: Any, service_code: str, filters: list[dict[str, str]]) -> dict[str, tuple[float, str]]:
@@ -252,6 +271,16 @@ def collect_fsx(session: Any, region: str, fsx_prices: dict[str, tuple[float, st
             note = f"{volume.get('Name')} ({volume.get('VolumeId')}) " + ", ".join(parts)
             blockers.setdefault(volume["FileSystemId"], []).append(note)
 
+    # Volumes are attributed separately from their file system. A file system can
+    # belong to someone else while carrying volumes this project created — which is
+    # how a SnapLock volume from our verification work ended up on a colleague's
+    # file system, where it may block their deletion.
+    ours_volumes: dict[str, list[str]] = {}
+    for page in fsx.get_paginator("describe_volumes").paginate():
+        for volume in page["Volumes"]:
+            if attribute(volume.get("Name"), volume.get("Tags")) == OWNER_OURS:
+                ours_volumes.setdefault(volume["FileSystemId"], []).append(str(volume.get("Name")))
+
     for filesystem in filesystems:
         ontap = filesystem.get("OntapConfiguration") or {}
         deployment = ontap.get("DeploymentType", "?")
@@ -281,11 +310,26 @@ def collect_fsx(session: Any, region: str, fsx_prices: dict[str, tuple[float, st
                     f"{throughput_key} {throughput_rate} / {throughput_unit} x {throughput}",
                 ]
 
+        fs_id = filesystem["FileSystemId"]
+        fs_name = next((t["Value"] for t in filesystem.get("Tags", []) if t.get("Key") == "Name"), None)
+        owner = attribute(fs_name, filesystem.get("Tags"))
+        ours_here = ours_volumes.get(fs_id, [])
+        if owner != OWNER_OURS and ours_here:
+            # Our volumes on someone else's file system: neither purely theirs nor
+            # ours to delete.
+            owner = OWNER_SHARED
+        detail = f"{deployment}, {storage_gb} GB SSD, {throughput} MBps"
+        if fs_name:
+            detail = f"name={fs_name}, {detail}"
+        if ours_here:
+            detail += f"; {len(ours_here)} volume(s) look like ours: " + ", ".join(sorted(ours_here)[:6])
+
         out.append(
             Standing(
                 kind="FSx for ONTAP file system",
-                identifier=filesystem["FileSystemId"],
-                detail=f"{deployment}, {storage_gb} GB SSD, {throughput} MBps",
+                identifier=fs_id,
+                detail=detail,
+                owner=owner,
                 monthly_usd=monthly,
                 price_basis=basis,
                 irreversible=(
@@ -298,6 +342,31 @@ def collect_fsx(session: Any, region: str, fsx_prices: dict[str, tuple[float, st
             )
         )
     return out
+
+
+def attribute(name: str | None, tags: list[dict[str, str]] | None = None) -> str:
+    """Guess who a resource belongs to, from its name and tags.
+
+    A guess, deliberately labelled as one. In a shared account the safe default is
+    "identify before acting" rather than "ours", so an unrecognised name is never
+    reported as this project's.
+
+    Args:
+        name: The resource's Name tag or identifier, if any.
+        tags: Its tags, as returned by the EC2/FSx APIs.
+
+    Returns:
+        One of the `OWNER_*` constants.
+    """
+    keys = {t.get("Key", "") for t in (tags or [])}
+    if keys & set(OURS_TAG_KEYS):
+        return OWNER_OURS
+    lowered = (name or "").lower()
+    if not lowered:
+        return OWNER_UNKNOWN
+    if any(marker in lowered for marker in OURS_NAME_MARKERS):
+        return OWNER_OURS
+    return OWNER_UNKNOWN
 
 
 def _suffix(deployment_option: str) -> str:
@@ -335,6 +404,14 @@ def collect_vpc(session: Any, region: str, vpc_prices: dict[str, tuple[float, st
     ec2 = session.client("ec2", region_name=region)
     out: list[Standing] = []
 
+    # A VPC's Name tag is often the only clue to who made it.
+    vpc_names: dict[str, str] = {}
+    for page in ec2.get_paginator("describe_vpcs").paginate():
+        for vpc in page["Vpcs"]:
+            name = next((t["Value"] for t in vpc.get("Tags", []) if t.get("Key") == "Name"), None)
+            if name:
+                vpc_names[vpc["VpcId"]] = name
+
     # Endswith, not `in`: "RegionalNatGateway-Hours" also contains
     # "NatGateway-Hours" and is a different product.
     nat_key = next((k for k in vpc_prices if k.endswith("-NatGateway-Hours")), None)
@@ -345,11 +422,13 @@ def collect_vpc(session: Any, region: str, vpc_prices: dict[str, tuple[float, st
     ):
         for nat in page["NatGateways"]:
             rate = vpc_prices.get(nat_key) if nat_key else None
+            nat_name = next((t["Value"] for t in nat.get("Tags", []) if t.get("Key") == "Name"), None)
             out.append(
                 Standing(
                     kind="NAT gateway",
                     identifier=nat["NatGatewayId"],
-                    detail=f"vpc={nat.get('VpcId')}",
+                    detail=f"vpc={nat.get('VpcId')}" + (f", name={nat_name}" if nat_name else ""),
+                    owner=attribute(nat_name, nat.get("Tags")),
                     monthly_usd=rate[0] * HOURS_PER_MONTH if rate else None,
                     price_basis=([f"{nat_key} {rate[0]} / {rate[1]} x {HOURS_PER_MONTH} h"] if rate else []),
                 )
@@ -358,16 +437,29 @@ def collect_vpc(session: Any, region: str, vpc_prices: dict[str, tuple[float, st
     interface_endpoints = []
     for page in ec2.get_paginator("describe_vpc_endpoints").paginate():
         interface_endpoints += [e for e in page["VpcEndpoints"] if e.get("VpcEndpointType") == "Interface"]
-    if interface_endpoints:
-        rate = vpc_prices.get(endpoint_key) if endpoint_key else None
+    # Grouped per VPC, not per account. One combined total hid that every endpoint
+    # here lives in a VPC this project did not create, which is the difference
+    # between a saving and someone else's outage.
+    rate = vpc_prices.get(endpoint_key) if endpoint_key else None
+    by_vpc: dict[str, list[dict[str, Any]]] = {}
+    for endpoint in interface_endpoints:
+        by_vpc.setdefault(endpoint.get("VpcId", "?"), []).append(endpoint)
+
+    for vpc_id, endpoints in sorted(by_vpc.items()):
         # Priced per ENI, so a multi-subnet endpoint costs more than one endpoint.
-        enis = sum(max(1, len(e.get("SubnetIds") or [])) for e in interface_endpoints)
-        names = ", ".join(sorted(e.get("ServiceName", "?").split(".")[-1] for e in interface_endpoints))
+        enis = sum(max(1, len(e.get("SubnetIds") or [])) for e in endpoints)
+        names = ", ".join(sorted(e.get("ServiceName", "?").split(".")[-1] for e in endpoints))
+        tags = [t for e in endpoints for t in (e.get("Tags") or [])]
+        tag_name = next((t["Value"] for t in tags if t.get("Key") == "Name"), None)
+        vpc_name = vpc_names.get(vpc_id)
         out.append(
             Standing(
                 kind="Interface VPC endpoints",
-                identifier=f"{len(interface_endpoints)} endpoint(s), {enis} ENI(s)",
-                detail=names,
+                identifier=f"{vpc_id}: {len(endpoints)} endpoint(s), {enis} ENI(s)",
+                detail=names
+                + (f" | vpc name={vpc_name}" if vpc_name else "")
+                + (f" | a tag reads {tag_name}" if tag_name else ""),
+                owner=attribute(tag_name or vpc_name, tags),
                 monthly_usd=rate[0] * HOURS_PER_MONTH * enis if rate else None,
                 price_basis=(
                     [f"{endpoint_key} {rate[0]} / {rate[1]} x {HOURS_PER_MONTH} h x {enis} ENI"] if rate else []
@@ -408,6 +500,7 @@ def collect_always_on(session: Any, region: str) -> list[Standing]:
                         Standing(
                             kind="ECS service (desiredCount > 0)",
                             identifier=service["serviceName"],
+                            owner=attribute(service["serviceName"]),
                             detail=f"cluster={cluster.split('/')[-1]}, desired={service['desiredCount']}",
                         )
                     )
@@ -420,11 +513,69 @@ def collect_always_on(session: Any, region: str) -> list[Standing]:
                     Standing(
                         kind="Transfer Family server",
                         identifier=server["ServerId"],
+                        owner=attribute(server.get("Tags", [{}])[0].get("Value")),
                         detail=f"protocols={','.join(server.get('IdentityProviderType', '') or '') or '?'}",
                     )
                 )
 
     return out
+
+
+def credit_runway(session: Any) -> str:
+    """Describe how long the remaining promotional credit lasts at the current burn.
+
+    This is the number that decides whether cleanup is urgent, and it is invisible
+    in Cost Explorer's default view: net cost here reads as a couple of dollars a
+    month because credits absorb the usage. Gross usage was ~64x the net figure at
+    the time of writing, so "the bill is tiny" and "nothing is being consumed" are
+    different statements.
+
+    Args:
+        session: A boto3 Session.
+
+    Returns:
+        A human-readable line, or an explanation of why it could not be computed.
+        Never raises: a billing permission gap must not hide the inventory.
+    """
+    try:
+        explorer = session.client("ce", region_name="us-east-1")
+        account = session.client("sts").get_caller_identity()["Account"]
+
+        today = date.today()
+        start = today.replace(day=1)
+        # Usage and credit are separate RECORD_TYPEs on the same query, so one call
+        # gives both the burn and the offset actually applied.
+        response = explorer.get_cost_and_usage(
+            TimePeriod={"Start": start.isoformat(), "End": today.isoformat()},
+            Granularity="MONTHLY",
+            Metrics=["UnblendedCost"],
+            GroupBy=[{"Type": "DIMENSION", "Key": "RECORD_TYPE"}],
+            Filter={"Dimensions": {"Key": "LINKED_ACCOUNT", "Values": [account]}},
+        )
+        usage = 0.0
+        applied_credit = 0.0
+        for period in response["ResultsByTime"]:
+            for group in period["Groups"]:
+                amount = float(group["Metrics"]["UnblendedCost"]["Amount"])
+                if group["Keys"][0] == "Usage":
+                    usage += amount
+                elif group["Keys"][0] == "Credit":
+                    applied_credit += amount
+
+        days = max((today - start).days, 1)
+        per_day = usage / days
+        if per_day <= 0:
+            return "Credit runway: no usage recorded this month yet."
+        return (
+            f"Gross usage this month: ${usage:,.2f} over {days} day(s) "
+            f"= ${per_day:,.2f}/day (~${per_day * 30:,.0f}/month).\n"
+            f"  Credit applied this month: ${-applied_credit:,.2f}. Net cost is the "
+            "difference, so a small net figure does not mean small consumption.\n"
+            "  For the remaining balance and its expiry, read the Credits page or\n"
+            "  `get_credits`; divide it by the per-day figure above for the runway."
+        )
+    except Exception as exc:  # noqa: BLE001 — billing access is optional here
+        return f"Credit runway: not available ({type(exc).__name__}). Needs ce:GetCostAndUsage."
 
 
 def collect_stacks(session: Any, region: str) -> list[str]:
@@ -497,39 +648,47 @@ The reasoning behind steps 3 and 4 is in docs/uc29-uc30-cleanup-runbook.md.
 """
 
 
-def report(standing: list[Standing], stacks: list[str]) -> None:
+def report(standing: list[Standing], stacks: list[str], runway: str = "") -> None:
     """Print the inventory, the estimate and the warnings.
 
     Args:
         standing: Resources found, priced or not.
         stacks: Stack names from `collect_stacks`.
+        runway: Output of `credit_runway`, or empty to omit the section.
     """
-    print("\n=== Standing resources ===\n")
-    total = 0.0
-    unpriced: list[Standing] = []
-    for item in standing:
-        if item.monthly_usd is None:
-            unpriced.append(item)
-            amount = "     (not priced)"
-        else:
-            total += item.monthly_usd
-            amount = f"${item.monthly_usd:>10,.2f}/mo"
-        print(f"{amount}  {item.kind}: {item.identifier}")
-        print(f"{'':17}  {item.detail}")
-        for line in item.price_basis:
-            print(f"{'':17}    from {line}")
-        if item.irreversible:
-            print(f"{'':17}  !! {item.irreversible}")
+    print("\n=== Standing resources, grouped by who appears to own them ===\n")
+    print("  Attribution is a guess from names and tags. It exists because this is a")
+    print("  shared account: an unattributed total invites deleting someone else's")
+    print("  resources. Confirm before acting on anything not marked as ours.\n")
 
-    print(f"\n  Priced subtotal: ${total:,.2f}/month")
-    if unpriced:
-        print(f"  {len(unpriced)} item(s) not priced — usage-dependent, so no number is given:")
-        for item in unpriced:
-            print(f"    - {item.kind}: {item.identifier}")
-    print("\n  Excludes request, data transfer and per-invocation charges, which")
-    print("  stop on their own when the workload stops.")
+    ours_total = 0.0
+    for bucket in (OWNER_OURS, OWNER_SHARED, OWNER_UNKNOWN, OWNER_OTHER):
+        items = [i for i in standing if i.owner == bucket]
+        if not items:
+            continue
+        subtotal = sum(i.monthly_usd for i in items if i.monthly_usd is not None)
+        unpriced = sum(1 for i in items if i.monthly_usd is None)
+        if bucket == OWNER_OURS:
+            ours_total = subtotal
+        print(f"--- {bucket}: ${subtotal:,.2f}/month" + (f" + {unpriced} unpriced" if unpriced else ""))
+        for item in items:
+            amount = f"${item.monthly_usd:>10,.2f}/mo" if item.monthly_usd is not None else "     (not priced)"
+            print(f"{amount}  {item.kind}: {item.identifier}")
+            print(f"{'':17}  {item.detail}")
+            for line in item.price_basis:
+                print(f"{'':17}    from {line}")
+            if item.irreversible:
+                print(f"{'':17}  !! {item.irreversible}")
+        print()
 
-    print(f"\n=== CloudFormation stacks in a deployed state: {len(stacks)} ===\n")
+    print(f"  Attributable to this project: ${ours_total:,.2f}/month")
+    print("  Excludes request, data transfer and per-invocation charges, which stop")
+    print("  on their own when the workload stops. Standing egress does not: measure")
+    print("  it per resource (CloudWatch NAT BytesOutToDestination, VPN TunnelDataOut)")
+    print("  before blaming an endpoint for a data transfer line on the bill.")
+
+    print(f"\n=== Credit and burn ===\n\n  {runway}\n")
+    print(f"=== CloudFormation stacks in a deployed state: {len(stacks)} ===\n")
     for name in stacks:
         print(f"  {name}")
 
@@ -622,7 +781,7 @@ def main(argv: list[str] | None = None) -> int:
         + collect_vpc(session, args.region, vpc_prices)
         + collect_always_on(session, args.region)
     )
-    report(standing, collect_stacks(session, args.region))
+    report(standing, collect_stacks(session, args.region), credit_runway(session))
     return 0
 
 

@@ -214,8 +214,8 @@ sam deploy \
 - Strongly recommend specifying `S3AccessPointName` (grant IAM permissions for both Alias and ARN formats)
 - Object size limit is 50 GB (AWS specification). A single PutObject is capped at 5 GB, so multipart upload is required above 5 GB
 - For AWS specification constraints, see
-  [the "AWS Specification Constraints and Workarounds" section in the project README](../../README.en.md#key-s3-access-point-constraints)
-  and [`docs/output-destination-patterns.md`](../../docs/output-destination-patterns.md)
+  [the "AWS Specification Constraints and Workarounds" section in the project README](../README.en.md#key-s3-access-point-constraints)
+  and [`docs/output-destination-patterns.md`](../../../../docs/output-destination-patterns.md)
 
 ---
 
@@ -230,7 +230,7 @@ Following the same policy as Phase 7 UC15/16/17 and UC6/11/14 demos, target **UI
 
 ### Existing Screenshots (from Phase 1-6 where applicable)
 
-![UC9 Step Functions Graph view (SUCCEEDED)](../../docs/screenshots/masked/uc9-demo/step-functions-graph-succeeded.png)
+![UC9 Step Functions Graph view (SUCCEEDED)](../../../../docs/screenshots/masked/uc9-demo/step-functions-graph-succeeded.png)
 
 ### UI/UX Target Screens for Re-verification (Recommended Capture List)
 
@@ -262,3 +262,10 @@ Following the same policy as Phase 7 UC15/16/17 and UC6/11/14 demos, target **UI
 5. **Cleanup**:
    - Delete with `bash scripts/cleanup_generic_ucs.sh UC9`
    - VPC Lambda ENI release takes 15-30 minutes (AWS specification)
+
+---
+
+## Related Documentation
+
+> If a deployment or a run misbehaves, see the shared [deployment guide](../../../../docs/en/deployment-guide.md#troubleshooting).
+> It lists the common deployment errors plus the "runs that succeed while producing nothing" symptoms by signature.

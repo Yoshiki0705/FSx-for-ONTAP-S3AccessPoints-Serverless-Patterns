@@ -610,6 +610,20 @@ aws fsx create-and-attach-s3-access-point ...
 | `Bedrock InvokeModel AccessDenied` | リージョンでモデルアクセスが有効化されていない | Bedrock コンソールでモデルアクセスを有効化; クロスリージョン推論プロファイル ID を使用 |
 | WINDOWS S3 AP データ操作で `AccessDenied` | `WindowsUser.Name` にドメインプレフィクスが含まれている | ドメインプレフィクスを削除 — `"DOMAIN\\Admin"` ではなく `"Admin"` を使用 |
 | S3 AP 作成失敗（WINDOWS タイプ） | SVM が AD ドメインに未参加 | 先に SVM を AD に参加: `./scripts/demo-ad-join-svm.sh` |
+| デプロイは成功するが実行時に全オブジェクトが `AccessDenied` | `S3AccessPointName` を空でデプロイした。`HasS3AccessPointName` が false になり IAM ポリシーから accesspoint 形式の ARN が外れ、bucket 形式だけが残る（S3 AP は bucket 形式では認可されない） | 空にせず AP 名を渡す。`samconfig.toml.example` は 2026-08 以降プレースホルダを入れてある |
+| `Invalid value for '--parameter-overrides': Key= is not a valid format` | コマンドラインでは空値の省略形が使えない（SAM CLI 1.162.1 で実測） | `ParameterKey=Key,ParameterValue=` を使う。`samconfig.toml` の `parameter_overrides` では `Key=` のままでよい |
+
+### 実行は成功するのに結果が空になる系（2026-08-12 の検証で実際に遭遇）
+
+デプロイもワークフローも成功扱いになるため、レポートの数字を見るまで気づけない。
+
+| 症状 | 原因 | 対処 |
+|------|------|------|
+| Step Functions は `SUCCEEDED`、レポートは `total_processed` が N なのに `success_count` と `error_count` が両方 0 | Map の ItemProcessor が渡す 1 要素を、ハンドラが `event["objects"]` のバッチ前提で読んでいてループが 0 回で終わる | 単一要素と配列の両方を受ける。`objects` が無ければ `[event]` として扱い、単一時は集計ラッパーではなく要素の結果を返す（レポート側は per-object の dict の `status` を見る） |
+| Discovery が 0 件で終わる（プレフィクスにファイルはある） | テンプレートが渡す環境変数名と、ハンドラが読む名前が違う。どちらも既定値を持つため両側とも健全に見える | `make drift` の `SAMCONFIG CONTRACT` / `PATTERN ENV CONTRACT` が検出する。名前を揃える |
+| Rekognition / Textract が `InvalidS3ObjectException: Unable to get object metadata from S3` | S3 参照（`S3Object`）で S3 AP のオブジェクトを渡している。AP のポリシーにサービスプリンシパルを追加しても解決しない（実測） | オブジェクトをバイト列で取得して `Image={"Bytes": ...}` / `Document={"Bytes": ...}` で渡す。非同期 Textract と Rekognition Video は S3 参照しか受け付けないため実バケットが必要（`docs/agent/pitfalls-s3ap-ontap.md`） |
+| ASL の Catch が発火したのにレポートは成功 0 / 失敗 0 | Catch の Pass ステートが `{"status": "FAILED"}` を出すが、ハンドラは `"success"` / `"error"` を出すため、レポートの集計がどちらとも一致しない | 未修正の既知事項。集計側で `FAILED` も失敗として数えるか、Catch の出力をハンドラと同じ語彙に合わせる |
+| 対象外のオブジェクトまで走査して大量に失敗する | `PREFIX_FILTER` 相当のパラメータが空既定で、ボリューム全体を走査する | プレフィクスを明示的に渡す |
 
 ### 接続のデバッグ
 

@@ -162,8 +162,8 @@ y toda la cadena opera con un destination consistente.
 - FoiaDeadlineReminder Lambda solo usa DynamoDB + SNS, por lo que no se ve afectada
 - El índice de OpenSearch se gestiona por separado con el parámetro `OpenSearchMode` (independiente de `OutputDestination`)
 - Para restricciones de especificación de AWS, consulte
-  [la sección "Restricciones de especificación de AWS y soluciones" del README del proyecto](../../README.md#aws-仕様上の制約と回避策)
-  y [`docs/output-destination-patterns.md`](../../docs/output-destination-patterns.md)
+  [la sección "Restricciones de especificación de AWS y soluciones" del README del proyecto](../README.md#aws-仕様上の制約と回避策)
+  y [`docs/output-destination-patterns.md`](../../../../docs/output-destination-patterns.md)
 
 ---
 
@@ -180,11 +180,11 @@ de stack de CloudFormation, etc.) se consolidan en `docs/verification-results-*.
 
 ### Capturas de pantalla existentes (verificación Phase 7)
 
-![Vista de gráfico de Step Functions (SUCCEEDED)](../../docs/screenshots/masked/uc16-demo/step-functions-graph-succeeded.png)
+![Vista de gráfico de Step Functions (SUCCEEDED)](../../../../docs/screenshots/masked/uc16-demo/step-functions-graph-succeeded.png)
 
-![Bucket de salida S3](../../docs/screenshots/masked/uc16-demo/s3-output-bucket.png)
+![Bucket de salida S3](../../../../docs/screenshots/masked/uc16-demo/s3-output-bucket.png)
 
-![Tabla de retención DynamoDB](../../docs/screenshots/masked/uc16-demo/dynamodb-retention-table.png)
+![Tabla de retención DynamoDB](../../../../docs/screenshots/masked/uc16-demo/dynamodb-retention-table.png)
 ### Pantallas UI/UX objetivo para re-verificación (lista de captura recomendada)
 
 - Bucket de salida S3 (ocr-results/, classified/, redacted/, compliance/)
@@ -219,3 +219,10 @@ de stack de CloudFormation, etc.) se consolidan en `docs/verification-results-*.
 5. **Limpieza**:
    - Eliminar con `bash scripts/cleanup_generic_ucs.sh UC16`
    - Liberación de ENI de Lambda VPC toma 15-30 minutos (especificación de AWS)
+
+---
+
+## Documentación relacionada
+
+> Si el despliegue o la ejecución fallan, consulte la [guía de despliegue](../../../../docs/en/deployment-guide.md#troubleshooting) común.
+> Recoge los errores de despliegue habituales y los síntomas de «ejecución correcta pero sin resultados».

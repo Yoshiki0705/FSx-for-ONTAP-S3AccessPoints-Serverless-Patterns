@@ -5,6 +5,30 @@
 > 該当する作業をしているときにこの内容へ誘導する。`.kiro/` は公開しないため、
 > 知識の本体は常にこちら側に置く。
 
+## パターンのデプロイ経路（2026-08-12 実測）
+
+各パターンのディレクトリで **`sam build && sam deploy`** を使う。UC15-UC28 の 14 本を
+この方法でデプロイして確認済み。
+
+**使わないもの**: `scripts/deploy_generic_ucs.sh` と `scripts/package_generic_uc.sh` は
+現状動かない（各ファイル先頭に理由を書いた）。前者は 4 パターンが宣言していない
+パラメータを無条件に渡して CloudFormation に即エラーにされ、後者はディレクトリ再編前の
+パスを前提にしていて生成する S3 キーがテンプレートの期待と一致しない。
+`template-deploy.yaml` は SAM を使えない利用者向けの**生成物**で、zip キーの命名が
+7 パターンで実装と食い違い、1 パターンには存在しない。手で直さず、必要になったら生成し直す。
+
+**渡し忘れると静かに壊れるパラメータ**: `S3AccessPointName`。空だと
+`HasS3AccessPointName` が false になり、IAM ポリシーから accesspoint 形式の ARN が落ちて
+S3 AP への読み書きが AccessDenied になる（bucket 形式の ARN では認可されない）。
+
+**空値の渡し方はコマンドラインと設定ファイルで違う**（SAM CLI 1.162.1 で実測）:
+
+- `sam deploy --parameter-overrides "Key="` は**拒否される**
+  （`Key= is not a valid format`）。`ParameterKey=Key,ParameterValue=` を使う。
+- `samconfig.toml` の `parameter_overrides = ["Key=", ...]` は**通る**。
+  つまり samconfig.toml.example に書かれている `S3AccessPointName=` の形自体は有効で、
+  問題は構文ではなく**空値そのものが上記の AccessDenied を招くこと**。
+
 | Pitfall | Solution |
 |---------|----------|
 | `RecursiveDeleteOption` duplicate key in YAML | Single key only: `RecursiveDeleteOption: true` |

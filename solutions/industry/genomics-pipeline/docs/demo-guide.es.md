@@ -175,25 +175,25 @@ Siguiendo la misma política que las demostraciones de Phase 7 UC15/16/17 y UC6/
 
 #### UC7 Step Functions Graph view (SUCCEEDED)
 
-![UC7 Step Functions Graph view (SUCCEEDED)](../../docs/screenshots/masked/uc7-demo/uc7-stepfunctions-graph.png)
+![UC7 Step Functions Graph view (SUCCEEDED)](../../../../docs/screenshots/masked/uc7-demo/uc7-stepfunctions-graph.png)
 
 Step Functions Graph view es la pantalla más importante para el usuario final que visualiza el estado de ejecución de cada Lambda / Parallel / Map state mediante colores.
 
 #### UC7 Step Functions Graph (SUCCEEDED — Recaptura Phase 8 Theme D)
 
-![UC7 Step Functions Graph (SUCCEEDED)](../../docs/screenshots/masked/uc7-demo/step-functions-graph-succeeded.png)
+![UC7 Step Functions Graph (SUCCEEDED)](../../../../docs/screenshots/masked/uc7-demo/step-functions-graph-succeeded.png)
 
 Redesplegado después de corrección IAM S3AP. Todos los pasos SUCCEEDED (3:03).
 
 #### UC7 Step Functions Graph (Vista ampliada — Detalle de cada paso)
 
-![UC7 Step Functions Graph (Vista ampliada)](../../docs/screenshots/masked/uc7-demo/step-functions-graph-zoomed.png)
+![UC7 Step Functions Graph (Vista ampliada)](../../../../docs/screenshots/masked/uc7-demo/step-functions-graph-zoomed.png)
 
 ### Capturas de pantalla existentes (de Phase 1-6 aplicables)
 
 #### UC7 Resultados de análisis genómico de Comprehend Medical (Cross-Region us-east-1)
 
-![UC7 Resultados de análisis genómico de Comprehend Medical (Cross-Region us-east-1)](../../docs/screenshots/masked/phase2/phase2-comprehend-medical-genomics-analysis-fullpage.png)
+![UC7 Resultados de análisis genómico de Comprehend Medical (Cross-Region us-east-1)](../../../../docs/screenshots/masked/phase2/phase2-comprehend-medical-genomics-analysis-fullpage.png)
 
 
 ### Pantallas UI/UX objetivo durante reverificación (lista de captura recomendada)
@@ -226,3 +226,10 @@ Redesplegado después de corrección IAM S3AP. Todos los pasos SUCCEEDED (3:03).
 5. **Limpieza**:
    - Eliminar con `bash scripts/cleanup_generic_ucs.sh UC7`
    - Liberación de ENI de Lambda VPC en 15-30 minutos (especificación de AWS)
+
+---
+
+## Documentación relacionada
+
+> Si el despliegue o la ejecución fallan, consulte la [guía de despliegue](../../../../docs/en/deployment-guide.md#troubleshooting) común.
+> Recoge los errores de despliegue habituales y los síntomas de «ejecución correcta pero sin resultados».

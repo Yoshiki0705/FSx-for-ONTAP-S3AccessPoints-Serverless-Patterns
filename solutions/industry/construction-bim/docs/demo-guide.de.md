@@ -200,8 +200,8 @@ sam deploy \
 - Angabe von `S3AccessPointName` wird dringend empfohlen (IAM-Berechtigung sowohl für Alias- als auch ARN-Format)
 - Die Objektgrößenobergrenze liegt bei 50 GB (AWS-Spezifikation). Ein einzelnes PutObject ist auf 5 GB begrenzt, daher ist oberhalb von 5 GB ein Multipart-Upload erforderlich
 - AWS-Spezifikationsbeschränkungen siehe
-  [Abschnitt „AWS-Spezifikationsbeschränkungen und Workarounds" im Projekt-README](../../README.md#aws-仕様上の制約と回避策)
-  und [`docs/output-destination-patterns.md`](../../docs/output-destination-patterns.md)
+  [Abschnitt „AWS-Spezifikationsbeschränkungen und Workarounds" im Projekt-README](../README.md#aws-仕様上の制約と回避策)
+  und [`docs/output-destination-patterns.md`](../../../../docs/output-destination-patterns.md)
 
 ---
 
@@ -221,16 +221,16 @@ Stack-Events usw.) werden in `docs/verification-results-*.md` konsolidiert.
 
 #### UC10 Step Functions Graph view (SUCCEEDED)
 
-![UC10 Step Functions Graph view (SUCCEEDED)](../../docs/screenshots/masked/uc10-demo/uc10-stepfunctions-graph.png)
+![UC10 Step Functions Graph view (SUCCEEDED)](../../../../docs/screenshots/masked/uc10-demo/uc10-stepfunctions-graph.png)
 
 Step Functions Graph view ist der wichtigste Endbenutzer-Bildschirm, der den Ausführungsstatus
 jedes Lambda / Parallel / Map-States farblich visualisiert.
 
 ### Vorhandene Screenshots (relevante aus Phase 1-6)
 
-![UC10 Step Functions Graph view (SUCCEEDED)](../../docs/screenshots/masked/uc10-demo/step-functions-graph-succeeded.png)
+![UC10 Step Functions Graph view (SUCCEEDED)](../../../../docs/screenshots/masked/uc10-demo/step-functions-graph-succeeded.png)
 
-![UC10 Step Functions Graph (Zoom-Ansicht — Details zu jedem Schritt)](../../docs/screenshots/masked/uc10-demo/step-functions-graph-zoomed.png)
+![UC10 Step Functions Graph (Zoom-Ansicht — Details zu jedem Schritt)](../../../../docs/screenshots/masked/uc10-demo/step-functions-graph-zoomed.png)
 
 ### UI/UX-Zielbildschirme bei Neuverifizierung (empfohlene Aufnahmeliste)
 
@@ -262,3 +262,10 @@ jedes Lambda / Parallel / Map-States farblich visualisiert.
 5. **Bereinigung**:
    - `bash scripts/cleanup_generic_ucs.sh UC10` zum Löschen
    - VPC Lambda ENI-Freigabe dauert 15-30 Minuten (AWS-Spezifikation)
+
+---
+
+## Weiterführende Dokumentation
+
+> Bei Problemen beim Deployment oder beim Lauf siehe den gemeinsamen [Deployment-Leitfaden](../../../../docs/en/deployment-guide.md#troubleshooting).
+> Dort stehen die häufigen Deployment-Fehler sowie die Symptome „Lauf erfolgreich, Ergebnis leer“.

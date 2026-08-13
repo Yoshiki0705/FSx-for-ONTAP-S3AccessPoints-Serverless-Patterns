@@ -12,7 +12,9 @@ disable_rollback = false
 
 parameter_overrides = [
     "S3AccessPointAlias=<YOUR_S3AP_ALIAS>-ext-s3alias",
-    "S3AccessPointName=",
+    # 空にしないこと: 空だと IAM ポリシーから accesspoint 形式の ARN が外れ、
+    # bucket 形式だけが残って S3 AP アクセスが AccessDenied になる。
+    "S3AccessPointName=<YOUR_S3AP_NAME>",
     "S3AccessPointOutputAlias=<YOUR_OUTPUT_S3AP_ALIAS>-ext-s3alias",
     "OntapSecretName=<YOUR_ONTAP_SECRET_NAME>",
     "OntapManagementIp=<YOUR_ONTAP_MGMT_IP>",
@@ -28,14 +30,12 @@ parameter_overrides = [
     "EnableCloudWatchAlarms=false",
     "EnableVpcEndpoints=false",
     "EnableS3GatewayEndpoint=true",
-    "EnableXRayTracing=true",
     "BedrockModelId=global.anthropic.claude-haiku-4-5-20251001-v1:0",
     "TriggerMode=POLLING",
     "FPolicyEventBusName=fsxn-fpolicy-events",
     "ResumePrefix=hr/resumes/",
     "PiiMode=strict",
     "TextractRegion=us-east-1",
-    "KmsKeyArn=",
 ]
 
 [default.build.parameters]

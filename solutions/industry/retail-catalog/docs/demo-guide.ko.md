@@ -182,7 +182,7 @@ UC11은 2026-05-10 업데이트에서 `OutputDestination` 파라미터를 지원
 ```
 
 AWS 사양상의 제약 및 회피 방법은 [프로젝트 README의 "AWS 사양상의 제약 및 회피 방법"
-섹션](../../README.md#aws-仕様上の制約と回避策) 참조.
+섹션](../README.md#aws-仕様上の制約と回避策) 참조.
 
 ### 1. 상품 이미지의 자동 태그 부여 결과
 
@@ -192,7 +192,7 @@ EC 관리자가 신상품 등록 시 받는 AI 분석 결과. Rekognition이 실
 <!-- SCREENSHOT: uc11-product-tags.png
      내용: 상품 이미지 + AI 검출 태그 목록(신뢰도 포함)
      마스크: 계정 ID, 버킷 이름 -->
-![UC11: 상품 태그](../../docs/screenshots/masked/uc11-demo/uc11-product-tags.png)
+![UC11: 상품 태그](../../../../docs/screenshots/masked/uc11-demo/uc11-product-tags.png)
 
 ### 2. S3 출력 버킷 — 태그·품질 검사 결과 개요
 
@@ -202,7 +202,7 @@ EC 운영 담당자가 배치 처리 결과를 확인하는 화면.
 <!-- SCREENSHOT: uc11-s3-output-bucket.png
      내용: S3 콘솔에서 tags/, quality/ 프리픽스
      마스크: 계정 ID -->
-![UC11: S3 출력 버킷](../../docs/screenshots/masked/uc11-demo/uc11-s3-output-bucket.png)
+![UC11: S3 출력 버킷](../../../../docs/screenshots/masked/uc11-demo/uc11-s3-output-bucket.png)
 
 ### 실측값(2026-05-10 AWS 배포 검증)
 
@@ -210,3 +210,10 @@ EC 운영 담당자가 배치 처리 결과를 확인하는 화면.
 - **Rekognition**: 실제 이미지에서 7개 레이블 검출(최고 신뢰도 99.93%)
 - **생성 JSON**: tags/*.json (~750 bytes), quality/*.json (~420 bytes)
 - **실제 스택**: `fsxn-retail-catalog-demo`(ap-northeast-1, 2026-05-10 검증 시)
+
+---
+
+## 관련 문서
+
+> 배포나 실행에서 문제가 발생하면 공통 [배포 가이드](../../../../docs/en/deployment-guide.md#troubleshooting)를 참조하십시오.
+> 일반적인 배포 오류와 함께 "실행은 성공했지만 결과가 비어 있는" 증상을 증상별로 정리해 두었습니다.

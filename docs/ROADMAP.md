@@ -36,12 +36,19 @@ make propose-cleanup ARGS="--anyway"    # 残課題があっても棚卸しだ�
 
 つまり**このファイルを更新しないと撤去の判断ができません**。項目が終わったら ✅ にすること。
 
-> **撤去に関する既知のブロッカー**: 検証用ファイルシステムの一方に SnapLock ENTERPRISE
-> ボリューム（`PrivilegedDelete=PERMANENTLY_DISABLED`）が 1 本あります。この終端状態は
-> ENTERPRISE を COMPLIANCE 相当にするため、privileged delete も残っていません。削除可否は
-> FSx API の `AuditLogVolume` ではなく ONTAP の `snaplock.is_audit_log` と
-> `snaplock.expiry_time` で判断します。詳細は
+> **撤去に関する既知のブロッカー**: 本プロジェクトの検証で作った SnapLock ENTERPRISE
+> ボリューム（`zz_verify_auditlog`、`PrivilegedDelete=PERMANENTLY_DISABLED`）が、**別の方の
+> 名前が付いたファイルシステム上**にあります。この終端状態は ENTERPRISE を COMPLIANCE 相当に
+> するため privileged delete も残っておらず、そのファイルシステムの削除を将来ブロックし得ます。
+> 所有者への共有が必要です。削除可否は FSx API の `AuditLogVolume` ではなく ONTAP の
+> `snaplock.is_audit_log` と `snaplock.expiry_time` で判断します。詳細は
 > [tamperproof-snapshot-design.md](tamperproof-snapshot-design.md)。
+
+> **このアカウントは共有です。** `make propose-cleanup` は名前とタグから所有者を推測して
+> 「本プロジェクト / 共有 / 未特定」に分けて報告します。**未特定のものを消さないこと。**
+> 以前は所有者を区別せず 1 つの合計を出していたため、他の方の NAT Gateway と VPC エンドポイントが
+> 撤去候補に並んでいました。また**純額はクレジットで相殺されて小さく見えます**（実測で総額の
+> 約 1/64）。純額が小さいことは消費が小さいことを意味しません。
 
 ---
 
@@ -50,13 +57,23 @@ make propose-cleanup ARGS="--anyway"    # 残課題があっても棚卸しだ�
 パターン単位のデプロイとは別に、**設計判断の根拠になるのに実測がない**もの。ここに書いていない
 未検証事項は `make propose-cleanup` のゲートに乗らないため、撤去判断から漏れます。
 
-| # | 項目 | 状態 | 必要なもの |
-|---|---|---|---|
-| V-1 | 本番相当負荷でのスループット共有（NFS / SMB / S3 AP の同時アクセス） | 📋 未実測 | 負荷生成環境。[s3ap-performance-considerations.md](s3ap-performance-considerations.md) の設計指針の裏付け |
-| V-2 | マルチテナント S3 AP ルーティング（テナントごとの AP と認可の分離） | 📋 未実測 | 複数 SVM / 複数 AP |
-| V-3 | 外部 IdP（SAML / OIDC）と Cognito の連携 | 📋 未実測 | IdP テナント。ガイドは概要のみ |
-| V-4 | SnapMirror による DR フェイルオーバー | 📋 未実測 | **破壊的**。専用の検証用ファイルシステムで行う |
-| V-5 | AD 参加 SVM への S3 AP データ操作 | ⚠️ 一部実測（2026-08-11） | 下記 |
+| # | 項目 | 状態 | 実施予定 | 必要なもの |
+|---|---|---|---|---|
+| V-1 | 本番相当負荷でのスループット共有（NFS / SMB / S3 AP の同時アクセス） | 📋 未実測 | 2026-09 | 負荷生成環境 + **FSx for ONTAP**。[s3ap-performance-considerations.md](s3ap-performance-considerations.md) の設計指針の裏付け |
+| V-2 | マルチテナント S3 AP ルーティング（テナントごとの AP と認可の分離） | 📋 未実測 | 2026-09 | 複数 SVM / 複数 AP（**FSx for ONTAP** 必須） |
+| V-3 | 外部 IdP（SAML / OIDC）と Cognito の連携 | 📋 未実測 | 2026-09 | IdP テナント。ガイドは概要のみ。FSx for ONTAP は不要 |
+| V-4 | SnapMirror による DR フェイルオーバー | 📋 未実測 | 2026-09 | **破壊的**。専用の検証用ファイルシステムで行う（**FSx for ONTAP** 必須） |
+| V-5 | AD 参加 SVM への S3 AP データ操作 | ⚠️ 一部実測（2026-08-11） | 2026-09（残り） | 下記（**FSx for ONTAP** + AD 参加 SVM 必須） |
+
+> **検証環境の撤去判断に直結する制約**: V-1 / V-2 / V-4 / V-5 は FSx for ONTAP を必要とする。
+> したがって **2026-09 の実施を前提にする限り、ファイルシステムは撤去できない**。常設コストの
+> 内訳は [撤去の判断材料](#このファイルは撤去の判断材料でもある) の手順で
+> `make propose-cleanup ARGS="--anyway"` を実行すると Price List API から取得できる（金額は
+> 時点情報なのでここには書かない）。撤去してから再構築する選択も取れるが、その場合は AD 参加 SVM と
+> S3 AP の再作成、および V-5 の実測済み範囲の再取得が前提になる。撤去するかどうかは
+> 「9 月の作業まで維持費を払うか、9 月に再構築の手間を払うか」の判断であって、
+> どちらかが自明に正しいわけではない。`make propose-cleanup` はこの 5 件が開いている間
+> 撤去提案を出さない（意図的な挙動。`--anyway` で棚卸しのみ可能）。
 
 V-5 の実測済みの範囲: WINDOWS タイプ Internet-origin AP に対する HeadBucket / ListObjectsV2 /
 PutObject / GetObject / HeadObject / DeleteObject が VPC 外から成功すること、および **FSx API の

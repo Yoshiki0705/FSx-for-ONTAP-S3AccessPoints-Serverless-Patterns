@@ -199,8 +199,8 @@ sam deploy \
 ```
 
 Pour les contraintes liées aux spécifications AWS, consultez
-[la section « Contraintes des spécifications AWS et solutions de contournement » du README du projet](../../README.md#aws-仕様上の制約と回避策)
-et [`docs/output-destination-patterns.md`](../../docs/output-destination-patterns.md).
+[la section « Contraintes des spécifications AWS et solutions de contournement » du README du projet](../README.md#aws-仕様上の制約と回避策)
+et [`docs/output-destination-patterns.md`](../../../../docs/output-destination-patterns.md).
 
 ---
 
@@ -220,39 +220,39 @@ etc.) sont consolidées dans `docs/verification-results-*.md`.
 
 #### Vue graphique Step Functions UC1 (SUCCEEDED)
 
-![Vue graphique Step Functions UC1 (SUCCEEDED)](../../docs/screenshots/masked/uc1-demo/uc1-stepfunctions-graph.png)
+![Vue graphique Step Functions UC1 (SUCCEEDED)](../../../../docs/screenshots/masked/uc1-demo/uc1-stepfunctions-graph.png)
 
 La vue graphique Step Functions est l'écran le plus important pour l'utilisateur final, visualisant par couleur
 l'état d'exécution de chaque état Lambda / Parallel / Map.
 
 #### Graphe Step Functions UC1 (SUCCEEDED — Vérification Phase 8 Theme D/E/N, 2:38:20)
 
-![Graphe Step Functions UC1 (SUCCEEDED)](../../docs/screenshots/masked/uc1-demo/step-functions-graph-succeeded.png)
+![Graphe Step Functions UC1 (SUCCEEDED)](../../../../docs/screenshots/masked/uc1-demo/step-functions-graph-succeeded.png)
 
 Exécuté avec Phase 8 Theme E (event-driven) + Theme N (observability) activés.
 549 itérations ACL, 3871 événements, toutes les étapes SUCCEEDED en 2:38:20.
 
 #### Graphe Step Functions UC1 (Vue zoomée — Détails de chaque étape)
 
-![Graphe Step Functions UC1 (Vue zoomée)](../../docs/screenshots/masked/uc1-demo/step-functions-graph-zoomed.png)
+![Graphe Step Functions UC1 (Vue zoomée)](../../../../docs/screenshots/masked/uc1-demo/step-functions-graph-zoomed.png)
 
 #### Points d'accès S3 UC1 pour FSx for ONTAP (Affichage console)
 
-![Points d'accès S3 UC1 pour FSx for ONTAP](../../docs/screenshots/masked/uc1-demo/s3-access-points-for-fsx.png)
+![Points d'accès S3 UC1 pour FSx for ONTAP](../../../../docs/screenshots/masked/uc1-demo/s3-access-points-for-fsx.png)
 
 #### Détails du point d'accès S3 UC1 (Vue d'ensemble)
 
-![Détails du point d'accès S3 UC1](../../docs/screenshots/masked/uc1-demo/s3ap-detail-overview.png)
+![Détails du point d'accès S3 UC1](../../../../docs/screenshots/masked/uc1-demo/s3ap-detail-overview.png)
 
 ### Captures d'écran existantes (parties pertinentes de Phase 1-6)
 
 #### Déploiement de pile CloudFormation UC1 terminé (lors de la vérification du 2026-05-02)
 
-![Déploiement de pile CloudFormation UC1 terminé (lors de la vérification du 2026-05-02)](../../docs/screenshots/masked/phase1/phase1-cloudformation-uc1-deployed.png)
+![Déploiement de pile CloudFormation UC1 terminé (lors de la vérification du 2026-05-02)](../../../../docs/screenshots/masked/phase1/phase1-cloudformation-uc1-deployed.png)
 
 #### Step Functions UC1 SUCCEEDED (Succès d'exécution E2E)
 
-![Step Functions UC1 SUCCEEDED (Succès d'exécution E2E)](../../docs/screenshots/masked/phase1/phase1-step-functions-uc1-succeeded.png)
+![Step Functions UC1 SUCCEEDED (Succès d'exécution E2E)](../../../../docs/screenshots/masked/phase1/phase1-step-functions-uc1-succeeded.png)
 
 
 ### Écrans UI/UX cibles lors de la revérification (liste de capture recommandée)
@@ -321,3 +321,10 @@ Le temps de traitement UC1 est proportionnel au nombre de fichiers sur le volume
 - **Déclencheur event-driven** (`EnableEventDriven=true`) : Démarrage automatique lors de l'ajout de fichiers à S3AP
 - **Alarmes CloudWatch** (`EnableCloudWatchAlarms=true`) : Notification automatique des échecs SFN + erreurs Lambda
 - **Notification d'échec EventBridge** : Notification push vers SNS Topic en cas d'échec d'exécution
+
+---
+
+## Documentation associée
+
+> En cas de problème de déploiement ou d'exécution, consultez le [guide de déploiement](../../../../docs/en/deployment-guide.md#troubleshooting) commun.
+> Il recense les erreurs de déploiement courantes ainsi que les symptômes « exécution réussie mais résultat vide ».

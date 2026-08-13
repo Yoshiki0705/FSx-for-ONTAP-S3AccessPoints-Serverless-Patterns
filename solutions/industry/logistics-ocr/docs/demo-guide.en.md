@@ -200,8 +200,8 @@ sam deploy \
 - Strongly recommend specifying `S3AccessPointName` (grant IAM permissions for both Alias and ARN formats)
 - Object size limit is 50 GB (AWS specification). A single PutObject is capped at 5 GB, so multipart upload is required above 5 GB
 - For AWS specification constraints, see
-  [the "AWS Specification Constraints and Workarounds" section in the project README](../../README.en.md#key-s3-access-point-constraints)
-  and [`docs/output-destination-patterns.md`](../../docs/output-destination-patterns.md)
+  [the "AWS Specification Constraints and Workarounds" section in the project README](../README.en.md#key-s3-access-point-constraints)
+  and [`docs/output-destination-patterns.md`](../../../../docs/output-destination-patterns.md)
 
 ---
 
@@ -219,15 +219,15 @@ Following the same policy as Phase 7 UC15/16/17 and UC6/11/14 demos, targeting *
 
 #### UC12 Step Functions Graph view (SUCCEEDED)
 
-![UC12 Step Functions Graph view (SUCCEEDED)](../../docs/screenshots/masked/uc12-demo/uc12-stepfunctions-graph.png)
+![UC12 Step Functions Graph view (SUCCEEDED)](../../../../docs/screenshots/masked/uc12-demo/uc12-stepfunctions-graph.png)
 
 Step Functions Graph view is the most important end-user screen that visualizes the execution status of each Lambda / Parallel / Map state with colors.
 
 ### Existing Screenshots (Applicable from Phase 1-6)
 
-![UC12 Step Functions Graph view (SUCCEEDED)](../../docs/screenshots/masked/uc12-demo/step-functions-graph-succeeded.png)
+![UC12 Step Functions Graph view (SUCCEEDED)](../../../../docs/screenshots/masked/uc12-demo/step-functions-graph-succeeded.png)
 
-![UC12 Step Functions Graph (Zoomed view — each step detail)](../../docs/screenshots/masked/uc12-demo/step-functions-graph-zoomed.png)
+![UC12 Step Functions Graph (Zoomed view — each step detail)](../../../../docs/screenshots/masked/uc12-demo/step-functions-graph-zoomed.png)
 
 ### UI/UX Target Screens for Re-verification (Recommended Capture List)
 
@@ -259,3 +259,10 @@ Step Functions Graph view is the most important end-user screen that visualizes 
 5. **Cleanup**:
    - Delete with `bash scripts/cleanup_generic_ucs.sh UC12`
    - VPC Lambda ENI release takes 15-30 minutes (AWS specification)
+
+---
+
+## Related Documentation
+
+> If a deployment or a run misbehaves, see the shared [deployment guide](../../../../docs/en/deployment-guide.md#troubleshooting).
+> It lists the common deployment errors plus the "runs that succeed while producing nothing" symptoms by signature.

@@ -155,4 +155,4 @@ SageMaker Endpoint (常時存在、アイドル時コスト $0)
 - **効果**: コールドスタート 1–3 秒 → 100–500ms
 - **制約**: Published Versions にのみ適用（$LATEST には効かない）
 
-詳細: [SnapStart ガイド](../../docs/snapstart-guide.md)
+詳細: [SnapStart ガイド](../../../../docs/snapstart-guide.md)

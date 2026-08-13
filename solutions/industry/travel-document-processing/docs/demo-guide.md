@@ -156,6 +156,9 @@ aws s3 cp s3://${OUTPUT_BUCKET}/reports/${TODAY}/facility-condition.json \
 | 言語検出失敗 | スキャン品質不良 | 高解像度スキャンを推奨 |
 | `AccessDenied` | IAM ポリシー ARN 形式誤り | `arn:aws:s3:{region}:{account}:accesspoint/{name}` 形式確認 |
 
+> デプロイや実行でつまずいたときは、パターン共通の[デプロイガイド](../../../../docs/ja/deployment-guide.md#トラブルシューティング)を参照。
+> よくあるデプロイエラーに加えて、「実行は成功するのに結果が空になる」系の症状を症状別にまとめてある。
+
 ---
 
 ## クリーンアップ
@@ -189,7 +192,7 @@ aws cloudformation wait stack-delete-complete --stack-name fsxn-travel-demo --re
 ---
 
 
-![Step Functions Graph View (SUCCEEDED)](../../docs/screenshots/masked/uc20-demo/step-functions-graph-view.png)
+![Step Functions Graph View (SUCCEEDED)](../../../../docs/screenshots/masked/uc20-demo/step-functions-graph-view.png)
 
 ## 撮影ガイド
 
@@ -224,5 +227,5 @@ sam deploy --guided
 - メールアドレス
 - ブラウザのユーザー名表示
 
-> 詳細は [`docs/screenshots/MASK_GUIDE.md`](../../docs/screenshots/MASK_GUIDE.md) を参照。
+> 詳細は [`docs/screenshots/MASK_GUIDE.md`](../../../../docs/screenshots/MASK_GUIDE.md) を参照。
 

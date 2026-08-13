@@ -175,25 +175,25 @@ Même approche que les démos Phase 7 UC15/16/17 et UC6/11/14 : cibler **les éc
 
 #### Vue graphique Step Functions UC7 (SUCCEEDED)
 
-![Vue graphique Step Functions UC7 (SUCCEEDED)](../../docs/screenshots/masked/uc7-demo/uc7-stepfunctions-graph.png)
+![Vue graphique Step Functions UC7 (SUCCEEDED)](../../../../docs/screenshots/masked/uc7-demo/uc7-stepfunctions-graph.png)
 
 La vue graphique Step Functions visualise l'état d'exécution de chaque état Lambda / Parallel / Map par couleur, écran le plus important pour l'utilisateur final.
 
 #### Graphe Step Functions UC7 (SUCCEEDED — Re-capture Phase 8 Theme D)
 
-![Graphe Step Functions UC7 (SUCCEEDED)](../../docs/screenshots/masked/uc7-demo/step-functions-graph-succeeded.png)
+![Graphe Step Functions UC7 (SUCCEEDED)](../../../../docs/screenshots/masked/uc7-demo/step-functions-graph-succeeded.png)
 
 Redéployé après correction IAM S3AP. Tous les steps SUCCEEDED (3:03).
 
 #### Graphe Step Functions UC7 (Vue zoomée — Détails de chaque step)
 
-![Graphe Step Functions UC7 (Vue zoomée)](../../docs/screenshots/masked/uc7-demo/step-functions-graph-zoomed.png)
+![Graphe Step Functions UC7 (Vue zoomée)](../../../../docs/screenshots/masked/uc7-demo/step-functions-graph-zoomed.png)
 
 ### Captures d'écran existantes (portions pertinentes de Phase 1-6)
 
 #### Résultats d'analyse génomique Comprehend Medical UC7 (Cross-Region us-east-1)
 
-![Résultats d'analyse génomique Comprehend Medical UC7 (Cross-Region us-east-1)](../../docs/screenshots/masked/phase2/phase2-comprehend-medical-genomics-analysis-fullpage.png)
+![Résultats d'analyse génomique Comprehend Medical UC7 (Cross-Region us-east-1)](../../../../docs/screenshots/masked/phase2/phase2-comprehend-medical-genomics-analysis-fullpage.png)
 
 
 ### Écrans UI/UX cibles lors de la re-vérification (liste de capture recommandée)
@@ -226,3 +226,10 @@ Redéployé après correction IAM S3AP. Tous les steps SUCCEEDED (3:03).
 5. **Nettoyage** :
    - Supprimer avec `bash scripts/cleanup_generic_ucs.sh UC7`
    - Libération des ENI Lambda VPC en 15-30 minutes (spécification AWS)
+
+---
+
+## Documentation associée
+
+> En cas de problème de déploiement ou d'exécution, consultez le [guide de déploiement](../../../../docs/en/deployment-guide.md#troubleshooting) commun.
+> Il recense les erreurs de déploiement courantes ainsi que les symptômes « exécution réussie mais résultat vide ».

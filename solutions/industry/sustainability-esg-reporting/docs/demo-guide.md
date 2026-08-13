@@ -110,6 +110,9 @@ aws s3 ls s3://${OUTPUT_BUCKET}/reports/${TODAY}/ --region ap-northeast-1
 | `AccessDenied` | IAM ポリシー ARN 形式誤り | `arn:aws:s3:{region}:{account}:accesspoint/{name}` 形式確認 |
 | AI/ML サービスエラー | リージョン設定 | Cross-Region 設定確認 |
 
+> デプロイや実行でつまずいたときは、パターン共通の[デプロイガイド](../../../../docs/ja/deployment-guide.md#トラブルシューティング)を参照。
+> よくあるデプロイエラーに加えて、「実行は成功するのに結果が空になる」系の症状を症状別にまとめてある。
+
 ---
 
 ## クリーンアップ
@@ -142,7 +145,7 @@ sam deploy --parameter-overrides OutputDestination=STANDARD_S3 ...
 sam deploy --parameter-overrides OutputDestination=FSXN_S3AP OutputS3APPrefix=ai-outputs/ ...
 ```
 
-詳細は [output-destination-patterns.md](../../docs/output-destination-patterns.md) を参照。
+詳細は [output-destination-patterns.md](../../../../docs/output-destination-patterns.md) を参照。
 
 ---
 
@@ -166,7 +169,7 @@ sam deploy --parameter-overrides OutputDestination=FSXN_S3AP OutputS3APPrefix=ai
 ---
 
 
-![Step Functions Graph View (SUCCEEDED)](../../docs/screenshots/masked/uc23-demo/step-functions-graph-view.png)
+![Step Functions Graph View (SUCCEEDED)](../../../../docs/screenshots/masked/uc23-demo/step-functions-graph-view.png)
 
 ## 撮影ガイド
 
@@ -201,5 +204,5 @@ sam deploy --guided
 - メールアドレス
 - ブラウザのユーザー名表示
 
-> 詳細は [`docs/screenshots/MASK_GUIDE.md`](../../docs/screenshots/MASK_GUIDE.md) を参照。
+> 詳細は [`docs/screenshots/MASK_GUIDE.md`](../../../../docs/screenshots/MASK_GUIDE.md) を参照。
 

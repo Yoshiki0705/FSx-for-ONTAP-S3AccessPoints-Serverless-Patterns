@@ -196,8 +196,8 @@ sam deploy \
 ```
 
 AWS 仕様上の制約については
-[プロジェクト README の "AWS 仕様上の制約と回避策" セクション](../../README.md#aws-仕様上の制約と回避策)
-および [`docs/output-destination-patterns.md`](../../docs/output-destination-patterns.md) を参照。
+[プロジェクト README の "AWS 仕様上の制約と回避策" セクション](../README.md#aws-仕様上の制約と回避策)
+および [`docs/output-destination-patterns.md`](../../../../docs/output-destination-patterns.md) を参照。
 
 ---
 
@@ -217,39 +217,39 @@ Phase 7 UC15/16/17 と UC6/11/14 のデモと同じ方針で、**エンドユー
 
 #### UC1 Step Functions Graph view（SUCCEEDED）
 
-![UC1 Step Functions Graph view（SUCCEEDED）](../../docs/screenshots/masked/uc1-demo/uc1-stepfunctions-graph.png)
+![UC1 Step Functions Graph view（SUCCEEDED）](../../../../docs/screenshots/masked/uc1-demo/uc1-stepfunctions-graph.png)
 
 Step Functions Graph view は各 Lambda / Parallel / Map ステートの実行状況を
 色で可視化するエンドユーザー最重要画面。
 
 #### UC1 Step Functions Graph（SUCCEEDED — Phase 8 Theme D/E/N 検証、2:38:20）
 
-![UC1 Step Functions Graph（SUCCEEDED）](../../docs/screenshots/masked/uc1-demo/step-functions-graph-succeeded.png)
+![UC1 Step Functions Graph（SUCCEEDED）](../../../../docs/screenshots/masked/uc1-demo/step-functions-graph-succeeded.png)
 
 Phase 8 Theme E (event-driven) + Theme N (observability) 有効状態で実行。
 549 ACL iterations、3871 events、2:38:20 で全ステップ SUCCEEDED。
 
 #### UC1 Step Functions Graph（ズーム表示 — 各ステップ詳細）
 
-![UC1 Step Functions Graph（ズーム表示）](../../docs/screenshots/masked/uc1-demo/step-functions-graph-zoomed.png)
+![UC1 Step Functions Graph（ズーム表示）](../../../../docs/screenshots/masked/uc1-demo/step-functions-graph-zoomed.png)
 
 #### UC1 S3 Access Points for FSx for ONTAP（コンソール表示）
 
-![UC1 S3 Access Points for FSx for ONTAP](../../docs/screenshots/masked/uc1-demo/s3-access-points-for-fsx.png)
+![UC1 S3 Access Points for FSx for ONTAP](../../../../docs/screenshots/masked/uc1-demo/s3-access-points-for-fsx.png)
 
 #### UC1 S3 Access Point 詳細（概要ビュー）
 
-![UC1 S3 Access Point 詳細](../../docs/screenshots/masked/uc1-demo/s3ap-detail-overview.png)
+![UC1 S3 Access Point 詳細](../../../../docs/screenshots/masked/uc1-demo/s3ap-detail-overview.png)
 
 ### 既存スクリーンショット（Phase 1-6 から該当分）
 
 #### UC1 CloudFormation スタックデプロイ完了（2026-05-02 検証時）
 
-![UC1 CloudFormation スタックデプロイ完了（2026-05-02 検証時）](../../docs/screenshots/masked/phase1/phase1-cloudformation-uc1-deployed.png)
+![UC1 CloudFormation スタックデプロイ完了（2026-05-02 検証時）](../../../../docs/screenshots/masked/phase1/phase1-cloudformation-uc1-deployed.png)
 
 #### UC1 Step Functions SUCCEEDED（E2E 実行成功）
 
-![UC1 Step Functions SUCCEEDED（E2E 実行成功）](../../docs/screenshots/masked/phase1/phase1-step-functions-uc1-succeeded.png)
+![UC1 Step Functions SUCCEEDED（E2E 実行成功）](../../../../docs/screenshots/masked/phase1/phase1-step-functions-uc1-succeeded.png)
 
 
 ### 再検証時の UI/UX 対象画面（推奨撮影リスト）
@@ -318,3 +318,10 @@ UC1 の処理時間は ONTAP ボリューム上のファイル数に比例しま
 - **Event-driven トリガー** (`EnableEventDriven=true`): S3AP へのファイル追加時に自動起動
 - **CloudWatch Alarms** (`EnableCloudWatchAlarms=true`): SFN 失敗 + Lambda エラーの自動通知
 - **EventBridge 失敗通知**: 実行失敗時に SNS Topic へプッシュ通知
+
+---
+
+## 関連ドキュメント
+
+> デプロイや実行でつまずいたときは、パターン共通の[デプロイガイド](../../../../docs/ja/deployment-guide.md#トラブルシューティング)を参照。
+> よくあるデプロイエラーに加えて、「実行は成功するのに結果が空になる」系の症状を症状別にまとめてある。

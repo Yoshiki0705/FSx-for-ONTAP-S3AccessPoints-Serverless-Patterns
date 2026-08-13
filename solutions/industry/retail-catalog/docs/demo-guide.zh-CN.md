@@ -182,7 +182,7 @@ UC11 在 2026-05-10 的更新中支持了 `OutputDestination` 参数。
 ```
 
 AWS 规格限制和解决方法请参考 [项目 README 的 "AWS 规格限制和解决方法"
-部分](../../README.md#aws-仕规格限制和解决方法)。
+部分](../README.md#aws-仕规格限制和解决方法)。
 
 ### 1. 商品图像的自动标签结果
 
@@ -192,7 +192,7 @@ AWS 规格限制和解决方法请参考 [项目 README 的 "AWS 规格限制和
 <!-- SCREENSHOT: uc11-product-tags.png
      内容: 商品图像 + AI 检测标签列表（含置信度）
      掩码: 账户 ID、存储桶名称 -->
-![UC11: 商品标签](../../docs/screenshots/masked/uc11-demo/uc11-product-tags.png)
+![UC11: 商品标签](../../../../docs/screenshots/masked/uc11-demo/uc11-product-tags.png)
 
 ### 2. S3 输出存储桶 — 标签・质量检查结果概览
 
@@ -202,7 +202,7 @@ AWS 规格限制和解决方法请参考 [项目 README 的 "AWS 规格限制和
 <!-- SCREENSHOT: uc11-s3-output-bucket.png
      内容: S3 控制台中的 tags/, quality/ 前缀
      掩码: 账户 ID -->
-![UC11: S3 输出存储桶](../../docs/screenshots/masked/uc11-demo/uc11-s3-output-bucket.png)
+![UC11: S3 输出存储桶](../../../../docs/screenshots/masked/uc11-demo/uc11-s3-output-bucket.png)
 
 ### 实测值（2026-05-10 AWS 部署验证）
 
@@ -210,3 +210,10 @@ AWS 规格限制和解决方法请参考 [项目 README 的 "AWS 规格限制和
 - **Rekognition**: 从实际图像检测出 7 个标签（最高置信度 99.93%）
 - **生成 JSON**: tags/*.json (~750 bytes)、quality/*.json (~420 bytes)
 - **实际堆栈**: `fsxn-retail-catalog-demo`（ap-northeast-1，2026-05-10 验证时）
+
+---
+
+## 相关文档
+
+> 部署或运行出现问题时，请参阅通用[部署指南](../../../../docs/en/deployment-guide.md#troubleshooting)。
+> 其中按症状归纳了常见部署错误，以及“执行成功但结果为空”的情况。

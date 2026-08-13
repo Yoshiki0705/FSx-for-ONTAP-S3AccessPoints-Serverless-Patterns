@@ -155,4 +155,4 @@ Toutes les fonctions Lambda prennent en charge SnapStart en opt-in :
 - **Effet** : Démarrage à froid 1–3s → 100–500ms
 - **Limitation** : S'applique uniquement aux Published Versions (pas à $LATEST)
 
-Détails : [Guide SnapStart](../../docs/snapstart-guide.md)
+Détails : [Guide SnapStart](../../../../docs/snapstart-guide.md)

@@ -153,6 +153,12 @@ def _extract_text_async(
     budget = _DEFAULT_MAX_WAIT_SECONDS if wait_budget_seconds is None else wait_budget_seconds
     interval = _DEFAULT_POLL_INTERVAL_SECONDS if poll_interval_seconds is None else poll_interval_seconds
 
+    # 非同期 Textract は DocumentLocation.S3Object しか受け付けない（AWS リファレンスで
+    # `DocumentLocation` のメンバは S3 オブジェクトのみ）。同期 API のように bytes を
+    # inline で渡す経路が無いため、**FSx for ONTAP の S3 AP を直接指定できない**
+    # （Rekognition/Textract は AP を S3 参照で読めない。詳細は
+    # docs/agent/pitfalls-s3ap-ontap.md）。このパターンは通常の S3 バケットを前提とし、
+    # AP 上のデータを扱う場合は先に S3 へ配置する必要がある。
     response = textract_client.start_document_analysis(
         DocumentLocation={
             "S3Object": {

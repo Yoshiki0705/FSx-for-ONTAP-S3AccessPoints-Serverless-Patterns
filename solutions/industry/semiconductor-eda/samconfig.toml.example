@@ -37,7 +37,9 @@ parameter_overrides = [
     "GlueDatabaseName=",
     "GlueTableName=",
     "AthenaWorkgroupName=",
-    "S3AccessPointName=",
+    # 空にしないこと: 空だと IAM ポリシーから accesspoint 形式の ARN が外れ、
+    # bucket 形式だけが残って S3 AP アクセスが AccessDenied になる。
+    "S3AccessPointName=<YOUR_S3AP_NAME>",
     "BedrockModelId=apac.amazon.nova-lite-v1:0",
     "EnableXRayTracing=true",
     "TriggerMode=POLLING",

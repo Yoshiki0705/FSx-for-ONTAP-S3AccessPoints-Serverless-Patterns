@@ -135,8 +135,8 @@ sam deploy \
 - La Lambda ChangeDetection utilise uniquement DynamoDB, donc non affectée par `OutputDestination`
 - La Lambda AlertGeneration utilise uniquement SNS, donc non affectée par `OutputDestination`
 - Pour les contraintes de spécification AWS, voir
-  [la section "Contraintes de spécification AWS et solutions de contournement" du README du projet](../../README.md#aws-仕様上の制約と回避策)
-  et [`docs/output-destination-patterns.md`](../../docs/output-destination-patterns.md)
+  [la section "Contraintes de spécification AWS et solutions de contournement" du README du projet](../README.md#aws-仕様上の制約と回避策)
+  et [`docs/output-destination-patterns.md`](../../../../docs/output-destination-patterns.md)
 
 ---
 
@@ -153,15 +153,15 @@ etc.) sont consolidées dans `docs/verification-results-*.md`.
 
 ### Captures d'écran existantes (vérification Phase 7)
 
-![Vue graphique Step Functions (SUCCEEDED)](../../docs/screenshots/masked/uc15-demo/step-functions-graph-succeeded.png)
+![Vue graphique Step Functions (SUCCEEDED)](../../../../docs/screenshots/masked/uc15-demo/step-functions-graph-succeeded.png)
 
-![Bucket de sortie S3](../../docs/screenshots/masked/uc15-demo/s3-output-bucket.png)
+![Bucket de sortie S3](../../../../docs/screenshots/masked/uc15-demo/s3-output-bucket.png)
 
-![Sortie S3 Enriched](../../docs/screenshots/masked/uc15-demo/s3-enriched-output.png)
+![Sortie S3 Enriched](../../../../docs/screenshots/masked/uc15-demo/s3-enriched-output.png)
 
-![Table d'historique de changements DynamoDB](../../docs/screenshots/masked/uc15-demo/dynamodb-change-history-table.png)
+![Table d'historique de changements DynamoDB](../../../../docs/screenshots/masked/uc15-demo/dynamodb-change-history-table.png)
 
-![Topics de notification SNS](../../docs/screenshots/masked/uc15-demo/sns-notification-topics.png)
+![Topics de notification SNS](../../../../docs/screenshots/masked/uc15-demo/sns-notification-topics.png)
 ### Écrans UI/UX cibles lors de la revérification (liste de capture recommandée)
 
 - Bucket de sortie S3 (detections/, geo-enriched/, alerts/)
@@ -193,3 +193,10 @@ etc.) sont consolidées dans `docs/verification-results-*.md`.
 5. **Nettoyage** :
    - Supprimer avec `bash scripts/cleanup_generic_ucs.sh UC15`
    - Libération ENI Lambda VPC en 15-30 minutes (spécification AWS)
+
+---
+
+## Documentation associée
+
+> En cas de problème de déploiement ou d'exécution, consultez le [guide de déploiement](../../../../docs/en/deployment-guide.md#troubleshooting) commun.
+> Il recense les erreurs de déploiement courantes ainsi que les symptômes « exécution réussie mais résultat vide ».

@@ -135,8 +135,8 @@ sam deploy \
 - ChangeDetection Lambda 仅使用 DynamoDB，因此不受 `OutputDestination` 影响
 - AlertGeneration Lambda 仅使用 SNS，因此不受 `OutputDestination` 影响
 - AWS 规范上的限制请参考
-  [项目 README 的"AWS 规范上的限制与解决方法"部分](../../README.md#aws-仕様上の制約と回避策)
-  以及 [`docs/output-destination-patterns.md`](../../docs/output-destination-patterns.md)
+  [项目 README 的"AWS 规范上的限制与解决方法"部分](../README.md#aws-仕様上の制約と回避策)
+  以及 [`docs/output-destination-patterns.md`](../../../../docs/output-destination-patterns.md)
 
 ---
 
@@ -153,15 +153,15 @@ sam deploy \
 
 ### 现有截图（Phase 7 验证时）
 
-![Step Functions Graph view（SUCCEEDED）](../../docs/screenshots/masked/uc15-demo/step-functions-graph-succeeded.png)
+![Step Functions Graph view（SUCCEEDED）](../../../../docs/screenshots/masked/uc15-demo/step-functions-graph-succeeded.png)
 
-![S3 输出存储桶](../../docs/screenshots/masked/uc15-demo/s3-output-bucket.png)
+![S3 输出存储桶](../../../../docs/screenshots/masked/uc15-demo/s3-output-bucket.png)
 
-![S3 Enriched 输出](../../docs/screenshots/masked/uc15-demo/s3-enriched-output.png)
+![S3 Enriched 输出](../../../../docs/screenshots/masked/uc15-demo/s3-enriched-output.png)
 
-![DynamoDB 变更历史表](../../docs/screenshots/masked/uc15-demo/dynamodb-change-history-table.png)
+![DynamoDB 变更历史表](../../../../docs/screenshots/masked/uc15-demo/dynamodb-change-history-table.png)
 
-![SNS 通知主题](../../docs/screenshots/masked/uc15-demo/sns-notification-topics.png)
+![SNS 通知主题](../../../../docs/screenshots/masked/uc15-demo/sns-notification-topics.png)
 ### 重新验证时的 UI/UX 目标界面（推荐截图列表）
 
 - S3 输出存储桶（detections/、geo-enriched/、alerts/）
@@ -193,3 +193,10 @@ sam deploy \
 5. **清理**：
    - 使用 `bash scripts/cleanup_generic_ucs.sh UC15` 删除
    - VPC Lambda ENI 释放需要 15-30 分钟（AWS 规范）
+
+---
+
+## 相关文档
+
+> 部署或运行出现问题时，请参阅通用[部署指南](../../../../docs/en/deployment-guide.md#troubleshooting)。
+> 其中按症状归纳了常见部署错误，以及“执行成功但结果为空”的情况。

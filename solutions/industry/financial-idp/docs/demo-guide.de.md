@@ -196,8 +196,8 @@ sam deploy \
 ```
 
 Für AWS-Spezifikationsbeschränkungen siehe
-[Abschnitt „AWS-Spezifikationsbeschränkungen und Workarounds" im Projekt-README](../../README.md#aws-仕様上の制約と回避策)
-sowie [`docs/output-destination-patterns.md`](../../docs/output-destination-patterns.md).
+[Abschnitt „AWS-Spezifikationsbeschränkungen und Workarounds" im Projekt-README](../README.md#aws-仕様上の制約と回避策)
+sowie [`docs/output-destination-patterns.md`](../../../../docs/output-destination-patterns.md).
 
 ---
 
@@ -216,14 +216,14 @@ Stack-Events usw.) werden in `docs/verification-results-*.md` konsolidiert.
 
 #### UC2 Step Functions Graph view (SUCCEEDED)
 
-![UC2 Step Functions Graph view (SUCCEEDED)](../../docs/screenshots/masked/uc2-demo/uc2-stepfunctions-graph.png)
+![UC2 Step Functions Graph view (SUCCEEDED)](../../../../docs/screenshots/masked/uc2-demo/uc2-stepfunctions-graph.png)
 
 Die Step Functions Graph View ist der wichtigste Endbenutzer-Bildschirm, der den Ausführungsstatus jedes Lambda / Parallel / Map State
 farblich visualisiert.
 
 ### Vorhandene Screenshots (relevante aus Phase 1-6)
 
-![UC2 Step Functions Graph view (SUCCEEDED)](../../docs/screenshots/masked/uc2-demo/step-functions-graph-succeeded.png)
+![UC2 Step Functions Graph view (SUCCEEDED)](../../../../docs/screenshots/masked/uc2-demo/step-functions-graph-succeeded.png)
 
 ### UI/UX-Zielbildschirme bei Re-Verifizierung (empfohlene Aufnahmeliste)
 
@@ -255,3 +255,10 @@ farblich visualisiert.
 5. **Bereinigung**:
    - Löschen mit `bash scripts/cleanup_generic_ucs.sh UC2`
    - VPC Lambda ENI-Freigabe dauert 15-30 Minuten (AWS-Spezifikation)
+
+---
+
+## Weiterführende Dokumentation
+
+> Bei Problemen beim Deployment oder beim Lauf siehe den gemeinsamen [Deployment-Leitfaden](../../../../docs/en/deployment-guide.md#troubleshooting).
+> Dort stehen die häufigen Deployment-Fehler sowie die Symptome „Lauf erfolgreich, Ergebnis leer“.

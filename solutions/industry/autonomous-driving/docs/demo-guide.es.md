@@ -214,8 +214,8 @@ sam deploy \
 - Se recomienda encarecidamente especificar `S3AccessPointName` (permitir IAM en formato Alias y ARN)
 - El límite de tamaño de objeto es de 50 GB (especificación de AWS). Un único PutObject está limitado a 5 GB, por lo que se requiere carga multiparte por encima de 5 GB
 - Para restricciones de especificación de AWS, consulte
-  [la sección "AWS 仕様上の制約と回避策" del README del proyecto](../../README.md#aws-仕様上の制約と回避策)
-  y [`docs/output-destination-patterns.md`](../../docs/output-destination-patterns.md)
+  [la sección "AWS 仕様上の制約と回避策" del README del proyecto](../README.md#aws-仕様上の制約と回避策)
+  y [`docs/output-destination-patterns.md`](../../../../docs/output-destination-patterns.md)
 
 ---
 
@@ -232,7 +232,7 @@ de stack de CloudFormation, etc.) se consolidan en `docs/verification-results-*.
 
 ### Capturas de pantalla existentes (de Phase 1-6 aplicables)
 
-![UC9 Step Functions Graph view (SUCCEEDED)](../../docs/screenshots/masked/uc9-demo/step-functions-graph-succeeded.png)
+![UC9 Step Functions Graph view (SUCCEEDED)](../../../../docs/screenshots/masked/uc9-demo/step-functions-graph-succeeded.png)
 
 ### Pantallas de UI/UX objetivo para reverificación (lista de captura recomendada)
 
@@ -264,3 +264,10 @@ de stack de CloudFormation, etc.) se consolidan en `docs/verification-results-*.
 5. **Limpieza**:
    - Eliminar con `bash scripts/cleanup_generic_ucs.sh UC9`
    - Liberación de ENI de Lambda en VPC toma 15-30 minutos (especificación de AWS)
+
+---
+
+## Documentación relacionada
+
+> Si el despliegue o la ejecución fallan, consulte la [guía de despliegue](../../../../docs/en/deployment-guide.md#troubleshooting) común.
+> Recoge los errores de despliegue habituales y los síntomas de «ejecución correcta pero sin resultados».

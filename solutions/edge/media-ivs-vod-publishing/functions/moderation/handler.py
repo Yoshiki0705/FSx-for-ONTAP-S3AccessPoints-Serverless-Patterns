@@ -171,6 +171,11 @@ def _start(event: dict, context) -> dict:
 
     if video_key:
         # 動画（Rekognition 非同期）
+        # Rekognition Video の stored-video 系は Video.S3Object しか受け付けない（AWS
+        # リファレンスで `Video` のメンバは S3Object のみ）。bytes を inline で渡す経路が
+        # 無いため、**FSx for ONTAP の S3 AP を直接指定できない**（AI サービスは AP を
+        # S3 参照で読めない。詳細は docs/agent/pitfalls-s3ap-ontap.md）。
+        # このパターンは通常の S3 バケットを前提とする。
         rek = boto3.client("rekognition")
         rek_resp = rek.start_content_moderation(
             Video={"S3Object": {"Bucket": source_bucket, "Name": video_key}},

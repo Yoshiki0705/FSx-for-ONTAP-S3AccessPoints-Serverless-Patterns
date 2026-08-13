@@ -113,4 +113,4 @@ UC17 prend en charge le paramètre `OutputDestination` depuis la mise à jour du
 **Lambda non affectés** : Discovery (manifest écrit directement sur S3AP), ChangeDetection (DynamoDB uniquement).  
 **Avantage des rapports Bedrock** : écrits en `text/markdown; charset=utf-8`, ils sont directement consultables dans un éditeur de texte via client SMB/NFS.
 
-Voir [`docs/output-destination-patterns.md`](../../docs/output-destination-patterns.md) pour plus de détails.
+Voir [`docs/output-destination-patterns.md`](../../../../docs/output-destination-patterns.md) pour plus de détails.

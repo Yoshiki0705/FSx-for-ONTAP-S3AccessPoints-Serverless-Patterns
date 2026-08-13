@@ -184,7 +184,7 @@ pueden ver el JSON de evaluación de daños, resultados OCR e informes de reclam
 ```
 
 Para restricciones de especificación AWS y soluciones alternativas, consulte [la sección "Restricciones de especificación AWS y soluciones alternativas"
-del README del proyecto](../../README.md#aws-仕様上の制約と回避策).
+del README del proyecto](../README.md#aws-仕様上の制約と回避策).
 
 ### 1. Informe de reclamación de seguros — Resumen para evaluadores
 
@@ -195,7 +195,7 @@ Con determinación `MANUAL_REVIEW` + confianza 75%, el evaluador revisa elemento
      内容: 保険金請求レポート（請求 ID、損害サマリー、見積相関、推奨判定）
             + Rekognition 検出ラベル一覧 + Textract OCR 結果
      マスク: アカウント ID、バケット名 -->
-![UC14: Informe de reclamación de seguros](../../docs/screenshots/masked/uc14-demo/uc14-claims-report.png)
+![UC14: Informe de reclamación de seguros](../../../../docs/screenshots/masked/uc14-demo/uc14-claims-report.png)
 
 ### 2. Bucket S3 de salida — Vista general de artefactos de evaluación
 
@@ -205,7 +205,7 @@ Pantalla donde los evaluadores verifican artefactos por caso de reclamación.
 <!-- SCREENSHOT: uc14-s3-output-bucket.png
      内容: S3 コンソールで assessments/, estimates/, reports/ プレフィックス
      マスク: アカウント ID -->
-![UC14: Bucket S3 de salida](../../docs/screenshots/masked/uc14-demo/uc14-s3-output-bucket.png)
+![UC14: Bucket S3 de salida](../../../../docs/screenshots/masked/uc14-demo/uc14-s3-output-bucket.png)
 
 ### Valores medidos (Verificación de despliegue AWS 2026-05-10)
 
@@ -214,3 +214,10 @@ Pantalla donde los evaluadores verifican artefactos por caso de reclamación.
 - **Textract**: OCR de PDF de presupuesto vía cross-region us-east-1, extrayendo `Total: 1270.00 USD`, etc.
 - **Artefactos generados**: assessments/*.json, estimates/*.json, reports/*.txt
 - **Stack real**: `fsxn-insurance-claims-demo` (ap-northeast-1, verificación 2026-05-10)
+
+---
+
+## Documentación relacionada
+
+> Si el despliegue o la ejecución fallan, consulte la [guía de despliegue](../../../../docs/en/deployment-guide.md#troubleshooting) común.
+> Recoge los errores de despliegue habituales y los síntomas de «ejecución correcta pero sin resultados».

@@ -162,8 +162,8 @@ und die gesamte Kette arbeitet mit einem konsistenten Destination.
 - FoiaDeadlineReminder Lambda verwendet nur DynamoDB + SNS und wird nicht beeinflusst
 - OpenSearch-Index wird separat über den Parameter `OpenSearchMode` verwaltet (unabhängig von `OutputDestination`)
 - AWS-Spezifikationsbeschränkungen siehe
-  [Abschnitt "AWS-Spezifikationsbeschränkungen und Workarounds" im Projekt-README](../../README.md#aws-仕様上の制約と回避策)
-  und [`docs/output-destination-patterns.md`](../../docs/output-destination-patterns.md)
+  [Abschnitt "AWS-Spezifikationsbeschränkungen und Workarounds" im Projekt-README](../README.md#aws-仕様上の制約と回避策)
+  und [`docs/output-destination-patterns.md`](../../../../docs/output-destination-patterns.md)
 
 ---
 
@@ -180,11 +180,11 @@ Stack-Events usw.) werden in `docs/verification-results-*.md` zusammengefasst.
 
 ### Vorhandene Screenshots (Phase 7-Verifizierung)
 
-![Step Functions Graph-Ansicht (SUCCEEDED)](../../docs/screenshots/masked/uc16-demo/step-functions-graph-succeeded.png)
+![Step Functions Graph-Ansicht (SUCCEEDED)](../../../../docs/screenshots/masked/uc16-demo/step-functions-graph-succeeded.png)
 
-![S3-Ausgabe-Bucket](../../docs/screenshots/masked/uc16-demo/s3-output-bucket.png)
+![S3-Ausgabe-Bucket](../../../../docs/screenshots/masked/uc16-demo/s3-output-bucket.png)
 
-![DynamoDB retention-Tabelle](../../docs/screenshots/masked/uc16-demo/dynamodb-retention-table.png)
+![DynamoDB retention-Tabelle](../../../../docs/screenshots/masked/uc16-demo/dynamodb-retention-table.png)
 ### UI/UX-Zielbildschirme bei erneuter Verifizierung (empfohlene Aufnahmeliste)
 
 - S3-Ausgabe-Bucket (ocr-results/, classified/, redacted/, compliance/)
@@ -219,3 +219,10 @@ Stack-Events usw.) werden in `docs/verification-results-*.md` zusammengefasst.
 5. **Bereinigung**:
    - `bash scripts/cleanup_generic_ucs.sh UC16` zum Löschen
    - VPC Lambda ENI-Freigabe dauert 15-30 Minuten (AWS-Spezifikation)
+
+---
+
+## Weiterführende Dokumentation
+
+> Bei Problemen beim Deployment oder beim Lauf siehe den gemeinsamen [Deployment-Leitfaden](../../../../docs/en/deployment-guide.md#troubleshooting).
+> Dort stehen die häufigen Deployment-Fehler sowie die Symptome „Lauf erfolgreich, Ergebnis leer“.
