@@ -318,7 +318,7 @@ _JOB_WAIT_SECONDS = 10.0
 _JOB_POLL_INTERVAL = 0.5
 
 
-def _wait_for_job(http, headers, job_uuid, pending_ok=False):
+def _await_job(fetch, job_uuid, pending_ok=False):
     """Wait for an ONTAP job and report what actually happened.
 
     ONTAP accepts many POSTs with 202 and a job reference. The 202 says the work
@@ -334,6 +334,12 @@ def _wait_for_job(http, headers, job_uuid, pending_ok=False):
     already failed inside the window is still reported as failed, which is the case
     that used to be shown as a success.
 
+    `fetch` takes the job UUID and returns (state, message, error). Two transports
+    reach ONTAP from this handler -- a urllib3 pool for most actions and the shared
+    OntapClient for the SnapMirror ones -- and the SnapMirror actions went unchecked
+    because this policy was written against only the first. The policy is the part
+    that must not differ between them, so it lives here once.
+
     Returns (ok, message).
     """
     if not job_uuid:
@@ -344,11 +350,9 @@ def _wait_for_job(http, headers, job_uuid, pending_ok=False):
     state = ""
     message = ""
     while time.monotonic() < deadline:
-        data = _ontap_request(http, headers, "GET", f"/cluster/jobs/{job_uuid}?fields=state,message,code")
-        if data.get("_error"):
-            return False, data["_message"]
-        state = data.get("state", "")
-        message = data.get("message", "")
+        state, message, error = fetch(job_uuid)
+        if error:
+            return False, error
         if state in ("success", "successful"):
             return True, message
         if state in ("failure", "failed"):
@@ -358,6 +362,36 @@ def _wait_for_job(http, headers, job_uuid, pending_ok=False):
     if pending_ok:
         return True, f"still running after {int(_JOB_WAIT_SECONDS)}s (job {job_uuid})"
     return False, f"the ONTAP job is still {state or 'running'} after {int(_JOB_WAIT_SECONDS)}s (job {job_uuid})"
+
+
+def _wait_for_job(http, headers, job_uuid, pending_ok=False):
+    """`_await_job` over the urllib3 pool the majority of actions already hold."""
+
+    def fetch(uuid):
+        data = _ontap_request(http, headers, "GET", f"/cluster/jobs/{uuid}?fields=state,message,code")
+        if data.get("_error"):
+            return "", "", data["_message"]
+        return data.get("state", ""), data.get("message", ""), ""
+
+    return _await_job(fetch, job_uuid, pending_ok=pending_ok)
+
+
+def _wait_for_client_job(client, job_uuid, pending_ok=False):
+    """`_await_job` over the shared OntapClient, which the SnapMirror actions use.
+
+    The client's own `wait_ontap_job` is not used: it polls for five minutes and
+    raises on failure, which is right for a Step Functions task and wrong inside a
+    request the user is waiting on.
+    """
+
+    def fetch(uuid):
+        try:
+            job = client.get(f"/cluster/jobs/{uuid}")
+        except Exception as e:  # noqa: BLE001 - any transport failure ends the wait
+            return "", "", _client_error(e)
+        return job.get("state", ""), job.get("message", ""), ""
+
+    return _await_job(fetch, job_uuid, pending_ok=pending_ok)
 
 
 # What ONTAP does not support *at a FlexCache volume*, keyed by the portal feature
@@ -488,18 +522,21 @@ _FLEXCACHE_JOB_HINTS: tuple[tuple[str, str], ...] = (
         "assigned to the SVM on every node.",
     ),
     (
-        "writeback",
-        "Write-back has to be turned off before a cache can be deleted, and it requires "
-        "ONTAP 9.15.1 or later on both the cache and the origin. Use the write-back "
-        "toggle on the cache first; disabling it flushes what is still only at the cache "
-        "to the origin.",
+        "must be at least",
+        "A FlexCache is a FlexGroup, so its floor is the per-constituent minimum times "
+        "the number of constituents ONTAP chose -- which is why it is far above the 1 "
+        "GiB a single volume needs, and why it differs between clusters. The size in "
+        "this message is the floor for this file system; ask for at least that much. "
+        "Sizing a cache at 10% of the origin is guidance, not a licence to go below it.",
     ),
     (
-        "write-back",
-        "Write-back has to be turned off before a cache can be deleted, and it requires "
-        "ONTAP 9.15.1 or later on both the cache and the origin. Use the write-back "
-        "toggle on the cache first; disabling it flushes what is still only at the cache "
-        "to the origin.",
+        # ONTAP 66846980, refused on the DELETE itself. Its own wording is unusually
+        # complete -- it names the endpoint to PATCH -- so the hint adds only the part
+        # it leaves out: that disabling is a data movement, not a flag flip.
+        '"writeback.enabled" property is true',
+        "The portal's write-back toggle on that cache does this. Disabling flushes "
+        "whatever is still only at the cache to the origin, so allow it to finish "
+        "before deleting.",
     ),
 )
 
@@ -699,6 +736,8 @@ def _dispatch(event, context):
             return _get_quota_report(http, headers, event)
         elif action == "createQuotaRule":
             return _create_quota_rule(http, headers, event, user_id)
+        elif action == "updateQuotaRule":
+            return _update_quota_rule(http, headers, event, user_id)
         elif action == "deleteQuotaRule":
             return _delete_quota_rule(http, headers, event, user_id)
 
@@ -717,6 +756,8 @@ def _dispatch(event, context):
             return _list_qtrees(http, headers, event)
         elif action == "createQtree":
             return _create_qtree(http, headers, event, user_id)
+        elif action == "updateQtree":
+            return _update_qtree(http, headers, event, user_id)
         elif action == "deleteQtree":
             return _delete_qtree(http, headers, event, user_id)
 
@@ -771,6 +812,8 @@ def _dispatch(event, context):
             return _list_local_users(http, headers, event)
         elif action == "createLocalUser":
             return _create_local_user(http, headers, event, user_id)
+        elif action == "updateLocalUser":
+            return _update_local_user(http, headers, event, user_id)
         elif action == "deleteLocalUser":
             return _delete_local_user(http, headers, event, user_id)
         elif action == "listLocalGroups":
@@ -791,6 +834,8 @@ def _dispatch(event, context):
             return _list_name_mappings(http, headers, event)
         elif action == "createNameMapping":
             return _create_name_mapping(http, headers, event, user_id)
+        elif action == "updateNameMapping":
+            return _update_name_mapping(http, headers, event, user_id)
         elif action == "deleteNameMapping":
             return _delete_name_mapping(http, headers, event, user_id)
 
@@ -1125,16 +1170,90 @@ def _get_volume(http, headers, event):
     return {"volume": data, "error": None}
 
 
+def _unmount_if_mounted(http, headers, volume_uuid):
+    """Remove a volume's junction path, if it has one. Returns (ok, error).
+
+    ONTAP REST: PATCH /api/storage/volumes/{uuid} with nas.path=""
+
+    Deleting a volume goes unmount, offline, delete. ONTAP will not take a mounted
+    volume offline -- it answers 524546, "must be unmounted before being taken offline
+    or restricted" -- and it does not unmount on the caller's behalf. Neither the volume
+    delete nor the FlexCache delete did this, so both worked only on volumes that
+    happened to have no junction path: a SnapMirror destination, and nothing else. Every
+    volume the portal creates is mounted, as is every volume an NFS or SMB client uses.
+
+    A FlexCache and its volume share one UUID, so both callers pass the same identifier.
+    """
+    volume = _ontap_request(http, headers, "GET", f"/storage/volumes/{volume_uuid}?fields=nas.path")
+    if volume.get("_error"):
+        return False, volume["_message"]
+
+    if not volume.get("nas", {}).get("path"):
+        return True, ""
+
+    data = _ontap_request(http, headers, "PATCH", f"/storage/volumes/{volume_uuid}", body={"nas": {"path": ""}})
+    if data.get("_error"):
+        return False, f"Failed to unmount: {data['_message']}"
+
+    ok, message = _wait_for_job(http, headers, data.get("job", {}).get("uuid", ""))
+    if not ok:
+        return False, f"Failed to unmount: {message}"
+    return True, ""
+
+
+def _first_aggregate(http, headers):
+    """The name of an aggregate to place a FlexVol on.
+
+    ONTAP REST: GET /api/storage/aggregates
+
+    Returns (name, error). On FSx for ONTAP the operator does not manage aggregates,
+    so this is a lookup rather than a choice. An empty list is reported as the
+    actionable thing it is -- name an aggregate, or create a FlexGroup -- rather than
+    passed on as ONTAP's 918242, which asks for a value the caller has no way to know.
+    """
+    data = _ontap_request(http, headers, "GET", "/storage/aggregates?fields=name&max_records=10")
+    if data.get("_error"):
+        return "", f"Could not read the aggregate list: {data['_message']}"
+
+    names = [a.get("name", "") for a in data.get("records", []) if a.get("name")]
+    if not names:
+        return "", (
+            "No aggregate was returned, so a FlexVol has nowhere to go. Name one with "
+            'aggregates, or create a FlexGroup with style="flexgroup", which ONTAP '
+            "places itself."
+        )
+    return names[0], ""
+
+
 def _create_volume(http, headers, event, user_id):
     """Create a new volume.
 
     ONTAP REST: POST /api/storage/volumes
+
+    ONTAP requires the request to say *where* the volume goes, in two steps that are
+    easy to mistake for one. Without either an aggregate or a `style` it answers 787140
+    ("One of aggregates.uuid, aggregates.name, or style must be provided"); supplying
+    `style: flexvol` alone then answers 918242 ("When creating a FlexVol volume, one
+    aggregate must be specified"). Only a FlexGroup is placed automatically.
+
+    Neither error is something a portal user can act on, because on FSx for ONTAP AWS
+    manages the aggregates and the operator has no reason to know their names. So the
+    aggregate is looked up here and the first one is used, which is what the FSx
+    console does on the operator's behalf. A caller that does care can name one.
+
+    This path had never succeeded on FSx for ONTAP: every attempt stopped at the first
+    of those two 400s.
     """
     svm = event.get("svm", SVM_NAME)
     name = event.get("name", "")
     size_gib = event.get("sizeGiB", 0)
     security_style = event.get("securityStyle", "unix")
     export_policy = event.get("exportPolicy", "default")
+    style = event.get("style") or "flexvol"
+    aggregates = event.get("aggregates") or []
+
+    if style not in ("flexvol", "flexgroup"):
+        return {"success": False, "error": 'style must be "flexvol" or "flexgroup"'}
 
     if not name:
         return {"success": False, "error": "Volume name is required"}
@@ -1149,13 +1268,13 @@ def _create_volume(http, headers, event, user_id):
         "name": name,
         "svm": {"name": svm},
         "size": size_gib * 1024 * 1024 * 1024,  # Convert GiB to bytes
+        "style": style,
         "nas": {
             "security_style": security_style,
             "export_policy": {"name": export_policy},
             "path": f"/{name}",
         },
     }
-
     # SnapLock configuration (optional — only at creation time)
     snaplock_type = event.get("snaplockType")
     if snaplock_type and snaplock_type in ("compliance", "enterprise"):
@@ -1184,11 +1303,30 @@ def _create_volume(http, headers, event, user_id):
         if retention:
             body["snaplock"]["retention"] = retention
 
+    # Resolved last, so a request that is going to be refused -- an unacknowledged
+    # SnapLock volume, a bad name -- is refused without asking the cluster anything.
+    # A FlexGroup is spread across aggregates by ONTAP, so naming one is neither needed
+    # nor wanted; a FlexVol has to land somewhere specific.
+    if style == "flexvol" and not aggregates:
+        resolved, error = _first_aggregate(http, headers)
+        if error:
+            return {"success": False, "error": error}
+        aggregates = [resolved]
+    if aggregates:
+        body["aggregates"] = [{"name": a} for a in aggregates]
+
     data = _ontap_request(http, headers, "POST", "/storage/volumes", body=body)
     if data.get("_error"):
         return {"success": False, "error": data["_message"]}
 
-    logger.info(f"Volume created: {name} ({size_gib} GiB) by {user_id}")
+    # Provisioning is a job, and a placement failure lands inside it rather than on
+    # the POST. Reporting the 202 as success is what the delete path used to do.
+    job_id = data.get("job", {}).get("uuid", "")
+    ok, message = _wait_for_job(http, headers, job_id, pending_ok=True)
+    if not ok:
+        return {"success": False, "jobId": job_id, "error": message}
+
+    logger.info(f"Volume created: {name} ({size_gib} GiB, {style}) by {user_id}")
     return {"success": True, "volumeName": name, "error": None}
 
 
@@ -1219,11 +1357,17 @@ def _delete_volume(http, headers, event, user_id):
 
     ONTAP REST: PATCH (offline) + DELETE /api/storage/volumes/{uuid}
 
-    Both steps are jobs, and both have to be waited on rather than assumed. The
-    offline returns 202 while the volume is still online, so a DELETE issued
-    immediately after is rejected inside its own job for exactly that reason -- and
-    reporting the 202 as success told the caller the volume was gone while it was
-    still listed. Observed on a former SnapMirror destination.
+    Three steps, in order: unmount, offline, delete.
+
+    ONTAP will not take a mounted volume offline, and it does not unmount for you, so
+    without the first step this only ever worked on a volume with no junction path --
+    a SnapMirror destination. Every volume the portal creates is mounted.
+
+    The offline and the delete are both jobs and both have to be waited on rather than
+    assumed. The offline returns 202 while the volume is still online, so a DELETE
+    issued immediately after is rejected inside its own job for exactly that reason --
+    and reporting the 202 as success told the caller the volume was gone while it was
+    still listed.
     """
     vol_uuid = event.get("volumeUuid", "")
     vol_name = event.get("volumeName", "")
@@ -1234,7 +1378,11 @@ def _delete_volume(http, headers, event, user_id):
     if not confirm:
         return {"success": False, "error": "confirm=true is required for delete operations"}
 
-    # Offline first
+    ok, error = _unmount_if_mounted(http, headers, vol_uuid)
+    if not ok:
+        return {"success": False, "error": error}
+
+    # Offline second
     offline_data = _ontap_request(
         http,
         headers,
@@ -1800,6 +1948,60 @@ def _create_quota_rule(http, headers, event, user_id):
     return {"success": True, "jobId": job_id, "error": None}
 
 
+def _update_quota_rule(http, headers, event, user_id):
+    """Change the limits on an existing quota rule.
+
+    ONTAP REST: PATCH /api/storage/quota/rules/{uuid}
+
+    Only the limits are changeable; what the rule applies to is fixed at creation. That
+    is the whole reason this exists: without it, raising a hard limit meant deleting the
+    rule and creating it again, which resets the usage accounting the rule had built up
+    and leaves the volume unlimited in between.
+
+    A limit of 0 means "no limit" here, matching the create. Omitting a field leaves it
+    as it is, so clearing a limit has to be asked for explicitly with 0.
+    """
+    rule_uuid = event.get("ruleUuid", "")
+    if not rule_uuid:
+        return {"success": False, "error": "ruleUuid is required"}
+
+    space: dict = {}
+    if "spaceHardLimitGiB" in event:
+        space["hard_limit"] = int(event["spaceHardLimitGiB"]) * 1024**3 or -1
+    if "spaceSoftLimitGiB" in event:
+        space["soft_limit"] = int(event["spaceSoftLimitGiB"]) * 1024**3 or -1
+    files: dict = {}
+    if "filesHardLimit" in event:
+        files["hard_limit"] = int(event["filesHardLimit"]) or -1
+
+    if not space and not files:
+        return {
+            "success": False,
+            "error": (
+                "at least one of spaceHardLimitGiB, spaceSoftLimitGiB or filesHardLimit "
+                "is required; a quota rule's target cannot be changed after creation"
+            ),
+        }
+
+    body: dict = {}
+    if space:
+        body["space"] = space
+    if files:
+        body["files"] = files
+
+    data = _ontap_request(http, headers, "PATCH", f"/storage/quota/rules/{rule_uuid}", body=body)
+    if data.get("_error"):
+        return {"success": False, "error": data["_message"]}
+
+    job_id = data.get("job", {}).get("uuid", "")
+    ok, message = _wait_for_job(http, headers, job_id)
+    if not ok:
+        return {"success": False, "jobId": job_id, "error": message}
+
+    logger.info(f"Quota rule updated: {rule_uuid} by {user_id}")
+    return {"success": True, "jobId": job_id, "error": None}
+
+
 def _delete_quota_rule(http, headers, event, user_id):
     """Delete a quota rule."""
     rule_uuid = event.get("ruleUuid", "")
@@ -2025,6 +2227,65 @@ def _create_qtree(http, headers, event, user_id):
 
     logger.info(f"Qtree created: {vol_name}/{qtree_name} by {user_id}")
     return {"success": True, "qtreeName": qtree_name, "error": None}
+
+
+def _update_qtree(http, headers, event, user_id):
+    """Change a qtree's security style or export policy.
+
+    ONTAP REST: PATCH /api/storage/qtrees/{volume.uuid}/{qtree.id}
+
+    Without this, changing either meant deleting the qtree and creating it again -- and
+    a qtree delete takes its contents with it. Both properties are ordinary settings on
+    an existing directory tree, so they are changed in place.
+
+    The qtree name is not offered here. Renaming a qtree moves the junction path clients
+    are mounted on, which is a different operation with different consequences than
+    adjusting who may read it.
+    """
+    svm = event.get("svm", SVM_NAME)
+    vol_name = event.get("volumeName", "")
+    qtree_id = event.get("qtreeId", "")
+    security_style = event.get("securityStyle", "")
+    export_policy = event.get("exportPolicy", "")
+
+    if not vol_name or not qtree_id:
+        return {"success": False, "error": "volumeName and qtreeId are required"}
+    if not security_style and not export_policy:
+        return {
+            "success": False,
+            "error": "at least one of securityStyle or exportPolicy is required",
+        }
+    if security_style and security_style not in ("unix", "ntfs", "mixed"):
+        return {"success": False, "error": 'securityStyle must be "unix", "ntfs" or "mixed"'}
+
+    vol_data = _ontap_request(
+        http,
+        headers,
+        "GET",
+        f"/storage/volumes?name={_qval(vol_name)}&svm.name={_qval(svm)}&fields=uuid",
+    )
+    vol_records = vol_data.get("records", [])
+    if not vol_records:
+        return {"success": False, "error": f"Volume '{vol_name}' not found"}
+    vol_uuid = vol_records[0]["uuid"]
+
+    body: dict = {}
+    if security_style:
+        body["security_style"] = security_style
+    if export_policy:
+        body["export_policy"] = {"name": export_policy}
+
+    data = _ontap_request(http, headers, "PATCH", f"/storage/qtrees/{vol_uuid}/{qtree_id}", body=body)
+    if data.get("_error"):
+        return {"success": False, "error": data["_message"]}
+
+    job_id = data.get("job", {}).get("uuid", "")
+    ok, message = _wait_for_job(http, headers, job_id)
+    if not ok:
+        return {"success": False, "jobId": job_id, "error": message}
+
+    logger.info(f"Qtree updated: {vol_name}/{qtree_id} by {user_id}")
+    return {"success": True, "jobId": job_id, "error": None}
 
 
 def _delete_qtree(http, headers, event, user_id):
@@ -2971,6 +3232,60 @@ def _create_local_user(http, headers, event, user_id):
     return {"success": True, "name": name, "error": None}
 
 
+def _update_local_user(http, headers, event, user_id):
+    """Change an SMB local user's password, or enable or disable the account.
+
+    ONTAP REST: PATCH /api/protocols/cifs/local-users/{svm.uuid}/{sid}
+
+    Resetting a password meant deleting the account and recreating it, which changes the
+    SID -- and the SID is what NTFS ACLs on existing files refer to. So the recreated
+    user had the same name and none of the same access, which is the kind of breakage
+    that surfaces later as "permissions are wrong" rather than as a failed operation.
+
+    Disabling is offered alongside because it is the answer to "revoke this person's
+    access without losing the account", which was otherwise only expressible as a delete.
+    """
+    svm = event.get("svm", SVM_NAME)
+    sid = event.get("sid", "")
+    password = event.get("password", "")
+    enabled = event.get("enabled")
+
+    if not sid:
+        return {"success": False, "error": "sid is required"}
+
+    body: dict = {}
+    if password:
+        body["password"] = password
+    if enabled is not None:
+        # ONTAP spells this `account_disabled`, and rejects `enabled` outright with
+        # 262179 "Unexpected argument". The listing beside this function already read
+        # `account_disabled`; the portal keeps the positive form because that is what the
+        # checkbox says, and inverts it here.
+        body["account_disabled"] = not bool(enabled)
+    if event.get("fullName"):
+        body["full_name"] = event["fullName"]
+    if event.get("description"):
+        body["description"] = event["description"]
+
+    if not body:
+        return {
+            "success": False,
+            "error": "at least one of password, enabled, fullName or description is required",
+        }
+
+    svm_uuid, err = _get_svm_uuid(http, headers, svm)
+    if err:
+        return {"success": False, "error": err}
+
+    data = _ontap_request(http, headers, "PATCH", f"/protocols/cifs/local-users/{svm_uuid}/{sid}", body=body)
+    if data.get("_error"):
+        return {"success": False, "error": data["_message"]}
+
+    # Never log the password. What changed is enough for the audit trail.
+    logger.info(f"SMB local user updated ({sorted(body)}): {sid} by {user_id}")
+    return {"success": True, "error": None}
+
+
 def _delete_local_user(http, headers, event, user_id):
     """Delete an SMB local user.
 
@@ -3233,6 +3548,60 @@ def _create_name_mapping(http, headers, event, user_id):
     return {"success": True, "error": None}
 
 
+def _update_name_mapping(http, headers, event, user_id):
+    """Change a name-mapping rule's pattern or replacement.
+
+    ONTAP REST: PATCH /api/name-services/name-mappings/{svm.uuid}/{direction}/{index}
+
+    A mapping is a regular expression and its substitution, and getting one right is
+    iterative. Without this, each correction was a delete and a create -- and between
+    the two, identity mapping for everyone the rule covered fell through to whatever the
+    next rule said.
+
+    The index is the evaluation order and part of the rule's identity, so changing it is
+    a move rather than an edit; ONTAP has a separate `new_index` for that, which is not
+    exposed here.
+    """
+    svm = event.get("svm", SVM_NAME)
+    direction = event.get("direction", "")
+    index = event.get("index")
+    pattern = event.get("pattern", "")
+    replacement = event.get("replacement", "")
+
+    if not direction or index is None:
+        return {"success": False, "error": "direction and index are required"}
+    if direction == "s3_unix":
+        return {
+            "success": False,
+            "error": "s3_unix mappings are managed automatically by FSx for ONTAP",
+        }
+    if not pattern and not replacement:
+        return {"success": False, "error": "at least one of pattern or replacement is required"}
+
+    svm_uuid, err = _get_svm_uuid(http, headers, svm)
+    if err:
+        return {"success": False, "error": err}
+
+    body: dict = {}
+    if pattern:
+        body["pattern"] = pattern
+    if replacement:
+        body["replacement"] = replacement
+
+    data = _ontap_request(
+        http,
+        headers,
+        "PATCH",
+        f"/name-services/name-mappings/{svm_uuid}/{direction}/{int(index)}",
+        body=body,
+    )
+    if data.get("_error"):
+        return {"success": False, "error": data["_message"]}
+
+    logger.info(f"Name mapping updated: {direction}[{index}] on {svm} by {user_id}")
+    return {"success": True, "error": None}
+
+
 def _delete_name_mapping(http, headers, event, user_id):
     """Delete a name-mapping rule.
 
@@ -3468,15 +3837,30 @@ def _delete_flexcache(http, headers, event, user_id):
 
     ONTAP REST: DELETE /api/storage/flexcache/flexcaches/{uuid}
 
-    The DELETE is a job, and it is waited on for the same reason volume deletion is:
-    a 202 says the work was queued. A write-back cache has to have write-back disabled
-    first, and that refusal arrives inside the job rather than on the DELETE.
+    A mounted cache has to be unmounted first. ONTAP's DELETE takes the volume offline
+    on the caller's behalf but will not unmount it, so on a cache with a junction path
+    it stops at 524546, "must be unmounted before being taken offline or restricted"
+    (measured on 9.18.1P3D1, on a cache the portal had just created -- the portal gives
+    every cache a junction path, so this was every cache it made). Unmounting is done
+    here rather than left to the operator, because the alternative is a delete button
+    that never works.
+
+    Two further failure paths, both real and neither interchangeable:
+
+    - Refused outright. A cache with write-back enabled comes back 400 / 66846980 on
+      the DELETE, before any job exists.
+    - Accepted and then failed. The DELETE is otherwise a job, and a 202 only says the
+      work was queued, so it is waited on for the same reason volume deletion is.
     """
     uuid = event.get("uuid", "")
     name = event.get("name", "")
 
     if not uuid:
         return {"success": False, "error": "uuid is required"}
+
+    ok, error = _unmount_if_mounted(http, headers, uuid)
+    if not ok:
+        return {"success": False, "error": error}
 
     data = _ontap_request(http, headers, "DELETE", f"/storage/flexcache/flexcaches/{uuid}")
     if data.get("_error"):
@@ -3950,8 +4334,16 @@ def _update_snapmirror_now(event, user_id):
     except Exception as e:
         return {"success": False, "error": _client_error(e)}
 
+    # A transfer runs for as long as the data takes, so "still running" is the
+    # expected answer rather than a failure. A transfer that has already failed --
+    # a relationship in the wrong state, a missing peer -- is reported as failed.
+    job_id = data.get("job", {}).get("uuid", "")
+    ok, message = _wait_for_client_job(client, job_id, pending_ok=True)
+    if not ok:
+        return {"success": False, "jobId": job_id, "error": _snapmirror_hint(message)}
+
     logger.info(f"SnapMirror transfer started: {rel_uuid} by {user_id}")
-    return {"success": True, "jobId": data.get("job", {}).get("uuid", ""), "error": None}
+    return {"success": True, "jobId": job_id, "error": None}
 
 
 def _set_snapmirror_state(event, user_id, state):
@@ -3972,13 +4364,13 @@ def _set_snapmirror_state(event, user_id, state):
     except Exception as e:
         return {"success": False, "error": _client_error(e)}
 
+    job_id = data.get("job", {}).get("uuid", "")
+    ok, message = _wait_for_client_job(client, job_id)
+    if not ok:
+        return {"success": False, "jobId": job_id, "error": _snapmirror_hint(message)}
+
     logger.info(f"SnapMirror state set to {state}: {rel_uuid} by {user_id}")
-    return {
-        "success": True,
-        "state": state,
-        "jobId": data.get("job", {}).get("uuid", ""),
-        "error": None,
-    }
+    return {"success": True, "state": state, "jobId": job_id, "error": None}
 
 
 def _break_snapmirror(event, user_id):
@@ -4004,13 +4396,13 @@ def _break_snapmirror(event, user_id):
     except Exception as e:
         return {"success": False, "error": _client_error(e)}
 
+    job_id = data.get("job", {}).get("uuid", "")
+    ok, message = _wait_for_client_job(client, job_id)
+    if not ok:
+        return {"success": False, "jobId": job_id, "error": _snapmirror_hint(message)}
+
     logger.info(f"SnapMirror broken off: {rel_uuid} by {user_id}")
-    return {
-        "success": True,
-        "state": "broken_off",
-        "jobId": data.get("job", {}).get("uuid", ""),
-        "error": None,
-    }
+    return {"success": True, "state": "broken_off", "jobId": job_id, "error": None}
 
 
 def _resync_snapmirror(event, user_id):
@@ -4036,13 +4428,15 @@ def _resync_snapmirror(event, user_id):
     except Exception as e:
         return {"success": False, "error": _client_error(e)}
 
+    # Resync re-transfers from the common snapshot, which takes as long as the
+    # divergence is large, so a job still running is accepted.
+    job_id = data.get("job", {}).get("uuid", "")
+    ok, message = _wait_for_client_job(client, job_id, pending_ok=True)
+    if not ok:
+        return {"success": False, "jobId": job_id, "error": _snapmirror_hint(message)}
+
     logger.info(f"SnapMirror resync started: {rel_uuid} by {user_id}")
-    return {
-        "success": True,
-        "state": "snapmirrored",
-        "jobId": data.get("job", {}).get("uuid", ""),
-        "error": None,
-    }
+    return {"success": True, "state": "snapmirrored", "jobId": job_id, "error": None}
 
 
 def _abort_snapmirror_transfer(event, user_id):
@@ -4094,8 +4488,13 @@ def _delete_snapmirror(event, user_id):
     except Exception as e:
         return {"success": False, "error": _client_error(e)}
 
+    job_id = data.get("job", {}).get("uuid", "")
+    ok, message = _wait_for_client_job(client, job_id)
+    if not ok:
+        return {"success": False, "jobId": job_id, "error": _snapmirror_hint(message)}
+
     logger.info(f"SnapMirror relationship deleted: {rel_uuid} by {user_id}")
-    return {"success": True, "jobId": data.get("job", {}).get("uuid", ""), "error": None}
+    return {"success": True, "jobId": job_id, "error": None}
 
 
 # ─── Vscan write operations ───────────────────────────────────────────────────

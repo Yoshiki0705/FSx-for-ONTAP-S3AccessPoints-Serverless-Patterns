@@ -12,7 +12,7 @@ CloudFormation/SAM template sharing the Python modules in `shared/`.
 **Two pillars**: `solutions/` (S3 AP data processing) + `operations/` (file system operational
 optimization).
 
-**Test coverage**: ~4,432 Python tests across 249 files + ~318 vitest tests across 23 files.
+**Test coverage**: ~4,432 Python tests across 249 files + ~321 vitest tests across 24 files.
 
 > ファイル数は `make drift` がツリーと照合するので、古くなれば fail する。テスト総数は
 > `make test` / ポータルハンドラの個別実行 / vitest の 3 系統の合計なので概数。誰も保守
@@ -29,6 +29,7 @@ optimization).
 | CloudFormation / SAM を書く・デプロイが失敗した | [pitfalls-cfn-sam](docs/agent/pitfalls-cfn-sam.md) |
 | S3 AP / ONTAP API を扱う・AccessDenied を調べる | [pitfalls-s3ap-ontap](docs/agent/pitfalls-s3ap-ontap.md) |
 | FlexCache / SnapMirror / SVM ピアを作る・消す | [pitfalls-flexcache-snapmirror](docs/agent/pitfalls-flexcache-snapmirror.md) |
+| ボリューム / FlexCache の作成・削除、SMB ローカルユーザー | [pitfalls-volume-lifecycle](docs/agent/pitfalls-volume-lifecycle.md) |
 | AD 連携 / SMB / Windows ドメイン参加 | [pitfalls-ad-smb](docs/agent/pitfalls-ad-smb.md) |
 | Bedrock / AgentCore / Quick / KNFSD | [pitfalls-genai-edge](docs/agent/pitfalls-genai-edge.md) |
 | SnapLock / WORM / Snapshot ロック | [pitfalls-snaplock](docs/agent/pitfalls-snaplock.md) |

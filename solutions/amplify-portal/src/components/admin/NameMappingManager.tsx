@@ -22,6 +22,11 @@ export function NameMappingManager() {
   const [newIndex, setNewIndex] = useState(1);
   const [newPattern, setNewPattern] = useState("");
   const [newReplacement, setNewReplacement] = useState("");
+  // The rule being edited, identified by direction and index -- which together are
+  // its identity, and are the two things this form does not change.
+  const [editing, setEditing] = useState<NameMapping | null>(null);
+  const [editPattern, setEditPattern] = useState("");
+  const [editReplacement, setEditReplacement] = useState("");
 
   const clearSuccess = () => setTimeout(() => setSuccess(null), 3000);
 
@@ -74,6 +79,38 @@ export function NameMappingManager() {
       } else setError(data?.error || "Create failed");
     } catch (e) {
       setError(e instanceof Error ? e.message : "Create failed");
+    }
+  };
+
+  /**
+   * Save an edited pattern and replacement.
+   *
+   * Getting a mapping's regular expression right is iterative, and until now each
+   * correction was a delete and a create. Between those two calls the rule did not
+   * exist, so everyone it covered fell through to whatever the next rule said.
+   */
+  const handleSaveEdit = async () => {
+    if (!editing) return;
+    if (!editPattern.trim()) { setError(t("nmPatternRequired")); return; }
+    setError(null);
+    try {
+      const data = await adminMutate<{ success?: boolean }>({
+        action: "updateNameMapping",
+        params: {
+          direction: editing.direction,
+          index: editing.index,
+          pattern: editPattern.trim(),
+          replacement: editReplacement.trim(),
+        },
+      });
+      if (data?.success) {
+        setSuccess(t("nmUpdated"));
+        setEditing(null);
+        clearSuccess();
+        loadMappings();
+      } else setError(data?.error || "Update failed");
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Update failed");
     }
   };
 
@@ -171,6 +208,8 @@ export function NameMappingManager() {
       ) : mappings.length === 0 ? (
         <p className="rm-empty">{t("nmNoMappings")}</p>
       ) : (
+        <>
+        <p className="rm-hint">{t("nmEditHint")}</p>
         <table className="rm-table">
           <thead>
             <tr>
@@ -186,18 +225,67 @@ export function NameMappingManager() {
               <tr key={`${m.direction}-${m.index}`}>
                 <td>{m.index}</td>
                 <td>{directionLabel(m.direction)}</td>
-                <td className="lu-username">{m.pattern}</td>
-                <td>{m.replacement || '" "  (deny)'}</td>
-                <td>
-                  <button className="rm-btn-danger-sm"
-                    onClick={() => handleDelete(m)}>
-                    {t("nmDelete")}
-                  </button>
-                </td>
+                {editing?.direction === m.direction && editing?.index === m.index ? (
+                  <>
+                    <td>
+                      <input
+                        type="text"
+                        value={editPattern}
+                        onChange={e => setEditPattern(e.target.value)}
+                        aria-label={t("nmPattern")}
+                      />
+                    </td>
+                    <td>
+                      <input
+                        type="text"
+                        value={editReplacement}
+                        onChange={e => setEditReplacement(e.target.value)}
+                        aria-label={t("nmReplacement")}
+                      />
+                    </td>
+                    <td>
+                      <span className="peer-accept-row">
+                        <button className="rm-btn-primary" onClick={() => void handleSaveEdit()}>
+                          {t("rmApply")}
+                        </button>
+                        <button className="rm-btn-sm" onClick={() => setEditing(null)}>
+                          {t("cancel")}
+                        </button>
+                      </span>
+                    </td>
+                  </>
+                ) : (
+                  <>
+                    <td className="lu-username">{m.pattern}</td>
+                    <td>{m.replacement || '" "  (deny)'}</td>
+                    <td>
+                      <span className="peer-accept-row">
+                        {/* s3_unix entries belong to FSx for ONTAP, which creates and
+                            removes them with the S3 Access Point. */}
+                        {m.direction !== "s3_unix" && (
+                          <button
+                            className="rm-btn-sm"
+                            onClick={() => {
+                              setEditing(m);
+                              setEditPattern(m.pattern);
+                              setEditReplacement(m.replacement);
+                            }}
+                          >
+                            {t("nmEdit")}
+                          </button>
+                        )}
+                        <button className="rm-btn-danger-sm" onClick={() => handleDelete(m)}>
+                          {t("nmDelete")}
+                        </button>
+                      </span>
+                    </td>
+                  </>
+                )}
               </tr>
             ))}
           </tbody>
         </table>
+        </>
       )}
     </div>
   );
