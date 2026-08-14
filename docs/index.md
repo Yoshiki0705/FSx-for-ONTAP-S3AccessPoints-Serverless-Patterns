@@ -12,6 +12,7 @@
 | CloudFormation / SAM、デプロイ失敗 | [pitfalls-cfn-sam](agent/pitfalls-cfn-sam.md) |
 | S3 Access Point / ONTAP REST API、AccessDenied | [pitfalls-s3ap-ontap](agent/pitfalls-s3ap-ontap.md) |
 | FlexCache / SnapMirror / SVM ピアの作成・削除 | [pitfalls-flexcache-snapmirror](agent/pitfalls-flexcache-snapmirror.md) |
+| ボリューム / FlexCache の作成・削除、SMB ローカルユーザー | [pitfalls-volume-lifecycle](agent/pitfalls-volume-lifecycle.md) |
 | Active Directory 連携 / SMB / ドメイン参加 | [pitfalls-ad-smb](agent/pitfalls-ad-smb.md) |
 | Bedrock / AgentCore / Quick / KNFSD | [pitfalls-genai-edge](agent/pitfalls-genai-edge.md) |
 | SnapLock / WORM / Snapshot ロック | [pitfalls-snaplock](agent/pitfalls-snaplock.md) |
