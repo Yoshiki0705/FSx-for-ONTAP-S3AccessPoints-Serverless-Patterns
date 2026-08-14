@@ -65,8 +65,10 @@ afterwards. The observed error codes and field values are recorded in the pitfal
 
 ### Added 2026-08-15 (write paths, group A, ONTAP 9.18.1P3D1)
 
-A3, A2 and A5 of the verification plan. Every group, user, share, qtree and quota rule
-created for it was deleted afterwards and the environment is back as it was.
+**A3, A2, A5, A7, A4 and A1** of the verification plan (A6 is on hold; the reason is in the
+[plan](write-verification-plan.en.md)). Every group, user, share, qtree, quota rule, QoS
+policy, FlexClone and S3 object created for it was deleted afterwards, along with the working
+volume `zz_probe_a`, and the environment is back as it was.
 
 | Feature | Confirmed | Source |
 |---------|-----------|--------|
@@ -115,22 +117,24 @@ operation are in the [write verification plan](write-verification-plan.en.md).
 
 | Group | Operations | Decision |
 |-------|-----------|----------|
-| **A. Safe to run (not yet done)** | QoS ×4, SMB share create and delete, local groups and members ×4, FlexClone create and split, quota rule delete, SnapMirror update-now and transfer abort, file operations ×8, ARP dry_run | Work through them in order. Split and transfer abort have prerequisites of their own (see the plan) |
+| **A. Safe to run** | **All done on 2026-08-15 except A6** (SnapMirror update-now and transfer abort), which is what remains | A6 is on hold: it can only be done to relationships that are not ours. The abort cannot be verified here at all — it needs a way to write bulk data to the source. Copies over 5 GiB are unverifiable for the same kind of reason: the precondition cannot be created |
 | **B. No external prerequisite** | Vscan ×4, FPolicy ×5, cluster peer ×3, SVM peer accept and delete | An external scan engine, an FPolicy engine, or an accept on the remote cluster is required. FPolicy may be reachable with `engine: native` |
 | **C. Irreversible, so not run** | SnapLock retention, snapshot locking, performing a lock, S3 Object Lock retention, snapshot policy create and assign | Unexpired WORM blocks deletion of the volume, then the SVM, then the **file system**. This stays as it is |
 | **D. Affects the shared environment** | Disabling a LIF, disabling a protocol service, DNS update, SnapMirror break / resync, the six containment actions | These cut a path, a session or a replication relationship. Decide the target and the window first |
 | **E. Not ONTAP** | Agents / teams / sessions, portal settings, thumbnails | Bedrock, DynamoDB and S3. Not real-hardware ONTAP verification |
 
-> **Two findings the documentation review produced before anything was run** (recorded here so
-> they are not a surprise during execution)
+> **The two findings the documentation review produced were both overturned by measurement.**
+> The predictions are kept, because the next person reading the same references will reach them.
 >
-> - **The portal has no way to unassign a QoS policy.** ONTAP refuses to delete a policy group
->   that is in use unless `-force` is given, and `assignQosToVolume` requires a `policyName`, so
->   there is no "set it to none". Create → assign → delete therefore cannot complete.
-> - **Deleting a quota rule leaves it enforced** until enforcement is switched off and on again
->   for that volume — stated in ONTAP's REST reference as the DELETE response. The portal reports
->   only success and does not point at the next step, which it now could: the enforcement toggle
->   exists.
+> - Predicted: **an in-use QoS policy cannot be deleted, so the cycle cannot complete** (CLI
+>   reference). Measured: on 9.18.1P3D1 through REST it **is** deleted, and the volume is
+>   detached silently. The cycle completes; what is true instead is that a delete lifts the limit
+>   from every volume using the policy. The `none` release is still needed, as the way to lift
+>   one volume's limit while keeping the policy.
+> - Predicted: **deleting a quota rule leaves it enforced** until enforcement is cycled (REST
+>   reference). Measured: the deleted rule's limits leave the usage report immediately. Whether
+>   enforcement itself continues is not observable through these two reads, so the reference
+>   stands as the source and the portal now points at the off → on step after a delete.
 
 ## Tests only (no operation confirmed against a real system)
 
