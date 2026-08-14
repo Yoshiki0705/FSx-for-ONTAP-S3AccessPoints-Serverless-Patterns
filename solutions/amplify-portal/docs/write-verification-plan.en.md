@@ -85,7 +85,7 @@ Sources: [Manage local SMB group membership](https://docs.netapp.com/us-en/ontap
 Local user create / edit / delete was confirmed on 2026-08-14, so make one throwaway user of that
 same shape and use it as the member. **The SID not changing** is already established.
 
-### A4. FlexClone create and split (the split is irreversible)
+### A4. FlexClone create and split (the split is irreversible) — **Done (2026-08-15)**
 
 | Item | Detail |
 |------|--------|
@@ -104,6 +104,13 @@ as the parent uses" does not hold from 9.4 on. Sources:
 
 This environment already holds `clone01`, `clone02` and `clone03`. **Do not split those** — who
 created them and why is unknown, and a split cannot be undone. Verify on a clone created for it.
+
+Measured: `createFlexClone` was not sending `clone.is_flexclone: true`, so ONTAP read it as an ordinary
+volume create and answered 787140. **Clearing that 787140 by adding an aggregate returns success and
+produces a 20 MB ordinary volume** with no clone relationship. After the fix a 20 GiB clone is created
+from the parent's `clone_<name>.<timestamp>`. The split took seconds on a nearly empty clone and left it
+using 348 KB, so the space does not double; the volume leaves the clone listing as the split completes,
+which is why the progress figure is only visible while it runs, and the parent keeps the base snapshot.
 
 ### A5. Quota rule delete — it stays enforced after deletion — **Done (2026-08-15)**
 
