@@ -114,7 +114,14 @@ export function SnaplockManager() {
       <div className="create-form" style={{ marginBottom: "1.5rem" }}>
         <VolumeSelector
           label={t("rmVolumeName")}
-          onSelect={(vol) => { setVolumeInput(vol.name); setError(null); loadConfig(vol.name); }}
+          onSelect={(vol) => {
+            setError(null);
+            // null means the SVM changed under the pick. Nothing is loaded for it: the
+            // panel configures retention by volume name, and this one is irreversible
+            // on the wrong volume.
+            setVolumeInput(vol?.name ?? "");
+            if (vol) loadConfig(vol.name);
+          }}
           autoSelectFirst
           excludeFlexCache
         />

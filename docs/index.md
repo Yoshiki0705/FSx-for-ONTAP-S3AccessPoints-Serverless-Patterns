@@ -32,6 +32,7 @@
 | [Demo Mode Guide](demo-mode-guide.md) | Run without FSx for ONTAP |
 | [Customization Guide](customization-guide.md) | Adapt patterns to your workload |
 | [Portal Implementation Guide](../solutions/amplify-portal/docs/IMPLEMENTATION.md) | Portal architecture, config, component structure, modification log |
+| [Portal UI Contributor Guide (JA)](../solutions/amplify-portal/docs/CONTRIBUTING-UI.md) / [(EN)](../solutions/amplify-portal/docs/CONTRIBUTING-UI.en.md) | Adding a feature or changing a screen: the dispatch contract and how to add an action, scoping and query keys, i18n and theming, irreversible operations, the gates to pass |
 | [Admin Demo Guide (EN)](en/admin-resource-management-demo.md) | 26 admin + user demo scenarios |
 | [管理者向けリソース管理 デモガイド (JA)](ja/admin-resource-management-demo.md) | 同 26 シナリオの日本語版 |
 | [Portal Verification Results (EN)](../solutions/amplify-portal/docs/verification-results.en.md) | What is Live E2E vs live-read vs tests-only vs DemoMode, per feature |

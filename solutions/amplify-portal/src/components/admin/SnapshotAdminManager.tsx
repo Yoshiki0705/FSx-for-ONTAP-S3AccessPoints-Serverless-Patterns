@@ -370,7 +370,7 @@ export function SnapshotAdminManager() {
             <VolumeSelector
               label={t("rmSnapSelectVolume")}
               showUuid
-              onSelect={(vol) => { setVolumeUuid(vol.uuid); }}
+              onSelect={(vol) => { setVolumeUuid(vol?.uuid ?? null); }}
               excludeFlexCache
             />
             <button onClick={loadLockingStatus} className="btn-primary" disabled={!volumeUuid} style={{ marginTop: "0.75rem" }}>{t("rmSnapCheckStatus")}</button>

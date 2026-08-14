@@ -750,19 +750,23 @@ export interface DataProtectionActionParams {
 export interface SnapshotsActionParams {
   getArpStatus: {
     maxResults?: number;
+    svm?: string;
     volumeName?: string;
   };
   getFilePermissions: {
     filePath: string;
     maxResults?: number;
+    svm?: string;
     volumeName?: string;
   };
   getProtectionSummary: {
     maxResults?: number;
+    svm?: string;
     volumeName?: string;
   };
   getSnaplockStatus: {
     maxResults?: number;
+    svm?: string;
     volumeName?: string;
   };
   listSnapshots: {
@@ -771,6 +775,7 @@ export interface SnapshotsActionParams {
     filePath?: string;
     maxResults?: number;
     snapshotId?: SnapshotId;
+    svm?: string;
     volumeName?: string;
   };
   lockSnapshot: {
@@ -778,6 +783,7 @@ export interface SnapshotsActionParams {
     snapshotId: SnapshotId;
     acknowledgeIrreversible?: true;
     maxResults?: number;
+    svm?: string;
     volumeName?: string;
   };
 }
@@ -1024,11 +1030,15 @@ export const ACTIONS_ACCEPTING_SVM: ReadonlySet<string> = new Set([
   "deleteQtree",
   "deleteVscanPolicy",
   "disconnectSessions",
+  "getArpStatus",
   "getDnsConfig",
   "getEfficiencyStats",
+  "getFilePermissions",
   "getFpolicyStatus",
+  "getProtectionSummary",
   "getQuotaReport",
   "getSnaplockConfig",
+  "getSnaplockStatus",
   "getVscanStatus",
   "listActiveBlocks",
   "listArpVolumes",
@@ -1046,9 +1056,11 @@ export const ACTIONS_ACCEPTING_SVM: ReadonlySet<string> = new Set([
   "listQtrees",
   "listQuotaRules",
   "listSnapshotPolicies",
+  "listSnapshots",
   "listVolumes",
   "listVolumesFiltered",
   "listVscanPolicies",
+  "lockSnapshot",
   "moveNameMapping",
   "removeGroupMember",
   "renameQtree",
