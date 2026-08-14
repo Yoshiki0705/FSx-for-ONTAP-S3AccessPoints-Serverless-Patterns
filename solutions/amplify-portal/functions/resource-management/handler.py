@@ -1080,7 +1080,7 @@ def _list_volumes(http, headers, event):
         "GET",
         f"/storage/volumes?svm.name={_qval(svm)}"
         f"&fields=name,uuid,size,state,type,style,nas,space,guarantee,snaplock,"
-        f"flexcache_endpoint_type,quota.state"
+        f"flexcache_endpoint_type,quota.state,qos.policy.name"
         f"&max_records=50",
     )
     if data.get("_error"):
@@ -1117,6 +1117,11 @@ def _list_volumes(http, headers, event):
                 # `initializing` value, which is a real interval on a volume with data
                 # and is not the same answer as "on".
                 "quotaState": v.get("quota", {}).get("state", ""),
+                # The QoS policy in effect, or "" for none. The QoS panel could create
+                # and delete policies without ever showing which volume was using one,
+                # so a policy in force looked the same as a policy that was merely
+                # defined -- and ONTAP will not delete the first kind.
+                "qosPolicyName": v.get("qos", {}).get("policy", {}).get("name", ""),
             }
         )
 
@@ -1742,20 +1747,51 @@ def _delete_qos_policy(http, headers, event, user_id):
 
 
 def _assign_qos_to_volume(http, headers, event, user_id):
-    """Assign a QoS policy to a volume."""
+    """Assign a QoS policy to a volume, or remove the one it has.
+
+    ONTAP REST: PATCH /api/storage/volumes/{uuid} with qos.policy.name
+
+    `policyName` takes ONTAP's reserved keyword `none` to remove the assignment. That is
+    not a convenience. ONTAP refuses to delete a policy group while a storage object is
+    assigned to it, so without a way to remove the assignment, a policy assigned through
+    the portal could never be deleted through the portal. The panel offered no assignment
+    control at all, which is how the gap stayed invisible: nothing reachable could create
+    the state that could not be undone.
+
+    An empty string is refused rather than sent, because ONTAP's answer to it does not
+    name the field, and "remove it" is the likely intent behind an empty value.
+    """
     vol_uuid = event.get("volumeUuid", "")
     policy_name = event.get("policyName", "")
 
-    if not vol_uuid or not policy_name:
-        return {"success": False, "error": "volumeUuid and policyName are required"}
+    if not vol_uuid:
+        return {"success": False, "error": "volumeUuid is required"}
+    if not policy_name:
+        return {
+            "success": False,
+            "error": 'policyName is required. Use "none" to remove the volume\'s QoS policy.',
+        }
 
     body = {"qos": {"policy": {"name": policy_name}}}
     data = _ontap_request(http, headers, "PATCH", f"/storage/volumes/{vol_uuid}", body=body)
     if data.get("_error"):
         return {"success": False, "error": data["_message"]}
 
-    logger.info(f"QoS policy '{policy_name}' assigned to volume {vol_uuid} by {user_id}")
-    return {"success": True, "error": None}
+    # This PATCH can answer 202 with a job, like every other volume PATCH here, and the
+    # assignment is not in effect until the job finishes.
+    job_id = data.get("job", {}).get("uuid", "")
+    ok, message = _wait_for_job(http, headers, job_id)
+    if not ok:
+        return {"success": False, "jobId": job_id, "error": message}
+
+    cleared = policy_name == "none"
+    logger.info(
+        "QoS policy %s volume %s by %s",
+        "removed from" if cleared else f"'{policy_name}' assigned to",
+        vol_uuid,
+        user_id,
+    )
+    return {"success": True, "cleared": cleared, "error": None}
 
 
 # ─── SnapLock Management ─────────────────────────────────────────────────────
@@ -2649,8 +2685,42 @@ def _update_arp_state_admin(http, headers, event, user_id):
     if data.get("_error"):
         return {"success": False, "error": data["_message"]}
 
-    logger.info(f"ARP state updated: volume {vol_uuid} → '{new_state}' by {user_id}")
-    return {"success": True, "newState": new_state, "error": None}
+    # Read the state back rather than echoing the request. Measured on 9.18.1P3D1:
+    # asking for `dry_run` leaves the volume `enabled` -- ARP/AI carries a pre-trained
+    # model, so there is no learning period to enter, and ONTAP does not say it declined
+    # the state that was asked for. A caller told `newState: "dry_run"` would report
+    # learning mode on a volume that is actively protecting, which is the opposite of a
+    # conservative reading.
+    #
+    # Turning it off also passes through `disable_in_progress` for minutes, which is not
+    # `disabled` and should not be reported as such.
+    state = _ontap_request(http, headers, "GET", f"/storage/volumes/{vol_uuid}?fields=anti_ransomware.state")
+    actual = "" if state.get("_error") else state.get("anti_ransomware", {}).get("state", "")
+
+    logger.info(
+        "ARP state updated: volume %s requested '%s' resulted in '%s' by %s",
+        vol_uuid,
+        new_state,
+        actual,
+        user_id,
+    )
+    # An `_in_progress` state is a transition under way and says nothing about where it
+    # will land. Kept as its own answer rather than folded into either of the others: it
+    # is not the requested state yet, and calling it a divergence would report a refusal
+    # that has not happened. ONTAP's token is `disable_in_progress`, formed from the verb,
+    # so this matches the suffix instead of building the name from the requested state.
+    settling = actual.endswith("_in_progress")
+
+    return {
+        "success": True,
+        "state": actual,
+        "requested": new_state,
+        "settling": settling,
+        # True only when ONTAP has settled somewhere other than what was asked for, so
+        # the caller can say so instead of quietly showing the request back.
+        "differs": bool(actual) and not settling and actual != new_state,
+        "error": None,
+    }
 
 
 def _get_arp_suspects_admin(http, headers, event):
@@ -3294,9 +3364,18 @@ def _get_ems_events(http, headers, event):
     severity_filter = event.get("severity", "alert,error,emergency")
 
     query = f"/support/ems/events?max_records={max_records}"
-    query += f"&severity={severity_filter}"
+    # `severity` is a valid filter but not a valid field: in an EMS record the severity
+    # and the text live under `message`, and asking for a top-level `severity` is refused
+    # with 262197 `The value "severity" is invalid for field "fields"`. The whole action
+    # therefore failed on every call, which went unnoticed because nothing had ever run it
+    # against a real system -- it was listed as "types checked only".
+    # Filtered on `message.severity` for the same reason: measured on 9.18.1P3D1, a
+    # top-level `severity=` argument is refused with 262197 `Unexpected argument
+    # "severity"`. The severity is a property of the message, in the filter as in the
+    # field list, even though the documented workflow example writes it bare.
+    query += f"&message.severity={_qval(severity_filter)}"
     query += "&order_by=time desc"
-    query += "&fields=time,severity,message.name,message.text,node.name"
+    query += "&fields=index,time,message.name,message.severity,log_message,node.name"
 
     data = _ontap_request(http, headers, "GET", query)
     if data.get("_error"):
@@ -3305,9 +3384,11 @@ def _get_ems_events(http, headers, event):
     events = [
         {
             "time": e.get("time", ""),
-            "severity": e.get("severity", ""),
+            "severity": e.get("message", {}).get("severity", ""),
             "messageName": e.get("message", {}).get("name", ""),
-            "messageText": e.get("message", {}).get("text", ""),
+            # `log_message` is the rendered line an operator reads; the catalogue's
+            # description is a different endpoint and is not per-event.
+            "messageText": e.get("log_message", ""),
             "node": e.get("node", {}).get("name", ""),
         }
         for e in data.get("records", [])

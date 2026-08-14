@@ -28,6 +28,13 @@ export interface VolumeInfo {
    */
   quotaState?: string;
   /**
+   * The QoS policy in effect on this volume, or "" for none.
+   *
+   * A policy that is assigned cannot be deleted, so the QoS panel needs to see the
+   * assignment before it offers a delete.
+   */
+  qosPolicyName?: string;
+  /**
    * "none" | "cache" | "origin", from ONTAP's `flexcache_endpoint_type`.
    *
    * A FlexCache volume supports none of snapshots, quotas, qtrees, cloning,

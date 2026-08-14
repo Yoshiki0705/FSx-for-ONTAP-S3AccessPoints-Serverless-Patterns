@@ -750,16 +750,20 @@ export interface DataProtectionActionParams {
 export interface SnapshotsActionParams {
   getArpStatus: {
     maxResults?: number;
+    volumeName?: string;
   };
   getFilePermissions: {
     filePath: string;
     maxResults?: number;
+    volumeName?: string;
   };
   getProtectionSummary: {
     maxResults?: number;
+    volumeName?: string;
   };
   getSnaplockStatus: {
     maxResults?: number;
+    volumeName?: string;
   };
   listSnapshots: {
     acknowledgeIrreversible?: true;
@@ -767,12 +771,14 @@ export interface SnapshotsActionParams {
     filePath?: string;
     maxResults?: number;
     snapshotId?: SnapshotId;
+    volumeName?: string;
   };
   lockSnapshot: {
     expiryTime: IsoTimestamp;
     snapshotId: SnapshotId;
     acknowledgeIrreversible?: true;
     maxResults?: number;
+    volumeName?: string;
   };
 }
 

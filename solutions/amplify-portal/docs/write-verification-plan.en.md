@@ -176,21 +176,34 @@ lists presigned URLs as unsupported while they are observed working; AWS Support
 documentation correction that is **not yet published**, so continue not to depend on it in
 production ([S3 AP compatibility notes](../../../docs/s3ap-compatibility-notes.en.md)).
 
-### A8. Enable ARP in dry_run (learning mode)
+### A8. ARP state change — **the premise did not survive measurement (2026-08-15)**
 
 | Item | Detail |
 |------|--------|
-| Operations | `updateArpStateAdmin` (`dry_run`), `enableArpBulk` (`dry_run`), `clearArpSuspects` |
+| Operations | `updateArpStateAdmin`, `enableArpBulk`, `clearArpSuspects` |
 | Prerequisites | ONTAP 9.10.1 or later (this environment is 9.18.1P3D1) |
-| Impact | dry_run observes and learns; it blocks nothing. It is set per volume |
-| Confirm | The state becomes `dry_run` and the UI shows learning mode |
-| Rollback | Set it back to `disabled` |
+| Impact | **`dry_run` is not available.** Asking for it leaves the volume `enabled`, which is active protection: snapshots are created automatically on a suspicion |
+| Confirm | The `state` in the response -- read back, not echoed -- agrees with what the UI shows |
+| Rollback | Set it back to `disabled`, but it stays `disable_in_progress` for over ten minutes |
+
+This step led group A on the premise that dry_run only observes, and is therefore safe.
+Measured, **ARP/AI has no learning period and a request for `dry_run` silently becomes
+`enabled`** -- no error, no warning. See
+[ARP/AI and EMS pitfalls](../../../docs/agent/pitfalls-arp-ems.md).
+
+So this operation is not "try the observing mode", it is "turn protection on". Whether to
+run it is a decision about whether that volume may have snapshots created for it. Verify on
+a throwaway volume and delete the volume afterwards, which is the surest cleanup: turning it
+off takes a long time, and deleting the volume takes the ARP configuration with it.
 
 Source: [Enable ARP on a volume](https://docs.netapp.com/us-en/ontap/anti-ransomware/enable-task.html).
 
-Switching to `enabled` is not in group A: that state creates snapshots automatically on a
-suspicion. Confirm the state transition and the display in dry_run first. `clearArpSuspects`
-cannot be confirmed with no suspects recorded, so run it only if one appears.
+`clearArpSuspects` cannot be confirmed with no suspects recorded, so run it only if one appears.
+
+> **The general lesson from this entry**: "there is a safe observing mode" was a premise, not
+> a fact. The documentation was read at planning time and still did not say whether that mode
+> exists on the version in use. A premise that makes something safe is the one most worth
+> checking first.
 
 ---
 

@@ -1,6 +1,7 @@
 import json
 import logging
 import os
+from urllib.parse import quote
 
 import boto3
 import urllib3
@@ -16,6 +17,15 @@ ONTAP_MGMT_IP = os.environ.get("ONTAP_MGMT_IP", "")
 SECRET_NAME = os.environ.get("ONTAP_SECRET_NAME", "")
 VOLUME_NAME = os.environ.get("VOLUME_NAME", "")
 SVM_NAME = os.environ.get("SVM_NAME", "")
+
+
+def _qval(value) -> str:
+    """Percent-encode a value used as a query-string value.
+
+    The volume name reaches this URL from the client now, and an unencoded `&` or `=`
+    would add parameters to the request rather than being matched as part of a name.
+    """
+    return quote(str(value), safe="")
 
 
 def get_credentials():
@@ -43,17 +53,26 @@ def handler(event, context):
     action = event.get("action", "listSnapshots")
     max_results = event.get("maxResults", 10)
 
+    # The volume this request is about. Every action here read VOLUME_NAME directly, so
+    # the whole data-protection area could only ever describe one volume: the ARP page
+    # showed a fixed badge, and a state changed on any other volume was invisible there
+    # -- indistinguishable from a change that had not taken effect.
+    #
+    # The environment variable stays as the default, which is what a reader without the
+    # storage-admin group sees; only that group is offered the choice.
+    volume_name = event.get("volumeName") or VOLUME_NAME
+
     missing = [
         name
         for name, value in (
             ("ONTAP_MGMT_IP", ONTAP_MGMT_IP),
             ("ONTAP_SECRET_NAME", SECRET_NAME),
-            ("VOLUME_NAME", VOLUME_NAME),
+            ("VOLUME_NAME", volume_name),
         )
         if not value
     ]
     if missing:
-        return {"snapshots": [], "volumeName": VOLUME_NAME, **not_configured(missing).as_dict()}
+        return {"snapshots": [], "volumeName": volume_name, **not_configured(missing).as_dict()}
 
     try:
         username, password = get_credentials()
@@ -64,7 +83,8 @@ def handler(event, context):
         # Get volume UUID (shared across all actions)
         vol_url = (
             f"https://{ONTAP_MGMT_IP}/api/storage/volumes"
-            f"?name={VOLUME_NAME}&svm.name={SVM_NAME}&fields=uuid,anti_ransomware,snaplock,snapshot_locking_enabled"
+            f"?name={_qval(volume_name)}&svm.name={_qval(SVM_NAME)}"
+            f"&fields=uuid,anti_ransomware,snaplock,snapshot_locking_enabled"
         )
         vol_resp = http.request("GET", vol_url, headers=headers)
 
@@ -75,11 +95,11 @@ def handler(event, context):
         diagnosis = diagnose_response(
             vol_resp.status,
             vol_resp.data,
-            subject=f"volume '{VOLUME_NAME}' on SVM '{SVM_NAME}'",
+            subject=f"volume '{volume_name}' on SVM '{SVM_NAME}'",
         )
         if diagnosis is not None:
             logger.warning("ONTAP volume lookup failed: class=%s status=%s", diagnosis.failure.value, diagnosis.status)
-            return {"snapshots": [], "volumeName": VOLUME_NAME, **diagnosis.as_dict()}
+            return {"snapshots": [], "volumeName": volume_name, **diagnosis.as_dict()}
 
         vol_data = json.loads(vol_resp.data)
 
@@ -90,7 +110,7 @@ def handler(event, context):
         if action == "getArpStatus":
             arp = vol_record.get("anti_ransomware", {})
             return {
-                "volumeName": VOLUME_NAME,
+                "volumeName": volume_name,
                 "arp": {
                     "state": arp.get("state", "disabled"),
                     "attackProbability": arp.get("attack_probability", "none"),
@@ -104,7 +124,7 @@ def handler(event, context):
         if action == "getSnaplockStatus":
             snaplock = vol_record.get("snaplock", {})
             return {
-                "volumeName": VOLUME_NAME,
+                "volumeName": volume_name,
                 "snaplock": {
                     "type": snaplock.get("type", "non_snaplock"),
                     "complianceClockTime": snaplock.get("compliance_clock_time", ""),
@@ -171,7 +191,7 @@ def handler(event, context):
             snaplock = vol_record.get("snaplock", {})
             return {
                 "data": {
-                    "volumeName": VOLUME_NAME,
+                    "volumeName": volume_name,
                     "arp": {
                         "state": arp.get("state", "disabled"),
                         "attackProbability": arp.get("attack_probability", "none"),
@@ -192,9 +212,9 @@ def handler(event, context):
 
             # Ensure path starts with /vol/<volume_name>
             if not file_path.startswith("/"):
-                file_path = f"/vol/{VOLUME_NAME}/{file_path}"
+                file_path = f"/vol/{volume_name}/{file_path}"
             elif not file_path.startswith("/vol/"):
-                file_path = f"/vol/{VOLUME_NAME}{file_path}"
+                file_path = f"/vol/{volume_name}{file_path}"
 
             # Get SVM UUID first
             svm_url = f"https://{ONTAP_MGMT_IP}/api/svm/svms?name={SVM_NAME}&fields=uuid"
@@ -271,7 +291,7 @@ def handler(event, context):
 
         return {
             "snapshots": snapshots,
-            "volumeName": VOLUME_NAME,
+            "volumeName": volume_name,
             "snapshotLockingEnabled": vol_record.get("snapshot_locking_enabled", False),
             "error": None,
         }
@@ -282,12 +302,12 @@ def handler(event, context):
         # failure the panel's original network advice was actually written for.
         diagnosis = diagnose_exception(e, mgmt_ip=ONTAP_MGMT_IP)
         logger.warning("ONTAP unreachable: %s", diagnosis.message)
-        return {"snapshots": [], "volumeName": VOLUME_NAME, **diagnosis.as_dict()}
+        return {"snapshots": [], "volumeName": volume_name, **diagnosis.as_dict()}
     except Exception as e:
         logger.exception("Error listing snapshots")
         return {
             "snapshots": [],
-            "volumeName": VOLUME_NAME,
+            "volumeName": volume_name,
             "error": str(e),
             "errorClass": "ONTAP_ERROR",
         }

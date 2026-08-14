@@ -1,9 +1,13 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "../../i18n";
 import { errorMessage, unwrap } from "../../lib/portalQuery";
 import { adminMutate, dispatch } from "../../lib/dispatch";
 import type { PolicyUuid } from "../../lib/dispatchActions";
+import { VolumeSelector, type VolumeInfo } from "./VolumeSelector";
+
+/** ONTAP's reserved keyword for "no policy". Not a UI placeholder. */
+const NO_POLICY = "none";
 
 interface QosPolicy {
   name: string;
@@ -17,15 +21,24 @@ interface QosPolicy {
 }
 
 /**
- * QoS Policy Manager — Create, view, delete QoS policies and assign to volumes.
- * System Manager-style: policy list + create form + assign action.
+ * QoS Policy Manager — create, view and delete QoS policies, and assign one to a volume.
+ *
+ * The assignment half is what makes the delete usable. ONTAP refuses to delete a policy
+ * group that a storage object is assigned to, so a panel that can only create and delete
+ * is fine until something else assigns a policy, and then the delete stops working with
+ * an error that does not say which volume is holding it.
  */
 export function QosPolicyManager() {
   const { t } = useTranslation();
+  const queryClient = useQueryClient();
   const [actionError, setActionError] = useState<string | null>(null);
   const setError = setActionError;
   const [result, setResult] = useState<string | null>(null);
   const [showCreate, setShowCreate] = useState(false);
+  // The volume the assignment row acts on, kept whole for its branded UUID.
+  const [volume, setVolume] = useState<VolumeInfo | null>(null);
+  const [assignTo, setAssignTo] = useState<string>(NO_POLICY);
+  const [assigning, setAssigning] = useState(false);
 
   // Create form
   const [newName, setNewName] = useState("");
@@ -52,6 +65,47 @@ export function QosPolicyManager() {
   // never mistaken for a failed load.
   const loadPolicies = () => void refetch();
   const error = actionError ?? errorMessage(queryError, "Failed to load policies");
+
+  // The assignment currently in effect, read on its own rather than taken from the
+  // selector's list: the list is loaded once and the selector notifies the parent once
+  // per volume, so a `VolumeInfo` captured at selection time keeps what it was captured
+  // with. Same reason the quota panel reads enforcement separately.
+  const assignedQuery = useQuery({
+    queryKey: ["admin", "volumeQosPolicy", volume?.uuid ?? null],
+    enabled: !!volume,
+    queryFn: () =>
+      unwrap<{ volume?: { qos?: { policy?: { name?: string } } } }>(
+        dispatch("adminQuery", { action: "getVolume", params: { volumeUuid: volume!.uuid } }),
+      ).then((d) => d?.volume?.qos?.policy?.name ?? ""),
+  });
+  const assigned = assignedQuery.data ?? volume?.qosPolicyName ?? "";
+
+  /** Assign the selected policy to the selected volume, or remove the one it has. */
+  const handleAssign = async () => {
+    if (!volume) return;
+    setError(null);
+    setAssigning(true);
+    try {
+      const data = await adminMutate<{ success?: boolean; cleared?: boolean }>({
+        action: "assignQosToVolume",
+        params: { volumeUuid: volume.uuid, policyName: assignTo },
+      });
+      if (data?.success) {
+        setResult(data.cleared ? t("rmQosUnassigned") : `${t("rmQosAssigned")}: ${assignTo}`);
+        setTimeout(() => setResult(null), 4000);
+        queryClient.setQueryData(
+          ["admin", "volumeQosPolicy", volume.uuid],
+          data.cleared ? "" : assignTo,
+        );
+        // Other panels read the same list, and it now carries the old assignment.
+        void queryClient.invalidateQueries({ queryKey: ["admin", "volumeSelector"] });
+      } else setError(data?.error || t("rmActionFailed"));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : t("rmActionFailed"));
+    } finally {
+      setAssigning(false);
+    }
+  };
 
 
   const handleCreate = async () => {
@@ -105,6 +159,54 @@ export function QosPolicyManager() {
 
       {error && <div className="error-message">{error}</div>}
       {result && <div className="success-message">{result}</div>}
+
+      {/* Assignment, above the policy table: a policy's row cannot say whether it is in
+          use, and ONTAP's refusal to delete an assigned policy does not name the volume
+          holding it. */}
+      <div className="rm-enforcement-row">
+        <VolumeSelector
+          label={t("rmQosAssignTo")}
+          onSelect={(vol) => {
+            setVolume(vol);
+            setAssignTo(vol.qosPolicyName || NO_POLICY);
+            setActionError(null);
+            setResult(null);
+          }}
+          autoSelectFirst
+        />
+        {volume && (
+          <>
+            <span>
+              {t("rmQosCurrent")}:{" "}
+              <strong className={assigned ? "rm-enforcement-on" : "rm-enforcement-off"}>
+                {assigned || t("rmQosNotAssigned")}
+              </strong>
+            </span>
+            <select
+              value={assignTo}
+              onChange={(e) => setAssignTo(e.target.value)}
+              aria-label={t("rmQosAssignTo")}
+            >
+              {/* The value is ONTAP's keyword, not an empty option: the handler sends it
+                  verbatim, and an empty string is refused there. */}
+              <option value={NO_POLICY}>{t("rmQosRemoveAssignment")}</option>
+              {policies.map((p) => (
+                <option key={p.uuid} value={p.name}>
+                  {p.name}
+                </option>
+              ))}
+            </select>
+            <button
+              className="rm-btn-primary"
+              disabled={assigning || assignTo === (assigned || NO_POLICY)}
+              onClick={() => void handleAssign()}
+            >
+              {t("rmApply")}
+            </button>
+            <span className="rm-hint">{t("rmQosAssignHint")}</span>
+          </>
+        )}
+      </div>
 
       {showCreate && (
         <div className="create-form">

@@ -1,9 +1,12 @@
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { dispatch } from "../lib/dispatch";
 import { errorMessage, failureDiagnosis, unwrap } from "../lib/portalQuery";
 import { useTranslation } from "../i18n";
+import { useStorageAdmin } from "../hooks/useStorageAdmin";
 import { ArpResponseActions } from "./ArpResponseActions";
 import { OntapFailureNotice } from "./OntapFailureNotice";
+import { VolumeSelector } from "./admin/VolumeSelector";
 
 interface ArpData {
   state: string;
@@ -27,6 +30,14 @@ interface ArpData {
  */
 export function ArpStatus() {
   const { t } = useTranslation();
+  const isStorageAdmin = useStorageAdmin();
+  // Which volume this page describes. Empty means "the configured one", which is what
+  // the handler falls back to and what a reader without the storage-admin group gets.
+  //
+  // Before this, the page could only ever describe that one volume: it showed the name
+  // as a fixed badge, so protection turned on anywhere else looked like protection that
+  // had not taken effect.
+  const [selectedVolume, setSelectedVolume] = useState("");
 
   const {
     data,
@@ -34,10 +45,13 @@ export function ArpStatus() {
     error: queryError,
     refetch,
   } = useQuery({
-    queryKey: ["protection", "getArpStatus"],
+    queryKey: ["protection", "getArpStatus", selectedVolume || null],
     queryFn: () =>
       unwrap<{ volumeName?: string; arp?: ArpData }>(
-        dispatch("protectionQuery", { action: "getArpStatus" }),
+        dispatch("protectionQuery", {
+          action: "getArpStatus",
+          params: selectedVolume ? { volumeName: selectedVolume } : {},
+        }),
       ),
   });
 
@@ -45,7 +59,12 @@ export function ArpStatus() {
   const volumeName = data?.volumeName ?? "";
   const error = errorMessage(queryError, "Failed to load ARP status");
 
-  if (loading) {
+  // Only while there is nothing to show. `isPending` is true again for every new query
+  // key, so returning the loading screen on it replaced the whole page -- including the
+  // volume selector -- and the selector came back with its state reset. The selection
+  // survived in the parent, so the badge was right while the dropdown read "select a
+  // volume": one control disagreeing with another about the same fact.
+  if (loading && !data) {
     return (
       <div className="protection-section">
         <h2>🛡️ {t("arpTitle")}</h2>
@@ -70,6 +89,10 @@ export function ArpStatus() {
       case "enabled": return "status-dot-active";
       case "dry_run": return "status-dot-learning";
       case "paused": return "status-dot-warning";
+      // Measured on 9.18.1P3D1: turning protection off leaves the volume in
+      // `disable_in_progress` for minutes. It is not off yet, so it does not get the
+      // "off" dot -- and it fell through to the default before, which said it was.
+      case "disable_in_progress": return "status-dot-warning";
       case "disabled": return "status-dot-disabled";
       default: return "status-dot-disabled";
     }
@@ -80,8 +103,11 @@ export function ArpStatus() {
       case "enabled": return t("arpStateEnabled");
       case "dry_run": return t("arpStateDryRun");
       case "paused": return t("arpStatePaused");
+      case "disable_in_progress": return t("arpStateDisabling");
       case "disabled": return t("arpStateDisabled");
-      default: return state;
+      // Not `state`: an ONTAP token shown verbatim to a reader is not an answer, and
+      // this is the branch a value ONTAP adds later would arrive in.
+      default: return t("arpStateUnknown").replace("{state}", state);
     }
   };
 
@@ -93,6 +119,7 @@ export function ArpStatus() {
         return t("arpStateDryRun") + since;
       }
       case "paused": return t("arpStatePaused");
+      case "disable_in_progress": return t("arpStateDisablingHint");
       case "disabled": return t("arpStateDisabled");
       default: return "";
     }
@@ -122,10 +149,20 @@ export function ArpStatus() {
     <div className="protection-section">
       <div className="protection-header">
         <h2>🛡️ {t("arpTitle")}</h2>
+        {/* The badge stays whichever way the volume was chosen: it comes from the
+            response, so it names the volume the figures below actually describe. The
+            selector alone would not -- it reads "select a volume" until something is
+            picked, while the page is already showing the configured one. */}
         {volumeName && (
           <span className="volume-badge" title={t("srcVolumeTitle")}>
             {t("volume")}: {volumeName}
           </span>
+        )}
+        {isStorageAdmin === true && (
+          <VolumeSelector
+            label={t("rmSelectVolume")}
+            onSelect={(vol) => setSelectedVolume(vol.name)}
+          />
         )}
         <button onClick={() => void refetch()} className="refresh-btn" title={t("refresh")}>
           ↻

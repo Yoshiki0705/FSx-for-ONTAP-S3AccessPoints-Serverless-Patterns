@@ -129,12 +129,28 @@ flowchart TD
 
 ---
 
+## 書くときの禁止事項
+
+到達できないインターフェースを前提にした記述は、読者に「その体制でも選べる」と伝えてしまいます。
+
+| ❌ 書かない | ✅ 書く |
+|-----------|--------|
+| 「System Manager には VPN で接続する必要がある」 | 「ONTAP CLI / REST API の管理エンドポイントは VPC 内から到達する」 |
+| 「ONTAP アップグレードやディスク交換は System Manager の担当」 | 「FSx for ONTAP では AWS が運用。利用者の操作としては存在しない」 |
+| 「System Manager / 本ポータル」のような並置（同じ体制で選べる前提） | 「ONTAP CLI / REST API」を比較相手にする |
+| 「メトリクスは System Manager で確認」 | 「Amazon CloudWatch または ONTAP REST API で取得」 |
+| ポータルの利点を「VPN 不要」と書く | 利点は**委譲**（管理者以外に SSH を渡さず操作を渡せる）と**記録**（Cognito 主体つき） |
+
+System Manager を **UI デザインの参照元**として挙げるのは可（「カード型ナビゲーションを踏襲」等）。到達可能性の主張と混ざらないようにする。
+
+---
+
 ## 関連ドキュメント
 
 | ドキュメント | 内容 |
 |-------------|------|
 | [管理機能マップ](../../solutions/amplify-portal/docs/admin-capability-map.md) | 各インターフェースの担当範囲とポータルの実装状況 |
 | [ONTAP 接続ガイド](../../solutions/amplify-portal/docs/ONTAP-CONNECTION-GUIDE.md) | VPC・シークレット・管理 LIF の配線 |
-| [検証状況 (EN)](../../solutions/amplify-portal/docs/verification-results.en.md) | どの機能がどの水準まで確認済みか。JA 版は gitignore のためローカルのみ |
+| [検証状況 (JA)](../../solutions/amplify-portal/docs/verification-results.md) / [(EN)](../../solutions/amplify-portal/docs/verification-results.en.md) | どの機能がどの水準まで確認済みか |
 | [代替手段の比較](../comparison-alternatives.md) | S3 AP / EFS / NFS / DataSync と読み取りキャッシュの選択 |
 | [ONTAP 連携メモ](../ontap-integration-notes.md) | NAS 併用、ID、データ保護、OT |
