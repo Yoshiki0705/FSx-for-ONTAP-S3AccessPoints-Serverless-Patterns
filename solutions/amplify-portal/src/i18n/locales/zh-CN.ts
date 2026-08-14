@@ -260,6 +260,7 @@ arpResponseSweepNote: "阻止会在设定的期限过后自动解除。如需提
   rmDeleting: "正在删除…",
   rmSnaplockDocs: "SnapLock 文档",
   rmDeleteConfirm: "确定要删除「{name}」吗？",
+  rmQosDeleteConfirm: "要删除 \"{name}\" 吗？分配了该策略的卷会被解除分配并变为无上限。若只想解除某个卷而保留策略，请使用解除功能而不是删除。",
   rmDeleted: "已删除「{name}」",
   rmCreate: "创建",
   rmNoVolumes: "未找到卷",

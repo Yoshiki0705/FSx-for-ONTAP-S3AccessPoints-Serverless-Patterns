@@ -260,6 +260,7 @@ arpResponseSweepNote: "차단은 지정한 기한이 지나면 자동으로 해�
   rmDeleting: "삭제 중…",
   rmSnaplockDocs: "SnapLock 문서",
   rmDeleteConfirm: "「{name}」을(를) 정말 삭제하시겠습니까?",
+  rmQosDeleteConfirm: "\"{name}\"을 삭제할까요? 이 정책이 할당된 볼륨은 할당이 해제되어 한도가 없어집니다. 정책을 유지하면서 한 볼륨만 해제하려면 삭제 대신 해제 기능을 사용하세요.",
   rmDeleted: "「{name}」을(를) 삭제했습니다",
   rmCreate: "생성",
   rmNoVolumes: "볼륨이 없습니다",
