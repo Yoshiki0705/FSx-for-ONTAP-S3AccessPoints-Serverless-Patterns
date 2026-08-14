@@ -160,6 +160,10 @@ A cache is not fixed at the size it was created with. `Resize` on the row opens 
 
 This is independent of the origin: growing the cache does not change the origin.
 
+The creation floor does not apply to shrinking an existing cache (measured: on a file system
+that refuses a create below 50 GB, an existing 100 GiB cache shrank to 20 GiB). Do not assume
+a size you cannot create is a size you cannot shrink to.
+
 Success criterion: a FlexGroup resize continues as an ONTAP job, so right after
 `The resize was accepted` the listing can still show the old size (measured: both growing
 and shrinking ran past 10s). The panel re-reads once more after 20 seconds.
