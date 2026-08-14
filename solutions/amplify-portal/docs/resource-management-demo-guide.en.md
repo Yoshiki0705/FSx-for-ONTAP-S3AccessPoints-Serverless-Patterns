@@ -45,6 +45,14 @@ Success criterion: **5 categories and 20 cards** are shown.
 Four storage-health cards sit above them (volume count, ARP protection, locked
 snapshots, storage efficiency). Clicking a card jumps to the matching panel.
 
+**SVM scope**: when the file system holds more than one SVM, an `SVM scope` selector
+appears at the right of the header. The selection is supplied to every action that reads an
+`svm`, so switching it changes what the admin listings show. With a single SVM there is
+nothing to choose and the control stays hidden.
+
+Success criterion: the volume list changes after switching. A volume created on another SVM
+not appearing under the default scope is correct -- switching is how you see it.
+
 ---
 
 ### Scenario 2: SMB local users and groups

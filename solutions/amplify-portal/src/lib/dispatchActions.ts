@@ -133,11 +133,11 @@ export interface ResourceMgmtActionParams {
     svm?: string;
   };
   createClusterPeer: {
+    remoteAddresses: string[];
     generatePassphrase?: boolean;
     ipspace?: string;
     name?: string;
     passphrase?: string;
-    remoteAddresses?: string[];
   };
   createExportPolicy: {
     name: string;
@@ -171,15 +171,15 @@ export interface ResourceMgmtActionParams {
     svm?: string;
   };
   createFpolicyEvent: {
+    fileOperations: string[];
     name: string;
     protocol: string;
-    fileOperations?: string[];
     svm?: string;
   };
   createFpolicyPolicy: {
+    events: string[];
     name: string;
     engineName?: string;
-    events?: string[];
     priority?: number;
     svm?: string;
   };
@@ -255,6 +255,7 @@ export interface ResourceMgmtActionParams {
   createVolume: {
     name: string;
     acknowledgeIrreversible?: true;
+    aggregates?: string[];
     exportPolicy?: string;
     retentionDefault?: IsoDuration;
     retentionMax?: IsoDuration;
@@ -262,6 +263,7 @@ export interface ResourceMgmtActionParams {
     securityStyle?: "unix" | "ntfs" | "mixed";
     sizeGiB?: number;
     snaplockType?: "compliance" | "enterprise" | "non_snaplock";
+    style?: "flexvol" | "flexgroup";
     svm?: string;
   };
   createVscanPolicy: {
@@ -573,8 +575,23 @@ export interface ResourceMgmtActionParams {
     svm?: string;
   };
   updateDnsConfig: {
-    domains?: string[];
-    servers?: string[];
+    domains: string[];
+    servers: string[];
+    svm?: string;
+  };
+  updateLocalUser: {
+    sid: string;
+    description?: string;
+    enabled?: boolean;
+    fullName?: string;
+    password?: string;
+    svm?: string;
+  };
+  updateNameMapping: {
+    direction?: string;
+    index?: number;
+    pattern?: string;
+    replacement?: string;
     svm?: string;
   };
   updatePortalSettings: {
@@ -588,6 +605,19 @@ export interface ResourceMgmtActionParams {
     maxMbps?: number;
     peakIops?: number;
   };
+  updateQtree: {
+    qtreeId: QtreeId;
+    volumeName: string;
+    exportPolicy?: string;
+    securityStyle?: "unix" | "ntfs" | "mixed";
+    svm?: string;
+  };
+  updateQuotaRule: {
+    ruleUuid: string;
+    filesHardLimit?: number;
+    spaceHardLimitGiB?: number;
+    spaceSoftLimitGiB?: number;
+  };
   updateSnaplockRetention: {
     volumeUuid: VolumeUuid;
     acknowledgeIrreversible?: true;
@@ -597,8 +627,8 @@ export interface ResourceMgmtActionParams {
     relationshipUuid: SnapmirrorUuid;
   };
   updateSvmPeerApplications: {
+    applications: string[];
     peerUuid: string;
-    applications?: string[];
   };
 }
 
@@ -932,3 +962,80 @@ export type ActionOf<E extends DispatchEndpoint> = keyof DispatchParams[E] & str
 
 /** The parameters one action takes. */
 export type ParamsOf<E extends DispatchEndpoint, A extends ActionOf<E>> = DispatchParams[E][A];
+
+/**
+ * Actions that take an `svm`, so `dispatch` can supply the selected one.
+ *
+ * Derived from the handlers, not listed by hand: an action that starts or
+ * stops reading `svm` changes this set with it. The alternative was every
+ * panel threading the SVM through its own queries, and the panels that
+ * forgot would silently keep reading the default one.
+ */
+export const ACTIONS_ACCEPTING_SVM: ReadonlySet<string> = new Set([
+  "addGroupMember",
+  "blockNfsIp",
+  "blockSmbUser",
+  "containThreat",
+  "createCifsShare",
+  "createExportPolicy",
+  "createFlexCache",
+  "createFlexClone",
+  "createFpolicyEvent",
+  "createFpolicyPolicy",
+  "createLocalGroup",
+  "createLocalUser",
+  "createNameMapping",
+  "createQosPolicy",
+  "createQtree",
+  "createQuotaRule",
+  "createSnapmirror",
+  "createSnapshotPolicy",
+  "createVolume",
+  "createVscanPolicy",
+  "deleteCifsShare",
+  "deleteFpolicyEvent",
+  "deleteFpolicyPolicy",
+  "deleteLocalGroup",
+  "deleteLocalUser",
+  "deleteNameMapping",
+  "deleteQtree",
+  "deleteVscanPolicy",
+  "disconnectSessions",
+  "getDnsConfig",
+  "getEfficiencyStats",
+  "getFpolicyStatus",
+  "getQuotaReport",
+  "getSnaplockConfig",
+  "getVscanStatus",
+  "listActiveBlocks",
+  "listArpVolumes",
+  "listCifsShares",
+  "listExportPolicies",
+  "listFlexClones",
+  "listFpolicyEvents",
+  "listFpolicyPolicies",
+  "listGroupMembers",
+  "listLocalGroups",
+  "listLocalUsers",
+  "listNameMappings",
+  "listProtocolServices",
+  "listQosPolicies",
+  "listQtrees",
+  "listQuotaRules",
+  "listSnapshotPolicies",
+  "listVolumes",
+  "listVolumesFiltered",
+  "listVscanPolicies",
+  "removeGroupMember",
+  "setFpolicyPolicyEnabled",
+  "setProtocolServiceEnabled",
+  "setVscanEnabled",
+  "setVscanPolicyEnabled",
+  "unblockNfsIp",
+  "unblockSmbUser",
+  "updateCifsShare",
+  "updateDnsConfig",
+  "updateLocalUser",
+  "updateNameMapping",
+  "updateQtree",
+]);

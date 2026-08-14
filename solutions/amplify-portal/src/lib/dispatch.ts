@@ -23,6 +23,8 @@ import type { Schema } from "../../amplify/data/resource";
 import { parseResponse } from "../utils/parseResponse";
 import type { PortalResponse } from "./portalQuery";
 import type { ActionOf, DispatchEndpoint, ParamsOf } from "./dispatchActions";
+import { ACTIONS_ACCEPTING_SVM } from "./dispatchActions";
+import { getActiveSvm } from "./activeSvm";
 
 const client = generateClient<Schema>();
 
@@ -75,7 +77,25 @@ export async function dispatch<E extends DispatchEndpoint>(
   if (!operation) {
     throw new Error(`No dispatch endpoint named ${endpoint}`);
   }
-  return operation({ action, params: JSON.stringify(params ?? {}) });
+  return operation({ action, params: JSON.stringify(withActiveSvm(action, params)) });
+}
+
+/**
+ * Fill in the selected SVM, for the actions that read one.
+ *
+ * Done here because the alternative is every panel threading it through its own
+ * queries, and the panels that forgot would go on reading the backend's default while
+ * looking like they had switched. `ACTIONS_ACCEPTING_SVM` is generated from the
+ * handlers, so an action that does not read `svm` is not sent one -- the parameter
+ * check reports unread parameters, and would fail if this sprayed it everywhere.
+ *
+ * A caller that names an SVM wins: the peering panel acts on a specific one.
+ */
+function withActiveSvm(action: string, params: unknown): Record<string, unknown> {
+  const given = (params ?? {}) as Record<string, unknown>;
+  const selected = getActiveSvm();
+  if (!selected || given.svm || !ACTIONS_ACCEPTING_SVM.has(action)) return given;
+  return { ...given, svm: selected };
 }
 
 /**

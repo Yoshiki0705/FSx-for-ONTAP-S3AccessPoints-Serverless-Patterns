@@ -38,6 +38,12 @@ export function LocalUserManager() {
   const [newUserPassword, setNewUserPassword] = useState("");
   const [newUserFullName, setNewUserFullName] = useState("");
   const [newUserDescription, setNewUserDescription] = useState("");
+  // The user being edited. Recreating an account to reset its password changes the SID,
+  // and the SID is what NTFS ACLs on existing files name -- so the rebuilt user answers
+  // to the same name with none of the same access.
+  const [editingUser, setEditingUser] = useState<LocalUser | null>(null);
+  const [editPassword, setEditPassword] = useState("");
+  const [editEnabled, setEditEnabled] = useState(true);
 
   // Create group form
   const [showCreateGroup, setShowCreateGroup] = useState(false);
@@ -123,6 +129,34 @@ export function LocalUserManager() {
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Create failed");
+    }
+  };
+
+  // ─── Edit User ───
+  const handleSaveUser = async () => {
+    if (!editingUser) return;
+    setError(null);
+    try {
+      const data = await adminMutate<{ success?: boolean }>({
+        action: "updateLocalUser",
+        params: {
+          sid: editingUser.sid,
+          // Sent only when a new one was typed: an empty field means "leave it".
+          ...(editPassword ? { password: editPassword } : {}),
+          enabled: editEnabled,
+        },
+      });
+      if (data?.success) {
+        setSuccess(t("luUpdated"));
+        setEditingUser(null);
+        setEditPassword("");
+        clearSuccess();
+        loadUsers();
+      } else {
+        setError(data?.error || "Update failed");
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Update failed");
     }
   };
 
@@ -381,13 +415,52 @@ export function LocalUserManager() {
                         : "—"}
                     </td>
                     <td>
-                      <button
-                        className="rm-btn-danger-sm"
-                        onClick={() => handleDeleteUser(user)}
-                        title={t("luDeleteUser")}
-                      >
-                        {t("luDeleteUser")}
-                      </button>
+                      {editingUser?.sid === user.sid ? (
+                        <span className="peer-accept-row">
+                          <input
+                            type="password"
+                            value={editPassword}
+                            onChange={(e) => setEditPassword(e.target.value)}
+                            placeholder={t("luNewPassword")}
+                            aria-label={t("luNewPassword")}
+                          />
+                          <label className="peer-app-toggle">
+                            <input
+                              type="checkbox"
+                              checked={editEnabled}
+                              onChange={(e) => setEditEnabled(e.target.checked)}
+                            />
+                            {t("luAccountEnabled")}
+                          </label>
+                          <button className="rm-btn-primary" onClick={() => void handleSaveUser()}>
+                            {t("rmApply")}
+                          </button>
+                          <button className="rm-btn-sm" onClick={() => setEditingUser(null)}>
+                            {t("cancel")}
+                          </button>
+                        </span>
+                      ) : (
+                        <span className="peer-accept-row">
+                          <button
+                            className="rm-btn-sm"
+                            onClick={() => {
+                              setEditingUser(user);
+                              setEditPassword("");
+                              setEditEnabled(!user.disabled);
+                            }}
+                            title={t("luEditHint")}
+                          >
+                            {t("luEditUser")}
+                          </button>
+                          <button
+                            className="rm-btn-danger-sm"
+                            onClick={() => handleDeleteUser(user)}
+                            title={t("luDeleteUser")}
+                          >
+                            {t("luDeleteUser")}
+                          </button>
+                        </span>
+                      )}
                     </td>
                   </tr>
                 ))}

@@ -6606,3 +6606,18 @@ button[type="submit"]:disabled {
   background: var(--color-surface);
   box-shadow: 0 1px 3px var(--color-shadow);
 }
+
+/* Which SVM the admin panels act on. Sits in the header of both the panel list and
+   each panel, because a scope you cannot see from where you are working is a trap. */
+.rm-svm-selector {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-left: auto;
+  font-size: 0.8rem;
+  color: var(--color-text-secondary);
+}
+
+.rm-svm-label {
+  white-space: nowrap;
+}

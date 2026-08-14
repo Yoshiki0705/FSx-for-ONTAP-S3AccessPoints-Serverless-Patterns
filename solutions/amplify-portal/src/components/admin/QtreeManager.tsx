@@ -6,6 +6,9 @@ import { adminMutate, dispatch } from "../../lib/dispatch";
 import type { QtreeId } from "../../lib/dispatchActions";
 import { VolumeSelector } from "./VolumeSelector";
 
+/** The security styles ONTAP accepts on a qtree. */
+type SecurityStyle = "unix" | "ntfs" | "mixed";
+
 interface Qtree {
   /** ONTAP's qtree identifier, branded where it arrives. Not the qtree name. */
   id: QtreeId;
@@ -29,6 +32,14 @@ export function QtreeManager() {
   const [newName, setNewName] = useState("");
   const [newSecurityStyle, setNewSecurityStyle] = useState("unix");
   const [newExportPolicy, setNewExportPolicy] = useState("default");
+  // The qtree being edited. Its security style and export policy are ordinary settings
+  // on an existing directory tree; changing them used to mean deleting the qtree, which
+  // takes its contents with it.
+  const [editing, setEditing] = useState<Qtree | null>(null);
+  // Typed as the accepted set rather than `string`: the action's parameter type is
+  // derived from the handler's own guard, and a plain string is not assignable to it.
+  const [editSecurityStyle, setEditSecurityStyle] = useState<SecurityStyle>("unix");
+  const [editExportPolicy, setEditExportPolicy] = useState("default");
 
   const clearSuccess = () => setTimeout(() => setSuccess(null), 3000);
 
@@ -89,6 +100,30 @@ export function QtreeManager() {
         } else setError(data.error || "Create failed");
       }
     } catch (err) { setError(err instanceof Error ? err.message : "Create failed"); }
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editing) return;
+    setError(null);
+    try {
+      const data = await adminMutate<{ success?: boolean }>({
+        action: "updateQtree",
+        params: {
+          volumeName: editing.volumeName,
+          qtreeId: editing.id,
+          securityStyle: editSecurityStyle,
+          exportPolicy: editExportPolicy,
+        },
+      });
+      if (data?.success) {
+        setSuccess(t("qtUpdated"));
+        setEditing(null);
+        setTimeout(() => setSuccess(null), 3000);
+        loadQtrees();
+      } else setError(data?.error || t("rmActionFailed"));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : t("rmActionFailed"));
+    }
   };
 
   const handleDelete = async (volumeName: string, qtreeId: QtreeId, name: string) => {
@@ -179,6 +214,8 @@ export function QtreeManager() {
       )}
 
       {loading ? <p className="loading">{t("loading")}</p> : (
+        <>
+        <p className="rm-hint">{t("qtEditHint")}</p>
         <table className="admin-table">
           <thead>
             <tr>
@@ -207,14 +244,62 @@ export function QtreeManager() {
                     )}
                   </td>
                   <td>{q.volumeName}</td>
-                  <td>{q.securityStyle}</td>
-                  <td>{q.exportPolicy}</td>
-                  <td className="action-cell">
-                    {!isVolumeRoot && (
-                      <button onClick={() => handleDelete(q.volumeName, q.id, q.name)}
-                        className="btn-sm btn-danger">✕</button>
-                    )}
-                  </td>
+                  {editing?.id === q.id ? (
+                    <>
+                      <td>
+                        <select
+                          value={editSecurityStyle}
+                          onChange={(e) => setEditSecurityStyle(e.target.value as SecurityStyle)}
+                          aria-label={t("rmSecurityStyle")}
+                        >
+                          <option value="unix">unix</option>
+                          <option value="ntfs">ntfs</option>
+                          <option value="mixed">mixed</option>
+                        </select>
+                      </td>
+                      <td>
+                        <input
+                          type="text"
+                          value={editExportPolicy}
+                          onChange={(e) => setEditExportPolicy(e.target.value)}
+                          aria-label="Export Policy"
+                        />
+                      </td>
+                      <td className="action-cell">
+                        <span className="peer-accept-row">
+                          <button className="rm-btn-primary" onClick={() => void handleSaveEdit()}>
+                            {t("rmApply")}
+                          </button>
+                          <button className="rm-btn-sm" onClick={() => setEditing(null)}>
+                            {t("cancel")}
+                          </button>
+                        </span>
+                      </td>
+                    </>
+                  ) : (
+                    <>
+                      <td>{q.securityStyle}</td>
+                      <td>{q.exportPolicy}</td>
+                      <td className="action-cell">
+                        {!isVolumeRoot && (
+                          <span className="peer-accept-row">
+                            <button
+                              className="rm-btn-sm"
+                              onClick={() => {
+                                setEditing(q);
+                                setEditSecurityStyle((q.securityStyle as SecurityStyle) || "unix");
+                                setEditExportPolicy(q.exportPolicy || "default");
+                              }}
+                            >
+                              {t("qtEdit")}
+                            </button>
+                            <button onClick={() => handleDelete(q.volumeName, q.id, q.name)}
+                              className="btn-sm btn-danger">✕</button>
+                          </span>
+                        )}
+                      </td>
+                    </>
+                  )}
                 </tr>
               );
             })}
@@ -229,6 +314,7 @@ export function QtreeManager() {
             )}
           </tbody>
         </table>
+        </>
       )}
     </div>
   );

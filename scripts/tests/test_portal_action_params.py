@@ -93,6 +93,62 @@ def handler(event, context):
         unsatisfied = contract.unsatisfied(sent)
         assert {frozenset(g) for g in unsatisfied} == {frozenset({"snapshotId"}), frozenset({"expiryTime"})}
 
+    def test_an_or_default_that_cannot_satisfy_the_guard_is_required(self, tmp_path):
+        """`event.get("k") or []` still trips `if not k`, so the caller must send it."""
+        source = """
+def handler(event, context):
+    action = event.get("action", "")
+    if action == "updateSvmPeerApplications":
+        apps = event.get("applications") or []
+        if not apps:
+            return {"success": False, "error": "applications is required"}
+        return {"success": True}
+"""
+        contract = contracts_from(source, tmp_path)["updateSvmPeerApplications"]
+        assert {frozenset(g) for g in contract.groups} == {frozenset({"applications"})}
+
+    def test_an_or_default_that_satisfies_the_guard_is_not_required(self, tmp_path):
+        """A fallback the guard accepts means the payload never had to carry the key.
+
+        `bucket = event.get("bucket") or S3_OBJECT_LOCK_BUCKET` is answered by the
+        environment. Declaring it required made a working call site fail to compile.
+        """
+        source = """
+BUCKET = "from-the-environment"
+
+def handler(event, context):
+    action = event.get("action", "")
+    if action == "getS3ObjectLockStatus":
+        bucket = event.get("bucket") or BUCKET
+        if not bucket:
+            return {"configured": False}
+        return {"configured": True}
+"""
+        contract = contracts_from(source, tmp_path)["getS3ObjectLockStatus"]
+        assert contract.groups == []
+        # Still a key the action accepts, just not one it insists on.
+        assert "bucket" in contract.branch_read
+
+    def test_an_or_default_still_yields_the_enum(self, tmp_path):
+        """The accepted values are about the value, not about who supplies it.
+
+        Without looking through the `or`, the variable was never bound to its key and
+        the guard contributed nothing, so the generated type widened to `string`.
+        """
+        source = """
+def handler(event, context):
+    action = event.get("action", "")
+    if action == "createVolume":
+        style = event.get("style") or "flexvol"
+        if style not in ("flexvol", "flexgroup"):
+            return {"success": False, "error": "bad style"}
+        return {"success": True}
+"""
+        contract = contracts_from(source, tmp_path)["createVolume"]
+        assert contract.enums["style"] == ("flexvol", "flexgroup")
+        # A default the guard accepts, so not required.
+        assert contract.groups == []
+
     def test_either_or_is_one_requirement(self, tmp_path):
         """`if not days and not years` asks for one of the two, not for both.
 
