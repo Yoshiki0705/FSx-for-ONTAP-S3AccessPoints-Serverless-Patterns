@@ -135,8 +135,8 @@ Every action is implemented in the Lambda that calls the ONTAP REST API
 | Panel | Read | Create | Modify | Delete |
 |-------|:---:|:---:|:---:|:---:|
 | Volumes | ○ | ○ | ○ resize | ○ |
-| Qtrees | ○ | ○ | — | ○ |
-| Quotas | ○ | ○ | — | ○ |
+| Qtrees | ○ | ○ | ○ security style, export policy | ○ |
+| Quotas | ○ | ○ | ○ change the limits | ○ |
 | Storage efficiency | ○ | — | — | — |
 | FlexCache | ○ | ○ | ○ enable/disable write-back | ○ |
 | FlexClone | ○ | ○ | ○ split | — |
@@ -148,8 +148,8 @@ Every action is implemented in the Lambda that calls the ONTAP REST API
 | Export policies | ○ | ○ policy/rule | — | ○ policy/rule |
 | SMB shares | ○ | ○ | ○ | ○ |
 | QoS policies | ○ | ○ | ○ | ○ |
-| Local users | ○ | ○ user/group | ○ add and remove members | ○ user/group |
-| Name mapping | ○ | ○ | — | ○ |
+| Local users | ○ | ○ user/group | ○ change password, enable/disable, add and remove members | ○ user/group |
+| Name mapping | ○ | ○ | ○ pattern, replacement | ○ |
 
 ### Data protection
 
@@ -183,19 +183,30 @@ a SnapLock retention, for instance), which is a different thing.
 
 | Missing | Current workaround | What ONTAP offers |
 |---------|-------------------|-------------------|
-| Modify a quota rule (change the limits) | Delete and recreate; the accounting resets | `PATCH /storage/quota/rules/{uuid}` |
-| Modify a qtree (security style, export policy) | Delete and recreate; the contents are lost | `PATCH /storage/qtrees/{svm.uuid}/{id}` |
-| Change or disable a local user's password | Delete and recreate | `PATCH /protocols/cifs/local-users/{svm.uuid}/{sid}` |
-| Modify a name mapping | Delete and recreate | `PATCH /name-services/name-mappings/{svm.uuid}/{direction}/{index}` |
 | Resize a FlexCache | Resize it as a volume, through the Volumes panel | `PATCH /storage/volumes/{uuid}` |
-| Span multiple SVMs | Fixed to one SVM (`SVM_NAME`); volumes on other SVMs are not listed | Make `svm.name` variable; the UI needs an SVM selector |
-| Job confirmation on five SnapMirror operations | They return a response, but a job that failed can be reported as success | They go through a different client abstraction where `http, headers` are not wired |
+| Rename a qtree | Delete and recreate | `name` on `PATCH /storage/qtrees/{volume.uuid}/{id}` |
+| Move a name mapping's evaluation order (index) | Delete and recreate | `new_index` on the `PATCH` |
+| Enable or disable quotas per volume | ONTAP CLI | `quota.enabled` on `PATCH /storage/volumes/{uuid}` |
 
-> **On the single-SVM scope**: this is a design choice (one deployment, one SVM), but it got in
-> the way in practice. A SnapMirror destination volume created on another SVM did not appear in
-> the volume list, and deleting it required naming the UUID directly. Operating a file system
-> with several SVMs from one portal makes spanning them a prerequisite. The change reaches every
-> panel, so it is treated as its own piece of work.
+> **Why renaming a qtree and moving an index are listed separately**: both are moves rather
+> than edits. A qtree's name is part of the path clients have mounted, and a name mapping's
+> index is the evaluation order itself. Listing them next to a limit change or a security
+> style change would imply the same blast radius.
+
+### Switching the SVM scope
+
+When the file system holds more than one SVM, an `SVM scope` selector appears in the
+`Resource management` header (with a single SVM there is nothing to choose, so it stays
+hidden). The selection is supplied to every action that reads an `svm` -- 66 of them,
+measured -- and switching refetches the admin queries.
+
+Which actions accept one is generated from the handlers rather than listed by hand, so the
+selection is never sent to an action that does not read it, which the unread-parameter
+check would fail on.
+
+The SVM FSx keeps for itself, suffixed `-fsx-mpu-svm`, is left out of the choices: it holds
+nothing an operator manages, so selecting it would only return an empty list. The selection
+resets to the default (the configured SVM) on a page reload.
 
 ---
 

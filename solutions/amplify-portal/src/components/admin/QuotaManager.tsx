@@ -68,6 +68,12 @@ export function QuotaManager() {
   const [newSpaceHard, setNewSpaceHard] = useState(100);
   const [newSpaceSoft, setNewSpaceSoft] = useState(80);
   const [newFilesHard, setNewFilesHard] = useState(100000);
+  // The rule whose limits are being edited. Only the limits: what a rule applies to is
+  // fixed at creation, and deleting to change it resets the usage accounting.
+  const [editingUuid, setEditingUuid] = useState<string | null>(null);
+  const [editSpaceHard, setEditSpaceHard] = useState(0);
+  const [editSpaceSoft, setEditSpaceSoft] = useState(0);
+  const [editFilesHard, setEditFilesHard] = useState(0);
 
   const clearSuccess = () => setTimeout(() => setSuccess(null), 3000);
 
@@ -124,6 +130,31 @@ export function QuotaManager() {
         } else setError(data.error || "Create failed");
       }
     } catch (err) { setError(err instanceof Error ? err.message : "Create failed"); }
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editingUuid) return;
+    setError(null);
+    try {
+      const data = await adminMutate<{ success?: boolean }>({
+        action: "updateQuotaRule",
+        params: {
+          ruleUuid: editingUuid,
+          spaceHardLimitGiB: editSpaceHard,
+          spaceSoftLimitGiB: editSpaceSoft,
+          filesHardLimit: editFilesHard,
+        },
+      });
+      if (data?.success) {
+        setSuccess(t("quUpdated"));
+        setEditingUuid(null);
+        setTimeout(() => setSuccess(null), 3000);
+        loadRules();
+        loadReport();
+      } else setError(data?.error || t("rmActionFailed"));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : t("rmActionFailed"));
+    }
   };
 
   const handleDelete = async (ruleUuid: string) => {
@@ -216,6 +247,8 @@ export function QuotaManager() {
       )}
 
       {loading ? <p className="loading">{t("loading")}</p> : activeTab === "rules" ? (
+        <>
+        <p className="rm-hint">{t("quEditHint")}</p>
         <table className="admin-table">
           <thead>
             <tr><th>{t("rmQuotaType")}</th><th>{t("rmQuotaTarget")}</th><th>{t("rmSpaceHardLimit")}</th><th>{t("rmSpaceSoftLimit")}</th><th>{t("rmFilesHardLimit")}</th><th>{t("rmActions")}</th></tr>
@@ -225,15 +258,61 @@ export function QuotaManager() {
               <tr key={r.uuid}>
                 <td>{r.type}</td>
                 <td>{ruleTarget(r)}</td>
-                <td>{limitGiB(r.spaceHardLimit)}</td>
-                <td>{limitGiB(r.spaceSoftLimit)}</td>
-                <td>{r.filesHardLimit ?? "—"}</td>
-                <td><button onClick={() => handleDelete(r.uuid)} className="btn-sm btn-danger">✕</button></td>
+                {editingUuid === r.uuid ? (
+                  <>
+                    <td>
+                      <input type="number" min={0} value={editSpaceHard}
+                        onChange={(e) => setEditSpaceHard(Number(e.target.value))}
+                        aria-label={t("rmSpaceHardLimit")} />
+                    </td>
+                    <td>
+                      <input type="number" min={0} value={editSpaceSoft}
+                        onChange={(e) => setEditSpaceSoft(Number(e.target.value))}
+                        aria-label={t("rmSpaceSoftLimit")} />
+                    </td>
+                    <td>
+                      <input type="number" min={0} value={editFilesHard}
+                        onChange={(e) => setEditFilesHard(Number(e.target.value))}
+                        aria-label={t("rmFilesHardLimit")} />
+                    </td>
+                    <td>
+                      <span className="peer-accept-row">
+                        <button className="rm-btn-primary" onClick={() => void handleSaveEdit()}>
+                          {t("rmApply")}
+                        </button>
+                        <button className="rm-btn-sm" onClick={() => setEditingUuid(null)}>
+                          {t("cancel")}
+                        </button>
+                      </span>
+                    </td>
+                  </>
+                ) : (
+                  <>
+                    <td>{limitGiB(r.spaceHardLimit)}</td>
+                    <td>{limitGiB(r.spaceSoftLimit)}</td>
+                    <td>{r.filesHardLimit ?? "—"}</td>
+                    <td>
+                      <span className="peer-accept-row">
+                        <button className="rm-btn-sm" onClick={() => {
+                          setEditingUuid(r.uuid);
+                          // Bytes on the wire, GiB in the form, and 0 means no limit.
+                          setEditSpaceHard(Math.round((r.spaceHardLimit ?? 0) / 1024 ** 3));
+                          setEditSpaceSoft(Math.round((r.spaceSoftLimit ?? 0) / 1024 ** 3));
+                          setEditFilesHard(r.filesHardLimit ?? 0);
+                        }}>
+                          {t("quEdit")}
+                        </button>
+                        <button onClick={() => handleDelete(r.uuid)} className="btn-sm btn-danger">✕</button>
+                      </span>
+                    </td>
+                  </>
+                )}
               </tr>
             ))}
             {rules.length === 0 && <tr><td colSpan={6} className="empty-state">{t("rmNoQuotaRules")}</td></tr>}
           </tbody>
         </table>
+        </>
       ) : (
         <div>
           {usage.length === 0 ? <p className="empty-state">{t("rmNoQuotaData")}</p> : usage.map((u, i) => (
