@@ -38,7 +38,7 @@ This document records **how far each portal feature has been verified against a 
 
 | Feature | Confirmed | Not confirmed |
 |---------|-----------|---------------|
-| SnapMirror | Relationship listing, state badges, lag display | sync / break / resync / quiesce / delete / **transfer abort** |
+| SnapMirror | Relationship listing, state badges, lag display | **create a relationship (destination provisioned and initialized)** / sync / break / resync / quiesce / delete / transfer abort |
 | Volumes | 9 volumes listed with capacity | create / resize / delete |
 | Storage Efficiency | 1.21x ratio, 17.7% savings across 9 volumes | (read-only feature) |
 | Snapshot management | Policy listing, tamperproof status query | performing a lock |

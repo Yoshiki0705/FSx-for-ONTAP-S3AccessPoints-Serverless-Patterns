@@ -1131,6 +1131,20 @@ body {
   border-radius: var(--radius);
 }
 
+/* A use an SVM peer permits. The checkbox and its name have to read as one
+   control, otherwise the two sit far enough apart to look unrelated. */
+.peer-app-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.78rem;
+  color: var(--color-text-secondary);
+}
+
+.peer-app-toggle input {
+  margin: 0;
+}
+
 .cl-services {
   font-size: 0.72rem;
   color: var(--color-text-secondary);

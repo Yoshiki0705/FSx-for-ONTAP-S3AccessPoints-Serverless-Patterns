@@ -316,7 +316,7 @@ vserver vscan enable -vserver <svm-name>`}</pre>
             {enabled && (
               <>
                 <button className="rm-btn-sm" onClick={loadData}>
-                  🔄 {t("rmApply")}
+                  🔄 {t("refresh")}
                 </button>
                 {/* The scanner-side setup steps stay useful after Vscan is on, so keep
                     them reachable rather than only showing them while it is off. */}

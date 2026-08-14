@@ -256,7 +256,7 @@ export function ClusterManager() {
               {cluster?.version && <span className="lu-group-desc">{cluster.version}</span>}
             </span>
             <button className="rm-btn-sm" onClick={loadData}>
-              🔄 {t("rmApply")}
+              🔄 {t("refresh")}
             </button>
           </div>
 
@@ -329,7 +329,7 @@ export function ClusterManager() {
               {interfaces.length} {t("clInterfacesTab")}
             </span>
             <button className="rm-btn-sm" onClick={loadData}>
-              🔄 {t("rmApply")}
+              🔄 {t("refresh")}
             </button>
           </div>
           {interfaces.length === 0 ? (
@@ -536,7 +536,7 @@ export function ClusterManager() {
               {jobs.length} {t("clJobsTab")}
             </span>
             <button className="rm-btn-sm" onClick={loadData}>
-              🔄 {t("rmApply")}
+              🔄 {t("refresh")}
             </button>
           </div>
           <p className="rm-hint">{t("clJobsHint")}</p>
@@ -580,7 +580,7 @@ export function ClusterManager() {
               {t("clEventCount").replace("{count}", String(emsEvents.length))}
             </span>
             <button className="rm-btn-sm" onClick={loadData}>
-              🔄 {t("rmApply")}
+              🔄 {t("refresh")}
             </button>
           </div>
           <p className="rm-hint">{t("clEventsHint")}</p>

@@ -67,10 +67,13 @@ export function StorageDashboard({ onNavigate }: { onNavigate: (panel: string) =
           }
         }
 
+        // getEfficiencyStats nests the aggregate under `summary`. Reading
+        // `overallRatio` from the top level always missed, so this card showed
+        // the 1.0 fallback no matter what ONTAP reported.
         let efficiencyRatio = 1.0;
         if (effResp.status === "fulfilled") {
-          const ed = parseResponse<{ overallRatio?: number }>(effResp.value);
-          if (ed?.overallRatio) efficiencyRatio = ed.overallRatio;
+          const ed = parseResponse<{ summary?: { overallRatio?: number } }>(effResp.value);
+          if (ed?.summary?.overallRatio) efficiencyRatio = ed.summary.overallRatio;
         }
 
         setData({ volumeCount, volumeCapacityPct, arpThreats, arpProtected, lockedSnapshots, efficiencyRatio });

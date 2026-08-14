@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useTranslation } from "../../i18n";
 import { errorMessage, unwrap } from "../../lib/portalQuery";
 import { adminMutate, dispatch } from "../../lib/dispatch";
-import type { VolumeUuid } from "../../lib/dispatchActions";
+import type { PolicyUuid, VolumeUuid } from "../../lib/dispatchActions";
 import { SnaplockConfirmDialog } from "../SnaplockConfirmDialog";
 import { VolumeSelector } from "./VolumeSelector";
 import {
@@ -20,12 +20,21 @@ import {
 
 interface SnapshotPolicy {
   name: string;
-  uuid: string;
+  /** Branded where it arrives, so the delete cannot be handed a policy name. */
+  uuid: PolicyUuid;
   enabled: boolean;
   comment: string;
   scheduleCount: number;
   schedules: { schedule: string; count: number; prefix: string; retentionPeriod: string }[];
 }
+
+/**
+ * Policies ONTAP ships and will not delete.
+ *
+ * They appear in the listing next to the ones an operator created, and offering a
+ * delete on them would only ever return an error from the cluster.
+ */
+const BUILTIN_POLICIES = new Set(["default", "default-1weekly", "none"]);
 
 interface LockingConfig {
   volumeName: string;
@@ -56,6 +65,8 @@ export function SnapshotAdminManager() {
   /** Set while the consequence dialog is open; null when nothing is pending. */
   const [pendingSnaplock, setPendingSnaplock] = useState<SnaplockIntent | null>(null);
   const [showCreatePolicy, setShowCreatePolicy] = useState(false);
+  /** Policy awaiting delete confirmation, by UUID. */
+  const [confirmDeleteUuid, setConfirmDeleteUuid] = useState<string | null>(null);
   // Null until a volume is picked, rather than an empty string: the actions below
   // take a branded UUID, and "" is not one. The selector supplies the branded value.
   const [volumeUuid, setVolumeUuid] = useState<VolumeUuid | null>(null);
@@ -169,6 +180,35 @@ export function SnapshotAdminManager() {
   };
 
   /**
+   * Delete a policy.
+   *
+   * Not guarded by the consequence dialog: deleting a policy stops future snapshots
+   * and touches neither the snapshots already taken nor any lock on them, so there
+   * is nothing irreversible to acknowledge. ONTAP refuses the delete while a volume
+   * still references the policy, and that refusal is surfaced as-is.
+   */
+  const handleDeletePolicy = async (policyUuid: PolicyUuid) => {
+    setError(null);
+    try {
+      const data = await adminMutate<{ success?: boolean }>({
+        action: "deleteSnapshotPolicy",
+        params: { policyUuid, confirm: true },
+      });
+      if (data?.success) {
+        setResult(t("rmSnapPolicyDeleted"));
+        clearResult();
+        loadPolicies();
+      } else {
+        setError(data?.error || t("rmActionFailed"));
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : t("rmActionFailed"));
+    } finally {
+      setConfirmDeleteUuid(null);
+    }
+  };
+
+  /**
    * Enabling locking cannot be undone, so it goes through the consequence
    * dialog. That replaces a `window.prompt` which asked for a keyword but could
    * not show what enabling actually does, and which the browser renders as a
@@ -277,7 +317,7 @@ export function SnapshotAdminManager() {
           )}
 
           <table className="admin-table">
-            <thead><tr><th>{t("rmSnapPolicyName")}</th><th>{t("rmSnapSchedules")}</th><th>{t("rmState")}</th><th>{t("rmShareComment")}</th></tr></thead>
+            <thead><tr><th>{t("rmSnapPolicyName")}</th><th>{t("rmSnapSchedules")}</th><th>{t("rmState")}</th><th>{t("rmShareComment")}</th><th>{t("rmActions")}</th></tr></thead>
             <tbody>
               {policies.map((p) => (
                 <tr key={p.uuid}>
@@ -292,9 +332,31 @@ export function SnapshotAdminManager() {
                   </td>
                   <td><span className={`state-badge state-${p.enabled ? "online" : "offline"}`}>{p.enabled ? t("stateEnabled") : t("stateDisabled")}</span></td>
                   <td>{p.comment || "—"}</td>
+                  <td>
+                    {/* The built-in policies are cluster-scoped and ONTAP refuses to
+                        delete them, so offering the button on those rows would only
+                        produce an error. */}
+                    {BUILTIN_POLICIES.has(p.name) ? (
+                      <span className="rm-hint">{t("rmSnapPolicyBuiltin")}</span>
+                    ) : confirmDeleteUuid === p.uuid ? (
+                      <span className="peer-accept-row">
+                        <span className="sm-confirm-text">{t("rmSnapPolicyConfirmDelete")}</span>
+                        <button className="rm-btn-danger-sm" onClick={() => void handleDeletePolicy(p.uuid)}>
+                          {t("rmExecute")}
+                        </button>
+                        <button className="rm-btn-sm" onClick={() => setConfirmDeleteUuid(null)}>
+                          {t("cancel")}
+                        </button>
+                      </span>
+                    ) : (
+                      <button className="rm-btn-danger-sm" onClick={() => setConfirmDeleteUuid(p.uuid)}>
+                        {t("delete")}
+                      </button>
+                    )}
+                  </td>
                 </tr>
               ))}
-              {policies.length === 0 && <tr><td colSpan={4} className="empty-state">{t("rmSnapNoPolicies")}</td></tr>}
+              {policies.length === 0 && <tr><td colSpan={5} className="empty-state">{t("rmSnapNoPolicies")}</td></tr>}
             </tbody>
           </table>
         </>
@@ -309,6 +371,7 @@ export function SnapshotAdminManager() {
               label={t("rmSnapSelectVolume")}
               showUuid
               onSelect={(vol) => { setVolumeUuid(vol.uuid); }}
+              excludeFlexCache
             />
             <button onClick={loadLockingStatus} className="btn-primary" disabled={!volumeUuid} style={{ marginTop: "0.75rem" }}>{t("rmSnapCheckStatus")}</button>
           </div>

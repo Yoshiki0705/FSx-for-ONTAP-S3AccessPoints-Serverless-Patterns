@@ -263,7 +263,7 @@ In a subsequent response, AWS Support confirmed — citing NetApp KB articles �
 | Earlier than 9.11.1 | Presigned URLs not supported |
 
 - NetApp recommends using v4 signatures where possible
-- This repository's verification environment runs ONTAP 9.17.1P6, which satisfies both thresholds
+- This repository's verification environment runs ONTAP 9.18.1P3D1, which satisfies both thresholds
 - This confirmation concerns **ONTAP-layer** behavior. Until the AWS compatibility table for FSx for ONTAP S3 Access Points is updated, the production use warning below remains in effect
 
 ### ⚠️ Production Use Warning

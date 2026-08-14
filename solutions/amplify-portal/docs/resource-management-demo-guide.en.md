@@ -125,10 +125,29 @@ is returned.
 Around 10% of the origin volume is a reasonable size. A value below the 1 GiB minimum
 is rejected before the call.
 
+**Write modes**
+
+A FlexCache is not read-only. Writes at the cache are served, and ONTAP keeps the cache
+and the origin coherent in either mode. What differs is where the write is acknowledged.
+
+| Mode | Behaviour | Requirement |
+|------|-----------|-------------|
+| write-around (default) | The write is forwarded to the origin and acknowledged once the origin has committed it | None |
+| write-back | The write is committed at the cache and acknowledged immediately, then flushed to the origin asynchronously | ONTAP 9.15.1 or later on **both** the cache and the origin |
+
+`Enable write-back` in the create form selects it at creation time. An existing cache is
+switched with `Enable write-back` / `Disable write-back` on its row. Disabling flushes
+what is only at the cache to the origin, which makes it **a prerequisite for deleting
+the cache**.
+
+Success criterion: every row always carries a `✍️ write-around` or `✍️ write-back` badge,
+and the listing reflects a switch.
+
 **Delete**
 
 The row's `Delete` → `Really delete?` → `Execute` is two-step by design.
-The first click does not delete.
+The first click does not delete. ONTAP refuses to delete a cache with write-back
+enabled, and the error carries the reason and the fix (disable write-back first).
 
 ---
 
@@ -170,6 +189,26 @@ ONTAP REST: `/snapmirror/relationships`, `/snapmirror/relationships/{uuid}/trans
 Success criterion: `source → destination`, policy name, lag and a health badge
 (healthy/unhealthy) are shown.
 
+`+ Create replication` establishes a new relationship. ONTAP provisions the destination
+volume, so there is no need to run `volume create -type DP` first.
+
+| Field | Meaning |
+|-------|---------|
+| SVM peer | Only peers that are `peered` and list `snapmirror` among their applications are offered. The source SVM, the source cluster and the destination SVM all come from the peer |
+| Source volume name | The volume name on the other file system |
+| Destination volume name | A name not already in use on this file system |
+| Initialize after creating | Includes `state: snapmirrored` in the POST, running the baseline transfer |
+
+Success criterion: right after creation the state is `uninitialized`; once the baseline
+transfer finishes it becomes `snapmirrored` and the first entry appears in the transfer
+history. Creating and initializing both outlive the Lambda invocation, so a job still
+running is treated as accepted. The list refetches on its own only while a relationship
+is mid-flight.
+
+If no peer permits `snapmirror`, the reason is shown in place of the choices. Add it
+through `Change applications` under `Peering → SVM peers`; the peer does not have to be
+recreated.
+
 The row's action buttons run the following.
 
 | Operation | Call | Confirmation |
@@ -181,6 +220,7 @@ The row's action buttons run the following.
 | Resync | `PATCH state=snapmirrored` (from broken_off) | Required |
 | Abort transfer | `PATCH transfers/{uuid} state=aborted` | — |
 | Delete relationship | `DELETE /snapmirror/relationships/{uuid}` | Required |
+| Create | `POST /snapmirror/relationships` (`create_destination` + `state`) | — |
 
 Operations marked "Required" show a confirmation row and are not sent until `Execute`
 is pressed. The handler independently refuses without `confirm=true`, so a direct call
