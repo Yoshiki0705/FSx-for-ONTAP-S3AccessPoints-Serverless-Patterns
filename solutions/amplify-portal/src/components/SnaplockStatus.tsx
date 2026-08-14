@@ -4,8 +4,10 @@ import { useTranslation } from "../i18n";
 import { errorMessage, failureDiagnosis, unwrap } from "../lib/portalQuery";
 import { adminMutate, adminQuery, dispatch, protectionMutate, protectionQuery } from "../lib/dispatch";
 import { daysFromNow, type SnapshotId } from "../lib/dispatchActions";
+import { useStorageAdmin } from "../hooks/useStorageAdmin";
 import { OntapFailureNotice } from "./OntapFailureNotice";
 import { SnaplockConfirmDialog } from "./SnaplockConfirmDialog";
+import { VolumeSelector } from "./admin/VolumeSelector";
 import type { SnaplockIntent } from "../utils/snaplockConsequences";
 
 interface SnaplockData {
@@ -60,6 +62,11 @@ interface UnlockedSnapshot {
  * - S3 Object Lock tab: Informational (not applicable to FSx for ONTAP S3 AP)
  */
 export function SnaplockStatus() {
+  // The volume the snapshot and SnapLock panels describe. Empty means the configured
+  // one, which is the handler's default and what a reader without the storage-admin
+  // group sees. It flows into the snapshot listing and into the lock, so a lock cannot
+  // be applied to a snapshot of a volume other than the one on screen.
+  const [selectedVolume, setSelectedVolume] = useState("");
   const [actionError, setActionError] = useState<string | null>(null);
   const setError = setActionError;
   const [success, setSuccess] = useState<string | null>(null);
@@ -84,28 +91,36 @@ export function SnaplockStatus() {
   const [showS3Config, setShowS3Config] = useState(false);
 
   const { t } = useTranslation();
+  const isStorageAdmin = useStorageAdmin();
 
   // Four independent fetches, so four queries. Only the first gates the page;
   // the other three feed panels that degrade to empty, which is also why they
   // swallowed their errors before.
   const statusQuery = useQuery({
-    queryKey: ["protection", "getSnaplockStatus"],
+    queryKey: ["protection", "getSnaplockStatus", selectedVolume || null],
     queryFn: () =>
       unwrap<{
         volumeName?: string;
         snaplock?: SnaplockData;
         snapshotLockingEnabled?: boolean;
-      }>(dispatch("protectionQuery", { action: "getSnaplockStatus" })),
+      }>(
+        dispatch("protectionQuery", {
+          action: "getSnaplockStatus",
+          params: selectedVolume ? { volumeName: selectedVolume } : {},
+        }),
+      ),
   });
 
   // Locked and unlocked come from one listing, so they are split here rather
   // than kept as two pieces of state that could disagree.
   const snapshotsQuery = useQuery({
-    queryKey: ["protection", "listSnapshots", 50],
+    queryKey: ["protection", "listSnapshots", 50, selectedVolume || null],
     queryFn: async () => {
       const data = await protectionQuery<{ snapshots?: LockedSnapshot[] }>({
         action: "listSnapshots",
-        params: { maxResults: 50 },
+        params: selectedVolume
+          ? { maxResults: 50, volumeName: selectedVolume }
+          : { maxResults: 50 },
       });
       return data?.snapshots ?? [];
     },
@@ -271,6 +286,10 @@ export function SnaplockStatus() {
           snapshotId: selected.snapshotId,
           expiryTime: daysFromNow(lockRetentionDays),
           acknowledgeIrreversible: true,
+          // The volume the listing came from. Without it the handler resolves the
+          // configured volume and looks for this snapshot there -- on any other volume
+          // that is a lock applied to the wrong subject, and a lock cannot be undone.
+          ...(selectedVolume ? { volumeName: selectedVolume } : {}),
         },
       });
       if (data) {
@@ -293,7 +312,12 @@ export function SnaplockStatus() {
     try { return new Date(iso).toLocaleString(); } catch { return iso; }
   };
 
-  if (loading) {
+  // Only while there is nothing to show. `isPending` is true again for every new query
+  // key, so returning the loading screen on it replaced the whole page -- including the
+  // volume selector -- and the selector came back with its state reset. The selection
+  // survived in the parent, so the badge was right while the dropdown read "select a
+  // volume": one control disagreeing with another about the same fact.
+  if (loading && !statusQuery.data) {
     return (
       <div className="protection-section">
         <h2>🔒 {t("lockTitle")}</h2>
@@ -322,7 +346,15 @@ export function SnaplockStatus() {
       )}
       <div className="protection-header">
         <h2>🔒 {t("lockTitle")}</h2>
+        {/* From the response, so it names the volume these panels describe -- whether
+            that came from the selection or from the deployment's default. */}
         {volumeName && <span className="volume-badge">{t("volume")}: {volumeName}</span>}
+        {isStorageAdmin === true && (
+          <VolumeSelector
+            label={t("rmSelectVolume")}
+            onSelect={(vol) => setSelectedVolume(vol.name)}
+          />
+        )}
         <button onClick={refreshAll} className="refresh-btn">↻</button>
       </div>
 

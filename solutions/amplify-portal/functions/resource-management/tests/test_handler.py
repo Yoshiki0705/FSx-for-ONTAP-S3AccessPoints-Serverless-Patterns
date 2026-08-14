@@ -3676,3 +3676,195 @@ class TestMovesAndEnforcement:
         # `pending` is how the panel knows the size it lists is still the old one.
         assert result["pending"] is True
         assert result["jobId"] == "j1"
+
+
+class TestQosAssignment:
+    """Assigning a QoS policy, and the removal that makes the delete usable.
+
+    ONTAP refuses to delete a policy group while a storage object is assigned to it, so
+    a panel that can assign but not unassign can create a policy it cannot delete.
+    """
+
+    def test_assign_sends_the_policy_name(self, mock_secrets):
+        from handler import handler
+
+        http = MockHttp({"/storage/volumes/v1": {"data": {}}})
+        with patch("handler.urllib3.PoolManager") as mock_pool:
+            mock_pool.return_value = http
+            result = handler(
+                {"action": "assignQosToVolume", "volumeUuid": "v1", "policyName": "zz_qos"},
+                None,
+            )
+        assert result["success"] is True
+        assert result["cleared"] is False
+        assert json.loads(http.find("PATCH", "/storage/volumes/v1")[2]["body"]) == {
+            "qos": {"policy": {"name": "zz_qos"}}
+        }
+
+    def test_none_removes_the_assignment(self, mock_secrets):
+        """`none` is ONTAP's reserved keyword, not a portal placeholder."""
+        from handler import handler
+
+        http = MockHttp({"/storage/volumes/v1": {"data": {}}})
+        with patch("handler.urllib3.PoolManager") as mock_pool:
+            mock_pool.return_value = http
+            result = handler(
+                {"action": "assignQosToVolume", "volumeUuid": "v1", "policyName": "none"},
+                None,
+            )
+        assert result["success"] is True
+        # The caller needs to distinguish "assigned" from "removed" to report it.
+        assert result["cleared"] is True
+        assert json.loads(http.find("PATCH", "/storage/volumes/v1")[2]["body"]) == {"qos": {"policy": {"name": "none"}}}
+
+    def test_an_empty_policy_name_is_refused_and_names_the_keyword(self, mock_secrets):
+        """Sending "" would reach ONTAP as a validation error that does not name the field."""
+        from handler import handler
+
+        http = MockHttp()
+        with patch("handler.urllib3.PoolManager") as mock_pool:
+            mock_pool.return_value = http
+            result = handler({"action": "assignQosToVolume", "volumeUuid": "v1"}, None)
+        assert result["success"] is False
+        assert "none" in result["error"]
+        assert http.calls == []
+
+    def test_assign_waits_for_the_job(self, mock_secrets, monkeypatch):
+        """The PATCH can answer 202, and the assignment is not in effect until it ends."""
+        from handler import handler
+
+        monkeypatch.setattr("handler._JOB_WAIT_SECONDS", 0.2)
+        monkeypatch.setattr("handler._JOB_POLL_INTERVAL", 0.05)
+        http = MockHttp(
+            {
+                "/storage/volumes/v1": {"data": {"job": {"uuid": "j1"}}},
+                "/cluster/jobs/j1": {"data": {"state": "failure", "message": "policy not found"}},
+            }
+        )
+        with patch("handler.urllib3.PoolManager") as mock_pool:
+            mock_pool.return_value = http
+            result = handler(
+                {"action": "assignQosToVolume", "volumeUuid": "v1", "policyName": "zz_qos"},
+                None,
+            )
+        assert result["success"] is False
+        assert result["error"] == "policy not found"
+
+    def test_volume_listing_reports_the_assigned_policy(self, mock_secrets):
+        """Without this the panel offers a delete for a policy it cannot see is in use."""
+        from handler import handler
+
+        http = MockHttp(
+            {
+                "/storage/volumes?svm.name=": {
+                    "data": {
+                        "records": [
+                            {
+                                "name": "vol1",
+                                "uuid": "v1",
+                                "size": 1024,
+                                "state": "online",
+                                "qos": {"policy": {"name": "zz_qos"}},
+                            },
+                            {"name": "vol2", "uuid": "v2", "size": 1024, "state": "online"},
+                        ]
+                    }
+                }
+            }
+        )
+        with patch("handler.urllib3.PoolManager") as mock_pool:
+            mock_pool.return_value = http
+            result = handler({"action": "listVolumes"}, None)
+        by_name = {v["name"]: v for v in result["volumes"]}
+        assert by_name["vol1"]["qosPolicyName"] == "zz_qos"
+        # Absent means none, not unknown.
+        assert by_name["vol2"]["qosPolicyName"] == ""
+        assert "qos.policy.name" in http.find("GET", "/storage/volumes?svm.name=")[1]
+
+
+class TestArpStateReadBack:
+    """The ARP state a caller is told about is the one ONTAP settled on.
+
+    Measured on 9.18.1P3D1: a request for `dry_run` leaves the volume `enabled`, because
+    ARP/AI carries a pre-trained model and has no learning period to enter. ONTAP does not
+    report that it declined the state. Echoing the request would tell an operator the
+    volume was learning while it was actively protecting.
+    """
+
+    def test_the_state_is_read_back_not_echoed(self, mock_secrets):
+        from handler import handler
+
+        http = MockHttp(
+            {
+                # The FlexCache pre-flight, the PATCH and the read-back all address the
+                # same path, so one entry answers each in turn.
+                "/storage/volumes/v1": {"data": {"anti_ransomware": {"state": "enabled"}}},
+            }
+        )
+        with patch("handler.urllib3.PoolManager") as mock_pool:
+            mock_pool.return_value = http
+            result = handler(
+                {"action": "updateArpStateAdmin", "volumeUuid": "v1", "state": "dry_run"},
+                None,
+            )
+        assert result["success"] is True
+        assert result["state"] == "enabled"
+        assert result["requested"] == "dry_run"
+        # The caller needs to know the two disagree in order to say so.
+        assert result["differs"] is True
+        assert "newState" not in result
+
+    def test_an_in_progress_state_is_not_reported_as_a_disagreement(self, mock_secrets):
+        """Turning it off passes through `disable_in_progress` for minutes.
+
+        That is the requested transition under way, not ONTAP settling somewhere else, so
+        it must not be flagged as a divergence -- an operator would read that as a refusal.
+        """
+        from handler import handler
+
+        http = MockHttp({"/storage/volumes/v1": {"data": {"anti_ransomware": {"state": "disable_in_progress"}}}})
+        with patch("handler.urllib3.PoolManager") as mock_pool:
+            mock_pool.return_value = http
+            result = handler(
+                {"action": "updateArpStateAdmin", "volumeUuid": "v1", "state": "disabled"},
+                None,
+            )
+        assert result["state"] == "disable_in_progress"
+        assert result["differs"] is False
+
+    def test_a_matching_state_is_not_flagged(self, mock_secrets):
+        from handler import handler
+
+        http = MockHttp({"/storage/volumes/v1": {"data": {"anti_ransomware": {"state": "enabled"}}}})
+        with patch("handler.urllib3.PoolManager") as mock_pool:
+            mock_pool.return_value = http
+            result = handler(
+                {"action": "updateArpStateAdmin", "volumeUuid": "v1", "state": "enabled"},
+                None,
+            )
+        assert result["state"] == "enabled"
+        assert result["settling"] is False
+        assert result["differs"] is False
+
+    def test_a_failed_read_back_does_not_turn_a_success_into_a_divergence(self, mock_secrets):
+        """An unreadable state is unknown, and unknown is not disagreement."""
+        from handler import handler
+
+        http = MockHttp(
+            {
+                "/storage/volumes/v1?fields=anti_ransomware.state": {
+                    "status": 500,
+                    "data": {"error": {"message": "internal"}},
+                },
+                "/storage/volumes/v1": {"data": {}},
+            }
+        )
+        with patch("handler.urllib3.PoolManager") as mock_pool:
+            mock_pool.return_value = http
+            result = handler(
+                {"action": "updateArpStateAdmin", "volumeUuid": "v1", "state": "enabled"},
+                None,
+            )
+        assert result["success"] is True
+        assert result["state"] == ""
+        assert result["differs"] is False

@@ -4166,6 +4166,36 @@ button[type="submit"]:disabled {
   box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
 }
 
+/* The header of a data-protection page: title, which volume it is about, refresh.
+   It had no rule at all, so its children stacked in normal flow and only looked like a
+   row because they were inline. Putting a block-level volume selector in it revealed
+   that: the selector took a line of its own and pushed the refresh below it. */
+.protection-header {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+.protection-header h2 {
+  /* No `auto` margin pushing the rest right: with a selector in the row that overflowed
+     and dropped the refresh button onto a line of its own. */
+  margin: 0;
+}
+/* Compact inside a header row: the selector is a secondary control here, not the
+   subject of the page as it is in the admin panels. */
+.protection-header .volume-selector {
+  min-width: 0;
+}
+.protection-header .volume-selector-dropdown,
+.protection-header .volume-selector-search {
+  min-width: 0;
+  /* Narrow enough that the title, the badge, the selector and the refresh button fit
+     one 800px row. At 14rem the row overflowed by a single pixel and the button
+     wrapped to a line of its own. */
+  width: 11rem;
+}
+
 /* ─── Storage Dashboard ───────────────────────────────────────────────── */
 .storage-dashboard {
   margin-bottom: 2rem;

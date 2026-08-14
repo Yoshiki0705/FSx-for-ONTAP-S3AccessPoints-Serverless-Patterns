@@ -99,13 +99,32 @@ export function ArpAdminManager() {
 
     setError(null);
     try {
-      const data = await adminMutate<{ success?: boolean }>({
+      const data = await adminMutate<{
+        success?: boolean;
+        state?: string;
+        differs?: boolean;
+        settling?: boolean;
+      }>({
         action: "updateArpStateAdmin",
         params: { volumeUuid: vol.uuid, state: newState },
       });
       if (data) {
         if (data.success) {
-          setResult(`${vol.name} → ${newState}`); clearResult(); loadVolumes();
+          // The state the handler read back, not the one that was asked for. Measured on
+          // 9.18.1P3D1: asking for `dry_run` leaves the volume `enabled`, because ARP/AI
+          // has no learning period to enter. Reporting the request would have said
+          // "learning" about a volume that is actively protecting.
+          const settled = data.state || newState;
+          setResult(
+            data.differs
+              ? `${vol.name} → ${settled} (${t("rmArpStateDiffers").replace("{requested}", newState)})`
+              : data.settling
+                // A transition under way says nothing about where it will land, so the
+                // reader is told what ONTAP reports rather than what was asked for.
+                ? `${vol.name}: ${settled}`
+                : `${vol.name} → ${settled}`,
+          );
+          clearResult(); loadVolumes();
         } else setError(data.error || "Failed");
       }
     } catch (err) { setError(err instanceof Error ? err.message : "Failed"); }
