@@ -314,3 +314,78 @@ class TestMoveOrdering:
 
         assert result["success"] is True
         assert portal.s3.delete_object.call_count == 0
+
+
+class TestCopyCeiling:
+    """Objects a single CopyObject cannot carry are refused before it is attempted.
+
+    Rename, move, copy, trash and restore are all one `copy_object`, which stops at
+    5 GiB. The documented way past it is multipart copy, and on FSx for ONTAP S3
+    Access Points that call is listed as supported and answers `NoSuchKey` when
+    measured -- so there is no route past the limit here at all.
+
+    Refused with the size and the reason rather than left to S3, whose error arrives
+    partway through an operation the reader believed had started.
+    """
+
+    OVER = 6 * 1024 * 1024 * 1024
+    UNDER = 4 * 1024 * 1024 * 1024
+
+    @staticmethod
+    def _sized(portal: Any, size: int, key: str = "team-a/big.bin") -> None:
+        """Make exactly `key` exist with `size`, and every other head miss.
+
+        Only that one key: restore refuses a destination that already exists, and it
+        checks that before the size, so a stub that answered for both keys tested the
+        wrong guard.
+        """
+
+        def head(Bucket: str, Key: str) -> dict:  # noqa: N803  (boto3 kwarg names)
+            if Key == key:
+                return {"ContentLength": size}
+            raise Exception("NoSuchKey")
+
+        portal.s3.head_object.side_effect = head
+
+    @pytest.mark.parametrize(
+        ("action", "params"),
+        [
+            ("copyFile", {"sourceKey": "team-a/big.bin", "destinationKey": "team-a/copy.bin"}),
+            ("moveFile", {"sourceKey": "team-a/big.bin", "destinationKey": "team-a/moved.bin"}),
+            ("renameFile", {"sourceKey": "team-a/big.bin", "destinationKey": "team-a/other.bin"}),
+            ("trashFile", {"key": "team-a/big.bin"}),
+            ("restoreFromTrash", {"trashKey": ".trash/team-a/big.bin"}),
+        ],
+    )
+    def test_an_oversize_object_is_refused_without_copying(self, portal: Any, action: str, params: dict) -> None:
+        # Restore reads the size of the object in the trash; the others read the source.
+        sized = params.get("trashKey", "team-a/big.bin")
+        self._sized(portal, self.OVER, sized)
+
+        result = call(portal, action, **params)
+
+        assert result["success"] is False
+        assert "5 GiB" in result["error"]
+        assert "6.0 GiB" in result["error"]
+        assert portal.s3.copy_object.call_count == 0
+
+    def test_an_object_within_the_limit_is_copied(self, portal: Any) -> None:
+        self._sized(portal, self.UNDER)
+
+        result = call(portal, "copyFile", sourceKey="team-a/big.bin", destinationKey="team-a/copy.bin")
+
+        assert result["success"] is True
+        assert portal.s3.copy_object.call_count == 1
+
+    def test_a_size_that_cannot_be_read_does_not_block_the_copy(self, portal: Any) -> None:
+        """A denied or failing head is not a refusal: the copy reports the real reason.
+
+        Otherwise the guard would turn every permission problem into a message about
+        object size, which is the wrong thing to tell someone.
+        """
+        portal.s3.head_object.side_effect = Exception("AccessDenied")
+
+        result = call(portal, "copyFile", sourceKey="team-a/a.txt", destinationKey="team-a/b.txt")
+
+        assert result["success"] is True
+        assert portal.s3.copy_object.call_count == 1
