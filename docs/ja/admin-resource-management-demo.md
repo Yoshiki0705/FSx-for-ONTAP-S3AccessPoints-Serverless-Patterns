@@ -90,7 +90,7 @@ aws fsx describe-storage-virtual-machines \
 | **FPolicy** | ファイルアクセスイベント通知と監査設定 | `/protocols/fpolicy` |
 | **Vscan** | オンアクセスウイルススキャンの設定とベンダー案内 | `/protocols/vscan` |
 | **SnapMirror** | レプリケーション運用（同期、ブレーク、再同期、一時停止、削除）と転送履歴 | `/snapmirror/relationships`, `/snapmirror/relationships/{id}/transfers` |
-| **FlexCache** | 読み取りキャッシュボリュームの作成（非同期）・一覧・削除（3 段階自動）とオリジンの可視化 | `/storage/flexcache/flexcaches` |
+| **FlexCache** | キャッシュボリュームの作成（非同期）・一覧・削除（3 段階自動）、write-back の切り替え、オリジンの可視化 | `/storage/flexcache/flexcaches` |
 
 ## デモシナリオ
 
@@ -270,7 +270,7 @@ aws fsx describe-storage-virtual-machines \
 
 1. **Admin > Resources > FlexCache**（Storage カテゴリの ⚡ アイコン）を開く
 2. FlexCache ボリュームが存在しない場合、案内パネルを確認:
-   - FlexCache の役割（リモートの読み取りキャッシュ）
+   - FlexCache の役割（リモートボリュームのキャッシュ。読み取りを高速化し、書き込みも 2 つのモードで受け付ける）
    - 代表的なユースケース（EDA/CAD、ビルドパイプライン、AI 推論データ）
    - NetApp FlexCache ドキュメントと AWS FSx for ONTAP ボリューム管理へのリンク
 3. **+ FlexCache 作成** → 作成フォームが開く:
@@ -424,6 +424,7 @@ aws ec2 describe-route-tables \
 | `docs/screenshots/storage-efficiency-panel.png` | Storage Efficiency ダッシュボード |
 | `docs/screenshots/08-arp-admin-panel-en.png` | 9 ボリュームの ARP/AI 管理 |
 | `docs/screenshots/snapshots-version-history.png` | hourly/weekly/daily の Snapshot 履歴 |
+| `docs/screenshots/snapshot-lock-confirm.png` | Snapshot ロックの確認ダイアログ（保持期間の指定と不可逆である旨の明示） |
 | `docs/screenshots/quota-manager.png` | ボリュームセレクターとルール表付きの Quota Manager |
 | `docs/screenshots/quota-create-form.png` | クォータ作成フォーム（種別、対象、上限） |
 | `solutions/amplify-portal/docs/screenshots/smb-shares-panel.png` | 暗号化トグル + CA 情報 + 削除ボタン付きの SMB Shares |
@@ -435,6 +436,7 @@ aws ec2 describe-route-tables \
 | `docs/screenshots/vscan-setup-guidance.png` | 6 ベンダー比較表付き Vscan 5 ステップ案内 |
 | `docs/screenshots/flexclone-manager.png` | クローン一覧と作成フォーム付きの FlexClone パネル |
 | `docs/screenshots/snapmirror-status.png` | 状態バッジ、RPO 警告、操作ボタン付きの SnapMirror 関係 |
+| `docs/screenshots/snapmirror-create-form.png` | SnapMirror 新規作成フォーム（SVM ピア選択、前提条件、作成される関係のプレビュー） |
 | `docs/screenshots/local-user-manager.png` | Local User Manager（Users タブの CRUD 操作） |
 | `docs/screenshots/name-mapping-manager.png` | 方向セレクターと作成フォーム付きの Name Mapping ルール |
 | `docs/screenshots/flexcache-manager.png` | 作成フォーム（オリジン datalist、プリポピュレートパス）とキャッシュ一覧 |
