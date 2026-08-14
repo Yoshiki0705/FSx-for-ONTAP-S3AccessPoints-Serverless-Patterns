@@ -260,6 +260,7 @@ arpResponseSweepNote: "封鎖會在設定的期限過後自動解除。如需提
   rmDeleting: "正在刪除…",
   rmSnaplockDocs: "SnapLock 文件",
   rmDeleteConfirm: "確定要刪除「{name}」嗎？",
+  rmQosDeleteConfirm: "要刪除 \"{name}\" 嗎？指派了此原則的磁碟區會被解除指派並變為無上限。若只想解除某個磁碟區而保留原則，請使用解除功能而非刪除。",
   rmDeleted: "已刪除「{name}」",
   rmCreate: "建立",
   rmNoVolumes: "未找到磁碟區",

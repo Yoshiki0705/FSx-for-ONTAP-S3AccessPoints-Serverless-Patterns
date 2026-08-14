@@ -266,6 +266,7 @@ arpResponseSweepNote: "ブロックは指定した期限が過ぎると自動で
   rmDeleting: "削除中…",
   rmSnaplockDocs: "SnapLock のドキュメント",
   rmDeleteConfirm: "「{name}」を本当に削除しますか？",
+  rmQosDeleteConfirm: "「{name}」を削除しますか？このポリシーを割り当てているボリュームは割り当てが外れ、上限なしになります。上限を残したまま 1 つのボリュームだけ外す場合は、削除ではなく「QoS を外す」を使ってください。",
   rmDeleted: "「{name}」を削除しました",
   rmCreate: "作成",
   rmNoVolumes: "ボリュームがありません",
