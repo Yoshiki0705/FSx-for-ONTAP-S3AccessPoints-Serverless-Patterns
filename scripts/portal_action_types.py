@@ -115,6 +115,9 @@ SCALARS: dict[str, str] = {
     "expectedIops": "number",
     "peakIops": "number",
     "index": "number",
+    # The position a name mapping is moved to. ONTAP evaluates in index order and stops
+    # at the first match, so this is the rule's precedence, not a label.
+    "newIndex": "number",
     "ruleIndex": "number",
     # FlexGroup member volumes per aggregate for a FlexCache. ONTAP only reads it
     # when the aggregate list is given, and the handler refuses the combination

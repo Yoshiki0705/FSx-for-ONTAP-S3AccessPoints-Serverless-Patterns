@@ -3454,3 +3454,225 @@ class TestInPlaceUpdates:
 
         assert result["success"] is False
         assert "s3_unix" in result["error"]
+
+
+class TestMovesAndEnforcement:
+    """Operations that move a thing, and the one that switches enforcement on.
+
+    Separate from TestInPlaceUpdates because these are not edits. A rename moves the
+    path clients hold, a name-mapping move changes which rule matches first, and quota
+    enforcement decides whether any of the rules listed next to it apply at all.
+    """
+
+    def test_qtree_rename_requires_confirmation(self, mock_secrets):
+        """Without it, the rename is one click from the settings edit beside it."""
+        from handler import handler
+
+        http = MockHttp({"/storage/volumes?name=": {"data": {"records": [{"uuid": "v1"}]}}})
+        with patch("handler.urllib3.PoolManager") as mock_pool:
+            mock_pool.return_value = http
+            result = handler(
+                {
+                    "action": "renameQtree",
+                    "volumeName": "vol1",
+                    "qtreeId": "2",
+                    "newName": "archive",
+                },
+                None,
+            )
+        assert result["success"] is False
+        assert "confirm=true" in result["error"]
+        # Nothing was sent: the refusal is before the volume lookup.
+        assert http.calls == []
+
+    def test_qtree_rename_patches_the_name(self, mock_secrets):
+        from handler import handler
+
+        http = MockHttp(
+            {
+                "/storage/volumes?name=": {"data": {"records": [{"uuid": "v1"}]}},
+                "/storage/qtrees/v1/2": {"data": {}},
+            }
+        )
+        with patch("handler.urllib3.PoolManager") as mock_pool:
+            mock_pool.return_value = http
+            result = handler(
+                {
+                    "action": "renameQtree",
+                    "volumeName": "vol1",
+                    "qtreeId": "2",
+                    "newName": "archive",
+                    "confirm": True,
+                },
+                None,
+            )
+        assert result["success"] is True
+        body = json.loads(http.find("PATCH", "/storage/qtrees/v1/2")[2]["body"])
+        # The name only. The id stays as it was, which is why a rename does not
+        # invalidate the identifier the panel holds.
+        assert body == {"name": "archive"}
+
+    def test_qtree_rename_rejects_a_path_separator_in_the_name(self, mock_secrets):
+        """A qtree name is a path component, so a separator would move it elsewhere."""
+        from handler import handler
+
+        with patch("handler.urllib3.PoolManager") as mock_pool:
+            mock_pool.return_value = MockHttp()
+            result = handler(
+                {
+                    "action": "renameQtree",
+                    "volumeName": "vol1",
+                    "qtreeId": "2",
+                    "newName": "../escaped",
+                    "confirm": True,
+                },
+                None,
+            )
+        assert result["success"] is False
+        assert "newName" in result["error"]
+
+    def test_name_mapping_move_sends_new_index(self, mock_secrets):
+        from handler import handler
+
+        http = MockHttp(
+            {
+                "/svm/svms": {"data": {"records": [{"uuid": "svm-1"}]}},
+                "/name-services/name-mappings/svm-1/win_unix/2": {"data": {}},
+            }
+        )
+        with patch("handler.urllib3.PoolManager") as mock_pool:
+            mock_pool.return_value = http
+            result = handler(
+                {"action": "moveNameMapping", "direction": "win_unix", "index": 2, "newIndex": 1},
+                None,
+            )
+        assert result["success"] is True
+        call = http.find("PATCH", "/name-services/name-mappings/svm-1/win_unix/2")
+        # `new_index`, not `index`: the second would be read as a filter, not a move.
+        assert json.loads(call[2]["body"]) == {"new_index": 1}
+
+    def test_name_mapping_move_refuses_the_position_it_holds(self, mock_secrets):
+        """ONTAP rejects it too, but the reason it gives does not say which field."""
+        from handler import handler
+
+        with patch("handler.urllib3.PoolManager") as mock_pool:
+            mock_pool.return_value = MockHttp()
+            result = handler(
+                {"action": "moveNameMapping", "direction": "win_unix", "index": 2, "newIndex": 2},
+                None,
+            )
+        assert result["success"] is False
+        assert "already holds" in result["error"]
+
+    def test_name_mapping_move_refuses_s3_unix(self, mock_secrets):
+        from handler import handler
+
+        with patch("handler.urllib3.PoolManager") as mock_pool:
+            mock_pool.return_value = MockHttp()
+            result = handler(
+                {"action": "moveNameMapping", "direction": "s3_unix", "index": 1, "newIndex": 2},
+                None,
+            )
+        assert result["success"] is False
+        assert "s3_unix" in result["error"]
+
+    def test_volume_quota_enabled_writes_enabled_and_reports_state(self, mock_secrets):
+        """The write field and the read field are not the same one.
+
+        `quota.enabled` is the request; `quota.state` is what the volume is doing. On
+        9.18.1P3D1 a volume enforcing quotas reports `state: "on"` with `enabled` still
+        false, so echoing the request back would tell the caller the opposite of the
+        truth for as long as ONTAP is still scanning.
+        """
+        from handler import handler
+
+        http = MockHttp({"/storage/volumes/v1": {"data": {"quota": {"state": "initializing"}}}})
+        with patch("handler.urllib3.PoolManager") as mock_pool:
+            mock_pool.return_value = http
+            result = handler(
+                {"action": "setVolumeQuotaEnabled", "volumeUuid": "v1", "enabled": True},
+                None,
+            )
+        assert result["success"] is True
+        assert result["quotaState"] == "initializing"
+        assert "enabled" not in result
+        assert json.loads(http.find("PATCH", "/storage/volumes/v1")[2]["body"]) == {"quota": {"enabled": True}}
+
+    def test_volume_quota_enabled_requires_the_flag(self, mock_secrets):
+        """Absent is not false: it would silently turn enforcement off."""
+        from handler import handler
+
+        with patch("handler.urllib3.PoolManager") as mock_pool:
+            mock_pool.return_value = MockHttp()
+            result = handler({"action": "setVolumeQuotaEnabled", "volumeUuid": "v1"}, None)
+        assert result["success"] is False
+        assert "enabled is required" in result["error"]
+
+    def test_volume_quota_disable_sends_false(self, mock_secrets):
+        from handler import handler
+
+        http = MockHttp({"/storage/volumes/v1": {"data": {"quota": {"state": "off"}}}})
+        with patch("handler.urllib3.PoolManager") as mock_pool:
+            mock_pool.return_value = http
+            result = handler(
+                {"action": "setVolumeQuotaEnabled", "volumeUuid": "v1", "enabled": False},
+                None,
+            )
+        assert result["success"] is True
+        assert result["quotaState"] == "off"
+        assert json.loads(http.find("PATCH", "/storage/volumes/v1")[2]["body"]) == {"quota": {"enabled": False}}
+
+    def test_resize_reports_a_job_failure_rather_than_the_size_asked_for(self, mock_secrets):
+        """A FlexCache below its FlexGroup floor fails inside the job, not on the PATCH.
+
+        This is the path the FlexCache panel's resize takes -- a cache is a volume and
+        shares its UUID -- so a 202 reported as success would leave the panel showing a
+        size the cache never reached.
+        """
+        from handler import handler
+
+        http = MockHttp(
+            {
+                "/storage/volumes/c1": {"data": {"job": {"uuid": "j1"}}},
+                "/cluster/jobs/j1": {
+                    "data": {
+                        "state": "failure",
+                        "message": "Volumes of this type must be at least 50GB",
+                    }
+                },
+            }
+        )
+        with patch("handler.urllib3.PoolManager") as mock_pool:
+            mock_pool.return_value = http
+            result = handler({"action": "resizeVolume", "volumeUuid": "c1", "newSizeGiB": 20}, None)
+        assert result["success"] is False
+        assert result["jobId"] == "j1"
+        # The hint explains why the floor is far above a single volume's 1 GiB.
+        assert "FlexGroup" in result["error"]
+
+    def test_resize_reports_a_long_running_job_as_accepted(self, mock_secrets, monkeypatch):
+        """Shrinking a FlexGroup outlives the request, and that is not a failure.
+
+        Measured on 9.18.1P3D1: a FlexCache shrink was still running when the wait ran
+        out and then completed. Reporting it as failed was as wrong as the 202-as-success
+        it replaced, in the other direction -- the size had changed and the panel said it
+        had not.
+        """
+        from handler import handler
+
+        # Collapse the wait rather than sleeping through it.
+        monkeypatch.setattr("handler._JOB_WAIT_SECONDS", 0.2)
+        monkeypatch.setattr("handler._JOB_POLL_INTERVAL", 0.05)
+        http = MockHttp(
+            {
+                "/storage/volumes/c1": {"data": {"job": {"uuid": "j1"}}},
+                "/cluster/jobs/j1": {"data": {"state": "running", "message": "shrinking"}},
+            }
+        )
+        with patch("handler.urllib3.PoolManager") as mock_pool:
+            mock_pool.return_value = http
+            result = handler({"action": "resizeVolume", "volumeUuid": "c1", "newSizeGiB": 20}, None)
+        assert result["success"] is True
+        # `pending` is how the panel knows the size it lists is still the old one.
+        assert result["pending"] is True
+        assert result["jobId"] == "j1"
