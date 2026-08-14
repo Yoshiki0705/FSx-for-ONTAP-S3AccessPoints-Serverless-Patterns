@@ -129,6 +129,22 @@ The portal is a layer on top of the REST API. It does not replace the REST API; 
 
 ---
 
+## What not to write
+
+A statement that assumes an unreachable interface tells the reader it is available to them.
+
+| ❌ Do not write | ✅ Write |
+|----------------|---------|
+| "System Manager needs a VPN" | "The ONTAP CLI and REST API management endpoints are reached from inside the VPC" |
+| "ONTAP upgrades and disk replacement are System Manager's job" | "On FSx for ONTAP, AWS operates those; there is no customer action" |
+| "System Manager / this portal" as a pair of options | Compare against "the ONTAP CLI and REST API" |
+| "Check metrics in System Manager" | "Collected through Amazon CloudWatch or the ONTAP REST API" |
+| Framing the portal's benefit as "no VPN needed" | The benefits are **delegation** (an operation without handing over SSH) and **the record** (with the Cognito principal) |
+
+Citing System Manager as a **UI design reference** is fine ("follows its card navigation"). Keep it apart from claims about reachability.
+
+---
+
 ## Related Documents
 
 | Document | Contents |
@@ -136,5 +152,6 @@ The portal is a layer on top of the REST API. It does not replace the REST API; 
 | [Admin Capability Map](../../solutions/amplify-portal/docs/admin-capability-map.en.md) | What each interface covers, and what the portal implements |
 | [ONTAP Connection Guide](../../solutions/amplify-portal/docs/ONTAP-CONNECTION-GUIDE.en.md) | VPC, secret and management LIF wiring |
 | [Verification results](../../solutions/amplify-portal/docs/verification-results.en.md) | How far each feature has actually been verified |
+| [Write verification plan](../../solutions/amplify-portal/docs/write-verification-plan.en.md) | Prerequisites and impact for the writes not yet run |
 | [Comparison of alternatives](../comparison-alternatives.md) (Japanese) | S3 AP / EFS / NFS / DataSync and read-cache choices |
 | [ONTAP integration notes](../ontap-integration-notes.en.md) | NAS coexistence, identity, data protection, OT |

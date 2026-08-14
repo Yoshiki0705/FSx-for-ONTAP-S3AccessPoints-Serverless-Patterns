@@ -12,7 +12,7 @@ CloudFormation/SAM template sharing the Python modules in `shared/`.
 **Two pillars**: `solutions/` (S3 AP data processing) + `operations/` (file system operational
 optimization).
 
-**Test coverage**: ~4,432 Python tests across 249 files + ~321 vitest tests across 24 files.
+**Test coverage**: ~4,450 Python tests across 250 files + ~321 vitest tests across 24 files.
 
 > ファイル数は `make drift` がツリーと照合するので、古くなれば fail する。テスト総数は
 > `make test` / ポータルハンドラの個別実行 / vitest の 3 系統の合計なので概数。誰も保守
@@ -33,6 +33,7 @@ optimization).
 | AD 連携 / SMB / Windows ドメイン参加 | [pitfalls-ad-smb](docs/agent/pitfalls-ad-smb.md) |
 | Bedrock / AgentCore / Quick / KNFSD | [pitfalls-genai-edge](docs/agent/pitfalls-genai-edge.md) |
 | SnapLock / WORM / Snapshot ロック | [pitfalls-snaplock](docs/agent/pitfalls-snaplock.md) |
+| ARP/AI の状態遷移 / EMS イベント | [pitfalls-arp-ems](docs/agent/pitfalls-arp-ems.md) |
 | ポータルの CDK / cdk-nag | [portal-cdk-quality-gates](docs/agent/portal-cdk-quality-gates.md) |
 | ポータル UI の文字列 / 翻訳 | [portal-i18n](docs/agent/portal-i18n.md) |
 | コスト見積り / リソース停止 | [cost-awareness](docs/agent/cost-awareness.md) |
@@ -400,14 +401,4 @@ decision = evaluate_confidence(confidence=0.72)
 - そのベンダー SaaS は FSx for ONTAP を **standard（SaaS 接続必須）モードでしか扱わない**。restricted / private モードの対応表はいずれも「No」（ベンダー公式ドキュメント）。つまり SaaS 依存を切ると FSx for ONTAP が対象外になる。
 - したがって管理経路にサードパーティ SaaS を置けない体制では System Manager を使う選択肢が存在しない。これはレジデンシー制約からの帰結で、製品の優劣判断ではない。
 
-**書くときの禁止事項**:
-
-| ❌ 書かない | ✅ 書く |
-|-----------|--------|
-| 「System Manager には VPN で接続する必要がある」 | 「ONTAP CLI / REST API の管理エンドポイントは VPC 内から到達する」 |
-| 「ONTAP アップグレードやディスク交換は System Manager の担当」 | 「FSx for ONTAP では AWS が運用。利用者の操作としては存在しない」 |
-| 「System Manager / 本ポータル」のような並置（同じ体制で選べる前提） | 「ONTAP CLI / REST API」を比較相手にする |
-| 「メトリクスは System Manager で確認」 | 「Amazon CloudWatch または ONTAP REST API で取得」 |
-| ポータルの利点を「VPN 不要」と書く | 利点は**委譲**（管理者以外に SSH を渡さず操作を渡せる）と**記録**（Cognito 主体つき） |
-
-System Manager を **UI デザインの参照元**として挙げるのは可（「カード型ナビゲーションを踏襲」等）。到達可能性の主張と混ざらないようにする。
+**書くときの禁止事項**は表にしてあります: [管理インターフェースの整理（JA）](docs/ja/fsx-ontap-management-interfaces.md#書くときの禁止事項) / [(EN)](docs/en/fsx-ontap-management-interfaces.md#what-not-to-write)。到達可能性の主張を書く前に読むこと。System Manager を **UI デザインの参照元**として挙げるのは可（「カード型ナビゲーションを踏襲」等）。
