@@ -63,6 +63,21 @@ afterwards. The observed error codes and field values are recorded in the pitfal
 | ARP/AI state change | Asking for `dry_run` leaves the volume `enabled` -- ARP/AI has no learning period. Turning it off stayed `disable_in_progress` for over ten minutes. The response now carries the state read back, not the request | Same |
 | Scope on the data-protection pages (SVM → volume) | The ARP, Lock and Snapshot pages were pinned to the one volume in an environment variable. The storage-admin group now gets a two-step `SVM › volume` selector; everyone else keeps the default. Verified live that the listing changes for a volume on fsxsvm02, and that changing SVM voids the selection. The badge beside the heading distinguishes a picked volume from the configured default | Same |
 
+### Added 2026-08-15 (write paths, group A, ONTAP 9.18.1P3D1)
+
+A3, A2 and A5 of the verification plan. Every group, user, share, qtree and quota rule
+created for it was deleted afterwards and the environment is back as it was.
+
+| Feature | Confirmed | Source |
+|---------|-----------|--------|
+| Local group create / delete (A3) | The SID is allocated from the SVM's local domain (ending -1001). A delete without `sid` is refused by the handler | [Demo guide](resource-management-demo-guide.en.md) |
+| Group member add / remove (A3) | Adding accepts the bare name `zz_verify_usr`, while the listing returns the CIFS-server-qualified `FSXSVM01\zz_verify_usr`. Removal accepts **either form** (the handler percent-encodes the backslash) | Same |
+| Name resolution failure (A3) | An unresolvable name gives the same message whether it is an AD user with no reachable DC or a local name that does not exist: `Failed to resolve name "X".` (655673 / 400). **The message alone cannot distinguish a typo from DC reachability** | Same |
+| SMB share create / delete (A2) | A path that does not exist is refused with 655551, naming the SVM. A created share carries one default ACL. Deletion requires `confirm=true` on the portal side. **The volume stays online after the share is deleted** -- a share is only an entry point | Same |
+| SMB share encryption toggle (A2) | `updateCifsShare` on and off, reflected in the listing immediately | Same |
+| Quota rule deletion (A5) | Creating a tree rule for a qtree makes ONTAP **also create the volume's default tree rule** (empty qtree name). Deleting only the qtree rule leaves that default behind, so the qtree keeps appearing in the usage report and the deleted rule looks like it is still there. The deleted rule's limits leave the report immediately, without waiting for enforcement to be switched off and on. **Whether enforcement itself continues is not observable through these two reads** | [Delete a quota policy rule](https://docs.netapp.com/us-en/ontap-restapi-9171/delete-storage-quota-rules-.html) |
+| Quota enforcement and the usage report (A5) | Switching enforcement off empties the report; switching it back on repopulates it | Same |
+
 ## Live read (write paths not confirmed)
 
 | Feature | Confirmed | Not confirmed |

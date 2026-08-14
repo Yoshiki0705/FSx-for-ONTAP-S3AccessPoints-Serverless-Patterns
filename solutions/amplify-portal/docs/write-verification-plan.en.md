@@ -56,7 +56,7 @@ Do first: let `assignQosToVolume` accept an empty `policyName` (or an explicit c
 equivalent of `{"qos": {"policy": {"name": "none"}}}` to `PATCH /storage/volumes/{uuid}`. Put
 "remove QoS" next to the assign control in the UI. Verify after that ships.
 
-### A2. SMB share create and delete
+### A2. SMB share create and delete — **Done (2026-08-15)**
 
 | Item | Detail |
 |------|--------|
@@ -69,7 +69,7 @@ equivalent of `{"qos": {"policy": {"name": "none"}}}` to `PATCH /storage/volumes
 Create a probe qtree or directory and share that. The existing `c$` and `ipc$` are ONTAP's
 administrative shares; leave them alone.
 
-### A3. Local groups and members
+### A3. Local groups and members — **Done (2026-08-15)**
 
 | Item | Detail |
 |------|--------|
@@ -105,7 +105,7 @@ as the parent uses" does not hold from 9.4 on. Sources:
 This environment already holds `clone01`, `clone02` and `clone03`. **Do not split those** — who
 created them and why is unknown, and a split cannot be undone. Verify on a clone created for it.
 
-### A5. Quota rule delete — it stays enforced after deletion
+### A5. Quota rule delete — it stays enforced after deletion — **Done (2026-08-15)**
 
 | Item | Detail |
 |------|--------|
@@ -126,6 +126,12 @@ exists**, so it can: adding that hint alongside the verification is the natural 
 
 Changing the limits (`updateQuotaRule`) does apply over REST without a resize, which matches the
 2026-08-14 measurement.
+
+Measured: creating a tree rule for a qtree makes ONTAP create the volume's default tree rule too, and
+deleting only the qtree rule leaves that default behind -- so the qtree keeps appearing in the usage
+report, which looks like the deleted rule persisting. The deleted rule's own limits left the report
+immediately. Whether enforcement continues is not observable through these reads, so the reference
+above stands as the source and the portal now points at the off → on step after a delete.
 
 ### A6. SnapMirror update-now and transfer abort
 

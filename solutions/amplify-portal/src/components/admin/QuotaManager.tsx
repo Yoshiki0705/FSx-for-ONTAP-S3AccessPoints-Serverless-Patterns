@@ -77,6 +77,8 @@ export function QuotaManager() {
   // enforcing them, which is what this panel could not show before.
   const [volume, setVolume] = useState<VolumeInfo | null>(null);
   const [togglingQuota, setTogglingQuota] = useState(false);
+  /** Set after deleting a rule on a volume that is enforcing. See `handleDelete`. */
+  const [postDeleteHint, setPostDeleteHint] = useState(false);
 
   // Create form state
   const [newType, setNewType] = useState<"tree" | "user" | "group">("tree");
@@ -115,7 +117,24 @@ export function QuotaManager() {
       ).then((d) => d?.entries ?? []),
   });
 
+  // A tree rule's target is a qtree that has to already exist on the volume, and ONTAP
+  // refuses the request without one: measured as `"qtree.name" is a required field`
+  // (code 2) after the form sent an empty text box. Offered as a list for the same
+  // reason volumes are -- a name typed by hand is a name that can be wrong.
+  const qtreesQuery = useQuery({
+    queryKey: ["admin", "listQtrees", volumeName],
+    enabled: !!volumeName && showCreateForm && newType === "tree",
+    queryFn: () =>
+      unwrap<{ qtrees?: { id: number; name: string }[] }>(
+        dispatch("adminQuery", { action: "listQtrees", params: { volumeName } }),
+        // The volume's own root comes back as a qtree with an empty name. It is not a
+        // target this form can use: sending it means omitting `qtree`, which is the
+        // request ONTAP rejected.
+      ).then((d) => (d?.qtrees ?? []).filter((q) => !!q.name)),
+  });
+
   const rules = rulesQuery.data ?? [];
+  const qtrees = qtreesQuery.data ?? [];
   const usage = reportQuery.data ?? [];
   const loading = rulesQuery.isFetching || reportQuery.isFetching;
 
@@ -153,6 +172,14 @@ export function QuotaManager() {
 
   const handleCreate = async () => {
     setError(null);
+    // Checked here rather than left to ONTAP, which answers `"qtree.name" is a required
+    // field` -- a field name this form does not use, on a request the reader cannot see.
+    const target =
+      newType === "tree" ? newQtreeName : newType === "user" ? newUserName : newGroupName;
+    if (!target) {
+      setError(t("quQuotaTargetRequired"));
+      return;
+    }
     try {
       const data = await adminMutate<{ success?: boolean }>({
         action: "createQuotaRule",
@@ -185,6 +212,9 @@ export function QuotaManager() {
     if (!volume) return;
     const enabling = !current.on;
     setError(null);
+    // The note asks for this button, so pressing it retires the note either way: the
+    // off half is the step it names, and the on half completes it.
+    setPostDeleteHint(false);
     setTogglingQuota(true);
     try {
       const data = await adminMutate<{ success?: boolean; quotaState?: string }>({
@@ -236,16 +266,32 @@ export function QuotaManager() {
     }
   };
 
-  const handleDelete = async (ruleUuid: string) => {
-    if (!window.confirm(t("rmDeleteConfirm"))) return;
+  const handleDelete = async (rule: QuotaRule) => {
+    const ruleUuid = rule.uuid;
+    // The rule rather than its UUID, so the confirmation can name what is being deleted.
+    // The other four panels substitute `{name}`; this one asked `「{name}」を本当に削除
+    // しますか？` with the placeholder still in it.
+    if (!window.confirm(t("rmDeleteConfirm").replace("{name}", ruleTarget(rule)))) return;
     try {
       const data = await adminMutate<{ success?: boolean }>({
         action: "deleteQuotaRule",
         params: { ruleUuid },
       });
       if (data) {
-        if (data.success) { setSuccess(t("rmDeleted")); clearSuccess(); loadRules(); }
-        else setError(data.error || "Delete failed");
+        if (data.success) {
+          setSuccess(t("rmDeleted").replace("{name}", ruleTarget(rule)));
+          clearSuccess();
+          loadRules();
+          // The report is the other half of this panel and it carried the deleted rule's
+          // limits until something else reloaded it.
+          loadReport();
+          // ONTAP accepts the deletion and, on a volume that is enforcing, goes on
+          // applying the rule until enforcement is switched off and on again. The
+          // reference says so; a success message that does not is a message that lets an
+          // operator believe the limit is gone. The toggle is in this panel, so the note
+          // stays until dismissed rather than clearing itself after three seconds.
+          if (current.on) setPostDeleteHint(true);
+        } else setError(data.error || "Delete failed");
       }
     } catch (err) { setError(err instanceof Error ? err.message : "Delete failed"); }
   };
@@ -275,6 +321,8 @@ export function QuotaManager() {
               setActionError(null);
               setSuccess(null);
               setEditingUuid(null);
+              // The note names a volume. Left on screen it would name this one.
+              setPostDeleteHint(false);
             }}
             autoSelectFirst
             excludeFlexCache
@@ -342,6 +390,16 @@ export function QuotaManager() {
         </div>
       )}
 
+      {/* Beside the toggle it asks for, because the next step is that button. */}
+      {postDeleteHint && (
+        <div className="rm-notice">
+          <span>{t("quDeleteStillEnforcedHint")}</span>
+          <button className="rm-btn-sm" onClick={() => setPostDeleteHint(false)}>
+            {t("close")}
+          </button>
+        </div>
+      )}
+
       {showCreateForm && (
         <div className="create-form">
           <div className="form-row">
@@ -356,7 +414,20 @@ export function QuotaManager() {
             {newType === "tree" && (
               <div className="form-group">
                 <label>{t("rmQuotaTarget")}</label>
-                <input type="text" value={newQtreeName} onChange={(e) => setNewQtreeName(e.target.value)} />
+                <select value={newQtreeName} onChange={(e) => setNewQtreeName(e.target.value)}>
+                  <option value="">{t("quSelectQtree")}</option>
+                  {qtrees.map((q) => (
+                    <option key={q.id} value={q.name}>
+                      {q.name}
+                    </option>
+                  ))}
+                </select>
+                {/* Said here rather than after a rejected request: a volume with no
+                    qtrees has no tree-rule target, and the Qtree panel is where one is
+                    made. */}
+                {!qtreesQuery.isFetching && qtrees.length === 0 && (
+                  <small className="rm-hint">{t("quNoQtreesForTree")}</small>
+                )}
               </div>
             )}
             {newType === "user" && (
@@ -445,7 +516,7 @@ export function QuotaManager() {
                         }}>
                           {t("quEdit")}
                         </button>
-                        <button onClick={() => handleDelete(r.uuid)} className="btn-sm btn-danger">✕</button>
+                        <button onClick={() => handleDelete(r)} className="btn-sm btn-danger">✕</button>
                       </span>
                     </td>
                   </>
