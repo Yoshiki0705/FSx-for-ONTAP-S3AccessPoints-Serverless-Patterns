@@ -27,6 +27,12 @@ export function NameMappingManager() {
   const [editing, setEditing] = useState<NameMapping | null>(null);
   const [editPattern, setEditPattern] = useState("");
   const [editReplacement, setEditReplacement] = useState("");
+  // Moving a rule is offered separately from editing it. ONTAP evaluates in index order
+  // and stops at the first match, so a move changes which rule wins for cases neither
+  // rule's own text mentions -- and ONTAP renumbers the rules in between, so the whole
+  // list shifts rather than one row changing.
+  const [moving, setMoving] = useState<NameMapping | null>(null);
+  const [moveTo, setMoveTo] = useState(1);
 
   const clearSuccess = () => setTimeout(() => setSuccess(null), 3000);
 
@@ -111,6 +117,25 @@ export function NameMappingManager() {
       } else setError(data?.error || "Update failed");
     } catch (e) {
       setError(e instanceof Error ? e.message : "Update failed");
+    }
+  };
+
+  const handleMove = async () => {
+    if (!moving) return;
+    setError(null);
+    try {
+      const data = await adminMutate<{ success?: boolean }>({
+        action: "moveNameMapping",
+        params: { direction: moving.direction, index: moving.index, newIndex: moveTo },
+      });
+      if (data?.success) {
+        setSuccess(t("nmMoved"));
+        setMoving(null);
+        clearSuccess();
+        loadMappings();
+      } else setError(data?.error || "Move failed");
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Move failed");
     }
   };
 
@@ -225,7 +250,40 @@ export function NameMappingManager() {
               <tr key={`${m.direction}-${m.index}`}>
                 <td>{m.index}</td>
                 <td>{directionLabel(m.direction)}</td>
-                {editing?.direction === m.direction && editing?.index === m.index ? (
+                {moving?.direction === m.direction && moving?.index === m.index ? (
+                  <>
+                    <td colSpan={2}>
+                      <span className="peer-accept-row">
+                        <label className="peer-app-toggle">
+                          {t("nmMoveTo")}
+                          <input
+                            type="number"
+                            min={1}
+                            value={moveTo}
+                            onChange={e => setMoveTo(Number(e.target.value))}
+                            aria-label={t("nmMoveTo")}
+                            style={{ width: "4rem" }}
+                          />
+                        </label>
+                        <span className="rm-hint">{t("nmMoveWarning")}</span>
+                      </span>
+                    </td>
+                    <td>
+                      <span className="peer-accept-row">
+                        <button
+                          className="rm-btn-primary"
+                          disabled={moveTo === m.index || moveTo < 1}
+                          onClick={() => void handleMove()}
+                        >
+                          {t("rmExecute")}
+                        </button>
+                        <button className="rm-btn-sm" onClick={() => setMoving(null)}>
+                          {t("cancel")}
+                        </button>
+                      </span>
+                    </td>
+                  </>
+                ) : editing?.direction === m.direction && editing?.index === m.index ? (
                   <>
                     <td>
                       <input
@@ -263,16 +321,28 @@ export function NameMappingManager() {
                         {/* s3_unix entries belong to FSx for ONTAP, which creates and
                             removes them with the S3 Access Point. */}
                         {m.direction !== "s3_unix" && (
-                          <button
-                            className="rm-btn-sm"
-                            onClick={() => {
-                              setEditing(m);
-                              setEditPattern(m.pattern);
-                              setEditReplacement(m.replacement);
-                            }}
-                          >
-                            {t("nmEdit")}
-                          </button>
+                          <>
+                            <button
+                              className="rm-btn-sm"
+                              onClick={() => {
+                                setEditing(m);
+                                setEditPattern(m.pattern);
+                                setEditReplacement(m.replacement);
+                              }}
+                            >
+                              {t("nmEdit")}
+                            </button>
+                            <button
+                              className="rm-btn-sm"
+                              title={t("nmMoveWarning")}
+                              onClick={() => {
+                                setMoving(m);
+                                setMoveTo(m.index);
+                              }}
+                            >
+                              {t("nmMove")}
+                            </button>
+                          </>
                         )}
                         <button className="rm-btn-danger-sm" onClick={() => handleDelete(m)}>
                           {t("nmDelete")}

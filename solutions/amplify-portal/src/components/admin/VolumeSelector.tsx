@@ -20,6 +20,14 @@ export interface VolumeInfo {
   securityStyle: string;
   snaplockType: string;
   /**
+   * Quota enforcement as ONTAP reports it: "off", "initializing", "on" or "mixed".
+   *
+   * From `quota.state`, not `quota.enabled` -- the second is the request and the first
+   * is what the volume is doing. A volume with quotas switched on reports `state: "on"`
+   * and `enabled: false`, so reading `enabled` says the opposite of the truth.
+   */
+  quotaState?: string;
+  /**
    * "none" | "cache" | "origin", from ONTAP's `flexcache_endpoint_type`.
    *
    * A FlexCache volume supports none of snapshots, quotas, qtrees, cloning,

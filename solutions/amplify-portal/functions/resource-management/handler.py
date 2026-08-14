@@ -736,6 +736,8 @@ def _dispatch(event, context):
             return _get_quota_report(http, headers, event)
         elif action == "createQuotaRule":
             return _create_quota_rule(http, headers, event, user_id)
+        elif action == "setVolumeQuotaEnabled":
+            return _set_volume_quota_enabled(http, headers, event, user_id)
         elif action == "updateQuotaRule":
             return _update_quota_rule(http, headers, event, user_id)
         elif action == "deleteQuotaRule":
@@ -756,6 +758,8 @@ def _dispatch(event, context):
             return _list_qtrees(http, headers, event)
         elif action == "createQtree":
             return _create_qtree(http, headers, event, user_id)
+        elif action == "renameQtree":
+            return _rename_qtree(http, headers, event, user_id)
         elif action == "updateQtree":
             return _update_qtree(http, headers, event, user_id)
         elif action == "deleteQtree":
@@ -834,6 +838,8 @@ def _dispatch(event, context):
             return _list_name_mappings(http, headers, event)
         elif action == "createNameMapping":
             return _create_name_mapping(http, headers, event, user_id)
+        elif action == "moveNameMapping":
+            return _move_name_mapping(http, headers, event, user_id)
         elif action == "updateNameMapping":
             return _update_name_mapping(http, headers, event, user_id)
         elif action == "deleteNameMapping":
@@ -1073,7 +1079,8 @@ def _list_volumes(http, headers, event):
         headers,
         "GET",
         f"/storage/volumes?svm.name={_qval(svm)}"
-        f"&fields=name,uuid,size,state,type,style,nas,space,guarantee,snaplock,flexcache_endpoint_type"
+        f"&fields=name,uuid,size,state,type,style,nas,space,guarantee,snaplock,"
+        f"flexcache_endpoint_type,quota.state"
         f"&max_records=50",
     )
     if data.get("_error"):
@@ -1099,6 +1106,17 @@ def _list_volumes(http, headers, event):
                 # quotas, qtrees, cloning, SnapRestore, SnapMirror, ARP or tiering, so
                 # the panels that offer those need to know before they offer them.
                 "flexcacheEndpointType": v.get("flexcache_endpoint_type", "none"),
+                # Whether quota enforcement is on for this volume. A rule exists
+                # whether or not it is being enforced, so a panel listing rules without
+                # this shows limits that may be applying to nothing.
+                #
+                # `quota.state` and not `quota.enabled`: the second is the request, the
+                # first is what happened. Measured on 9.18.1P3D1, a volume whose quotas
+                # were switched on reports `state: "on"` and `enabled: false`, so reading
+                # `enabled` reported the opposite of the truth. `state` also has an
+                # `initializing` value, which is a real interval on a volume with data
+                # and is not the same answer as "on".
+                "quotaState": v.get("quota", {}).get("state", ""),
             }
         )
 
@@ -1162,7 +1180,10 @@ def _get_volume(http, headers, event):
         "GET",
         f"/storage/volumes/{vol_uuid}"
         f"?fields=name,uuid,size,state,type,style,nas,space,guarantee,"
-        f"snapshot_policy,qos,tiering,efficiency,autosize,snaplock,anti_ransomware",
+        # quota.state, not quota.enabled: the first is what the volume is doing, the
+        # second is the last request made. The quota panel re-reads this to follow
+        # `initializing` through to `on` after enforcement is switched on.
+        f"snapshot_policy,qos,tiering,efficiency,autosize,snaplock,anti_ransomware,quota.state",
     )
     if data.get("_error"):
         return {"volume": None, "error": data["_message"]}
@@ -1334,6 +1355,12 @@ def _resize_volume(http, headers, event, user_id):
     """Resize a volume.
 
     ONTAP REST: PATCH /api/storage/volumes/{uuid}
+
+    Also how a FlexCache is resized: a cache is a volume and shares its UUID, so the
+    FlexCache panel calls this rather than there being a second action that would do the
+    same PATCH under another name. What the cache panel adds is the reason to -- a cache
+    too small for its working set evicts constantly, and that is a sizing decision made
+    while looking at the cache, not at the volume list.
     """
     vol_uuid = event.get("volumeUuid", "")
     new_size_gib = event.get("newSizeGiB", 0)
@@ -1346,10 +1373,28 @@ def _resize_volume(http, headers, event, user_id):
     body = {"size": new_size_gib * 1024 * 1024 * 1024}
     data = _ontap_request(http, headers, "PATCH", f"/storage/volumes/{vol_uuid}", body=body)
     if data.get("_error"):
-        return {"success": False, "error": data["_message"]}
+        return {"success": False, "error": _flexcache_hint(data["_message"])}
+
+    # A resize that ONTAP cannot satisfy -- below a FlexGroup's floor, or past the
+    # aggregate's free space -- fails inside the job, and reporting the 202 as success
+    # left the panel showing the size that was asked for rather than the one in effect.
+    #
+    # `pending_ok` because the job is not always short. Measured on 9.18.1P3D1: growing
+    # a volume returns with no job at all, while shrinking a FlexGroup -- which every
+    # FlexCache is -- runs past 10s and then completes. Waiting strictly reported a
+    # failure for work that succeeded, which is the same error as the 202-as-success it
+    # replaced, in the other direction. A job that has already failed inside the window
+    # is still reported as failed.
+    job_id = data.get("job", {}).get("uuid", "")
+    ok, message = _wait_for_job(http, headers, job_id, pending_ok=True)
+    if not ok:
+        return {"success": False, "jobId": job_id, "error": _flexcache_hint(message)}
 
     logger.info(f"Volume resized: {vol_uuid} → {new_size_gib} GiB by {user_id}")
-    return {"success": True, "error": None}
+    # `pending` is set when the wait ran out with the job still going: the request was
+    # accepted and the new size is not in effect yet, so a panel that refreshes its list
+    # immediately will still show the old one.
+    return {"success": True, "jobId": job_id, "pending": bool(message), "error": None}
 
 
 def _delete_volume(http, headers, event, user_id):
@@ -1948,6 +1993,58 @@ def _create_quota_rule(http, headers, event, user_id):
     return {"success": True, "jobId": job_id, "error": None}
 
 
+def _set_volume_quota_enabled(http, headers, event, user_id):
+    """Turn quota enforcement on or off for a volume.
+
+    ONTAP REST: PATCH /api/storage/volumes/{uuid} with quota.enabled
+
+    A quota rule and its enforcement are two different things, and the panel showed only
+    the first. Rules could be created, listed and edited on a volume where enforcement
+    was off, which reads as limits that are in force and are not -- and the way to find
+    out was the ONTAP CLI.
+
+    Turning it off stops enforcement and keeps the rules.
+
+    The field written here is not the field to read back. `quota.enabled` is the request;
+    `quota.state` is what the volume is doing, and on 9.18.1P3D1 a volume with quotas
+    switched on reports `state: "on"` while `enabled` stays false. The listing therefore
+    reports `state`, which also distinguishes `initializing` -- ONTAP scans the volume
+    before enforcing, and on a volume with data that interval is visible.
+    """
+    vol_uuid = event.get("volumeUuid", "")
+    enabled = event.get("enabled")
+
+    if not vol_uuid:
+        return {"success": False, "error": "volumeUuid is required"}
+    if enabled is None:
+        return {"success": False, "error": "enabled is required"}
+
+    data = _ontap_request(
+        http,
+        headers,
+        "PATCH",
+        f"/storage/volumes/{vol_uuid}",
+        body={"quota": {"enabled": bool(enabled)}},
+    )
+    if data.get("_error"):
+        return {"success": False, "error": data["_message"]}
+
+    job_id = data.get("job", {}).get("uuid", "")
+    ok, message = _wait_for_job(http, headers, job_id)
+    if not ok:
+        return {"success": False, "jobId": job_id, "error": message}
+
+    # Report the state, not the request. Echoing `enabled` back would repeat the very
+    # confusion this docstring warns about: the caller would be told `enabled: true`
+    # while the volume reports `initializing`, and would have no way to tell that
+    # enforcement had not started yet.
+    state = _ontap_request(http, headers, "GET", f"/storage/volumes/{vol_uuid}?fields=quota.state")
+    quota_state = "" if state.get("_error") else state.get("quota", {}).get("state", "")
+
+    logger.info(f"Volume quota enforcement set to {bool(enabled)}: {vol_uuid} by {user_id}")
+    return {"success": True, "quotaState": quota_state, "error": None}
+
+
 def _update_quota_rule(http, headers, event, user_id):
     """Change the limits on an existing quota rule.
 
@@ -2285,6 +2382,67 @@ def _update_qtree(http, headers, event, user_id):
         return {"success": False, "jobId": job_id, "error": message}
 
     logger.info(f"Qtree updated: {vol_name}/{qtree_id} by {user_id}")
+    return {"success": True, "jobId": job_id, "error": None}
+
+
+def _rename_qtree(http, headers, event, user_id):
+    """Rename a qtree.
+
+    ONTAP REST: PATCH /api/storage/qtrees/{volume.uuid}/{qtree.id} with a new name
+
+    Separate from `updateQtree` on purpose. A qtree's name is a path component, so
+    renaming moves the directory that NFS and SMB clients have mounted or mapped:
+    `/vol1/projects` becomes `/vol1/archive` and every client still asking for the old
+    path gets nothing. Changing a security style or an export policy alters who may
+    read what; this alters where it is. Offering both through one form would put those
+    two consequences behind the same button.
+
+    Hence `confirm`, which the settings change does not require.
+    """
+    svm = event.get("svm", SVM_NAME)
+    vol_name = event.get("volumeName", "")
+    qtree_id = event.get("qtreeId", "")
+    new_name = event.get("newName", "")
+
+    if not vol_name or not qtree_id:
+        return {"success": False, "error": "volumeName and qtreeId are required"}
+    if not new_name:
+        return {"success": False, "error": "newName is required"}
+    if not all(c.isalnum() or c in "_-" for c in new_name):
+        return {
+            "success": False,
+            "error": "newName allows only alphanumeric characters, underscore and hyphen",
+        }
+    if not event.get("confirm", False):
+        return {
+            "success": False,
+            "error": (
+                "confirm=true is required: renaming moves the path clients have mounted, "
+                "and access through the old name stops working"
+            ),
+        }
+
+    vol_data = _ontap_request(
+        http,
+        headers,
+        "GET",
+        f"/storage/volumes?name={_qval(vol_name)}&svm.name={_qval(svm)}&fields=uuid",
+    )
+    vol_records = vol_data.get("records", [])
+    if not vol_records:
+        return {"success": False, "error": f"Volume '{vol_name}' not found"}
+    vol_uuid = vol_records[0]["uuid"]
+
+    data = _ontap_request(http, headers, "PATCH", f"/storage/qtrees/{vol_uuid}/{qtree_id}", body={"name": new_name})
+    if data.get("_error"):
+        return {"success": False, "error": data["_message"]}
+
+    job_id = data.get("job", {}).get("uuid", "")
+    ok, message = _wait_for_job(http, headers, job_id)
+    if not ok:
+        return {"success": False, "jobId": job_id, "error": message}
+
+    logger.info(f"Qtree renamed: {vol_name}/{qtree_id} -> {new_name} by {user_id}")
     return {"success": True, "jobId": job_id, "error": None}
 
 
@@ -3599,6 +3757,59 @@ def _update_name_mapping(http, headers, event, user_id):
         return {"success": False, "error": data["_message"]}
 
     logger.info(f"Name mapping updated: {direction}[{index}] on {svm} by {user_id}")
+    return {"success": True, "error": None}
+
+
+def _move_name_mapping(http, headers, event, user_id):
+    """Move a name-mapping rule to a different position in the evaluation order.
+
+    ONTAP REST: PATCH /api/name-services/name-mappings/{svm.uuid}/{direction}/{index}
+    with `new_index`
+
+    Separate from `updateNameMapping` because it changes a different thing. Editing the
+    pattern changes what one rule matches; moving it changes which rule matches first,
+    and therefore what every rule below it sees. ONTAP evaluates in index order and
+    stops at the first match, so a rule moved above a broader one starts winning cases
+    that used to fall to the broader one.
+
+    ONTAP renumbers the rules in between rather than swapping, so the other rules' own
+    indexes change too. That is what makes this a move of the whole list and not an edit
+    of one row.
+    """
+    svm = event.get("svm", SVM_NAME)
+    direction = event.get("direction", "")
+    index = event.get("index")
+    new_index = event.get("newIndex")
+
+    if not direction or index is None:
+        return {"success": False, "error": "direction and index are required"}
+    if new_index is None:
+        return {"success": False, "error": "newIndex is required"}
+    if direction == "s3_unix":
+        return {
+            "success": False,
+            "error": "s3_unix mappings are managed automatically by FSx for ONTAP",
+        }
+    if int(new_index) == int(index):
+        return {"success": False, "error": "newIndex is the position it already holds"}
+    if int(new_index) < 1:
+        return {"success": False, "error": "newIndex starts at 1"}
+
+    svm_uuid, err = _get_svm_uuid(http, headers, svm)
+    if err:
+        return {"success": False, "error": err}
+
+    data = _ontap_request(
+        http,
+        headers,
+        "PATCH",
+        f"/name-services/name-mappings/{svm_uuid}/{direction}/{int(index)}",
+        body={"new_index": int(new_index)},
+    )
+    if data.get("_error"):
+        return {"success": False, "error": data["_message"]}
+
+    logger.info(f"Name mapping moved: {direction}[{index}] -> [{new_index}] on {svm} by {user_id}")
     return {"success": True, "error": None}
 
 
