@@ -4238,7 +4238,18 @@ def _create_flexclone(http, headers, event, user_id):
     if refusal:
         return refusal
 
-    clone = {"parent_volume": {"name": parent_volume}}
+    # `is_flexclone` is what makes this a clone rather than a volume that mentions a
+    # parent. Without it ONTAP reads the POST as an ordinary volume create and answers
+    # 787140, "One of aggregates.uuid, aggregates.name, or style must be provided" --
+    # asking for placement, because a volume needs placement and a clone takes its
+    # parent's. No clone could be created from the portal before this (measured
+    # 2026-08-15 on 9.18.1P3D1).
+    #
+    # Satisfying that error by naming an aggregate is the trap: the request then succeeds
+    # and produces a 20 MB volume with no clone relationship at all -- ONTAP's default
+    # size, because the clone block it ignored is where the size would have come from.
+    # A success and a listing that does not show it among the clones.
+    clone = {"parent_volume": {"name": parent_volume}, "is_flexclone": True}
     if parent_snapshot:
         clone["parent_snapshot"] = {"name": parent_snapshot}
 
@@ -4264,8 +4275,20 @@ def _split_flexclone(http, headers, event, user_id):
 
     ONTAP REST: PATCH /api/storage/volumes/{uuid} with clone.split_initiated
 
-    Splitting makes the clone independent, so it stops sharing blocks with the
-    parent and its space consumption grows to the full size of the data.
+    Splitting makes the clone independent: it stops sharing blocks with the parent and
+    cannot be returned to it.
+
+    It does not double the space. From ONTAP 9.4 a split preserves storage efficiency and
+    updates metadata rather than copying blocks -- measured here as a 20 GiB clone using
+    348 KB after its split. The claim that consumption grows to the full size of the data
+    described releases before 9.4 and is what this docstring used to say.
+
+    Two things a caller should know and cannot see from the response:
+
+    - once the split finishes the volume leaves the FlexClone listing entirely, so the
+      progress percentage is only observable while it runs
+    - the base snapshot ONTAP took on the *parent* stays there afterwards, and deleting it
+      is the operator's to do
     """
     volume_uuid = event.get("volumeUuid", "")
     volume_name = event.get("volumeName", "")
