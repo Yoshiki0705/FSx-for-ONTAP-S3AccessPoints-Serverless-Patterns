@@ -260,6 +260,7 @@ arpResponseSweepNote: "Sperren heben sich nach Ablauf der Frist selbst auf. Für
   rmDeleting: "Wird gelöscht…",
   rmSnaplockDocs: "SnapLock-Dokumentation",
   rmDeleteConfirm: "Soll \"{name}\" wirklich gelöscht werden?",
+  rmQosDeleteConfirm: "„{name}“ löschen? Jedes Volume mit dieser Richtlinie wird gelöst und bleibt ohne Limit. Um das Limit nur für ein Volume aufzuheben und die Richtlinie zu behalten, das Entfernen statt des Löschens verwenden.",
   rmDeleted: "\"{name}\" wurde gelöscht",
   rmCreate: "Erstellen",
   rmNoVolumes: "Keine Volumes gefunden",

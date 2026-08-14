@@ -132,7 +132,10 @@ export function QosPolicyManager() {
   };
 
   const handleDelete = async (uuid: PolicyUuid, name: string) => {
-    if (!confirm(t("rmDeleteConfirm").replace("{name}", name))) return;
+    // Not the generic delete question. ONTAP accepts this while volumes are assigned and
+    // detaches them as it goes -- measured, a volume came back unlimited -- so the thing
+    // to confirm is not "delete this row" but "stop limiting whatever uses it".
+    if (!confirm(t("rmQosDeleteConfirm").replace("{name}", name))) return;
     try {
       const data = await adminMutate<{ success?: boolean }>({
         action: "deleteQosPolicy",
