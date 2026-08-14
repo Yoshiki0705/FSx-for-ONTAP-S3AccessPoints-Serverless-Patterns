@@ -116,6 +116,10 @@ SCALARS: dict[str, str] = {
     "peakIops": "number",
     "index": "number",
     "ruleIndex": "number",
+    # FlexGroup member volumes per aggregate for a FlexCache. ONTAP only reads it
+    # when the aggregate list is given, and the handler refuses the combination
+    # that ONTAP would reject with 66846871.
+    "constituentsPerAggregate": "number",
     "encryption": "boolean",
     "continuouslyAvailable": "boolean",
     "surgeAsNormal": "boolean",
@@ -135,6 +139,24 @@ SCALARS: dict[str, str] = {
     "allSvms": "boolean",
     "isShared": "boolean",
     "force": "boolean",
+    # Whether a FabricPool-attached aggregate may host a FlexCache. Only read when
+    # auto-provisioning. It defaults to false in ONTAP, and every FSx for ONTAP
+    # aggregate is FabricPool-attached, so the handler defaults it to true instead.
+    "useTieredAggregate": "boolean",
+    # Whether a FlexCache acknowledges writes at the cache (write-back, ONTAP 9.15.1+)
+    # rather than after the origin has committed them (write-around, the default).
+    # Not "whether the cache accepts writes" — it accepts them either way.
+    "writebackEnabled": "boolean",
+    # Have ONTAP provision the SnapMirror destination volume rather than requiring
+    # someone to pre-create it as type DP.
+    "createDestination": "boolean",
+    # Whether the provisioned destination may land on a FabricPool-attached
+    # aggregate. Same trap as useTieredAggregate: ONTAP defaults it to false, and on
+    # FSx for ONTAP that leaves no aggregate to place the volume on.
+    "tieringSupported": "boolean",
+    # Initialize the relationship as part of creating it, which is what produces the
+    # baseline transfer. Without it the relationship stays uninitialized.
+    "initialize": "boolean",
 }
 
 # (action, parameter) -> the values ONTAP accepts, for parameters the handler passes
@@ -174,6 +196,10 @@ LISTS: dict[str, str] = {
     "domains": "string[]",
     "servers": "string[]",
     "prepopulatePaths": "string[]",
+    # Aggregate names for explicit FlexCache placement. Naming them switches the
+    # create off auto-provisioning, which is what makes `constituentsPerAggregate`
+    # readable and `useTieredAggregate` invalid.
+    "aggregates": "string[]",
     # A page of object keys, rendered in one call rather than one call per row.
     "keys": "string[]",
     "roRule": "string[]",

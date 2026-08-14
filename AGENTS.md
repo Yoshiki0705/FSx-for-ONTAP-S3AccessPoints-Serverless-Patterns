@@ -28,6 +28,7 @@ optimization).
 |---|---|
 | CloudFormation / SAM を書く・デプロイが失敗した | [pitfalls-cfn-sam](docs/agent/pitfalls-cfn-sam.md) |
 | S3 AP / ONTAP API を扱う・AccessDenied を調べる | [pitfalls-s3ap-ontap](docs/agent/pitfalls-s3ap-ontap.md) |
+| FlexCache / SnapMirror / SVM ピアを作る・消す | [pitfalls-flexcache-snapmirror](docs/agent/pitfalls-flexcache-snapmirror.md) |
 | AD 連携 / SMB / Windows ドメイン参加 | [pitfalls-ad-smb](docs/agent/pitfalls-ad-smb.md) |
 | Bedrock / AgentCore / Quick / KNFSD | [pitfalls-genai-edge](docs/agent/pitfalls-genai-edge.md) |
 | SnapLock / WORM / Snapshot ロック | [pitfalls-snaplock](docs/agent/pitfalls-snaplock.md) |
@@ -36,6 +37,7 @@ optimization).
 | コスト見積り / リソース停止 | [cost-awareness](docs/agent/cost-awareness.md) |
 | 依存追加 / Renovate | [dependency-updates](docs/agent/dependency-updates.md) |
 | 構成図の作成・再生成・エクスポート | [diagram-regeneration](docs/agent/diagram-regeneration.md) |
+| ポータル画面の撮影 / E2E / ブラウザ自動化 | [pitfalls-browser-automation](docs/agent/pitfalls-browser-automation.md) |
 | 新パターンの追加と公開判定 | [new-pattern](docs/agent/new-pattern.md) |
 | ドキュメント全体を探す | [docs/index.md](docs/index.md) |
 | README / ドキュメント構成の設計 | グローバル steering `documentation-design` |
@@ -43,6 +45,21 @@ optimization).
 
 > 不可逆操作・命名・PII・認可のように**知らないと事故る情報は上の表に移していない**。
 > ロード条件のマッチ運に賭けられないため、常時ロードかフック強制のままにしてある。
+
+### ブラウザ自動化で対話を止めない（常時適用）
+
+詳細は上表の `pitfalls-browser-automation` にあるが、次の 3 つは**踏むとユーザーの操作を
+数分ブロックする**ので参照表任せにしない。
+
+- **`page.addInitScript()` は呼んだ分だけ蓄積し、解除 API が無い。** リロードで毎回全部が
+  再実行される。「前のを直してもう一度入れる」は追加になるだけ。ページ内で何かを書き換え
+  たいなら、撮影直前の `page.evaluate()` を使う。
+- **DOM を書き換える処理を `MutationObserver` から呼ばない。** 自分の書き換えが自分の監視を
+  再発火させ、レンダラーが CPU 100% で回り続ける。描画は通るので「見た目は正常なのに
+  自動化だけ返らない」形で出る。
+- **返らなくなったらリトライしない。** `ps aux | grep 'Google Chrome' | sort -k3 -rn | head -3`
+  で CPU 100% 付近のレンダラーを特定し、その pid だけ `kill` する。同じ呼び出しを重ねると
+  タイムアウト待ちが積み上がるだけで原因は消えない。
 
 ## Core Commands
 `make help` が現役のターゲット一覧を出す。ここには毎回使うものだけを置く。
@@ -278,7 +295,7 @@ decision = evaluate_confidence(confidence=0.72)
 ## External Dependencies
 
 - **AWS Region**: ap-northeast-1 (Tokyo) — primary deployment target
-- **ONTAP version**: 9.17.1P6 (supports FPolicy, Persistent Store, protobuf)
+- **ONTAP version**: 9.18.1P3D1 (supports FPolicy, Persistent Store, protobuf)
 - **Python packages**: boto3, urllib3
 - **Dev packages**: pytest, hypothesis, moto, ruff, cfn-lint, bandit
 

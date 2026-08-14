@@ -130,3 +130,5 @@ if cifs["records"]:
 - Security Group or NACL blocks AD ports (53/88/389/445/636) from SVM ENIs to DC IPs
 
 > **Note**: This pattern was verified in `fsxn-observability-integrations` (restore-verification workflow). The patterns in this repo work without AD because they typically target pure UNIX SVMs (no CIFS enabled).
+
+---

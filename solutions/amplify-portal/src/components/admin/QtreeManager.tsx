@@ -115,6 +115,7 @@ export function QtreeManager() {
             onSelect={(vol) => setFilterVolume(vol.name)}
             autoSelectFirst
             enableSearch
+            excludeFlexCache
           />
           {/* Disabled until a volume is chosen, because the volume the qtree goes
               into is now the one selected above. Opening the form without one

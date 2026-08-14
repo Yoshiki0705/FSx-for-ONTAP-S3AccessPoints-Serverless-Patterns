@@ -42,6 +42,7 @@ import json
 import logging
 import os
 import re
+import time
 from urllib.parse import quote
 
 import boto3
@@ -310,6 +311,303 @@ def _ontap_request(http, headers, method, path, body=None):
     return data
 
 
+# How long to wait for a short-lived ONTAP job before giving up and handing the
+# job id back instead. Creating a quota rule takes well under a second; the
+# ceiling is here so a stuck job cannot hold the Lambda open.
+_JOB_WAIT_SECONDS = 10.0
+_JOB_POLL_INTERVAL = 0.5
+
+
+def _wait_for_job(http, headers, job_uuid, pending_ok=False):
+    """Wait for an ONTAP job and report what actually happened.
+
+    ONTAP accepts many POSTs with 202 and a job reference. The 202 says the work
+    was queued, not that it succeeded -- a quota rule naming a qtree that does not
+    exist is accepted and then fails inside the job, and a FlexCache the aggregate
+    cannot host fails the same way ("No suitable storage can be found"). Callers
+    that reported success straight from the 202 told the user the opposite of the
+    truth.
+
+    `pending_ok` is for work that legitimately outlives a Lambda invocation, such
+    as building a FlexCache volume. With it set, a job still running when the wait
+    runs out is reported as accepted rather than failed -- but a job that has
+    already failed inside the window is still reported as failed, which is the case
+    that used to be shown as a success.
+
+    Returns (ok, message).
+    """
+    if not job_uuid:
+        # Nothing to wait on: the operation completed synchronously.
+        return True, ""
+
+    deadline = time.monotonic() + _JOB_WAIT_SECONDS
+    state = ""
+    message = ""
+    while time.monotonic() < deadline:
+        data = _ontap_request(http, headers, "GET", f"/cluster/jobs/{job_uuid}?fields=state,message,code")
+        if data.get("_error"):
+            return False, data["_message"]
+        state = data.get("state", "")
+        message = data.get("message", "")
+        if state in ("success", "successful"):
+            return True, message
+        if state in ("failure", "failed"):
+            return False, message or "the ONTAP job failed without a message"
+        time.sleep(_JOB_POLL_INTERVAL)
+
+    if pending_ok:
+        return True, f"still running after {int(_JOB_WAIT_SECONDS)}s (job {job_uuid})"
+    return False, f"the ONTAP job is still {state or 'running'} after {int(_JOB_WAIT_SECONDS)}s (job {job_uuid})"
+
+
+# What ONTAP does not support *at a FlexCache volume*, keyed by the portal feature
+# that would otherwise call it. Source: "Supported and unsupported features for ONTAP
+# FlexCache volumes" (docs.netapp.com/us-en/ontap/flexcache).
+#
+# These are refused here rather than left to ONTAP because the ONTAP-side failure
+# arrives as a generic volume error that does not mention FlexCache, and for the
+# operations that run as jobs it does not arrive in the response at all.
+_FLEXCACHE_CACHE_UNSUPPORTED: dict[str, str] = {
+    "snapshot": (
+        "Snapshots are not supported on a FlexCache volume. Take the snapshot on the "
+        "origin volume instead; the cache holds no independent point-in-time copy."
+    ),
+    "tamperproof": (
+        "Tamperproof (locked) snapshots are not supported on a FlexCache volume. "
+        "Lock the snapshot on the origin volume instead."
+    ),
+    "quota": (
+        "Quotas are not enforced at a FlexCache volume. In the default writearound "
+        "mode writes are forwarded to the origin, so set the quota on the origin volume."
+    ),
+    "qtree": (
+        "Qtrees cannot be created on a FlexCache volume. Create the qtree on the "
+        "origin volume; qtrees created there are visible through the cache."
+    ),
+    "clone": ("A FlexCache volume cannot be cloned. Clone the origin volume instead."),
+    "snaprestore": ("SnapRestore is not supported on a FlexCache volume. Restore the origin volume."),
+    "snapmirror": (
+        "A FlexCache volume cannot take part in a SnapMirror relationship. Protect the origin volume instead."
+    ),
+    "arp": (
+        "Autonomous Ransomware Protection is not supported on a FlexCache volume. "
+        "Enable it on the origin volume, which is where writes are committed."
+    ),
+    "snaplock": (
+        "A FlexCache volume cannot be a SnapLock volume. SnapLock is not supported at "
+        "either end of a FlexCache relationship."
+    ),
+}
+
+
+def _flexcache_endpoint_type(http, headers, svm, volume_name=None, volume_uuid=None):
+    """Return "cache", "origin", "none", or None when it could not be determined.
+
+    None means "do not block on this": a lookup that fails for its own reasons must
+    not turn into a refusal of an operation that would have worked.
+    """
+    if volume_uuid:
+        query = f"/storage/volumes/{volume_uuid}?fields=flexcache_endpoint_type"
+    elif volume_name:
+        query = (
+            f"/storage/volumes?svm.name={_qval(svm)}&name={_qval(volume_name)}"
+            f"&fields=flexcache_endpoint_type&max_records=1"
+        )
+    else:
+        return None
+
+    data = _ontap_request(http, headers, "GET", query)
+    if data.get("_error"):
+        return None
+    if volume_uuid:
+        return data.get("flexcache_endpoint_type") or "none"
+    records = data.get("records", [])
+    if not records:
+        return None
+    return records[0].get("flexcache_endpoint_type") or "none"
+
+
+def _refuse_if_flexcache(http, headers, svm, feature, volume_name=None, volume_uuid=None):
+    """Refusal dict when the target is a FlexCache and the feature is unsupported there.
+
+    Returns None when the operation should proceed.
+    """
+    reason = _FLEXCACHE_CACHE_UNSUPPORTED.get(feature)
+    if not reason:
+        return None
+    if _flexcache_endpoint_type(http, headers, svm, volume_name, volume_uuid) != "cache":
+        return None
+    target = volume_name or volume_uuid or "the selected volume"
+    return {"success": False, "error": f"{target} is a FlexCache volume. {reason}"}
+
+
+# ONTAP's FlexCache error codes, translated into something a portal user can act on.
+# Source: the error table on POST /storage/flexcache/flexcaches.
+_FLEXCACHE_ERROR_HINTS: dict[str, str] = {
+    "66846735": (
+        "The SVM peer relationship does not permit FlexCache. A peer can be in the "
+        "peered state and still not allow this use -- check that its applications "
+        "include flexcache."
+    ),
+    "66846762": "The origin volume is offline. Bring it online and retry.",
+    "66846767": "The origin volume does not exist in that SVM. Check the name and the origin SVM.",
+    "66846768": "A volume of that name already exists in this SVM. Choose another cache name.",
+    "66846787": "The chosen aggregate is a SnapLock aggregate, which cannot host a FlexCache.",
+    "66846812": (
+        "Either the aggregate is a composite aggregate, or the junction path is already "
+        "under another FlexCache volume. Choose a different path."
+    ),
+    "66846844": "An object store server volume cannot be the origin of a FlexCache.",
+    "66846871": "Constituents per aggregate was given without an aggregate list.",
+    "66846872": "More than one origin volume was specified. A FlexCache has exactly one origin.",
+    "66846875": "The specified aggregate does not exist.",
+    "66846876": "The origin SVM does not exist, or it is not peered with this SVM.",
+    "66846915": (
+        "use_tiered_aggregate applies only when ONTAP chooses the aggregates. Remove the "
+        "aggregate list, or remove the flag."
+    ),
+    "11": "The requested size is below the minimum volume size. A FlexCache constituent is at least 1 GiB.",
+}
+
+# Job-level failures have no code, only prose. Matched on a distinctive fragment.
+_FLEXCACHE_JOB_HINTS: tuple[tuple[str, str], ...] = (
+    (
+        "FabricPool requirements",
+        "Every FSx for ONTAP aggregate is FabricPool-attached, so ONTAP has to be told "
+        "explicitly that it may place the cache there. The portal now does that; if you "
+        "still see this, an aggregate list was supplied that excludes the tiered aggregate.",
+    ),
+    (
+        "No suitable storage",
+        "ONTAP found no aggregate that satisfies the request. Check free space and, on a "
+        "single-aggregate system, that the cache size leaves room for its constituents.",
+    ),
+    (
+        "homogeneous storage type",
+        "A FlexCache is a FlexGroup, so it needs an aggregate of a single storage type "
+        "assigned to the SVM on every node.",
+    ),
+    (
+        "writeback",
+        "Write-back has to be turned off before a cache can be deleted, and it requires "
+        "ONTAP 9.15.1 or later on both the cache and the origin. Use the write-back "
+        "toggle on the cache first; disabling it flushes what is still only at the cache "
+        "to the origin.",
+    ),
+    (
+        "write-back",
+        "Write-back has to be turned off before a cache can be deleted, and it requires "
+        "ONTAP 9.15.1 or later on both the cache and the origin. Use the write-back "
+        "toggle on the cache first; disabling it flushes what is still only at the cache "
+        "to the origin.",
+    ),
+)
+
+
+def _flexcache_hint(message):
+    """Append an actionable hint to an ONTAP FlexCache failure, when one is known."""
+    if not message:
+        return message
+    text = str(message)
+    for code, hint in _FLEXCACHE_ERROR_HINTS.items():
+        # ONTAP puts the code in the payload; the portal only keeps the message, so the
+        # code is matched as it appears there when present.
+        if f'"{code}"' in text or f"code {code}" in text or text.strip().startswith(code):
+            return f"{text} — {hint}"
+    for fragment, hint in _FLEXCACHE_JOB_HINTS:
+        if fragment in text:
+            return f"{text} — {hint}"
+    return text
+
+
+# SnapMirror failures, matched on a distinctive fragment because ONTAP reports most of
+# them as prose rather than a code the portal keeps.
+_SNAPMIRROR_HINTS: tuple[tuple[str, str], ...] = (
+    (
+        "peer permission not found",
+        "ONTAP tried to establish the SVM peer itself and the remote cluster has no peer "
+        "permission for it. Either peer the two SVMs for snapmirror first -- if a peer "
+        "already exists for another use, add snapmirror to its applications -- or have a "
+        "peer permission created on the source cluster.",
+    ),
+    (
+        "not peered",
+        "The two SVMs are not peered for SnapMirror. A peer can exist and still not "
+        "permit this use: check that the SVM peer's applications include snapmirror, "
+        "and that the clusters themselves are peered.",
+    ),
+    (
+        "peer relationship",
+        "The SVM peer relationship does not permit SnapMirror. Add snapmirror to the "
+        "peer's applications, or create the peer with it.",
+    ),
+    (
+        "No suitable storage",
+        "ONTAP found no aggregate for the destination volume. On FSx for ONTAP the "
+        "aggregate is FabricPool-attached, so the destination has to be allowed to use "
+        "a tiered aggregate; the portal requests that by default.",
+    ),
+    (
+        "FabricPool",
+        "The destination could not be placed because of a FabricPool constraint. Every "
+        "FSx for ONTAP aggregate is FabricPool-attached, so tiering support must be "
+        "allowed for the destination volume.",
+    ),
+    (
+        "already exists",
+        "A volume of that name already exists in this SVM. Choose another destination "
+        "volume name, or use the existing relationship if one is already established.",
+    ),
+    (
+        "does not exist",
+        "The source volume or SVM was not found. Check the svm:volume path and, when "
+        "the SVMs are not peered, that the source cluster name is given.",
+    ),
+    (
+        "SnapLock",
+        "SnapLock volumes cannot take part in this operation. Protect a volume without "
+        "WORM retention, or replicate it with a SnapLock-aware method.",
+    ),
+    (
+        "FlexCache",
+        "A FlexCache volume cannot take part in a SnapMirror relationship. Use the origin volume as the source.",
+    ),
+)
+
+
+# Beyond this many days, a per-transfer elapsed time is not an elapsed time. ONTAP
+# has been observed returning `total_duration` as "P20679DT2H11M16S" for a transfer of
+# twenty kilobytes that finished in seconds -- roughly the time since the epoch, not
+# the time the transfer took. Showing that verbatim puts "20679 days" in front of an
+# operator, which is worse than showing nothing.
+_MAX_PLAUSIBLE_TRANSFER_DAYS = 30
+_ISO_DURATION_DAYS = re.compile(r"^P(?:(\d+)D)?")
+
+
+def _plausible_duration(value):
+    """The duration as given, or "" when it cannot be an elapsed transfer time."""
+    if not value:
+        return ""
+    match = _ISO_DURATION_DAYS.match(str(value))
+    if not match:
+        return value
+    days = match.group(1)
+    if days and int(days) > _MAX_PLAUSIBLE_TRANSFER_DAYS:
+        return ""
+    return value
+
+
+def _snapmirror_hint(message):
+    """Append an actionable hint to an ONTAP SnapMirror failure, when one is known."""
+    if not message:
+        return message
+    text = str(message)
+    for fragment, hint in _SNAPMIRROR_HINTS:
+        if fragment.lower() in text.lower():
+            return f"{text} — {hint}"
+    return text
+
+
 def handler(event, context):
     """Route the action, then say which of the five ways it failed, if it did.
 
@@ -445,6 +743,8 @@ def _dispatch(event, context):
             return _list_snapshot_policies(http, headers, event)
         elif action == "createSnapshotPolicy":
             return _create_snapshot_policy(http, headers, event, user_id)
+        elif action == "deleteSnapshotPolicy":
+            return _delete_snapshot_policy(http, headers, event, user_id)
         elif action == "enableSnapshotLocking":
             return _enable_snapshot_locking(http, headers, event, user_id)
         elif action == "lockSnapshot":
@@ -499,6 +799,8 @@ def _dispatch(event, context):
             return _list_flexcaches(http, headers, event)
         elif action == "createFlexCache":
             return _create_flexcache(http, headers, event, user_id)
+        elif action == "setFlexcacheWriteback":
+            return _set_flexcache_writeback(http, headers, event, user_id)
         elif action == "deleteFlexCache":
             return _delete_flexcache(http, headers, event, user_id)
 
@@ -511,6 +813,8 @@ def _dispatch(event, context):
             return _split_flexclone(http, headers, event, user_id)
 
         # --- SnapMirror ---
+        elif action == "createSnapmirror":
+            return _create_snapmirror(http, headers, event, user_id)
         elif action == "listSnapmirrorRelationships":
             return _list_snapmirror_relationships(event)
         elif action == "getSnapmirrorTransfers":
@@ -577,6 +881,8 @@ def _dispatch(event, context):
             return _list_svm_peers(http, headers, event)
         elif action == "createSvmPeer":
             return _create_svm_peer(http, headers, event, user_id)
+        elif action == "updateSvmPeerApplications":
+            return _update_svm_peer_applications(http, headers, event, user_id)
         elif action == "acceptSvmPeer":
             return _accept_svm_peer(http, headers, event, user_id)
         elif action == "deleteSvmPeer":
@@ -722,7 +1028,7 @@ def _list_volumes(http, headers, event):
         headers,
         "GET",
         f"/storage/volumes?svm.name={_qval(svm)}"
-        f"&fields=name,uuid,size,state,type,style,nas,space,guarantee,snaplock"
+        f"&fields=name,uuid,size,state,type,style,nas,space,guarantee,snaplock,flexcache_endpoint_type"
         f"&max_records=50",
     )
     if data.get("_error"):
@@ -744,6 +1050,10 @@ def _list_volumes(http, headers, event):
                 "style": v.get("style", ""),
                 "securityStyle": v.get("nas", {}).get("security_style", ""),
                 "snaplockType": v.get("snaplock", {}).get("type", "non_snaplock"),
+                # "none" | "cache" | "origin". A FlexCache does not support snapshots,
+                # quotas, qtrees, cloning, SnapRestore, SnapMirror, ARP or tiering, so
+                # the panels that offer those need to know before they offer them.
+                "flexcacheEndpointType": v.get("flexcache_endpoint_type", "none"),
             }
         )
 
@@ -761,7 +1071,7 @@ def _list_volumes_filtered(http, headers, event):
     max_records = min(event.get("maxRecords", 20), 50)
 
     query = f"/storage/volumes?svm.name={_qval(svm)}"
-    query += "&fields=name,uuid,size,state,nas,snaplock"
+    query += "&fields=name,uuid,size,state,nas,snaplock,flexcache_endpoint_type"
     query += f"&max_records={max_records}"
 
     if name_filter:
@@ -788,6 +1098,7 @@ def _list_volumes_filtered(http, headers, event):
             "state": v.get("state", ""),
             "securityStyle": v.get("nas", {}).get("security_style", ""),
             "snaplockType": v.get("snaplock", {}).get("type", "non_snaplock"),
+            "flexcacheEndpointType": v.get("flexcache_endpoint_type", "none"),
         }
         for v in data.get("records", [])
     ]
@@ -907,6 +1218,12 @@ def _delete_volume(http, headers, event, user_id):
     """Delete a volume (offline first, then delete).
 
     ONTAP REST: PATCH (offline) + DELETE /api/storage/volumes/{uuid}
+
+    Both steps are jobs, and both have to be waited on rather than assumed. The
+    offline returns 202 while the volume is still online, so a DELETE issued
+    immediately after is rejected inside its own job for exactly that reason -- and
+    reporting the 202 as success told the caller the volume was gone while it was
+    still listed. Observed on a former SnapMirror destination.
     """
     vol_uuid = event.get("volumeUuid", "")
     vol_name = event.get("volumeName", "")
@@ -928,10 +1245,19 @@ def _delete_volume(http, headers, event, user_id):
     if offline_data.get("_error"):
         return {"success": False, "error": f"Failed to offline: {offline_data['_message']}"}
 
+    ok, message = _wait_for_job(http, headers, offline_data.get("job", {}).get("uuid", ""))
+    if not ok:
+        return {"success": False, "error": f"Failed to offline: {message}"}
+
     # Delete
     data = _ontap_request(http, headers, "DELETE", f"/storage/volumes/{vol_uuid}")
     if data.get("_error"):
         return {"success": False, "error": data["_message"]}
+
+    job_id = data.get("job", {}).get("uuid", "")
+    ok, message = _wait_for_job(http, headers, job_id)
+    if not ok:
+        return {"success": False, "jobId": job_id, "error": message}
 
     logger.info(f"Volume deleted: {vol_name} ({vol_uuid}) by {user_id}")
     return {"success": True, "error": None}
@@ -1428,6 +1754,10 @@ def _create_quota_rule(http, headers, event, user_id):
     if not vol_name:
         return {"success": False, "error": "volumeName is required"}
 
+    refusal = _refuse_if_flexcache(http, headers, svm, "quota", volume_name=vol_name)
+    if refusal:
+        return refusal
+
     body: dict = {
         "svm": {"name": svm},
         "volume": {"name": vol_name},
@@ -1459,8 +1789,15 @@ def _create_quota_rule(http, headers, event, user_id):
     if data.get("_error"):
         return {"success": False, "error": data["_message"]}
 
+    # The POST is accepted as a job. Reporting success here without waiting is how
+    # a rule for a non-existent qtree used to close the form and never appear.
+    job_id = data.get("job", {}).get("uuid", "")
+    ok, message = _wait_for_job(http, headers, job_id)
+    if not ok:
+        return {"success": False, "jobId": job_id, "error": message}
+
     logger.info(f"Quota rule created: {rule_type} on {vol_name} by {user_id}")
-    return {"success": True, "error": None}
+    return {"success": True, "jobId": job_id, "error": None}
 
 
 def _delete_quota_rule(http, headers, event, user_id):
@@ -1473,8 +1810,13 @@ def _delete_quota_rule(http, headers, event, user_id):
     if data.get("_error"):
         return {"success": False, "error": data["_message"]}
 
+    job_id = data.get("job", {}).get("uuid", "")
+    ok, message = _wait_for_job(http, headers, job_id)
+    if not ok:
+        return {"success": False, "jobId": job_id, "error": message}
+
     logger.info(f"Quota rule deleted: {rule_uuid} by {user_id}")
-    return {"success": True, "error": None}
+    return {"success": True, "jobId": job_id, "error": None}
 
 
 # ─── CIFS/SMB Share Management ────────────────────────────────────────────────
@@ -1664,6 +2006,10 @@ def _create_qtree(http, headers, event, user_id):
 
     if not vol_name or not qtree_name:
         return {"success": False, "error": "volumeName and name are required"}
+
+    refusal = _refuse_if_flexcache(http, headers, svm, "qtree", volume_name=vol_name)
+    if refusal:
+        return refusal
 
     body = {
         "svm": {"name": svm},
@@ -1871,6 +2217,13 @@ def _update_arp_state_admin(http, headers, event, user_id):
             "success": False,
             "error": f"Invalid state: '{new_state}'. Valid states: {', '.join(sorted(valid_states))}",
         }
+
+    # ARP is not supported at a FlexCache volume. Only refuse when turning it on --
+    # a request to disable something that cannot be enabled is harmless.
+    if new_state != "disabled":
+        refusal = _refuse_if_flexcache(http, headers, SVM_NAME, "arp", volume_uuid=vol_uuid)
+        if refusal:
+            return refusal
 
     body = {"anti_ransomware": {"state": new_state}}
     data = _ontap_request(http, headers, "PATCH", f"/storage/volumes/{vol_uuid}", body=body)
@@ -2119,6 +2472,38 @@ def _create_snapshot_policy(http, headers, event, user_id):
 
     logger.info(f"Snapshot policy created: {name} with {len(copies)} schedules by {user_id}")
     return {"success": True, "policyName": name, "error": None}
+
+
+def _delete_snapshot_policy(http, headers, event, user_id):
+    """Delete a snapshot policy.
+
+    ONTAP REST: DELETE /api/storage/snapshot-policies/{uuid}
+
+    The create existed without this, so a policy could be added and never removed —
+    the panel accumulated policies with no way back short of the CLI. ONTAP refuses
+    the delete while a volume still references the policy, which is the check that
+    matters and is better left to ONTAP than duplicated here.
+
+    Deleting a policy stops future snapshots; it does not delete the snapshots it
+    already took, and it cannot release a lock that a retention period applied.
+    """
+    uuid = event.get("policyUuid", "")
+    if not uuid:
+        return {"success": False, "error": "policyUuid is required"}
+    if not event.get("confirm", False):
+        return {"success": False, "error": "confirm=true is required for delete operations"}
+
+    data = _ontap_request(http, headers, "DELETE", f"/storage/snapshot-policies/{uuid}")
+    if data.get("_error"):
+        return {"success": False, "error": data["_message"]}
+
+    job_id = data.get("job", {}).get("uuid", "")
+    ok, message = _wait_for_job(http, headers, job_id)
+    if not ok:
+        return {"success": False, "jobId": job_id, "error": message}
+
+    logger.info(f"Snapshot policy deleted: {uuid} by {user_id}")
+    return {"success": True, "error": None}
 
 
 def _enable_snapshot_locking(http, headers, event, user_id):
@@ -2885,9 +3270,14 @@ def _list_flexcaches(http, headers, event):
 
     ONTAP REST: GET /api/storage/flexcache/flexcaches
     """
+    # `writeback.enabled` distinguishes the two write modes. Without it the panel had
+    # no way to say which one a cache is in, which is how the UI ended up describing
+    # FlexCache as read-only -- writes work in both modes, they just land in
+    # different places first.
     params = (
         "fields=name,uuid,svm.name,size,path,origins.cluster.name,"
-        "origins.svm.name,origins.volume.name,origins.state,global_file_locking_enabled"
+        "origins.svm.name,origins.volume.name,origins.state,global_file_locking_enabled,"
+        "writeback.enabled"
         "&max_records=100"
     )
 
@@ -2916,6 +3306,11 @@ def _list_flexcaches(http, headers, event):
                 "path": c.get("path", ""),
                 "origins": origins,
                 "globalFileLocking": bool(c.get("global_file_locking_enabled", False)),
+                # False is write-around, the traditional mode: a write at the cache is
+                # forwarded to the origin and acknowledged once the origin has it.
+                # True is write-back (ONTAP 9.15.1+): acknowledged at the cache and
+                # flushed to the origin asynchronously. Both are coherent.
+                "writebackEnabled": bool(c.get("writeback", {}).get("enabled", False)),
             }
         )
 
@@ -2937,6 +3332,8 @@ def _create_flexcache(http, headers, event, user_id):
     size_gib = event.get("sizeGiB")
     path = event.get("path") or f"/{name}"
     prepopulate_paths = event.get("prepopulatePaths")
+    aggregates = event.get("aggregates") or []
+    constituents_per_aggregate = event.get("constituentsPerAggregate")
 
     if not name or not origin_volume:
         return {"success": False, "error": "name and originVolume are required"}
@@ -2954,21 +3351,126 @@ def _create_flexcache(http, headers, event, user_id):
     }
     if prepopulate_paths:
         body["prepopulate"] = {"dir_paths": prepopulate_paths}
+    # Opt-in, because it changes where a write is acknowledged and it requires 9.15.1
+    # or later on *both* ends. Omitted rather than sent as false so a cluster that
+    # predates the field is not handed a body it does not understand.
+    if event.get("writebackEnabled"):
+        body["writeback"] = {"enabled": True}
+
+    # A FlexCache is a FlexGroup, so ONTAP has to choose aggregates for it. There
+    # are two mutually exclusive ways to say where it goes, and mixing them is an
+    # error (66846915 "use_tiered_aggregate is only supported when auto
+    # provisioning", 66846871 "constituents per aggregate specified but aggregate
+    # name is missing"), so pick one.
+    if aggregates:
+        # Explicit placement. `constituents_per_aggregate` -- the number of
+        # FlexGroup member volumes per aggregate -- is only read in this form.
+        body["aggregates"] = [{"name": a} for a in aggregates]
+        if constituents_per_aggregate:
+            body["constituents_per_aggregate"] = int(constituents_per_aggregate)
+    else:
+        # Auto-provisioning. `use_tiered_aggregate` defaults to false, which means
+        # ONTAP refuses to place the cache on a FabricPool-attached aggregate. On
+        # FSx for ONTAP every aggregate is FabricPool-attached -- that is how
+        # capacity-pool tiering works -- so leaving the default made every create
+        # fail inside the job with "No suitable storage can be found for the
+        # specified requirements. Aggregates not matching FabricPool requirements".
+        # The portal reported that as success; both halves of that are fixed.
+        body["use_tiered_aggregate"] = bool(event.get("useTieredAggregate", True))
+        if constituents_per_aggregate:
+            return {
+                "success": False,
+                "error": (
+                    "constituentsPerAggregate requires aggregates to be specified as well; "
+                    "ONTAP only reads it when the aggregate list is given"
+                ),
+            }
+
+    # A FlexCache cannot itself be a FlexCache's origin, and SnapLock is unsupported at
+    # both ends. Refusing here names the reason; ONTAP's own error does not.
+    refusal = _refuse_if_flexcache(http, headers, origin_svm, "snapmirror", volume_name=origin_volume)
+    if refusal:
+        return {
+            "success": False,
+            "error": (
+                f"{origin_volume} is itself a FlexCache volume, so it cannot be the origin of "
+                "another cache. Point the new cache at the original origin volume."
+            ),
+        }
 
     data = _ontap_request(http, headers, "POST", "/storage/flexcache/flexcaches", body=body)
     if data.get("_error"):
-        return {"success": False, "error": data["_message"]}
+        return {"success": False, "error": _flexcache_hint(data["_message"])}
 
     # FlexCache creation is asynchronous; surface the job so the UI can report it.
     job_id = data.get("job", {}).get("uuid", "")
+    # Building the volume outlives this invocation, so a job still running is a
+    # legitimate "accepted". A job that has already failed is not: a placement
+    # refusal ("No suitable storage can be found for the specified requirements")
+    # lands within seconds, and reporting that as success is what made the panel
+    # announce a cache that never appeared in the list.
+    ok, message = _wait_for_job(http, headers, job_id, pending_ok=True)
+    if not ok:
+        return {"success": False, "jobId": job_id, "error": _flexcache_hint(message)}
     logger.info(f"FlexCache created: {name} from {origin_svm}:{origin_volume} by {user_id}")
     return {"success": True, "jobId": job_id, "error": None}
+
+
+def _set_flexcache_writeback(http, headers, event, user_id):
+    """Turn write-back on or off for an existing FlexCache.
+
+    ONTAP REST: PATCH /api/storage/flexcache/flexcaches/{uuid}
+    Body: {"writeback": {"enabled": true|false}}
+
+    This is the choice of where a write is acknowledged, not whether writes are
+    allowed. A cache accepts writes either way:
+
+    - write-around (the default): the write is forwarded to the origin and
+      acknowledged once the origin has committed it.
+    - write-back (ONTAP 9.15.1 and later, on both the cache and the origin): the write
+      is committed at the cache and acknowledged immediately, then flushed to the
+      origin asynchronously.
+
+    NetApp documents both modes as fully coherent, so this trades latency at the cache
+    against how long a write is only at the cache. Turning it off is also the
+    prerequisite for deleting a write-back cache.
+    """
+    uuid = event.get("uuid", "")
+    if not uuid:
+        return {"success": False, "error": "uuid is required"}
+    if "enabled" not in event:
+        return {"success": False, "error": "enabled is required"}
+
+    enabled = bool(event.get("enabled"))
+    data = _ontap_request(
+        http,
+        headers,
+        "PATCH",
+        f"/storage/flexcache/flexcaches/{uuid}",
+        body={"writeback": {"enabled": enabled}},
+    )
+    if data.get("_error"):
+        return {"success": False, "error": _flexcache_hint(data["_message"])}
+
+    # Disabling flushes what is still only at the cache, which can outlive this
+    # invocation, so a job still running is accepted.
+    job_id = data.get("job", {}).get("uuid", "")
+    ok, message = _wait_for_job(http, headers, job_id, pending_ok=True)
+    if not ok:
+        return {"success": False, "jobId": job_id, "error": _flexcache_hint(message)}
+
+    logger.info(f"FlexCache writeback set to {enabled}: {uuid} by {user_id}")
+    return {"success": True, "writebackEnabled": enabled, "error": None}
 
 
 def _delete_flexcache(http, headers, event, user_id):
     """Delete a FlexCache volume.
 
     ONTAP REST: DELETE /api/storage/flexcache/flexcaches/{uuid}
+
+    The DELETE is a job, and it is waited on for the same reason volume deletion is:
+    a 202 says the work was queued. A write-back cache has to have write-back disabled
+    first, and that refusal arrives inside the job rather than on the DELETE.
     """
     uuid = event.get("uuid", "")
     name = event.get("name", "")
@@ -2978,7 +3480,12 @@ def _delete_flexcache(http, headers, event, user_id):
 
     data = _ontap_request(http, headers, "DELETE", f"/storage/flexcache/flexcaches/{uuid}")
     if data.get("_error"):
-        return {"success": False, "error": data["_message"]}
+        return {"success": False, "error": _flexcache_hint(data["_message"])}
+
+    job_id = data.get("job", {}).get("uuid", "")
+    ok, message = _wait_for_job(http, headers, job_id, pending_ok=True)
+    if not ok:
+        return {"success": False, "jobId": job_id, "error": _flexcache_hint(message)}
 
     logger.info(f"FlexCache deleted: {name or uuid} by {user_id}")
     return {"success": True, "error": None}
@@ -3040,6 +3547,10 @@ def _create_flexclone(http, headers, event, user_id):
     if not clone_name or not parent_volume:
         return {"success": False, "error": "cloneName and parentVolume are required"}
 
+    refusal = _refuse_if_flexcache(http, headers, svm, "clone", volume_name=parent_volume)
+    if refusal:
+        return refusal
+
     clone = {"parent_volume": {"name": parent_volume}}
     if parent_snapshot:
         clone["parent_snapshot"] = {"name": parent_snapshot}
@@ -3050,11 +3561,15 @@ def _create_flexclone(http, headers, event, user_id):
     if data.get("_error"):
         return {"success": False, "error": data["_message"]}
 
+    job_id = data.get("job", {}).get("uuid", "")
+    ok, message = _wait_for_job(http, headers, job_id, pending_ok=True)
+    if not ok:
+        return {"success": False, "jobId": job_id, "error": message}
     logger.info(
         f"FlexClone created: {clone_name} from {parent_volume}"
         f"{':' + parent_snapshot if parent_snapshot else ''} by {user_id}"
     )
-    return {"success": True, "jobId": data.get("job", {}).get("uuid", ""), "error": None}
+    return {"success": True, "jobId": job_id, "error": None}
 
 
 def _split_flexclone(http, headers, event, user_id):
@@ -3081,8 +3596,14 @@ def _split_flexclone(http, headers, event, user_id):
     if data.get("_error"):
         return {"success": False, "error": data["_message"]}
 
+    job_id = data.get("job", {}).get("uuid", "")
+    # A split copies the whole clone, so it runs long; only an early failure is
+    # reported as one.
+    ok, message = _wait_for_job(http, headers, job_id, pending_ok=True)
+    if not ok:
+        return {"success": False, "jobId": job_id, "error": message}
     logger.info(f"FlexClone split started: {volume_name or volume_uuid} by {user_id}")
-    return {"success": True, "jobId": data.get("job", {}).get("uuid", ""), "error": None}
+    return {"success": True, "jobId": job_id, "error": None}
 
 
 # ─── SnapMirror inventory ─────────────────────────────────────────────────────
@@ -3093,9 +3614,11 @@ def _list_snapmirror_relationships(event):
 
     ONTAP REST: GET /api/snapmirror/relationships
 
-    Read-only by design: creating or breaking a replication relationship is a
-    cross-cluster operation that belongs with a change-managed runbook rather
-    than a portal button.
+    Only destinations are listed. The POST that creates a relationship is issued on
+    the destination cluster too, so this listing and `createSnapmirror` cover the
+    same set: what this portal can protect is what replicates *to* the file system it
+    is connected to. A relationship whose destination is elsewhere is managed from
+    the portal or CLI attached to that other cluster.
     """
     # The field selection lives in OntapClient.RELATIONSHIP_FIELDS, including the
     # note that `last_transfer_size` is not a field on this endpoint — ONTAP 9.17
@@ -3162,7 +3685,7 @@ def _get_snapmirror_transfers(event):
                 "state": tr.get("state", ""),
                 "bytesTransferred": tr.get("bytes_transferred", 0),
                 "endTime": tr.get("end_time", ""),
-                "duration": tr.get("total_duration", ""),
+                "duration": _plausible_duration(tr.get("total_duration", "")),
             }
         )
 
@@ -3234,26 +3757,38 @@ def _list_vscan_policies(http, headers, event):
 def _get_fpolicy_status(http, headers, event):
     """Report FPolicy external engine connection status.
 
-    ONTAP REST: GET /api/protocols/fpolicy (connections sub-object)
+    ONTAP REST: GET /api/protocols/fpolicy/{svm.uuid}/connections
+
+    Server connection status lives on its own endpoint. It is not a `connections`
+    sub-object of /protocols/fpolicy, so asking for `fields=connections.state`
+    there made ONTAP reject the whole request ("The value \"connections.state\"
+    is invalid for field \"fields\"") and the tab surfaced that as an error.
     """
     svm = event.get("svm", SVM_NAME)
-    params = f"svm.name={_qval(svm)}&fields=connections.node.name,connections.policy.name,connections.server,connections.state"
 
-    data = _ontap_request(http, headers, "GET", f"/protocols/fpolicy?{params}")
+    svm_uuid, err = _get_svm_uuid(http, headers, svm)
+    if err:
+        return {"connections": [], "count": 0, "error": err}
+
+    data = _ontap_request(
+        http,
+        headers,
+        "GET",
+        f"/protocols/fpolicy/{svm_uuid}/connections?fields=node.name,policy.name,server,state&max_records=100",
+    )
     if data.get("_error"):
-        return {"connections": [], "error": data["_message"]}
+        return {"connections": [], "count": 0, "error": data["_message"]}
 
     connections = []
-    for record in data.get("records", []):
-        for c in record.get("connections", []):
-            connections.append(
-                {
-                    "node": c.get("node", {}).get("name", ""),
-                    "policy": c.get("policy", {}).get("name", ""),
-                    "server": c.get("server", ""),
-                    "state": c.get("state", ""),
-                }
-            )
+    for c in data.get("records", []):
+        connections.append(
+            {
+                "node": c.get("node", {}).get("name", ""),
+                "policy": c.get("policy", {}).get("name", ""),
+                "server": c.get("server", ""),
+                "state": c.get("state", ""),
+            }
+        )
 
     return {"connections": connections, "count": len(connections), "error": None}
 
@@ -3322,6 +3857,76 @@ def _list_fpolicy_events(http, headers, event):
 #
 # Replication state changes are consequential, so the operations that redirect
 # or discard data (break, resync, delete) require an explicit confirm flag.
+
+
+def _create_snapmirror(http, headers, event, user_id):
+    """Create a SnapMirror relationship, provisioning the destination volume.
+
+    ONTAP REST: POST /api/snapmirror/relationships
+
+    The POST is issued on the *destination* cluster, which is the one this portal is
+    connected to. That is what makes protecting a volume on another file system a
+    local operation: `create_destination.enabled` has ONTAP provision the DP volume
+    here, so nobody has to pre-create it with `volume create -type DP` first.
+
+    Two FSx for ONTAP specifics are handled rather than left to fail:
+
+    - `create_destination.tiering.supported` decides which aggregates ONTAP will
+      consider. False means "non-FabricPool aggregates only", and every FSx for ONTAP
+      aggregate is FabricPool-attached, so the default leaves nowhere to put the
+      destination. This is the same trap as `use_tiered_aggregate` on FlexCache.
+    - Setting `state` to "snapmirrored" in the POST both creates and initializes the
+      relationship, which is what produces the first transfer. Without it the
+      relationship sits `uninitialized` and the transfer history stays empty.
+    """
+    svm = event.get("svm", SVM_NAME)
+    source_path = event.get("sourcePath", "")
+    source_cluster = event.get("sourceCluster", "")
+    destination_volume = event.get("destinationVolume", "")
+    policy = event.get("policy") or "MirrorAllSnapshots"
+    create_destination = event.get("createDestination", True)
+    tiering_supported = event.get("tieringSupported", True)
+    initialize = event.get("initialize", True)
+
+    if not source_path or ":" not in source_path:
+        return {
+            "success": False,
+            "error": "sourcePath is required, in svm:volume form (for example svm_src:vol_archive)",
+        }
+    if not destination_volume:
+        return {"success": False, "error": "destinationVolume is required"}
+
+    body: dict = {
+        "source": {"path": source_path},
+        "destination": {"path": f"{svm}:{destination_volume}"},
+        "policy": {"name": policy},
+    }
+    # Naming the remote cluster is required when the two SVMs are not peered, and
+    # harmless when they are.
+    if source_cluster:
+        body["source"]["cluster"] = {"name": source_cluster}
+    if create_destination:
+        body["create_destination"] = {
+            "enabled": True,
+            "tiering": {"supported": bool(tiering_supported)},
+        }
+    if initialize:
+        body["state"] = "snapmirrored"
+
+    data = _ontap_request(http, headers, "POST", "/snapmirror/relationships", body=body)
+    if data.get("_error"):
+        return {"success": False, "error": _snapmirror_hint(data["_message"])}
+
+    # Creating the destination and pulling the baseline transfer both outlive this
+    # invocation, so a job still running is a legitimate "accepted". A job that has
+    # already failed is reported as the failure it is.
+    job_id = data.get("job", {}).get("uuid", "")
+    ok, message = _wait_for_job(http, headers, job_id, pending_ok=True)
+    if not ok:
+        return {"success": False, "jobId": job_id, "error": _snapmirror_hint(message)}
+
+    logger.info(f"SnapMirror created: {source_path} -> {svm}:{destination_volume} by {user_id}")
+    return {"success": True, "jobId": job_id, "error": None}
 
 
 def _update_snapmirror_now(event, user_id):
@@ -3720,6 +4325,13 @@ def _create_fpolicy_policy(http, headers, event, user_id):
         "name": name,
         "events": [{"name": e} for e in events],
         "engine": {"name": engine_name},
+        # ONTAP rejects a policy without a scope ("scope is a required field").
+        # The scope restricts which storage objects the policy watches -- volumes,
+        # shares, export policies or file extensions -- so there is no implicit
+        # default. "*" is every volume on the SVM, which is what a portal-created
+        # audit policy is for. Narrowing it is an ONTAP CLI/REST operation; the
+        # portal deliberately does not expose the full scope object.
+        "scope": {"include_volumes": ["*"]},
     }
     # ONTAP treats a policy with a priority as enabled.
     if priority is not None:
@@ -4040,6 +4652,44 @@ def _create_svm_peer(http, headers, event, user_id):
 
     logger.info(f"SVM peer created: {local_svm} <-> {peer_svm} by {user_id}")
     return {"success": True, "error": None}
+
+
+def _update_svm_peer_applications(http, headers, event, user_id):
+    """Change which uses an existing SVM peer permits.
+
+    ONTAP REST: PATCH /api/svm/peers/{uuid}
+
+    An SVM peer carries the list of uses it allows. A peer created for FlexCache is
+    `peered` and still refuses SnapMirror, which reads as "not peered" from the
+    SnapMirror side and sends people looking at the cluster peer instead. Adding the
+    use to the existing peer is the whole fix, and it does not require tearing the
+    peer down and re-establishing it.
+    """
+    peer_uuid = event.get("peerUuid", "")
+    applications = event.get("applications") or []
+
+    if not peer_uuid:
+        return {"success": False, "error": "peerUuid is required"}
+    if not applications:
+        return {"success": False, "error": 'applications is required, for example ["snapmirror"]'}
+
+    data = _ontap_request(
+        http,
+        headers,
+        "PATCH",
+        f"/svm/peers/{peer_uuid}",
+        body={"applications": applications},
+    )
+    if data.get("_error"):
+        return {"success": False, "error": data["_message"]}
+
+    job_id = data.get("job", {}).get("uuid", "")
+    ok, message = _wait_for_job(http, headers, job_id)
+    if not ok:
+        return {"success": False, "jobId": job_id, "error": message}
+
+    logger.info(f"SVM peer applications set to {applications}: {peer_uuid} by {user_id}")
+    return {"success": True, "applications": applications, "error": None}
 
 
 def _accept_svm_peer(http, headers, event, user_id):

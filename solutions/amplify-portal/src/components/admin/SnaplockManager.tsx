@@ -116,6 +116,7 @@ export function SnaplockManager() {
           label={t("rmVolumeName")}
           onSelect={(vol) => { setVolumeInput(vol.name); setError(null); loadConfig(vol.name); }}
           autoSelectFirst
+          excludeFlexCache
         />
       </div>
 

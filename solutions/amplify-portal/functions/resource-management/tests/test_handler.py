@@ -42,6 +42,23 @@ class MockHttp:
         self._responses = responses or {}
         self.calls: list[tuple] = []
 
+    def find(self, method, url_fragment):
+        """The first recorded call matching a method and a URL fragment.
+
+        Assertions used to index `calls[0]`, which assumed the operation under test
+        was the first ONTAP request the handler made. Several handlers now run a
+        pre-flight lookup first -- resolving whether the target is a FlexCache, or an
+        SVM UUID -- so position is not a stable way to name a call. Fails loudly
+        rather than returning None, so a missing call reads as a missing call.
+        """
+        for call in self.calls:
+            if call[0] == method and url_fragment in call[1]:
+                return call
+        raise AssertionError(
+            f"no {method} call containing {url_fragment!r}; recorded: "
+            + ", ".join(f"{m} {u}" for m, u, _ in self.calls)
+        )
+
     def request(self, method, url, **kwargs):
         self.calls.append((method, url, kwargs))
         # Match by URL suffix
@@ -226,6 +243,65 @@ class TestDeleteVolume:
 
         assert result["success"] is False
         assert "volumeUuid" in result["error"]
+
+    def test_reports_a_failed_delete_job_as_a_failure(self, mock_secrets):
+        """A 202 on the DELETE is not a deleted volume.
+
+        Both the offline and the delete are jobs. Reporting success from the 202 told
+        the caller the volume was gone while it was still listed -- observed on a
+        former SnapMirror destination, where the delete job failed because the volume
+        was still online.
+        """
+        from handler import handler
+
+        http = MockHttp(
+            {
+                "/storage/volumes/uuid-1": {"data": {"job": {"uuid": "job-del"}}},
+                "/cluster/jobs/job-del": {"data": {"state": "failure", "message": "volume is not offline"}},
+            }
+        )
+        with patch("handler.urllib3.PoolManager") as mock_pool:
+            mock_pool.return_value = http
+
+            result = handler(
+                {
+                    "action": "deleteVolume",
+                    "volumeUuid": "uuid-1",
+                    "volumeName": "vol1",
+                    "confirm": True,
+                },
+                None,
+            )
+
+        assert result["success"] is False
+        assert "not offline" in result["error"]
+
+    def test_waits_for_the_offline_job_before_deleting(self, mock_secrets):
+        from handler import handler
+
+        http = MockHttp(
+            {
+                "/storage/volumes/uuid-1": {"data": {"job": {"uuid": "job-1"}}},
+                "/cluster/jobs/job-1": {"data": {"state": "success", "message": "done"}},
+            }
+        )
+        with patch("handler.urllib3.PoolManager") as mock_pool:
+            mock_pool.return_value = http
+
+            result = handler(
+                {
+                    "action": "deleteVolume",
+                    "volumeUuid": "uuid-1",
+                    "volumeName": "vol1",
+                    "confirm": True,
+                },
+                None,
+            )
+
+        assert result["success"] is True
+        # The offline is polled before the DELETE is issued, not after.
+        methods = [c[0] for c in http.calls]
+        assert methods.index("GET") < methods.index("DELETE")
 
 
 class TestResizeVolume:
@@ -830,11 +906,16 @@ class TestFlexCache:
 
         assert result["success"] is True
         assert result["jobId"] == "job-1"
-        body = json.loads(http.calls[0][2]["body"])
+        body = json.loads(http.find("POST", "/storage/flexcache/flexcaches")[2]["body"])
         assert body["size"] == 10 * 1024**3
         assert body["path"] == "/cache1"
         assert body["prepopulate"] == {"dir_paths": ["/a", "/b"]}
         assert body["origins"][0]["volume"]["name"] == "vol1"
+        # Auto-provisioning on FSx for ONTAP has to be told a FabricPool aggregate is
+        # acceptable, or the job fails with "Aggregates not matching FabricPool
+        # requirements" after the POST has already been accepted.
+        assert body["use_tiered_aggregate"] is True
+        assert "constituents_per_aggregate" not in body
 
     def test_delete_requires_uuid(self, mock_secrets):
         from handler import handler
@@ -845,6 +926,91 @@ class TestFlexCache:
 
         assert result["success"] is False
         assert "uuid" in result["error"]
+
+    def test_writeback_requires_an_explicit_state(self, mock_secrets):
+        """Omitting `enabled` must not be read as a mode change in either direction."""
+        from handler import handler
+
+        with patch("handler.urllib3.PoolManager") as mock_pool:
+            mock_pool.return_value = MockHttp()
+            result = handler({"action": "setFlexcacheWriteback", "uuid": "uuid-1"}, None)
+
+        assert result["success"] is False
+        assert "enabled" in result["error"]
+
+    def test_writeback_patches_the_nested_field(self, mock_secrets):
+        from handler import handler
+
+        http = MockHttp({"/storage/flexcache/flexcaches/uuid-1": {"data": {}}})
+        with patch("handler.urllib3.PoolManager") as mock_pool:
+            mock_pool.return_value = http
+            result = handler(
+                {"action": "setFlexcacheWriteback", "uuid": "uuid-1", "enabled": True},
+                None,
+            )
+
+        assert result["success"] is True
+        assert result["writebackEnabled"] is True
+        body = json.loads(http.find("PATCH", "/storage/flexcache/flexcaches/uuid-1")[2]["body"])
+        assert body == {"writeback": {"enabled": True}}
+
+    def test_create_omits_writeback_unless_asked(self, mock_secrets):
+        """A cluster older than 9.15.1 has no such field, so false is not sent as false."""
+        from handler import handler
+
+        http = MockHttp({"/storage/flexcache/flexcaches": {"data": {}}})
+        with patch("handler.urllib3.PoolManager") as mock_pool:
+            mock_pool.return_value = http
+            handler(
+                {
+                    "action": "createFlexCache",
+                    "name": "cache1",
+                    "originVolume": "vol1",
+                    "sizeGiB": 10,
+                },
+                None,
+            )
+
+        body = json.loads(http.find("POST", "/storage/flexcache/flexcaches")[2]["body"])
+        assert "writeback" not in body
+
+    def test_create_sends_writeback_when_asked(self, mock_secrets):
+        from handler import handler
+
+        http = MockHttp({"/storage/flexcache/flexcaches": {"data": {}}})
+        with patch("handler.urllib3.PoolManager") as mock_pool:
+            mock_pool.return_value = http
+            handler(
+                {
+                    "action": "createFlexCache",
+                    "name": "cache1",
+                    "originVolume": "vol1",
+                    "sizeGiB": 10,
+                    "writebackEnabled": True,
+                },
+                None,
+            )
+
+        body = json.loads(http.find("POST", "/storage/flexcache/flexcaches")[2]["body"])
+        assert body["writeback"] == {"enabled": True}
+
+    def test_delete_reports_a_failed_job(self, mock_secrets):
+        """A write-back cache refuses deletion, and that arrives inside the job."""
+        from handler import handler
+
+        http = MockHttp(
+            {
+                "/storage/flexcache/flexcaches/uuid-1": {"data": {"job": {"uuid": "job-1"}}},
+                "/cluster/jobs/job-1": {"data": {"state": "failure", "message": "writeback is enabled on the volume"}},
+            }
+        )
+        with patch("handler.urllib3.PoolManager") as mock_pool:
+            mock_pool.return_value = http
+            result = handler({"action": "deleteFlexCache", "uuid": "uuid-1"}, None)
+
+        assert result["success"] is False
+        # The hint names the fix rather than leaving ONTAP's wording to be interpreted.
+        assert "turned off" in result["error"]
 
 
 # --- FlexClone ---
@@ -915,7 +1081,7 @@ class TestFlexClone:
             )
 
         assert result["success"] is True
-        body = json.loads(http.calls[0][2]["body"])
+        body = json.loads(http.find("POST", "/storage/volumes")[2]["body"])
         assert body["name"] == "c1"
         assert body["clone"]["parent_volume"] == {"name": "vol1"}
         assert body["clone"]["parent_snapshot"] == {"name": "snap1"}
@@ -937,7 +1103,7 @@ class TestFlexClone:
                 None,
             )
 
-        body = json.loads(http.calls[0][2]["body"])
+        body = json.loads(http.find("POST", "/storage/volumes")[2]["body"])
         assert "parent_snapshot" not in body["clone"]
 
     def test_split_patches_split_initiated(self, mock_secrets):
@@ -1132,25 +1298,26 @@ class TestFPolicy:
     def test_status_flattens_connections(self, mock_secrets):
         from handler import handler
 
+        # Server connection status lives on /protocols/fpolicy/{svm.uuid}/connections,
+        # so the handler resolves the SVM UUID first and the records it reads are the
+        # connections themselves. Asking /protocols/fpolicy for a `connections` field
+        # made ONTAP reject the whole request.
         with patch("handler.urllib3.PoolManager") as mock_pool:
             mock_pool.return_value = MockHttp(
                 {
-                    "/protocols/fpolicy": {
+                    "/svm/svms": {"data": {"records": [{"uuid": "svm-uuid-1"}]}},
+                    "/connections": {
                         "data": {
                             "records": [
                                 {
-                                    "connections": [
-                                        {
-                                            "node": {"name": "node1"},
-                                            "policy": {"name": "audit"},
-                                            "server": "198.51.100.10",
-                                            "state": "connected",
-                                        }
-                                    ]
+                                    "node": {"name": "node1"},
+                                    "policy": {"name": "audit"},
+                                    "server": "198.51.100.10",
+                                    "state": "connected",
                                 }
                             ]
                         }
-                    }
+                    },
                 }
             )
             result = handler({"action": "getFpolicyStatus"}, None)
@@ -2666,6 +2833,42 @@ class TestIrreversibleAcknowledgement:
         assert result["success"] is False
         assert "Policy name is required" in result["error"]
         assert "acknowledgeIrreversible" not in result["error"]
+
+    def test_delete_snapshot_policy_requires_confirm(self, mock_secrets):
+        from handler import handler
+
+        with patch("handler.urllib3.PoolManager") as mock_pool:
+            mock_pool.return_value = MockHttp()
+
+            result = handler(
+                {"action": "deleteSnapshotPolicy", "policyUuid": "uuid-1"},
+                None,
+            )
+
+        assert result["success"] is False
+        assert "confirm" in result["error"]
+
+    def test_delete_snapshot_policy_reports_a_failed_job(self, mock_secrets):
+        """ONTAP refuses the delete while a volume still references the policy."""
+        from handler import handler
+
+        http = MockHttp(
+            {
+                "/storage/snapshot-policies/uuid-1": {"data": {"job": {"uuid": "job-1"}}},
+                "/cluster/jobs/job-1": {"data": {"state": "failure", "message": "policy is in use by a volume"}},
+            }
+        )
+        with patch("handler.urllib3.PoolManager") as mock_pool:
+            mock_pool.return_value = http
+
+            result = handler(
+                {"action": "deleteSnapshotPolicy", "policyUuid": "uuid-1", "confirm": True},
+                None,
+            )
+
+        assert result["success"] is False
+        assert "in use" in result["error"]
+        assert http.find("DELETE", "/storage/snapshot-policies/uuid-1")
 
     def test_assigning_a_locking_policy_refused_without_ack(self, mock_secrets):
         """Attaching a policy that locks starts the same recurrence on that volume."""

@@ -19,6 +19,15 @@ export interface VolumeInfo {
   state: string;
   securityStyle: string;
   snaplockType: string;
+  /**
+   * "none" | "cache" | "origin", from ONTAP's `flexcache_endpoint_type`.
+   *
+   * A FlexCache volume supports none of snapshots, quotas, qtrees, cloning,
+   * SnapRestore, SnapMirror or ARP. Panels that offer one of those pass
+   * `excludeFlexCache` so the volume cannot be chosen in the first place; the
+   * handlers refuse it as well, because the selector is not the only caller.
+   */
+  flexcacheEndpointType?: "none" | "cache" | "origin";
 }
 
 interface VolumeSelectorProps {
@@ -32,6 +41,14 @@ interface VolumeSelectorProps {
   autoSelectFirst?: boolean;
   /** Enable search/filter for large environments */
   enableSearch?: boolean;
+  /**
+   * Drop FlexCache volumes from the list.
+   *
+   * For panels whose operation ONTAP does not support at a cache. Offering the
+   * volume and then failing is worse than not offering it: the ONTAP-side error
+   * does not mention FlexCache, so the refusal looks arbitrary.
+   */
+  excludeFlexCache?: boolean;
 }
 
 /**
@@ -43,7 +60,7 @@ interface VolumeSelectorProps {
  * P4 enhancement: Optional search mode with debounce (300ms) for large environments.
  * Uses listVolumesFiltered action with ONTAP REST wildcard filter (name=*keyword*).
  */
-export function VolumeSelector({ onSelect, label, showUuid = false, autoSelectFirst = false, enableSearch = false }: VolumeSelectorProps) {
+export function VolumeSelector({ onSelect, label, showUuid = false, autoSelectFirst = false, enableSearch = false, excludeFlexCache = false }: VolumeSelectorProps) {
   const { t } = useTranslation();
   const [selectedUuid, setSelectedUuid] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
@@ -57,7 +74,7 @@ export function VolumeSelector({ onSelect, label, showUuid = false, autoSelectFi
     isFetching: loading,
     error: queryError,
   } = useQuery({
-    queryKey: ["admin", "volumeSelector", nameFilter ?? null],
+    queryKey: ["admin", "volumeSelector", nameFilter ?? null, excludeFlexCache],
     queryFn: async () => {
       // Two calls rather than one with a computed action name. The filtered form
       // takes parameters the unfiltered one does not, and building the action and a
@@ -71,9 +88,13 @@ export function VolumeSelector({ onSelect, label, showUuid = false, autoSelectFi
             })
           : dispatch("adminQuery", { action: "listVolumes" }),
       );
-      // Internal root volumes are not selectable targets.
+      // Internal root volumes are not selectable targets, and neither is a
+      // FlexCache when the caller's operation is unsupported there.
       return (data?.volumes ?? []).filter(
-        (v) => !v.name.endsWith("_root") && v.state === "online"
+        (v) =>
+          !v.name.endsWith("_root") &&
+          v.state === "online" &&
+          !(excludeFlexCache && v.flexcacheEndpointType === "cache")
       );
     },
   });
@@ -148,6 +169,8 @@ export function VolumeSelector({ onSelect, label, showUuid = false, autoSelectFi
           {volumes.map((vol) => (
             <option key={vol.uuid} value={vol.uuid}>
               {vol.name} ({vol.sizeGiB} GiB, {vol.securityStyle})
+              {vol.flexcacheEndpointType === "cache" ? " ⚡FlexCache" : ""}
+              {vol.flexcacheEndpointType === "origin" ? " 📦origin" : ""}
               {showUuid ? ` [${vol.uuid.slice(0, 8)}...]` : ""}
               {vol.snaplockType !== "non_snaplock" ? " 🔒" : ""}
             </option>

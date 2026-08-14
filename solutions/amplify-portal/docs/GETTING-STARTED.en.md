@@ -16,7 +16,7 @@
 | FSx for ONTAP | — | ONTAP 9.15+ | Not needed for DemoMode. Required for admin features |
 | Docker | — | 24.x or later | `docker --version` (only when using Nextcloud) |
 
-> **Verified environment**: this guide was verified on Node.js 20.18.x / Amplify Gen2 1.x / Python 3.12 (Lambda) / ONTAP 9.17.1 / ap-northeast-1.
+> **Verified environment**: this guide was verified on Node.js 20.18.x / Amplify Gen2 1.x / Python 3.12 (Lambda) / ONTAP 9.18.1P3D1 / ap-northeast-1.
 
 ## Quick start (DemoMode — without FSx for ONTAP)
 
@@ -399,6 +399,31 @@ Existing NFS/SMB workflows are unaffected. The S3 AP is an additional access pat
 | `Unknown action: xxx` | Lambda code is stale | Stop the sandbox with Ctrl+C, then restart with `npm start` |
 | S3 Object Lock shows "not configured" | The Lambda subnet is not in the route tables of the S3 Gateway Endpoint | `aws ec2 modify-vpc-endpoint --add-route-table-ids <rtb-id>` |
 | `CDK Assembly Error` | cdk-nag is running (normally CI-only) | Delete `.amplify/artifacts` and restart |
+| The screen freezes / the fan keeps spinning | See "Telling a frozen screen apart" below | Close the tab first. If closing it helps, the cause is on the browser side |
+
+### Telling a frozen screen apart
+
+"Slow" comes in two kinds — **waiting on the backend** and **stuck in the browser tab** — and
+the right response is the opposite in each case. Identify which one you have first.
+
+| What you see | Which kind | Action |
+|---|---|---|
+| A loading indicator stays up, but scrolling and other menu items still respond | Waiting on the backend | Wait. Past ~30 seconds, suspect a Lambda timeout or networking (VPC endpoints) |
+| Neither scrolling nor clicking responds, the fan spins, and the browser keeps using a full CPU core | Stuck in the tab | **Close the tab rather than reloading.** Reopening it recovers |
+| Only one screen freezes while the others stay light | That screen's render volume | Narrow large lists with the filter. Read the file list in pages via "Load more" |
+
+**Why close the tab when a reload does not help**: a reload rebuilds the page's scripts, so a
+render loop reproduces the same state. Closing the tab discards the rendering process itself. If
+you were using a browser extension, a bookmarklet, or a script pasted into DevTools, that is the
+most likely cause — disable it before reopening.
+
+**How to check CPU**: use Activity Monitor on macOS or Task Manager on Windows and look for the
+`Google Chrome Helper (Renderer)` process. If exactly one sits near 100%, the work is running
+inside that tab rather than on the server. In Chrome, Shift+Esc opens a per-tab task manager.
+
+**What to collect if it still does not recover**: the name of the frozen screen, what you did
+immediately before, your browser and version, and any errors in the DevTools Console. Console
+output can contain file names or user names, so review it before sharing.
 
 ## Production migration checklist
 

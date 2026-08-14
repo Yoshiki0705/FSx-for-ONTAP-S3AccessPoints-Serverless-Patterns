@@ -13,7 +13,7 @@ ONTAP 9.15.1 以降で利用可能な **protobuf フォーマット** は、従�
 
 ## 現在の環境
 
-- FSx for ONTAP バージョン: **9.17.1P6** → protobuf 対応 ✅
+- FSx for ONTAP バージョン: **9.18.1P3D1** → protobuf 対応 ✅
 - 現在の設定: `format: xml`
 
 ## XML vs protobuf 比較
