@@ -8,6 +8,7 @@ import { useActiveSvm } from "../hooks/useActiveSvm";
 import { useStorageAdmin } from "../hooks/useStorageAdmin";
 import { OntapFailureNotice } from "./OntapFailureNotice";
 import { SnaplockConfirmDialog } from "./SnaplockConfirmDialog";
+import { VolumeScopeBadge } from "./VolumeScopeBadge";
 import { SvmSelector } from "./admin/SvmSelector";
 import { VolumeSelector } from "./admin/VolumeSelector";
 import type { SnaplockIntent } from "../utils/snaplockConsequences";
@@ -353,9 +354,9 @@ export function SnaplockStatus() {
       )}
       <div className="protection-header">
         <h2>🔒 {t("lockTitle")}</h2>
-        {/* From the response, so it names the volume these panels describe -- whether
-            that came from the selection or from the deployment's default. */}
-        {volumeName && <span className="volume-badge">{t("volume")}: {volumeName}</span>}
+        {/* From the response, so it names the volume these panels describe, and it says
+            which of the two it is: the selection, or the deployment's default. */}
+        <VolumeScopeBadge volumeName={volumeName} isDefault={!volumeInScope} />
 
         <button onClick={refreshAll} className="refresh-btn">↻</button>
       </div>

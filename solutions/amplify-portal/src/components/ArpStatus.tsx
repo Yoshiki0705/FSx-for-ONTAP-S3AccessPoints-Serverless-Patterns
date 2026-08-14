@@ -7,6 +7,7 @@ import { useActiveSvm } from "../hooks/useActiveSvm";
 import { useStorageAdmin } from "../hooks/useStorageAdmin";
 import { ArpResponseActions } from "./ArpResponseActions";
 import { OntapFailureNotice } from "./OntapFailureNotice";
+import { VolumeScopeBadge } from "./VolumeScopeBadge";
 import { SvmSelector } from "./admin/SvmSelector";
 import { VolumeSelector } from "./admin/VolumeSelector";
 
@@ -143,12 +144,9 @@ export function ArpStatus() {
         {/* The badge stays whichever way the volume was chosen: it comes from the
             response, so it names the volume the figures below actually describe. The
             selector alone would not -- it reads "select a volume" until something is
-            picked, while the page is already showing the configured one. */}
-        {volumeName && (
-          <span className="volume-badge" title={t("srcVolumeTitle")}>
-            {t("volume")}: {volumeName}
-          </span>
-        )}
+            picked, while the page is already showing the configured one, which is why
+            the badge says so rather than just naming it. */}
+        <VolumeScopeBadge volumeName={volumeName} isDefault={!volumeInScope} />
 
         <button onClick={() => void refetch()} className="refresh-btn" title={t("refresh")}>
           ↻
