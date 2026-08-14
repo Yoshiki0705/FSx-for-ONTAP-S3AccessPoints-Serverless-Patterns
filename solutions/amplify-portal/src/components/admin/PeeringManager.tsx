@@ -71,6 +71,15 @@ export function PeeringManager() {
   const [acceptFor, setAcceptFor] = useState<string | null>(null);
   const [acceptPassphrase, setAcceptPassphrase] = useState("");
 
+  // Which peer's uses are being edited, and the set being edited. A peer created
+  // for FlexCache is `peered` and still refuses SnapMirror, which reads from the
+  // replication side as "not peered" and sends people to the cluster peer instead.
+  const [appsFor, setAppsFor] = useState<string | null>(null);
+  const [editApps, setEditApps] = useState<string[]>([]);
+
+  const toggleApp = (app: string) =>
+    setEditApps(prev => (prev.includes(app) ? prev.filter(a => a !== app) : [...prev, app]));
+
   const isTransient = (msg?: string) =>
     !!msg && (msg.includes("Unknown action") || msg.includes("not configured"));
 
@@ -127,6 +136,7 @@ export function PeeringManager() {
         setShowCreateSvm(false);
         setAcceptFor(null);
         setConfirmFor(null);
+        setAppsFor(null);
         setAcceptPassphrase("");
         loadData();
       } else {
@@ -181,7 +191,7 @@ export function PeeringManager() {
               {healthyLifs > 0 ? t("peerLifReady") : t("peerLifMissing")}
             </span>
             <button className="rm-btn-sm" onClick={loadData}>
-              🔄 {t("rmApply")}
+              🔄 {t("refresh")}
             </button>
           </div>
           <p className="rm-hint">{t("peerLifHint")}</p>
@@ -389,6 +399,7 @@ export function PeeringManager() {
               + {t("peerCreateSvm")}
             </button>
           </div>
+          <p className="rm-hint">{t("peerApplicationsHint")}</p>
 
           {showCreateSvm && (
             <div className="rm-form">
@@ -478,6 +489,16 @@ export function PeeringManager() {
                           </button>
                         )}
                         <button
+                          className="rm-btn-sm"
+                          disabled={busy}
+                          onClick={() => {
+                            setAppsFor(p.uuid);
+                            setEditApps(p.applications);
+                          }}
+                        >
+                          {t("peerEditApplications")}
+                        </button>
+                        <button
                           className="rm-btn-danger-sm"
                           disabled={busy}
                           onClick={() =>
@@ -487,6 +508,36 @@ export function PeeringManager() {
                           {t("delete")}
                         </button>
                       </span>
+                      {appsFor === p.uuid && (
+                        <span className="peer-accept-row">
+                          {["snapmirror", "flexcache"].map(app => (
+                            <label key={app} className="peer-app-toggle">
+                              <input
+                                type="checkbox"
+                                checked={editApps.includes(app)}
+                                onChange={() => toggleApp(app)}
+                                disabled={busy}
+                              />
+                              {app}
+                            </label>
+                          ))}
+                          <button
+                            className="rm-btn-primary"
+                            disabled={busy || editApps.length === 0}
+                            onClick={() =>
+                              runAction({
+                                action: "updateSvmPeerApplications",
+                                params: { peerUuid: p.uuid, applications: editApps },
+                              })
+                            }
+                          >
+                            {t("rmApply")}
+                          </button>
+                          <button className="rm-btn-sm" onClick={() => setAppsFor(null)}>
+                            {t("cancel")}
+                          </button>
+                        </span>
+                      )}
                     </td>
                   </tr>
                 ))}

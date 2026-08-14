@@ -23,6 +23,15 @@ interface FlexCacheVolume {
   path: string;
   origins: FlexCacheOrigin[];
   globalFileLocking: boolean;
+  /**
+   * Which write mode the cache is in, not whether it accepts writes.
+   *
+   * False is write-around: a write at the cache is forwarded to the origin and
+   * acknowledged once the origin has it. True is write-back (ONTAP 9.15.1 and later on
+   * both ends): acknowledged at the cache and flushed to the origin asynchronously.
+   * NetApp documents both as fully coherent.
+   */
+  writebackEnabled: boolean;
 }
 
 export function FlexCacheManager() {
@@ -41,7 +50,9 @@ export function FlexCacheManager() {
   const [newSizeGiB, setNewSizeGiB] = useState(100);
   const [newPath, setNewPath] = useState("");
   const [prepopulatePaths, setPrepopulatePaths] = useState("");
+  const [newWriteback, setNewWriteback] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
+  const [togglingWriteback, setTogglingWriteback] = useState<string | null>(null);
 
   const clearSuccess = () => setTimeout(() => setSuccess(null), 5000);
 
@@ -97,13 +108,16 @@ export function FlexCacheManager() {
           sizeGiB: newSizeGiB,
           path: newPath || `/${newName}`,
           prepopulatePaths: prepopulatePaths ? prepopulatePaths.split(",").map(p => p.trim()).filter(Boolean) : undefined,
+          // Only sent when asked for. The handler omits the field entirely otherwise,
+          // so a cluster older than 9.15.1 is not handed something it cannot read.
+          ...(newWriteback ? { writebackEnabled: true } : {}),
         },
       });
       if (data?.success) {
         setSuccess(t("fcacheCreated"));
         setShowCreate(false);
         setNewName(""); setNewOriginVolume(""); setNewOriginSvm(""); setNewSizeGiB(100); setNewPath("");
-        setPrepopulatePaths("");
+        setPrepopulatePaths(""); setNewWriteback(false);
         clearSuccess();
         // Progressive refresh: ONTAP FlexCache creation is async (30-120s typically)
         setTimeout(() => loadCaches(), 10000);
@@ -115,6 +129,35 @@ export function FlexCacheManager() {
     } catch (e) {
       setError(e instanceof Error ? e.message : t("fcacheCreateFailed"));
     } finally { setCreating(false); }
+  };
+
+  /**
+   * Switch an existing cache between write-around and write-back.
+   *
+   * Disabling flushes whatever is still only at the cache to the origin, and it is the
+   * prerequisite for deleting a write-back cache, so it is offered per row rather than
+   * only at creation time.
+   */
+  const handleToggleWriteback = async (cache: FlexCacheVolume) => {
+    setError(null);
+    setTogglingWriteback(cache.uuid);
+    try {
+      const data = await adminMutate<{ success?: boolean }>({
+        action: "setFlexcacheWriteback",
+        params: { uuid: cache.uuid, enabled: !cache.writebackEnabled },
+      });
+      if (data?.success) {
+        setSuccess(cache.writebackEnabled ? t("fcacheWritebackDisabled") : t("fcacheWritebackEnabled"));
+        clearSuccess();
+        loadCaches();
+      } else {
+        setError(data?.error || t("rmActionFailed"));
+      }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : t("rmActionFailed"));
+    } finally {
+      setTogglingWriteback(null);
+    }
   };
 
   const handleDelete = async (cache: FlexCacheVolume) => {
@@ -164,6 +207,52 @@ export function FlexCacheManager() {
         </button>
       </div>
 
+      {/* Writes come first, because the limits list below reads as "a cache is
+          read-only" if the write path is not stated. It is not: a cache accepts writes
+          in both modes, and ONTAP keeps the data coherent either way. What the modes
+          differ on is where the write is acknowledged. */}
+      <details className="vs-guide-section" style={{ marginBottom: "1rem" }}>
+        <summary>✍️ {t("fcacheWriteTitle")}</summary>
+        <p className="rm-hint">{t("fcacheWriteIntro")}</p>
+        <ul className="rm-hint">
+          <li>{t("fcacheWriteAround")}</li>
+          <li>{t("fcacheWriteBack")}</li>
+        </ul>
+        <p className="rm-hint">{t("fcacheWriteCoherence")}</p>
+        <p className="rm-hint">
+          <a
+            href="https://docs.netapp.com/us-en/ontap/flexcache-writeback/flexcache-write-back-overview.html"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            📚 {t("fcacheWriteDocs")}
+          </a>
+        </p>
+      </details>
+
+      {/* Shown whether or not a cache exists. The question "why can I not snapshot
+          this volume?" arrives after the cache is created, not before, and the other
+          panels now hide cache volumes rather than failing on them -- which is only
+          not mysterious if the reason is written down somewhere. */}
+      <details className="vs-guide-section" style={{ marginBottom: "1rem" }}>
+        <summary>⚠️ {t("fcacheLimitsTitle")}</summary>
+        <p className="rm-hint">{t("fcacheLimitsIntro")}</p>
+        <ul className="rm-hint">
+          <li>{t("fcacheLimitsTiering")}</li>
+          <li>{t("fcacheLimitsAtCache")}</li>
+          <li>{t("fcacheLimitsSnaplock")}</li>
+        </ul>
+        <p className="rm-hint">
+          <a
+            href="https://docs.netapp.com/us-en/ontap/flexcache/supported-unsupported-features-concept.html"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            📚 {t("fcacheLimitsDocs")}
+          </a>
+        </p>
+      </details>
+
       {showCreate && (
         <div className="rm-create-form">
           <h4>FlexCache {t("rmCreate")}</h4>
@@ -209,6 +298,19 @@ export function FlexCacheManager() {
               placeholder="/data/models/, /cache/datasets/" disabled={creating} />
             <span className="rm-hint" style={{ marginLeft: "0.5rem", fontSize: "0.8rem" }}>
               {t("fcachePrepopulateHint")}
+            </span>
+          </div>
+          <div className="rm-form-row">
+            <label htmlFor="fc-writeback">{t("fcacheWritebackLabel")}</label>
+            <input
+              id="fc-writeback"
+              type="checkbox"
+              checked={newWriteback}
+              onChange={e => setNewWriteback(e.target.checked)}
+              disabled={creating}
+            />
+            <span className="rm-hint" style={{ marginLeft: "0.5rem", fontSize: "0.8rem" }}>
+              {t("fcacheWritebackHint")}
             </span>
           </div>
           <div className="rm-form-actions">
@@ -291,10 +393,27 @@ export function FlexCacheManager() {
                       </span>
                     )}
                     {cache.globalFileLocking && <span className="lu-badge">🔒 Global Lock</span>}
+                    {/* Always shown, in both states: a row with no write badge reads
+                        as a cache that does not take writes. */}
+                    <span className={`lu-badge ${cache.writebackEnabled ? "active" : ""}`}>
+                      ✍️ {cache.writebackEnabled ? t("fcacheModeWriteback") : t("fcacheModeWritearound")}
+                    </span>
                   </span>
                 </div>
                 <div className="lu-group-actions">
                   <span className="lu-badge active">{cache.origins.length} origin(s)</span>
+                  <button
+                    className="rm-btn-sm"
+                    disabled={togglingWriteback === cache.uuid}
+                    title={cache.writebackEnabled ? t("fcacheWritebackDisableTitle") : t("fcacheWritebackEnableTitle")}
+                    onClick={() => void handleToggleWriteback(cache)}
+                  >
+                    {togglingWriteback === cache.uuid
+                      ? "..."
+                      : cache.writebackEnabled
+                        ? t("fcacheWritebackDisableAction")
+                        : t("fcacheWritebackEnableAction")}
+                  </button>
                   <button className="rm-btn-sm" onClick={() => setExpandedUuid(expandedUuid === cache.uuid ? null : cache.uuid)}>
                     {expandedUuid === cache.uuid ? "▼" : "▶"} Origins
                   </button>

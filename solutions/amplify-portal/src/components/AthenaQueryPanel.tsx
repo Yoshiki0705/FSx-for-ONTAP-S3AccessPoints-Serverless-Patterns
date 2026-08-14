@@ -8,6 +8,33 @@ import { CatalogBrowser } from "./CatalogBrowser";
 const client = generateClient<Schema>();
 
 /**
+ * Coerce the `rows` field into the grid's shape.
+ *
+ * `rows` is declared `a.json()` in the schema, so AppSync delivers it as a JSON
+ * *string*, not an array. The previous code asserted `as string[][]`, which the
+ * compiler accepts and the runtime does not: the first query that returned any
+ * row reached `rows.map` on a string and took the whole app down with
+ * "rows.map is not a function". A cast cannot make a string an array, so parse it.
+ */
+function asRows(value: unknown): string[][] {
+  const parsed = typeof value === "string" ? safeParse(value) : value;
+  if (!Array.isArray(parsed)) return [];
+  return parsed.map((row) =>
+    Array.isArray(row) ? row.map((cell) => (cell === null || cell === undefined ? "" : String(cell))) : [String(row)],
+  );
+}
+
+function safeParse(value: string): unknown {
+  try {
+    return JSON.parse(value);
+  } catch {
+    // A payload that is not JSON is not a result set; show an empty grid rather
+    // than crashing the panel.
+    return null;
+  }
+}
+
+/**
  * Athena SQL Query Panel.
  *
  * Allows users to run SQL queries against data cataloged in Glue
@@ -37,8 +64,8 @@ export function AthenaQueryPanel() {
         if (response.data.error) {
           setError(response.data.error);
         } else {
-          setColumns(response.data.columns as string[] || []);
-          setRows(response.data.rows as string[][] || []);
+          setColumns((response.data.columns ?? []).filter((c): c is string => typeof c === "string"));
+          setRows(asRows(response.data.rows));
         }
       }
     } catch (err) {

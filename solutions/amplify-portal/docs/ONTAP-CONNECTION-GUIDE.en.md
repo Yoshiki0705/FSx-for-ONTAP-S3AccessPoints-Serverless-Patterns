@@ -230,9 +230,22 @@ The portal's `_delete_flexcache` automates these three steps.
 | `transferring` | Transferring data | abort |
 | `quiesced` | Synchronization paused | resume, break |
 
-### Initialization (existing relationships)
+### Creation and initialization
 
-Creating a SnapMirror relationship normally goes `volume create -type DP` → `snapmirror create` → `snapmirror initialize`, but this portal focuses on **managing existing relationships** (create them initially in the FSx Console or the CLI).
+The CLI takes three steps — `volume create -type DP` → `snapmirror create` → `snapmirror initialize` — while the portal's `createSnapmirror` does it in one POST.
+
+| Argument | Effect |
+|------|------|
+| `create_destination.enabled` | ONTAP provisions the destination volume, so nobody has to pre-create it as `-type DP` |
+| `create_destination.tiering.supported` | Allows placement on a FabricPool-attached aggregate. **It defaults to false**, and every FSx for ONTAP aggregate is FabricPool-attached, so the default leaves nowhere to put the volume and the create fails (the same trap as `use_tiered_aggregate` on FlexCache) |
+| `state: snapmirrored` | Initializes as part of creating. Without it the relationship stays `uninitialized` and the transfer history stays empty |
+
+The POST is issued on the **destination cluster**, which is the one the portal is connected to. That is what makes protecting a volume on another file system a local operation. Conversely, a relationship whose destination lives on another cluster is neither visible nor operable from this portal.
+
+### Prerequisites
+
+- The cluster peer is `available`.
+- The SVM peer is `peered` **and lists `snapmirror` among its applications**. A peer created for FlexCache is `peered` and still refuses SnapMirror, returning an error such as `SVM peer permission not found.` that reads as "not peered". Adding `snapmirror` through "Change applications" in the portal's SVM peer list resolves it; the peer does not have to be recreated.
 
 ## Behaviour of the Amplify sandbox
 

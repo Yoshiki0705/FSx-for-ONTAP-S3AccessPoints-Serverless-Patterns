@@ -5,24 +5,50 @@ import { errorMessage, unwrap } from "../../lib/portalQuery";
 import { adminMutate, dispatch } from "../../lib/dispatch";
 import { VolumeSelector } from "./VolumeSelector";
 
+/** A rule as `listQuotaRules` returns it.
+ *
+ * Limits are bytes, and the user target is a list, because that is what ONTAP
+ * reports and the handler passes through. The previous declaration here used
+ * `userName` and `...GiB` names the handler never sent, so every limit cell
+ * rendered "undefined GiB" once a rule existed.
+ */
 interface QuotaRule {
   uuid: string;
   type: string;
+  volumeName?: string;
   qtreeName?: string;
-  userName?: string;
+  users?: string[];
   groupName?: string;
-  spaceHardLimitGiB: number;
-  spaceSoftLimitGiB: number;
+  spaceHardLimit?: number | null;
+  spaceSoftLimit?: number | null;
+  filesHardLimit?: number | null;
+}
+
+/** An entry as `getQuotaReport` returns it, under `entries` rather than `usage`. */
+interface QuotaUsage {
+  type: string;
+  volumeName?: string;
+  qtreeName?: string;
+  users?: string[];
+  groupName?: string;
+  spaceUsed: number;
+  spaceHardLimit: number;
+  spaceUsedPercent: number;
+  filesUsed: number;
   filesHardLimit: number;
 }
 
-interface QuotaUsage {
-  target: string;
-  type: string;
-  spaceUsedGiB: number;
-  spaceHardLimitGiB: number;
-  filesUsed: number;
-  filesHardLimit: number;
+const BYTES_PER_GIB = 1024 ** 3;
+
+/** Bytes to GiB for display. ONTAP omits a limit rather than sending 0. */
+function limitGiB(bytes: number | null | undefined): string {
+  if (bytes === null || bytes === undefined) return "—";
+  return `${(bytes / BYTES_PER_GIB).toFixed(1)} GiB`;
+}
+
+/** The target column: whichever of qtree / user / group this rule is for. */
+function ruleTarget(r: QuotaRule | QuotaUsage): string {
+  return r.qtreeName || r.users?.join(", ") || r.groupName || "-";
 }
 
 export function QuotaManager() {
@@ -60,9 +86,9 @@ export function QuotaManager() {
     queryKey: ["admin", "getQuotaReport", volumeName],
     enabled: !!volumeName && activeTab === "report",
     queryFn: () =>
-      unwrap<{ usage?: QuotaUsage[] }>(
+      unwrap<{ entries?: QuotaUsage[] }>(
         dispatch("adminQuery", { action: "getQuotaReport", params: { volumeName } }),
-      ).then((d) => d?.usage ?? []),
+      ).then((d) => d?.entries ?? []),
   });
 
   const rules = rulesQuery.data ?? [];
@@ -128,6 +154,7 @@ export function QuotaManager() {
             label={t("rmSelectVolume")}
             onSelect={(vol) => setVolumeName(vol.name)}
             autoSelectFirst
+            excludeFlexCache
           />
           <button onClick={() => setActiveTab("rules")}
             className={activeTab === "rules" ? "btn-primary" : "btn-secondary"}>{t("rmQuotaRules")}</button>
@@ -197,10 +224,10 @@ export function QuotaManager() {
             {rules.map((r) => (
               <tr key={r.uuid}>
                 <td>{r.type}</td>
-                <td>{r.qtreeName || r.userName || r.groupName || "-"}</td>
-                <td>{r.spaceHardLimitGiB} GiB</td>
-                <td>{r.spaceSoftLimitGiB} GiB</td>
-                <td>{r.filesHardLimit}</td>
+                <td>{ruleTarget(r)}</td>
+                <td>{limitGiB(r.spaceHardLimit)}</td>
+                <td>{limitGiB(r.spaceSoftLimit)}</td>
+                <td>{r.filesHardLimit ?? "—"}</td>
                 <td><button onClick={() => handleDelete(r.uuid)} className="btn-sm btn-danger">✕</button></td>
               </tr>
             ))}
@@ -211,12 +238,12 @@ export function QuotaManager() {
         <div>
           {usage.length === 0 ? <p className="empty-state">{t("rmNoQuotaData")}</p> : usage.map((u, i) => (
             <div key={i} style={{ marginBottom: "1rem" }}>
-              <strong>{u.target}</strong> ({u.type}) — {t("rmQuotaUsage")}
+              <strong>{ruleTarget(u)}</strong> ({u.type}) — {t("rmQuotaUsage")}
               <div className="capacity-bar">
-                <div className="capacity-fill" style={{ width: `${Math.min((u.spaceUsedGiB / u.spaceHardLimitGiB) * 100, 100)}%`,
-                  backgroundColor: (u.spaceUsedGiB / u.spaceHardLimitGiB) > 0.9 ? "#ef4444" : "#22c55e" }} />
+                <div className="capacity-fill" style={{ width: `${Math.min(u.spaceUsedPercent, 100)}%`,
+                  backgroundColor: u.spaceUsedPercent > 90 ? "var(--color-error)" : "var(--color-success)" }} />
               </div>
-              <span>{u.spaceUsedGiB} / {u.spaceHardLimitGiB} GiB</span>
+              <span>{limitGiB(u.spaceUsed)} / {limitGiB(u.spaceHardLimit)}</span>
             </div>
           ))}
         </div>

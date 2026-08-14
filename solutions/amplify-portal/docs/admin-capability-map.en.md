@@ -138,7 +138,7 @@ Every action is implemented in the Lambda that calls the ONTAP REST API
 | Qtrees | ○ | ○ | — | ○ |
 | Quotas | ○ | ○ | — | ○ |
 | Storage efficiency | ○ | — | — | — |
-| FlexCache | ○ | ○ | — | ○ |
+| FlexCache | ○ | ○ | ○ enable/disable write-back | ○ |
 | FlexClone | ○ | ○ | ○ split | — |
 
 ### Access control
@@ -156,9 +156,9 @@ Every action is implemented in the Lambda that calls the ONTAP REST API
 | Panel | Read | Create | Modify | Delete |
 |-------|:---:|:---:|:---:|:---:|
 | ARP/AI protection | ○ | — | ○ state change, bulk enable | ○ clear suspects |
-| Snapshot management | ○ | ○ policy | ○ enable locking | — |
+| Snapshot management | ○ | ○ policy | ○ enable locking | ○ policy |
 | SnapLock | ○ | — | ○ retention | — |
-| SnapMirror | ○ | — | ○ update now, quiesce, resume, break, resync, abort transfer | ○ delete relationship |
+| SnapMirror | ○ | ○ relationship (destination volume provisioned and initialized) | ○ update now, quiesce, resume, break, resync, abort transfer | ○ delete relationship |
 | Virus scanning | ○ | ○ on-access policy | ○ Vscan enable/disable, policy enable/disable | ○ policy |
 | FPolicy | ○ | ○ event/policy | ○ policy enable/disable | ○ event/policy |
 
@@ -166,7 +166,7 @@ Every action is implemented in the Lambda that calls the ONTAP REST API
 
 | Panel | Read | Create | Modify | Delete |
 |-------|:---:|:---:|:---:|:---:|
-| Peering | ○ cluster peers/SVM peers/intercluster LIFs | ○ cluster peer/SVM peer | ○ accept (passphrase / state) | ○ cluster peer/SVM peer |
+| Peering | ○ cluster peers/SVM peers/intercluster LIFs | ○ cluster peer/SVM peer | ○ accept (passphrase / state), change SVM peer applications | ○ cluster peer/SVM peer |
 | Cluster information | ○ nodes/licences/LIFs/protocols/DNS/jobs | — | ○ LIF enable/disable, protocol enable/disable, DNS update | — |
 
 ### AI services
@@ -174,6 +174,28 @@ Every action is implemented in the Lambda that calls the ONTAP REST API
 | Panel | Read | Modify |
 |-------|:---:|:---:|
 | AI settings | ○ | ○ enable/disable |
+
+### Not there yet
+
+Of the `—` entries above, these are the ones where ONTAP offers a way and the portal does
+not reach it. Some other `—` entries are operations ONTAP itself does not offer (shortening
+a SnapLock retention, for instance), which is a different thing.
+
+| Missing | Current workaround | What ONTAP offers |
+|---------|-------------------|-------------------|
+| Modify a quota rule (change the limits) | Delete and recreate; the accounting resets | `PATCH /storage/quota/rules/{uuid}` |
+| Modify a qtree (security style, export policy) | Delete and recreate; the contents are lost | `PATCH /storage/qtrees/{svm.uuid}/{id}` |
+| Change or disable a local user's password | Delete and recreate | `PATCH /protocols/cifs/local-users/{svm.uuid}/{sid}` |
+| Modify a name mapping | Delete and recreate | `PATCH /name-services/name-mappings/{svm.uuid}/{direction}/{index}` |
+| Resize a FlexCache | Resize it as a volume, through the Volumes panel | `PATCH /storage/volumes/{uuid}` |
+| Span multiple SVMs | Fixed to one SVM (`SVM_NAME`); volumes on other SVMs are not listed | Make `svm.name` variable; the UI needs an SVM selector |
+| Job confirmation on five SnapMirror operations | They return a response, but a job that failed can be reported as success | They go through a different client abstraction where `http, headers` are not wired |
+
+> **On the single-SVM scope**: this is a design choice (one deployment, one SVM), but it got in
+> the way in practice. A SnapMirror destination volume created on another SVM did not appear in
+> the volume list, and deleting it required naming the UUID directly. Operating a file system
+> with several SVMs from one portal makes spanning them a prerequisite. The change reaches every
+> panel, so it is treated as its own piece of work.
 
 ---
 
