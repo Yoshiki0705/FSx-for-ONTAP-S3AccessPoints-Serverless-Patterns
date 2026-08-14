@@ -235,6 +235,12 @@ drift:
 # the rule: three versions of the source reader silently stopped seeing code, and a
 # reader that sees nothing reports a clean tree.
 	$(PYTHON) -m pytest scripts/tests/test_query_gate_rule.py --tb=short -q
+# The unsubstituted-placeholder rule, also inside check_portal_drift.py. The quota panel
+# asked `「{name}」を本当に削除しますか？` in a delete confirmation, braces and all, while
+# four other panels substituted the same key. Its own tests carry the weight: the first
+# version of the rule reported the four call sites that use the fill() and withNodes()
+# helpers, and a rule that reports correct code is a rule someone turns off.
+	$(PYTHON) -m pytest scripts/tests/test_i18n_placeholder_check.py --tb=short -q
 	$(PYTHON) scripts/check_portal_drift.py
 # boto3 and urllib3 are pinned in pyproject.toml and requirements.txt both, and
 # Renovate manages the two as separate managers. It raised boto3 in pyproject.toml

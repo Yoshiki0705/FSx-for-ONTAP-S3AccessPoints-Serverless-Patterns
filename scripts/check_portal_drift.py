@@ -1059,6 +1059,91 @@ def check_locale_escaping() -> list[Finding]:
     return findings
 
 
+# A locale entry: two-space indent, key, string value. Enough for ja.ts, which is written
+# one entry per line and is the file the type is derived from.
+_LOCALE_ENTRY = re.compile(r'^  ([A-Za-z][\w$]*): "(.*)",?$')
+_PLACEHOLDER = re.compile(r"\{[A-Za-z][\w]*\}")
+_T_CALL = re.compile(r'\bt\(\s*"([A-Za-z][\w$]*)"\s*\)')
+# The portal fills placeholders three ways: `.replace("{tok}", value)`, and the helpers
+# `fill(t(key), { tok: value })` and `withNodes(t(key), { tok: <node> })`, which name the
+# token as an object key. A rule that knew only the first reported all four helper call
+# sites, and a rule that reports correct code is a rule that gets switched off.
+_TOKEN_HELPER = re.compile(r"\b(?:fill|withNodes)\(\s*$")
+_PLACEHOLDER_EXEMPT = re.compile(r"/[/*][ \t]*i18n-placeholder-checked:[ \t]*\S")
+# How far after the call to look for the substitution. The value is usually replaced in
+# the same expression; the widest real case in this codebase assigns the string first and
+# replaces it on the next line.
+_SUBSTITUTION_WINDOW = 15
+
+
+def check_unsubstituted_placeholders() -> list[Finding]:
+    """A translation used without filling in the placeholders it carries.
+
+    The quota panel asked `「{name}」を本当に削除しますか？` -- with the braces on
+    screen, in a delete confirmation. Four other panels call the same key and all four
+    substitute; this one passed the key through untouched.
+
+    Nothing else could catch it. The key exists in all eight locales, the types agree,
+    the string is valid, and `t()` returns exactly what it was given: the defect is a
+    call site that did not finish the job, and it is only visible in the rendered text.
+
+    Reported per placeholder, because a key with two of them can have one filled in.
+    """
+    findings: list[Finding] = []
+    ja = PORTAL / "src" / "i18n" / "locales" / "ja.ts"
+    if not ja.is_file():
+        return [Finding("i18n-placeholder", "src/i18n/locales/ja.ts", "the source locale is missing")]
+
+    # ja.ts is the type source, so its placeholders are the contract every locale copies.
+    tokens: dict[str, set[str]] = {}
+    for line in ja.read_text(encoding="utf-8").splitlines():
+        entry = _LOCALE_ENTRY.match(line)
+        if not entry:
+            continue
+        found = set(_PLACEHOLDER.findall(entry.group(2)))
+        if found:
+            tokens[entry.group(1)] = found
+
+    if not tokens:
+        return [
+            Finding("i18n-placeholder", "src/i18n/locales/ja.ts", "no placeholders found, so the rule reads nothing")
+        ]
+
+    sources = sorted(p for p in (PORTAL / "src").rglob("*.ts*") if "locales" not in p.parts)
+    if not sources:
+        return [Finding("i18n-placeholder", "src", "no sources found, so nothing is covered")]
+
+    for path in sources:
+        lines = path.read_text(encoding="utf-8").splitlines()
+        for number, text in enumerate(lines, start=1):
+            for call in _T_CALL.finditer(text):
+                key = call.group(1)
+                if key not in tokens:
+                    continue
+                window = "\n".join(lines[max(0, number - 4) : number + _SUBSTITUTION_WINDOW])
+                if _PLACEHOLDER_EXEMPT.search(window):
+                    continue
+                # Only a helper call gets to satisfy the rule by naming the token as an
+                # object key; elsewhere a bare `name:` nearby is some other property.
+                helper = bool(_TOKEN_HELPER.search(text[: call.start()]))
+                missing = sorted(
+                    tok
+                    for tok in tokens[key]
+                    if f'"{tok}"' not in window and not (helper and re.search(rf"\b{tok[1:-1]}\s*:", window))
+                )
+                if missing:
+                    findings.append(
+                        Finding(
+                            "i18n-placeholder",
+                            f"{path.relative_to(PORTAL)}:{number}",
+                            f't("{key}") carries {", ".join(missing)} and nothing nearby replaces it, '
+                            'so the reader sees the braces. Add .replace("{token}", value) '
+                            "or mark the line '// i18n-placeholder-checked: <reason>'",
+                        )
+                    )
+    return findings
+
+
 _USE_QUERY = re.compile(r"\buseQuery\s*\(")
 # Start-of-line so a stray `enabled` inside a queryFn body is not read as the option.
 _ENABLED_OPTION = re.compile(r"^\s*enabled\s*:", re.MULTILINE)
@@ -1764,6 +1849,7 @@ def main() -> int:
         + check_dead_media_overrides()
         + check_breakpoint_agreement()
         + check_locale_escaping()
+        + check_unsubstituted_placeholders()
         + check_query_gate_reads()
     )
 

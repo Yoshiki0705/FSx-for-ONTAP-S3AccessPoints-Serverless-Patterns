@@ -6076,6 +6076,25 @@ button[type="submit"]:disabled {
   flex: 1 1 16rem;
   margin: 0;
 }
+/* A consequence the operator has to act on, not a result. It stays until dismissed:
+   a quota rule that ONTAP still applies after a successful delete is exactly the thing
+   a three-second toast would hide. */
+.rm-notice {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.55rem 0.75rem;
+  margin-bottom: 0.75rem;
+  font-size: 0.85rem;
+  line-height: 1.5;
+  border: 1px solid var(--color-warning);
+  border-radius: 6px;
+  background: var(--color-warning-bg);
+  color: var(--color-warning-text);
+}
+.rm-notice span {
+  flex: 1 1 auto;
+}
 .rm-enforcement-on {
   color: var(--color-success-text);
 }
