@@ -135,14 +135,21 @@ Without this, `JSON.parse(object)` silently produces `{}` → Lambda receives em
    elif action == "myNewAction":
        return _my_new_action(http, headers, event, user_id)
    ```
-2. Frontend call (no schema/CDK changes needed):
-   ```typescript
-   const resp = await (client.mutations as any).adminMutation({
-     action: "myNewAction",
-     params: JSON.stringify({ param1: "value" }),
-   });
-   const data = parseResponse<{ success: boolean }>(resp);
+2. Regenerate the typed action map, which is derived from the handlers:
+   ```bash
+   python3 scripts/portal_action_types.py --emit > solutions/amplify-portal/src/lib/dispatchActions.ts
    ```
+3. Call it through `src/lib/dispatch.ts`, never through `client.mutations` directly:
+   ```typescript
+   const data = await adminMutate<{ success?: boolean }>({
+     action: "myNewAction",
+     params: { volumeUuid: vol.uuid },
+   });
+   ```
+4. Check the contract: `python3 scripts/check_portal_action_params.py`
+
+The full procedure, including why a call the checker cannot read is a call that is not
+guarded, is in the [UI contributor guide](CONTRIBUTING-UI.en.md).
 
 ## Modification Log
 

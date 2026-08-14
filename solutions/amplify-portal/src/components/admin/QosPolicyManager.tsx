@@ -167,8 +167,10 @@ export function QosPolicyManager() {
         <VolumeSelector
           label={t("rmQosAssignTo")}
           onSelect={(vol) => {
+            // null when the SVM changed under the pick. Kept as null rather than
+            // coerced, because the panel already hides its controls without a volume.
             setVolume(vol);
-            setAssignTo(vol.qosPolicyName || NO_POLICY);
+            setAssignTo(vol?.qosPolicyName || NO_POLICY);
             setActionError(null);
             setResult(null);
           }}

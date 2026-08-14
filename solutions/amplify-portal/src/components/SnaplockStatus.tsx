@@ -4,9 +4,11 @@ import { useTranslation } from "../i18n";
 import { errorMessage, failureDiagnosis, unwrap } from "../lib/portalQuery";
 import { adminMutate, adminQuery, dispatch, protectionMutate, protectionQuery } from "../lib/dispatch";
 import { daysFromNow, type SnapshotId } from "../lib/dispatchActions";
+import { useActiveSvm } from "../hooks/useActiveSvm";
 import { useStorageAdmin } from "../hooks/useStorageAdmin";
 import { OntapFailureNotice } from "./OntapFailureNotice";
 import { SnaplockConfirmDialog } from "./SnaplockConfirmDialog";
+import { SvmSelector } from "./admin/SvmSelector";
 import { VolumeSelector } from "./admin/VolumeSelector";
 import type { SnaplockIntent } from "../utils/snaplockConsequences";
 
@@ -67,6 +69,11 @@ export function SnaplockStatus() {
   // group sees. It flows into the snapshot listing and into the lock, so a lock cannot
   // be applied to a snapshot of a volume other than the one on screen.
   const [selectedVolume, setSelectedVolume] = useState("");
+  // See ArpStatus: a volume name does not survive an SVM change, and a lock applied to
+  // a name resolved in the wrong scope cannot be undone.
+  const activeSvm = useActiveSvm();
+  const [svmAtSelection, setSvmAtSelection] = useState(activeSvm);
+  const volumeInScope = svmAtSelection === activeSvm ? selectedVolume : "";
   const [actionError, setActionError] = useState<string | null>(null);
   const setError = setActionError;
   const [success, setSuccess] = useState<string | null>(null);
@@ -97,7 +104,7 @@ export function SnaplockStatus() {
   // the other three feed panels that degrade to empty, which is also why they
   // swallowed their errors before.
   const statusQuery = useQuery({
-    queryKey: ["protection", "getSnaplockStatus", selectedVolume || null],
+    queryKey: ["protection", "getSnaplockStatus", activeSvm || null, volumeInScope || null],
     queryFn: () =>
       unwrap<{
         volumeName?: string;
@@ -106,7 +113,7 @@ export function SnaplockStatus() {
       }>(
         dispatch("protectionQuery", {
           action: "getSnaplockStatus",
-          params: selectedVolume ? { volumeName: selectedVolume } : {},
+          params: volumeInScope ? { volumeName: volumeInScope } : {},
         }),
       ),
   });
@@ -114,12 +121,12 @@ export function SnaplockStatus() {
   // Locked and unlocked come from one listing, so they are split here rather
   // than kept as two pieces of state that could disagree.
   const snapshotsQuery = useQuery({
-    queryKey: ["protection", "listSnapshots", 50, selectedVolume || null],
+    queryKey: ["protection", "listSnapshots", 50, activeSvm || null, volumeInScope || null],
     queryFn: async () => {
       const data = await protectionQuery<{ snapshots?: LockedSnapshot[] }>({
         action: "listSnapshots",
-        params: selectedVolume
-          ? { maxResults: 50, volumeName: selectedVolume }
+        params: volumeInScope
+          ? { maxResults: 50, volumeName: volumeInScope }
           : { maxResults: 50 },
       });
       return data?.snapshots ?? [];
@@ -289,7 +296,7 @@ export function SnaplockStatus() {
           // The volume the listing came from. Without it the handler resolves the
           // configured volume and looks for this snapshot there -- on any other volume
           // that is a lock applied to the wrong subject, and a lock cannot be undone.
-          ...(selectedVolume ? { volumeName: selectedVolume } : {}),
+          ...(volumeInScope ? { volumeName: volumeInScope } : {}),
         },
       });
       if (data) {
@@ -349,14 +356,29 @@ export function SnaplockStatus() {
         {/* From the response, so it names the volume these panels describe -- whether
             that came from the selection or from the deployment's default. */}
         {volumeName && <span className="volume-badge">{t("volume")}: {volumeName}</span>}
-        {isStorageAdmin === true && (
-          <VolumeSelector
-            label={t("rmSelectVolume")}
-            onSelect={(vol) => setSelectedVolume(vol.name)}
-          />
-        )}
+
         <button onClick={refreshAll} className="refresh-btn">↻</button>
       </div>
+
+      {/* The scope, on a row of its own: file system (fixed by the connection) then SVM
+          then volume. On the title row these overflowed and the refresh button dropped
+          below them, and a hierarchy that wraps does not read as one. */}
+      {isStorageAdmin === true && (
+        <div className="protection-scope">
+          {/* No leading "scope" label: the two controls are labelled already, and a
+              third label above them read as a duplicate of the SVM one. The chevron
+              carries the narrowing instead. */}
+          <SvmSelector />
+          <span className="protection-scope-chain" aria-hidden="true">›</span>
+          <VolumeSelector
+            label={t("rmSelectVolume")}
+            onSelect={(vol) => {
+              setSelectedVolume(vol?.name ?? "");
+              setSvmAtSelection(activeSvm);
+            }}
+          />
+        </div>
+      )}
 
       {error && !ontapError && <div className="error-message">{error}</div>}
       {success && <div className="success-message">{success}</div>}

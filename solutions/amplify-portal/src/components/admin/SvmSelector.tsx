@@ -10,7 +10,7 @@ interface Svm {
 }
 
 /**
- * Which SVM the admin panels act on.
+ * Which SVM the portal acts on.
  *
  * A file system can hold several SVMs and the portal was pinned to one, which is
  * invisible until a volume created on another SVM does not appear in the volume list.
@@ -54,7 +54,13 @@ export function SvmSelector() {
         value={active}
         onChange={e => {
           setActiveSvm(e.target.value);
-          void queryClient.invalidateQueries({ queryKey: ["admin"] });
+          // Every scope the choice reaches, not only the admin panels. The
+          // data-protection pages read `protection` and the containment panel reads
+          // `arp`, and both now take an SVM -- a key left out here would keep serving
+          // the previous SVM's answer under the new selection.
+          for (const scope of ["admin", "protection", "arp"]) {
+            void queryClient.invalidateQueries({ queryKey: [scope] });
+          }
         }}
       >
         {/* "" is the backend's own default, which is what every call sent before this

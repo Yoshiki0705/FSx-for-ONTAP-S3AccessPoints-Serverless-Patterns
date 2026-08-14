@@ -1125,7 +1125,18 @@ def _list_volumes(http, headers, event):
             }
         )
 
-    return {"volumes": volumes, "count": len(volumes), "error": None}
+    # Whether ONTAP had more to give. The listing asks for 50 and stopped there, and a
+    # selector showing 50 of several hundred volumes looks like a complete list -- which
+    # is the failure this reports rather than papers over. `_links.next` is ONTAP's own
+    # signal that a further page exists.
+    truncated = "next" in data.get("_links", {})
+
+    return {
+        "volumes": volumes,
+        "count": len(volumes),
+        "truncated": truncated,
+        "error": None,
+    }
 
 
 def _list_volumes_filtered(http, headers, event):

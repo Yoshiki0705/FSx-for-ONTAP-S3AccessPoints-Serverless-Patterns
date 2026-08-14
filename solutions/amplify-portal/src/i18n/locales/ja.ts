@@ -123,6 +123,19 @@ export const ja = {
   arpResponseReasonPlaceholder: "例: ARP/AI が高確率ランサムウェアを検知",
   arpResponseContainBtn: "脅威封じ込め",
   arpResponseContainTooltip: "スナップショット作成 + ユーザーブロック + IP ブロック + セッション切断を一括実行",
+  arpResponseBlockSmbTooltip: "その SMB ユーザーの認証を name-mapping の拒否ルールで止めます。すでに開いているセッションは切れません。",
+  arpResponseBlockNfsTooltip: "その IP からの NFS アクセスをエクスポートポリシーの拒否ルールで止めます。クライアント側のキャッシュが残る間は既存の読み取りが続くことがあります。",
+  arpResponseDisconnectTooltip: "開いている SMB セッションを切ります。次のログインは止まらないので、ブロックと組み合わせて使います。",
+  arpResponseRequirementsTitle: "実行に必要な入力",
+  arpResponseReqDomainUser: "ドメイン と ユーザー名",
+  arpResponseReqClientIp: "クライアント IP",
+  arpResponseReqEither: "ドメイン + ユーザー名、またはクライアント IP",
+  arpResponseReqMissingPrefix: "まだ入力が必要です",
+  arpResponseWhenTitle: "どういうときに使うか",
+  arpResponseWhen1: "ARP/AI が脅威を検知した、または利用者からランサムウェアの疑いが報告された直後。まず広がりを止めるための操作です。",
+  arpResponseWhen2: "対象は「誰か」（SMB のドメイン + ユーザー名）か「どこから」（NFS のクライアント IP）で指定します。両方を入れると両方を止めます。",
+  arpResponseWhen3: "入力欄のグレーの文字は**入力例**です。実際の値を入力するまでボタンは押せません。",
+  arpResponseWhen4: "ブロックは指定した期限で自動的に解除されます。恒久的に止めたい場合は期限を「無期限」にし、解除は「有効なブロック」タブから行います。",
   arpResponseBlockSmb: "SMB ユーザーをブロック",
   arpResponseBlockNfs: "NFS IP をブロック",
   arpResponseContained: "封じ込め完了 — ユーザーブロック + スナップショット作成済み",
@@ -374,6 +387,7 @@ arpResponseSweepNote: "ブロックは指定した期限が過ぎると自動で
   rmFilterByVolume: "ボリュームで絞り込み",
   rmVolumeSearchPlaceholder: "ボリューム名を入力して検索...",
   rmVolumeSearchHint: "表示は上位20件です。さらに絞り込むには検索キーワードを追加してください。",
+  rmVolumeListTruncated: "ボリュームが多いため最初の {count} 件のみ表示しています。上の検索で名前を入力して絞り込んでください。",
 
   // --- Resource Management: Storage Efficiency ---
   rmOverallRatio: "全体効率比",
@@ -601,7 +615,6 @@ arpResponseSweepNote: "ブロックは指定した期限が過ぎると自動で
   arpDetail5: "改ざん防止: ARP スナップショットはロックされ、有効期限まで削除不可",
 
   // --- Snapshots: ONTAP required panel ---
-  snapshotsVolumeLabel: "Volume",
   snapshotsRefreshTitle: "スナップショット一覧を更新",
   snapshotsRefreshBtn: "更新",
   snapshotsLoadingBtn: "読み込み中...",

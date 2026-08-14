@@ -126,6 +126,34 @@ export function ArpResponseActions({ threatLevel, volumeName }: ArpResponseActio
   /** SVM scope for a request, omitted entirely when the default is wanted. */
   const svmScope = () => (selectedSvms.length > 0 ? { svms: selectedSvms } : {});
 
+  // What each action needs before it can run, and whether it has it.
+  //
+  // The buttons were disabled until the fields were filled, which is right, but nothing
+  // said so: the placeholders (CORP, jdoe, an example IP) read as values already entered,
+  // and a disabled button that looks enabled and explains nothing is reported as a button
+  // that does not work. This is rendered as a list next to the buttons and repeated in
+  // each button's tooltip, so the requirement is visible before anyone clicks.
+  const hasPrincipal = !!domain && !!username;
+  const requirements = [
+    {
+      label: t("arpResponseContainBtn"),
+      need: t("arpResponseReqEither"),
+      met: hasPrincipal || !!clientIp,
+    },
+    { label: t("arpResponseBlockSmb"), need: t("arpResponseReqDomainUser"), met: hasPrincipal },
+    { label: t("arpResponseBlockNfs"), need: t("arpResponseReqClientIp"), met: !!clientIp },
+    {
+      label: t("arpResponseDisconnect"),
+      need: t("arpResponseReqEither"),
+      met: hasPrincipal || !!clientIp,
+    },
+  ];
+  /** The tooltip for one action: what it does, and what it still needs. */
+  const actionTitle = (index: number, does: string) => {
+    const req = requirements[index];
+    return req.met ? does : `${does}\n\n${t("arpResponseReqMissingPrefix")}: ${req.need}`;
+  };
+
 
 
   // Pending containment action awaiting confirmation. Blocking cuts data access
@@ -481,6 +509,17 @@ export function ArpResponseActions({ threatLevel, volumeName }: ArpResponseActio
       {activeTab === "contain" && (
         <div className="arp-response-form">
           <p className="form-description">{t("arpResponseContainDesc")}</p>
+          {/* When to reach for this at all. The panel described what the actions do and
+              never what situation they are for, so it read as a set of switches. */}
+          <details className="arp-when-to-use">
+            <summary>{t("arpResponseWhenTitle")}</summary>
+            <ul>
+              <li>{t("arpResponseWhen1")}</li>
+              <li>{t("arpResponseWhen2")}</li>
+              <li>{t("arpResponseWhen3")}</li>
+              <li>{t("arpResponseWhen4")}</li>
+            </ul>
+          </details>
 
           <div className="form-row">
             <div className="form-group">
@@ -577,33 +616,50 @@ export function ArpResponseActions({ threatLevel, volumeName }: ArpResponseActio
             </p>
           </div>
 
+          <div className="arp-requirements">
+            <p className="arp-requirements-title">{t("arpResponseRequirementsTitle")}</p>
+            <ul>
+              {requirements.map((req) => (
+                <li
+                  key={req.label}
+                  className={req.met ? "arp-requirement-met" : "arp-requirement-missing"}
+                >
+                  {req.met ? "✓" : "—"} {req.label}: {req.need}
+                </li>
+              ))}
+            </ul>
+          </div>
+
           <div className="arp-action-buttons">
             <button
               onClick={() => setPending("contain")}
-              disabled={loading || (!domain && !username && !clientIp)}
+              disabled={loading || !requirements[0].met}
               className="btn-danger"
-              title={t("arpResponseContainTooltip")}
+              title={actionTitle(0, t("arpResponseContainTooltip"))}
             >
               {loading ? t("processing") : `🛡️ ${t("arpResponseContainBtn")}`}
             </button>
             <button
               onClick={() => setPending("blockSmb")}
-              disabled={loading || !domain || !username}
+              disabled={loading || !requirements[1].met}
               className="btn-warning"
+              title={actionTitle(1, t("arpResponseBlockSmbTooltip"))}
             >
               {`🚫 ${t("arpResponseBlockSmb")}`}
             </button>
             <button
               onClick={() => setPending("blockNfs")}
-              disabled={loading || !clientIp}
+              disabled={loading || !requirements[2].met}
               className="btn-warning"
+              title={actionTitle(2, t("arpResponseBlockNfsTooltip"))}
             >
               {`🚫 ${t("arpResponseBlockNfs")}`}
             </button>
             <button
               onClick={() => setPending("disconnect")}
-              disabled={loading || (!(domain && username) && !clientIp)}
+              disabled={loading || !requirements[3].met}
               className="btn-warning"
+              title={actionTitle(3, t("arpResponseDisconnectTooltip"))}
             >
               {`🔌 ${t("arpResponseDisconnect")}`}
             </button>
