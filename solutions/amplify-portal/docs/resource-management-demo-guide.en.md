@@ -112,6 +112,20 @@ Success criterion: the direction renders as `Windows → UNIX` and rows are orde
 Leaving the replacement empty means, per ONTAP's definition, an explicit denial of the
 mapping for that user. The list shows it as `" " (deny)`.
 
+**Moving the evaluation order (index)**
+
+`Edit` rewrites the pattern and the replacement. Changing the evaluation order is a
+separate button.
+
+1. `Move` on the row
+2. Enter the target index (`Execute` stays disabled at the position it already holds)
+3. `Execute`
+
+Success criterion: the row appears at the index given, **and the rules in between are
+renumbered too**. ONTAP evaluates in index order and stops at the first match, so moving a
+rule changes which rule wins. A delete does not renumber, but this move does (measured:
+moving `win_unix` index 2 to 1 leaves the rule that was 1 at index 2).
+
 ---
 
 ### Scenario 4: FlexCache
@@ -130,8 +144,25 @@ Success criterion: the `origin → cache` relationship renders with an arrow, to
 with size, path and Global File Locking state. Creation is asynchronous, so a job ID
 is returned.
 
-Around 10% of the origin volume is a reasonable size. A value below the 1 GiB minimum
-is rejected before the call.
+Around 10% of the origin volume is a reasonable size, but that is guidance, not the floor.
+A FlexCache is a FlexGroup, so the floor is the per-constituent minimum times the number of
+constituents ONTAP chose, and it differs between clusters (measured at 50 GB on the
+validation file system). A smaller request is refused inside the ONTAP job, and the message
+carries the floor for that file system.
+
+**Resize**
+
+A cache is not fixed at the size it was created with. `Resize` on the row opens the panel.
+
+1. `Resize` on the row
+2. Enter the size in GiB (`Apply` stays disabled at the current value)
+3. `Apply`
+
+This is independent of the origin: growing the cache does not change the origin.
+
+Success criterion: a FlexGroup resize continues as an ONTAP job, so right after
+`The resize was accepted` the listing can still show the old size (measured: both growing
+and shrinking ran past 10s). The panel re-reads once more after 20 seconds.
 
 **Write modes**
 
@@ -484,6 +515,43 @@ Confirms the new panels did not break existing behaviour.
 
 ---
 
+### Scenario 14: Renaming a qtree, and quota enforcement
+
+Two operations kept apart from editing. In both cases what happens behind the button is not
+a settings change, so each has its own button and states its effect before it runs.
+
+**Renaming a qtree** — `Storage → Qtrees`
+ONTAP REST: `name` on `PATCH /storage/qtrees/{volume.uuid}/{id}`
+
+1. Select the volume
+2. `Rename` on the row (`Edit` is for the security style and the export policy)
+3. Enter the new name and `Execute`
+
+Success criterion: the name changes and **the id does not**. The name is part of the
+`/vol/qtree` path, so clients mounted or mapped on the old name need to remount. The
+operation requires `confirm`, so there is no route that runs it without that being stated --
+including a direct API call. The volume-root row offers no rename.
+
+**Quota enforcement** — `Storage → Quotas`
+ONTAP REST: `quota.enabled` on `PATCH /storage/volumes/{uuid}`
+
+1. Select the volume
+2. Read the current state on the row above the rule table (`In force` / `Not in force` /
+   `Initializing`)
+3. `Turn on` or `Turn off`
+
+Success criterion: the state switches, and turning it off keeps the rules. ONTAP refuses to
+turn it on for a volume that has no rules, and says so. Just after turning it on the state
+can be `Initializing` -- ONTAP scans the volume first, and no limit applies until it
+finishes. `↻` re-reads the state.
+
+> **Why the state needs showing**: a rule existing and a rule being applied are different
+> things. Limits created on a volume whose enforcement was off did nothing, and the UI gave
+> no way to tell. The field to read is `quota.state`. The field written is `quota.enabled`,
+> which reports `false` even while enforcement is on.
+
+---
+
 ## Checklist
 
 - [ ] Resource management shows 20 cards in 5 categories
@@ -492,6 +560,10 @@ Confirms the new panels did not break existing behaviour.
 - [ ] A FlexClone split reflects as `Splitting n%`
 - [ ] Deleting a FlexCache goes through the two-step confirmation
 - [ ] Creating an `S3 → UNIX` mapping is explicitly refused
+- [ ] Moving a name mapping renumbers the rules in between
+- [ ] A FlexCache resize whose job is still running is not reported as a failure
+- [ ] Renaming a qtree is a separate button from `Edit` and cannot run unconfirmed
+- [ ] Quota enforcement state shows above the rule table, and switching it keeps the rules
 - [ ] SnapMirror break / resync / delete run only after the confirmation row
 - [ ] A Vscan policy can be created, enabled and deleted
 - [ ] The delete button for an enabled FPolicy policy is not clickable

@@ -40,6 +40,11 @@ export function QtreeManager() {
   // derived from the handler's own guard, and a plain string is not assignable to it.
   const [editSecurityStyle, setEditSecurityStyle] = useState<SecurityStyle>("unix");
   const [editExportPolicy, setEditExportPolicy] = useState("default");
+  // Renaming is kept apart from the settings edit. The name is a path component, so a
+  // rename moves what clients have mounted; a security style or export policy changes
+  // who may read what. Putting both behind one button would hide that difference.
+  const [renaming, setRenaming] = useState<Qtree | null>(null);
+  const [renameTo, setRenameTo] = useState("");
 
   const clearSuccess = () => setTimeout(() => setSuccess(null), 3000);
 
@@ -100,6 +105,30 @@ export function QtreeManager() {
         } else setError(data.error || "Create failed");
       }
     } catch (err) { setError(err instanceof Error ? err.message : "Create failed"); }
+  };
+
+  const handleRename = async () => {
+    if (!renaming) return;
+    setError(null);
+    try {
+      const data = await adminMutate<{ success?: boolean }>({
+        action: "renameQtree",
+        params: {
+          volumeName: renaming.volumeName,
+          qtreeId: renaming.id,
+          newName: renameTo.trim(),
+          confirm: true,
+        },
+      });
+      if (data?.success) {
+        setSuccess(t("qtRenamed"));
+        setRenaming(null);
+        setTimeout(() => setSuccess(null), 4000);
+        loadQtrees();
+      } else setError(data?.error || t("rmActionFailed"));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : t("rmActionFailed"));
+    }
   };
 
   const handleSaveEdit = async () => {
@@ -244,7 +273,35 @@ export function QtreeManager() {
                     )}
                   </td>
                   <td>{q.volumeName}</td>
-                  {editing?.id === q.id ? (
+                  {renaming?.id === q.id ? (
+                    <>
+                      <td colSpan={2}>
+                        <span className="peer-accept-row">
+                          <input
+                            type="text"
+                            value={renameTo}
+                            onChange={(e) => setRenameTo(e.target.value)}
+                            aria-label={t("qtRename")}
+                          />
+                          <span className="rm-hint">{t("qtRenameWarning")}</span>
+                        </span>
+                      </td>
+                      <td className="action-cell">
+                        <span className="peer-accept-row">
+                          <button
+                            className="rm-btn-danger-sm"
+                            disabled={!renameTo.trim() || renameTo.trim() === q.name}
+                            onClick={() => void handleRename()}
+                          >
+                            {t("rmExecute")}
+                          </button>
+                          <button className="rm-btn-sm" onClick={() => setRenaming(null)}>
+                            {t("cancel")}
+                          </button>
+                        </span>
+                      </td>
+                    </>
+                  ) : editing?.id === q.id ? (
                     <>
                       <td>
                         <select
@@ -292,6 +349,16 @@ export function QtreeManager() {
                               }}
                             >
                               {t("qtEdit")}
+                            </button>
+                            <button
+                              className="rm-btn-sm"
+                              title={t("qtRenameWarning")}
+                              onClick={() => {
+                                setRenaming(q);
+                                setRenameTo(q.name);
+                              }}
+                            >
+                              {t("qtRename")}
                             </button>
                             <button onClick={() => handleDelete(q.volumeName, q.id, q.name)}
                               className="btn-sm btn-danger">✕</button>

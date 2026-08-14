@@ -135,10 +135,10 @@ Every action is implemented in the Lambda that calls the ONTAP REST API
 | Panel | Read | Create | Modify | Delete |
 |-------|:---:|:---:|:---:|:---:|
 | Volumes | ○ | ○ | ○ resize | ○ |
-| Qtrees | ○ | ○ | ○ security style, export policy | ○ |
-| Quotas | ○ | ○ | ○ change the limits | ○ |
+| Qtrees | ○ | ○ | ○ security style, export policy, rename | ○ |
+| Quotas | ○ | ○ | ○ change the limits, turn per-volume enforcement on and off | ○ |
 | Storage efficiency | ○ | — | — | — |
-| FlexCache | ○ | ○ | ○ enable/disable write-back | ○ |
+| FlexCache | ○ | ○ | ○ enable/disable write-back, resize | ○ |
 | FlexClone | ○ | ○ | ○ split | — |
 
 ### Access control
@@ -149,7 +149,7 @@ Every action is implemented in the Lambda that calls the ONTAP REST API
 | SMB shares | ○ | ○ | ○ | ○ |
 | QoS policies | ○ | ○ | ○ | ○ |
 | Local users | ○ | ○ user/group | ○ change password, enable/disable, add and remove members | ○ user/group |
-| Name mapping | ○ | ○ | ○ pattern, replacement | ○ |
+| Name mapping | ○ | ○ | ○ pattern, replacement, move the evaluation order (index) | ○ |
 
 ### Data protection
 
@@ -177,21 +177,26 @@ Every action is implemented in the Lambda that calls the ONTAP REST API
 
 ### Not there yet
 
-Of the `—` entries above, these are the ones where ONTAP offers a way and the portal does
-not reach it. Some other `—` entries are operations ONTAP itself does not offer (shortening
-a SnapLock retention, for instance), which is a different thing.
+Of the `—` entries above, there is currently nothing where ONTAP offers a way and the portal
+does not reach it. What remains as `—` are operations ONTAP itself does not offer (shortening
+a SnapLock retention, deleting a FlexClone), which is a different thing.
 
-| Missing | Current workaround | What ONTAP offers |
-|---------|-------------------|-------------------|
-| Resize a FlexCache | Resize it as a volume, through the Volumes panel | `PATCH /storage/volumes/{uuid}` |
-| Rename a qtree | Delete and recreate | `name` on `PATCH /storage/qtrees/{volume.uuid}/{id}` |
-| Move a name mapping's evaluation order (index) | Delete and recreate | `new_index` on the `PATCH` |
-| Enable or disable quotas per volume | ONTAP CLI | `quota.enabled` on `PATCH /storage/volumes/{uuid}` |
+The four entries that used to be listed here -- resizing a FlexCache, renaming a qtree,
+moving a name mapping's evaluation order, and per-volume quota enforcement -- are all
+implemented, and each was exercised from the UI against the validation FSx for ONTAP file
+system (`9.18.1P3D1`).
 
-> **Why renaming a qtree and moving an index are listed separately**: both are moves rather
+> **Why renaming a qtree and moving an index have their own buttons**: both are moves rather
 > than edits. A qtree's name is part of the path clients have mounted, and a name mapping's
-> index is the evaluation order itself. Listing them next to a limit change or a security
-> style change would imply the same blast radius.
+> index is the evaluation order itself. Behind the same button as a limit change or a
+> security style change, they would read as the same blast radius. The rename additionally
+> requires `confirm`, and both state what moves before the operation runs.
+
+> **A quota rule and its enforcement are separate things**: limits created on a volume do
+> nothing while enforcement is off for that volume. That state was not visible in the UI
+> before -- finding out meant the ONTAP CLI. The quota panel now shows it above the rules
+> (in force / not in force / initializing) with the switch next to it. ONTAP refuses to
+> switch enforcement on for a volume that has no rules.
 
 ### Switching the SVM scope
 
@@ -205,8 +210,11 @@ selection is never sent to an action that does not read it, which the unread-par
 check would fail on.
 
 The SVM FSx keeps for itself, suffixed `-fsx-mpu-svm`, is left out of the choices: it holds
-nothing an operator manages, so selecting it would only return an empty list. The selection
-resets to the default (the configured SVM) on a page reload.
+nothing an operator manages, so selecting it would only return an empty list.
+
+The selection is kept for the life of the tab, so a reload does not send you back to
+choosing it again. It is held in `sessionStorage` and goes away when the tab closes --
+not `localStorage`, so a choice made days ago does not become the target of today's work.
 
 ---
 

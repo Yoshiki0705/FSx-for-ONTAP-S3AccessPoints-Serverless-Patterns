@@ -499,6 +499,12 @@ export interface ResourceMgmtActionParams {
     acknowledgeIrreversible?: true;
     retentionDays?: number;
   };
+  moveNameMapping: {
+    direction?: string;
+    index?: number;
+    newIndex?: number;
+    svm?: string;
+  };
   putS3ObjectLockRetention: {
     bucket: string;
     acknowledgeIrreversible?: true;
@@ -513,6 +519,13 @@ export interface ResourceMgmtActionParams {
     groupSid: string;
     memberName: string;
     groupName?: string;
+    svm?: string;
+  };
+  renameQtree: {
+    confirm: boolean;
+    newName: string;
+    qtreeId: QtreeId;
+    volumeName: string;
     svm?: string;
   };
   resizeVolume: {
@@ -546,6 +559,10 @@ export interface ResourceMgmtActionParams {
     enabled?: boolean;
     protocol?: "nfs" | "cifs" | "s3";
     svm?: string;
+  };
+  setVolumeQuotaEnabled: {
+    volumeUuid: VolumeUuid;
+    enabled?: boolean;
   };
   setVscanEnabled: {
     enabled?: boolean;
@@ -1026,7 +1043,9 @@ export const ACTIONS_ACCEPTING_SVM: ReadonlySet<string> = new Set([
   "listVolumes",
   "listVolumesFiltered",
   "listVscanPolicies",
+  "moveNameMapping",
   "removeGroupMember",
+  "renameQtree",
   "setFpolicyPolicyEnabled",
   "setProtocolServiceEnabled",
   "setVscanEnabled",

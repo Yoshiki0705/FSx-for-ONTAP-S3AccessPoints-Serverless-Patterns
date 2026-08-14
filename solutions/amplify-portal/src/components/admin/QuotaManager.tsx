@@ -1,9 +1,9 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "../../i18n";
 import { errorMessage, unwrap } from "../../lib/portalQuery";
 import { adminMutate, dispatch } from "../../lib/dispatch";
-import { VolumeSelector } from "./VolumeSelector";
+import { VolumeSelector, type VolumeInfo } from "./VolumeSelector";
 
 /** A rule as `listQuotaRules` returns it.
  *
@@ -51,14 +51,32 @@ function ruleTarget(r: QuotaRule | QuotaUsage): string {
   return r.qtreeName || r.users?.join(", ") || r.groupName || "-";
 }
 
+/** How to describe `quota.state` and what the button next to it should offer. */
+function enforcement(state: string | undefined) {
+  const value = state || "off";
+  return {
+    // "initializing" is neither on nor off: ONTAP is scanning the volume and the
+    // limits are not being applied yet. Offering "disable" there would be wrong,
+    // and offering "enable" would suggest nothing had happened.
+    busy: value === "initializing",
+    on: value === "on" || value === "mixed",
+  };
+}
+
 export function QuotaManager() {
   const { t } = useTranslation();
+  const queryClient = useQueryClient();
   const [actionError, setActionError] = useState<string | null>(null);
   const setError = setActionError;
   const [success, setSuccess] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<"rules" | "report">("rules");
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [volumeName, setVolumeName] = useState("");
+  // The selected volume, kept whole rather than by name alone: enforcement is a property
+  // of the volume and is toggled by UUID. Rules can exist on a volume that is not
+  // enforcing them, which is what this panel could not show before.
+  const [volume, setVolume] = useState<VolumeInfo | null>(null);
+  const [togglingQuota, setTogglingQuota] = useState(false);
 
   // Create form state
   const [newType, setNewType] = useState<"tree" | "user" | "group">("tree");
@@ -109,6 +127,30 @@ export function QuotaManager() {
     actionError ??
     errorMessage(rulesQuery.error ?? reportQuery.error, "Failed to load quotas");
 
+  // Enforcement is read on its own rather than taken from the selector's list.
+  //
+  // The list is loaded once and the selector notifies the parent once per volume, so a
+  // `VolumeInfo` captured at selection time keeps the state it was captured with -- the
+  // button would still offer "enable" on a volume that is now enforcing. This query is
+  // also what lets `initializing` be followed through to `on`, which is a real interval
+  // on a volume with data.
+  const quotaStateQuery = useQuery({
+    queryKey: ["admin", "volumeQuotaState", volume?.uuid ?? null],
+    enabled: !!volume,
+    queryFn: () =>
+      unwrap<{ volume?: { quota?: { state?: string } } }>(
+        dispatch("adminQuery", {
+          action: "getVolume",
+          params: { volumeUuid: volume!.uuid },
+        }),
+        // `quota.state` and not `quota.enabled`: `enabled` is the last request, and on
+        // 9.18.1P3D1 a volume enforcing quotas reports `state: "on"` with `enabled`
+        // still false.
+      ).then((d) => d?.volume?.quota?.state ?? ""),
+  });
+  // The selector's value is the fallback so the row is not blank on first paint.
+  const current = enforcement(quotaStateQuery.data ?? volume?.quotaState);
+
   const handleCreate = async () => {
     setError(null);
     try {
@@ -130,6 +172,43 @@ export function QuotaManager() {
         } else setError(data.error || "Create failed");
       }
     } catch (err) { setError(err instanceof Error ? err.message : "Create failed"); }
+  };
+
+  /**
+   * Turn enforcement on or off for the selected volume.
+   *
+   * A quota rule and its enforcement are separate, and the panel showed only the first:
+   * limits could be created and edited on a volume that was not enforcing any of them,
+   * which reads as in force. Finding out meant the ONTAP CLI.
+   */
+  const handleToggleQuota = async () => {
+    if (!volume) return;
+    const enabling = !current.on;
+    setError(null);
+    setTogglingQuota(true);
+    try {
+      const data = await adminMutate<{ success?: boolean; quotaState?: string }>({
+        action: "setVolumeQuotaEnabled",
+        params: { volumeUuid: volume.uuid, enabled: enabling },
+      });
+      if (data?.success) {
+        setSuccess(enabling ? t("quEnforcementEnabled") : t("quEnforcementDisabled"));
+        setTimeout(() => setSuccess(null), 4000);
+        // The handler reads the state back rather than echoing the request, so the
+        // response already says what the volume is doing -- `initializing` included.
+        queryClient.setQueryData(
+          ["admin", "volumeQuotaState", volume.uuid],
+          data.quotaState ?? "",
+        );
+        // The selector's list carries the old state, and other panels read it too.
+        void queryClient.invalidateQueries({ queryKey: ["admin", "volumeSelector"] });
+        loadRules();
+      } else setError(data?.error || t("rmActionFailed"));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : t("rmActionFailed"));
+    } finally {
+      setTogglingQuota(false);
+    }
   };
 
   const handleSaveEdit = async () => {
@@ -183,7 +262,17 @@ export function QuotaManager() {
         <div className="panel-actions">
           <VolumeSelector
             label={t("rmSelectVolume")}
-            onSelect={(vol) => setVolumeName(vol.name)}
+            onSelect={(vol) => {
+              setVolumeName(vol.name);
+              setVolume(vol);
+              // A failure belongs to the volume it happened on. ONTAP refuses to switch
+              // enforcement on for a volume with no rules, and that message names the
+              // volume -- left on screen after the selection changed, it reads as a
+              // statement about the volume now shown.
+              setActionError(null);
+              setSuccess(null);
+              setEditingUuid(null);
+            }}
             autoSelectFirst
             excludeFlexCache
           />
@@ -198,6 +287,57 @@ export function QuotaManager() {
 
       {error && <div className="error-message">{error}</div>}
       {success && <div className="success-message">{success}</div>}
+
+      {/* Enforcement, above the rules rather than beside the volume picker: a rule
+          list means nothing until the reader knows whether the volume applies any of
+          them, so this is the first thing on the way down to the table. */}
+      {volume && (
+        <div className="rm-enforcement-row">
+          <span>
+            {t("quEnforcement")}:{" "}
+            <strong
+              className={
+                current.on
+                  ? "rm-enforcement-on"
+                  : current.busy
+                    ? "rm-enforcement-busy"
+                    : "rm-enforcement-off"
+              }
+            >
+              {current.busy
+                ? t("quEnforcementInitializing")
+                : current.on
+                  ? t("quEnforcementStateOn")
+                  : t("quEnforcementStateOff")}
+            </strong>
+          </span>
+          <button
+            className={current.on ? "rm-btn-sm" : "rm-btn-primary"}
+            disabled={togglingQuota || current.busy}
+            onClick={() => void handleToggleQuota()}
+          >
+            {current.on ? t("quDisableEnforcement") : t("quEnableEnforcement")}
+          </button>
+          {/* Re-read, because `initializing` ends on ONTAP's schedule and nothing
+              tells the portal when it does. */}
+          <button
+            className="refresh-btn"
+            aria-label={t("quEnforcementRecheck")}
+            title={t("quEnforcementRecheck")}
+            disabled={quotaStateQuery.isFetching}
+            onClick={() => void quotaStateQuery.refetch()}
+          >
+            ↻
+          </button>
+          <span className="rm-hint">
+            {current.busy
+              ? t("quEnforcementInitializingHint")
+              : current.on
+                ? t("quEnforcementOnHint")
+                : t("quEnforcementOffHint")}
+          </span>
+        </div>
+      )}
 
       {showCreateForm && (
         <div className="create-form">

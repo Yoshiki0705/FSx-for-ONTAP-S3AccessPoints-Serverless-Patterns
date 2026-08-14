@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useTranslation } from "../../i18n";
 import { errorMessage } from "../../lib/portalQuery";
 import { adminMutate, adminQuery } from "../../lib/dispatch";
+import type { VolumeUuid } from "../../lib/dispatchActions";
 
 // The client used to be built here with `{ authMode: "userPool" }`. That is already
 // the schema's `defaultAuthorizationMode`, so the shared client behaves identically
@@ -17,7 +18,11 @@ interface FlexCacheOrigin {
 
 interface FlexCacheVolume {
   name: string;
-  uuid: string;
+  /**
+   * The cache's UUID, which is also its volume's: a FlexCache *is* a volume with an
+   * origin attached. Branded here, where it arrives, so the resize below can take it.
+   */
+  uuid: VolumeUuid;
   svmName: string;
   sizeGiB: number;
   path: string;
@@ -53,6 +58,11 @@ export function FlexCacheManager() {
   const [newWriteback, setNewWriteback] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
   const [togglingWriteback, setTogglingWriteback] = useState<string | null>(null);
+  // A cache too small for its working set evicts constantly, which is a sizing decision
+  // made while looking at the cache rather than at the volume list -- so the resize is
+  // offered here even though it is the volume resize underneath.
+  const [resizing, setResizing] = useState<FlexCacheVolume | null>(null);
+  const [resizeTo, setResizeTo] = useState(0);
 
   const clearSuccess = () => setTimeout(() => setSuccess(null), 5000);
 
@@ -157,6 +167,33 @@ export function FlexCacheManager() {
       setError(e instanceof Error ? e.message : t("rmActionFailed"));
     } finally {
       setTogglingWriteback(null);
+    }
+  };
+
+  const handleResize = async () => {
+    if (!resizing) return;
+    setError(null);
+    try {
+      const data = await adminMutate<{ success?: boolean; pending?: boolean }>({
+        action: "resizeVolume",
+        params: { volumeUuid: resizing.uuid, newSizeGiB: resizeTo },
+      });
+      if (data?.success) {
+        // A FlexGroup resize -- and every FlexCache is one -- runs as an ONTAP job that
+        // outlives the request, in both directions. Measured on 9.18.1P3D1: the job was
+        // still going after 10s while the new size was already reported. So this says
+        // "accepted, and the number below may lag" rather than claiming either.
+        setSuccess(data.pending ? t("fcacheResizePending") : t("fcacheResized"));
+        setResizing(null);
+        clearSuccess();
+        loadCaches();
+        // One late refresh, for the case above.
+        setTimeout(() => loadCaches(), 20000);
+      } else {
+        setError(data?.error || t("rmActionFailed"));
+      }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : t("rmActionFailed"));
     }
   };
 
@@ -404,6 +441,16 @@ export function FlexCacheManager() {
                   <span className="lu-badge active">{cache.origins.length} origin(s)</span>
                   <button
                     className="rm-btn-sm"
+                    title={t("fcacheResizeHint")}
+                    onClick={() => {
+                      setResizing(cache);
+                      setResizeTo(Math.round(cache.sizeGiB));
+                    }}
+                  >
+                    {t("fcacheResize")}
+                  </button>
+                  <button
+                    className="rm-btn-sm"
                     disabled={togglingWriteback === cache.uuid}
                     title={cache.writebackEnabled ? t("fcacheWritebackDisableTitle") : t("fcacheWritebackEnableTitle")}
                     onClick={() => void handleToggleWriteback(cache)}
@@ -432,6 +479,33 @@ export function FlexCacheManager() {
                   )}
                 </div>
               </div>
+              {resizing?.uuid === cache.uuid && (
+                <div className="lu-members-panel">
+                  <div className="rm-form-row">
+                    <label htmlFor={`fc-size-${cache.uuid}`}>{t("fcacheSizeLabel")} (GiB)</label>
+                    <input
+                      id={`fc-size-${cache.uuid}`}
+                      type="number"
+                      min={1}
+                      value={resizeTo}
+                      onChange={e => setResizeTo(Number(e.target.value))}
+                    />
+                  </div>
+                  <p className="rm-hint">{t("fcacheResizeHint")}</p>
+                  <div className="rm-form-actions">
+                    <button
+                      className="rm-btn-primary"
+                      disabled={resizeTo < 1 || resizeTo === Math.round(cache.sizeGiB)}
+                      onClick={() => void handleResize()}
+                    >
+                      {t("rmApply")}
+                    </button>
+                    <button className="rm-btn-secondary" onClick={() => setResizing(null)}>
+                      {t("cancel")}
+                    </button>
+                  </div>
+                </div>
+              )}
               {expandedUuid === cache.uuid && (
                 <div className="lu-members-panel">
                   {cache.origins.length === 0 ? (
