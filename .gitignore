@@ -169,6 +169,11 @@ docs/screenshots/raw/
 
 # Per-UC verification results contain account IDs, S3 AP aliases, resource IDs
 **/docs/verification-results.md
+# ...except the portal's, which carries placeholders only and whose EN counterpart is already
+# published. Keeping the JA side ignored gave the two halves of one document different
+# visibility: a JA reader on GitHub had no verification record, and no check could hold the
+# two in step. Verified to contain no account ID, no file system ID and no S3 AP alias.
+!solutions/amplify-portal/docs/verification-results.md
 .playwright-mcp/
 
 # Local rebuild manifests contain real S3 AP aliases / environment specifics
