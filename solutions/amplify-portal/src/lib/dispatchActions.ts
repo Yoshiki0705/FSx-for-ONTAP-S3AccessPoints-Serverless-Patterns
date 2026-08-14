@@ -155,10 +155,14 @@ export interface ResourceMgmtActionParams {
     name: string;
     originVolume: string;
     sizeGiB: number;
+    aggregates?: string[];
+    constituentsPerAggregate?: number;
     originSvm?: string;
     path?: string;
     prepopulatePaths?: string[];
     svm?: string;
+    useTieredAggregate?: boolean;
+    writebackEnabled?: boolean;
   };
   createFlexClone: {
     cloneName: string;
@@ -224,6 +228,16 @@ export interface ResourceMgmtActionParams {
     svm?: string;
     type?: string;
     userName?: string;
+  };
+  createSnapmirror: {
+    destinationVolume: string;
+    createDestination?: boolean;
+    initialize?: boolean;
+    policy?: string;
+    sourceCluster?: string;
+    sourcePath?: string;
+    svm?: string;
+    tieringSupported?: boolean;
   };
   createSnapshotPolicy: {
     name: string;
@@ -319,6 +333,10 @@ export interface ResourceMgmtActionParams {
   deleteSnapmirror: {
     confirm: boolean;
     relationshipUuid: SnapmirrorUuid;
+  };
+  deleteSnapshotPolicy: {
+    confirm: boolean;
+    policyUuid: PolicyUuid;
   };
   deleteSvmPeer: {
     confirm: boolean;
@@ -506,6 +524,10 @@ export interface ResourceMgmtActionParams {
     confirm: boolean;
     relationshipUuid: SnapmirrorUuid;
   };
+  setFlexcacheWriteback: {
+    uuid: string;
+    enabled?: boolean;
+  };
   setFpolicyPolicyEnabled: {
     enabled?: boolean;
     name?: string;
@@ -573,6 +595,10 @@ export interface ResourceMgmtActionParams {
   };
   updateSnapmirrorNow: {
     relationshipUuid: SnapmirrorUuid;
+  };
+  updateSvmPeerApplications: {
+    peerUuid: string;
+    applications?: string[];
   };
 }
 

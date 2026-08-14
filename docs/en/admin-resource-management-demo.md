@@ -90,7 +90,7 @@ aws fsx describe-storage-virtual-machines \
 | **FPolicy** | File access event notification and audit configuration | `/protocols/fpolicy` |
 | **Vscan** | On-access virus scanning setup + vendor guidance | `/protocols/vscan` |
 | **SnapMirror** | Replication lifecycle: sync, break, resync, quiesce, delete + transfer history | `/snapmirror/relationships`, `/snapmirror/relationships/{id}/transfers` |
-| **FlexCache** | Read cache volumes: create (async), list, delete (3-step auto) with origin visualization | `/storage/flexcache/flexcaches` |
+| **FlexCache** | Cache volumes: create (async), list, delete (3-step auto), switch write mode, with origin visualization | `/storage/flexcache/flexcaches` |
 
 ## Demo Scenarios
 
@@ -270,7 +270,7 @@ aws fsx describe-storage-virtual-machines \
 
 1. Navigate to **Admin > Resources > FlexCache** (⚡ icon in Storage category)
 2. If no FlexCache volumes exist, observe the guidance panel:
-   - Explanation of what FlexCache does (remote read caching)
+   - Explanation of what FlexCache does (caching a remote volume: reads are accelerated, and writes are served in either of two modes)
    - Typical use cases (EDA/CAD, build pipelines, AI inference data)
    - Links to NetApp FlexCache docs and AWS FSx for ONTAP volume management
 3. Click **+ FlexCache 作成** → the creation form opens with:
@@ -424,6 +424,7 @@ aws ec2 describe-route-tables \
 | `docs/screenshots/storage-efficiency-panel.png` | Storage Efficiency dashboard |
 | `docs/screenshots/08-arp-admin-panel-en.png` | ARP/AI Administration with 9 volumes |
 | `docs/screenshots/snapshots-version-history.png` | Snapshot Version History with hourly/weekly/daily |
+| `docs/screenshots/snapshot-lock-confirm.png` | Snapshot lock confirmation dialog (retention input, and that the action cannot be undone) |
 | `docs/screenshots/quota-manager.png` | Quota Manager with volume selector and rule table |
 | `docs/screenshots/quota-create-form.png` | Quota creation form (type, target, limits) |
 | `solutions/amplify-portal/docs/screenshots/smb-shares-panel.png` | SMB Shares with encryption toggle + CA info + delete button |
@@ -435,6 +436,7 @@ aws ec2 describe-route-tables \
 | `docs/screenshots/vscan-setup-guidance.png` | Vscan 5-step setup guidance with 6-vendor comparison table |
 | `docs/screenshots/flexclone-manager.png` | FlexClone panel with clone list and create form |
 | `docs/screenshots/snapmirror-status.png` | SnapMirror relationships with state badges, RPO warning, action buttons |
+| `docs/screenshots/snapmirror-create-form.png` | SnapMirror create form (SVM peer selection, prerequisites, preview of the relationship that will be created) |
 | `docs/screenshots/local-user-manager.png` | Local User Manager (Users tab with CRUD operations) |
 | `docs/screenshots/name-mapping-manager.png` | Name Mapping rules with direction selector and create form |
 | `docs/screenshots/flexcache-manager.png` | FlexCache panel with create form (origin datalist, prepopulate paths) and cache list |
