@@ -3,9 +3,11 @@ import { useQuery } from "@tanstack/react-query";
 import { dispatch } from "../lib/dispatch";
 import { errorMessage, failureDiagnosis, unwrap } from "../lib/portalQuery";
 import { useTranslation } from "../i18n";
+import { useActiveSvm } from "../hooks/useActiveSvm";
 import { useStorageAdmin } from "../hooks/useStorageAdmin";
 import { ArpResponseActions } from "./ArpResponseActions";
 import { OntapFailureNotice } from "./OntapFailureNotice";
+import { SvmSelector } from "./admin/SvmSelector";
 import { VolumeSelector } from "./admin/VolumeSelector";
 
 interface ArpData {
@@ -38,6 +40,12 @@ export function ArpStatus() {
   // as a fixed badge, so protection turned on anywhere else looked like protection that
   // had not taken effect.
   const [selectedVolume, setSelectedVolume] = useState("");
+  // A volume name means nothing outside its SVM, so the selection cannot outlive a
+  // scope change. Derived rather than cleared in an effect: an effect would render once
+  // with the stale pair, which is the request that would be sent.
+  const activeSvm = useActiveSvm();
+  const [svmAtSelection, setSvmAtSelection] = useState(activeSvm);
+  const volumeInScope = svmAtSelection === activeSvm ? selectedVolume : "";
 
   const {
     data,
@@ -45,12 +53,14 @@ export function ArpStatus() {
     error: queryError,
     refetch,
   } = useQuery({
-    queryKey: ["protection", "getArpStatus", selectedVolume || null],
+    queryKey: ["protection", "getArpStatus", activeSvm || null, volumeInScope || null],
     queryFn: () =>
       unwrap<{ volumeName?: string; arp?: ArpData }>(
         dispatch("protectionQuery", {
           action: "getArpStatus",
-          params: selectedVolume ? { volumeName: selectedVolume } : {},
+          // `svm` is filled in by dispatch from the active scope; naming the volume is
+          // this page's part.
+          params: volumeInScope ? { volumeName: volumeInScope } : {},
         }),
       ),
   });
@@ -59,29 +69,10 @@ export function ArpStatus() {
   const volumeName = data?.volumeName ?? "";
   const error = errorMessage(queryError, "Failed to load ARP status");
 
-  // Only while there is nothing to show. `isPending` is true again for every new query
-  // key, so returning the loading screen on it replaced the whole page -- including the
-  // volume selector -- and the selector came back with its state reset. The selection
-  // survived in the parent, so the badge was right while the dropdown read "select a
-  // volume": one control disagreeing with another about the same fact.
-  if (loading && !data) {
-    return (
-      <div className="protection-section">
-        <h2>🛡️ {t("arpTitle")}</h2>
-        <p className="loading">{t("loading")}</p>
-      </div>
-    );
-  }
-
-  // No ARP data. Which of the five reasons it was is the handler's to say.
-  if (error) {
-    return (
-      <div className="protection-section">
-        <h2>🛡️ {t("arpTitle")}</h2>
-        <OntapFailureNotice error={error} {...failureDiagnosis(queryError)} />
-      </div>
-    );
-  }
+  // Neither the loading line nor the failure notice returns early any more, because both
+  // returned above the scope row: naming an SVM the volume does not exist on unmounted
+  // the controls needed to name another one, and a reload was the only way back.
+  // Measured on fsxsvm02, which has no `vol1`.
 
   // --- Connected state: System Manager-inspired layout ---
   const getStateDotClass = (state: string): string => {
@@ -158,16 +149,42 @@ export function ArpStatus() {
             {t("volume")}: {volumeName}
           </span>
         )}
-        {isStorageAdmin === true && (
-          <VolumeSelector
-            label={t("rmSelectVolume")}
-            onSelect={(vol) => setSelectedVolume(vol.name)}
-          />
-        )}
+
         <button onClick={() => void refetch()} className="refresh-btn" title={t("refresh")}>
           ↻
         </button>
       </div>
+
+      {/* The scope, on a row of its own: file system (fixed by the connection) then SVM
+          then volume. On the title row these overflowed and the refresh button dropped
+          below them, and a hierarchy that wraps does not read as one. */}
+      {isStorageAdmin === true && (
+        <div className="protection-scope">
+          {/* No leading "scope" label: the two controls are labelled already, and a
+              third label above them read as a duplicate of the SVM one. The chevron
+              carries the narrowing instead. */}
+          <SvmSelector />
+          <span className="protection-scope-chain" aria-hidden="true">›</span>
+          <VolumeSelector
+            label={t("rmSelectVolume")}
+            onSelect={(vol) => {
+              // null when the SVM changed under the pick, which is the same conclusion
+              // `volumeInScope` reaches on its own. Both are kept: this one is the
+              // selector's report, that one holds even if a report is missed.
+              setSelectedVolume(vol?.name ?? "");
+              setSvmAtSelection(activeSvm);
+            }}
+          />
+        </div>
+      )}
+
+      {/* `isPending` is true again for every new query key, so a bare `loading` here
+          would blank the panel on each scope change. Only the first load has nothing
+          to show. */}
+      {loading && !data && <p className="loading">{t("loading")}</p>}
+
+      {/* No ARP data. Which of the five reasons it was is the handler's to say. */}
+      {error && <OntapFailureNotice error={error} {...failureDiagnosis(queryError)} />}
 
       {arp && (
         <>

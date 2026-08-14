@@ -174,9 +174,12 @@ export function QtreeManager() {
       <div className="panel-header">
         <h3>{t("rmQtrees")}</h3>
         <div className="panel-actions">
+          {/* Empty on null: the qtree the form creates goes into the selected volume,
+              and a name left over from another SVM could resolve to a different volume
+              that happens to share it. */}
           <VolumeSelector
             label=""
-            onSelect={(vol) => setFilterVolume(vol.name)}
+            onSelect={(vol) => setFilterVolume(vol?.name ?? "")}
             autoSelectFirst
             enableSearch
             excludeFlexCache
