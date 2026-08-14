@@ -148,7 +148,7 @@ ONTAP の REST リファレンスは、DELETE の応答として「削除は成�
 [アップグレード準備の手順](https://docs.netapp.com/us-en/ontap-systems-upgrade/upgrade-arl-auto-app-9151/complete-preparation-for-upgrade.html)
 に明記があります。
 
-### A7. ファイル操作（S3 Access Point 経由）
+### A7. ファイル操作（S3 Access Point 経由） — **実施済み（2026-08-15、5 GiB 超だけ前提を用意できず未検証）**
 
 | 項目 | 内容 |
 |------|------|
@@ -176,6 +176,14 @@ ONTAP の REST リファレンスは、DELETE の応答として「削除は成�
 presign が v2 になる経路があり、ONTAP 側の v2 対応は 9.16.1 以降）。AWS の互換性表は presigned
 URL を「非対応」と記載していますが実測では動作しており、AWS Support がドキュメント修正を提出
 済み・**未公開**です。本番前提にはしない扱いを継続します（[S3 AP 互換性メモ](../../../docs/s3ap-compatibility-notes.md)）。
+
+実測: `createUploadLink` は SigV2 かつグローバルエンドポイントに署名していたため、PUT が 301 で失敗して
+いました（署名が `host` を含むのでリダイレクトを追えない）。`signature_version="s3v4"` と
+`addressing_style="virtual"` の両方を指定して修正済みで、修正後は HTTP 200 になります。5 GiB を超える
+オブジェクトは、作るのにマルチパートアップロードが必要で、それがこの Access Point で失敗する操作その
+ものなので前提を用意できません。代わりにコピー前のサイズ判定を入れ、理由付きで拒否するようにしました。
+また **フォルダーは UI から削除できない**ことが分かりました（`trashFile` はフォルダーを拒否し、
+`deleteFileForever` は `.trash/` 配下限定）。
 
 ### A8. ARP の状態変更 — **実測で前提が崩れました（2026-08-15）**
 

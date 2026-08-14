@@ -77,6 +77,10 @@ Qtree・クォータルールはすべて削除し、元の状態に戻してい
 | SMB 共有の暗号化トグル（A2） | `updateCifsShare` の ON / OFF が一覧に即反映される | 同上 |
 | クォータルールの削除（A5） | Qtree 向け tree ルールを作ると ONTAP が**既定の tree ルール（qtree 名が空）も自動作成する**。Qtree 側だけ削除すると既定ルールが残り、使用状況レポートにその Qtree が出続けるので、削除した規則が残っているように見える。削除された規則の上限はレポートから即座に消える（適用の off → on を待たない）。**適用そのものが続くかは、この 2 つの読み取りでは観測できない** | [Delete a quota policy rule](https://docs.netapp.com/us-en/ontap-restapi-9171/delete-storage-quota-rules-.html) |
 | クォータ適用と使用状況レポート（A5） | 適用を off にするとレポートは 0 件になり、on に戻すと再び出る | 同上 |
+| ファイル操作 8 種（A7） | `createFolder` / `createUploadLink` / `copyFile` / `renameFile` / `moveFile` / `trashFile` / `restoreFromTrash` / `deleteFileForever` を実機で一巡。上書き拒否、ごみ箱外の完全削除拒否、承認フラグ無しの拒否も確認 | [S3 AP の罠](../../../docs/agent/pitfalls-s3ap-ontap.md) |
+| アップロードリンク（A7） | **修正して初めて動作**。`generate_presigned_url` の既定は presign が SigV2（`AWSAccessKeyId` / `Signature`）で、しかもグローバルエンドポイントに対して署名するため、PUT が 301 PermanentRedirect（リージョンエンドポイントを案内）で失敗していた。署名は `host` を含むのでリダイレクトを追えない。`signature_version="s3v4"` と `addressing_style="virtual"` の両方が必要（v4 だけではホストがグローバルのまま）。修正後は HTTP 200 で 27 バイトのオブジェクトが一覧に出る | 同上 |
+| 5 GiB を超えるコピー（A7） | **前提を用意できないため未検証**。5 GB を超えるオブジェクトを作るにはマルチパートアップロードが必要で、それはこの Access Point で失敗する操作そのもの。代わりに、コピー前にサイズを見て理由付きで拒否するガードを入れた（単体テストのみ、実機の 5 GiB 超オブジェクトでは未確認） | 同上 |
+| フォルダーの削除（A7） | **できない**。`createFolder` はあるが、`trashFile` はフォルダーを拒否し（マーカーだけ複製して中身を取り残すため）、`deleteFileForever` は `.trash/` 配下限定。UI から作ったフォルダーは UI から消せない | 同上 |
 
 ## 実機 読み取り確認済み（書き込み系は未確認）
 

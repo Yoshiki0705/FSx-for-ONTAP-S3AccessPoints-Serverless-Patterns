@@ -5,6 +5,7 @@ import logging
 import os
 
 import boto3
+from botocore.config import Config
 
 from shared.portal_path_scope import MAX_KEY_BYTES  # noqa: F401  (kept for callers/tests)
 from shared.portal_path_scope import allowed_prefixes as _shared_allowed_prefixes
@@ -13,7 +14,22 @@ from shared.portal_path_scope import reject_key as _reject_key
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
-s3 = boto3.client("s3")
+# SigV4 is named rather than left to the default, because the default is not v4 for
+# presigning: `generate_presigned_url` produced a v2 URL (`AWSAccessKeyId`, `Signature`,
+# `Expires`) against the global endpoint, and S3 answered the upload with
+# 301 PermanentRedirect naming the regional one. The upload link the portal handed out
+# had never worked. Measured 2026-08-15.
+#
+# FSx for ONTAP's S3 support requires v4 as well; v2 arrives only in ONTAP 9.16.1, so a
+# v2 URL is not something to rely on even where it is accepted.
+#
+# `addressing_style` is named for the same reason. Under the default (`auto`) botocore
+# presigns against the global `s3.amazonaws.com` even with a region set, and S3 answers
+# 301 with the regional host -- which the signature cannot follow, because it covers
+# `host`. Asking for virtual addressing puts the region in the host that gets signed:
+#   auto    -> <alias>.s3.amazonaws.com               (301, unusable)
+#   virtual -> <alias>.s3.ap-northeast-1.amazonaws.com
+s3 = boto3.client("s3", config=Config(signature_version="s3v4", s3={"addressing_style": "virtual"}))
 
 # Group → AP mapping (JSON from environment variable)
 GROUP_AP_MAPPING = json.loads(os.environ.get("GROUP_AP_MAPPING", "{}"))
@@ -75,6 +91,42 @@ def _object_exists(bucket: str, key: str) -> bool:
         return True
     except Exception:
         return False
+
+
+# The largest object a single CopyObject can handle. Every rename, move, copy, trash and
+# restore in this handler is a CopyObject, so this is the ceiling on all of them.
+#
+# Past it the documented route is multipart copy (UploadPartCopy), and on FSx for ONTAP
+# S3 Access Points that call is listed as supported and answers `NoSuchKey` when measured.
+# So there is no route past this limit from here, and the honest thing is to say so before
+# copying rather than to surface whichever error S3 returns partway through.
+COPY_LIMIT_BYTES = 5 * 1024 * 1024 * 1024
+
+
+def _too_large_to_copy(bucket: str, key: str) -> str:
+    """The reason `key` cannot be copied, or "" when it can.
+
+    Args:
+        bucket: The Access Point alias.
+        key: The object about to be copied.
+
+    Returns:
+        A message naming the size and the limit, or "" when the object is within it
+        or its size cannot be read. An unreadable head is not treated as a refusal:
+        the copy that follows reports the real reason.
+    """
+    try:
+        size = int(s3.head_object(Bucket=bucket, Key=key)["ContentLength"])
+    except Exception:
+        return ""
+    if size <= COPY_LIMIT_BYTES:
+        return ""
+    return (
+        f"{key} is {size / 1024**3:.1f} GiB. A single copy is limited to 5 GiB, and the "
+        "multipart copy that would lift the limit is not usable on this Access Point, so "
+        "this operation cannot be completed from the portal. Move the file over NFS or SMB "
+        "instead."
+    )
 
 
 def _list_notifications(event, user_groups):
@@ -199,6 +251,9 @@ def handler(event, context):
                 "trashKey": "",
                 "error": "key names a folder. Trashing a folder would copy the marker and leave its contents behind",
             }
+        oversize = _too_large_to_copy(ap_alias, key)
+        if oversize:
+            return {"success": False, "trashKey": "", "error": oversize}
         trash_key = _scoped_trash_key(key)
         try:
             s3.copy_object(Bucket=ap_alias, CopySource=f"{ap_alias}/{key}", Key=trash_key)
@@ -225,6 +280,9 @@ def handler(event, context):
                 "restoredKey": "",
                 "error": f"{original_key} already exists. Rename or move it before restoring",
             }
+        oversize = _too_large_to_copy(ap_alias, trash_key)
+        if oversize:
+            return {"success": False, "restoredKey": "", "error": oversize}
         try:
             s3.copy_object(Bucket=ap_alias, CopySource=f"{ap_alias}/{trash_key}", Key=original_key)
             s3.delete_object(Bucket=ap_alias, Key=trash_key)
@@ -278,6 +336,9 @@ def handler(event, context):
                 "newKey": "",
                 "error": f"{dst_key} already exists. Pass overwrite to replace it",
             }
+        oversize = _too_large_to_copy(ap_alias, src_key)
+        if oversize:
+            return {"success": False, "newKey": "", "error": oversize}
         try:
             s3.copy_object(Bucket=ap_alias, CopySource=f"{ap_alias}/{src_key}", Key=dst_key)
             if action == "moveFile":
@@ -355,6 +416,9 @@ def handler(event, context):
                 "newKey": "",
                 "error": f"{dst_key} already exists. Pass overwrite to replace it",
             }
+        oversize = _too_large_to_copy(ap_alias, src_key)
+        if oversize:
+            return {"success": False, "newKey": "", "error": oversize}
         try:
             s3.copy_object(Bucket=ap_alias, CopySource=f"{ap_alias}/{src_key}", Key=dst_key)
             s3.delete_object(Bucket=ap_alias, Key=src_key)
