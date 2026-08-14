@@ -251,22 +251,32 @@ def test_an_anchor_does_not_stop_the_file_resolving(pairs, fixture_repo):
     assert pairs.check_links() == [], "the fragment must not stop the path from resolving"
 
 
-def test_a_gitignored_file_is_not_a_translation(pairs):
-    """`verification-results.md` is excluded by .gitignore; only `.en.md` ships.
+def test_a_gitignored_file_is_not_a_translation(pairs, fixture_repo, monkeypatch):
+    """A file on disk but not in the repository is not the other half of a pair.
 
     The first version of this check trusted the filesystem, so it saw a pair,
     reported a missing switcher, and the repair added a switcher on the published
     file pointing at a file no reader can open. A link check that creates dead
     links is worse than no link check.
-    """
-    ignored = pairs.ROOT / "solutions" / "amplify-portal" / "docs" / "verification-results.md"
-    published = pairs.ROOT / "solutions" / "amplify-portal" / "docs" / "verification-results.en.md"
 
-    assert published.exists(), "the English side should be committed"
-    assert ignored not in pairs._in_repository(), (
-        "still treated as part of the repository; check the .gitignore rule for **/docs/verification-results.md"
-    )
+    This was written against a real gitignored file, `verification-results.md`,
+    and broke the day that file was published -- a test pinned to which file
+    happens to be ignored stops testing the behaviour and starts testing the
+    .gitignore. The tree is synthetic now, so it asserts the rule instead: the
+    ignored side is on disk, absent from the repository, and must not be grouped.
+    """
+    root = fixture_repo
+    published = root / "docs" / "guide.en.md"
+    ignored = root / "docs" / "guide.md"
+    published.write_text("# Guide\n\nBody\n", encoding="utf-8")
+    ignored.write_text("# 手引き\n\n本文\n", encoding="utf-8")
+    # On disk, out of the repository -- what `git ls-files` reports for an
+    # ignored file, without depending on a real one existing.
+    monkeypatch.setattr(pairs, "_in_repository", lambda: {published})
+
     assert not any(ignored in group for group in pairs.find_pairs())
+    # And the published side is not asked for a switcher pointing at it.
+    assert pairs.check_switchers() == []
 
 
 def test_a_link_to_an_unpublished_file_is_reported(pairs, fixture_repo, monkeypatch):
