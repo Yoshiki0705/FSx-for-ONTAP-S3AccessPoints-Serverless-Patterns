@@ -140,6 +140,9 @@ Three levels: file system (fixed by the connection) → SVM → volume. Aggregat
 one of them: on FSx for ONTAP, AWS manages them and the operator does not choose one.
 
 ```tsx
+{/* Beside the heading: the volume the response named, and whether that was a pick */}
+<VolumeScopeBadge volumeName={volumeName} isDefault={!volumeInScope} />
+
 {isStorageAdmin === true && (
   <div className="protection-scope">
     <SvmSelector />
@@ -148,6 +151,9 @@ one of them: on FSx for ONTAP, AWS manages them and the operator does not choose
   </div>
 )}
 ```
+
+The badge answers **why this volume**, not which one. Before a pick, the name on screen is
+the volume the deployment is configured with, and a name alone does not say so.
 
 ### `VolumeSelector`'s `onSelect` hands you `null`
 
