@@ -152,7 +152,7 @@ update, and abort while it runs. Sources:
 That an abort fails unless the relationship is transferring is stated in
 [the upgrade preparation steps](https://docs.netapp.com/us-en/ontap-systems-upgrade/upgrade-arl-auto-app-9151/complete-preparation-for-upgrade.html).
 
-### A7. File operations (through the S3 Access Point)
+### A7. File operations (through the S3 Access Point) — **Done (2026-08-15; only the over-5-GiB case is unverified, for want of a precondition)**
 
 | Item | Detail |
 |------|--------|
@@ -181,6 +181,14 @@ presign defaults to v2, and ONTAP-side v2 support starts at 9.16.1). AWS's compa
 lists presigned URLs as unsupported while they are observed working; AWS Support has submitted a
 documentation correction that is **not yet published**, so continue not to depend on it in
 production ([S3 AP compatibility notes](../../../docs/s3ap-compatibility-notes.en.md)).
+
+Measured: `createUploadLink` presigned with SigV2 against the global endpoint, so the PUT failed with 301
+(the signature covers `host`, so the redirect cannot be followed). Fixed by naming both
+`signature_version="s3v4"` and `addressing_style="virtual"`; the PUT returns HTTP 200 after it. An object
+over 5 GiB cannot be created here at all -- it needs a multipart upload, which is the very call that fails
+on this Access Point -- so a size check before the copy was added instead, refusing with the reason.
+Also found: **a folder cannot be deleted from the UI** (`trashFile` refuses folders and `deleteFileForever`
+is confined to `.trash/`).
 
 ### A8. ARP state change — **the premise did not survive measurement (2026-08-15)**
 
