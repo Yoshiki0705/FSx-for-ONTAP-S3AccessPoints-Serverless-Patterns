@@ -61,7 +61,7 @@ afterwards. The observed error codes and field values are recorded in the pitfal
 | Name mapping create / edit / delete / move | `new_index` renumbers the rules in between; DELETE does not | Same |
 | EMS event retrieval | **Worked only after a fix**: both `fields=severity` and the `severity=` filter are refused with 262197, and `message.severity` is what ONTAP takes. Every call had failed before this | [ARP/AI and EMS](../../../docs/agent/pitfalls-arp-ems.md) |
 | ARP/AI state change | Asking for `dry_run` leaves the volume `enabled` -- ARP/AI has no learning period. Turning it off stayed `disable_in_progress` for over ten minutes. The response now carries the state read back, not the request | Same |
-| Scope on the data-protection pages (SVM → volume) | The ARP, Lock and Snapshot pages were pinned to the one volume in an environment variable. The storage-admin group now gets a two-step `SVM › volume` selector; everyone else keeps the default. Verified live that the listing changes for a volume on fsxsvm02, and that changing SVM voids the selection | Same |
+| Scope on the data-protection pages (SVM → volume) | The ARP, Lock and Snapshot pages were pinned to the one volume in an environment variable. The storage-admin group now gets a two-step `SVM › volume` selector; everyone else keeps the default. Verified live that the listing changes for a volume on fsxsvm02, and that changing SVM voids the selection. The badge beside the heading distinguishes a picked volume from the configured default | Same |
 
 ## Live read (write paths not confirmed)
 

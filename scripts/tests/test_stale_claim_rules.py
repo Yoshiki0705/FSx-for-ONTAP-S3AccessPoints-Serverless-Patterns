@@ -544,7 +544,7 @@ COUNT_PHRASINGS = {
         "├── operations/             # Operational optimization patterns (6, all built)",
     ),
     "pytest-files": (250, "~4,450 Python tests across 250 files", None),
-    "vitest-files": (25, "~328 vitest tests across 25 files", None),
+    "vitest-files": (26, "~331 vitest tests across 26 files", None),
 }
 
 _COUNT_CASES = [

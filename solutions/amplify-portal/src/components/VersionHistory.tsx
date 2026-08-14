@@ -13,6 +13,7 @@ import { useActiveSvm } from "../hooks/useActiveSvm";
 import { useStorageAdmin } from "../hooks/useStorageAdmin";
 import { OntapFailureNotice } from "./OntapFailureNotice";
 import { SnaplockConfirmDialog } from "./SnaplockConfirmDialog";
+import { VolumeScopeBadge } from "./VolumeScopeBadge";
 import { SvmSelector } from "./admin/SvmSelector";
 import { VolumeSelector } from "./admin/VolumeSelector";
 import { parseResponse } from "../utils/parseResponse";
@@ -267,11 +268,7 @@ export function VersionHistory({ mode = "browse" }: { mode?: "browse" | "diff" }
       )}
       <div className="version-history-header">
         <h3>{t("snapshotsTitle")}</h3>
-        {volumeName && (
-          <span className="volume-badge" title={t("srcVolumeTitle")}>
-            {t("volume")}: {volumeName}
-          </span>
-        )}
+        <VolumeScopeBadge volumeName={volumeName} isDefault={!volumeInScope} />
         <button
           onClick={loadSnapshots}
           disabled={loading}

@@ -138,6 +138,9 @@ if (error) return <div><h2>{title}</h2><OntapFailureNotice error={error} /></div
 FSx for ONTAP では AWS が管理し利用者が選べないので、階層に入れません。
 
 ```tsx
+{/* 見出しの横。応答が名指したボリュームと、それが選択なのか既定なのかを出す */}
+<VolumeScopeBadge volumeName={volumeName} isDefault={!volumeInScope} />
+
 {isStorageAdmin === true && (
   <div className="protection-scope">
     <SvmSelector />
@@ -146,6 +149,9 @@ FSx for ONTAP では AWS が管理し利用者が選べないので、階層に�
   </div>
 )}
 ```
+
+バッジは「どのボリュームか」ではなく**「なぜこのボリュームか」**に答えます。選択前に出て
+いる名前はデプロイ時に設定されたボリュームで、名前だけでは読者に判別できません。
 
 ### VolumeSelector の `onSelect` は `null` を渡してくる
 
