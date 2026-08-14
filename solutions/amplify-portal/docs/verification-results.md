@@ -59,6 +59,9 @@
 | クォータ適用の開始 / 停止（ボリューム単位） | 書くのは `quota.enabled`、読むのは `quota.state`。ルールが無いボリュームでは ONTAP が開始を拒否 | [ボリュームライフサイクル](../../../docs/agent/pitfalls-volume-lifecycle.md) |
 | ローカルユーザーの作成 / 変更 / 削除 | パスワード変更と有効・無効（`account_disabled`、262179）。**SID が変わらないこと**を確認 | 同上 |
 | 名前マッピングの作成 / 変更 / 削除 / 順序の移動 | `new_index` は間のルールを renumber するが、DELETE は繰り上げない | 同上 |
+| EMS イベントの取得 | **修正して初めて動作**。`fields=severity` と `severity=` フィルタはどちらも 262197 で拒否され、`message.severity` が正しい。以前は呼び出すたびに必ず失敗していた | [ARP/AI と EMS](../../../docs/agent/pitfalls-arp-ems.md) |
+| ARP/AI の状態変更 | `dry_run` を要求すると `enabled` になる（ARP/AI に学習期間は無い）。無効化は `disable_in_progress` のまま 10 分以上続いた。応答は要求ではなく読み直した状態を返す | 同上 |
+| データ保護画面のボリューム選択 | ARP / ロック / スナップショットの各画面が環境変数の 1 ボリュームに固定されていた。storage-admin にはセレクターを出し、それ以外は既定のまま | 同上 |
 
 ## 実機 読み取り確認済み（書き込み系は未確認）
 
@@ -116,7 +119,6 @@
 | Glue カタログブラウザー | `CatalogBrowser.test.tsx` 8 件 | Glue Crawler 実行後のデータベース / テーブル / 列の表示 |
 | 文書のテキスト抽出 / 解析 | `DocumentAnalysis.test.tsx` 8 件 | Textract / Comprehend の実応答、リージョン間呼び出しの要否 |
 | AI メタデータバッジ | `AiMetadataBadges.test.tsx` 9 件 | AI メタデータテーブルに実データがある状態での表示 |
-| EMS イベント表示 | 型生成の一致確認のみ | 実機の EMS イベント応答形状 |
 | QR コード生成 | 同上 | 生成した QR から署名付き URL に到達できるか |
 | フォルダー監視 / イベント通知 | `functions/list-files/tests/test_notifications.py` 9 件 | FPolicy → EventBridge → ブリッジ Lambda の実配送、実イベントの形状、グループ境界の絞り込み |
 

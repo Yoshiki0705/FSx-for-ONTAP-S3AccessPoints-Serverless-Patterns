@@ -59,6 +59,9 @@ afterwards. The observed error codes and field values are recorded in the pitfal
 | Quota enforcement on / off (per volume) | The field written is `quota.enabled`, the field read is `quota.state`. ONTAP refuses to switch it on for a volume with no rules | [volume lifecycle](../../../docs/agent/pitfalls-volume-lifecycle.md) |
 | Local user create / edit / delete | Password change and enable/disable (`account_disabled`, 262179). Confirmed **the SID does not change** | Same |
 | Name mapping create / edit / delete / move | `new_index` renumbers the rules in between; DELETE does not | Same |
+| EMS event retrieval | **Worked only after a fix**: both `fields=severity` and the `severity=` filter are refused with 262197, and `message.severity` is what ONTAP takes. Every call had failed before this | [ARP/AI and EMS](../../../docs/agent/pitfalls-arp-ems.md) |
+| ARP/AI state change | Asking for `dry_run` leaves the volume `enabled` -- ARP/AI has no learning period. Turning it off stayed `disable_in_progress` for over ten minutes. The response now carries the state read back, not the request | Same |
+| Volume scope on the data-protection pages | The ARP, Lock and Snapshot pages were pinned to the one volume in an environment variable. The storage-admin group now gets a selector; everyone else keeps the default | Same |
 
 ## Live read (write paths not confirmed)
 
@@ -119,7 +122,6 @@ These are the features made reachable as of 2026-08-07. Handler and component te
 | Glue catalog browser | `CatalogBrowser.test.tsx`, 8 tests | Databases / tables / columns after a Glue Crawler has run |
 | Document text extraction and analysis | `DocumentAnalysis.test.tsx`, 8 tests | Real Textract / Comprehend responses, and whether a cross-region call is needed |
 | AI metadata badges | `AiMetadataBadges.test.tsx`, 9 tests | Rendering with real rows in the AI metadata table |
-| EMS event display | Generated-type agreement only | The real shape of an EMS event response |
 | QR code generation | Same | Whether the generated QR reaches the presigned URL |
 | Folder watch / event notifications | `functions/list-files/tests/test_notifications.py`, 9 tests | Real delivery from FPolicy through EventBridge to the bridge Lambda, the shape of real events, and the group boundary filter |
 
