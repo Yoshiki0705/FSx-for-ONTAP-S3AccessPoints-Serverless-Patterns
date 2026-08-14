@@ -61,6 +61,11 @@ def handler(event, context):
     # The environment variable stays as the default, which is what a reader without the
     # storage-admin group sees; only that group is offered the choice.
     volume_name = event.get("volumeName") or VOLUME_NAME
+    # And which SVM it belongs to. A volume name is unique within an SVM, not within a
+    # file system, so a name resolved against the wrong SVM is either not found or -- if
+    # the name happens to exist on both -- the wrong volume. The panels can now choose a
+    # volume, so they have to be able to say where it lives.
+    svm_name = event.get("svm") or SVM_NAME
 
     missing = [
         name
@@ -83,7 +88,7 @@ def handler(event, context):
         # Get volume UUID (shared across all actions)
         vol_url = (
             f"https://{ONTAP_MGMT_IP}/api/storage/volumes"
-            f"?name={_qval(volume_name)}&svm.name={_qval(SVM_NAME)}"
+            f"?name={_qval(volume_name)}&svm.name={_qval(svm_name)}"
             f"&fields=uuid,anti_ransomware,snaplock,snapshot_locking_enabled"
         )
         vol_resp = http.request("GET", vol_url, headers=headers)
@@ -95,7 +100,7 @@ def handler(event, context):
         diagnosis = diagnose_response(
             vol_resp.status,
             vol_resp.data,
-            subject=f"volume '{volume_name}' on SVM '{SVM_NAME}'",
+            subject=f"volume '{volume_name}' on SVM '{svm_name}'",
         )
         if diagnosis is not None:
             logger.warning("ONTAP volume lookup failed: class=%s status=%s", diagnosis.failure.value, diagnosis.status)
@@ -217,11 +222,11 @@ def handler(event, context):
                 file_path = f"/vol/{volume_name}{file_path}"
 
             # Get SVM UUID first
-            svm_url = f"https://{ONTAP_MGMT_IP}/api/svm/svms?name={SVM_NAME}&fields=uuid"
+            svm_url = f"https://{ONTAP_MGMT_IP}/api/svm/svms?name={_qval(svm_name)}&fields=uuid"
             svm_resp = http.request("GET", svm_url, headers=headers)
             svm_data = json.loads(svm_resp.data)
             if not svm_data.get("records"):
-                return {"error": f"SVM '{SVM_NAME}' not found", "permissions": None}
+                return {"error": f"SVM '{svm_name}' not found", "permissions": None}
             svm_uuid = svm_data["records"][0]["uuid"]
 
             # Query file-security effective permissions

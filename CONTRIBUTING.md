@@ -17,13 +17,20 @@ npm start  # Starts sandbox + dev server
 
 See [Getting Started](solutions/amplify-portal/docs/GETTING-STARTED.md) for full setup.
 
+Changing the portal UI? Read the
+[UI Contributor Guide](solutions/amplify-portal/docs/CONTRIBUTING-UI.en.md)
+([日本語](solutions/amplify-portal/docs/CONTRIBUTING-UI.md)) first. Two boundaries in the
+portal are invisible to the compiler — the generic dispatch to Lambda, and UI strings
+across eight locales — and the guide covers how each is checked.
+
 ## PR Guidelines
 
 - **Branch naming**: `feat/<description>` or `fix/<description>`
 - **Commit messages**: [Conventional Commits](https://www.conventionalcommits.org/) — `feat:`, `fix:`, `docs:`, `chore:`
 - **PR title**: Under 70 characters, conventional commit prefix
-- **Tests**: Run `npm run build` (Vite) before submitting
-- **Lint**: `ruff check` for Python, `eslint` for TypeScript
+- **Tests**: `npx vitest run` in `solutions/amplify-portal` for the front end, `make test-quick` for Python
+- **Lint**: `make lint` for Python (`ruff check` and `ruff format --check` both), `npm run lint` and `npx tsc -b` for TypeScript
+- **Contracts**: `make drift` — the portal's action-parameter contract, i18n coverage and theme tokens are checked there, not by lint
 
 ## Code Style
 

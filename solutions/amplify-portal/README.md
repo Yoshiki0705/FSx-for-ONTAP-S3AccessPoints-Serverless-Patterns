@@ -37,6 +37,7 @@ See also: [File Portal UI Selection Guide (Amplify / Nextcloud / Custom)](../../
 - **[ONTAP Connection Guide](docs/ONTAP-CONNECTION-GUIDE.en.md)** — connection architecture, and `make ontap-preflight` when an ONTAP panel shows no data
 - **[Handover & Support Guide](docs/portal-handover-guide.en.md)** — what to send users after the deploy, where each value is managed, and how to answer their questions
 - **[Implementation Guide](docs/IMPLEMENTATION.en.md)** — Architecture, config files, component structure, deployment, modification log
+- **[UI Contributor Guide](docs/CONTRIBUTING-UI.en.md)** — for developers adding features or changing screens: the dispatch contract, how to add an action, i18n and theming, the gates to pass, and the failures we hit
 - **[Admin Capability Map](docs/admin-capability-map.en.md)** — interface coverage, implementation status for all 20 panels, mapping to System Manager capability areas, ONTAP REST endpoint mapping
 - **[Resource Management Demo Guide](docs/resource-management-demo-guide.en.md)** — steps for all 20 panels (including FlexCache / FlexClone / SnapMirror / Local users / Name mapping / Vscan / FPolicy / Cluster and SVM peering / Cluster information)
 - **[Admin Demo Guide](../../docs/en/admin-resource-management-demo.md)** — E2E demo scenarios for Resource Management + ARP/AI

@@ -15,6 +15,7 @@ AWS はビルディングブロック（S3 API、Cognito、AppSync）を提供�
 - **[ユーザーガイド](../../docs/ja/portal-user-guide.md)** — 日常的なポータル利用のためのエンドユーザーガイド（デプロイ知識不要）
 - **[はじめに](docs/GETTING-STARTED.md)** — セットアップ、DemoMode、VPC Endpoints、本番チェックリスト
 - **[実装ガイド](docs/IMPLEMENTATION.md)** — アーキテクチャ、設定ファイル、コンポーネント構成、デプロイ、変更ログ
+- **[UI 拡張ガイド](docs/CONTRIBUTING-UI.md)** — 機能追加・画面修正をする開発者向け。ディスパッチ契約、アクションの追加手順、i18n とテーマ、通すゲート、実際に踏んだ失敗
 - **[管理機能マップ](docs/admin-capability-map.md)** — 各インターフェースの担当範囲、20 パネルの実装状況、System Manager の機能領域との対応、ONTAP REST エンドポイント対応
 - **[リソース管理デモガイド](docs/resource-management-demo-guide.md)** — 20 パネルの操作手順（FlexCache / FlexClone / SnapMirror / ローカルユーザー / 名前マッピング / Vscan / FPolicy / クラスター・SVM ピアリング / クラスター情報を含む）
 - **[管理者デモガイド](../../docs/en/admin-resource-management-demo.md)** — リソース管理 + ARP/AI の E2E デモシナリオ

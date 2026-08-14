@@ -203,3 +203,35 @@ def test_boto3_is_not_reached_when_the_configuration_is_missing(
     protection.handler({"action": "getArpStatus"}, None)
 
     sm.assert_not_called()
+
+
+def test_the_svm_is_a_parameter_too(protection: Any) -> None:
+    """A volume name is unique within an SVM, not within a file system.
+
+    The pages can choose a volume now, so they have to be able to say where it lives:
+    resolved against the wrong SVM the name is either absent or, if it exists on both, a
+    different volume. Measured against the real system, `vol1` on `fsxsvm02` answers
+    "no volume 'vol1' on SVM 'fsxsvm02'" -- which is only a useful answer because the
+    subject names the SVM that was actually queried.
+    """
+    protection.handler({"action": "getArpStatus", "volumeName": OTHER, "svm": "svm_other"}, None)
+
+    url = protection._calls[0][1]
+    assert "svm.name=svm_other" in url
+    assert "svm.name=svm1" not in url
+
+
+def test_the_configured_svm_is_the_default(protection: Any) -> None:
+    protection.handler({"action": "getArpStatus"}, None)
+
+    assert "svm.name=svm1" in protection._calls[0][1]
+
+
+def test_the_svm_name_is_encoded(protection: Any) -> None:
+    """It reaches a query string from the client, like the volume name."""
+    protection.handler({"action": "getArpStatus", "svm": "a&fields=uuid"}, None)
+
+    url = protection._calls[0][1]
+    assert "a%26fields%3Duuid" in url
+    # The injected `fields` did not become a second one.
+    assert url.count("fields=") == 1

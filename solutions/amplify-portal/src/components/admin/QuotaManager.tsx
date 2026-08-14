@@ -263,7 +263,10 @@ export function QuotaManager() {
           <VolumeSelector
             label={t("rmSelectVolume")}
             onSelect={(vol) => {
-              setVolumeName(vol.name);
+              // Cleared together on null (the SVM changed under the pick). A quota rule
+              // is created against a volume name, so a leftover one could land on a
+              // same-named volume in the new SVM.
+              setVolumeName(vol?.name ?? "");
               setVolume(vol);
               // A failure belongs to the volume it happened on. ONTAP refuses to switch
               // enforcement on for a volume with no rules, and that message names the

@@ -3868,3 +3868,50 @@ class TestArpStateReadBack:
         assert result["success"] is True
         assert result["state"] == ""
         assert result["differs"] is False
+
+
+class TestVolumeListingScale:
+    """Whether the volume listing admits that it is only the first page.
+
+    The listing asks ONTAP for 50 and stops. On a file system with hundreds of volumes a
+    dropdown of the first fifty looks exactly like a complete list, and an operator whose
+    volume is not among them concludes it does not exist. ONTAP says there is more through
+    `_links.next`; the answer is to pass that on, not to raise the ceiling.
+    """
+
+    def test_a_further_page_is_reported(self, mock_secrets):
+        from handler import handler
+
+        http = MockHttp(
+            {
+                "/storage/volumes?svm.name=": {
+                    "data": {
+                        "records": [{"name": "v", "uuid": "u", "size": 1024, "state": "online"}],
+                        "_links": {"next": {"href": "/api/storage/volumes?start.uuid=u"}},
+                    }
+                }
+            }
+        )
+        with patch("handler.urllib3.PoolManager") as mock_pool:
+            mock_pool.return_value = http
+            result = handler({"action": "listVolumes"}, None)
+        assert result["truncated"] is True
+
+    def test_a_complete_listing_is_not_reported_as_truncated(self, mock_secrets):
+        """Otherwise every list would carry a warning and the warning would mean nothing."""
+        from handler import handler
+
+        http = MockHttp(
+            {
+                "/storage/volumes?svm.name=": {
+                    "data": {
+                        "records": [{"name": "v", "uuid": "u", "size": 1024, "state": "online"}],
+                        "_links": {"self": {"href": "/api/storage/volumes"}},
+                    }
+                }
+            }
+        )
+        with patch("handler.urllib3.PoolManager") as mock_pool:
+            mock_pool.return_value = http
+            result = handler({"action": "listVolumes"}, None)
+        assert result["truncated"] is False

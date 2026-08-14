@@ -9,8 +9,12 @@ import {
 } from "../lib/portalQuery";
 import { dispatch } from "../lib/dispatch";
 import { daysFromNow, type SnapshotId } from "../lib/dispatchActions";
+import { useActiveSvm } from "../hooks/useActiveSvm";
+import { useStorageAdmin } from "../hooks/useStorageAdmin";
 import { OntapFailureNotice } from "./OntapFailureNotice";
 import { SnaplockConfirmDialog } from "./SnaplockConfirmDialog";
+import { SvmSelector } from "./admin/SvmSelector";
+import { VolumeSelector } from "./admin/VolumeSelector";
 import { parseResponse } from "../utils/parseResponse";
 import type { SnaplockIntent } from "../utils/snaplockConsequences";
 
@@ -50,6 +54,17 @@ export function VersionHistory({ mode = "browse" }: { mode?: "browse" | "diff" }
   /** Set while the consequence dialog is open; null when nothing is pending. */
   const [pendingSnaplock, setPendingSnaplock] = useState<SnaplockIntent | null>(null);
   const { t } = useTranslation();
+  const isStorageAdmin = useStorageAdmin();
+  // Which volume's history this is. Empty means the configured one, which is the
+  // handler's fallback and what a reader outside the storage-admin group gets. Until
+  // this existed the page could only ever show that one volume, so snapshots taken
+  // anywhere else looked like snapshots that had not been taken.
+  const [selectedVolume, setSelectedVolume] = useState("");
+  // See ArpStatus: a volume name means nothing outside its SVM, and here it also
+  // decides which volume a lock lands on -- a lock that cannot be undone.
+  const activeSvm = useActiveSvm();
+  const [svmAtSelection, setSvmAtSelection] = useState(activeSvm);
+  const volumeInScope = svmAtSelection === activeSvm ? selectedVolume : "";
 
   const {
     data,
@@ -57,11 +72,15 @@ export function VersionHistory({ mode = "browse" }: { mode?: "browse" | "diff" }
     error: queryError,
     refetch,
   } = useQuery({
-    queryKey: ["protection", "listSnapshots"],
+    queryKey: ["protection", "listSnapshots", activeSvm || null, volumeInScope || null],
     queryFn: async () => {
       const response = await dispatch("protectionQuery", {
         action: "listSnapshots",
-        params: { maxResults: 20 },
+        // `svm` is added by dispatch from the active scope; the volume is this
+        // page's part.
+        params: volumeInScope
+          ? { maxResults: 20, volumeName: volumeInScope }
+          : { maxResults: 20 },
       });
       // `unknown`, not `any`: this resolver has been seen to return the snapshot list
       // either as an array or as a JSON string that needs a second parse, which the
@@ -162,7 +181,15 @@ export function VersionHistory({ mode = "browse" }: { mode?: "browse" | "diff" }
       // GraphQL-level errors, which only the raw response carries.
       const response = await dispatch("protectionMutation", {
         action: "lockSnapshot",
-        params: { snapshotId: lockDialog.snapshotId, expiryTime, acknowledgeIrreversible: true },
+        params: {
+          snapshotId: lockDialog.snapshotId,
+          expiryTime,
+          acknowledgeIrreversible: true,
+          // The volume the listing came from. Without it the handler resolves the
+          // configured volume and looks for this snapshot there, which on any other
+          // volume is a lock applied to the wrong subject -- and locks do not come off.
+          ...(volumeInScope ? { volumeName: volumeInScope } : {}),
+        },
       });
       const data = parseResponse<{ success?: boolean; error?: string; expiryTime?: string }>(response);
       if (data) {
@@ -242,7 +269,7 @@ export function VersionHistory({ mode = "browse" }: { mode?: "browse" | "diff" }
         <h3>{t("snapshotsTitle")}</h3>
         {volumeName && (
           <span className="volume-badge" title={t("srcVolumeTitle")}>
-            {t("snapshotsVolumeLabel")}: {volumeName}
+            {t("volume")}: {volumeName}
           </span>
         )}
         <button
@@ -254,6 +281,23 @@ export function VersionHistory({ mode = "browse" }: { mode?: "browse" | "diff" }
           {loading ? t("snapshotsLoadingBtn") : t("snapshotsRefreshBtn")}
         </button>
       </div>
+
+      {/* The scope, on a row of its own: file system (fixed by the connection) then SVM
+          then volume. Filtering by volume alone does not scale past a handful of them,
+          and a name is only unique within its SVM. */}
+      {isStorageAdmin === true && (
+        <div className="protection-scope">
+          <SvmSelector />
+          <span className="protection-scope-chain" aria-hidden="true">›</span>
+          <VolumeSelector
+            label={t("rmSelectVolume")}
+            onSelect={(vol) => {
+              setSelectedVolume(vol?.name ?? "");
+              setSvmAtSelection(activeSvm);
+            }}
+          />
+        </div>
+      )}
 
       {error && <OntapFailureNotice error={error} {...failureDiagnosis(queryError)} />}
 

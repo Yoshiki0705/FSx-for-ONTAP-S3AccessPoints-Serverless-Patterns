@@ -120,6 +120,19 @@ export const en: Record<TranslationKeys, string> = {
   arpResponseReasonPlaceholder: "e.g., ARP/AI detected high-probability ransomware",
   arpResponseContainBtn: "Contain Threat",
   arpResponseContainTooltip: "Creates snapshot + blocks user + blocks IP + disconnects sessions in one action",
+  arpResponseBlockSmbTooltip: "Stops that SMB user from authenticating, through a name-mapping deny rule. Sessions already open are not cut.",
+  arpResponseBlockNfsTooltip: "Stops NFS access from that IP through an export-policy deny rule. Reads may continue while the client's cache holds.",
+  arpResponseDisconnectTooltip: "Cuts the SMB sessions that are open. It does not stop the next login, so pair it with a block.",
+  arpResponseRequirementsTitle: "What each action needs",
+  arpResponseReqDomainUser: "domain and username",
+  arpResponseReqClientIp: "client IP",
+  arpResponseReqEither: "domain + username, or a client IP",
+  arpResponseReqMissingPrefix: "Still needed",
+  arpResponseWhenTitle: "When to use this",
+  arpResponseWhen1: "Right after ARP/AI flags a threat, or a user reports suspected ransomware. These actions are for stopping the spread first.",
+  arpResponseWhen2: "Name the target as who (SMB domain + username) or where from (NFS client IP). Give both and both are stopped.",
+  arpResponseWhen3: "The grey text in the fields is an **example**. The buttons stay disabled until real values are entered.",
+  arpResponseWhen4: "A block lifts itself at the expiry chosen. For an indefinite one, choose \"indefinite\" and lift it from the Active blocks tab.",
   arpResponseBlockSmb: "Block SMB User",
   arpResponseBlockNfs: "Block NFS IP",
   arpResponseContained: "Containment complete — user blocked + snapshot created",
@@ -371,6 +384,7 @@ arpResponseSweepNote: "Blocks lift themselves once their expiry passes. To lift 
   rmFilterByVolume: "Filter by volume",
   rmVolumeSearchPlaceholder: "Type to search volumes...",
   rmVolumeSearchHint: "Showing top 20 results. Refine your search keyword for more specific results.",
+  rmVolumeListTruncated: "Showing the first {count} volumes only. Type a name in the search above to narrow the list.",
 
   // --- Resource Management: Storage Efficiency ---
   rmOverallRatio: "Overall Ratio",
@@ -595,7 +609,6 @@ arpResponseSweepNote: "Blocks lift themselves once their expiry passes. To lift 
   arpDetail5: "Tamperproof: ARP Snapshots are locked and cannot be deleted until expiry",
 
   // --- Snapshots: ONTAP required panel ---
-  snapshotsVolumeLabel: "Volume",
   snapshotsRefreshTitle: "Refresh snapshot list",
   snapshotsRefreshBtn: "Refresh",
   snapshotsLoadingBtn: "Loading...",
