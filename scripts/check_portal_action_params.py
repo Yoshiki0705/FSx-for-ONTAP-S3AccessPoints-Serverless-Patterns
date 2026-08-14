@@ -280,6 +280,17 @@ class EventKeyVisitor(ast.NodeVisitor):
         # `valid_states = {...}` / `if new_state not in valid_states:` rather than
         # with the set inline. Both spellings state the same accepted set.
         self.literal_sets: dict[str, tuple[str, ...]] = {}
+        # Variables assigned `event.get("k") or <fallback>` where the fallback can
+        # itself satisfy the guard, so `if not x: return` says nothing about whether
+        # the caller had to send `k`.
+        #
+        #   bucket = event.get("bucket") or S3_OBJECT_LOCK_BUCKET   -> env can supply it
+        #   style  = event.get("style") or "flexvol"                 -> literal supplies it
+        #   apps   = event.get("applications") or []                 -> nothing supplies it
+        #
+        # Only the last makes the key required, because only an empty default still
+        # trips the guard. The first two are optional however the guard is written.
+        self._defaulted_names: set[str] = set()
 
     # --- reads -------------------------------------------------------------
 
@@ -292,7 +303,18 @@ class EventKeyVisitor(ast.NodeVisitor):
         return None
 
     def _event_key(self, node: ast.AST) -> str | None:
-        """The key if `node` is a read of the event, else None."""
+        """The key if `node` is a read of the event, else None.
+
+        `event.get("k") or default` counts as a read of `k`. The handlers use that
+        idiom wherever an empty string should fall back, and not looking through the
+        `or` meant the variable was never bound to its key -- so a guard written
+        against the variable (`if style not in (...)`) contributed no enum, and the
+        generated type widened to `string`. The key itself was still collected by
+        `visit_Call`, which is why nothing failed; the type just said less than the
+        handler knew.
+        """
+        if isinstance(node, ast.BoolOp) and isinstance(node.op, ast.Or) and node.values:
+            return self._event_key(node.values[0])
         if isinstance(node, ast.Call):
             func = node.func
             if (
@@ -359,6 +381,8 @@ class EventKeyVisitor(ast.NodeVisitor):
         key = self._event_key(node.value)
         if key and len(node.targets) == 1 and isinstance(node.targets[0], ast.Name):
             self.bindings[node.targets[0].id] = key
+            if _has_satisfying_default(node.value):
+                self._defaulted_names.add(node.targets[0].id)
         if len(node.targets) == 1 and isinstance(node.targets[0], ast.Name):
             values = _string_collection(node.value)
             if values:
@@ -379,7 +403,14 @@ class EventKeyVisitor(ast.NodeVisitor):
             # the names have to be resolved through the bindings before comparing.
             # Without that the exemption never matched and `svms` stayed "required".
             exempt = self._presence_keys()
-            for alternatives in _requirement_groups(node.test, self.event, self.bindings, self.constants):
+            # A variable that already has a value the guard accepts cannot make its
+            # key required, so it is not resolvable for requirement purposes. It
+            # stays in `bindings` for the enum above, which is about the accepted
+            # values rather than about who supplies them.
+            requirement_bindings = {
+                name: key for name, key in self.bindings.items() if name not in self._defaulted_names
+            }
+            for alternatives in _requirement_groups(node.test, self.event, requirement_bindings, self.constants):
                 if alternatives & exempt:
                     continue
                 self.keys |= alternatives
@@ -414,6 +445,30 @@ class EventKeyVisitor(ast.NodeVisitor):
 def _returns_immediately(body: list[ast.stmt]) -> bool:
     """Whether this branch bails out, i.e. the guard rejects rather than defaults."""
     return any(isinstance(stmt, ast.Return) for stmt in body)
+
+
+def _has_satisfying_default(node: ast.AST) -> bool:
+    """Whether `event.get(...) or <fallback>` can end up truthy without the payload.
+
+    A truthy literal always can. A name or an attribute -- an environment variable, a
+    module constant, another parameter -- may, and the checker cannot tell, so it
+    assumes it does rather than declaring a key required on a guess.
+
+    A falsy literal (`[]`, `""`, `0`, `{}`) never can, which is what leaves the guard
+    meaning "the caller must send this".
+    """
+    if not (isinstance(node, ast.BoolOp) and isinstance(node.op, ast.Or)):
+        return False
+    for fallback in node.values[1:]:
+        if isinstance(fallback, ast.Constant):
+            if fallback.value:
+                return True
+        elif isinstance(fallback, (ast.List, ast.Dict, ast.Set, ast.Tuple)):
+            if getattr(fallback, "elts", None) or getattr(fallback, "keys", None):
+                return True
+        else:
+            return True
+    return False
 
 
 def _falsy_key(node: ast.AST, event: str, bindings: dict[str, str], constants: dict[str, str]) -> str | None:

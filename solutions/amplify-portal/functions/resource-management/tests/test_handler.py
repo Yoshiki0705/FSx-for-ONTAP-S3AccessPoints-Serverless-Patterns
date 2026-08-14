@@ -195,6 +195,7 @@ class TestCreateVolume:
         with patch("handler.urllib3.PoolManager") as mock_pool:
             mock_pool.return_value = MockHttp(
                 {
+                    "/storage/aggregates": {"data": {"records": [{"name": "aggr1"}]}},
                     "/storage/volumes": {"status": 202, "data": {}},
                 }
             )
@@ -203,6 +204,70 @@ class TestCreateVolume:
 
         assert result["success"] is True
         assert result["volumeName"] == "test_vol"
+
+    def test_a_flexvol_is_given_a_style_and_a_resolved_aggregate(self, mock_secrets):
+        """Both are required, and neither is something a portal user can supply.
+
+        Without `style` ONTAP answers 787140; with `style: flexvol` and no aggregate it
+        answers 918242. On FSx for ONTAP AWS manages the aggregates, so the name is
+        looked up rather than asked for. This create had never once succeeded.
+        """
+        from handler import handler
+
+        http = MockHttp(
+            {
+                "/storage/aggregates": {"data": {"records": [{"name": "aggr1"}]}},
+                "/storage/volumes": {"status": 202, "data": {}},
+            }
+        )
+        with patch("handler.urllib3.PoolManager") as mock_pool:
+            mock_pool.return_value = http
+            result = handler({"action": "createVolume", "name": "test_vol", "sizeGiB": 50}, None)
+
+        assert result["success"] is True
+        body = json.loads(http.find("POST", "/storage/volumes")[2]["body"])
+        assert body["style"] == "flexvol"
+        assert body["aggregates"] == [{"name": "aggr1"}]
+
+    def test_a_flexgroup_is_placed_by_ontap(self, mock_secrets):
+        """ONTAP spreads a FlexGroup itself, so naming an aggregate is wrong here."""
+        from handler import handler
+
+        http = MockHttp({"/storage/volumes": {"status": 202, "data": {}}})
+        with patch("handler.urllib3.PoolManager") as mock_pool:
+            mock_pool.return_value = http
+            result = handler(
+                {"action": "createVolume", "name": "big_vol", "sizeGiB": 50, "style": "flexgroup"},
+                None,
+            )
+
+        assert result["success"] is True
+        body = json.loads(http.find("POST", "/storage/volumes")[2]["body"])
+        assert body["style"] == "flexgroup"
+        assert "aggregates" not in body
+
+    def test_an_empty_aggregate_list_is_explained(self, mock_secrets):
+        """ONTAP's own 918242 asks for a value the caller cannot know."""
+        from handler import handler
+
+        with patch("handler.urllib3.PoolManager") as mock_pool:
+            mock_pool.return_value = MockHttp()
+            result = handler({"action": "createVolume", "name": "test_vol", "sizeGiB": 50}, None)
+
+        assert result["success"] is False
+        assert "flexgroup" in result["error"]
+
+    def test_a_refused_request_asks_the_cluster_nothing(self, mock_secrets):
+        """Validation comes first, so a bad name costs no ONTAP round trip."""
+        from handler import handler
+
+        http = MockHttp()
+        with patch("handler.urllib3.PoolManager") as mock_pool:
+            mock_pool.return_value = http
+            result = handler({"action": "createVolume", "name": "bad-name", "sizeGiB": 50}, None)
+
+        assert result["success"] is False
+        assert http.calls == []
 
 
 class TestDeleteVolume:
@@ -275,6 +340,50 @@ class TestDeleteVolume:
 
         assert result["success"] is False
         assert "not offline" in result["error"]
+
+    def test_a_mounted_volume_is_unmounted_first(self, mock_secrets):
+        """ONTAP will not offline a mounted volume and will not unmount it for you.
+
+        Without this the delete only ever worked on a volume with no junction path -- a
+        SnapMirror destination. Every volume the portal creates is mounted.
+        """
+        from handler import handler
+
+        http = MockHttp(
+            {
+                "/storage/volumes/uuid-1?fields=nas.path": {"data": {"nas": {"path": "/test_vol"}}},
+                "/storage/volumes/uuid-1": {"data": {"job": {"uuid": "job-1"}}},
+                "/cluster/jobs/job-1": {"data": {"state": "success", "message": "done"}},
+            }
+        )
+        with patch("handler.urllib3.PoolManager") as mock_pool:
+            mock_pool.return_value = http
+            result = handler({"action": "deleteVolume", "volumeUuid": "uuid-1", "confirm": True}, None)
+
+        assert result["success"] is True
+        patches = [json.loads(c[2]["body"]) for c in http.calls if c[0] == "PATCH"]
+        # Unmount before offline, in that order.
+        assert patches[0] == {"nas": {"path": ""}}
+        assert patches[1] == {"state": "offline"}
+
+    def test_an_unmounted_volume_is_not_patched_for_it(self, mock_secrets):
+        """A volume with no junction path needs no unmount, so none is sent."""
+        from handler import handler
+
+        http = MockHttp(
+            {
+                "/storage/volumes/uuid-1?fields=nas.path": {"data": {"nas": {}}},
+                "/storage/volumes/uuid-1": {"data": {"job": {"uuid": "job-1"}}},
+                "/cluster/jobs/job-1": {"data": {"state": "success", "message": "done"}},
+            }
+        )
+        with patch("handler.urllib3.PoolManager") as mock_pool:
+            mock_pool.return_value = http
+            result = handler({"action": "deleteVolume", "volumeUuid": "uuid-1", "confirm": True}, None)
+
+        assert result["success"] is True
+        patches = [json.loads(c[2]["body"]) for c in http.calls if c[0] == "PATCH"]
+        assert patches == [{"state": "offline"}]
 
     def test_waits_for_the_offline_job_before_deleting(self, mock_secrets):
         from handler import handler
@@ -994,14 +1103,28 @@ class TestFlexCache:
         body = json.loads(http.find("POST", "/storage/flexcache/flexcaches")[2]["body"])
         assert body["writeback"] == {"enabled": True}
 
-    def test_delete_reports_a_failed_job(self, mock_secrets):
-        """A write-back cache refuses deletion, and that arrives inside the job."""
+    def test_delete_of_a_writeback_cache_is_refused_on_the_call(self, mock_secrets):
+        """ONTAP 66846980 arrives on the DELETE, before any job exists.
+
+        Measured on 9.18.1P3D1. ONTAP's own message names the endpoint to PATCH, so the
+        hint adds only what it omits: that disabling moves data.
+        """
         from handler import handler
 
         http = MockHttp(
             {
-                "/storage/flexcache/flexcaches/uuid-1": {"data": {"job": {"uuid": "job-1"}}},
-                "/cluster/jobs/job-1": {"data": {"state": "failure", "message": "writeback is enabled on the volume"}},
+                "/storage/flexcache/flexcaches/uuid-1": {
+                    "status": 400,
+                    "data": {
+                        "error": {
+                            "code": "66846980",
+                            "message": (
+                                'Failed to delete FlexCache volume "c" in SVM "s" because '
+                                'the "writeback.enabled" property is true.'
+                            ),
+                        }
+                    },
+                },
             }
         )
         with patch("handler.urllib3.PoolManager") as mock_pool:
@@ -1009,8 +1132,24 @@ class TestFlexCache:
             result = handler({"action": "deleteFlexCache", "uuid": "uuid-1"}, None)
 
         assert result["success"] is False
-        # The hint names the fix rather than leaving ONTAP's wording to be interpreted.
-        assert "turned off" in result["error"]
+        assert "flushes" in result["error"]
+
+    def test_delete_reports_a_failed_job(self, mock_secrets):
+        """The other path: accepted with a 202, then failed inside the job."""
+        from handler import handler
+
+        http = MockHttp(
+            {
+                "/storage/flexcache/flexcaches/uuid-1": {"data": {"job": {"uuid": "job-1"}}},
+                "/cluster/jobs/job-1": {"data": {"state": "failure", "message": "No suitable storage can be found"}},
+            }
+        )
+        with patch("handler.urllib3.PoolManager") as mock_pool:
+            mock_pool.return_value = http
+            result = handler({"action": "deleteFlexCache", "uuid": "uuid-1"}, None)
+
+        assert result["success"] is False
+        assert "No suitable storage" in result["error"]
 
 
 # --- FlexClone ---
@@ -1476,7 +1615,12 @@ class TestSnapMirrorWrites:
     def test_update_now_posts_transfer(self, mock_secrets):
         from handler import handler
 
-        http = MockHttp({"/transfers": {"data": {"job": {"uuid": "j1"}}}})
+        http = MockHttp(
+            {
+                "/cluster/jobs/j1": {"data": {"state": "success", "message": "done"}},
+                "/transfers": {"data": {"job": {"uuid": "j1"}}},
+            }
+        )
         with snapmirror_client(http):
             result = handler({"action": "updateSnapmirrorNow", "relationshipUuid": "r1"}, None)
 
@@ -1485,6 +1629,39 @@ class TestSnapMirrorWrites:
         method, url, _ = http.calls[0]
         assert method == "POST"
         assert url.endswith("/snapmirror/relationships/r1/transfers")
+
+    def test_a_failed_transfer_job_is_reported_as_a_failure(self, mock_secrets):
+        """The SnapMirror actions reach ONTAP through the shared client, and that
+        transport had no job confirmation at all: every one of them reported the 202."""
+        from handler import handler
+
+        http = MockHttp(
+            {
+                "/cluster/jobs/j1": {"data": {"state": "failure", "message": "not peered for snapmirror"}},
+                "/transfers": {"data": {"job": {"uuid": "j1"}}},
+            }
+        )
+        with snapmirror_client(http):
+            result = handler({"action": "updateSnapmirrorNow", "relationshipUuid": "r1"}, None)
+
+        assert result["success"] is False
+        # Translated, not passed through raw.
+        assert "applications include snapmirror" in result["error"]
+
+    def test_a_failed_break_job_is_reported_as_a_failure(self, mock_secrets):
+        from handler import handler
+
+        http = MockHttp(
+            {
+                "/cluster/jobs/j2": {"data": {"state": "failure", "message": "relationship is transferring"}},
+                "/snapmirror/relationships/r1": {"data": {"job": {"uuid": "j2"}}},
+            }
+        )
+        with snapmirror_client(http):
+            result = handler({"action": "breakSnapmirror", "relationshipUuid": "r1", "confirm": True}, None)
+
+        assert result["success"] is False
+        assert "transferring" in result["error"]
 
     def test_update_now_requires_uuid(self, mock_secrets):
         from handler import handler
@@ -2489,7 +2666,12 @@ class TestIrreversibleAcknowledgement:
     def test_snaplock_volume_refused_without_ack(self, mock_secrets):
         from handler import handler
 
-        mock_http = MockHttp({"/storage/volumes": {"status": 202, "data": {}}})
+        mock_http = MockHttp(
+            {
+                "/storage/aggregates": {"data": {"records": [{"name": "aggr1"}]}},
+                "/storage/volumes": {"status": 202, "data": {}},
+            }
+        )
         with patch("handler.urllib3.PoolManager") as mock_pool:
             mock_pool.return_value = mock_http
 
@@ -2516,7 +2698,12 @@ class TestIrreversibleAcknowledgement:
         from handler import handler
 
         with patch("handler.urllib3.PoolManager") as mock_pool:
-            mock_pool.return_value = MockHttp({"/storage/volumes": {"status": 202, "data": {}}})
+            mock_pool.return_value = MockHttp(
+                {
+                    "/storage/aggregates": {"data": {"records": [{"name": "aggr1"}]}},
+                    "/storage/volumes": {"status": 202, "data": {}},
+                }
+            )
 
             result = handler(
                 {
@@ -2537,7 +2724,12 @@ class TestIrreversibleAcknowledgement:
         from handler import handler
 
         with patch("handler.urllib3.PoolManager") as mock_pool:
-            mock_pool.return_value = MockHttp({"/storage/volumes": {"status": 202, "data": {}}})
+            mock_pool.return_value = MockHttp(
+                {
+                    "/storage/aggregates": {"data": {"records": [{"name": "aggr1"}]}},
+                    "/storage/volumes": {"status": 202, "data": {}},
+                }
+            )
 
             result = handler(
                 {"action": "createVolume", "name": "plain_vol", "sizeGiB": 50},
@@ -2551,7 +2743,12 @@ class TestIrreversibleAcknowledgement:
         from handler import handler
 
         with patch("handler.urllib3.PoolManager") as mock_pool:
-            mock_pool.return_value = MockHttp({"/storage/volumes": {"status": 202, "data": {}}})
+            mock_pool.return_value = MockHttp(
+                {
+                    "/storage/aggregates": {"data": {"records": [{"name": "aggr1"}]}},
+                    "/storage/volumes": {"status": 202, "data": {}},
+                }
+            )
 
             result = handler(
                 {
@@ -3078,3 +3275,182 @@ class TestFailureClassification:
 
         assert result["errorClass"] == "UNREACHABLE"
         assert "management LIF" in result["error"]
+
+
+class TestInPlaceUpdates:
+    """The four actions that existed only as delete-and-recreate.
+
+    Each of those round trips loses something: a quota rule's usage accounting, a
+    qtree's contents, a local user's SID (which is what NTFS ACLs name), and, for a
+    name mapping, the rule itself for the window between the two calls.
+    """
+
+    def test_quota_rule_update_patches_limits_only(self, mock_secrets):
+        from handler import handler
+
+        http = MockHttp({"/storage/quota/rules/r1": {"data": {}}})
+        with patch("handler.urllib3.PoolManager") as mock_pool:
+            mock_pool.return_value = http
+            result = handler(
+                {
+                    "action": "updateQuotaRule",
+                    "ruleUuid": "r1",
+                    "spaceHardLimitGiB": 200,
+                    "filesHardLimit": 5000,
+                },
+                None,
+            )
+
+        assert result["success"] is True
+        body = json.loads(http.find("PATCH", "/storage/quota/rules/r1")[2]["body"])
+        assert body["space"]["hard_limit"] == 200 * 1024**3
+        assert body["files"]["hard_limit"] == 5000
+        # The target is not in the body: it cannot be changed after creation.
+        assert "volume" not in body and "qtree" not in body
+
+    def test_quota_rule_update_maps_zero_to_no_limit(self, mock_secrets):
+        """0 in the form means "no limit", which ONTAP spells -1."""
+        from handler import handler
+
+        http = MockHttp({"/storage/quota/rules/r1": {"data": {}}})
+        with patch("handler.urllib3.PoolManager") as mock_pool:
+            mock_pool.return_value = http
+            handler({"action": "updateQuotaRule", "ruleUuid": "r1", "spaceHardLimitGiB": 0}, None)
+
+        body = json.loads(http.find("PATCH", "/storage/quota/rules/r1")[2]["body"])
+        assert body["space"]["hard_limit"] == -1
+
+    def test_quota_rule_update_refuses_an_empty_change(self, mock_secrets):
+        from handler import handler
+
+        with patch("handler.urllib3.PoolManager") as mock_pool:
+            mock_pool.return_value = MockHttp()
+            result = handler({"action": "updateQuotaRule", "ruleUuid": "r1"}, None)
+
+        assert result["success"] is False
+        assert "at least one of" in result["error"]
+
+    def test_qtree_update_resolves_the_volume_uuid(self, mock_secrets):
+        from handler import handler
+
+        http = MockHttp(
+            {
+                "/storage/volumes?name=": {"data": {"records": [{"uuid": "v1"}]}},
+                "/storage/qtrees/v1/3": {"data": {}},
+            }
+        )
+        with patch("handler.urllib3.PoolManager") as mock_pool:
+            mock_pool.return_value = http
+            result = handler(
+                {
+                    "action": "updateQtree",
+                    "volumeName": "vol1",
+                    "qtreeId": "3",
+                    "securityStyle": "ntfs",
+                },
+                None,
+            )
+
+        assert result["success"] is True
+        body = json.loads(http.find("PATCH", "/storage/qtrees/v1/3")[2]["body"])
+        assert body == {"security_style": "ntfs"}
+
+    def test_qtree_update_rejects_an_unknown_security_style(self, mock_secrets):
+        from handler import handler
+
+        with patch("handler.urllib3.PoolManager") as mock_pool:
+            mock_pool.return_value = MockHttp()
+            result = handler(
+                {
+                    "action": "updateQtree",
+                    "volumeName": "vol1",
+                    "qtreeId": "3",
+                    "securityStyle": "posix",
+                },
+                None,
+            )
+
+        assert result["success"] is False
+        assert "securityStyle" in result["error"]
+
+    def test_local_user_update_sends_the_password_without_logging_it(self, mock_secrets, caplog):
+        from handler import handler
+
+        http = MockHttp(
+            {
+                "/svm/svms": {"data": {"records": [{"uuid": "svm-1"}]}},
+                "/protocols/cifs/local-users/svm-1/S-1-5-21-1": {"data": {}},
+            }
+        )
+        with patch("handler.urllib3.PoolManager") as mock_pool:
+            mock_pool.return_value = http
+            with caplog.at_level("INFO"):
+                result = handler(
+                    {
+                        "action": "updateLocalUser",
+                        "sid": "S-1-5-21-1",
+                        "password": "s3cret-passphrase",
+                        "enabled": False,
+                    },
+                    None,
+                )
+
+        assert result["success"] is True
+        body = json.loads(http.find("PATCH", "/protocols/cifs/local-users/svm-1/S-1-5-21-1")[2]["body"])
+        # ONTAP's field is `account_disabled`; sending `enabled` is refused with 262179.
+        assert body == {"password": "s3cret-passphrase", "account_disabled": True}
+        assert "s3cret-passphrase" not in caplog.text
+
+    def test_local_user_update_refuses_an_empty_change(self, mock_secrets):
+        from handler import handler
+
+        with patch("handler.urllib3.PoolManager") as mock_pool:
+            mock_pool.return_value = MockHttp()
+            result = handler({"action": "updateLocalUser", "sid": "S-1-5-21-1"}, None)
+
+        assert result["success"] is False
+        assert "at least one of" in result["error"]
+
+    def test_name_mapping_update_patches_the_indexed_rule(self, mock_secrets):
+        from handler import handler
+
+        http = MockHttp(
+            {
+                "/svm/svms": {"data": {"records": [{"uuid": "svm-1"}]}},
+                "/name-services/name-mappings/svm-1/win_unix/2": {"data": {}},
+            }
+        )
+        with patch("handler.urllib3.PoolManager") as mock_pool:
+            mock_pool.return_value = http
+            result = handler(
+                {
+                    "action": "updateNameMapping",
+                    "direction": "win_unix",
+                    "index": 2,
+                    "pattern": "EXAMPLE\\\\(.+)",
+                },
+                None,
+            )
+
+        assert result["success"] is True
+        body = json.loads(http.find("PATCH", "/name-services/name-mappings/svm-1/win_unix/2")[2]["body"])
+        assert body == {"pattern": "EXAMPLE\\\\(.+)"}
+
+    def test_name_mapping_update_refuses_s3_unix(self, mock_secrets):
+        """FSx for ONTAP owns those entries; it creates and removes them itself."""
+        from handler import handler
+
+        with patch("handler.urllib3.PoolManager") as mock_pool:
+            mock_pool.return_value = MockHttp()
+            result = handler(
+                {
+                    "action": "updateNameMapping",
+                    "direction": "s3_unix",
+                    "index": 1,
+                    "pattern": "x",
+                },
+                None,
+            )
+
+        assert result["success"] is False
+        assert "s3_unix" in result["error"]

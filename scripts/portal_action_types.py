@@ -434,6 +434,33 @@ def emit() -> str:
     out.append("/** The parameters one action takes. */")
     out.append("export type ParamsOf<E extends DispatchEndpoint, A extends ActionOf<E>> = DispatchParams[E][A];")
     out.append("")
+
+    # The types above are erased at run time, and the SVM has to be filled in at run
+    # time -- once, in `dispatch`, rather than at sixty call sites. So the same
+    # contracts also produce a value: the actions that read `svm`. Sending it to an
+    # action that does not read it would be reported as an unread parameter by the
+    # parameter check, which is the gate that keeps this honest.
+    accepting = sorted(
+        {
+            action
+            for contracts in by_handler.values()
+            for action, contract in contracts.items()
+            if "svm" in contract.branch_read
+        }
+    )
+    out.append("/**")
+    out.append(" * Actions that take an `svm`, so `dispatch` can supply the selected one.")
+    out.append(" *")
+    out.append(" * Derived from the handlers, not listed by hand: an action that starts or")
+    out.append(" * stops reading `svm` changes this set with it. The alternative was every")
+    out.append(" * panel threading the SVM through its own queries, and the panels that")
+    out.append(" * forgot would silently keep reading the default one.")
+    out.append(" */")
+    out.append("export const ACTIONS_ACCEPTING_SVM: ReadonlySet<string> = new Set([")
+    for action in accepting:
+        out.append(f'  "{action}",')
+    out.append("]);")
+    out.append("")
     return "\n".join(out)
 
 
