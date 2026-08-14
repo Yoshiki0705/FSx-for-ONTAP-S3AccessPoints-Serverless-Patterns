@@ -331,14 +331,30 @@ class OntapLookupFailed(Exception):
         self.diagnosis = diagnosis
 
 
-def _get_volume_uuid(http, headers) -> str:
+def _get_volume_uuid(http, headers, event: dict | None = None) -> str:
     """Resolve volume UUID from name.
+
+    The name comes from the request when it carries one, and from the environment
+    otherwise. Reading only the environment is what this did, and every action in this
+    handler went through it: the data protection screens let an operator scope to another
+    volume and another SVM, and a mutation reached from that state would have acted on the
+    configured one while the screen named the chosen one. None of these actions has a UI
+    call site today, so this closes a trap rather than fixing a live defect -- but the
+    trap is that wiring one up looks like it works.
+
+    Args:
+        http: The pool manager.
+        headers: Request headers, already carrying credentials.
+        event: The request. `volumeName` and `svm` are honoured when present.
 
     Raises:
         OntapLookupFailed: with the classified reason -- credentials, reachability, or a
             name that genuinely is not on this cluster.
     """
-    data = _ontap_get(http, headers, "/storage/volumes", f"name={VOLUME_NAME}&svm.name={SVM_NAME}&fields=uuid")
+    given = event or {}
+    volume_name = given.get("volumeName") or VOLUME_NAME
+    svm_name = given.get("svm") or SVM_NAME
+    data = _ontap_get(http, headers, "/storage/volumes", f"name={volume_name}&svm.name={svm_name}&fields=uuid")
     if isinstance(data.get("_diagnosis"), OntapDiagnosis):
         raise OntapLookupFailed(data["_diagnosis"])
     if not data.get("records"):
@@ -348,7 +364,7 @@ def _get_volume_uuid(http, headers) -> str:
         diagnosis = diagnose_response(
             200,
             json.dumps(data),
-            subject=f"volume '{VOLUME_NAME}' on SVM '{SVM_NAME}'",
+            subject=f"volume '{volume_name}' on SVM '{svm_name}'",
         )
         assert diagnosis is not None  # an empty collection always yields one
         raise OntapLookupFailed(diagnosis)
@@ -364,7 +380,7 @@ def _get_snapshots(http, headers, event):
     - is_tamperproof: true if expiry_time is set
     - is_arp: true if name starts with Anti_ransomware_backup
     """
-    vol_uuid = _get_volume_uuid(http, headers)
+    vol_uuid = _get_volume_uuid(http, headers, event)
     max_results = event.get("maxResults", 20)
 
     data = _ontap_get(
@@ -423,7 +439,7 @@ def _get_arp_status(http, headers, event):
     ONTAP REST: GET /api/storage/volumes/{uuid}?fields=anti_ransomware
     States: disabled, dry_run (learning), enabled (active), paused
     """
-    vol_uuid = _get_volume_uuid(http, headers)
+    vol_uuid = _get_volume_uuid(http, headers, event)
     data = _ontap_get(http, headers, f"/storage/volumes/{vol_uuid}", "fields=anti_ransomware")
 
     arp = data.get("anti_ransomware", {})
@@ -457,7 +473,7 @@ def _get_arp_suspects(http, headers, event):
 
     ONTAP REST: GET /api/security/anti-ransomware/suspects
     """
-    vol_uuid = _get_volume_uuid(http, headers)
+    vol_uuid = _get_volume_uuid(http, headers, event)
 
     try:
         data = _ontap_get(
@@ -490,7 +506,7 @@ def _get_snaplock_config(http, headers, event):
 
     ONTAP REST: GET /api/storage/volumes/{uuid}?fields=snaplock
     """
-    vol_uuid = _get_volume_uuid(http, headers)
+    vol_uuid = _get_volume_uuid(http, headers, event)
     data = _ontap_get(http, headers, f"/storage/volumes/{vol_uuid}", "fields=snaplock")
 
     snaplock = data.get("snaplock", {})
@@ -516,7 +532,7 @@ def _get_protection_summary(http, headers, event):
 
     Combines ARP status + snapshot count + SnapLock status + S3 Object Lock in one call.
     """
-    vol_uuid = _get_volume_uuid(http, headers)
+    vol_uuid = _get_volume_uuid(http, headers, event)
 
     # Get volume with all protection fields
     data = _ontap_get(http, headers, f"/storage/volumes/{vol_uuid}", "fields=anti_ransomware,snaplock")
@@ -565,7 +581,7 @@ def _create_snapshot(http, headers, event):
     ONTAP REST: POST /api/storage/volumes/{uuid}/snapshots
     Body: {"name": "manual_YYYY-MM-DD_HHMM", "comment": "..."}
     """
-    vol_uuid = _get_volume_uuid(http, headers)
+    vol_uuid = _get_volume_uuid(http, headers, event)
     name = event.get("name", "")
     comment = event.get("comment", "")
     user_id = event.get("userId", "unknown")
@@ -597,7 +613,7 @@ def _delete_snapshot(http, headers, event):
     WARNING: Cannot delete tamperproof (locked) snapshots before expiry.
     The API will return an error if attempted.
     """
-    vol_uuid = _get_volume_uuid(http, headers)
+    vol_uuid = _get_volume_uuid(http, headers, event)
     snap_uuid = event.get("snapshotId", "")
     snap_name = event.get("snapshotName", "")
     user_id = event.get("userId", "unknown")
@@ -630,7 +646,7 @@ def _update_arp_state(http, headers, event):
     - enabled → disabled (WARNING: removes protection)
     - any → paused (temporary pause)
     """
-    vol_uuid = _get_volume_uuid(http, headers)
+    vol_uuid = _get_volume_uuid(http, headers, event)
     new_state = event.get("state", "")
     user_id = event.get("userId", "unknown")
 
@@ -706,10 +722,10 @@ def _update_retention_policy(http, headers, event):
     )
     if refused:
         return refused
-    return _update_snaplock_retention(http, headers, days, user_id)
+    return _update_snaplock_retention(http, headers, event, days, user_id)
 
 
-def _update_snaplock_retention(http, headers, days, user_id):
+def _update_snaplock_retention(http, headers, event, days, user_id):
     """Update SnapLock default retention period.
 
     ONTAP REST: PATCH /api/storage/volumes/{uuid}
@@ -717,7 +733,7 @@ def _update_snaplock_retention(http, headers, days, user_id):
 
     ISO 8601 duration format: P30D = 30 days, P1Y = 1 year
     """
-    vol_uuid = _get_volume_uuid(http, headers)
+    vol_uuid = _get_volume_uuid(http, headers, event)
 
     if days <= 0:
         return {"success": False, "error": "days must be > 0"}

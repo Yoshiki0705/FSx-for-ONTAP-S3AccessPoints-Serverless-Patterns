@@ -1224,6 +1224,14 @@ class TestFlexClone:
         assert body["name"] == "c1"
         assert body["clone"]["parent_volume"] == {"name": "vol1"}
         assert body["clone"]["parent_snapshot"] == {"name": "snap1"}
+        # What makes it a clone rather than a volume that mentions a parent. Without it
+        # ONTAP reads this as an ordinary volume create and answers 787140, asking for an
+        # aggregate or a style -- and satisfying *that* produces a 20 MB volume with no
+        # clone relationship, reported as success. Measured 2026-08-15 on 9.18.1P3D1.
+        assert body["clone"]["is_flexclone"] is True
+        # Placement is the parent's. Naming an aggregate here is the trap above.
+        assert "aggregates" not in body
+        assert "style" not in body
         # Security style is inherited from the parent and must not be sent.
         assert "nas" not in body
 
