@@ -35,13 +35,15 @@
 | [Admin Demo Guide (EN)](en/admin-resource-management-demo.md) | 26 admin + user demo scenarios |
 | [管理者向けリソース管理 デモガイド (JA)](ja/admin-resource-management-demo.md) | 同 26 シナリオの日本語版 |
 | [Portal Verification Results (EN)](../solutions/amplify-portal/docs/verification-results.en.md) | What is Live E2E vs live-read vs tests-only vs DemoMode, per feature |
-| ポータル検証結果 (JA) — `solutions/amplify-portal/docs/verification-results.md`（gitignore、ローカルのみ） | 機能ごとの検証区分（実機 E2E / 読み取り / テストのみ / DemoMode）。公開しているのは EN 版 |
+| [ポータル検証結果 (JA)](../solutions/amplify-portal/docs/verification-results.md) | 機能ごとの検証区分（実機 E2E / 読み取り / テストのみ / DemoMode）と、未実行の書き込み操作の分類 |
+| [Write Verification Plan (EN)](../solutions/amplify-portal/docs/write-verification-plan.en.md) | Prerequisites, impact and rollback for the writes not yet run, plus the operations that reach the shared environment |
+| [書き込み操作の検証計画 (JA)](../solutions/amplify-portal/docs/write-verification-plan.md) | 未実行の書き込み操作の前提・影響・戻し方。共有環境に影響が及ぶ操作の一覧 |
 | [Portal Getting Started](../solutions/amplify-portal/docs/GETTING-STARTED.md) | First deploy of the portal |
 | [ONTAP Connection Guide](../solutions/amplify-portal/docs/ONTAP-CONNECTION-GUIDE.md) | VPC, secret and management LIF wiring — start with `make ontap-preflight` when a panel has no data |
 | [Handover & Support Guide](../solutions/amplify-portal/docs/portal-handover-guide.md) | After the deploy: the three things to send a user, where every value is managed, and a reverse index from what the user said to what to check |
 | [Portal Tabs Guide](../solutions/amplify-portal/docs/portal-tabs-guide.md) | What each sidebar section does |
 | [Thumbnail Design (JA)](../solutions/amplify-portal/docs/thumbnail-design.md) / [(EN)](../solutions/amplify-portal/docs/thumbnail-design.en.md) | Why file-list thumbnails are generated in the backend, and what is not generated |
-| [Admin Capability Map (JA)](../solutions/amplify-portal/docs/admin-capability-map.md) / [(EN)](../solutions/amplify-portal/docs/admin-capability-map.en.md) | ONTAP System Manager feature coverage |
+| [Admin Capability Map (JA)](../solutions/amplify-portal/docs/admin-capability-map.md) / [(EN)](../solutions/amplify-portal/docs/admin-capability-map.en.md) | What each reachable interface covers (AWS console / FSx API, ONTAP CLI, ONTAP REST API) and what this portal implements |
 | [Resource Management Demo Guide (JA)](../solutions/amplify-portal/docs/resource-management-demo-guide.md) / [(EN)](../solutions/amplify-portal/docs/resource-management-demo-guide.en.md) | Panel-by-panel walkthrough |
 | [AI Agent Demo Guide (JA)](../solutions/amplify-portal/docs/ai-agent-demo-guide.md) / [(EN)](../solutions/amplify-portal/docs/ai-agent-demo-guide.en.md) | Agent chat, directory and teams |
 | [Amplify Gen2 CDK Patterns](../solutions/amplify-portal/docs/amplify-gen2-cdk-patterns.md) | Cross-stack data sources, VPC Lambda deploy cost, escape hatches |
