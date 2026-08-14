@@ -263,6 +263,7 @@ arpResponseSweepNote: "Blocks lift themselves once their expiry passes. To lift 
   rmDeleting: "Deleting…",
   rmSnaplockDocs: "SnapLock documentation",
   rmDeleteConfirm: "Are you sure you want to delete \"{name}\"?",
+  rmQosDeleteConfirm: "Delete \"{name}\"? Any volume assigned to this policy is detached and left with no limit. To lift the limit on one volume while keeping the policy, use the release control instead of deleting.",
   rmDeleted: "Deleted \"{name}\"",
   rmCreate: "Create",
   rmNoVolumes: "No volumes found",

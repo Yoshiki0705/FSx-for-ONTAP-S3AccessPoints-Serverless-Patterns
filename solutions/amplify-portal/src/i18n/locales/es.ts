@@ -260,6 +260,7 @@ arpResponseSweepNote: "Los bloqueos se levantan por sí solos al vencer el plazo
   rmDeleting: "Eliminando…",
   rmSnaplockDocs: "Documentación de SnapLock",
   rmDeleteConfirm: "¿Está seguro de que desea eliminar \"{name}\"?",
+  rmQosDeleteConfirm: "¿Eliminar «{name}»? Cualquier volumen asignado a esta política queda desasignado y sin límite. Para quitar el límite de un solo volumen conservando la política, use la opción de desasignar en lugar de eliminar.",
   rmDeleted: "\"{name}\" eliminado",
   rmCreate: "Crear",
   rmNoVolumes: "No se encontraron volúmenes",

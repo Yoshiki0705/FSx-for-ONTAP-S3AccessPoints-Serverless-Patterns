@@ -1744,7 +1744,14 @@ def _update_qos_policy(http, headers, event, user_id):
 
 
 def _delete_qos_policy(http, headers, event, user_id):
-    """Delete a QoS policy."""
+    """Delete a QoS policy.
+
+    ONTAP accepts this while volumes are still assigned to the policy, and detaches them
+    as it goes: measured on 9.18.1P3D1, a volume holding this policy came back with no
+    policy name and every limit at 0, meaning unlimited. Nothing warns and no `force` is
+    involved, so deleting a policy is also a way to lift the limit from every volume using
+    it -- which is why the panel's confirmation says so.
+    """
     policy_uuid = event.get("policyUuid", "")
     if not policy_uuid:
         return {"success": False, "error": "policyUuid is required"}
@@ -1762,12 +1769,16 @@ def _assign_qos_to_volume(http, headers, event, user_id):
 
     ONTAP REST: PATCH /api/storage/volumes/{uuid} with qos.policy.name
 
-    `policyName` takes ONTAP's reserved keyword `none` to remove the assignment. That is
-    not a convenience. ONTAP refuses to delete a policy group while a storage object is
-    assigned to it, so without a way to remove the assignment, a policy assigned through
-    the portal could never be deleted through the portal. The panel offered no assignment
-    control at all, which is how the gap stayed invisible: nothing reachable could create
-    the state that could not be undone.
+    `policyName` takes ONTAP's reserved keyword `none` to remove the assignment, which
+    leaves the policy in place for whatever else uses it and returns the volume to no
+    limit at all.
+
+    This was added on the understanding, from `qos policy-group delete`, that ONTAP
+    refuses to delete a policy group while a storage object is assigned to it -- making a
+    release the only way to ever delete a policy the portal had assigned. Measured on
+    9.18.1P3D1 through REST, that is not what happens: the DELETE is accepted and the
+    volume is detached with it, silently and with no `force`. So the release is not an
+    escape from a dead end; it is the way to lift a limit while keeping the policy.
 
     An empty string is refused rather than sent, because ONTAP's answer to it does not
     name the field, and "remove it" is the likely intent behind an empty value.

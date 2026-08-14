@@ -260,6 +260,7 @@ arpResponseSweepNote: "Les blocages se lèvent d'eux-mêmes à l'échéance. Pou
   rmDeleting: "Suppression…",
   rmSnaplockDocs: "Documentation SnapLock",
   rmDeleteConfirm: "Voulez-vous vraiment supprimer \"{name}\" ?",
+  rmQosDeleteConfirm: "Supprimer « {name} » ? Tout volume affecté à cette stratégie est détaché et se retrouve sans limite. Pour lever la limite sur un seul volume en conservant la stratégie, utilisez le retrait plutôt que la suppression.",
   rmDeleted: "\"{name}\" supprimé",
   rmCreate: "Créer",
   rmNoVolumes: "Aucun volume trouvé",

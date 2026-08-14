@@ -28,13 +28,15 @@
 
 ---
 
-## Group A: safe to run (not yet done)
+## Group A: safe to run
 
-The suggested order is A8 → A3 → A2 → A5 → A7 → A4 → A6 → A1: fewest prerequisites, smallest
-impact and easiest rollback first. A1 (QoS) is last because, as below, **the round trip cannot
-currently complete**.
+**A8, A3, A2, A5, A7, A4 and A1 are done (2026-08-15). Only A6 remains**, held back because it
+can only be done to SnapMirror relationships that are not ours (below).
 
-### A1. QoS policies — the round trip does not complete (needs work first)
+The order run was A8 → A3 → A2 → A5 → A7 → A4 → A1: fewest prerequisites, smallest impact and
+easiest rollback first. Running them overturned the original premise of A1, A5 and A8.
+
+### A1. QoS policies — **Done (2026-08-15). The premise that the cycle cannot be completed is disproven**
 
 | Item | Detail |
 |------|--------|
@@ -55,6 +57,12 @@ would leave one undeletable policy behind.
 Do first: let `assignQosToVolume` accept an empty `policyName` (or an explicit clear) and send the
 equivalent of `{"qos": {"policy": {"name": "none"}}}` to `PATCH /storage/volumes/{uuid}`. Put
 "remove QoS" next to the assign control in the UI. Verify after that ships.
+
+Measured (9.18.1P3D1, REST): **an assigned policy can be deleted.** No `force` is involved, contrary to the
+CLI reference, and the volume is detached along with it, leaving every limit at 0 -- unlimited. The premise
+that the cycle cannot be completed therefore did not hold. What is true instead is that **a delete lifts the
+limit from every volume using the policy**, which the panel's confirmation now says. The `none` release is
+still needed as the way to lift the limit on one volume while keeping the policy.
 
 ### A2. SMB share create and delete — **Done (2026-08-15)**
 
@@ -112,7 +120,7 @@ from the parent's `clone_<name>.<timestamp>`. The split took seconds on a nearly
 using 348 KB, so the space does not double; the volume leaves the clone listing as the split completes,
 which is why the progress figure is only visible while it runs, and the parent keeps the base snapshot.
 
-### A5. Quota rule delete — it stays enforced after deletion — **Done (2026-08-15)**
+### A5. Quota rule deletion — **Done (2026-08-15). "Still enforced after deletion" is not observable in the report**
 
 | Item | Detail |
 |------|--------|
@@ -140,7 +148,7 @@ report, which looks like the deleted rule persisting. The deleted rule's own lim
 immediately. Whether enforcement continues is not observable through these reads, so the reference
 above stands as the source and the portal now points at the off → on step after a delete.
 
-### A6. SnapMirror update-now and transfer abort
+### A6. SnapMirror update-now and transfer abort — **Not run (2026-08-15; it can only be done to relationships that are not ours)**
 
 | Item | Detail |
 |------|--------|
@@ -158,6 +166,16 @@ update, and abort while it runs. Sources:
 [SnapMirror status and state meanings](https://kb.netapp.com/onprem/ontap/dp/SnapMirror/What_are_the_Ontap_SnapMirror_relationship_status_and_SnapMirror_State_meanings%3F).
 That an abort fails unless the relationship is transferring is stated in
 [the upgrade preparation steps](https://docs.netapp.com/us-en/ontap-systems-upgrade/upgrade-arl-auto-app-9151/complete-preparation-for-upgrade.html).
+
+Both SnapMirror relationships here come from other systems -- their sources are on external clusters -- and
+every SVM peer points at another cluster. There is no intra-cluster peer between `fsxsvm01` and `fsxsvm02`,
+so creating our own relationship means **adding an SVM peer, which is shared configuration**. Running
+`updateSnapmirrorNow` on an existing relationship writes a new snapshot on a destination volume we do not
+own and changes its transfer history, which is append-only. Both reach into the shared environment, so this
+waits on the account owner.
+
+**The abort (`abortSnapmirrorTransfer`) cannot be verified here at all.** Aborting needs a transfer that
+lasts, and that needs a way to write bulk data to the source volume -- an NFS or SMB client.
 
 ### A7. File operations (through the S3 Access Point) — **Done (2026-08-15; only the over-5-GiB case is unverified, for want of a precondition)**
 
