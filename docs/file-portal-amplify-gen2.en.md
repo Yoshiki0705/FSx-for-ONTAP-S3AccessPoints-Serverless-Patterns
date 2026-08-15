@@ -19,8 +19,71 @@ This document compares three approaches — AWS Amplify Gen2, Nextcloud, and cus
 
 ---
 
+## Already decided on Amplify Gen2? Guides by audience
+
+This document is about **choosing**. If you have already decided to use the Amplify Gen2
+implementation in this repository, you do not need to read the comparison — go to the guide
+for your role.
+
+<details open>
+<summary><strong>👤 Users (invited to use the portal)</strong></summary>
+
+| Guide | What it covers |
+|---|---|
+| **[User Guide (EN)](./en/portal-user-guide.md) / [JA](./ja/portal-user-guide.md)** | Signing in, browsing, preview, download. Also in ko / zh-CN / zh-TW / fr / de / es |
+| [Mobile Guide (EN)](./en/portal-mobile-guide.md) / [JA](./ja/portal-mobile-guide.md) | Using it from a phone |
+| [Quick Reference (EN)](./en/portal-quick-reference.md) / [JA](./ja/portal-quick-reference.md) | One-page summary of the operations |
+| [Sections Guide](../solutions/amplify-portal/docs/portal-tabs-guide.en.md) | How the screens are divided |
+| [Accessibility (EN)](./en/portal-accessibility.md) / [JA](./ja/portal-accessibility.md) | Keyboard operation and assistive technology support |
+
+</details>
+
+<details>
+<summary><strong>🛠 Infrastructure owners (deploy, operate, hand over)</strong></summary>
+
+| Guide | What it covers |
+|---|---|
+| **[Getting Started](../solutions/amplify-portal/docs/GETTING-STARTED.en.md)** | Up to the first launch, including what `amplify_outputs.json` and device reachability require |
+| **[Deployment Runbook (EN)](./en/portal-deployment-runbook.md) / [JA](./ja/portal-deployment-runbook.md)** | Deploy and teardown procedures, with troubleshooting |
+| [Portal README](../solutions/amplify-portal/README.md) | Full setup and the known pitfalls |
+| [ONTAP Connection Guide](../solutions/amplify-portal/docs/ONTAP-CONNECTION-GUIDE.en.md) | Reaching the management endpoint, `make ontap-preflight` |
+| [Authorization Design (EN)](./en/portal-authorization-design.md) / [JA](./ja/portal-authorization-design.md) | RBAC (Viewer / Contributor / Storage Admin / Auditor) |
+| [Handover and First-line Support](../solutions/amplify-portal/docs/portal-handover-guide.en.md) | What to explain when handing the portal to its users |
+| [PoC to Production (EN)](./en/portal-poc-to-production.md) / [JA](./ja/portal-poc-to-production.md) | The decision points on the way to production |
+| [Scaling Guide (EN)](./en/portal-scaling-guide.md) / [JA](./ja/portal-scaling-guide.md) | What changes as users and file counts grow |
+| [Compliance Guide (EN)](./en/portal-compliance-guide.md) / [JA](./ja/portal-compliance-guide.md) | Audit trail and data classification handling |
+| [AppSync Authorization Troubleshooting](../solutions/amplify-portal/docs/TROUBLESHOOTING-APPSYNC-AUTH.en.md) | The usual reason the admin sections come up empty |
+| [Cleanup Guide](../solutions/amplify-portal/docs/cleanup-guide.en.md) | Teardown that actually stops the billing |
+| [Verification Results](../solutions/amplify-portal/docs/verification-results.en.md) | How far each feature is verified: live E2E, live read, or tests only |
+
+</details>
+
+<details>
+<summary><strong>💻 Amplify developers (extending the UI and the backend)</strong></summary>
+
+| Guide | What it covers |
+|---|---|
+| **[Extending the Portal UI](../solutions/amplify-portal/docs/CONTRIBUTING-UI.en.md)** | How to add a screen or an action — read this first |
+| [Amplify Gen2 + CDK Design Decisions](../solutions/amplify-portal/docs/amplify-gen2-cdk-patterns.en.md) | The constraints Gen2 imposes and the ways around them |
+| [Implementation Guide](../solutions/amplify-portal/docs/IMPLEMENTATION.en.md) | Backend Lambdas and the data flow |
+| [Admin Capability Map](../solutions/amplify-portal/docs/admin-capability-map.en.md) | Which interface owns what, and what the portal implements |
+| [IaC Governance Patterns](../solutions/amplify-portal/docs/iac-governance-patterns.en.md) | How cdk-nag and the quality gates are wired |
+| [CDK Quality Gate Constraints](./agent/portal-cdk-quality-gates.md) | Suppressing Amplify-managed resources, cross-stack limits, sandbox hotswap |
+| [UI Strings and 8 Languages](./agent/portal-i18n.md) | `ja.ts` is the source of the type; why hardcoding is refused |
+| [PR Ephemeral Environments](../solutions/amplify-portal/docs/pr-ephemeral-environments.en.md) | A preview environment per PR |
+| [Resource Management Demo Guide](../solutions/amplify-portal/docs/resource-management-demo-guide.en.md) | What each admin panel does |
+| [AI Agent Demo Guide](../solutions/amplify-portal/docs/ai-agent-demo-guide.en.md) | How the agent features are put together |
+
+</details>
+
+> Choosing Nextcloud instead: [Nextcloud External Storage setup guide](./nextcloud-external-storage-s3ap.en.md).
+> Choosing no frontend at all: [Do you need to build one?](#do-you-need-to-build-one)
+
+---
+
 ## Table of Contents
 
+0. [Guides by audience](#already-decided-on-amplify-gen2-guides-by-audience)
 1. [Architecture Overview](#architecture-overview)
 2. [Do You Need to Build This at All?](#do-you-need-to-build-this-at-all)
 3. [Comparison Matrix](#comparison-matrix)
