@@ -45,8 +45,32 @@ deleted」状態にして**既定 12 時間**キューに保持する。キュ�
 削除済みクローンがキューにある限り、親から見ればクローンは存在する。
 
 出典: [How to use the Volume Recovery Queue](https://kb.netapp.com/on-prem/ontap/Ontap_OS/OS-KBs/How_to_use_the_Volume_Recovery_Queue)。
-`volume recovery-queue purge` で強制削除できるが **diag 権限が必要**で、FSx for ONTAP の
-`fsxadmin` では到達できない。つまり待つしかない。
+
+### キューは REST から読めて、purge も `fsxadmin` で通る（2026-08-15 実測）
+
+**この項の以前の記述は誤りだった。**「`purge` は diag 権限が必要で FSx の `fsxadmin` では
+到達できない。つまり待つしかない」と書いていたが、実際には REST の private CLI 経由で
+`fsxadmin` のまま実行できる。12 時間待つ必要はない。
+
+```
+GET  /api/private/cli/volume/recovery-queue
+POST /api/private/cli/volume/recovery-queue/purge   body: {"vserver": "...", "volume": "..."}
+```
+
+GET は `vserver` と `volume` だけを返す。`fields=*` は拒否され、`deletion-time` /
+`deletion-request-time` / `size` はいずれも無効なフィールド名なので、削除時刻は読めない。
+コレクションへの `DELETE` は 405（CLI の動詞が `purge` なので存在しない）。purge は 202 と
+`[Job N] Job is queued: Delete <name>.` を返し、20 秒ほどでキューから消える。
+
+**キュー上の名前は元のボリューム名ではない。** サフィックスが付く（`zz_recheck_clone` →
+`zz_recheck_clone_1106`）。元の名前で照合すると一致しないので、一覧を取って前方一致で探す。
+
+ブロックしていたクローンを purge した直後に親の削除が成功した。順序は「クローンを purge →
+親を削除」で、キューにあるクローンの基点スナップショットは親から削除できない（削除ジョブが
+完了しない）ため、スナップショットを先に消す経路は無い。
+
+> purge は取り消せない。キューはそもそも誤削除に対する猶予期間なので、消してよいのは
+> 自分が削除したと分かっているボリュームだけ。
 
 ### 回避策: クローンを削除する前に分割する（実測で A/B 確認）
 

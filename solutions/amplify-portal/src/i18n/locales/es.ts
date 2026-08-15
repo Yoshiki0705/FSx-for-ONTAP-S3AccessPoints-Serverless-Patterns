@@ -308,7 +308,7 @@ arpResponseSweepNote: "Los bloqueos se levantan por sí solos al vencer el plazo
   rmDeleting: "Eliminando…",
   rmSnaplockDocs: "Documentación de SnapLock",
   rmDeleteConfirm: "¿Está seguro de que desea eliminar \"{name}\"?",
-  rmDeleteBlockedByCloneHint: "ONTAP mantiene un clon eliminado en su recovery queue durante 12 horas por omisión, y este volumen lo cuenta como clon durante todo ese tiempo, por lo que rechaza la eliminación. Separar el clon primero (Separar, en el panel FlexClone) y eliminarlo después evita la espera.",
+  rmDeleteBlockedByCloneHint: "ONTAP mantiene un clon borrado 12 horas por omisión en su recovery queue, y este volumen lo cuenta como clon durante todo ese tiempo, así que el borrado se rechaza. Separar el clon primero (Separar, en el panel de FlexClone) y borrarlo después evita la espera. Si el clon ya no está, espere o limpie la entrada con volume recovery-queue purge desde la CLI de ONTAP o la private CLI de REST. Un purge no se puede deshacer: confirme que es un volumen que usted borró.",
   rmQosDeleteConfirm: "¿Eliminar «{name}»? Cualquier volumen asignado a esta política queda desasignado y sin límite. Para quitar el límite de un solo volumen conservando la política, use la opción de desasignar en lugar de eliminar.",
   rmDeleted: "\"{name}\" eliminado",
   rmCreate: "Crear",
