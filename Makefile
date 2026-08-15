@@ -23,7 +23,7 @@
 	build-sap deploy-uc1 deploy-sap clean build-SharedLayer build-uc12 deploy-uc12 test-ops1 \
 	test-ops4 test-ops3 test-ops2 test-ops5 test-ops6 test-ops lint-ops lint-cfn-ops \
 	build-ops1 deploy-ops1 security-report security-cfn propose-cleanup ontap-preflight \
-	discover-s3ap
+	discover-s3ap check-group-ap-tags
 
 # Target Python version — must match the Lambda runtime in the SAM templates
 # (`Runtime: python3.13`). Declared once here so `install`, the interpreter
@@ -87,6 +87,7 @@ help:
 	@echo "  make ontap-preflight — Name the broken link in the portal's ONTAP chain (calls AWS)"
 	@echo "  make propose-cleanup — Report the backlog, then what is standing and its cost (read-only)"
 	@echo "  make discover-s3ap — Inventory S3 access points from the FSx API (read-only)"
+	@echo "  make check-group-ap-tags — Report groupApMapping vs access point tags (read-only)"
 	@echo "  make clean         — Remove build artifacts"
 	@echo ""
 	@echo "Python: $(PYTHON) (auto-detects .venv/bin/python; override: PYTHON=...)"
@@ -225,6 +226,13 @@ propose-cleanup:
 # --require-alias). See the module docstring for the cross-account form.
 discover-s3ap:
 	$(PYTHON) scripts/discover_s3_access_points.py --regions $(or $(REGIONS),ap-northeast-1) $(ARGS)
+
+# Reports where groupApMapping in portal-config.ts disagrees with the access point
+# tags. The file stays authoritative -- this only says when it stopped matching
+# the resources, which nothing was reporting. Read-only. Exit 2 means
+# portal-config.ts is absent (gitignored), which is not the same as agreement.
+check-group-ap-tags:
+	$(PYTHON) scripts/check_group_ap_tags.py --regions $(or $(REGIONS),ap-northeast-1) $(ARGS)
 
 # ============================================================
 # Drift checks

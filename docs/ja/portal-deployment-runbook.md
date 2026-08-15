@@ -242,6 +242,23 @@ make discover-s3ap ARGS="--accounts 111111111111 222222222222 --role-name <role>
 返します。account 内の全 AP を出すわけではないので、可視範囲は従来どおり設定が決めます。
 `fsx:DescribeS3AccessPointAttachments` が拒否された場合は `lifecycle: UNKNOWN` として
 そのまま返す（読み取り権限の不足でブラウズ不能にしない）。
+
+### グループと AP の対応がずれていないか調べる
+
+`groupApMapping` は手書きで、これまで**ずれても誰も知らせませんでした**（AP を作り替えると
+古い alias が残り、そのグループは存在しないものを指す）。対応表そのものは設定ファイルに残し、
+Access Point のタグと食い違ったら報告する検査を用意しています。
+
+```bash
+make check-group-ap-tags                        # 既定のタグキーは PortalGroup
+make check-group-ap-tags ARGS="--tag-key Team"
+```
+
+`PortalGroup=engineering` とタグ付けした AP は、対応表の `engineering` に現れることを期待します。
+報告するのは 4 種類です。タグ付き AP が無いグループ、alias が別の AP に移っているグループ、
+対応表に無いタグ、同じタグ値を持つ AP が 2 つ（対応表は 1 つしか書けない）。**タグを付け忘れても
+動作は壊れません**。可視範囲を決めるのは引き続き設定ファイルで、検査は知らせるだけです。
+終了コード 2 は `portal-config.ts` が無い場合で、「一致した」とは区別しています。
 | `stateMachineArn` | portal-config.ts + start-processing.js | Process タブのワークフロー起動 |
 | `groupApMapping` | portal-config.ts | チームごとのファイル分離 (My Files) |
 | `bedrockKbId` | portal-config.ts | 全文セマンティック検索 |

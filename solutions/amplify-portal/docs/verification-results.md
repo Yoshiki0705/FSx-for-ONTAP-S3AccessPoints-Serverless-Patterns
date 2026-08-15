@@ -139,6 +139,20 @@ S3 オブジェクト、および作業用ボリューム `zz_probe_a` はすべ
 > 受け付けず、`updateSnaplockRetention` は `days` しか取りません。ONTAP 側は秒単位を受けるので、
 > これは UI 側の制約です。**利用者は現状 UI から 1 日未満の保持期間を指定できません。**
 
+### 2026-08-16 に再確認（C4 を Lambda 再デプロイ後に再実行）
+
+C4 は Lambda を数回再デプロイしたあとに走らせ直しました。前回と同じ結論に加えて、
+ロック表示の修正が実機のロック済み Snapshot で効いていることを確認しています。
+検証に使った `zz_lock_probe`（20 GiB）は削除済みで、残っているリソースはありません。
+
+| 確認内容 | 結果 |
+|---------|------|
+| 承認フラグ無しの有効化 | 拒否（`acknowledgeIrreversible=true is required...`） |
+| 有効化後の状態 | `snapshotLockingEnabled: true`、`lockedSnapshotCount` が 1 に増える |
+| `retentionDays=1` の満了 | `expiryTime: 2026-08-16T18:54:28Z`（要求の約 24 時間後） |
+| **一覧のロック表示** | 同じ Snapshot を一覧側から読み直して `isTamperproof: true` / `snaplockExpiryTime` あり。`expiry_time` を読まずロック表示が壊れていた不具合の修正が、実機のロック済み Snapshot で効いている |
+| ロック済み Snapshot とボリューム削除 | 削除は成功し、20 秒後に一覧から消えた（前回と同じ） |
+
 ### 未確認のまま残るもの（SnapLock）
 
 | 項目 | なぜ未確認か |
