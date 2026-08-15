@@ -77,6 +77,26 @@ aws cognito-idp admin-set-user-password --user-pool-id "$POOL" \
   --username <user@example.com> --password '<initial-password>' --permanent
 ```
 
+**The password has to satisfy the pool's policy**, or it fails with
+`InvalidPasswordException: Password does not conform to policy`. The default requires 8
+characters with upper case, lower case, a digit and **a symbol**; the symbol is the one people
+forget. Check the current policy:
+
+```bash
+aws cognito-idp describe-user-pool --user-pool-id "$POOL" \
+  --query 'UserPool.Policies.PasswordPolicy' --output json
+```
+
+One way to generate a conforming value:
+
+```bash
+python3 -c "import secrets,string;a=string.ascii_letters+string.digits;print(''.join(secrets.choice(a) for _ in range(14))+'-Aa1')"
+```
+
+**Decide where the value will live before you create it.** "Do not paste it into chat" implies
+somewhere else has to hold it. Without a credential manager, put it in a gitignored directory
+(`.private/` in this repository) and hand over the file path rather than the value.
+
 **Only if they need the administration sections** (resource management, analytics), add them to the group.
 
 ```bash

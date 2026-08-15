@@ -76,6 +76,25 @@ aws cognito-idp admin-set-user-password --user-pool-id "$POOL" \
   --username <user@example.com> --password '<initial-password>' --permanent
 ```
 
+**パスワードはポリシーを満たす必要があります。** 満たさないと `InvalidPasswordException:
+Password does not conform to policy` で失敗します。既定は 8 文字以上・大文字・小文字・数字・
+**記号**で、記号の要求を忘れやすいところです。現在のポリシーはこう確認します。
+
+```bash
+aws cognito-idp describe-user-pool --user-pool-id "$POOL" \
+  --query 'UserPool.Policies.PasswordPolicy' --output json
+```
+
+条件を満たす値を作る例です。
+
+```bash
+python3 -c "import secrets,string;a=string.ascii_letters+string.digits;print(''.join(secrets.choice(a) for _ in range(14))+'-Aa1')"
+```
+
+**生成した値の置き場所**を決めてから作ってください。チャットに貼らないという制約は、裏を返すと
+置き場所が必要という意味です。資格情報管理ツールが無ければ、gitignore されたディレクトリ
+（このリポジトリなら `.private/`）にファイルとして置き、相手にはファイルのパスを伝えます。
+
 **管理系セクション（リソース管理・分析）を使わせる場合のみ**、グループに入れます。
 
 ```bash
