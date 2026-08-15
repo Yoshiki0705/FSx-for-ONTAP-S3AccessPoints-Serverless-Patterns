@@ -117,6 +117,38 @@ purpose, `zz_fg_probe`, has been deleted.
 | FlexVol to FlexGroup conversion | **Not in the REST API** (`volume conversion start` is advanced-privilege CLI only). AWS recommends copying to a new FlexGroup with AWS DataSync rather than converting in place, and deleting FSx backups first. No button; the preconditions, irreversibility and snapshot consequences are in the panel's guidance instead | [AWS docs](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/managing-volumes.html) |
 | Hour durations (found here) | `durationLabel` understood days only and returns unknown values unchanged, so the rebalance runtime select displayed ONTAP's own default as the string `PT6H` | — |
 
+### Added 2026-08-15 (SnapLock and snapshot locking, ONTAP 9.18.1P3D1)
+
+**Group C, previously "irreversible, so not run", was run after the account owner approved
+the retention values by name.** What made it possible is that ONTAP accepts a retention period
+in seconds (0 to 65535). A five-minute retention expires in minutes, and the volume can then be
+deleted.
+
+The volumes created for this (`zz_sl_ent`, `zz_sl_comp`, `zz_lock_probe`) were all deleted; the
+file system is back to its original 10.
+
+| Feature | What was confirmed | Source |
+|------|---------|------|
+| Creating a SnapLock enterprise / compliance volume | Created with `snaplockType` plus `retentionMin` / `retentionDefault` / `retentionMax`, then read back with `getSnaplockConfig`. **ONTAP accepted `PT5M`** (min `PT0S`, default `PT5M`, max `P1D`), and reports `complianceClockTime` | [Set the retention period](https://docs.netapp.com/us-en/ontap/snaplock/set-retention-period-task.html) |
+| The acknowledgement is enforced | A create without `acknowledgeIrreversible` is refused for both types | as above |
+| Changing the retention | `updateSnaplockRetention` with `days=1` moved the volume default from `PT5M` to `P1D`. **A volume's default and a committed file's retention are different things**; only the latter is extend-only | as above |
+| **An empty SnapLock volume can be deleted** | Even in compliance mode, `deleteVolume` completed within 90 seconds and the volume left the listing. With no WORM file ever committed it stays deletable, which is what the UI text says | — |
+| Enabling snapshot locking | Refused without the acknowledgement. After enabling, `snapshotLockingEnabled: true` (irreversible) | [Tamperproof snapshot design](../../../docs/tamperproof-snapshot-design.md) |
+| Locking a snapshot | `lockSnapshot` returns an `expiryTime`, and `getSnapshotLockingStatus` counts `lockedSnapshotCount: 1` | as above |
+| **A locked snapshot does not stop the volume being deleted** | A volume holding a locked snapshot was deleted and left the listing 20 seconds later. The blast radius differs from a SnapLock WORM file, and this matches the portal's own wording (`slcSnapshotScope`: it does not affect other snapshots or the volume itself) | — |
+| **The snapshot list reported locks incorrectly (fixed)** | ONTAP carries two expiry fields on a snapshot: `expiry_time` for snapshot locking, `snaplock_expiry_time` for the expiry a SnapLock volume gives its snapshots. `lockSnapshot` writes the former, but the listing in `_get_snapshots` **requested and read only the latter**, so **every snapshot the portal locked itself displayed as not locked**. Found because two panels disagreed about the same snapshot. Both fields are read now, with four tests that fail against the old code | — |
+
+> **This procedure cannot be reproduced from the UI.** The portal's `asIsoDuration` accepts only
+> date components (Y/M/W/D) and `updateSnaplockRetention` takes `days`. ONTAP accepts seconds, so
+> the limitation is the UI's. **A user cannot currently choose a retention below one day.**
+
+### Still unconfirmed (SnapLock)
+
+| Item | Why |
+|------|------------|
+| Committing a file to WORM, and the deletion block that follows | Making a file read-only needs an NFS or SMB client; it cannot be committed through the S3 Access Point. Waiting on a client inside the VPC |
+| Privileged delete on an enterprise volume | It requires an audit log volume, and that blocks deletion of the volume, then the SVM, then the file system for **at least six months**. The AWS API has no field for the audit log's retention, so the six-month default applies. **There is no way to shorten it, so it is not run** |
+
 ## Live read (write paths not confirmed)
 
 | Feature | Confirmed | Not confirmed |
@@ -147,7 +179,7 @@ operation are in the [write verification plan](write-verification-plan.en.md).
 |-------|-----------|----------|
 | **A. Safe to run** | **A1 through A8 all run on 2026-08-15.** Two items remain: the SnapMirror **transfer abort** and a **copy over 5 GiB** | The abort is reachable — the measured transfer window is 12 seconds — but it leaves a relationship we do not own unhealthy, so it needs the owner's approval. The 5 GiB case has no precondition to create: exceeding it needs the multipart upload that fails on this Access Point |
 | **B. No external prerequisite** | Vscan ×4, FPolicy ×5, cluster peer ×3, SVM peer accept and delete | An external scan engine, an FPolicy engine, or an accept on the remote cluster is required. FPolicy may be reachable with `engine: native` |
-| **C. Irreversible, so not run** | SnapLock retention, snapshot locking, performing a lock, S3 Object Lock retention, snapshot policy create and assign | Unexpired WORM blocks deletion of the volume, then the SVM, then the **file system**. This stays as it is |
+| **C. Irreversible, run with short values** | SnapLock retention, snapshot locking, performing a lock | **Run on 2026-08-15** (see the 08-15 table below). ONTAP accepts a retention in seconds, so a five-minute retention expired and the volumes were then deleted. What remains is committing a file to WORM (waiting on an NFS/SMB client) and privileged delete (not run: its audit log volume locks the file system for at least six months) |
 | **D. Affects the shared environment** | Disabling a LIF, disabling a protocol service, DNS update, SnapMirror break / resync, the six containment actions | These cut a path, a session or a replication relationship. Decide the target and the window first |
 | **E. Not ONTAP** | Agents / teams / sessions, portal settings, thumbnails | Bedrock, DynamoDB and S3. Not real-hardware ONTAP verification |
 

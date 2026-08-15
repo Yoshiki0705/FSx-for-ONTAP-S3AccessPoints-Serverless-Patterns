@@ -1289,3 +1289,63 @@ class TestRetentionPolicyGuard:
         assert method == "PATCH"
         assert "uuid-1" in url
         assert json.loads(http.request.call_args[1]["body"]) == {"snaplock": {"retention": {"default": "P180D"}}}
+
+
+class TestSnapshotLockIsReported:
+    """A snapshot the portal locked has to read back as locked.
+
+    `lockSnapshot` writes `expiry_time`. This listing used to request and read only
+    `snaplock_expiry_time`, so every lock the portal applied itself came back absent
+    and the list rendered "not tamperproof" while the locking panel counted the same
+    snapshot as locked. Measured on ONTAP 9.18.1P3D1.
+    """
+
+    def _listing(self, record: dict) -> dict:
+        """Run getSnapshotsWithLockStatus against one fabricated ONTAP record."""
+        from handler import handler
+
+        captured: list[str] = []
+
+        class RecordingHttp:
+            def request(self, method, url, **kwargs):
+                captured.append(url)
+
+                class R:
+                    status = 200
+                    # The first call resolves the volume UUID, the second lists snapshots.
+                    data = json.dumps(
+                        {"records": [{"uuid": "vol-1"}]} if "snapshots" not in url else {"records": [record]}
+                    ).encode()
+
+                return R()
+
+        with patch("handler.urllib3.PoolManager") as mock_pool:
+            mock_pool.return_value = RecordingHttp()
+            result = handler({"action": "getSnapshotsWithLockStatus", "volumeName": "vol1"}, None)
+        result["_urls"] = captured
+        return result
+
+    def test_snapshot_locking_expiry_is_reported(self, mock_secrets):
+        """`expiry_time`, which is what lockSnapshot writes, marks it tamperproof."""
+        result = self._listing({"name": "zz_lock_snap", "uuid": "snap-1", "expiry_time": "2026-08-16T13:42:52Z"})
+        assert result["snapshots"][0]["isTamperproof"] is True
+        assert result["snapshots"][0]["snaplockExpiryTime"] == "2026-08-16T13:42:52Z"
+
+    def test_snaplock_volume_expiry_is_still_reported(self, mock_secrets):
+        """The SnapLock-volume field keeps working; the fix adds a field, not swaps it."""
+        result = self._listing({"name": "worm", "uuid": "snap-2", "snaplock_expiry_time": "2026-09-01T00:00:00Z"})
+        assert result["snapshots"][0]["isTamperproof"] is True
+
+    def test_unlocked_snapshot_is_not_tamperproof(self, mock_secrets):
+        """Neither field set means it can still be deleted."""
+        result = self._listing({"name": "plain", "uuid": "snap-3"})
+        assert result["snapshots"][0]["isTamperproof"] is False
+        assert result["snapshots"][0]["snaplockExpiryTime"] is None
+
+    def test_both_expiry_fields_are_requested(self, mock_secrets):
+        """A field the read never asks for cannot come back."""
+        result = self._listing({"name": "plain", "uuid": "snap-4"})
+        snapshot_urls = [u for u in result["_urls"] if "snapshots" in u]
+        assert snapshot_urls, "the listing never queried snapshots"
+        assert "expiry_time" in snapshot_urls[0]
+        assert "snaplock_expiry_time" in snapshot_urls[0]
