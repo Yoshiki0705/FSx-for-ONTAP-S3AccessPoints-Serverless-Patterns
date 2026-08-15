@@ -135,3 +135,33 @@ if cifs["records"]:
 > **Note**: This pattern was verified in `fsxn-observability-integrations` (restore-verification workflow). The patterns in this repo work without AD because they typically target pure UNIX SVMs (no CIFS enabled).
 
 ---
+
+## 条件付き書き込み（`If-None-Match`）は 501 になる
+
+ブラウザから S3 AP に書くとき、`PutObject` に `if-none-match: *` を付けると
+`501 NotImplemented`（`A header you provided implies functionality that is not implemented`）
+が返る。S3 の conditional write に相当する機能をこの Access Point が実装していない。
+
+実測（2026-08、`eda-demo-s3ap-...-ext-s3alias`、ONTAP 9.18.1P3D1、Cognito Identity Pool の
+authenticated ロール）:
+
+| リクエスト | 結果 |
+|---|---|
+| `PUT` + `if-none-match: *` + `x-amz-checksum-crc32` | 501 NotImplemented |
+| `PUT` + `if-none-match: *`（checksum なし） | 501 NotImplemented |
+| `PUT` + `x-amz-checksum-crc32`（`if-none-match` なし） | **200 OK** |
+| `GET` / `ListObjectsV2` | 200（どちらのヘッダーも送らないため影響なし） |
+
+つまり CRC32 のフレキシブルチェックサムは通る。落ちるのは `if-none-match` だけ。
+
+**ポータルでこれが表面化した経路**: `@aws-amplify/ui-react-storage` の Storage Browser は
+`preventOverwrite`（UI の "Overwrite existing files" チェックボックス）を `if-none-match: *`
+に変換し、upload と createFolder の両ハンドラーがこれを送る。読み取りは無関係なので
+「一覧は見えるのに書き込みだけ全件失敗する」形になる。ヘッダーは SigV4 の `SignedHeaders`
+に含まれるため、署名後に取り除くことはできない。差し替えられるのはハンドラーだけで、
+`createStorageBrowser({ actions: { default: { upload, createFolder } } })` がその口。
+実装は `solutions/amplify-portal/src/lib/storageBrowserWriteHandlers.ts`。
+
+**上書き防止をどう残すか**: 書き込み前に同じキーを `list`（prefix 一致）で引き、存在したら
+`OVERWRITE_PREVENTED` を返す。`if-none-match` のような原子性はないので、同じキーへの同時
+書き込みは両方が「不在」と判定しうる。このエンドポイントでの代替案は「上書き防止なし」。

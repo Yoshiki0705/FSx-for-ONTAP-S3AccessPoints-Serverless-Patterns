@@ -230,6 +230,7 @@ aws cloudformation describe-stacks \
 | Files tab: "No files" | `s3ApAlias` empty in portal-config.ts | Set alias, re-run `make sandbox` |
 | **Files tab: "No files" (DemoMode)** | **`s3ApResourceArns` only has S3 AP ARNs, not bucket ARNs** | **Add `arn:aws:s3:::your-bucket` + `arn:aws:s3:::your-bucket/*` to `s3ApResourceArns`** |
 | Upload tab: "not configured" | `s3ApAlias` empty in portal-config.ts, or sandbox not run | Set the alias, run `npx ampx sandbox`, reload |
+| Upload or create folder: 501 NotImplemented | The S3 AP does not implement `if-none-match` (conditional write), which Storage Browser's default handlers send | Use the replacement handlers in `src/lib/storageBrowserWriteHandlers.ts` (on by default) |
 | Upload tab: "ListCallerAccessGrants" | Old code using `createManagedAuthAdapter` | Update StorageBrowserTab.tsx to direct auth mode |
 | Process tab: red banner | Step Functions ARN is placeholder | `make sfn-test-create` or deploy UC pattern |
 | Login fails | User not created or password not set | Run Step 4 commands |
