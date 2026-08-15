@@ -417,9 +417,22 @@ def _get_snapshots(http, headers, event):
 
     Returns snapshots with:
     - name, create_time, state
-    - snaplock_expiry_time (if locked/tamperproof)
-    - is_tamperproof: true if expiry_time is set
+    - snaplockExpiryTime: whichever expiry ONTAP reports for this snapshot
+    - isTamperproof: true when either expiry is set
     - is_arp: true if name starts with Anti_ransomware_backup
+
+    ONTAP reports two different expiries on a snapshot and they are not
+    interchangeable:
+
+    * `expiry_time` is snapshot locking, which is what `lockSnapshot` writes;
+    * `snaplock_expiry_time` is the expiry a SnapLock volume gives its snapshots.
+
+    This read asked for `snaplock_expiry_time` alone, so every snapshot the portal
+    locked itself came back with no expiry and the list showed it as not
+    tamperproof. Measured on 9.18.1P3D1: after `lockSnapshot` returned an
+    expiryTime and `getSnapshotLockingStatus` counted the snapshot as locked, this
+    listing still reported `isTamperproof: false`. Two panels disagreeing about the
+    same snapshot is how it was found.
     """
     vol_uuid = _get_volume_uuid(http, headers, event)
     max_results = event.get("maxResults", 20)
@@ -429,12 +442,13 @@ def _get_snapshots(http, headers, event):
         headers,
         f"/storage/volumes/{vol_uuid}/snapshots",
         f"order_by=create_time desc&max_records={max_results}"
-        f"&fields=name,create_time,state,comment,snaplock_expiry_time,uuid",
+        f"&fields=name,create_time,state,comment,expiry_time,snaplock_expiry_time,uuid",
     )
 
     snapshots = []
     for s in data.get("records", []):
-        expiry = s.get("snaplock_expiry_time")
+        # Either field means the snapshot cannot be deleted yet.
+        expiry = s.get("expiry_time") or s.get("snaplock_expiry_time")
         name = s.get("name", "")
         snapshots.append(
             {
