@@ -5,7 +5,7 @@
  */
 
 import { describe, it, expect } from "vitest";
-import { durationLabel, durationRange } from "../../src/utils/duration";
+import { durationLabel, durationRange, elapsedLabel } from "../../src/utils/duration";
 import { ja } from "../../src/i18n/locales/ja";
 import { en } from "../../src/i18n/locales/en";
 
@@ -93,6 +93,29 @@ describe("durationLabel", () => {
     expect(durationLabel("", tEn)).toBe("");
     // Minutes are not offered anywhere, so they stay in the fallback.
     expect(durationLabel("PT30M", tEn)).toBe("PT30M");
+  });
+});
+
+describe("elapsedLabel", () => {
+  it("renders a running total as a clock", () => {
+    // The values ONTAP reported for a rebalance in progress, in order.
+    expect(elapsedLabel("PT3S")).toBe("0:03");
+    expect(elapsedLabel("PT15S")).toBe("0:15");
+    expect(elapsedLabel("PT1M")).toBe("1:00");
+    expect(elapsedLabel("PT1M32S")).toBe("1:32");
+    expect(elapsedLabel("PT3M49S")).toBe("3:49");
+  });
+
+  it("includes hours only when there are hours", () => {
+    expect(elapsedLabel("PT2H5M9S")).toBe("2:05:09");
+    expect(elapsedLabel("PT1H")).toBe("1:00:00");
+  });
+
+  it("returns anything else unchanged rather than blank", () => {
+    // A retention period is not an elapsed time; it belongs to durationLabel.
+    expect(elapsedLabel("P30D")).toBe("P30D");
+    expect(elapsedLabel("PT")).toBe("PT");
+    expect(elapsedLabel("")).toBe("");
   });
 });
 
