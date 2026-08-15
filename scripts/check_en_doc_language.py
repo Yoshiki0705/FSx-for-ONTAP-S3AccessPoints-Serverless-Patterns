@@ -52,9 +52,19 @@ LAW_WITH_GLOSS = re.compile(
 # Lines that enumerate the eight UI locales; the point is the native script.
 LOCALE_LIST = re.compile(r"한국어|简体中文|繁體中文")
 
+# A dev.to series name quoted as the literal string to type into the `series:` field.
+# The Japanese-language series is named in Japanese on dev.to, so translating the
+# quotation would tell the author to set a value that does not exist. Requires the
+# Japanese to sit inside backticks next to the product name, so untranslated prose in
+# the same file still fails.
+DEVTO_SERIES_NAME = re.compile(r"`[^`]*FSx for ONTAP [^`]*[\u3000-\u30ff\u4e00-\u9fff]")
+
 # Files where the Japanese is the subject of the passage, not a translation miss.
 # Scoped to the lines that carry it, so the rest of each file is still checked.
 BY_DESIGN_FILES = {
+    # Both docs instruct the author to tag articles with an exact series name.
+    "docs/devto-file-portal-series.en.md": DEVTO_SERIES_NAME,
+    "docs/devto-series-cleanup-guide.en.md": DEVTO_SERIES_NAME,
     # A deliberately bilingual table: "Industry (EN) | 業界名 (日本語) | UC/FC | ...".
     # An English reader mapping a customer's stated industry onto a pattern needs the
     # Japanese name to match what the customer actually said.
