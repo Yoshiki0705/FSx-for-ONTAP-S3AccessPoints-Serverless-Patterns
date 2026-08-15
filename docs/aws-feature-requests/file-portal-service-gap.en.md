@@ -1,6 +1,6 @@
 # Feature Requests: File Portal UI — SaaS Gap Analysis & AWS Service Improvements
 
-> 🌐 Language: **English** | [日本語](./file-portal-service-gap.md)
+> 🌐 **Language / 言語**: [日本語](file-portal-service-gap.md) | English
 
 **Submitter**: Yoshiki Fujiwara (AWS Community Builder)
 **Date**: 2026-07-18

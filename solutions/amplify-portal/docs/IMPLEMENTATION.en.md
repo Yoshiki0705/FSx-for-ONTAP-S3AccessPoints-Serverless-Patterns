@@ -1,6 +1,6 @@
 # File Portal — Implementation Guide
 
-🌐 **Language / 言語**: [日本語](IMPLEMENTATION.md) | [English](IMPLEMENTATION.en.md)
+🌐 **Language / 言語**: [日本語](IMPLEMENTATION.md) | English
 
 > Developer/AI reference for understanding, reproducing, and customizing the portal.
 > Each section documents not just WHAT was implemented, but WHY — the design intent behind each decision.

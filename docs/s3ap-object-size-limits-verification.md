@@ -1,6 +1,6 @@
 # FSx for ONTAP S3 Access Points — オブジェクトサイズ上限の実測検証
 
-> 🌐 言語: **日本語** | [English](./s3ap-object-size-limits-verification.en.md)
+> 🌐 **Language / 言語**: 日本語 | [English](s3ap-object-size-limits-verification.en.md)
 
 **検証日**: 2026-08-02
 **リージョン**: ap-northeast-1

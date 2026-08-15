@@ -1,6 +1,6 @@
 # S3 Standard Bucket ユーザー向けガイド — FSx for ONTAP S3 Access Points との違い
 
-🌐 **Language / 言語**: [日本語](s3-bucket-user-guide.md) | [English](s3-bucket-user-guide.en.md)
+🌐 **Language / 言語**: 日本語 | [English](s3-bucket-user-guide.en.md)
 
 ## このドキュメントの目的
 

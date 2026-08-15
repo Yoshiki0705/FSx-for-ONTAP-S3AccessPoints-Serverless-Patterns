@@ -1,6 +1,6 @@
 # Feature Request: Retention control and deletion-lock visibility for FSx for ONTAP SnapLock audit log volumes
 
-> 🌐 Language: [日本語](./snaplock-audit-log-retention.md) | **English**
+> 🌐 **Language / 言語**: [日本語](snaplock-audit-log-retention.md) | English
 
 **Submitted by**: Yoshiki Fujiwara (AWS Community Builder)
 **Date**: 2026-08-06

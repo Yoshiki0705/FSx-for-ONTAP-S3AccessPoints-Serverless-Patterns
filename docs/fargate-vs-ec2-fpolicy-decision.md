@@ -1,6 +1,6 @@
 # Fargate vs EC2 — FPolicy Server Decision Matrix
 
-🌐 **Language / 言語**: [日本語](fargate-vs-ec2-fpolicy-decision.md) | [English](fargate-vs-ec2-fpolicy-decision.en.md)
+🌐 **Language / 言語**: 日本語 | [English](fargate-vs-ec2-fpolicy-decision.en.md)
 
 ## 概要
 

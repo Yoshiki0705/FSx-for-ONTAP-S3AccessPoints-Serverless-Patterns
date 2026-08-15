@@ -1,5 +1,7 @@
 # Deployment Guide — FSx for ONTAP S3 Access Points Serverless Patterns
 
+🌐 **Language / 言語**: [日本語](../ja/deployment-guide.md) | English
+
 > **Language / 言語**: [日本語](../ja/deployment-guide.md) | [English](../en/deployment-guide.md)
 
 This guide explains how to deploy pattern stacks into an **existing** Amazon FSx for NetApp ONTAP environment. The templates in this repository are **overlay stacks** — they do not create FSx file systems, SVMs, or volumes. Your FSx for ONTAP infrastructure must already be provisioned.

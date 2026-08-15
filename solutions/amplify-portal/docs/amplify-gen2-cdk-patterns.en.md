@@ -1,6 +1,6 @@
 # Amplify Gen2 + CDK Design Decision Guide
 
-🌐 **Language / 言語**: [日本語](amplify-gen2-cdk-patterns.md) | [English](amplify-gen2-cdk-patterns.en.md)
+🌐 **Language / 言語**: [日本語](amplify-gen2-cdk-patterns.md) | English
 
 > Reflects takeaways from the CDK Conference Japan 2026 session "Behavioural differences and use cases of defining CDK inside `backend.ts` in Amplify Gen2, versus not doing so".
 

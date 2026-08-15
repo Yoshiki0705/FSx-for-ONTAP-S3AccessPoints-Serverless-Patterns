@@ -1,6 +1,6 @@
 # Public Sector Adoption Roadmap
 
-🌐 **Language / 言語**: [日本語](public-sector-adoption-roadmap.md) | [English](public-sector-adoption-roadmap.en.md)
+🌐 **Language / 言語**: [日本語](public-sector-adoption-roadmap.md) | English
 
 ## Overview
 

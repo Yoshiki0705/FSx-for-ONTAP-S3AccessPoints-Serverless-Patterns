@@ -1,6 +1,6 @@
 # S3AP Throughput Benchmark Results (Measured Values)
 
-🌐 **Language / 言語**: [日本語](s3ap-benchmark-results.md) | [English](s3ap-benchmark-results.en.md)
+🌐 **Language / 言語**: [日本語](s3ap-benchmark-results.md) | English
 
 ## Overview
 

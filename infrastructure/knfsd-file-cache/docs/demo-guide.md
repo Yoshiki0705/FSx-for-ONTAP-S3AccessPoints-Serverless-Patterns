@@ -1,6 +1,6 @@
 # KNFSD File Cache デモガイド — FSx for ONTAP NFS Read Acceleration
 
-🌐 **Language / 言語**: [日本語](demo-guide.md) | [English](demo-guide.en.md)
+🌐 **Language / 言語**: 日本語 | [English](demo-guide.en.md)
 
 > **検証済み**: 2026-07-22, ap-northeast-1, arm64 (Graviton), FSx for ONTAP 9.17.1
 > **実測結果**: Cache miss 55ms → Cache hit 2ms (**32x speedup**)

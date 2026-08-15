@@ -1,6 +1,6 @@
 # KNFSD File Cache — FSID Backend 選択ガイド
 
-🌐 **Language / 言語**: [日本語](fsid-backend-options.md) | [English](fsid-backend-options.en.md)
+🌐 **Language / 言語**: 日本語 | [English](fsid-backend-options.en.md)
 
 ## 背景
 

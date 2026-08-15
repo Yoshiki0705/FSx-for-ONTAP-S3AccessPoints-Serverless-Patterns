@@ -1,6 +1,6 @@
 # PR ベース使い捨て環境の設計
 
-🌐 **Language / 言語**: [日本語](pr-ephemeral-environments.md) | [English](pr-ephemeral-environments.en.md)
+🌐 **Language / 言語**: 日本語 | [English](pr-ephemeral-environments.en.md)
 
 > CDK Conference Japan 2026 セッション「CDKでPRごとに使い捨て環境立てたら便利すぎました」の知見を反映。
 

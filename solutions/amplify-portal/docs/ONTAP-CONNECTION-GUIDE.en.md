@@ -1,6 +1,6 @@
 # ONTAP REST API Connection Guide — File Portal
 
-🌐 **Language / 言語**: [日本語](ONTAP-CONNECTION-GUIDE.md) | [English](ONTAP-CONNECTION-GUIDE.en.md)
+🌐 **Language / 言語**: [日本語](ONTAP-CONNECTION-GUIDE.md) | English
 
 > The connection architecture between the file portal and Amazon FSx for NetApp ONTAP (hereafter FSx for ONTAP), how to troubleshoot it, and the points that matter at deployment time.
 

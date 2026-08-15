@@ -1,45 +1,93 @@
-# Encryption Required Rule
-# Ensures KMS encryption is enabled on DynamoDB, S3, and SNS resources
+#
+# Encryption at rest for DynamoDB, S3, SNS and SQS.
+#
+# Ported to cfn-guard 3.x syntax on 2026-08-15. Every rule here previously read
+# `rule <name> when %INPUT { ... }`, which 3.x rejects outright: `%INPUT` is not a
+# clause, so the parser reports "There were no clauses present" and the whole file
+# is discarded. All seven rule files in this directory had it, so none of them
+# enforced anything — and the workflow that ran them ended in `|| true`, so the job
+# was green. The gate reported success while parsing zero rules against zero
+# templates.
+#
+# The `let` + `when %var !empty` form is what replaces it, and the `!empty` guard
+# matters as much as the syntax: without it a template containing no DynamoDB table
+# FAILS the DynamoDB rule instead of skipping it, which would make every rule fail
+# on every template that does not happen to use that service.
+#
 
-# Rule: DynamoDB tables must have SSE enabled with KMS
-rule dynamodb_encryption_required when %INPUT {
-    Resources.*[ Type == "AWS::DynamoDB::Table" ] {
+let dynamodb_tables = Resources.*[ Type == "AWS::DynamoDB::Table" ]
+let dynamodb_global_tables = Resources.*[ Type == "AWS::DynamoDB::GlobalTable" ]
+let s3_buckets = Resources.*[ Type == "AWS::S3::Bucket" ]
+let sns_topics = Resources.*[ Type == "AWS::SNS::Topic" ]
+let sqs_queues = Resources.*[ Type == "AWS::SQS::Queue" ]
+
+#
+# ## Why every scalar comparison is wrapped in a type guard
+#
+# A CloudFormation intrinsic is a map. `MemorySize: !Ref X` reaches cfn-guard as
+# `{"Ref": "X"}`, and comparing a map with an int is neither true nor false — it is a
+# ComparisonError, which cfn-guard counts as NON-COMPLIANT. Measured on the first
+# ported run: 296 non-compliant resources across 76 template/rule pairs, and almost
+# all of them were this. `Resource: !Sub "arn:aws:secretsmanager:...:secret:...*"` was
+# reported as "must be scoped to a secret ARN, not *" while being precisely scoped.
+#
+# A rule that reports correct code is a rule someone turns off, so each comparison
+# runs only when the value is a comparable type. The cost is honest: where a value is
+# an intrinsic, this rule SKIPs rather than passing, because cfn-guard cannot see
+# through `!Ref` to the deployed value. `scripts/validate-iam-policies.py` and
+# `scripts/check_s3ap_iam_patterns.py` resolve those cases.
+#
+# `exists` needs no guard — presence is not a comparison — which is why the one real
+# finding on the first run came from an `exists` clause.
+#
+
+rule dynamodb_encryption_required when %dynamodb_tables !empty {
+    %dynamodb_tables {
         Properties.SSESpecification exists
+            <<DynamoDB table must declare SSESpecification>>
+        Properties.SSESpecification.SSEEnabled not exists or
+        Properties.SSESpecification.SSEEnabled !is_bool or
         Properties.SSESpecification.SSEEnabled == true
+            <<DynamoDB table must have SSEEnabled: true>>
     }
 }
 
-# Rule: DynamoDB Global Tables must have SSE enabled
-rule dynamodb_global_table_encryption when %INPUT {
-    Resources.*[ Type == "AWS::DynamoDB::GlobalTable" ] {
+rule dynamodb_global_table_encryption when %dynamodb_global_tables !empty {
+    %dynamodb_global_tables {
         Properties.SSESpecification exists
+            <<DynamoDB global table must declare SSESpecification>>
+        Properties.SSESpecification.SSEEnabled not exists or
+        Properties.SSESpecification.SSEEnabled !is_bool or
         Properties.SSESpecification.SSEEnabled == true
+            <<DynamoDB global table must have SSEEnabled: true>>
     }
 }
 
-# Rule: S3 buckets must have server-side encryption configured
-rule s3_encryption_required when %INPUT {
-    Resources.*[ Type == "AWS::S3::Bucket" ] {
+rule s3_encryption_required when %s3_buckets !empty {
+    %s3_buckets {
         Properties.BucketEncryption exists
-        Properties.BucketEncryption.ServerSideEncryptionConfiguration exists
+            <<S3 bucket must declare BucketEncryption>>
         Properties.BucketEncryption.ServerSideEncryptionConfiguration[*] {
             ServerSideEncryptionByDefault exists
+                <<S3 bucket encryption rule must set ServerSideEncryptionByDefault>>
+            ServerSideEncryptionByDefault.SSEAlgorithm !is_string or
             ServerSideEncryptionByDefault.SSEAlgorithm in ["aws:kms", "AES256"]
+                <<S3 bucket SSEAlgorithm must be aws:kms or AES256>>
         }
     }
 }
 
-# Rule: SNS topics must have KMS encryption
-rule sns_encryption_required when %INPUT {
-    Resources.*[ Type == "AWS::SNS::Topic" ] {
+rule sns_encryption_required when %sns_topics !empty {
+    %sns_topics {
         Properties.KmsMasterKeyId exists
+            <<SNS topic must set KmsMasterKeyId>>
     }
 }
 
-# Rule: SQS queues must have KMS encryption
-rule sqs_encryption_required when %INPUT {
-    Resources.*[ Type == "AWS::SQS::Queue" ] {
+rule sqs_encryption_required when %sqs_queues !empty {
+    %sqs_queues {
         Properties.KmsMasterKeyId exists or
         Properties.SqsManagedSseEnabled == true
+            <<SQS queue must set KmsMasterKeyId or SqsManagedSseEnabled: true>>
     }
 }

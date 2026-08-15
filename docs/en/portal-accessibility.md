@@ -1,6 +1,6 @@
 # File Portal — Accessibility Statement
 
-> 🌐 Language: **English** | [日本語](../ja/portal-accessibility.md)
+> 🌐 **Language / 言語**: [日本語](../ja/portal-accessibility.md) | English
 
 > Accessibility features implemented and guidance for further validation.
 

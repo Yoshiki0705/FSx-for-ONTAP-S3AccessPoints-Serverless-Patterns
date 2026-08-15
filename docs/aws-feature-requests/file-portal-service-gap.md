@@ -1,6 +1,6 @@
 # 機能要望: ファイルポータル UI — SaaS ギャップ分析と AWS サービス改善提案
 
-> 🌐 言語: **日本語** | [English](./file-portal-service-gap.en.md)
+> 🌐 **Language / 言語**: 日本語 | [English](file-portal-service-gap.en.md)
 
 **提出者**: 藤原 慶樹 (AWS Community Builder)
 **日付**: 2026-07-18

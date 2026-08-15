@@ -1,6 +1,6 @@
 # Getting Started — FSx for ONTAP File Portal
 
-🌐 **Language / 言語**: **日本語** | [English](GETTING-STARTED.en.md)
+🌐 **Language / 言語**: 日本語 | [English](GETTING-STARTED.en.md)
 
 > 30 分で動作確認可能。DemoMode なら FSx for ONTAP なしで始められます。
 

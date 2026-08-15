@@ -1,6 +1,6 @@
 # Partner/SI One-Pager: FSx for ONTAP S3 Access Points Serverless Patterns
 
-🌐 **Language / 言語**: [日本語](partner-si-one-pager.md) | [English](partner-si-one-pager.en.md)
+🌐 **Language / 言語**: [日本語](partner-si-one-pager.md) | English | [한국어](partner-si-one-pager.ko.md) | [简体中文](partner-si-one-pager.zh-CN.md)
 
 ---
 

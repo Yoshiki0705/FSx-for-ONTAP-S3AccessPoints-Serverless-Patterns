@@ -1,6 +1,6 @@
 # FC7: DevOps FlexClone + S3AP — Dev/Test-Datenaktualisierung & CI/CD-Pipeline-Integration
 
-🌐 **Language / Sprache**: [日本語](README.md) | [English](README.en.md) | [한국어](README.ko.md) | [简体中文](README.zh-CN.md) | [繁體中文](README.zh-TW.md) | [Français](README.fr.md) | Deutsch | [Español](README.es.md)
+🌐 **Language / 言語**: [日本語](README.md) | [English](README.en.md) | [한국어](README.ko.md) | [简体中文](README.zh-CN.md) | [繁體中文](README.zh-TW.md) | [Français](README.fr.md) | Deutsch | [Español](README.es.md)
 
 📚 **Docs**: [Architektur](docs/architecture.en.md) | [Demo-Anleitung](docs/demo-guide.en.md)
 

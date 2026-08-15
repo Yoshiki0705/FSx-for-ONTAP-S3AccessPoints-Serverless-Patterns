@@ -1,5 +1,7 @@
 # FC7 デモガイド: DevOps FlexClone + S3AP
 
+🌐 **Language / 言語**: 日本語 | [English](demo-guide.en.md)
+
 ## 前提条件
 
 - FSx for ONTAP ファイルシステム（稼働中）

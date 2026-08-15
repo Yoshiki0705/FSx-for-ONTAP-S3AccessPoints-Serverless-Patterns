@@ -1,6 +1,6 @@
 # コスト最適化ベストプラクティスガイド
 
-🌐 **Language / 言語**: [日本語](cost-optimization-guide.md) | [English](cost-optimization-guide-en.md)
+🌐 **Language / 言語**: 日本語 | [English](cost-optimization-guide-en.md)
 
 ## 概要
 

@@ -1,6 +1,6 @@
 # Portal Authorization Design — Role-Based Access Control
 
-> 🌐 Language: **English** | [日本語](../ja/portal-authorization-design.md)
+> 🌐 **Language / 言語**: [日本語](../ja/portal-authorization-design.md) | English
 
 This document defines the authorization model for the FSx for ONTAP File Portal, covering how user roles map to portal capabilities across file operations, AI processing, and data protection management.
 

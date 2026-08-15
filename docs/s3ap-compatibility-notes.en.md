@@ -1,6 +1,6 @@
 # S3AP Compatibility Notes
 
-🌐 **Language / 言語**: [日本語](s3ap-compatibility-notes.md) | [English](s3ap-compatibility-notes.en.md)
+🌐 **Language / 言語**: [日本語](s3ap-compatibility-notes.md) | English
 
 ## What FSx for ONTAP S3 Access Points Provide
 

@@ -1,6 +1,6 @@
 # AD-Joined SVM: S3 Access Point Prerequisites
 
-🌐 **Language / 言語**: [日本語](../ja/ad-joined-svm-s3ap-prerequisites.md) | **English**
+🌐 **Language / 言語**: [日本語](../ja/ad-joined-svm-s3ap-prerequisites.md) | English
 
 > Prerequisites and operational guidance for using FSx for ONTAP S3 Access Points on AD-joined SVMs (CIFS enabled).
 

@@ -1,6 +1,6 @@
 # 機能要望: Lambda セルフマネージドコードストレージ / AWS HealthOmics と FSx for ONTAP S3 Access Points の統合
 
-> 🌐 言語: **日本語** | [English](./lambda-healthomics-s3ap-gaps.en.md)
+> 🌐 **Language / 言語**: 日本語 | [English](lambda-healthomics-s3ap-gaps.en.md)
 
 **提出者**: 藤原 慶樹 (AWS Community Builder)
 **日付**: 2026-08-02

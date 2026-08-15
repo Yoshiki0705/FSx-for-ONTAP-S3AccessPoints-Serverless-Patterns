@@ -1,6 +1,6 @@
 # File Portal — Scaling & Capacity Planning Guide
 
-🌐 **Language / 言語**: [日本語](../ja/portal-scaling-guide.md) | **English**
+🌐 **Language / 言語**: [日本語](../ja/portal-scaling-guide.md) | English
 
 > Understanding scaling characteristics, throughput sharing, and growth planning.
 

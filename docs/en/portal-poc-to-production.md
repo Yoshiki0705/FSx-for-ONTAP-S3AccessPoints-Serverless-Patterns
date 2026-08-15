@@ -1,6 +1,6 @@
 # File Portal — PoC to Production Migration Guide
 
-🌐 **Language / 言語**: [日本語](../ja/portal-poc-to-production.md) | **English**
+🌐 **Language / 言語**: [日本語](../ja/portal-poc-to-production.md) | English
 
 > Moving from DemoMode evaluation to production FSx for ONTAP connectivity.
 

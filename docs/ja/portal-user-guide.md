@@ -1,6 +1,6 @@
 # ファイルポータル — ユーザーガイド
 
-> 🌐 Language: [English](../en/portal-user-guide.md) | **日本語** | [한국어](../ko/portal-user-guide.md) | [简体中文](../zh-CN/portal-user-guide.md) | [繁體中文](../zh-TW/portal-user-guide.md) | [Français](../fr/portal-user-guide.md) | [Deutsch](../de/portal-user-guide.md) | [Español](../es/portal-user-guide.md)
+> 🌐 **Language / 言語**: 日本語 | [English](../en/portal-user-guide.md)
 
 デプロイ済みのファイルポータルに招待されたエンドユーザー向けのガイドです。管理者がデプロイとアカウント作成を完了していることを前提としています。AWS CLI やデプロイの知識は不要です。
 

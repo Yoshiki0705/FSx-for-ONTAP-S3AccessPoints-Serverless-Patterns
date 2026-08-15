@@ -1,6 +1,6 @@
 # NFS / S3 AP Write Conflict Considerations
 
-> 🌐 Language: **English** | [日本語](../ja/nfs-s3ap-write-conflict.md)
+> 🌐 **Language / 言語**: [日本語](../ja/nfs-s3ap-write-conflict.md) | English
 
 ## Overview
 

@@ -1,6 +1,6 @@
 # 機能要望: FSx for ONTAP の SnapLock 監査ログボリュームにおける保持期間の指定と削除ロックの可視化
 
-> 🌐 言語: **日本語** | [English](./snaplock-audit-log-retention.en.md)
+> 🌐 **Language / 言語**: 日本語 | [English](snaplock-audit-log-retention.en.md)
 
 **提出者**: 藤原 慶樹 (AWS Community Builder)
 **日付**: 2026-08-06

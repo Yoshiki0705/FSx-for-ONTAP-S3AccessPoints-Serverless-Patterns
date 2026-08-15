@@ -1,51 +1,66 @@
-# No Public Access Rule
-# Ensures no public S3 buckets and no 0.0.0.0/0 security group ingress
+#
+# No public S3 buckets, no unrestricted security-group ingress.
+#
+# Ported to cfn-guard 3.x on 2026-08-15; see encryption-required.guard for why the
+# `rule ... when %INPUT` form had to go, and for why every scalar comparison carries
+# a type guard.
+#
+# `CidrIp`, `CidrIpv6` and `Principal` are all optional and all frequently written as
+# an intrinsic or, in Principal's case, as a map (`{Service: lambda.amazonaws.com}`).
+# The `not exists or !is_string or` prefix keeps the rule silent on those and lets it
+# speak on the literal `"0.0.0.0/0"`, `"::/0"` and `"*"` it exists to catch.
+#
 
-# Rule: S3 buckets must block public access
-rule s3_no_public_access when %INPUT {
-    Resources.*[ Type == "AWS::S3::Bucket" ] {
+let s3_buckets = Resources.*[ Type == "AWS::S3::Bucket" ]
+let s3_bucket_policies = Resources.*[ Type == "AWS::S3::BucketPolicy" ]
+let security_groups = Resources.*[ Type == "AWS::EC2::SecurityGroup" ]
+
+rule s3_no_public_access when %s3_buckets !empty {
+    %s3_buckets {
         Properties.PublicAccessBlockConfiguration exists
+            <<S3 bucket must declare PublicAccessBlockConfiguration>>
         Properties.PublicAccessBlockConfiguration {
-            BlockPublicAcls == true
-            BlockPublicPolicy == true
-            IgnorePublicAcls == true
-            RestrictPublicBuckets == true
+            BlockPublicAcls !is_bool or BlockPublicAcls == true
+                <<BlockPublicAcls must be true>>
+            BlockPublicPolicy !is_bool or BlockPublicPolicy == true
+                <<BlockPublicPolicy must be true>>
+            IgnorePublicAcls !is_bool or IgnorePublicAcls == true
+                <<IgnorePublicAcls must be true>>
+            RestrictPublicBuckets !is_bool or RestrictPublicBuckets == true
+                <<RestrictPublicBuckets must be true>>
         }
     }
 }
 
-# Rule: Security groups must not allow unrestricted ingress (0.0.0.0/0)
-rule sg_no_unrestricted_ingress when %INPUT {
-    Resources.*[ Type == "AWS::EC2::SecurityGroup" ] {
-        when Properties.SecurityGroupIngress exists {
-            Properties.SecurityGroupIngress[*] {
-                CidrIp != "0.0.0.0/0"
-                    <<Security group ingress must not allow 0.0.0.0/0 (unrestricted access)>>
-            }
+rule sg_no_unrestricted_ingress when %security_groups !empty {
+    %security_groups [ Properties.SecurityGroupIngress exists ] {
+        Properties.SecurityGroupIngress[*] {
+            CidrIp not exists or
+            CidrIp !is_string or
+            CidrIp != "0.0.0.0/0"
+                <<Security group ingress must not allow 0.0.0.0/0>>
         }
     }
 }
 
-# Rule: Security groups must not allow unrestricted IPv6 ingress
-rule sg_no_unrestricted_ipv6_ingress when %INPUT {
-    Resources.*[ Type == "AWS::EC2::SecurityGroup" ] {
-        when Properties.SecurityGroupIngress exists {
-            Properties.SecurityGroupIngress[*] {
-                CidrIpv6 != "::/0"
-                    <<Security group ingress must not allow ::/0 (unrestricted IPv6 access)>>
-            }
+rule sg_no_unrestricted_ipv6_ingress when %security_groups !empty {
+    %security_groups [ Properties.SecurityGroupIngress exists ] {
+        Properties.SecurityGroupIngress[*] {
+            CidrIpv6 not exists or
+            CidrIpv6 !is_string or
+            CidrIpv6 != "::/0"
+                <<Security group ingress must not allow ::/0>>
         }
     }
 }
 
-# Rule: S3 bucket policies must not grant public access
-rule s3_bucket_policy_no_public when %INPUT {
-    Resources.*[ Type == "AWS::S3::BucketPolicy" ] {
-        Properties.PolicyDocument.Statement[*] {
-            when Effect == "Allow" {
-                Principal != "*"
-                    <<S3 bucket policy must not grant access to Principal: *>>
-            }
+rule s3_bucket_policy_no_public when %s3_bucket_policies !empty {
+    %s3_bucket_policies {
+        Properties.PolicyDocument.Statement[ Effect == "Allow" ] {
+            Principal not exists or
+            Principal !is_string or
+            Principal != "*"
+                <<S3 bucket policy must not grant access to Principal: *>>
         }
     }
 }

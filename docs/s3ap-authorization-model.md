@@ -1,6 +1,6 @@
 # S3 Access Points for FSx for ONTAP — 二段階認可モデル
 
-🌐 **Language / 言語**: [日本語](s3ap-authorization-model.md) | [English](s3ap-authorization-model.en.md)
+🌐 **Language / 言語**: 日本語 | [English](s3ap-authorization-model.en.md)
 
 ## 概要
 

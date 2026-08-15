@@ -1231,6 +1231,8 @@ Resources:
       TimeToLiveSpecification:
         AttributeName: ttl
         Enabled: true
+      SSESpecification:
+        SSEEnabled: true
       Tags:
         - Key: UseCase
           Value: legal-compliance

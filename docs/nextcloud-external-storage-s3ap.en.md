@@ -1,6 +1,6 @@
 # Nextcloud External Storage with FSx for ONTAP S3 Access Points
 
-🌐 **Language / 言語**: [日本語](nextcloud-external-storage-s3ap.md) | **English**
+🌐 **Language / 言語**: [日本語](nextcloud-external-storage-s3ap.md) | English
 
 ## Executive Summary
 

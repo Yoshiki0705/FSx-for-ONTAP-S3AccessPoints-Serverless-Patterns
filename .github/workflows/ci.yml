@@ -160,35 +160,63 @@ jobs:
           if [ "$JA_HEADINGS" != "$EN_HEADINGS" ] && [ "$JA_HEADINGS" != "0" ] && [ "$EN_HEADINGS" != "0" ]; then
             echo "::warning::JA/EN deployment-guide heading count mismatch: JA=$JA_HEADINGS EN=$EN_HEADINGS"
           fi
-      # Verify naming standardization (no forbidden abbreviations in committed docs)
-      - name: Naming standardization audit
+      # Both audits below are WHOLE-TREE and ADVISORY, and that is deliberate — but
+      # it was not stated anywhere, so a green check read as "the rule is enforced".
+      # The enforcing versions are in agent-output-audit.yml, which runs the same two
+      # rules over the CHANGED files and calls `exit 1`. These wide scans exist only
+      # to surface pre-existing debt the changed-files gate cannot see.
+      #
+      # They stay advisory because they cannot be anything else yet. Measured
+      # 2026-08-15 with an ERE-valid pattern: the naming scan reports 1,051 lines and
+      # the account-ID scan 1,604, overwhelmingly false positives — `.aws-sam/build/`
+      # artefacts, a CloudWatch namespace literal in the edge handlers, doc
+      # placeholders such as 234567890123, and AWS's own public ECR account
+      # 763104351884. Making them blocking would fail every pull request on untouched
+      # debt, and a gate that does that gets switched off within a week.
+      #
+      # `|| true` on the grep itself is the ordinary no-match idiom (grep exits 1 when
+      # it matches nothing) and is not what made these advisory; the absence of an
+      # `exit 1` is.
+      - name: Naming standardization audit (advisory; enforced on changed files in agent-output-audit.yml)
         run: |
-          # Check for forbidden abbreviations (FSxN, bare FSx, FSx ONTAP without "for")
-          # Exclude .private/, .git/, binary files
+          # The pattern was `\bFSxN\b|(?<!\bfor )ONTAP\b.*\bFSx\b`. `(?<!...)` is a
+          # PCRE lookbehind and POSIX ERE has no such construct, so `grep -E` never
+          # ran it as written: GNU grep warns "? at start of expression" and evaluates
+          # a mangled expression, while BSD grep (a contributor's Mac) fails outright
+          # with "repetition-operator operand invalid" and exit 2. Either way the
+          # second alternative could not do what it claimed. Replaced with the literal
+          # forbidden forms, which is what the rule actually is.
+          # The pattern and the `allow:naming` exclusion share a line on purpose: this
+          # line necessarily contains the forbidden forms it searches for, and the
+          # commit gate reads the exclusion marker per line. Same shape as
+          # agent-output-audit.yml.
+          PATTERN='\bFSxN\b|\bFSx ONTAP\b|\bFSx S3 AP\b'  # grep -v 'allow:naming' applies below
           VIOLATIONS=$(grep -rn --include='*.md' --include='*.yaml' --include='*.py' \
-            -E '\bFSxN\b|(?<!\bfor )ONTAP\b.*\bFSx\b' \
+            -E "$PATTERN" \
             docs/ solutions/ operations/ shared/ 2>/dev/null | \
-            grep -v 'FSx for ONTAP' | grep -v '# allow:naming' | \
-            grep -v '.private/' || true)
-          if [ -n "$VIOLATIONS" ]; then
-            echo "::warning::Naming standardization violations found (FSxN / bare FSx):"
-            echo "$VIOLATIONS"
+            grep -v 'allow:naming' | \
+            grep -v '\.private/' | \
+            grep -v '\.aws-sam/' || true)
+          COUNT=$(printf '%s' "$VIOLATIONS" | grep -c . || true)
+          if [ "${COUNT:-0}" -gt 0 ]; then
+            echo "::warning::Naming audit (advisory): ${COUNT} line(s) contain a forbidden form"
+            printf '%s\n' "$VIOLATIONS" | head -20
           fi
-      # Verify no placeholder leaks (real AWS account IDs, internal IPs)
-      - name: Public output safety audit
+      - name: Public output safety audit (advisory; enforced on changed files in agent-output-audit.yml and gitleaks.yml)
         run: |
-          set +e
           LEAKS=$(grep -rn --include='*.md' --include='*.yaml' --include='*.py' --include='*.json' \
             -E '[0-9]{12}' \
             docs/ solutions/ operations/ shared/ scripts/ cfn-params/ 2>/dev/null | \
             grep -v '123456789012' | \
             grep -v 'node_modules' | \
-            grep -v '.private/' | \
+            grep -v '\.private/' | \
+            grep -v '\.aws-sam/' | \
             grep -v 'example' | \
             grep -v '#.*AWS' || true)
-          if [ -n "$LEAKS" ]; then
-            echo "::warning::Potential AWS account ID leaks detected (review manually):"
-            echo "$LEAKS" | head -20
+          COUNT=$(printf '%s' "$LEAKS" | grep -c . || true)
+          if [ "${COUNT:-0}" -gt 0 ]; then
+            echo "::warning::Account-ID audit (advisory): ${COUNT} line(s) to review; file:line only"
+            printf '%s\n' "$LEAKS" | head -20 | cut -d: -f1,2
           fi
 
   portal-test:
@@ -281,27 +309,14 @@ jobs:
       - name: Production build
         run: npm run build
 
-  security-cfn:
-    name: "Stage 3: cfn-guard Security"
-    runs-on: ubuntu-latest
-    if: always()
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-      - name: Install cfn-guard
-        run: |
-          curl --proto '=https' --tlsv1.2 -sSf https://raw.githubusercontent.com/aws-cloudformation/cloudformation-guard/main/install-guard.sh | sh
-          export PATH=~/.guard/bin:$PATH
-          echo "$HOME/.guard/bin" >> $GITHUB_PATH
-      - name: Run cfn-guard validation
-        # Advisory scan (matches validators.yml cfn-guard-security). The prior quoted
-        # '**/*.yaml' was passed literally and failed with "path does not exist".
-        run: |
-          cfn-guard validate \
-            --rules security/cfn-guard-rules/ \
-            --data solutions/**/template-deploy.yaml \
-            --show-summary fail || true
+  # The cfn-guard job that stood here was a byte-for-byte duplicate of
+  # validators.yml `cfn-guard-security`, and both were broken the same way: the
+  # `solutions/**/template-deploy.yaml` glob is not expanded by the default Actions
+  # shell, so cfn-guard received the literal string, exited 255 with "path does not
+  # exist", and `|| true` reported success. Two copies of a scan that validated zero
+  # templates is not twice the coverage; it is two places to fix the same fault and
+  # one more chance to fix only one of them. The single remaining job lives in
+  # validators.yml, which now also blocks when a rule file cannot be parsed.
 
   security-python:
     name: "Stage 4: Python Security Scan"

@@ -204,13 +204,21 @@ IAM Policy の `Resource` リスト変更などは CloudFormation が「機能�
 **原因**: cfn-lint の Python API は内部で CloudFormation スキーマの遅延解決を行い、
 複数テンプレートを 1 プロセスで連続実行するとキャッシュ競合でハングする場合がある。
 
-**対処**: `scripts/lint_phase7_templates.sh` を使う（cfn-lint CLI バイナリを個別プロセスで
-呼び出す軽量版、15-30 秒で完了）:
+**対処**: `make lint-cfn` を使う。CLI バイナリを 1 プロセスで呼ぶため Python API の
+ハングを踏まない。対象は `.cfnlintrc` の `templates:` グロブから決まるので、Phase 7 の
+3 テンプレートも含めて全件が対象になる（実測 21 秒）。
 
 ```bash
-bash scripts/lint_phase7_templates.sh                    # 全 3 テンプレート
-bash scripts/lint_phase7_templates.sh defense-satellite  # 1 つだけ
+make lint-cfn                                                     # 全テンプレート
+.venv/bin/cfn-lint solutions/industry/defense-satellite/template-deploy.yaml   # 1 つだけ
 ```
+
+> 以前ここには `scripts/lint_phase7_templates.sh` を案内していたが、2026-08-15 に削除した。
+> 成功条件が `[[ $RC -eq 0 ]] || [[ "$ERR_LINES" == "0" ]]` で、**cfn-lint の終了コードを
+> 無視して "ALL PASSED" を表示する**（実測: exit 12 でも OK と表示）。さらに `.cfnlintrc` の
+> `templates:` が引数を上書きするため、名前を挙げた 3 つではなく設定側の全件を検査していた。
+> `make lint-cfn` が同じ CLI バイナリを使い、ピン留めされたバージョンで、エラーがあれば
+> 実際に落ちる。
 
 ### 8.2 pytest が `ImportPathMismatchError` で失敗
 

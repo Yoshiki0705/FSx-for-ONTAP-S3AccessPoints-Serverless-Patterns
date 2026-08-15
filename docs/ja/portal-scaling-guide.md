@@ -1,6 +1,6 @@
 # ファイルポータル — スケーリング & キャパシティプランニングガイド
 
-🌐 **Language / 言語**: **日本語** | [English](../en/portal-scaling-guide.md)
+🌐 **Language / 言語**: 日本語 | [English](../en/portal-scaling-guide.md)
 
 > スケーリング特性、スループット共有、成長見積もりについて。
 

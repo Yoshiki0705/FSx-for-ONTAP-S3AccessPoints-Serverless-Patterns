@@ -1,6 +1,6 @@
 # Design for PR-Based Ephemeral Environments
 
-🌐 **Language / 言語**: [日本語](pr-ephemeral-environments.md) | [English](pr-ephemeral-environments.en.md)
+🌐 **Language / 言語**: [日本語](pr-ephemeral-environments.md) | English
 
 > Reflects takeaways from the CDK Conference Japan 2026 session "Standing up a disposable environment per PR with CDK turned out to be extremely convenient".
 

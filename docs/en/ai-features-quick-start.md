@@ -1,6 +1,6 @@
 # AI Features Quick Start — File Portal
 
-🌐 **Language / 言語**: [日本語](../ja/ai-features-quick-start.md) | **English**
+🌐 **Language / 言語**: [日本語](../ja/ai-features-quick-start.md) | English
 
 Try Bedrock Q&A, Rekognition image analysis, Athena SQL, and more from the File Portal UI in under 15 minutes.
 

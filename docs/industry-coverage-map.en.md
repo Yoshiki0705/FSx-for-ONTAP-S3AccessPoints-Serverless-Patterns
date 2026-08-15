@@ -1,6 +1,6 @@
 # Industry Coverage Map
 
-🌐 **Language / 言語**: [日本語](industry-coverage-map.md) | **English**
+🌐 **Language / 言語**: [日本語](industry-coverage-map.md) | English
 
 > **Last Updated**: 2026-06-03
 

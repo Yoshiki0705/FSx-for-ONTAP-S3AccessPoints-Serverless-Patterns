@@ -1,6 +1,6 @@
 # Storage Browser for S3 + FSx for ONTAP S3 Access Points — デモガイド
 
-🌐 **Language / 言語**: **日本語** | [English](../en/storage-browser-demo-guide.md)
+🌐 **Language / 言語**: 日本語 | [English](../en/storage-browser-demo-guide.md)
 
 FSx for ONTAP ボリューム上のファイルを、React Web アプリから直接閲覧・プレビュー・ダウンロード・アップロードする [Storage Browser for S3](https://ui.docs.amplify.aws/react/connected-components/storage/storage-browser) の構成手順。
 

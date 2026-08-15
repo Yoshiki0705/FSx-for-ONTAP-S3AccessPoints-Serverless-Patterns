@@ -17,6 +17,16 @@
 #                                    pytest collects nothing and exits 5, which
 #                                    fails the loop under `set -e`. Add it here
 #                                    once it has a test.
+#   infrastructure/knfsd-file-cache  5 test files that require a deployed cache
+#                                    and a reachable FSx for ONTAP file system:
+#                                    9 fail and 7 skip against no environment.
+#                                    Same category as tests/e2e and tests/load.
+#   tests/e2e, tests/load            require deployed stacks (see AGENTS.md).
+#   solutions/amplify-portal/tests   directory exists but holds no test file.
+#
+# scripts/tests/test_test_dir_coverage.py reconciles this file against the tests/
+# directories that actually exist, so an addition to the tree that is not listed
+# here — or an exclusion that is not stated above — fails rather than going quiet.
 #
 # `shared/`, `scripts/` and `operations/` as a whole are invoked separately by the
 # Makefile and by CI; the per-pattern operations/ entries below are the individual
@@ -34,6 +44,18 @@
 solutions/amplify-portal/functions/audit-log
 solutions/amplify-portal/functions/data-protection
 solutions/amplify-portal/functions/resource-management
+# 2026-08-15: these two were in neither the Makefile nor CI. 50 passing tests ran
+# nowhere — 37 covering thumbnail generation (including the Pillow decode paths the
+# pinned-version test asserts against) and 13 covering the snapshot volume-scope
+# guard, which is the check that keeps a snapshot action from reaching a volume the
+# caller was not scoped to. Both were reachable only by someone recalling the
+# pytest path by hand.
+solutions/amplify-portal/functions/snapshots
+solutions/amplify-portal/functions/thumbnails
+# The IAM policy property tests. `security/` is also a Makefile target name, which
+# is how the directory came to be treated as build furniture rather than as a place
+# holding 3 tests that assert least-privilege on generated policies.
+security
 operations/capacity-rightsizing
 operations/cost-optimization
 operations/qos-monitoring

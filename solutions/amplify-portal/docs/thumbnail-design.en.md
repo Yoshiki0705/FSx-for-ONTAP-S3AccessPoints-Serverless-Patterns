@@ -1,6 +1,6 @@
 # Thumbnails in the file list — design and limits
 
-🌐 **Language / 言語**: [日本語](thumbnail-design.md) | **English**
+🌐 **Language / 言語**: [日本語](thumbnail-design.md) | English
 
 The design behind showing an image thumbnail in a list row: why the obvious
 implementation is expensive, and what was built instead.

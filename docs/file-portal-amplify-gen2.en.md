@@ -1,12 +1,17 @@
 # File Portal UI Options — Amplify Gen2 / Nextcloud / Custom Build
 
-🌐 **Language / 言語**: [日本語](file-portal-amplify-gen2.md) | **English**
+🌐 **Language / 言語**: [日本語](file-portal-amplify-gen2.md) | English
 
 ## Executive Summary
 
 Teams that need a **web-based interface** for browsing, requesting processing, and viewing results on FSx for ONTAP volumes have several architectural options.
 
-As of this writing, AWS does not provide a managed service that delivers a Box/Google Drive-like file management experience (folder navigation, file preview, sharing links, sync clients) for NAS data on FSx for ONTAP. The S3 Console allows object listing but is not an end-user file portal. Building this experience requires assembling your own solution or leveraging OSS tools.
+**Check this first: you may not need to build anything.** If the requirement is *file transfer*, AWS Transfer Family provides SFTP / FTPS / FTP through configuration alone, reaching the same volume through an FSx for ONTAP S3 AP. If you need a browser UI, Transfer Family web apps provide a managed portal — but the storage they document is Amazon S3 buckets. Read [Do You Need to Build This at All?](#do-you-need-to-build-this-at-all) before the comparison below. The three options that follow are for the case where that branch says "build".
+
+A managed service that delivers a Box/Google Drive-like file management experience (folder navigation, preview, sharing links, sync) **from a browser against data on FSx for ONTAP** is **not something current AWS documentation confirms**. There is no source for saying it does not exist — an absence cannot be cited, and services get added. What can be confirmed is this:
+
+- Transfer Family supports FSx for ONTAP, but what it provides is **file transfer protocols** (SFTP / FTPS / FTP), not a browser UI.
+- Transfer Family web apps provide a browser UI, but the storage the documentation describes is **Amazon S3 buckets** (locations registered with S3 Access Grants). Support for an S3 Access Point attached to FSx is not stated.
 
 This document compares three approaches — AWS Amplify Gen2, Nextcloud, and custom-build (CDK + framework) — and provides a selection guide based on team context.
 
@@ -17,18 +22,19 @@ This document compares three approaches — AWS Amplify Gen2, Nextcloud, and cus
 ## Table of Contents
 
 1. [Architecture Overview](#architecture-overview)
-2. [Comparison Matrix](#comparison-matrix)
-3. [Selection Guide — How to Choose](#selection-guide--how-to-choose)
-4. [Amplify Gen2 Integration Pattern](#amplify-gen2-integration-pattern)
-5. [Nextcloud Integration Pattern](#nextcloud-integration-pattern)
-6. [Custom Build Pattern](#custom-build-pattern)
-7. [Throughput and Capacity Planning](#throughput-and-capacity-planning)
-8. [Authentication and Compliance Chain](#authentication-and-compliance-chain)
-9. [Implementation Roadmap](#implementation-roadmap)
-10. [Cost Estimates (Incremental)](#cost-estimates-incremental)
-11. [Trade-offs Summary](#trade-offs-summary)
-12. [FAQ](#faq)
-13. [Related Documents](#related-documents)
+2. [Do You Need to Build This at All?](#do-you-need-to-build-this-at-all)
+3. [Comparison Matrix](#comparison-matrix)
+4. [Selection Guide — How to Choose](#selection-guide--how-to-choose)
+5. [Amplify Gen2 Integration Pattern](#amplify-gen2-integration-pattern)
+6. [Nextcloud Integration Pattern](#nextcloud-integration-pattern)
+7. [Custom Build Pattern](#custom-build-pattern)
+8. [Throughput and Capacity Planning](#throughput-and-capacity-planning)
+9. [Authentication and Compliance Chain](#authentication-and-compliance-chain)
+10. [Implementation Roadmap](#implementation-roadmap)
+11. [Cost Estimates (Incremental)](#cost-estimates-incremental)
+12. [Trade-offs Summary](#trade-offs-summary)
+13. [FAQ](#faq)
+14. [Related Documents](#related-documents)
 
 ---
 
@@ -85,7 +91,97 @@ The diagram below shows how all three options, including a custom build, share t
 
 ---
 
+## Do You Need to Build This at All?
+
+Work through this branch before the comparison table. All three options below mean
+**building it yourself**, and not building means less to operate, authenticate and
+carry through the compliance chain.
+
+```
+What is the requirement?
+│
+├─ File transfer (upload / download / automated exchange)
+│   └─▶ AWS Transfer Family
+│        SFTP / FTPS / FTP through configuration alone. Reaches the same volume
+│        through an FSx for ONTAP S3 AP, alongside existing NFS / SMB clients.
+│        → no frontend development
+│
+├─ Browse, upload and download in a browser
+│   ├─ the data is in an Amazon S3 bucket
+│   │   └─▶ Transfer Family web apps
+│   │        Managed portal built on Storage Browser for Amazon S3.
+│   │        No code, no hosting.
+│   │
+│   └─ the data is on FSx for ONTAP
+│        └─▶ current documentation does not confirm support
+│             → the three options below
+│
+├─ Trigger your own processing workflow from a browser
+│   └─▶ the three options below (no managed service confirmed for this)
+│
+└─ No UI needed (automated + consumed by existing tools)
+    └─▶ build nothing. See [No frontend needed when](#no-frontend-needed-when).
+```
+
+### AWS Transfer Family (file transfer protocols)
+
+Attach an S3 Access Point to the FSx for ONTAP volume, and Transfer Family routes
+file operations through it. The data stays on FSx and existing NFS / SMB access is
+unchanged.
+
+**Suits**: exchanging files with partners, migrating an existing SFTP integration,
+providing an ingest endpoint for batch feeds — when the requirement is a protocol
+rather than a UI.
+
+**Constraints** ([AWS documentation](https://docs.aws.amazon.com/transfer/latest/userguide/fsx-s3-access-points.html), checked 2026-08-15):
+
+| Constraint | Detail |
+|------------|--------|
+| rename | not supported |
+| append | not supported |
+| Upload size | 5 GB per file |
+| WinSCP | uploads **fail** unless the default transfer-to-temporary-filename is disabled. Other SFTP clients: turn off temp-file uploads, resume and atomic rename |
+| ONTAP version | 9.17.1 or later |
+| NetworkOrigin | requests originate from Transfer Family infrastructure, not your VPC, so a **VPC-origin S3 AP will deny them**. Internet origin is required (traffic stays on the AWS backbone and does not traverse the public internet) |
+| Placement | file system and S3 AP in the same Region and the same account |
+| Reference form | home directory mappings accept the S3 AP **alias** only — not an ARN or a virtual-hosted-style URI. The IAM policy is the opposite: it needs the `accesspoint/<name>` ARN form |
+| Authorization | dual-layer — both the S3 AP policy and the FSx volume must permit the request, and the file system user bound to the access point sets the ceiling |
+
+> "rename not supported" is a constraint on client configuration rather than a
+> blocker. Most SFTP clients use temp-file-plus-rename by default, so the practical
+> question is whether you can distribute a client setting change to your users.
+
+### Transfer Family web apps (browser UI)
+
+A managed browser portal built on Storage Browser for Amazon S3, integrated with
+IAM Identity Center and S3 Access Grants. No code and no hosting.
+
+**Suits**: the target data is in Amazon S3 buckets and browsing, uploading and
+downloading is enough.
+
+**Constraints** ([AWS documentation](https://docs.aws.amazon.com/transfer/latest/userguide/web-app.html), checked 2026-08-15):
+
+- **The storage is Amazon S3 buckets.** The design registers locations with S3
+  Access Grants, and targeting an S3 Access Point attached to FSx is not stated.
+  **Whether it can serve this repository's case — data on FSx for ONTAP — is not
+  confirmable from current documentation.**
+- Buckets must be in the same account as the web app (no cross-account)
+- 160 GB per uploaded file, 5.36 GB per copy, 10,000 results per search query
+- Authentication via IAM Identity Center (its own directory or an external IdP)
+
+> Neither of these two was exercised and measured here. The table and bullets above
+> are a **reading of the public documentation**, not results from this repository's
+> verification environment. Run a PoC against your own requirements (clients, file
+> sizes, AD integration) before committing.
+
+---
+
 ## Comparison Matrix
+
+The three below are the options for the case where the branch above says "build".
+Transfer Family is **not a column** — providing a protocol and building a browser UI
+are not comparable on one axis. A combination is also valid: Transfer Family for
+exchange, Amplify Gen2 for processing requests.
 
 | Aspect | Amplify Gen2 | Nextcloud | Custom Build (CDK) |
 |--------|:---:|:---:|:---:|
