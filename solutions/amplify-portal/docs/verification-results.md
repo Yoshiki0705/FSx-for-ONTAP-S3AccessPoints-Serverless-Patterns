@@ -116,6 +116,36 @@ S3 オブジェクト、および作業用ボリューム `zz_probe_a` はすべ
 | FlexVol → FlexGroup の変換 | **REST API に無い**（`volume conversion start` は CLI の advanced 権限専用）。AWS は in-place 変換ではなく AWS DataSync での新規 FlexGroup へのコピーを推奨し、変換前に FSx バックアップの削除を求めている。ボタンは作らず、前提条件・不可逆性・Snapshot の扱いを画面の補足に入れた | [AWS docs](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/managing-volumes.html) |
 | 期間ラベルの時間対応（今回判明） | `durationLabel` が日数のみを解釈し、未知の値はそのまま返す設計だったため、リバランスの最大実行時間の選択肢が ONTAP の既定値を `PT6H` という文字列で表示していた | — |
 
+### 2026-08-15 に追加（SnapLock と Snapshot のロック、ONTAP 9.18.1P3D1）
+
+**以前は「不可逆なので実行しない」に分類していた区分 C を、アカウント所有者が保持期間の値を
+名指しして承認したうえで実行しました。** 実行できたのは、ONTAP が保持期間を秒単位（0〜65535 秒）
+で受け付けるためです。5 分保持なら数分で満了し、その後ボリュームを削除できます。
+
+検証用に作成した `zz_sl_ent` / `zz_sl_comp` / `zz_lock_probe` はすべて削除し、元の 10 本に戻しています。
+
+| 機能 | 確認内容 | 出典 |
+|------|---------|------|
+| SnapLock enterprise / compliance ボリュームの作成 | `snaplockType` と `retentionMin` / `retentionDefault` / `retentionMax` を指定して作成し、`getSnaplockConfig` で読み戻し。**ONTAP は `PT5M` を受理**（min=`PT0S` / default=`PT5M` / max=`P1D`）。`complianceClockTime` も返る | [保持期間の設定](https://docs.netapp.com/us-en/ontap/snaplock/set-retention-period-task.html) |
+| 承認フラグの強制 | `acknowledgeIrreversible` 無しの作成要求は両タイプとも拒否される | 同上 |
+| 保持期間の変更 | `updateSnaplockRetention` の `days=1` で volume の default が `PT5M` → `P1D`。**volume の既定値と、確定済みファイルの保持期間は別物**（後者は延長のみ） | 同上 |
+| **空の SnapLock ボリュームは削除できる** | compliance でも `deleteVolume` が 90 秒以内に完了し、一覧から消えた。WORM ファイルを 1 つも確定していない状態では削除可能。UI の「作成直後の空のボリュームは削除できます」を実測で裏付け | — |
+| Snapshot のロック機能の有効化 | 承認フラグ無しは拒否。有効化後は `snapshotLockingEnabled: true`（不可逆） | [Tamperproof Snapshot 設計](../../../docs/tamperproof-snapshot-design.md) |
+| Snapshot のロック実行 | `lockSnapshot` が `expiryTime` を返し、`getSnapshotLockingStatus` の `lockedSnapshotCount` が 1 になる | 同上 |
+| **ロック済み Snapshot はボリュームの削除を止めない** | ロック済みの Snapshot を持つボリュームを `deleteVolume` したところ、20 秒後に一覧から消えた。SnapLock の WORM ファイルとは影響範囲が違う。ポータルの文言（`slcSnapshotScope`「他の Snapshot とボリューム本体には影響しません」）と整合する | — |
+| **Snapshot 一覧のロック表示が壊れていた（修正済み）** | ONTAP は Snapshot に 2 つの満了フィールドを持つ。`expiry_time` が Snapshot のロック、`snaplock_expiry_time` が SnapLock ボリューム由来。`lockSnapshot` は前者に書くが、一覧を作る `_get_snapshots` は**後者だけを `fields=` に指定して読んでいた**ため、**ポータルでロックした Snapshot は一覧で必ず「ロックされていない」と表示された**。2 つのパネルが同じ Snapshot について食い違ったことで判明。両方を読むよう修正し、旧コードで落ちるテストを 4 件追加 | — |
+
+> **UI からはこの検証手順を再現できません。** ポータルの `asIsoDuration` は日単位（Y/M/W/D）しか
+> 受け付けず、`updateSnaplockRetention` は `days` しか取りません。ONTAP 側は秒単位を受けるので、
+> これは UI 側の制約です。**利用者は現状 UI から 1 日未満の保持期間を指定できません。**
+
+### 未確認のまま残るもの（SnapLock）
+
+| 項目 | なぜ未確認か |
+|------|------------|
+| WORM ファイルの確定と、それによる削除ブロック | ファイルを読み取り専用にする操作に NFS / SMB クライアントが必要で、S3 AP 経由では確定できない。VPC 内にクライアントを立ててから |
+| enterprise の privileged delete | 監査ログボリュームを要求し、それが**最短 6 か月**ボリューム → SVM → ファイルシステムの削除をブロックする。AWS API に監査ログの保持期間を指定するフィールドが無く、既定の 6 か月が適用される。**値を短くする逃げ道が無いため実行しない** |
+
 ## 実機 読み取り確認済み（書き込み系は未確認）
 
 | 機能 | 確認できたこと | 未確認 |
@@ -145,7 +175,7 @@ S3 オブジェクト、および作業用ボリューム `zz_probe_a` はすべ
 |------|------|------|
 | **A. 安全に実行できる** | **2026-08-15 に A1〜A8 をすべて実施**。残る未実行は SnapMirror の**転送中止**と **5 GiB 超のコピー**の 2 点 | 中止は 12 秒の転送窓があるので技術的には狙えるが、自分のものでない関係を unhealthy にするため所有者の承認が必要。5 GiB 超は前提を作れない（マルチパートアップロードが必要で、それがこの Access Point で失敗する操作そのもの） |
 | **B. 外部の前提が無い** | Vscan 4 件、FPolicy 5 件、クラスターピア 3 件、SVM ピアの承認・削除 | 外部スキャンエンジン、FPolicy エンジン、相手クラスターでの accept が必要。FPolicy は `engine: native` なら到達できる可能性がある |
-| **C. 不可逆なので実行しない** | SnapLock 保持期間、Snapshot ロック有効化、ロックの実行、S3 Object Lock 保持、Snapshot ポリシーの作成・割り当て | 未満了の WORM がボリューム → SVM → **ファイルシステム**の削除を連鎖的にブロックします。この方針は維持します |
+| **C. 不可逆だが値を短くして実行した** | SnapLock 保持期間、Snapshot のロック機能、ロックの実行 | **2026-08-15 に実施**（下の 08-15 の表）。ONTAP が保持期間を秒単位で受けるため、5 分保持で満了させてから削除できた。残るのは WORM 確定（NFS/SMB クライアント待ち）と privileged delete（監査ログが最短 6 か月なので実行しない） |
 | **D. 共有環境に影響が及ぶ** | LIF の無効化、プロトコルサービスの無効化、DNS 更新、SnapMirror の break / resync、ARP 封じ込め系 6 件 | 経路・セッション・レプリケーションを切ります。対象と時間帯を決めてから実施します |
 | **E. ONTAP 非依存** | エージェント / チーム / セッション、ポータル設定、サムネイル | Bedrock・DynamoDB・S3 側の話で、実機 ONTAP の検証対象ではありません |
 
