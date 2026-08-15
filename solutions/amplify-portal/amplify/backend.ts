@@ -609,6 +609,22 @@ listFilesFunction.addToRolePolicy(
     resources: [dataResources.tables["FileNotification"].tableArn],
   })
 );
+/*
+ * Lets the listAccessPoints action check that a configured alias still exists
+ * and is AVAILABLE, instead of the portal offering a location that was deleted
+ * or is MISCONFIGURED and failing later with no obvious cause.
+ *
+ * `*` because the API describes attachments across the account and does not
+ * accept a resource-level condition; it is a read of metadata only, and the
+ * handler still narrows the answer to the aliases the caller's groups map to,
+ * so the permission does not widen what anyone can browse.
+ */
+listFilesFunction.addToRolePolicy(
+  new iam.PolicyStatement({
+    actions: ["fsx:DescribeS3AccessPointAttachments"],
+    resources: ["*"],
+  })
+);
 
 api.addLambdaDataSource("ListFilesLambdaDataSource", listFilesFunction);
 
