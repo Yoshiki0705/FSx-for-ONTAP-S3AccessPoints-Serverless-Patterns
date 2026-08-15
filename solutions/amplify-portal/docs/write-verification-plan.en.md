@@ -30,8 +30,8 @@
 
 ## Group A: safe to run
 
-**A8, A3, A2, A5, A7, A4 and A1 are done (2026-08-15). Only A6 remains**, held back because it
-can only be done to SnapMirror relationships that are not ours (below).
+**A1 through A8 are all done (2026-08-15).** Two items inside them are not: A6's **transfer
+abort** and A7's **copy over 5 GiB**, each for a reason given in its own section.
 
 The order run was A8 → A3 → A2 → A5 → A7 → A4 → A1: fewest prerequisites, smallest impact and
 easiest rollback first. Running them overturned the original premise of A1, A5 and A8.
@@ -148,7 +148,7 @@ report, which looks like the deleted rule persisting. The deleted rule's own lim
 immediately. Whether enforcement continues is not observable through these reads, so the reference
 above stands as the source and the portal now points at the off → on step after a delete.
 
-### A6. SnapMirror update-now and transfer abort — **Not run (2026-08-15; it can only be done to relationships that are not ours)**
+### A6. SnapMirror update-now and transfer abort — **Update-now done (2026-08-15, on an existing relationship with approval). The abort is not run**
 
 | Item | Detail |
 |------|--------|
@@ -169,13 +169,18 @@ That an abort fails unless the relationship is transferring is stated in
 
 Both SnapMirror relationships here come from other systems -- their sources are on external clusters -- and
 every SVM peer points at another cluster. There is no intra-cluster peer between `fsxsvm01` and `fsxsvm02`,
-so creating our own relationship means **adding an SVM peer, which is shared configuration**. Running
-`updateSnapmirrorNow` on an existing relationship writes a new snapshot on a destination volume we do not
-own and changes its transfer history, which is append-only. Both reach into the shared environment, so this
-waits on the account owner.
+so our own relationship is not an option, and **`updateSnapmirrorNow` was run on an existing one with the
+account owner's approval** (it writes a new snapshot on the destination and appends to the transfer history;
+neither can be undone).
 
-**The abort (`abortSnapmirrorTransfer`) cannot be verified here at all.** Aborting needs a transfer that
-lasts, and that needs a way to write bulk data to the source volume -- an NFS or SMB client.
+Measured: the transfer took **12 seconds and moved 27,888 bytes**, and was observed in `transferring`. Lag
+went 14h59m → 1m8s, `lastTransferType` resync → update, and the relationship stayed snapmirrored and healthy.
+
+**The abort (`abortSnapmirrorTransfer`) is not run.** This plan said it could not be, on the assumption that
+a transfer here finishes instantly; the measurement above shows a 12-second window, so it **is** reachable
+(fire the update, poll once a second for `transferring`, abort when it appears). The reason to hold off is a
+different one: an abort leaves a relationship we do not own unhealthy and can leave a restart checkpoint
+behind. Running it needs the owner's approval too.
 
 ### A7. File operations (through the S3 Access Point) — **Done (2026-08-15; only the over-5-GiB case is unverified, for want of a precondition)**
 

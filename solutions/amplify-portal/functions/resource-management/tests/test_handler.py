@@ -413,6 +413,57 @@ class TestDeleteVolume:
         assert methods.index("GET") < methods.index("DELETE")
 
 
+class TestBringVolumeOnline:
+    """Reversing the offline step a failed delete leaves behind.
+
+    The delete above takes the volume offline as its second step, and the third can fail:
+    ONTAP refused one with "it has one or more clones" after the clone had already gone.
+    That leaves a volume offline -- unreachable to its clients -- and until this action
+    existed nothing in the portal could undo the step that had succeeded.
+    """
+
+    def test_requires_a_uuid(self, mock_secrets):
+        from handler import handler
+
+        with patch("handler.urllib3.PoolManager") as mock_pool:
+            mock_pool.return_value = MockHttp()
+            result = handler({"action": "bringVolumeOnline", "volumeName": "vol1"}, None)
+
+        assert result["success"] is False
+        assert "volumeUuid" in result["error"]
+
+    def test_patches_the_state_to_online(self, mock_secrets):
+        from handler import handler
+
+        http = MockHttp({"/storage/volumes/uuid-1": {"data": {}}})
+        with patch("handler.urllib3.PoolManager") as mock_pool:
+            mock_pool.return_value = http
+            result = handler(
+                {"action": "bringVolumeOnline", "volumeUuid": "uuid-1", "volumeName": "vol1"},
+                None,
+            )
+
+        assert result["success"] is True
+        method, url, kwargs = http.find("PATCH", "/storage/volumes/uuid-1")
+        assert json.loads(kwargs["body"]) == {"state": "online"}
+
+    def test_does_not_remount(self, mock_secrets):
+        """The junction path the delete cleared is a separate decision.
+
+        Remounting at a path the operator has not named again would be a guess at where
+        the volume belongs.
+        """
+        from handler import handler
+
+        http = MockHttp({"/storage/volumes/uuid-1": {"data": {}}})
+        with patch("handler.urllib3.PoolManager") as mock_pool:
+            mock_pool.return_value = http
+            handler({"action": "bringVolumeOnline", "volumeUuid": "uuid-1"}, None)
+
+        bodies = [json.loads(c[2]["body"]) for c in http.calls if c[0] == "PATCH"]
+        assert all("nas" not in b for b in bodies)
+
+
 class TestResizeVolume:
     def test_validates_inputs(self, mock_secrets):
         from handler import handler
@@ -1377,6 +1428,59 @@ class TestSnapMirror:
 
         assert result["transfers"][0]["bytesTransferred"] == 2048
         assert result["transfers"][0]["duration"] == "PT30S"
+
+    def test_transfers_are_newest_first(self, mock_secrets):
+        """ONTAP does not order these, and the panel presents them as a history.
+
+        Measured after an update: the transfer that had just run came back third of five,
+        so the row a reader looks at first was not the one they had just caused.
+        """
+        from handler import handler
+
+        with snapmirror_client(
+            MockHttp(
+                {
+                    "/transfers": {
+                        "data": {
+                            "records": [
+                                {"state": "success", "end_time": "2026-08-03T00:00:00Z"},
+                                {"state": "success", "end_time": "2026-08-05T00:00:00Z"},
+                                {"state": "success", "end_time": "2026-08-04T00:00:00Z"},
+                            ]
+                        }
+                    }
+                }
+            )
+        ):
+            result = handler({"action": "getSnapmirrorTransfers", "relationshipUuid": "r1"}, None)
+
+        assert [t["endTime"] for t in result["transfers"]] == [
+            "2026-08-05T00:00:00Z",
+            "2026-08-04T00:00:00Z",
+            "2026-08-03T00:00:00Z",
+        ]
+
+    def test_a_running_transfer_sorts_above_finished_ones(self, mock_secrets):
+        """It has no end time, and it is the one the reader is waiting on."""
+        from handler import handler
+
+        with snapmirror_client(
+            MockHttp(
+                {
+                    "/transfers": {
+                        "data": {
+                            "records": [
+                                {"state": "success", "end_time": "2026-08-05T00:00:00Z"},
+                                {"state": "transferring", "bytes_transferred": 128},
+                            ]
+                        }
+                    }
+                }
+            )
+        ):
+            result = handler({"action": "getSnapmirrorTransfers", "relationshipUuid": "r1"}, None)
+
+        assert result["transfers"][0]["state"] == "transferring"
 
 
 # --- Vscan (status and policy management) ---
