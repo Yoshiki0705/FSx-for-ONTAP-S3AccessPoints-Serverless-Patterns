@@ -12,7 +12,7 @@ CloudFormation/SAM template sharing the Python modules in `shared/`.
 **Two pillars**: `solutions/` (S3 AP data processing) + `operations/` (file system operational
 optimization).
 
-**Test coverage**: ~4,470 Python tests across 260 files + ~331 vitest tests across 26 files.
+**Test coverage**: ~4,470 Python tests across 261 files + ~331 vitest tests across 26 files.
 
 > ファイル数は `make drift` がツリーと照合するので、古くなれば fail する。テスト総数は
 > `make test` / ポータルハンドラの個別実行 / vitest の 3 系統の合計なので概数。誰も保守
@@ -315,7 +315,7 @@ decision = evaluate_confidence(confidence=0.72)
 
 | Real Data | Placeholder |
 |-----------|-------------|
-| AWS Account ID | `123456789012` |
+| AWS Account ID | `123456789012`。複数アカウントを書き分けるときは下記の 3 形状のいずれかを使う |
 | Secret ARN suffix | `-XXXXXX` |
 | VPC/Subnet/SG IDs | `vpc-0123456789abcdef0` |
 | File System ID | `fs-0123456789abcdef0` |
@@ -324,6 +324,12 @@ decision = evaluate_confidence(confidence=0.72)
 | SSH key paths | `<your-ssh-key.pem>` |
 | Personal file paths | Relative paths or `${PROJECT_DIR}` |
 | S3 AP Alias | Use parameter reference `!Ref S3AccessPointAlias` |
+
+> **アカウント ID は値ではなく形状で許可される**: 許可されるのは同一数字の繰り返し
+> （`111111111111`）、4 桁ずつの繰り返し（`111122223333`、AWS 公式ドキュメントの慣行）、
+> ±1 の連番（`123456789012`、`987654321098`）。形状判定なのでアカウントを 1 つ増やすときに
+> この表を編集する必要はない。実在 ID を書かざるを得ないなら行に `allow:account-id` と理由を
+> 付ける。強制と例外は `scripts/check_account_id_placeholders.py` にある
 
 > **IP が 2 行ある理由**: 判断基準は「そのアドレスは 1 人の端末を指しているか」。指すなら
 > RFC 5737 に置換し（PII 監査が守る対象そのもの。`scripts/portal-probes/` が

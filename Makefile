@@ -272,6 +272,11 @@ drift:
 # runs everywhere, because those are the faults that made the gate vacuous and they
 # are all visible without the tool.
 	$(PYTHON) -m pytest scripts/tests/test_check_cfn_guard.py --tb=short -q
+# The account-ID shape check. Its own tests matter more than the rule: a scanner that
+# reads nothing reports a clean tree, so one test disables every placeholder shape and
+# requires the repository to then produce findings, and another asserts the reported
+# output does not contain the value it found — CI logs are public here.
+	$(PYTHON) -m pytest scripts/tests/test_check_account_id_placeholders.py --tb=short -q
 	$(PYTHON) -m pytest scripts/tests/test_stale_claim_rules.py --tb=short -q
 # A name the code depends on and no template creates. Both rules below exist because
 # the same shape shipped twice: five endpoints guarded on a Cognito group that
@@ -434,6 +439,12 @@ BANDIT_PATHS := shared/ solutions/ operations/ infrastructure/ scripts/
 
 security:
 	$(VENV_BANDIT) -r $(BANDIT_PATHS) -ll -c .bandit
+# Account IDs, by shape rather than by value. The exact-match check in
+# security-check.yml compares against a repository secret, which means it cannot run
+# without one — and an absent secret produced the same green result as a clean tree,
+# which is how it sat unnoticed since it was written. This needs no secret, so it has
+# no such state, and it catches any real ID rather than the single configured one.
+	$(PYTHON) scripts/check_account_id_placeholders.py
 
 # cfn-guard over every deployable template. Separate from `security` because it needs
 # the cfn-guard binary rather than a pip package, and separate from `lint-cfn` because

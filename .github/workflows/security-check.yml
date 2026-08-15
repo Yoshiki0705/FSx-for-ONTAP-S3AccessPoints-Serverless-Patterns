@@ -61,24 +61,28 @@ jobs:
           fi
           echo "✅ No personal .pem paths"
 
+      # Runs unconditionally and needs no secret, which is what keeps the
+      # account-ID coverage below out of a vacuous state. It is shape-based, so it
+      # catches ANY real account ID rather than only a configured one.
+      - name: Check account IDs are documented placeholders
+        run: python3 scripts/check_account_id_placeholders.py
+
       - name: Check no real AWS account ID
         env:
           SECURITY_CHECK_ACCOUNT_ID: ${{ secrets.SECURITY_CHECK_ACCOUNT_ID }}
         run: |
-          # Skip-and-succeed, narrowed. A fork pull request cannot read secrets, so
-          # failing there would block every outside contribution — but on this
-          # repository an absent secret means the check is silently not running, and
-          # "not configured" then looks exactly like "no account ID found". The two
-          # cases are separated: skip on a fork, fail here.
+          # An absent secret used to be indistinguishable from a clean result, so
+          # this step sat green without ever running. It is now only the precise
+          # half of a pair: the shape-based step above always runs, so skipping
+          # here leaves coverage in place rather than leaving a silent hole, and a
+          # fork pull request -- which cannot read secrets at all -- still gets
+          # checked.
           if [ -z "$SECURITY_CHECK_ACCOUNT_ID" ]; then
-            if [ "${GITHUB_EVENT_NAME}" = "pull_request" ] && \
-               [ "${GITHUB_REPOSITORY}" != "${GITHUB_HEAD_REPOSITORY:-$GITHUB_REPOSITORY}" ]; then
-              echo "⚠️ fork PR: SECURITY_CHECK_ACCOUNT_ID is unavailable, skipping"
-              exit 0
-            fi
-            echo "::error::SECURITY_CHECK_ACCOUNT_ID is not set, so this check has not run."
-            echo "Set the repository secret, or delete this step rather than leaving it passing vacuously."
-            exit 1
+            echo "::notice::SECURITY_CHECK_ACCOUNT_ID is not set, so the exact-match"
+            echo "pass is skipped. The shape-based check in the previous step ran and"
+            echo "covers any real account ID. Set the secret to also pin one specific"
+            echo "ID, which additionally catches it in non-account-ID positions."
+            exit 0
           fi
           result=$(git ls-files | xargs grep -rl "$SECURITY_CHECK_ACCOUNT_ID" 2>/dev/null || true)
           if [ -n "$result" ]; then
