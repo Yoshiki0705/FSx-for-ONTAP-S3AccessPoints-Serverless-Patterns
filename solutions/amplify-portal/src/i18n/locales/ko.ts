@@ -698,6 +698,7 @@ arpResponseSweepNote: "차단은 지정한 기한이 지나면 자동으로 해�
   filesLoadedScopeNote:
     "정렬과 필터는 지금까지 불러온 {n}개 항목에만 적용됩니다. 나머지를 포함하려면 \"더 보기\"를 선택하세요.",
   filesSelectAll: "표시된 파일 모두 선택",
+  filesSelectAllUnavailable: "이 폴더에는 선택할 수 있는 파일이 없습니다. 폴더는 일괄 선택 대상이 아닙니다",
   filesSelectRow: "{name} 선택",
   rowMenuLabel: "{name} 의 기타 작업",
   filesSelectedCount: "{n}개 선택됨",
@@ -801,6 +802,9 @@ arpResponseSweepNote: "차단은 지정한 기한이 지나면 자동으로 해�
   flUploadLinkFailed: "링크를 발급하지 못했습니다",
   flUploadDestination: "저장 키",
   flUploadLinkWarning: "이 URL 자체가 자격 증명입니다. 만료될 때까지 URL 을 가진 누구나 이 키에 쓸 수 있습니다.",
+  flUploadLinkSelfHint: "직접 업로드하려면 이 링크가 아니라 '업로드' 탭을 사용하세요. 브라우저에서 바로 전송됩니다.",
+  flUploadLinkCurlLabel: "전달할 상대에게 알려줄 명령",
+  flUploadLinkPutOnly: "이 URL은 PUT 업로드 전용입니다. 브라우저에서 열면 GET이 되어 SignatureDoesNotMatch로 실패합니다(서명이 HTTP 메서드를 포함하기 때문입니다).",
   flCopy: "복사",
   flCopied: "복사했습니다",
   filesLoadMore: "더 보기",

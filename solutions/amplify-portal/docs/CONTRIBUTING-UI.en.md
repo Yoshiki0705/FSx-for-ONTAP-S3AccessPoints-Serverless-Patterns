@@ -266,6 +266,140 @@ A new token is defined in **both** `:root` and `[data-theme="dark"]`. One of the
 
 ---
 
+## Replacing the AI processing jobs with your own
+
+The AI processing tab sends the chosen use case to a Step Functions state machine.
+**The six use cases listed by default are this repository's samples.** Using it in your own
+organisation starts with removing the ones you do not want and adding your own workflow. Four
+places are involved, so here they are in order.
+
+### First, see the current state
+
+```bash
+cd solutions/amplify-portal
+grep -n "ProcessingPattern" -A 10 amplify/data/resource.ts   # what the API accepts
+grep -n "PATTERN_DESCRIPTIONS" -A 10 src/components/JobSubmitForm.tsx  # what the screen lists
+grep -n "stateMachineArn" amplify/data/resolvers/start-processing.js   # what it actually calls
+grep -n "processingEnabled" src/portal-settings.ts            # whether the tab appears
+```
+
+| Place | What it decides |
+|---|---|
+| `ProcessingPattern` in `amplify/data/resource.ts` | **The set of values the API accepts** (a GraphQL enum). AppSync rejects anything not listed |
+| The `ProcessingPattern` type and `PATTERN_DESCRIPTIONS` in `src/components/JobSubmitForm.tsx` | **The dropdown and its descriptions** |
+| `amplify/data/resolvers/start-processing.js` | **Which state machine is called**, and the input JSON it receives |
+| `processingEnabled` in `src/portal-settings.ts` | Whether the tab appears at all |
+
+> **These four do not stay in step by themselves.** Today the enum has seven values (including
+> `FC7_FLEXCLONE_RESTORE`) while the screen lists six, so FC7 is accepted by the API and
+> unreachable from the UI. Adding a value to the screen alone fails the other way, because
+> AppSync rejects it. **The same value has to be in both.**
+
+### Required before it can work at all
+
+The ARN in `amplify/data/resolvers/start-processing.js` is **still a placeholder**.
+
+```javascript
+const stateMachineArn =
+  "arn:aws:states:ap-northeast-1:123456789012:stateMachine:amplify-portal-test-workflow";
+```
+
+Neither the account ID nor the state machine name exists, so **pressing "start processing" in
+this state fails**. Replace it with your own ARN. There is a `stateMachineArn` entry in
+`portal-config.ts`, but **the resolver does not read it**: an AppSync JS resolver cannot import a
+config file at runtime. You have to keep the config value and the ARN in step yourself.
+
+IAM is scoped by a different value. `amplify/backend.ts` uses `config.stateMachineResourceScope`
+as the `resources` of `states:StartExecution`. **Revisit that scope when you change the ARN.** If
+it does not match, the resolver calls the right ARN and stops with AccessDenied.
+
+### Removing a use case
+
+Delete the same value from both places:
+
+1. the `ProcessingPattern` array in `amplify/data/resource.ts`
+2. the `ProcessingPattern` union and `PATTERN_DESCRIPTIONS` in `src/components/JobSubmitForm.tsx`
+
+Changing the enum changes the GraphQL schema, so `npx ampx sandbox` has to redeploy. Removing
+only the type and leaving the enum produces what FC7 is now: accepted by the API, absent from the
+screen.
+
+### Adding a use case
+
+```typescript
+// 1. amplify/data/resource.ts — what the API accepts
+ProcessingPattern: a.enum([
+  "UC1_LEGAL_COMPLIANCE",
+  "MY_ORG_INVOICE_OCR",        // added
+]),
+```
+
+```typescript
+// 2. src/components/JobSubmitForm.tsx — what the screen shows
+type ProcessingPattern =
+  | "UC1_LEGAL_COMPLIANCE"
+  | "MY_ORG_INVOICE_OCR";      // added
+
+const PATTERN_DESCRIPTIONS: Record<ProcessingPattern, string> = {
+  UC1_LEGAL_COMPLIANCE: "...",
+  MY_ORG_INVOICE_OCR: "Invoice OCR and a draft journal entry",   // added
+};
+```
+
+Because it is a `Record<ProcessingPattern, string>`, **forgetting the description does not
+compile.** If a value you added does not appear on screen, check the enum first.
+
+> **The descriptions do not go through `t()` today.** `PATTERN_DESCRIPTIONS` is English in the
+> source and is outside the eight-language mechanism. For a multilingual deployment, add keys to
+> `ja.ts` as in section 4, change it to `Record<ProcessingPattern, TranslationKeys>`, and read it
+> with `t()`.
+
+### What the state machine receives
+
+This is the whole input the resolver sends:
+
+```javascript
+const input = JSON.stringify({
+  inputPrefix: inputPrefix,
+  parameters: parameters || {},
+  triggeredBy: "amplify-portal",
+  triggeredAt: util.time.nowISO8601(),
+  userId: ctx.identity.username,
+});
+```
+
+**The chosen use case is not in it.** It appears only in the execution name
+(`portal-<pattern>-<epoch>`). So **one state machine cannot branch between use cases** as shipped.
+Pick one of these:
+
+- give each use case its own state machine and select the ARN from `pattern` in the resolver
+- add `pattern` to the input and branch with a `Choice` state
+
+For the second, add `pattern: pattern` to the resolver's `input`. That changes the state
+machine's input schema, so check it stays compatible with existing executions.
+
+### The history record
+
+On success, `client.models.JobExecution.create` writes one row to DynamoDB (`executionArn`,
+`pattern`, `inputPrefix`, `status`, `startDate`). **A failure to save is swallowed** with a
+`console.warn`, so a job can run without appearing in the history. Fix that before treating the
+history as an operational record. The model is owner-authorized, so only the submitter can read
+their rows.
+
+### After changing it
+
+```bash
+cd solutions/amplify-portal
+npx tsc -b            # a missing PATTERN_DESCRIPTIONS entry surfaces here
+npx ampx sandbox      # a changed enum needs a redeploy
+```
+
+Until you have a state machine, set `processingEnabled` in `src/portal-settings.ts` to `false` to
+hide the tab. **It defaults to `true`**, so handing the portal over unconfigured leaves users a
+button that fails.
+
+---
+
 ## 0. Read this first
 
 The portal has **two boundaries types do not cross**. Changes that cross them produced

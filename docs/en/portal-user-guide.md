@@ -95,6 +95,10 @@ Drag-and-drop file upload powered by Storage Browser for S3. Also supports:
 
 Trigger AI/ML workflows on a folder or set of files.
 
+> **If your own workload is not in the list**, that is because the repository's samples are
+> still there. Replacing them is an administrator task; the steps are in
+> [Extending the portal UI — replacing the AI processing jobs with your own](../../solutions/amplify-portal/docs/CONTRIBUTING-UI.en.md#replacing-the-ai-processing-jobs-with-your-own).
+
 1. Select a processing pattern from the dropdown (e.g., Legal Compliance, Financial IDP, Semiconductor EDA)
 2. Set the input prefix (pre-filled if you clicked ⚡ from All Files)
 3. Click **Start Processing**

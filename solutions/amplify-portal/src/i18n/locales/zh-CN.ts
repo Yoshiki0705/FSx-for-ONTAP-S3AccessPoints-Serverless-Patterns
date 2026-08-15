@@ -697,6 +697,7 @@ arpResponseSweepNote: "阻止会在设定的期限过后自动解除。如需提
   filesLoadedScopeNote:
     "排序和筛选仅适用于已加载的 {n} 个条目。若要包含其余条目，请选择“加载更多”。",
   filesSelectAll: "选择列出的所有文件",
+  filesSelectAllUnavailable: "此文件夹中没有可选择的文件。文件夹不参与批量选择",
   filesSelectRow: "选择 {name}",
   rowMenuLabel: "{name} 的更多操作",
   filesSelectedCount: "已选择 {n} 个",
@@ -800,6 +801,9 @@ arpResponseSweepNote: "阻止会在设定的期限过后自动解除。如需提
   flUploadLinkFailed: "无法生成链接",
   flUploadDestination: "保存键",
   flUploadLinkWarning: "该 URL 本身就是凭证。在过期之前，任何持有它的人都可以写入此键。",
+  flUploadLinkSelfHint: "如果是自己上传，请使用「上传」标签页而不是此链接。它可以直接从浏览器发送文件。",
+  flUploadLinkCurlLabel: "提供给接收者的命令",
+  flUploadLinkPutOnly: "此 URL 仅用于 PUT 上传。在浏览器中打开会发送 GET，并因 SignatureDoesNotMatch 失败（签名包含 HTTP 方法）。",
   flCopy: "复制",
   flCopied: "已复制",
   filesLoadMore: "加载更多",

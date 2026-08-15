@@ -698,6 +698,7 @@ arpResponseSweepNote: "Sperren heben sich nach Ablauf der Frist selbst auf. Für
   filesLoadedScopeNote:
     "Sortierung und Filter gelten für die {n} bisher geladenen Einträge. Wählen Sie „Mehr Dateien laden“, um die übrigen einzubeziehen.",
   filesSelectAll: "Alle angezeigten Dateien auswählen",
+  filesSelectAllUnavailable: "Keine auswählbaren Dateien in diesem Ordner. Ordner sind von der Mehrfachauswahl ausgenommen",
   filesSelectRow: "{name} auswählen",
   rowMenuLabel: "Weitere Aktionen für {name}",
   filesSelectedCount: "{n} ausgewählt",
@@ -802,6 +803,9 @@ arpResponseSweepNote: "Sperren heben sich nach Ablauf der Frist selbst auf. Für
   flUploadLinkFailed: "Link konnte nicht erzeugt werden",
   flUploadDestination: "Zielschlüssel",
   flUploadLinkWarning: "Die URL ist das Zugangsmittel. Bis zum Ablauf kann jeder, der sie besitzt, auf diesen Schlüssel schreiben.",
+  flUploadLinkSelfHint: "Wenn Sie selbst hochladen, nutzen Sie den Upload-Tab statt dieses Links. Er sendet die Datei direkt aus dem Browser.",
+  flUploadLinkCurlLabel: "Der Befehl für den Empfänger",
+  flUploadLinkPutOnly: "Diese URL dient zum Hochladen per PUT. Im Browser geöffnet sendet sie GET und scheitert mit SignatureDoesNotMatch, da die Signatur die HTTP-Methode einschließt.",
   flCopy: "Kopieren",
   flCopied: "Kopiert",
   filesLoadMore: "Mehr Dateien laden",

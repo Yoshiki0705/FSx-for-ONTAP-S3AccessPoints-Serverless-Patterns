@@ -578,6 +578,11 @@ export function FileExplorer({
               onChange={toggleSelectAll}
               disabled={regularFiles.length === 0 || bulk.busy}
               aria-label={t("filesSelectAll")}
+              // A folder-only listing has nothing to select, so this is disabled.
+              // Measured on an iPhone: it looked identical to the enabled state and
+              // reported as "tapping it does nothing". The same shape was fixed once
+              // for the containment buttons; the reason has to be on the control.
+              title={regularFiles.length === 0 ? t("filesSelectAllUnavailable") : t("filesSelectAll")}
             />
           </span>
           <SortHeader column="name" label={t("filesColumnName")} sort={sort} onSort={sortBy} />
