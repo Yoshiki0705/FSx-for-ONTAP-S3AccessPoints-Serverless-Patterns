@@ -280,7 +280,7 @@ arpResponseSweepNote: "阻止会在设定的期限过后自动解除。如需提
   rmStyleGuide2: "FlexCache 的缓存侧始终是 FlexGroup，ONTAP S3 存储桶的实体也会自动创建 FlexGroup。这两者的类型不由使用者选择。",
   rmStyleGuide3: "FlexGroup 不支持 SAN LUN、SMB 1.0 和 SnapMirror Synchronous。FlexClone 自 ONTAP 9.7 起可按卷创建，SnapLock 自 9.11.1 起在 FlexGroup 级别设置（不能在成员级别设置）。",
   rmStyleGuide4: "SnapMirror 在 FlexGroup 上按 constituent 传输，因此源和目标的 constituent 数量必须一致。添加 constituent 后现有 Snapshot 会变为 partial，并失去 FSx 备份、AWS Backup 和 SnapMirror 的增量（AWS 文档）。",
-  rmStyleGuide5: "从本界面创建 FlexGroup 时会显式指定聚合，而不是交由自动放置。FSx for ONTAP 的聚合是 FabricPool 聚合，会被自动放置排除（实测：未指定时以 \"Aggregates not matching FabricPool requirements\" 失败）。默认的 4 个 constituent 结构下最小为 400 GB。",
+  rmStyleGuide5: "从本界面创建 FlexGroup 时会显式指定聚合，而不是交由自动放置。FSx for ONTAP 的聚合已启用分层（tiering），会被自动放置排除（实测：未指定时以 \"Aggregates not matching FabricPool requirements\" 失败）。默认的 4 个 constituent 结构下最小为 400 GB。",
   rmConvertTitle: "从 FlexVol 转换为 FlexGroup",
   rmConvert1: "转换只能通过 ONTAP CLI 的 advanced 权限执行（volume conversion start）。REST API 没有对应操作，因此本界面没有按钮。",
   rmConvert2: "AWS 推荐新建 FlexGroup 并用 AWS DataSync 迁移数据，而不是就地转换。转换不会重新分布数据，所有数据仍留在第一个 constituent 上（AWS 文档）。",

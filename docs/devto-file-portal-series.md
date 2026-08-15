@@ -46,7 +46,7 @@ S3 AP シリーズの読者は、Lambda と Step Functions でデータ処理パ
 | 2 | **認可を二層で設計する** — Cognito グループと S3 AP / ONTAP 側の認可、監査証跡の連鎖 | [portal-authorization-design.md](./ja/portal-authorization-design.md), [s3ap-authorization-model.md](./s3ap-authorization-model.md) | `cognito` |
 | 3 | **Amplify Gen2 で踏んだ制約** — クロススタック Data Source、cdk-nag の運用、sandbox の hotswap、SharedPythonLayer | [amplify-gen2-cdk-patterns.md](../solutions/amplify-portal/docs/amplify-gen2-cdk-patterns.md), [portal-cdk-quality-gates.md](./agent/portal-cdk-quality-gates.md) | `cdk` |
 | 4 | **8 言語 UI を型で守る** — `ja.ts` を型の源にする、ハードコード文字列を機械で落とす、テーマトークン | [portal-i18n.md](./agent/portal-i18n.md), [CONTRIBUTING-UI.md](../solutions/amplify-portal/docs/CONTRIBUTING-UI.md) | `i18n` |
-| 5 | **一度も動いたことがなかった機能をどう見つけたか** — 実機検証で判明した不具合（presign の SigV2 既定、FlexGroup 作成の FabricPool 制約、リバランスの実行時間制約）と、それを再発させない仕組み | [verification-results.md](../solutions/amplify-portal/docs/verification-results.md), [flexgroup-rebalance-verification.md](../solutions/amplify-portal/docs/flexgroup-rebalance-verification.md) | `testing` |
+| 5 | **一度も動いたことがなかった機能をどう見つけたか** — 実機検証で判明した不具合（presign の SigV2 既定、FlexGroup 作成の階層化アグリゲート制約、リバランスの実行時間制約）と、それを再発させない仕組み | [verification-results.md](../solutions/amplify-portal/docs/verification-results.md), [flexgroup-rebalance-verification.md](../solutions/amplify-portal/docs/flexgroup-rebalance-verification.md) | `testing` |
 | 6 | **利用者に渡す** — スマートフォンからの到達性、引き渡し時に説明する範囲、一次対応 | [portal-user-guide.md](./ja/portal-user-guide.md), [portal-handover-guide.md](../solutions/amplify-portal/docs/portal-handover-guide.md), [portal-mobile-guide.md](./ja/portal-mobile-guide.md) | `webdev` |
 
 ## 公開時の注意

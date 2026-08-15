@@ -280,7 +280,7 @@ arpResponseSweepNote: "차단은 지정한 기한이 지나면 자동으로 해�
   rmStyleGuide2: "FlexCache의 캐시 쪽은 항상 FlexGroup이며, ONTAP S3 버킷의 실체도 FlexGroup이 자동 생성됩니다. 이 두 가지는 사용자가 유형을 선택할 수 없습니다.",
   rmStyleGuide3: "FlexGroup에서는 SAN LUN·SMB 1.0·SnapMirror Synchronous를 사용할 수 없습니다. FlexClone은 ONTAP 9.7 이후 볼륨 단위로 만들 수 있고, SnapLock은 9.11.1 이후 FlexGroup 단위로 설정합니다(멤버 단위로는 설정 불가).",
   rmStyleGuide4: "SnapMirror는 FlexGroup에서 constituent 단위로 전송하므로 전송원과 전송처의 constituent 수를 일치시켜야 합니다. constituent를 추가하면 기존 Snapshot은 partial이 되고 FSx 백업·AWS Backup·SnapMirror의 증분이 사라집니다(AWS 문서).",
-  rmStyleGuide5: "이 화면에서 FlexGroup을 만들 때는 자동 배치가 아니라 애그리게이트를 명시 지정합니다. FSx for ONTAP의 애그리게이트는 FabricPool 애그리게이트여서 자동 배치 대상에서 제외되기 때문입니다(실측: 지정하지 않으면 \"Aggregates not matching FabricPool requirements\"로 실패). 기본 4 constituent 구성에서는 최소 400 GB입니다.",
+  rmStyleGuide5: "이 화면에서 FlexGroup을 만들 때는 자동 배치가 아니라 애그리게이트를 명시 지정합니다. FSx for ONTAP의 애그리게이트는 계층화(tiering)가 활성화된 애그리게이트여서 자동 배치 대상에서 제외되기 때문입니다(실측: 지정하지 않으면 \"Aggregates not matching FabricPool requirements\"로 실패). 기본 4 constituent 구성에서는 최소 400 GB입니다.",
   rmConvertTitle: "FlexVol에서 FlexGroup으로 변환",
   rmConvert1: "변환은 ONTAP CLI의 advanced 권한(volume conversion start)에서만 실행할 수 있습니다. REST API에 해당 조작이 없으므로 이 화면에는 버튼이 없습니다.",
   rmConvert2: "AWS는 in-place 변환보다 새 FlexGroup을 만들어 AWS DataSync로 데이터를 옮기는 방법을 권장합니다. 변환은 데이터를 재배치하지 않으므로 모든 데이터가 첫 constituent에 남습니다(AWS 문서).",
