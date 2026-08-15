@@ -237,7 +237,7 @@ CLI では `volume create -type DP` → `snapmirror create` → `snapmirror init
 | 引数 | 効果 |
 |------|------|
 | `create_destination.enabled` | 宛先ボリュームを ONTAP が作成する。事前に `-type DP` で作る必要がない |
-| `create_destination.tiering.supported` | FabricPool アグリゲートへの配置を許可する。**既定は false** で、FSx for ONTAP のアグリゲートはすべて FabricPool 付きなので、既定のままだと配置先が無く失敗する（FlexCache の `use_tiered_aggregate` と同じ罠） |
+| `create_destination.tiering.supported` | 階層化が有効なアグリゲートへの配置を許可する。**既定は false** で、FSx for ONTAP のアグリゲートはすべて階層化が有効なので、既定のままだと配置先が無く失敗する（FlexCache の `use_tiered_aggregate` と同じ罠） |
 | `state: snapmirrored` | 作成と同時に初期化する。指定しないと `uninitialized` のままで転送履歴が空のまま |
 
 POST は**宛先クラスター**（= ポータルの接続先）に対して発行します。したがって別ファイルシステム上のボリュームを保護する操作が、こちら側だけで完結します。逆に、宛先が別クラスターにある関係はこのポータルからは見えず、操作もできません。
