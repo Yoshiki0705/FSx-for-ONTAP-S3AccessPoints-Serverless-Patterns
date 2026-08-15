@@ -4,14 +4,27 @@ import { useTranslation } from "../../i18n";
 import { errorMessage, unwrap } from "../../lib/portalQuery";
 import { adminMutate, dispatch } from "../../lib/dispatch";
 import type { VolumeUuid } from "../../lib/dispatchActions";
-import { durationLabel } from "../../utils/duration";
+import { durationLabel, elapsedLabel } from "../../utils/duration";
 
 /**
  * ONTAP's own state values. The panel maps them to sentences rather than showing the
  * identifier, because "not_running" and "paused" mean different things to somebody
  * deciding whether to press start.
  */
-type RebalanceState = "not_running" | "starting" | "rebalancing" | "paused" | "stopping" | "unknown";
+type RebalanceState =
+  | "not_running"
+  | "starting"
+  | "rebalancing"
+  | "paused"
+  | "stopping"
+  | "unknown"
+  // Two states ONTAP returns for a volume and does not list among the volume-level
+  // values. Both measured here: `idle` is a running operation with nothing to move --
+  // it stayed there for the whole runtime on a volume with no file over the 100 MB
+  // minimum -- and `scheduled` is a start registered for a future time. Without them
+  // a running rebalance rendered as "unknown".
+  | "idle"
+  | "scheduled";
 
 interface Rebalance {
   state: RebalanceState;
@@ -30,7 +43,17 @@ interface Rebalance {
   minThresholdPercent: number;
   maxFileMoves: number;
   excludeSnapshots: boolean;
+  /** What the scanner has looked at, and what it declined to move and why. */
+  filesScanned: number;
+  fileMovesStarted: number;
+  filesSkipped: Record<string, number>;
   notices: string[];
+}
+
+interface Constituent {
+  name: string;
+  sizeBytes: number;
+  usedBytes: number;
 }
 
 interface RebalanceStatus {
@@ -43,13 +66,14 @@ interface RebalanceStatus {
   reported?: boolean;
   granularData?: boolean;
   granularDataMode?: string;
+  constituents?: Constituent[];
   rebalance: Rebalance | null;
 }
 
 const BYTES_PER_MIB = 1024 ** 2;
 
 function sizeLabel(bytes: number): string {
-  if (bytes <= 0) return "0";
+  if (bytes <= 0) return "0 B";
   if (bytes < BYTES_PER_MIB) return `${(bytes / 1024).toFixed(0)} KiB`;
   if (bytes < 1024 ** 3) return `${(bytes / BYTES_PER_MIB).toFixed(1)} MiB`;
   if (bytes < 1024 ** 4) return `${(bytes / 1024 ** 3).toFixed(1)} GiB`;
@@ -65,6 +89,10 @@ function stateKey(state: RebalanceState) {
       return "rblStateStarting" as const;
     case "rebalancing":
       return "rblStateRebalancing" as const;
+    case "idle":
+      return "rblStateIdle" as const;
+    case "scheduled":
+      return "rblStateScheduled" as const;
     case "paused":
       return "rblStatePaused" as const;
     case "stopping":
@@ -74,8 +102,22 @@ function stateKey(state: RebalanceState) {
   }
 }
 
-/** The runtimes offered. ONTAP's own default is 6 hours and stands first. */
-const MAX_RUNTIMES = ["PT6H", "PT1H", "PT2H", "PT12H", "P1D", "P3D"];
+/** Whether an operation exists on the volume, scheduled or running. */
+function inProgress(state: RebalanceState | undefined): boolean {
+  return state !== undefined && state !== "not_running" && state !== "unknown";
+}
+
+/**
+ * The runtimes offered, shortest first.
+ *
+ * 30 minutes leads because it is the only one that is always allowed to be tried:
+ * ONTAP refuses anything shorter outright, and refuses anything that reaches past
+ * the volume's next scheduled snapshot. With the default snapshot policy, which
+ * takes an hourly snapshot at :05, that leaves 30 minutes as the only option that
+ * can start at all -- and only between :05 and :35. Offering 6 hours first, as this
+ * did, meant the button failed every time on a volume with a snapshot policy.
+ */
+const MAX_RUNTIMES = ["PT30M", "PT1H", "PT2H", "PT6H", "PT12H", "P1D", "P3D"];
 
 interface Props {
   volumeUuid: VolumeUuid;
@@ -113,10 +155,8 @@ export function VolumeRebalancePanel({ volumeUuid, volumeName, onClose }: Props)
     // While files are moving the interesting numbers change: ONTAP refreshes the worst
     // constituent's imbalance every 10 seconds during a rebalance and every 30 when
     // idle. A static panel would show the operation as though it were stuck.
-    refetchInterval: (query) => {
-      const state = query.state.data?.rebalance?.state;
-      return state === "rebalancing" || state === "starting" || state === "stopping" ? 10_000 : false;
-    },
+    refetchInterval: (query) =>
+      inProgress(query.state.data?.rebalance?.state) ? 10_000 : false,
   });
 
   const error = actionError ?? errorMessage(queryError, "Failed to read rebalance status");
@@ -161,7 +201,8 @@ export function VolumeRebalancePanel({ volumeUuid, volumeName, onClose }: Props)
   };
 
   const rebalance = status?.rebalance ?? null;
-  const running = rebalance?.state === "rebalancing" || rebalance?.state === "starting";
+  const running = inProgress(rebalance?.state);
+  const scheduled = rebalance?.state === "scheduled";
 
   return (
     <div className="rebalance-panel">
@@ -233,7 +274,18 @@ export function VolumeRebalancePanel({ volumeUuid, volumeName, onClose }: Props)
               <span className="rebalance-label">{t("rblTargetUsed")}</span>
               <span>{rebalance.targetUsedBytes > 0 ? sizeLabel(rebalance.targetUsedBytes) : "—"}</span>
             </div>
-            {running && (
+            {/* Only while something exists to describe. `startTime` outlives the
+                operation it belonged to: after a scheduled start is cancelled, ONTAP
+                keeps the cancelled timestamp there with a `stopTime` beside it, so
+                showing it unconditionally announces a run that is not going to
+                happen. */}
+            {scheduled && (
+              <div>
+                <span className="rebalance-label">{t("rblScheduledFor")}</span>
+                <span>{rebalance.startTime || "—"}</span>
+              </div>
+            )}
+            {running && !scheduled && (
               <>
                 <div>
                   <span className="rebalance-label">{t("rblDataMoved")}</span>
@@ -241,11 +293,64 @@ export function VolumeRebalancePanel({ volumeUuid, volumeName, onClose }: Props)
                 </div>
                 <div>
                   <span className="rebalance-label">{t("rblRuntime")}</span>
-                  <span>{rebalance.runtime || "—"}</span>
+                  <span>{rebalance.runtime ? elapsedLabel(rebalance.runtime) : "—"}</span>
                 </div>
+                {/* Why nothing is moving. A rebalance with no file over the minimum
+                    reports `idle` with every counter at zero and emits no notice, so
+                    without these the panel cannot tell "working" from "found nothing
+                    to work on". */}
+                <div>
+                  <span className="rebalance-label">{t("rblFilesScanned")}</span>
+                  <span>
+                    {rebalance.filesScanned} / {t("rblFileMovesStarted")} {rebalance.fileMovesStarted}
+                  </span>
+                </div>
+                {Object.keys(rebalance.filesSkipped).length > 0 && (
+                  <div>
+                    <span className="rebalance-label">{t("rblFilesSkipped")}</span>
+                    <span>
+                      {Object.entries(rebalance.filesSkipped)
+                        .map(([reason, count]) => `${reason}: ${count}`)
+                        .join(", ")}
+                    </span>
+                  </div>
+                )}
               </>
             )}
           </div>
+
+          {/* The members themselves. The percentages above summarise these, and a
+              summary cannot be acted on: the volume reports no space when one member
+              fills, so the member list is where that is visible. */}
+          {status.constituents && status.constituents.length > 0 && (
+            <details className="rm-guide">
+              <summary>
+                {t("rblConstituentsTitle")} ({status.constituents.length})
+              </summary>
+              <table className="admin-table">
+                <thead>
+                  <tr>
+                    <th>{t("rmVolumeName")}</th>
+                    <th>{t("rmVolumeSize")}</th>
+                    <th>{t("rmUsed")}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {status.constituents.map((constituent) => (
+                    <tr key={constituent.name}>
+                      <td>{constituent.name}</td>
+                      <td>{sizeLabel(constituent.sizeBytes)}</td>
+                      <td>
+                        {sizeLabel(constituent.usedBytes)} (
+                        {((constituent.usedBytes / Math.max(constituent.sizeBytes, 1)) * 100).toFixed(1)}%)
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              <p className="rm-hint">{t("rblConstituentsNote")}</p>
+            </details>
+          )}
 
           {rebalance.notices.length > 0 && (
             <div className="info-message">
@@ -259,9 +364,11 @@ export function VolumeRebalancePanel({ volumeUuid, volumeName, onClose }: Props)
           )}
 
           <div className="rebalance-actions">
-            {running || rebalance.state === "paused" ? (
+            {running ? (
+              // Stop is also how a scheduled start is cancelled, so it says which of
+              // the two it is about to do.
               <button onClick={() => void handleStop()} className="btn-secondary">
-                {t("rblStop")}
+                {scheduled ? t("rblCancelSchedule") : t("rblStop")}
               </button>
             ) : (
               <>
@@ -323,6 +430,11 @@ export function VolumeRebalancePanel({ volumeUuid, volumeName, onClose }: Props)
           <li>{t("rblGuide5")}</li>
           <li>{t("rblGuide6")}</li>
           <li>{t("rblGuide7")}</li>
+          {/* The two bounds on the runtime, and the window they leave. Neither is in
+              the REST reference; both were measured, and together they are the reason
+              a start is refused far more often than anything else. */}
+          <li>{t("rblGuide8")}</li>
+          <li>{t("rblGuide9")}</li>
         </ul>
         <p className="rm-hint">
           {t("fcSplitSources")}:{" "}
@@ -340,6 +452,18 @@ export function VolumeRebalancePanel({ volumeUuid, volumeName, onClose }: Props)
             rel="noreferrer"
           >
             AWS docs
+          </a>
+        </p>
+        {/* The measurements behind every number in this panel. Linked from here because
+            the two runtime bounds are not in either vendor's reference, so a reader who
+            doubts them has nowhere else to go. */}
+        <p className="rm-hint">
+          <a
+            href="https://github.com/Yoshiki0705/FSx-for-ONTAP-S3AccessPoints-Serverless-Patterns/blob/main/solutions/amplify-portal/docs/flexgroup-rebalance-verification.md"
+            target="_blank"
+            rel="noreferrer"
+          >
+            📋 {t("rblVerificationLink")}
           </a>
         </p>
       </details>
