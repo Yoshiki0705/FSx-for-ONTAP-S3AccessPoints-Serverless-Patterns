@@ -40,8 +40,8 @@ make propose-cleanup ARGS="--anyway"    # 残課題があっても棚卸しだ�
 > ボリューム（`zz_verify_auditlog`、`PrivilegedDelete=PERMANENTLY_DISABLED`）が、**別の方の
 > 名前が付いたファイルシステム上**にあります。この終端状態は ENTERPRISE を COMPLIANCE 相当に
 > するため privileged delete も残っておらず、そのファイルシステムの削除を将来ブロックし得ます。
-> 所有者への共有が必要です。削除可否は FSx API の `AuditLogVolume` ではなく ONTAP の
-> `snaplock.is_audit_log` と `snaplock.expiry_time` で判断します。詳細は
+> 所有者への共有が必要です。削除可否は FSx API の `AuditLogVolume` ではなく
+> `LifecycleTransitionReason` と ONTAP の `snaplock.expiry_time` で判断します。詳細は
 > [tamperproof-snapshot-design.md](tamperproof-snapshot-design.md)。
 
 > **このアカウントは共有です。** `make propose-cleanup` は名前とタグから所有者を推測して
