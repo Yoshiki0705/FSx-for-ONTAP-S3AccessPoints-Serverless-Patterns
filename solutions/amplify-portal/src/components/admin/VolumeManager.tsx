@@ -168,7 +168,17 @@ export function VolumeManager() {
         if (data.success) { setActionResult(t("rmDeleted").replace("{name}", name)); loadVolumes(); }
         // Reloaded on failure too: the delete takes the volume offline first, so a
         // failed one leaves the row's state stale as well as the volume unusable.
-        else { setError(data.error || "Delete failed"); loadVolumes(); }
+        else {
+          const message = data.error || "Delete failed";
+          // ONTAP's own sentence names clones that the operator may have deleted minutes
+          // ago, because a deleted volume sits in the recovery queue for 12 hours by
+          // default and still counts as a clone from the parent's side. Measured: the
+          // parent of an unsplit deleted clone was still refused, while the parent of a
+          // split one deleted immediately. The way out is in the message rather than in
+          // a document nobody is reading at that moment.
+          setError(/one or more clones/i.test(message) ? `${message} — ${t("rmDeleteBlockedByCloneHint")}` : message);
+          loadVolumes();
+        }
       }
     } catch (err) { setError(err instanceof Error ? err.message : "Delete failed"); }
   };
