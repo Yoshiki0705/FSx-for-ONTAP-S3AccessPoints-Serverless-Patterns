@@ -331,6 +331,48 @@ storage-admin ユーザーの場合、未ロック Snapshot の隣に **🔒 Loc
 
 ---
 
+## スマートフォンからの利用（実機で確認した流れ）
+
+iPhone (Safari) で実際に操作して確認した手順です。画面は識別子をマスクしています。
+
+### 1. ファイルを選び、行のダウンロードアイコンをタップ
+
+![ファイル一覧の行にあるダウンロードアイコン](../screenshots/portal-mobile/01-download-row.png)
+
+Upload タブで location（S3 AP）を開き、フォルダーに入ると、行の右端にダウンロードアイコンが出ます。
+狭い画面では列が省略され、この幅では更新日時・サイズ・ダウンロードだけが表示されます。
+
+### 2. Safari のアドレスバーにダウンロードマークが出る
+
+![アドレスバー左側のダウンロードインジケーター](../screenshots/portal-mobile/02-safari-download-indicator.png)
+
+アドレスバーの左に ⤓ が出れば、ブラウザがファイルとして受け取っています。ここに何も出ない場合は
+Service Worker が登録できていません（下記）。
+
+### 3. ⤓ をタップすると Downloads に入っている
+
+![Safari の Downloads 一覧](../screenshots/portal-mobile/03-safari-downloads-list.png)
+
+ファイル名とサイズが並びます。保存先は Safari の設定で指定した場所で、既定では
+**ファイル アプリ → ダウンロード** です。虫めがねをタップすると ファイル アプリの該当場所が開きます。
+
+> **ダウンロードが「終わったのに見つからない」とき**: Storage Browser はダウンロードを
+> Service Worker 経由で行い、これが登録されていないとメモリ上の blob にフォールバックします。
+> blob はブラウザにとって「ファイルのダウンロード」ではないので、iOS のダウンロードマネージャーに
+> 何も残りません。`npm run copy-sw` が Worker を配置します（`npm start` / `npm run phone` は自動実行）。
+
+> **スマートフォンからは HTTPS が必要です**: `http://<LAN-IP>` ではサインインできません。
+> サインインは `crypto.subtle`、共有リンクのコピーは `navigator.clipboard` を使い、どちらも
+> ブラウザが secure context に限定しています。`npm run phone` のトンネルか Amplify Hosting を使います。
+
+> **アップロードで「Overwrite prevented」と出たとき**: 同じ名前のファイルが既にあります。
+> 上書きしたい場合は Upload パネルの「Overwrite existing files」をチェックしてから実行します。
+> この Access Point は S3 の条件付き書き込み（`If-None-Match`）を実装していないため、
+> ポータルは書き込み前に同じキーを検索して判定しています。同じキーへの同時書き込みでは
+> 両方が「不在」と判定されうる点が `If-None-Match` との違いです。
+
+---
+
 ## 環境削除
 
 デモ終了後は以下の順序で削除します:
