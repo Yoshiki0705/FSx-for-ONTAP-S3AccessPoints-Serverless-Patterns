@@ -264,6 +264,20 @@ aws cloudformation describe-stacks \
 |-----------|------|---------|
 | `s3ApAlias` | portal-config.ts | Backend Lambda file access, and the Upload tab via `amplify_outputs.json` |
 | `region` | portal-config.ts | Must match FSx for ONTAP region |
+
+### Read the alias from the API
+
+Copying `s3ApAlias` by hand lets a deleted or `MISCONFIGURED` access point keep looking correct in
+a config file. Derive the inventory from the FSx API instead.
+
+```bash
+make discover-s3ap ARGS="--lifecycle AVAILABLE --format table"   # usable access points
+make discover-s3ap ARGS="--require-alias <alias>"                # non-zero when absent
+REGIONS="ap-northeast-1 us-east-1" make discover-s3ap            # several regions
+make discover-s3ap ARGS="--accounts 111111111111 222222222222 --role-name <role>"
+```
+
+`--require-alias` works as a pre-deployment gate: it fails unless the alias is `AVAILABLE`.
 | `stateMachineArn` | portal-config.ts + start-processing.js | Process tab workflow trigger |
 | `groupApMapping` | portal-config.ts | Per-team file isolation (My Files) |
 | `bedrockKbId` | portal-config.ts | Full-text semantic search |
