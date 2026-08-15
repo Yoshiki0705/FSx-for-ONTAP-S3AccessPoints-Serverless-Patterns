@@ -31,13 +31,8 @@ make install
 cp amplify/portal-config.example.ts amplify/portal-config.ts
 # → s3ApAlias に S3 AP alias を設定
 
-# 3. フロントエンド設定 (Upload タブ用)
-# src/portal-settings.ts を編集:
-#   region: "ap-northeast-1"
-#   accountId: "あなたの AWS アカウント ID"
-#   s3ApAlias: "同じ S3 AP alias"
-
-# 4. バックエンドデプロイ (~5 分)
+# 3. バックエンドデプロイ (~5 分)
+#    Upload タブが使う alias は amplify_outputs.json に書き出されます
 make sandbox
 
 # 5. Cognito ユーザー作成
@@ -362,8 +357,8 @@ aws fsx detach-and-delete-s3-access-point \
 **Q: Files タブに "No files" と表示される**
 A: `portal-config.ts` の `s3ApAlias` が空。S3 AP alias を設定して `make sandbox` を再実行。
 
-**Q: Upload タブで AccessDenied が出る**
-A: `src/portal-settings.ts` の `s3ApAlias` と `accountId` を確認。サンドボックスの再デプロイ (`make sandbox`) で IAM 権限が自動設定されます。
+**Q: Upload タブが「未設定」と表示される**
+A: `amplify/portal-config.ts` の `s3ApAlias` を設定して `make sandbox` を再実行。alias は `amplify_outputs.json` 経由でブラウザに届き、IAM 権限も同時に設定されます。
 
 **Q: Process タブで赤いバナーが出る**
 A: Step Functions ARN が未設定。`make sfn-test-create` でテスト用ワークフローを作成し、`portal-config.ts` と `start-processing.js` に ARN を設定。

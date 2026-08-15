@@ -45,6 +45,24 @@ const backend = defineBackend({
   data,
 });
 
+/*
+ * The Upload tab needs the S3 AP alias in the browser, because Storage Browser
+ * calls S3 directly with Cognito Identity Pool credentials instead of going
+ * through a Lambda. It used to read that alias from `src/portal-settings.ts`,
+ * which is committed -- so the file held a placeholder alias, the placeholder
+ * was what shipped, and every upload failed against an access point that does
+ * not exist. Publishing it here puts the value in `amplify_outputs.json`, which
+ * `npx ampx sandbox` generates and .gitignore excludes, so the alias has one
+ * source (`portal-config.ts`) and an unconfigured clone has none rather than a
+ * wrong one.
+ */
+backend.addOutput({
+  custom: {
+    s3ApAlias: config.s3ApAlias,
+    region: config.region,
+  },
+});
+
 // --- Storage Browser IAM: Add S3 AP access to Cognito Identity Pool authenticated role ---
 // This ensures the Upload tab (Storage Browser for S3) can access the S3 AP
 // directly from the browser without manual IAM configuration.

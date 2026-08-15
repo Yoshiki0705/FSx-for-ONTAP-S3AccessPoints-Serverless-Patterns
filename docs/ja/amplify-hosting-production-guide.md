@@ -49,7 +49,7 @@ export const config: PortalConfig = {
 ```typescript
 export const portalSettings = {
   processingEnabled: true,
-  fileListingEnabled: true,
+  aiAgentEnabled: false,  // Bedrock KB は課金が継続するため既定 false
 };
 ```
 
