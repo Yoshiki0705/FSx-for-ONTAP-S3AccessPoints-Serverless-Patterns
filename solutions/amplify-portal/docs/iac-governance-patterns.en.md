@@ -1,6 +1,6 @@
 # IaC Governance Patterns — Guardrail Design for the AI Era
 
-🌐 **Language / 言語**: [日本語](iac-governance-patterns.md) | [English](iac-governance-patterns.en.md)
+🌐 **Language / 言語**: [日本語](iac-governance-patterns.md) | English
 
 > Reflects takeaways from the CDK Conference Japan 2026 keynote "IaC in the Agentic World" (CDK team) and related sessions.
 

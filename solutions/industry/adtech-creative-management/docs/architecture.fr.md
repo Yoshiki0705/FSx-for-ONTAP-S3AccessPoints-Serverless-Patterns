@@ -1,6 +1,6 @@
 # UC19 : Publicité et Marketing / Gestion des Actifs Créatifs — Catalogage et Vérification de Conformité de Marque
 
-🌐 **Language / Langue** : [日本語](architecture.md) | [English](architecture.en.md) | [한국어](architecture.ko.md) | [简体中文](architecture.zh-CN.md) | [繁體中文](architecture.zh-TW.md) | Français | [Deutsch](architecture.de.md) | [Español](architecture.es.md)
+🌐 **Language / 言語**: [日本語](architecture.md) | [English](architecture.en.md) | [한국어](architecture.ko.md) | [简体中文](architecture.zh-CN.md) | [繁體中文](architecture.zh-TW.md) | Français | [Deutsch](architecture.de.md) | [Español](architecture.es.md)
 
 ## Architecture de Bout en Bout (Entrée → Sortie)
 

@@ -1,6 +1,6 @@
 # ファイルポータル デモガイド — FSx for ONTAP S3 Access Points
 
-> 🌐 言語: **日本語** | [English](../en/portal-demo-guide.md)
+> 🌐 **Language / 言語**: 日本語 | [English](../en/portal-demo-guide.md)
 
 NAS データに対して Web ブラウザからファイル閲覧・アップロード・AI 分析・処理起動を行うファイルポータルのデモ手順です。
 

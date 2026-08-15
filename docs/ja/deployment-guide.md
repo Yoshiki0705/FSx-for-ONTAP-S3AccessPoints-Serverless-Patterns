@@ -1,5 +1,7 @@
 # デプロイガイド — FSx for ONTAP S3 Access Points サーバーレスパターン
 
+🌐 **Language / 言語**: 日本語 | [English](../en/deployment-guide.md)
+
 > **Language / 言語**: [日本語](../ja/deployment-guide.md) | [English](../en/deployment-guide.md)
 
 本ガイドでは、**既存の** Amazon FSx for NetApp ONTAP 環境にパターンスタックをデプロイする方法を説明します。本リポジトリのテンプレートは**オーバーレイスタック**であり、FSx ファイルシステム、SVM、ボリュームは作成しません。FSx for ONTAP インフラストラクチャは事前にプロビジョニング済みである必要があります。

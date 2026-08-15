@@ -1,6 +1,6 @@
 # FlexClone Serverless Patterns — Industry Use Cases
 
-🌐 **Language / 言語**: **日本語** | [English](flexclone-serverless-patterns-en.md)
+🌐 **Language / 言語**: 日本語 | [English](flexclone-serverless-patterns-en.md)
 
 ## Overview
 

@@ -1,6 +1,6 @@
 # Partner/SI Delivery Checklist
 
-🌐 **Language / 言語**: [日本語](partner-si-delivery-checklist.md) | [English](partner-si-delivery-checklist.en.md)
+🌐 **Language / 言語**: [日本語](partner-si-delivery-checklist.md) | English
 
 ## Overview
 

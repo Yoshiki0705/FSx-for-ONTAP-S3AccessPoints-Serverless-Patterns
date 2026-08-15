@@ -1,6 +1,6 @@
 # KNFSD File Cache + S3 AP Dual-Path Architecture
 
-🌐 **Language / 言語**: [日本語](knfsd-s3ap-dual-path-architecture.md) | [English](knfsd-s3ap-dual-path-architecture.en.md)
+🌐 **Language / 言語**: 日本語 | [English](knfsd-s3ap-dual-path-architecture.en.md)
 
 > **ステータス**: KNFSD File Cache は 2026 年 7 月時点で **Preview** です。本番ワークロードへの適用は GA を待つことを推奨します。
 

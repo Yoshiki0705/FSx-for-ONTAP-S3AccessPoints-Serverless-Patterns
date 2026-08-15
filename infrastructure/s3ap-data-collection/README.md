@@ -1,6 +1,6 @@
 # FSx for ONTAP S3 Access Points — データ収集インフラ デプロイガイド
 
-> 🌐 Language: [日本語](README.md) | [English](README.en.md)
+> 🌐 **Language / 言語**: 日本語 | [English](README.en.md)
 
 S3 API でデータを収集する FSx for ONTAP 環境を CloudFormation で構築するガイド。各ステップに設計考慮事項を組み込み、PoC から本番移行まで迷わずに進められる構成。
 

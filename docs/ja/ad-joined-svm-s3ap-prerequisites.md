@@ -1,6 +1,6 @@
 # AD参加SVM: S3 Access Point 前提条件
 
-🌐 **Language / 言語**: **日本語** | [English](../en/ad-joined-svm-s3ap-prerequisites.md)
+🌐 **Language / 言語**: 日本語 | [English](../en/ad-joined-svm-s3ap-prerequisites.md)
 
 > AD参加SVM（CIFS有効）で FSx for ONTAP S3 Access Points を使用する際の前提条件と運用ガイダンス。
 

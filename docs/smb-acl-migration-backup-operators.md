@@ -1,6 +1,6 @@
 # Windows ファイルサーバー移行: Backup Operators 特権による ACL 付きデータコピー
 
-> 🌐 言語: **日本語** | [English](./smb-acl-migration-backup-operators.en.md)
+> 🌐 **Language / 言語**: 日本語 | [English](smb-acl-migration-backup-operators.en.md)
 
 既存の Windows ファイルサーバーから Amazon FSx for NetApp ONTAP（SMB / NTFS セキュリティスタイル）へ
 データを移行する際、**コピー実行ユーザー自身に NTFS ACL 上の権限がないファイル**をどう扱うかが問題になります。

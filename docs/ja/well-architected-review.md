@@ -1,6 +1,6 @@
 # Well-Architected Framework — セルフレビュー
 
-> 🌐 言語: **日本語** | [English](../en/well-architected-review.md)
+> 🌐 **Language / 言語**: 日本語 | [English](../en/well-architected-review.md)
 
 > AWS Well-Architected の 6 つの柱に照らしたポータルアーキテクチャの評価です。
 

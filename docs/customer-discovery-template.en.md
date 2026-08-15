@@ -1,6 +1,6 @@
 # Customer Discovery Template — Hearing Sheet
 
-🌐 **Language / 言語**: [日本語](customer-discovery-template.md) | [English](customer-discovery-template.en.md)
+🌐 **Language / 言語**: [日本語](customer-discovery-template.md) | English
 
 ## Overview
 

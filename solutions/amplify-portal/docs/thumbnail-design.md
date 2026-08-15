@@ -1,6 +1,6 @@
 # ファイル一覧のサムネイル — 設計と制約
 
-🌐 **Language / 言語**: **日本語** | [English](thumbnail-design.en.md)
+🌐 **Language / 言語**: 日本語 | [English](thumbnail-design.en.md)
 
 一覧の行に画像のサムネイルを出す機能の設計。素朴な実装が高くつく理由と、実際に採った経路を残す。
 

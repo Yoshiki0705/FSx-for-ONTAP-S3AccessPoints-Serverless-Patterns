@@ -1,6 +1,6 @@
 # AWS Well-Architected Framework Mapping
 
-🌐 **Language / 言語**: [日本語](well-architected-mapping.md) | [English](well-architected-mapping.en.md)
+🌐 **Language / 言語**: [日本語](well-architected-mapping.md) | English
 
 ## Overview
 

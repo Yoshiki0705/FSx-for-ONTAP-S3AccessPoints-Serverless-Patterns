@@ -1,6 +1,6 @@
 # AWS DevOps Agent — Evaluation for CDK Maintenance Automation
 
-🌐 **Language / 言語**: [日本語](devops-agent-evaluation.md) | [English](devops-agent-evaluation.en.md)
+🌐 **Language / 言語**: [日本語](devops-agent-evaluation.md) | English
 
 > Reflects takeaways from the CDK Conference Japan 2026 session "Does AWS DevOps Agent make CDK maintenance easier? — the sweet spot found through evaluation".
 

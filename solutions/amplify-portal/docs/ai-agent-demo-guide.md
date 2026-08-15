@@ -1,6 +1,6 @@
 # AI エージェント デモガイド
 
-🌐 **Language / 言語**: **日本語** | [English](ai-agent-demo-guide.en.md)
+🌐 **Language / 言語**: 日本語 | [English](ai-agent-demo-guide.en.md)
 
 > 管理者による AI 機能の有効化から、エンドユーザーの利用までを E2E で確認するためのガイドです。
 

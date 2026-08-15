@@ -1,6 +1,6 @@
 # Windows File Server Migration: ACL-Preserving Copy via Backup Operators
 
-> 🌐 Language: [日本語](./smb-acl-migration-backup-operators.md) | **English**
+> 🌐 **Language / 言語**: [日本語](smb-acl-migration-backup-operators.md) | English
 
 When migrating from an existing Windows file server to Amazon FSx for NetApp ONTAP (SMB / NTFS
 security style), the hard part is handling **files the copy account itself has no NTFS ACL rights to**.

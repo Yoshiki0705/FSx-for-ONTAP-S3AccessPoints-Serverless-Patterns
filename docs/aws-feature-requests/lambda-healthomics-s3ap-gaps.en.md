@@ -1,6 +1,6 @@
 # Feature Requests: Lambda Self-Managed Code Storage / AWS HealthOmics with FSx for ONTAP S3 Access Points
 
-> 🌐 Language: [日本語](./lambda-healthomics-s3ap-gaps.md) | **English**
+> 🌐 **Language / 言語**: [日本語](lambda-healthomics-s3ap-gaps.md) | English
 
 **Submitter**: Yoshiki Fujiwara (AWS Community Builder)
 **Date**: 2026-08-02

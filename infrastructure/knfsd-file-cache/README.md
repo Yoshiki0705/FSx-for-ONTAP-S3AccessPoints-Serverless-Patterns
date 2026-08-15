@@ -1,6 +1,6 @@
 # KNFSD File Cache — FSx for ONTAP NFS Read Acceleration
 
-🌐 **Language / 言語**: [日本語](README.md) | [English](README.en.md)
+🌐 **Language / 言語**: 日本語 | [English](README.en.md)
 
 > **ステータス**: KNFSD File Cache は 2026 年 7 月時点で **Preview** です。
 > **検証実績**: Cache miss 55ms → hit 2ms (**32x speedup**) — 2026-07-22, ap-northeast-1

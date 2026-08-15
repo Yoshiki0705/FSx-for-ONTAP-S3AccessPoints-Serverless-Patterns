@@ -1,6 +1,6 @@
 # FSx for ONTAP Portail de Fichiers — Amplify Gen2
 
-🌐 **Langue** : [日本語](README.ja.md) | [English](README.md) | [한국어](README.ko.md) | [简体中文](README.zh-CN.md) | [繁體中文](README.zh-TW.md) | Français | [Deutsch](README.de.md) | [Español](README.es.md)
+🌐 **Language / 言語**: [日本語](README.ja.md) | [English](README.md) | [한국어](README.ko.md) | [简体中文](README.zh-CN.md) | [繁體中文](README.zh-TW.md) | Français | [Deutsch](README.de.md) | [Español](README.es.md)
 
 Portail de fichiers Web pour parcourir, traiter et visualiser les résultats sur les volumes FSx for ONTAP via les S3 Access Points.
 

@@ -1,6 +1,6 @@
 # SaaS / クラウドストレージから FSx for ONTAP への移行とデータ連携
 
-🌐 **Language / 言語**: [日本語](../ja/saas-to-fsx-ontap-migration.md) | [English](../en/saas-to-fsx-ontap-migration.md)
+🌐 **Language / 言語**: 日本語 | [English](../en/saas-to-fsx-ontap-migration.md)
 
 Box、Dropbox、OneDrive、Google Drive、Wasabi などから Amazon FSx for NetApp ONTAP へデータを移す、あるいは移さずに連携する手段の整理。どの経路が使えてどれが使えないか、そして「インフラチームが中央で一括実行できるか」を判定基準とともにまとめます。
 

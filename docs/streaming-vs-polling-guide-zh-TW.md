@@ -1,6 +1,6 @@
 # 串流 vs 輪詢選擇指南
 
-🌐 **Language / 言語**: [日本語](streaming-vs-polling-guide.md) | [English](streaming-vs-polling-guide-en.md) | [한국어](streaming-vs-polling-guide-ko.md) | [简体中文](streaming-vs-polling-guide-zh-CN.md) | **繁體中文** | [Français](streaming-vs-polling-guide-fr.md) | [Deutsch](streaming-vs-polling-guide-de.md) | [Español](streaming-vs-polling-guide-es.md)
+🌐 **Language / 言語**: [日本語](streaming-vs-polling-guide.md) | [English](streaming-vs-polling-guide-en.md) | [한국어](streaming-vs-polling-guide-ko.md) | [简体中文](streaming-vs-polling-guide-zh-CN.md) | 繁體中文 | [Français](streaming-vs-polling-guide-fr.md) | [Deutsch](streaming-vs-polling-guide-de.md) | [Español](streaming-vs-polling-guide-es.md)
 
 本指南比較了 FSx for ONTAP S3 Access Points 無伺服器自動化模式中的兩種架構模式 — **EventBridge 輪詢**和 **Kinesis 串流** — 並提供選擇最佳模式的決策標準。
 

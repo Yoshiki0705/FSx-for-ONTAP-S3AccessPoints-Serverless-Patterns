@@ -1,6 +1,6 @@
 # FSx for ONTAP Management Interfaces — What You Can Reach, and What You Cannot
 
-🌐 **Language / 言語**: [日本語](../ja/fsx-ontap-management-interfaces.md) | **English**
+🌐 **Language / 言語**: [日本語](../ja/fsx-ontap-management-interfaces.md) | English
 
 > Purpose: to settle, with citations, which interfaces are actually usable when
 > operating Amazon FSx for NetApp ONTAP (hereafter FSx for ONTAP). Every document,

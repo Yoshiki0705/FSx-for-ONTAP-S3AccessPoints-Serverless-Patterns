@@ -1,5 +1,7 @@
 # FC7 Architecture: DevOps FlexClone + S3AP
 
+🌐 **Language / 言語**: [日本語](architecture.md) | English
+
 ## Data Flow
 
 ```mermaid

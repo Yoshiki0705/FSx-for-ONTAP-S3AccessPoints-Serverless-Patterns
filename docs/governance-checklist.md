@@ -1,6 +1,6 @@
 # Governance Checklist — 規制・公共・医療ワークロード向け
 
-🌐 **Language / 言語**: [日本語](governance-checklist.md) | [English](governance-checklist.en.md)
+🌐 **Language / 言語**: 日本語 | [English](governance-checklist.en.md)
 
 ## 概要
 

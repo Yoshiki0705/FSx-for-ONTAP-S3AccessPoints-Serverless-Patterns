@@ -1,6 +1,6 @@
 # Office File Preview — Design Investigation and Options
 
-🌐 **Language / 言語**: [日本語](office-preview-design.md) | [English](office-preview-design.en.md)
+🌐 **Language / 言語**: [日本語](office-preview-design.md) | English
 
 ## Requirements
 
