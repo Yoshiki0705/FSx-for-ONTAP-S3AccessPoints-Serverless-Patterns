@@ -246,23 +246,61 @@ Transfer Family is **not a column** — providing a protocol and building a brow
 are not comparable on one axis. A combination is also valid: Transfer Family for
 exchange, Amplify Gen2 for processing requests.
 
-| Aspect | Amplify Gen2 | Nextcloud | Custom Build (CDK) |
-|--------|:---:|:---:|:---:|
-| **Setup time (PoC)** | 2-3 days | 1-2 days (if familiar) | 1-2 weeks |
-| **File browsing (built-in)** | Custom UI needed | Built-in file manager | Custom UI needed |
-| **Processing job trigger** | AppSync Mutation → SFn | Workflow App or webhook | API Gateway → SFn |
-| **Authentication** | Cognito (SAML/OIDC) | LDAP/SAML/OIDC | Cognito / custom |
-| **Hosting model** | Serverless (Amplify Hosting) | EC2/ECS (server) | CloudFront + S3 / Amplify |
-| **Operational burden** | Low (managed) | Medium (patching, upgrades) | Low-Medium |
-| **FSx for ONTAP access** | S3 AP via Lambda | External Storage (S3 AP direct) | S3 AP via Lambda |
-| **Multiprotocol visibility** | Via S3 AP only | NFS mount + S3 AP | Via S3 AP only |
-| **Offline file editing** | No | Desktop/mobile sync client | No |
-| **Collaboration features** | Custom implementation | Built-in (sharing, comments) | Custom implementation |
-| **Infrastructure cost** | ~$5-10/month | ~$50-100/month (EC2) | ~$5-20/month |
-| **Language/framework** | TypeScript + React | PHP (server) | Any |
-| **AD integration** | Via Cognito federation | Native LDAP/AD | Via Cognito federation |
-| **Mobile access** | Responsive web | Native apps (iOS/Android) | Responsive web |
-| **S3 AP Presigned URL** | Works (※ listed as "Not supported" in docs; [details](./s3ap-compatibility-notes.en.md#presigned-url-support)) | Same | Same |
+### Before reading the table — it compares portals, and nothing else
+
+**Whichever option you choose, the FSx for ONTAP volume stays usable over the NFS and SMB
+file protocols exactly as before.** Adding a portal does not replace an existing mount. AWS
+puts it this way about S3 Access Points:
+
+> You can access your data in FSx for NetApp ONTAP just like you access data in an S3 bucket—while the data continues to reside on a file system and be accessible natively via the file protocols (e.g., NFS).
+
+Source: [Amazon FSx for NetApp ONTAP Features — Accessible from Amazon S3](https://aws.amazon.com/fsx/netapp-ontap/features/) (AWS)
+
+So the intended shape is this. **People keep working through their usual NFS or SMB mount,
+and reach for the portal (that is, the S3 AP path) only for external sharing or for feeding
+data to another service.** The same files on the same volume, seen from both. FSx for ONTAP
+serves concurrent NFS and SMB access to the same data ([AWS: Multi-protocol](https://aws.amazon.com/fsx/netapp-ontap/features/)),
+and an S3 AP adds a third path to it.
+
+Each row therefore means:
+
+- A row that begins "the portal…" describes how **the portal application itself** reaches the
+  data. It is not a list of the paths available to people
+- "Built-in" describes what **the bare framework or product ships with**. Whether this
+  repository's portal implements it is a separate column
+- Every row carries a **source**. Specifications change, so check the current wording at the
+  link before deciding. Rows sourced to "this repository" are measurements or implementation
+  status in this verification environment, not general service specifications
+
+### The matrix
+
+| Aspect | Amplify Gen2 (bare) | This repository's portal | Nextcloud | Custom build (CDK) | Source |
+|--------|:---:|:---:|:---:|:---:|---|
+| **Setup time (PoC)** | 2-3 days | 30 minutes in DemoMode | 1-2 days (if familiar) | 1-2 weeks | [This repository](../solutions/amplify-portal/docs/GETTING-STARTED.en.md) (measured here; timings depend on your prerequisites) |
+| **File browsing UI** | You build it | Implemented (file explorer) | Built-in file manager | You build it | [Nextcloud: Files](https://docs.nextcloud.com/server/latest/user_manual/en/files/index.html) / [This repository](../solutions/amplify-portal/docs/portal-tabs-guide.en.md) |
+| **Processing job trigger** | AppSync mutation → Step Functions | Implemented | Workflow / webhook | API Gateway → Step Functions | [AWS AppSync](https://docs.aws.amazon.com/appsync/latest/devguide/what-is-appsync.html) / [Nextcloud: File workflows](https://docs.nextcloud.com/server/latest/admin_manual/file_workflows/index.html) / [Webhooks](https://docs.nextcloud.com/server/latest/admin_manual/webhook_listeners/index.html) |
+| **Authentication** | Cognito (SAML / OIDC federation) | Same, with Cognito groups for authorization | LDAP / AD; SAML and OIDC via apps | Cognito / your own | [AWS: Cognito federation](https://docs.aws.amazon.com/cognito/latest/developerguide/cognito-user-pools-identity-federation.html) / [Nextcloud: LDAP](https://docs.nextcloud.com/server/latest/admin_manual/configuration_user/user_auth_ldap.html) |
+| **Hosting** | Serverless (Amplify Hosting) | Same | Server (EC2 / ECS) | CloudFront + S3 / Amplify | [AWS: Amplify Hosting](https://docs.aws.amazon.com/amplify/latest/userguide/welcome.html) |
+| **What you patch yourself** | Nothing (managed) | Nothing | PHP / OS / Nextcloud itself | Lambda runtimes and so on | [Nextcloud: Upgrade](https://docs.nextcloud.com/server/latest/admin_manual/maintenance/upgrade.html) |
+| **How the portal reaches the data** | — | S3 AP, via a Lambda outside the VPC | S3 AP as External Storage directly, or **an NFS mount on the host** as Local storage | S3 AP via Lambda | [AWS: Accessing data via S3 access points](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/s3-access-points.html) / [Nextcloud: Amazon S3](https://docs.nextcloud.com/server/latest/admin_manual/configuration_files/external_storage/amazons3.html) / [Nextcloud: Local](https://docs.nextcloud.com/server/latest/admin_manual/configuration_files/external_storage/local.html) |
+| **People's NFS / SMB mounts** | **Unchanged in all three** (a portal does not replace a mount) | ← | ← | ← | [AWS: Accessing your FSx for ONTAP data](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/supported-fsx-clients.html) |
+| **Offline editing** | No sync client in the portal itself. **Still possible over an NFS / SMB mount, as before** | Same | Plus Nextcloud's own desktop and mobile sync clients | None in the portal itself | [Nextcloud: Desktop and mobile sync](https://docs.nextcloud.com/server/latest/user_manual/en/desktop/index.html) |
+| **Sharing, comments and other collaboration** | You build it | File operations and notifications implemented; comment and version-sharing UI not | Built-in | You build it | [Nextcloud: Sharing](https://docs.nextcloud.com/server/latest/user_manual/en/files/sharing.html) / [This repository](../solutions/amplify-portal/docs/portal-tabs-guide.en.md) |
+| **Mobile** | Responsive web | Responsive web ([measured at 390×844 under emulation](../solutions/amplify-portal/docs/verification-results.en.md)) | Native apps (iOS / Android) | Responsive web | [Nextcloud: Clients](https://nextcloud.com/clients/) / this repository |
+| **Language / framework** | TypeScript + React | Same, with an eight-language UI | PHP | Any | [This repository](../solutions/amplify-portal/docs/CONTRIBUTING-UI.en.md) |
+| **S3 AP presigned URL** | Works (listed as "Not supported" in the docs) | Same | Same | Same | [Measurement note in this repository](./s3ap-compatibility-notes.en.md#presigned-url-support) |
+| **Infrastructure cost (rough)** | ~$5-10/month | Same | ~$50-100/month (EC2) | ~$5-20/month | **A rough figure, valid at the time of writing. No price list was consulted for it.** See [cost measurement](./en/cost-measurement.md) and estimate your own configuration with the [AWS Pricing Calculator](https://calculator.aws/) |
+
+> **About AD**: the authentication row above is about the person signing in to the portal.
+> **Whether the FSx for ONTAP SVM joins Active Directory is a separate axis**, and it governs
+> SMB access and NTFS ACLs. Portal authorization (Cognito groups) and ONTAP-side authorization
+> are two layers, and both need designing. See [the authorization model](./en/portal-authorization-model.md).
+
+> **"Not implemented" is not "impossible"**: where the table says "you build it" or "not
+> implemented", it means this repository's portal does not have it today — not that Amplify
+> Gen2 cannot do it. Equally, for the cells that say "implemented", how far each was verified
+> against real hardware is split four ways in [the verification record](../solutions/amplify-portal/docs/verification-results.en.md)
+> (live E2E / live read-only / unit-tested only / DemoMode only).
 
 ---
 

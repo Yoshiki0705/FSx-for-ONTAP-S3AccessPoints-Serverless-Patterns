@@ -7,6 +7,256 @@
 >
 > 使い方だけ知りたい場合は [ユーザーガイド](../../../docs/ja/portal-user-guide.md)、
 > 環境を作る場合は [Getting Started](GETTING-STARTED.md) を先に読んでください。
+>
+> **Amplify がはじめての方は、次の「まず全体像」から「手を動かす」までを順に読んでください。**
+> 章 0 以降は、どのゲートが何を捕まえるかという設計の話で、最初に読む必要はありません。
+
+---
+
+## まず全体像 — 画面のどこが、どのファイルか
+
+拡張の第一歩は「直したい画面がどのファイルか」を当てることです。ポータルは**左のサイドバーで
+セクションを切り替える 1 画面構成**で、サイドバーの 1 項目が 1 コンポーネントに対応します。
+
+![ポータルのサイドバーとコンテンツ領域。左に「閲覧」「AI と処理」「データ保護」「管理」の 4 グループに分かれたセクション一覧があり、選んだセクションの内容が右側の広い領域に表示される](screenshots/portal-sidebar-layout.png)
+
+対応関係はこの 3 か所を見れば分かります。
+
+| 知りたいこと | 見る場所 |
+|---|---|
+| サイドバーにどの項目があるか | `src/App.tsx` の `NAV_ITEMS`（`{ id, icon, labelKey, group }` の配列）|
+| その項目を選んだとき何が描かれるか | 同じ `src/App.tsx` の `{activeSection === "..." && <XxxPanel />}` |
+| 項目のラベル文字列 | `src/i18n/locales/ja.ts` の `labelKey` と同名のキー |
+
+管理系のパネルは `src/components/admin/` に、ファイル操作系は `src/components/` にあります。
+名前は画面名とほぼ一致します（例: SMB 共有の画面 = `admin/CifsShareManager.tsx`）。
+
+**まず読むのに向いているファイル**は `src/components/admin/EfficiencyPanel.tsx`（132 行）です。
+読み取り専用のパネルとして最小の形をしていて、この後の手順で出てくる要素（`dispatch`、
+`useQuery`、`t()`、エラー表示）が一通り入っています。
+
+---
+
+## 環境を起動する
+
+コマンドは 2 つです。**1 回目だけ** `sandbox`、以降は `npm start` です。
+
+```bash
+cd solutions/amplify-portal
+
+npx ampx sandbox   # 1 回だけ。自分専用の AWS 環境を作り amplify_outputs.json を生成する
+npm start          # sandbox + Vite。http://localhost:5173 が開く
+```
+
+`npx ampx sandbox` は Amplify Gen2 が**自分専用のバックエンド**（Cognito、AppSync、Lambda、
+DynamoDB）を AWS 上に作るコマンドです。生成される `amplify_outputs.json` は gitignore されて
+いて、**これが無いと画面は起動しません**。初回は 3〜15 分かかります（VPC 設定の有無で変わります。
+[実測の内訳](verification-results.md#デプロイ時間の記録)）。
+
+起動するとサインイン画面が出ます。
+
+![ポータルのサインイン画面。メールアドレスとパスワードの入力欄と、サインインボタンが中央に表示されている](screenshots/portal-login.png)
+
+サインイン後がこの画面です。ここまで来れば準備完了です。
+
+![サインイン後のポータル。左のサイドバーと、ファイル一覧が表示されたコンテンツ領域](screenshots/portal-main-view.png)
+
+> **FSx for ONTAP がまだ無い場合**: `DemoMode=true` なら FSx for ONTAP なしで起動でき、
+> 通常の S3 バケットを相手に画面を動かせます。ONTAP 管理パネルは「ONTAP 接続が必要です」と
+> 表示されます。手順は [Getting Started](GETTING-STARTED.md) にあります。
+>
+> **実機のスマートフォンで開きたい場合**: `npm run phone` です。`http://<LAN-IP>` では
+> サインインできません（`crypto.subtle` が secure context 限定のため）。
+
+---
+
+## 手を動かす — 3 段階
+
+**いきなり新機能を作らないでください。** 下の 3 段階は、触る範囲とゲートの数がこの順に増えます。
+段階 1 を通せば「変更が画面に出るまでの一周」が分かり、段階 3 で「新しい ONTAP 操作を足す」
+一周が分かります。
+
+### 段階 1（10 分）— 表示されている文字を 1 つ変える
+
+**目的**: 編集 → 画面反映 → ゲート通過の一周を、壊れる余地のない変更で体験します。
+
+UI の文字列は**コンポーネントには書きません**。8 言語のファイルにキーとして持ち、
+`t("キー名")` で引きます。
+
+1. 変えたい文字で `ja.ts` を検索します。
+
+```bash
+grep -n "ストレージ効率" solutions/amplify-portal/src/i18n/locales/ja.ts
+```
+
+この例では **2 件** 返ります（`dashEfficiency` と `rmEfficiency`）。同じ文字列が別の画面で
+使われているので、**どちらのキーかを画面側で確かめてから**変えてください。コンポーネント
+（この場合 `src/components/admin/EfficiencyPanel.tsx`）で `t("...")` を検索するのが確実です。
+片方だけ変えると、もう片方の画面は古い文字のままになります。
+
+2. 目的のキーの値を書き換えます。
+
+```typescript
+// src/i18n/locales/ja.ts
+rmEfficiency: "ストレージ効率",   // ← 管理パネル側の見出し
+```
+
+既存の訳を直すのは、このように**言語ごと**です（英語表示を変えるなら `en.ts`）。
+**新しいキーを足すときだけ違います** — `ja.ts` が他 7 言語の型の源なので、そちらが先です。
+
+3. ブラウザは自動で再読み込みされます（Vite の HMR）。同じ画面を英語で開くと、英語側は
+   `en.ts` の値が出ます。
+
+![日本語表示のファイル一覧画面](screenshots/portal-ja-allfiles.png)
+![同じ画面の英語表示。サイドバーの項目名と見出しが英語になっている](screenshots/portal-en-allfiles.png)
+
+4. **新しいキーを足した場合**は、`ja.ts` に足したあと残り 7 言語にも同じキーを足します。
+   キーが欠けると**コンパイルが通りません**（`ja.ts` が型の源で、他は同じキーの `Record`
+   として実装されているため）。
+
+```bash
+make drift   # 8 言語の網羅と、ハードコード文字列の検査
+```
+
+> **やってはいけない書き方**
+>
+> ```tsx
+> <h2>ストレージ効率</h2>                       // ✗ 日本語話者以外に届かない
+> <button aria-label="削除">                    // ✗ aria-label も title も placeholder も対象
+> <h2>{t("rmEfficiency") || "ストレージ効率"}</h2>   // ✗ 右辺には到達しません（後述）
+> <h2>{t("rmEfficiency")}</h2>                      // ✓
+> ```
+>
+> 製品名と技術用語（ONTAP、FlexCache、SnapLock、S3 AP）と SQL リテラルは**訳しません**。
+
+### 段階 2（30 分）— 既存パネルに読み取り専用の行を足す
+
+**目的**: すでにある ONTAP の応答から、画面に出ていない値を 1 つ出します。ハンドラを触らないので
+バックエンドの再デプロイが不要です。
+
+例として「ストレージ効率」パネルを使います。この画面です。
+
+![ストレージ効率パネル。ボリュームごとに重複排除と圧縮の設定、論理使用量、物理使用量、削減率が表で並び、上部に全体の削減比率が表示されている](../../../docs/screenshots/storage-efficiency-panel.png)
+
+`src/components/admin/EfficiencyPanel.tsx` の先頭に、応答の形が `interface` で書かれています。
+
+```typescript
+interface VolumeEfficiency {
+  name: string;
+  dedupe: string;          // ONTAP の enum 文字列。"none" 以外なら有効
+  compression: string;
+  logicalUsedBytes: number;
+  physicalUsedBytes: number;
+  savingsRatio: number;
+}
+```
+
+**この `interface` は「ハンドラが返すもの」の宣言であって、契約ではありません。** 実際に
+`interface` と応答がずれていた不具合があり、そのときは画面が空になりました（ファイル先頭の
+コメントに経緯があります）。**まず本物の応答を見てください。** ブラウザの開発者ツール →
+Network → `adminQuery` のレスポンス、が一番速いです。
+
+手順は 3 つです。
+
+1. `interface` に足したいフィールドを追加する（**ハンドラが実際に返している名前で**）
+2. 表のヘッダ（`<th>`）に `t("...")` で見出しを足す。文字列は段階 1 の手順で `ja.ts` へ
+3. 行（`<td>`）に値を足す。バイトなら既にある `toGiB()` を使う
+
+```bash
+cd solutions/amplify-portal
+npx tsc -b && npm run lint && npx vitest run
+cd ../.. && make drift
+```
+
+> **躓きやすい点**: 値が `undefined` のまま表示されるときは、たいてい**名前の綴りが
+> ハンドラと違う**か、`interface` のネストが実際と違います。`interface` は宣言でしかないので、
+> TypeScript は「ハンドラがその名前で返すか」を検証できません。
+
+### 段階 3（1 時間）— ONTAP の操作を 1 つ増やす
+
+**目的**: バックエンドから UI までを一周します。ここからは**型が届かない境界**を越えるので、
+順番に意味があります。飛ばすと「ボタンは描画されるが押すたびに失敗する」形になります。
+
+この境界がなぜ生まれるかは章 0 に書いていますが、先に手順だけ示します。
+
+**① ハンドラに追加する**（`functions/resource-management/handler.py`）
+
+```python
+elif action == "myNewAction":
+    return _my_new_action(http, headers, event, user_id)
+```
+
+**② 型を再生成する**（手で書かない）
+
+```bash
+python3 scripts/portal_action_types.py --emit > solutions/amplify-portal/src/lib/dispatchActions.ts
+```
+
+**③ 画面から呼ぶ**
+
+```typescript
+import { adminMutate } from "../../lib/dispatch";
+
+await adminMutate<{ success?: boolean }>({
+  action: "myNewAction",              // ← 必ずリテラル。変数や計算した名前はチェッカーが読めない
+  params: { volumeUuid: vol.uuid },   // ← 名前はハンドラが読むものと 1 文字も違えられない
+});
+```
+
+**④ 契約を検査する**
+
+```bash
+python3 scripts/check_portal_action_params.py
+python3 scripts/check_portal_action_params.py --list-opaque   # 静的に読めなかった呼び出し
+python3 scripts/portal_action_types.py --check
+```
+
+`--list-opaque` に自分の呼び出しが出たら、**検査されていない呼び出し**です。ラッパーを一段
+外して `action` をリテラルにしてください。
+
+**⑤ ボリュームを選ばせる場合は既存の部品を使う**
+
+スコープの階層は「ファイルシステム → SVM → ボリューム」です。セレクターは実装済みで、
+下の画面のように使います。
+
+![Qtree パネルのボリュームセレクター。SVM とボリュームを順に選ぶドロップダウンが並んでいる](screenshots/qtree-volume-selector.png)
+
+```tsx
+<VolumeSelector label={t("rmSelectVolume")} onSelect={(vol) => setVolumeName(vol?.name ?? "")} />
+```
+
+`onSelect` は **`null` を渡してきます**（SVM が変わって選択が無効になったとき、
+プレースホルダーが選ばれたとき）。`vol.name` と書くとコンパイルエラーになります。
+そういう型にしてあるのは、**ボリューム名は SVM の中でしか一意ではない**からです。
+残った名前を別の SVM で解決すると、別のボリュームに着地します。
+
+**⑥ 取り消せない操作なら、確認だけでは足りない**
+
+SnapLock、Snapshot ロック、S3 Object Lock COMPLIANCE、容量リバランスの開始は**元に戻せません**。
+「よろしいですか？」では、押す人が影響範囲を知りません。既存のダイアログは日付と範囲を
+文章で述べます。
+
+![Snapshot ロックの確認ダイアログ。いつまで削除できなくなるかが日付で示され、取り消せないことが明記されている](../../../docs/screenshots/snapshot-lock-confirm.png)
+
+`SnaplockConfirmDialog` と `src/utils/snaplockConsequences.ts` を使い、ハンドラ側でも
+`acknowledgeIrreversible` を必須にしてください（UI を通らない呼び出しにも同じ関門が必要です）。
+詳細は章 5 にあります。
+
+### 色を変えるとき
+
+色は `var(--color-*)` で参照します。**値ではなく役割**で対応付けてください。
+
+```tsx
+<div style={{ color: "#fff" }}>              // ✗ ダークテーマで読めなくなる。上書きもできない
+<div className="my-panel-title">             // ✓ CSS 側で var(--color-text-inverse) を使う
+```
+
+同じ画面のライトとダークです。インラインスタイルに色を書くと、片方で破綻します。
+
+![ファイル一覧のダークテーマ表示](screenshots/portal-files-dark.png)
+
+新しいトークンを足すときは `:root` と `[data-theme="dark"]` の**両方**に定義します。
+片方だけだと `make drift` が落ちます。
 
 ---
 
