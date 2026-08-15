@@ -1571,6 +1571,21 @@ def _bring_volume_online(http, headers, event, user_id):
 # malformed one, but it does so after the caller has been told the operation started.
 _ISO_DURATION = re.compile(r"^P(?!$)(\d+Y)?(\d+M)?(\d+D)?(T(?=\d)(\d+H)?(\d+M)?(\d+S)?)?$")
 
+# Two bounds decide whether a start is accepted, and they are not both in the API
+# reference. Measured on this file system:
+#
+#   floor    max_runtime >= 30 minutes, or 144182221 "The "-max-runtime" value
+#            specified must be 30 minutes or longer."
+#   ceiling  max_runtime < the time from the start to the next scheduled snapshot,
+#            or 13107433 naming that snapshot's timestamp. Checked at request time
+#            for a scheduled start too, against the scheduled start rather than now.
+#
+# ONTAP's default snapshot policy takes an hourly snapshot at :05, so on a volume
+# using it the two bounds leave a window from :05 to :35 each hour in which a start
+# can be accepted at all. The runtime options offered in the UI start at 30 minutes
+# for that reason; the messages above are passed through verbatim because they name
+# the exact snapshot time the operator needs.
+
 # What a start does that cannot be taken back. Rebalancing enables granular data on
 # the volume, and neither file rebalancing nor advanced capacity balancing can be
 # switched off afterwards -- the only documented way back is restoring a snapshot
@@ -1599,7 +1614,16 @@ def _read_volume_rebalancing(http, headers, vol_uuid):
         # `is_object_store` and `granular_data` are asked for because they decide
         # whether rebalancing is available at all, and `constituents` because the
         # count is what a FlexGroup is. All are explicit-request fields.
-        f"?fields=name,style,rebalancing,is_object_store,granular_data,granular_data_mode,constituents.name",
+        f"?fields=name,style,rebalancing,is_object_store,granular_data,granular_data_mode"
+        # Per constituent, only the two numbers that show the imbalance. Requesting
+        # `constituents` wholesale returns a 30-field space object for each one.
+        f",constituents.name,constituents.space.size,constituents.space.used"
+        # The scanner's counters, which are the only answer to "it says it is running
+        # and nothing is moving". Measured: a rebalance on a volume with no file over
+        # the 100 MB minimum sits in `idle` for its whole runtime with no notice and
+        # `data_moved` at 0. The skip reasons name which rule excluded the files.
+        f",rebalancing.engine.scanner.files_scanned,rebalancing.engine.scanner.files_skipped"
+        f",rebalancing.engine.movement.file_moves_started",
     )
     if data.get("_error"):
         return None, data["_message"]
@@ -1649,6 +1673,9 @@ def _get_volume_rebalance(http, headers, event):
         }
 
     rebalancing = record.get("rebalancing", {})
+    engine = rebalancing.get("engine") or {}
+    scanner = engine.get("scanner") or {}
+    movement = engine.get("movement") or {}
     return {
         # Whether ONTAP reported a `rebalancing` object at all. It is not the same
         # answer as `state: "unknown"`, which ONTAP uses for a volume whose state it
@@ -1659,9 +1686,24 @@ def _get_volume_rebalance(http, headers, event):
         # read "unknown, 0% out of balance" and offer to start an operation ONTAP has
         # not said it supports.
         "reported": bool(rebalancing),
+        # True once a rebalance has been started on this volume, and it does not go
+        # back: measured, stopping the operation leaves granular_data on.
         "granularData": bool(record.get("granular_data", False)),
         "granularDataMode": record.get("granular_data_mode", ""),
         "constituentCount": len(record.get("constituents", [])),
+        # The members, with what each is holding. The volume-level imbalance percentage
+        # is a summary of exactly this, and a summary is not enough to act on: the
+        # volume reports no space when one member fills up. Measured on a fresh 400 GiB
+        # FlexGroup: four 100 GiB members each already holding about 537 MB of
+        # metadata, so "empty" is not zero.
+        "constituents": [
+            {
+                "name": constituent.get("name", ""),
+                "sizeBytes": constituent.get("space", {}).get("size", 0),
+                "usedBytes": constituent.get("space", {}).get("used", 0),
+            }
+            for constituent in record.get("constituents", [])
+        ],
         "rebalance": {
             "state": rebalancing.get("state", "unknown"),
             # How far out of balance the volume is now. `imbalancePercent` is the
@@ -1686,6 +1728,15 @@ def _get_volume_rebalance(http, headers, event):
             "minThresholdPercent": rebalancing.get("min_threshold", 0),
             "maxFileMoves": rebalancing.get("max_file_moves", 0),
             "excludeSnapshots": bool(rebalancing.get("exclude_snapshots", True)),
+            # What the scanner has looked at and what it declined to move. Measured on
+            # an idle-but-running rebalance: every counter zero, because there was no
+            # file above the 100 MB minimum to scan. `filesSkipped` carries ONTAP's own
+            # reason names -- `too_small`, `in_snapshot`, `efficiency_blocks` and the
+            # rest -- so the two exclusions the guide warns about become visible instead
+            # of asserted.
+            "filesScanned": scanner.get("files_scanned", 0),
+            "fileMovesStarted": movement.get("file_moves_started", 0),
+            "filesSkipped": {reason: count for reason, count in (scanner.get("files_skipped") or {}).items() if count},
             # ONTAP's own notes about why it is or is not moving files. Dropping
             # these leaves an operation that reports "rebalancing" and moves nothing
             # with no explanation anywhere.
@@ -1728,11 +1779,18 @@ def _start_volume_rebalance(http, headers, event, user_id):
             ),
         }
 
+    # Anything that is not "no operation" is an operation, including states ONTAP does
+    # not list for a volume. This was `in ("starting", "rebalancing")` and did not fire:
+    # a running rebalance with nothing to move reports `idle`, which is documented as a
+    # constituent state, and a future start reports `scheduled`, which is not documented
+    # at all. Both were measured here. ONTAP refuses the second start itself (144182216),
+    # so the cost was an unnecessary round trip and a worse message -- but a guard that
+    # names the states it knows will keep missing the ones it does not.
     current = record.get("rebalancing", {}).get("state", "")
-    if current in ("starting", "rebalancing"):
+    if current and current not in ("not_running", "unknown"):
         return {
             "success": False,
-            "error": f"A capacity rebalance is already {current} on this volume. Stop it before starting another.",
+            "error": (f'A capacity rebalance is already "{current}" on this volume. Stop it before starting another.'),
         }
 
     refused = _require_ack(event, _REBALANCE_ACK_EFFECT, reference="the ONTAP FlexGroup rebalancing documentation")
@@ -1749,7 +1807,7 @@ def _start_volume_rebalance(http, headers, event, user_id):
         if not _ISO_DURATION.match(str(max_runtime)):
             return {
                 "success": False,
-                "error": f"maxRuntime must be an ISO-8601 duration such as PT6H or P1D, not {max_runtime!r}.",
+                "error": f"maxRuntime must be an ISO-8601 duration such as PT30M or P1D, not {max_runtime!r}.",
             }
         rebalancing["max_runtime"] = str(max_runtime)
 

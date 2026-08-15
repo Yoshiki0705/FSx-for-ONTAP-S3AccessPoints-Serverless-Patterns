@@ -37,6 +37,8 @@
 | [管理者向けリソース管理 デモガイド (JA)](ja/admin-resource-management-demo.md) | 同 26 シナリオの日本語版 |
 | [Portal Verification Results (EN)](../solutions/amplify-portal/docs/verification-results.en.md) | What is Live E2E vs live-read vs tests-only vs DemoMode, per feature |
 | [ポータル検証結果 (JA)](../solutions/amplify-portal/docs/verification-results.md) | 機能ごとの検証区分（実機 E2E / 読み取り / テストのみ / DemoMode）と、未実行の書き込み操作の分類 |
+| [FlexGroup Rebalance Measurements (EN)](../solutions/amplify-portal/docs/flexgroup-rebalance-verification.en.md) | Capacity rebalancing run end to end: the two runtime bounds absent from the API reference, the states ONTAP returns and does not document, and what a run with nothing to move looks like |
+| [FlexGroup 容量リバランスの実測記録 (JA)](../solutions/amplify-portal/docs/flexgroup-rebalance-verification.md) | 容量リバランスの一巡。API リファレンスに無い 2 つの実行時間制約、未記載のボリューム状態、移動対象が無い実行の見え方 |
 | [Write Verification Plan (EN)](../solutions/amplify-portal/docs/write-verification-plan.en.md) | Prerequisites, impact and rollback for the writes not yet run, plus the operations that reach the shared environment |
 | [書き込み操作の検証計画 (JA)](../solutions/amplify-portal/docs/write-verification-plan.md) | 未実行の書き込み操作の前提・影響・戻し方。共有環境に影響が及ぶ操作の一覧 |
 | [Portal Getting Started](../solutions/amplify-portal/docs/GETTING-STARTED.md) | First deploy of the portal |

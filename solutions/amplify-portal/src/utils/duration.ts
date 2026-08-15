@@ -74,6 +74,26 @@ export function durationLabel(period: string, t: Translate): string {
   return fill(t(days === 1 ? "durationDay" : "durationDays"), { n: days });
 }
 
+/**
+ * An elapsed ISO-8601 duration as a clock: `PT1M32S` becomes "1:32".
+ *
+ * Separate from `durationLabel` because it answers a different question. That one
+ * names a retention period in whole units, which is prose and belongs in the locale.
+ * This one is a running total in mixed units, which nobody reads as prose and which
+ * needs no translation as a clock. ONTAP reports a rebalance's runtime this way, and
+ * the panel was showing the string `PT1M32S`.
+ *
+ * Anything unrecognised is returned unchanged, for the same reason as above: a new
+ * shape should be visible rather than blank.
+ */
+export function elapsedLabel(runtime: string): string {
+  const match = /^PT(?=\d)(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?$/.exec(runtime);
+  if (!match) return runtime;
+  const [hours, minutes, seconds] = [match[1], match[2], match[3]].map((part) => Number(part ?? 0));
+  const pad = (value: number) => String(value).padStart(2, "0");
+  return hours > 0 ? `${hours}:${pad(minutes)}:${pad(seconds)}` : `${minutes}:${pad(seconds)}`;
+}
+
 /** "1 day to 30 years", for the hints under the selects. */
 export function durationRange(fromPeriod: string, toPeriod: string, t: Translate): string {
   return fill(t("durationRange"), {
