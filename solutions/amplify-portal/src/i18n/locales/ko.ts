@@ -155,6 +155,8 @@ export const ko: Record<TranslationKeys, string> = {
   arpResponseDisconnect: "SMB 세션 끊기",
   arpResponseDisconnected: "세션을 끊었습니다",
 arpResponseSweepNote: "차단은 지정한 기한이 지나면 자동으로 해제됩니다. 더 빨리 해제하려면 '활성 차단' 탭을 사용하세요.",
+  durationMinute: "{n}분",
+  durationMinutes: "{n}분",
   durationHour: "{n}시간",
   durationHours: "{n}시간",
   durationDay: "{n}일",

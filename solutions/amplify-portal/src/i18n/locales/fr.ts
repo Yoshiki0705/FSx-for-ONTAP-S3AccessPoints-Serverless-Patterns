@@ -155,6 +155,8 @@ export const fr: Record<TranslationKeys, string> = {
   arpResponseDisconnect: "Déconnecter les sessions SMB",
   arpResponseDisconnected: "Sessions déconnectées",
 arpResponseSweepNote: "Les blocages se lèvent d'eux-mêmes à l'échéance. Pour lever un blocage plus tôt, utilisez l'onglet Blocages actifs.",
+  durationMinute: "{n} minute",
+  durationMinutes: "{n} minutes",
   durationHour: "{n} heure",
   durationHours: "{n} heures",
   durationDay: "{n} jour",

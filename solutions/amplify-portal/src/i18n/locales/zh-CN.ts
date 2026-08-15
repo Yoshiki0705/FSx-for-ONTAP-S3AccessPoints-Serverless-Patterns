@@ -155,6 +155,8 @@ export const zhCN: Record<TranslationKeys, string> = {
   arpResponseDisconnect: "断开 SMB 会话",
   arpResponseDisconnected: "已断开会话",
 arpResponseSweepNote: "阻止会在设定的期限过后自动解除。如需提前解除，请使用“有效阻止”标签页。",
+  durationMinute: "{n} 分钟",
+  durationMinutes: "{n} 分钟",
   durationHour: "{n} 小时",
   durationHours: "{n} 小时",
   durationDay: "{n} 天",

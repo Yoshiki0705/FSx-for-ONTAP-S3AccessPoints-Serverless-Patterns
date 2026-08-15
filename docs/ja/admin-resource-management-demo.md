@@ -1,6 +1,6 @@
 # 管理者向けリソース管理 — デモガイド
 
-🌐 **Language / 言語**: **日本語** | [English](../en/admin-resource-management-demo.md)
+🌐 **Language / 言語**: 日本語 | [English](../en/admin-resource-management-demo.md)
 
 [English](../en/admin-resource-management-demo.md) | **日本語**
 
@@ -420,10 +420,11 @@ aws ec2 describe-route-tables \
 |---------|------|
 | `docs/screenshots/file-explorer-directories.png` | FSx for ONTAP S3 AP のディレクトリを表示する File Explorer |
 | `docs/screenshots/resource-management-overview.png` | Resource Management のカード一覧（Storage/Access/Protection/AI、全体） |
-| `docs/screenshots/volumes-panel.png` | ONTAP の実データを表示する Volume Manager |
+| `docs/screenshots/volumes-panel.png` | ONTAP の実データを表示する Volume Manager（ボリュームタイプ、実データ / Snapshot / 予約超過に分けた使用率、FlexGroup 行のリバランス操作） |
+| `docs/screenshots/volume-rebalance-panel.png` | FlexGroup の容量リバランス（状態、ボリューム全体と最も偏ったコンスティチュエントの偏り、コンスティチュエント別使用量、下限 30 分の最大実行時間） |
 | `docs/screenshots/storage-efficiency-panel.png` | Storage Efficiency ダッシュボード |
 | `docs/screenshots/08-arp-admin-panel-en.png` | 9 ボリュームの ARP/AI 管理 |
-| `docs/screenshots/snapshots-version-history.png` | hourly/weekly/daily の Snapshot 履歴 |
+| `docs/screenshots/snapshots-version-history.png` | hourly/weekly/daily の Snapshot 履歴（SVM → ボリュームのスコープバー、容量との関係の補足付き） |
 | `docs/screenshots/snapshot-lock-confirm.png` | Snapshot ロックの確認ダイアログ（保持期間の指定と不可逆である旨の明示） |
 | `docs/screenshots/quota-manager.png` | ボリュームセレクターとルール表付きの Quota Manager |
 | `docs/screenshots/quota-create-form.png` | クォータ作成フォーム（種別、対象、上限） |
@@ -434,7 +435,7 @@ aws ec2 describe-route-tables \
 | `solutions/amplify-portal/docs/screenshots/lock-panel-s3objectlock.png` | Lock パネルの S3 Object Lock タブ（ONTAP 非依存） |
 | `solutions/amplify-portal/docs/screenshots/qtree-volume-selector.png` | VolumeSelector 検索 / フィルター付きの Qtree パネル |
 | `docs/screenshots/vscan-setup-guidance.png` | 6 ベンダー比較表付き Vscan 5 ステップ案内 |
-| `docs/screenshots/flexclone-manager.png` | クローン一覧と作成フォーム付きの FlexClone パネル |
+| `docs/screenshots/flexclone-manager.png` | クローン一覧と作成フォーム付きの FlexClone パネル（分割の使いどころと、クローンが親の容量に与える影響のガイド付き） |
 | `docs/screenshots/snapmirror-status.png` | 状態バッジ、RPO 警告、操作ボタン付きの SnapMirror 関係 |
 | `docs/screenshots/snapmirror-create-form.png` | SnapMirror 新規作成フォーム（SVM ピア選択、前提条件、作成される関係のプレビュー） |
 | `docs/screenshots/local-user-manager.png` | Local User Manager（Users タブの CRUD 操作） |

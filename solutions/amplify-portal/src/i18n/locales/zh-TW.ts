@@ -155,6 +155,8 @@ export const zhTW: Record<TranslationKeys, string> = {
   arpResponseDisconnect: "中斷 SMB 工作階段",
   arpResponseDisconnected: "已中斷工作階段",
 arpResponseSweepNote: "封鎖會在設定的期限過後自動解除。如需提前解除，請使用「有效封鎖」標籤頁。",
+  durationMinute: "{n} 分鐘",
+  durationMinutes: "{n} 分鐘",
   durationHour: "{n} 小時",
   durationHours: "{n} 小時",
   durationDay: "{n} 天",
