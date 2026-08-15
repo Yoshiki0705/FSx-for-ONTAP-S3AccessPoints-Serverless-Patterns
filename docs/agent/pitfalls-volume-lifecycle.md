@@ -37,14 +37,32 @@ Only the cluster administrator can delete the clones associated with this volume
 - 親の削除は 3 回試して 3 回同じエラー
 - 削除の 2 段目（offline）は成功しているので、**失敗した削除は親を offline のまま残す**
 
-**推定（未確認）**: ONTAP のボリューム recovery queue が削除済みクローンを保持しており
-（既定 12 時間）、その間クローン関係が残る。確認するには ONTAP CLI の
-`volume recovery-queue show` が必要で、これは VPC 内からの SSH を要する。
+**原因**: ONTAP のボリューム recovery queue。RW / DP ボリュームの削除要求は「partially
+deleted」状態にして**既定 12 時間**キューに保持する。キューにある間もボリュームは WAFL の
+テーブル上に存在し、名前・ID の衝突判定に参加し、**アグリゲートの容量も消費し続ける**。
+削除済みクローンがキューにある限り、親から見ればクローンは存在する。
+
+出典: [How to use the Volume Recovery Queue](https://kb.netapp.com/on-prem/ontap/Ontap_OS/OS-KBs/How_to_use_the_Volume_Recovery_Queue)。
+`volume recovery-queue purge` で強制削除できるが **diag 権限が必要**で、FSx for ONTAP の
+`fsxadmin` では到達できない。つまり待つしかない。
+
+### 回避策: クローンを削除する前に分割する（実測で A/B 確認）
+
+同一環境・同一手順で、分割の有無だけを変えて比較した。
+
+| 手順 | 親の削除 |
+|------|---------|
+| クローン作成 → **クローンを削除** → 親を削除 | **失敗**（`has one or more clones`）。15 分後・7 分後の再試行も同じ |
+| クローン作成 → **分割** → 分割後のボリュームを削除 → 親を削除 | **成功**（クローン削除の数秒後に完了） |
+
+分割するとクローンは親への依存を失うため、その後の削除は recovery queue に「クローン」を
+残さない。親を削除する予定があるなら、**クローンは分割してから削除する**。
 
 実務上の意味:
 
-- クローンで検証したら、**親ボリュームはその日のうちには消せない**前提で計画する
+- 分割せずにクローンを削除したら、**親はその日のうちには消せない**前提で計画する
 - 失敗した削除で offline になった親は、`bringVolumeOnline` で戻す（この理由で実装した）
+- キューにあるボリュームはアグリゲート容量を消費し続けるので、容量計算でも無視できない
 
 ## FlexClone の作成と分割（2026-08-15 実測）
 
