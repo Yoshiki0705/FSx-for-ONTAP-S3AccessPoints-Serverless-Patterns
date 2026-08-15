@@ -97,6 +97,22 @@ S3 オブジェクト、および作業用ボリューム `zz_probe_a` はすべ
 | 分割してからクローンを削除すると親をすぐ消せる（A/B 実測） | 同一環境で分割の有無だけを変えて比較。未分割のクローンを削除 → 親の削除は失敗（`has one or more clones`、7 分後・15 分後も同じ）。分割 → 削除 → 親の削除は数秒後に成功。原因は ONTAP の volume recovery queue（RW/DP の削除は既定 12 時間キューに保持され、その間もアグリゲート容量を消費し、親から見るとクローンが存在する）。`purge` は diag 権限が必要で FSx の fsxadmin では到達できない | [Volume Recovery Queue (KB)](https://kb.netapp.com/on-prem/ontap/Ontap_OS/OS-KBs/How_to_use_the_Volume_Recovery_Queue) |
 | 分割の UI 補足（今回追加） | FlexClone パネルに「使いどころ」4 点と「性質」6 点を折りたたみで追加（9.4 以降はメタデータのみでデータをコピーしない / 元に戻せない / 進捗は inode 基準 / 分割中はクローンにスナップショットを作れない / オフラインで中断・オンラインで再開 / アグリゲートは選べず DP 関係のクローンは分割不可）。確認文の「容量を全量消費します」は 9.4 以降では誤りだったため訂正。削除が「クローンがある」で失敗したときは、recovery queue と分割の案内をエラーに添える | [ONTAP docs](https://docs.netapp.com/us-en/ontap/volumes/split-flexclone-from-parent-task.html) / [KB](https://kb.netapp.com/on-prem/ontap/Ontap_OS/OS-KBs/FAQ_-_FlexClone_split) |
 
+### 2026-08-15 に追加（容量とボリュームタイプ、ONTAP 9.17.1P6）
+
+ボリューム一覧の使用率が何を数えていて何を数えていないか、および FlexVol と FlexGroup の
+差を実機で確認しました。検証用に作成した FlexGroup `zz_fg_probe` は削除しています。
+
+| 機能 | 確認内容 | 出典 |
+|------|---------|------|
+| 使用率が数えているもの（読み取り） | `space.used` は**ボリュームによって別の量を指す**。予約内の Snapshot は含まず、予約を超えた分は含む。実測: 100 GiB のボリュームが `used` 18.1 MiB を報告しながら Snapshot 77.3 MiB を保持（予約 5% = 5 GiB の内側）。予約 0% のボリュームは `used` 83,677 MiB = 実データ 81,934 MiB + Snapshot 1,743 MiB。**11 ボリューム中 8 本で Snapshot が実データを上回っていた**ので、一覧に実データ / Snapshot / 予約超過を分けて出すようにした | [Snapshot 予約](https://docs.netapp.com/us-en/ontap/data-protection/manage-snapshot-copy-reserve-concept.html) / [spill (KB)](https://kb.netapp.com/Advice_and_Troubleshooting/Data_Storage_Software/ONTAP_OS/What_can_impact_snapshot_size_and_cause_snapshot_spill) |
+| ボリュームタイプの表示（読み取り） | `style` は以前から取得していたが表示していなかった。実機には両方あり、FlexCache の**オリジンが FlexVol（vol1）・キャッシュが FlexGroup（flexcache_eda_tokyo）**という組み合わせを確認（キャッシュ側は常に FlexGroup） | [FlexCache REST 概要](https://docs.netapp.com/us-en/ontap-restapi-9171/manage_flexcache_volumes.html) |
+| FlexGroup の作成 | **修正して初めて動作**。ONTAP の自動配置は FSx for ONTAP では常に失敗する（`Aggregates not matching FabricPool requirements: aggr1`）。アグリゲートを明示すると成功。既定の 4 コンスティチュエント構成では 400 GB 未満が拒否される。**同じ根本原因は FlexCache 側で既知（`use_tiered_aggregate`）だったのにボリューム側へ来ていなかった** | [ボリュームライフサイクル](../../../docs/agent/pitfalls-volume-lifecycle.md) |
+| リバランス状態の読み取り | `rebalancing` は明示要求フィールドで、`fields=**`（56 キー）でも**返らないボリュームがある**。ONTAP S3 バケットの実体（`is_object_store: true`）と FlexCache キャッシュはどちらも FlexGroup だが返らない。通常の FlexGroup では返り、既定値はドキュメント記載と一致（`PT6H` / 100 MB / 20% / 5% / 25 / exclude_snapshots true、`granular_data: false`）。**オブジェクト不在を `state: unknown` に丸めると「均衡したボリューム」に見える**ので別のフラグで区別した | [リバランス](https://docs.netapp.com/us-en/ontap/flexgroup/manage-flexgroup-rebalance-task.html) / [S3 バケットは非対応 (KB)](https://kb.netapp.com/on-prem/ontap/da/NAS/NAS-KBs/Is_it_necessary_to_manually_balance_constituents_of_an_S3_bucket_hosting_flexgroup%3F) |
+| リバランス開始の拒否 4 種 | 承認フラグ無し / FlexVol / オブジェクトストアの実体 / ISO-8601 でない `maxRuntime` の 4 つを実機で拒否確認 | 同上 |
+| リバランスの開始そのもの | **未検証**。開始すると granular data が有効化され、**無効化できない**（戻す手段は有効化前の Snapshot からのリストアのみ）。不可逆操作なので承認待ち | 同上 |
+| FlexVol → FlexGroup の変換 | **REST API に無い**（`volume conversion start` は CLI の advanced 権限専用）。AWS は in-place 変換ではなく AWS DataSync での新規 FlexGroup へのコピーを推奨し、変換前に FSx バックアップの削除を求めている。ボタンは作らず、前提条件・不可逆性・Snapshot の扱いを画面の補足に入れた | [AWS docs](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/managing-volumes.html) |
+| 期間ラベルの時間対応（今回判明） | `durationLabel` が日数のみを解釈し、未知の値はそのまま返す設計だったため、リバランスの最大実行時間の選択肢が ONTAP の既定値を `PT6H` という文字列で表示していた | — |
+
 ## 実機 読み取り確認済み（書き込み系は未確認）
 
 | 機能 | 確認できたこと | 未確認 |
