@@ -1091,6 +1091,9 @@ def _list_volumes(http, headers, event):
     volumes = []
     for v in data.get("records", []):
         space = v.get("space", {})
+        snapshot_space = space.get("snapshot", {})
+        snapshot_used = snapshot_space.get("used", 0)
+        snapshot_reserve_size = snapshot_space.get("reserve_size", 0)
         volumes.append(
             {
                 "name": v.get("name", ""),
@@ -1099,6 +1102,29 @@ def _list_volumes(http, headers, event):
                 "sizeGiB": round(v.get("size", 0) / (1024**3), 1),
                 "usedBytes": space.get("used", 0),
                 "usedPercent": round(space.get("used", 0) / max(v.get("size", 1), 1) * 100, 1),
+                # The active file system alone, separated from what snapshots hold.
+                # `space.used` is not the whole occupancy and not always the same
+                # measure between two volumes: snapshot data inside the reserve is
+                # excluded from it, and snapshot data beyond the reserve is included.
+                # Measured on this file system: a volume with a 5% reserve reported
+                # used=18.1 MiB with 77.3 MiB of snapshot data (excluded), while a
+                # volume with a 0% reserve reported used=83,677 MiB = 81,934 MiB of
+                # active data + 1,743 MiB of snapshots (included). Showing only
+                # `used` therefore hides most of what a volume is holding, which is
+                # what makes "I deleted the files and nothing was freed" unanswerable
+                # from the volume row.
+                "afsUsedBytes": space.get("used_by_afs", 0),
+                "snapshotUsedBytes": snapshot_used,
+                "snapshotReservePercent": snapshot_space.get("reserve_percent", 0),
+                "snapshotReserveBytes": snapshot_reserve_size,
+                # Snapshot data that no longer fits in the reserve and is therefore
+                # consuming the active file system's space. This is the number that
+                # explains a volume filling up while its files are being deleted.
+                "snapshotSpillBytes": max(0, snapshot_used - snapshot_reserve_size),
+                # Whether ONTAP may delete snapshots on its own to reclaim the
+                # reserve. Off by default, and its being off is why the reserve
+                # stays full until somebody acts.
+                "snapshotAutodeleteEnabled": bool(snapshot_space.get("autodelete_enabled", False)),
                 "state": v.get("state", ""),
                 "type": v.get("type", ""),
                 "style": v.get("style", ""),

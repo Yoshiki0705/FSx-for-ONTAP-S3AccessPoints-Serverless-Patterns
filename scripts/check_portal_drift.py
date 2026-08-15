@@ -929,7 +929,16 @@ def check_theme_literals() -> list[Finding]:
 # An inline style, written as a JSX `style={{ ... }}` value.
 _INLINE_COLOUR = re.compile(
     r"\b(background(?:Color)?|color|border(?:Color|Top|Bottom|Left|Right|LeftColor)?)"
-    r"\s*:\s*\"(?P<value>[^\"]*)\"",
+    # Everything the property is set to, up to the next property or the end of the
+    # object -- not just a string sitting immediately after the colon. The value is
+    # often an expression, and a ternary picking between three hex fills put the
+    # literal several characters past where a `\"` anchor could see it. Three of them
+    # were painting the volume capacity bar in every theme while this rule reported
+    # the file clean.
+    # A comma ends the value, because the next property starts there -- except inside
+    # parentheses, where `var(--name, #fallback)` uses one and the fallback is the
+    # literal this rule most wants to see.
+    r"\s*:\s*(?P<value>(?:[^,}\n(]|\([^)\n]*\))*)",
 )
 
 

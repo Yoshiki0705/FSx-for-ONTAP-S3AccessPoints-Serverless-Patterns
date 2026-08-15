@@ -100,8 +100,8 @@ export function FolderDownload({ currentPrefix }: FolderDownloadProps) {
             marginTop: "0.5rem",
             padding: "0.75rem",
             borderRadius: "8px",
-            border: `1px solid ${result.success ? "#86efac" : "#fca5a5"}`,
-            background: result.success ? "#f0fdf4" : "#fef2f2",
+            border: `1px solid ${result.success ? "var(--color-success)" : "var(--color-error)"}`,
+            background: result.success ? "var(--color-success-bg)" : "var(--color-error-bg)",
             fontSize: "0.85rem",
             maxWidth: "350px",
           }}
