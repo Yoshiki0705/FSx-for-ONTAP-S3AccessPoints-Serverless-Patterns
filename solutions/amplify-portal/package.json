@@ -2,7 +2,7 @@
   "name": "fsxn-s3ap-amplify-portal",
   "version": "0.1.0",
   "private": true,
-  "description": "File portal UI for FSx for ONTAP S3 AP serverless patterns — Amplify Gen2 + React",
+  "description": "File portal UI for FSx for ONTAP S3 AP serverless patterns \u2014 Amplify Gen2 + React",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -22,6 +22,7 @@
     "docker:run": "docker run -p 8080:80 fsxn-portal"
   },
   "dependencies": {
+    "@aws-amplify/storage": "6.16.0",
     "@aws-amplify/ui-react": "^6.0.0",
     "@aws-amplify/ui-react-storage": "^3.17.3",
     "@tanstack/react-query": "5.101.4",

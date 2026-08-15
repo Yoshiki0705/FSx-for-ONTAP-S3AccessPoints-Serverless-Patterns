@@ -13,13 +13,32 @@
  *
  * Credentials come from Cognito Identity Pool (authenticated user).
  */
-import { createStorageBrowser } from "@aws-amplify/ui-react-storage/browser";
+import { createStorageBrowser, defaultActionConfigs } from "@aws-amplify/ui-react-storage/browser";
 import "@aws-amplify/ui-react-storage/styles.css";
 import { fetchAuthSession } from "aws-amplify/auth";
 import { s3ApAlias, outputsRegion } from "../lib/portalOutputs";
+import {
+  createFolderWithoutConditionalWrite,
+  uploadWithoutConditionalWrite,
+} from "../lib/storageBrowserWriteHandlers";
 import { useTranslation } from "../i18n";
 
 const { StorageBrowser } = createStorageBrowser({
+  // The two write handlers are replaced because the vendor ones ask S3 for a
+  // conditional write (`if-none-match: *`), which this access point answers with
+  // 501 -- so every upload and every folder creation failed. Everything else,
+  // including the action list items and their views, stays as shipped. See
+  // src/lib/storageBrowserWriteHandlers.ts.
+  actions: {
+    default: {
+      ...defaultActionConfigs,
+      createFolder: {
+        ...defaultActionConfigs.createFolder,
+        handler: createFolderWithoutConditionalWrite,
+      },
+      upload: { ...defaultActionConfigs.upload, handler: uploadWithoutConditionalWrite },
+    },
+  },
   config: {
     // Direct credentials mode — bypasses S3 Access Grants
     getLocationCredentials: async () => {

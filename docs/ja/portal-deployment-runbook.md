@@ -187,6 +187,7 @@ aws cloudformation describe-stacks \
 | Files タブ "No files" | s3ApAlias 未設定 | portal-config.ts に設定 → `make sandbox` |
 | **Files タブ "No files" (DemoMode)** | **s3ApResourceArns に S3 AP ARN のみ、バケット ARN がない** | **`arn:aws:s3:::your-bucket` + `arn:aws:s3:::your-bucket/*` を追加** |
 | Upload タブが「未設定」と表示 | portal-config.ts の s3ApAlias が空、または sandbox 未実行 | alias を設定 → `npx ampx sandbox` → リロード |
+| Upload / フォルダー作成が 501 NotImplemented | S3 AP が `if-none-match`（条件付き書き込み）を未実装。Storage Browser の既定ハンドラーが送る | `src/lib/storageBrowserWriteHandlers.ts` の差し替えハンドラーを使う（既定で有効） |
 | Upload タブ "ListCallerAccessGrants" | 旧コードが `createManagedAuthAdapter` を使用 | StorageBrowserTab.tsx を direct auth モードに更新 |
 | Process タブ赤バナー | SFn ARN がプレースホルダー | `make sfn-test-create` |
 | ログイン失敗 | ユーザー未作成 | Step 4 実行 |
