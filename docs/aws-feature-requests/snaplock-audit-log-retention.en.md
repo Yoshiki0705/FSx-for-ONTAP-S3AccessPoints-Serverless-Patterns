@@ -125,6 +125,8 @@ After the SVM-level audit log designation is cleared through the ONTAP REST API,
 
 As of this writing the volume reports `AuditLogVolume: False` and is still undeletable.
 
+> **AWS response (2026-08)**: the two fields describe different things, so they are not in disagreement. `AuditLogVolume` is the correct field for the current designation, while `snaplock.is_audit_log` marks that the volume was designated as the SVM's audit log volume at some point, and that mark does not clear. What blocks the delete is not the designation but the retention applied to the log files when they were written, which outlives the designation. The reason is already returned in `LifecycleTransitionReason.Message` as `Cannot delete the volume because it contains unexpired log files.` Request 1 below therefore does not hold, and the "reason deletion is blocked" half of request 2 is already met. What remains missing is the expiry timestamp (ONTAP's Expiry Time), which the AWS API does not expose.
+
 ### Impact on this project
 
 To anyone reading only the AWS API, this says the volume is no longer an audit log volume and should therefore be deletable. Because deletability has not changed, diagnosis cannot be completed at the AWS API layer and requires ONTAP REST API access. In an AWS-API-based tool such as the portal, surfacing this value as-is misleads the operator.
@@ -145,8 +147,13 @@ Either of the following.
 | Can the audit log volume be deleted before retention expiry | **No** (confirmed internally) |
 | Can the file system deletion lock alone be released | **No** |
 | Does any route exist other than closing the account | **No such route exists** (explicit) |
+| Can billing relief be considered instead of early deletion | Only after the resource is gone. Delete the file system once retention expires, then raise a separate case with Account and Billing Support. No assurance that relief is possible |
+| SL-1 (warning and confirmation parameter at creation) | No addition mentioned. The response points to the console's audit log volume field and the `CreateVolume` / `UpdateVolume` documentation, which already state the six-month minimum |
+| SL-2 (return the reason a delete is refused) | Already returned, in `DescribeVolumes` as `LifecycleTransitionReason.Message` (`Cannot delete the volume because it contains unexpired log files.`) |
+| SL-3 (`AuditLogVolume` agreeing with `is_audit_log`) | As designed, and not a disagreement: the first is the current designation, the second a historical mark |
 
-The requests corresponding to SL-1 to SL-3, and the remaining questions, are still under review.
+To read the expiry, the response directs us to SSH to the management endpoint and check the Expiry Time from
+`volume snaplock show -vserver <svm> -volume <volume> -instance`. That value is not available through the AWS API.
 
 ---
 

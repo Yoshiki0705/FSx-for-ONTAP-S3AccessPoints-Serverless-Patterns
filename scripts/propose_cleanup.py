@@ -256,9 +256,10 @@ def collect_fsx(session: Any, region: str, fsx_prices: dict[str, tuple[float, st
                 continue
             parts = [f"SnapLock={snaplock.get('SnaplockType', '?')}"]
             # DescribeVolumes reporting AuditLogVolume: false does not mean the
-            # volume is deletable. ONTAP's read-only `snaplock.is_audit_log` is
-            # the authority, and clearing the SVM-level designation does not
-            # change it, so this flag is reported as-is and never as a verdict.
+            # volume is deletable. The flag is the current designation, and AWS
+            # support confirmed it is the right field for that; what blocks the
+            # delete is the retention already applied to the log files, which
+            # outlives the designation. Reported as-is, never as a verdict.
             parts.append(f"AuditLogVolume(FSx API)={snaplock.get('AuditLogVolume')}")
             if snaplock.get("PrivilegedDelete") == "PERMANENTLY_DISABLED":
                 # Terminal: this makes an ENTERPRISE volume behave as COMPLIANCE,
@@ -334,8 +335,8 @@ def collect_fsx(session: Any, region: str, fsx_prices: dict[str, tuple[float, st
                 price_basis=basis,
                 irreversible=(
                     "SnapLock volume(s) present — deletion may be blocked. Confirm "
-                    "with ONTAP's snaplock.is_audit_log and snaplock.expiry_time, "
-                    "not with the FSx flag: " + "; ".join(blockers[filesystem["FileSystemId"]])
+                    "with LifecycleTransitionReason and ONTAP's snaplock.expiry_time, "
+                    "not with the AuditLogVolume flag: " + "; ".join(blockers[filesystem["FileSystemId"]])
                     if filesystem["FileSystemId"] in blockers
                     else None
                 ),
