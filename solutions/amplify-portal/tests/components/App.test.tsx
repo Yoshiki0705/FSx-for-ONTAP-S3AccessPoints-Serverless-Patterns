@@ -24,6 +24,9 @@ vi.mock("@aws-amplify/ui-react", () => ({
 
 vi.mock("@aws-amplify/ui-react-storage/browser", () => ({
   createStorageBrowser: () => ({ StorageBrowser: () => null }),
+  // Spread by StorageBrowserTab to replace only the two write handlers, so the
+  // shape has to exist even though nothing here renders the real component.
+  defaultActionConfigs: { createFolder: {}, upload: {} },
 }));
 
 vi.mock("aws-amplify/auth", () => ({
