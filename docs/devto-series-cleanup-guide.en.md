@@ -61,6 +61,20 @@ The product tag is standardised on **`fsxforontap`**. `amazonfsxfornetappontap` 
 to the full product name but long, and `fsxontap` and `netapp` collide with articles about
 other products.
 
+### Done (2026-08-15, the three file portal articles)
+
+Parts 1 to 3 were moved out of the S3 AP series and their tags aligned with the policy.
+
+| Article | Before | After |
+|---|---|---|
+| Part 1 | `series: FSx for ONTAP S3 Access Points` / `aws, netapp, serverless, storage` | `series: FSx for ONTAP File Portal` / `aws, amplify, fsxforontap, architecture` |
+| Part 2 | same / `aws, netapp, security, serverless` | same / `aws, amplify, fsxforontap, security` |
+| Part 3 | same / `aws, bedrock, ai, netapp` | same / `aws, amplify, fsxforontap, bedrock` |
+
+**The S3 AP series articles were left untagged as they were.** The inconsistency table above
+is a count from that moment, so re-count the current state before deciding whether to align
+the rest (dev.to Dashboard → Posts).
+
 > **Re-tagging published articles is the author's call.** Changing a tag changes who the
 > article reaches. New articles follow the table above; whether to align the existing ones
 > is a decision about reach, not correctness.
