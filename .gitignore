@@ -205,3 +205,7 @@ infrastructure/knfsd-file-cache/.ami-id
 
 # Written by `make security-report` for upload as a CI artifact.
 bandit-report.json
+
+# Copied out of @aws-amplify/ui-react-storage by `npm run copy-sw`, so it tracks the
+# installed package version instead of a committed copy that can drift from it.
+solutions/amplify-portal/public/amplify-storage-download/

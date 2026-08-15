@@ -278,6 +278,14 @@ make discover-s3ap ARGS="--accounts 111111111111 222222222222 --role-name <role>
 ```
 
 `--require-alias` works as a pre-deployment gate: it fails unless the alias is `AVAILABLE`.
+
+The portal asks the same API at runtime. The Upload tab's location list comes from the
+`listAccessPoints` action on the ListFiles Lambda, which returns the alias in `portal-config.ts`
+plus the `groupApMapping` entries **for the caller's groups only**, annotated with `Lifecycle` and
+whether the origin is the internet or a VPC. It does not advertise every access point in the
+account, so configuration still decides visibility. If
+`fsx:DescribeS3AccessPointAttachments` is denied, the aliases are returned with
+`lifecycle: UNKNOWN` rather than withheld, so a missing read permission does not stop browsing.
 | `stateMachineArn` | portal-config.ts + start-processing.js | Process tab workflow trigger |
 | `groupApMapping` | portal-config.ts | Per-team file isolation (My Files) |
 | `bedrockKbId` | portal-config.ts | Full-text semantic search |

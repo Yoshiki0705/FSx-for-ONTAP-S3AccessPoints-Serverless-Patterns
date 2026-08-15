@@ -23,6 +23,11 @@ cleanup() {
 }
 trap cleanup EXIT INT TERM
 
+# Storage Browser's download path needs its service worker served from this
+# origin; without it downloads fall back to an in-memory blob that a phone gives
+# the user no way to find. Copied from the installed package, not committed.
+npm run copy-sw >/dev/null
+
 # Start Vite dev server in background (always starts immediately)
 npx vite --host &
 VITE_PID=$!

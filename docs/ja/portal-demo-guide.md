@@ -357,6 +357,9 @@ aws fsx detach-and-delete-s3-access-point \
 **Q: Files タブに "No files" と表示される**
 A: `portal-config.ts` の `s3ApAlias` が空。S3 AP alias を設定して `make sandbox` を再実行。
 
+**Q: ダウンロードしたファイルが iPhone / iPad で見つからない**
+A: Storage Browser のダウンロードは Service Worker 経由で行われ、これが登録されていないとメモリ上の blob にフォールバックして、ダウンロードマネージャーに何も残りません。`npm run copy-sw` が `public/amplify-storage-download/download-sw.js` を配置します（`npm start` / `npm run phone` は自動実行）。登録後は Safari のダウンロード先（既定では ファイル アプリ → ダウンロード）に保存されます。
+
 **Q: Upload タブが「未設定」と表示される**
 A: `amplify/portal-config.ts` の `s3ApAlias` を設定して `make sandbox` を再実行。alias は `amplify_outputs.json` 経由でブラウザに届き、IAM 権限も同時に設定されます。
 

@@ -840,6 +840,12 @@ export interface ListFilesActionParams {
     maxKeys?: number;
     prefix?: string;
   };
+  listAccessPoints: {
+    continuationToken?: string;
+    groups?: string;
+    maxKeys?: number;
+    prefix?: string;
+  };
   listFiles: {
     acknowledgeIrreversible?: true;
     apAlias?: string;

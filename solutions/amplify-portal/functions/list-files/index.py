@@ -6,6 +6,7 @@ import os
 
 import boto3
 from botocore.config import Config
+from botocore.exceptions import BotoCoreError, ClientError
 
 from shared.portal_path_scope import MAX_KEY_BYTES  # noqa: F401  (kept for callers/tests)
 from shared.portal_path_scope import allowed_prefixes as _shared_allowed_prefixes
@@ -54,6 +55,90 @@ def resolve_ap_alias(groups: list[str]) -> str:
             if group_name in groups:
                 return ap_alias
     return DEFAULT_AP_ALIAS
+
+
+def _aliases_for(groups: list[str]) -> list[str]:
+    """Access point aliases this caller is configured to use, in order.
+
+    The group mapping decides visibility, so discovery must not widen it: this
+    returns the caller's mapped aliases plus the default, never every access
+    point in the account.
+
+    Args:
+        groups: The caller's Cognito groups.
+
+    Returns:
+        Aliases, most specific first, without duplicates or empty entries.
+    """
+    ordered = [alias for group, alias in GROUP_AP_MAPPING.items() if group in groups]
+    ordered.append(DEFAULT_AP_ALIAS)
+    seen: set[str] = set()
+    return [a for a in ordered if a and not (a in seen or seen.add(a))]
+
+
+def _list_access_points(user_groups: list[str]) -> dict:
+    """The caller's access points, annotated from the FSx API.
+
+    A configured alias tells you nothing about whether it still exists: a
+    deleted or MISCONFIGURED access point looks the same in a config file as a
+    working one, and the failure surfaces later as an AccessDenied or a 404 with
+    no obvious cause. `DescribeS3AccessPointAttachments` is the only source for
+    the current state, so the alias the UI offers is checked rather than assumed.
+
+    The FSx call is best effort. If the role lacks
+    `fsx:DescribeS3AccessPointAttachments`, or the API is unreachable, the
+    configured aliases are still returned with `lifecycle: "UNKNOWN"`: refusing
+    to list them would turn a missing read permission into a portal that cannot
+    browse anything.
+
+    Args:
+        user_groups: The caller's Cognito groups.
+
+    Returns:
+        `accessPoints`, one record per alias with name, lifecycle, origin and
+        volumeId where known, and `discoveryError` when annotation failed.
+    """
+    aliases = _aliases_for(user_groups)
+    if not aliases:
+        return {"accessPoints": [], "discoveryError": ""}
+
+    found: dict[str, dict] = {}
+    discovery_error = ""
+    try:
+        fsx = boto3.client("fsx")
+        # Paginated deliberately: an account with many attachments returns them
+        # in pages, and reading the first page only would report a configured
+        # alias as absent because it happened to be on the second.
+        for page in fsx.get_paginator("describe_s3_access_point_attachments").paginate():
+            for attachment in page.get("S3AccessPointAttachments", []):
+                access_point = attachment.get("S3AccessPoint") or {}
+                alias = access_point.get("Alias")
+                if not alias:
+                    continue
+                vpc = access_point.get("VpcConfiguration") or {}
+                found[alias] = {
+                    "name": attachment.get("Name") or "",
+                    "lifecycle": attachment.get("Lifecycle") or "UNKNOWN",
+                    # No VPC configuration means Internet-origin, which is what a
+                    # browser needs; a VPC id means the caller has to be inside it.
+                    "origin": vpc.get("VpcId") or "internet",
+                    "volumeId": (attachment.get("OpenZFSConfiguration") or {}).get("VolumeId") or "",
+                }
+    except (ClientError, BotoCoreError) as exc:
+        logger.warning("access point discovery failed: %s", exc)
+        discovery_error = str(exc)
+
+    return {
+        "accessPoints": [
+            {
+                "alias": alias,
+                "isDefault": alias == DEFAULT_AP_ALIAS,
+                **found.get(alias, {"name": "", "lifecycle": "UNKNOWN", "origin": "", "volumeId": ""}),
+            }
+            for alias in aliases
+        ],
+        "discoveryError": discovery_error,
+    }
 
 
 def _allowed_prefixes(user_groups: list[str]) -> list[str]:
@@ -223,6 +308,12 @@ def handler(event, context):
     # otherwise swallow it and answer with an empty file listing.
     if action == "listNotifications":
         return _list_notifications(event, user_groups)
+    # Which access points this caller may use, and whether they currently work.
+    # Placed with listNotifications, ahead of alias resolution, because it
+    # answers a question about aliases and must not be swallowed by the "no
+    # alias configured" early return below.
+    if action == "listAccessPoints":
+        return _list_access_points(user_groups if isinstance(user_groups, list) else [])
 
     # Determine which AP to use
     if action == "listFilesFromAp" and event.get("apAlias"):
