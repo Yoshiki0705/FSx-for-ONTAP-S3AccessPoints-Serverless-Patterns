@@ -13,12 +13,63 @@ interface Volume {
   name: string;
   /** ONTAP's UUID, branded where it arrives so the name beside it cannot stand in. */
   uuid: VolumeUuid;
+  sizeBytes: number;
   sizeGiB: number;
   usedPercent: number;
   state: string;
+  /** "flexvol" | "flexgroup". Decides which operations exist for the volume. */
   style: string;
   securityStyle: string;
   snaplockType: string;
+  /** "none" | "cache" | "origin". A cache is always a FlexGroup. */
+  flexcacheEndpointType: string;
+  /** The active file system alone, with snapshots accounted for separately below. */
+  afsUsedBytes: number;
+  snapshotUsedBytes: number;
+  snapshotReservePercent: number;
+  snapshotReserveBytes: number;
+  /** Snapshot data past the reserve, which competes with live data for the volume. */
+  snapshotSpillBytes: number;
+  snapshotAutodeleteEnabled: boolean;
+}
+
+const BYTES_PER_GIB = 1024 ** 3;
+
+/**
+ * A size with a unit that suits it.
+ *
+ * Snapshot usage and volume size differ by six orders of magnitude on the same
+ * table -- 77 MiB of snapshots on a 2 TiB volume -- so a single unit either
+ * rounds the small numbers to nothing or makes the large ones unreadable.
+ */
+/** ONTAP's own word, kept as ONTAP writes it rather than translated. */
+function styleLabel(style: string): string {
+  if (style === "flexgroup") return "FlexGroup";
+  if (style === "flexvol") return "FlexVol";
+  return style || "—";
+}
+
+/** Literal keys, so a typo here is a type error rather than a tooltip of raw key text. */
+function styleTitleKey(style: string): "rmStyleFlexgroupTitle" | "rmStyleFlexvolTitle" {
+  return style === "flexgroup" ? "rmStyleFlexgroupTitle" : "rmStyleFlexvolTitle";
+}
+
+/** The share of the volume held by live data, as a percentage of its size. */
+function afsPercent(vol: Volume): number {
+  return (vol.afsUsedBytes / Math.max(vol.sizeBytes, 1)) * 100;
+}
+
+/** The share held by snapshot data that no longer fits in the reserve. */
+function spillPercent(vol: Volume): number {
+  return (vol.snapshotSpillBytes / Math.max(vol.sizeBytes, 1)) * 100;
+}
+
+function capacityLabel(bytes: number): string {
+  if (bytes <= 0) return "0";
+  if (bytes < 1024 ** 2) return `${(bytes / 1024).toFixed(0)} KiB`;
+  if (bytes < BYTES_PER_GIB) return `${(bytes / 1024 ** 2).toFixed(1)} MiB`;
+  if (bytes < 1024 ** 4) return `${(bytes / BYTES_PER_GIB).toFixed(1)} GiB`;
+  return `${(bytes / 1024 ** 4).toFixed(2)} TiB`;
 }
 
 /**
@@ -326,10 +377,69 @@ export function VolumeManager() {
         </div>
       )}
 
+      {/* Two behaviours this table shows numbers for without explaining them: what a
+          volume's used figure does and does not count, and what its style decides.
+          Collapsed, because most visits are not asking. */}
+      <details className="rm-guide">
+        <summary>{t("rmCapacityGuideTitle")}</summary>
+
+        <p className="fc-split-heading">{t("rmCapacityGuideWhyTitle")}</p>
+        <ul>
+          <li>{t("rmCapacityGuideWhy1")}</li>
+          <li>{t("rmCapacityGuideWhy2")}</li>
+          <li>{t("rmCapacityGuideWhy3")}</li>
+          <li>{t("rmCapacityGuideWhy4")}</li>
+          <li>{t("rmCapacityGuideWhy5")}</li>
+        </ul>
+
+        <p className="fc-split-heading">{t("rmCapacityGuideActTitle")}</p>
+        <ul>
+          <li>{t("rmCapacityGuideAct1")}</li>
+          <li>{t("rmCapacityGuideAct2")}</li>
+          <li>{t("rmCapacityGuideAct3")}</li>
+        </ul>
+
+        <p className="fc-split-heading">{t("rmStyleGuideTitle")}</p>
+        <ul>
+          <li>{t("rmStyleGuide1")}</li>
+          <li>{t("rmStyleGuide2")}</li>
+          <li>{t("rmStyleGuide3")}</li>
+          <li>{t("rmStyleGuide4")}</li>
+        </ul>
+
+        <p className="rm-hint">
+          {t("fcSplitSources")}:{" "}
+          <a
+            href="https://docs.netapp.com/us-en/ontap/data-protection/manage-snapshot-copy-reserve-concept.html"
+            target="_blank"
+            rel="noreferrer"
+          >
+            ONTAP docs
+          </a>
+          {" / "}
+          <a
+            href="https://kb.netapp.com/Advice_and_Troubleshooting/Data_Storage_Software/ONTAP_OS/What_can_impact_snapshot_size_and_cause_snapshot_spill"
+            target="_blank"
+            rel="noreferrer"
+          >
+            NetApp KB
+          </a>
+          {" / "}
+          <a
+            href="https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/managing-volumes.html"
+            target="_blank"
+            rel="noreferrer"
+          >
+            AWS docs
+          </a>
+        </p>
+      </details>
+
       <table className="admin-table">
         <thead>
           <tr>
             <th>{t("rmVolumeName")}</th>
+            <th>{t("rmVolumeStyle")}</th>
             <th>{t("rmVolumeSize")}</th>
             <th>{t("rmUsed")}</th>
             <th>{t("rmState")}</th>
@@ -344,13 +454,48 @@ export function VolumeManager() {
                 {vol.name}
                 {vol.snaplockType !== "non_snaplock" && <span className="badge-lock">🔒</span>}
               </td>
+              <td>
+                <span className={`vol-style-badge style-${vol.style}`} title={t(styleTitleKey(vol.style))}>
+                  {styleLabel(vol.style)}
+                </span>
+                {/* A FlexCache's cache side is a FlexGroup whether or not anybody chose
+                    that, and it does not support snapshots, quotas, qtrees or cloning.
+                    Saying only "FlexGroup" here would invite those operations. */}
+                {vol.flexcacheEndpointType === "cache" && (
+                  <small className="vol-style-note">{t("rmFlexcacheCacheNote")}</small>
+                )}
+                {vol.flexcacheEndpointType === "origin" && (
+                  <small className="vol-style-note">{t("rmFlexcacheOriginNote")}</small>
+                )}
+              </td>
               <td>{vol.sizeGiB} GiB</td>
               <td>
-                <div className="capacity-bar">
-                  <div className="capacity-fill" style={{ width: `${Math.min(vol.usedPercent, 100)}%`,
-                    backgroundColor: vol.usedPercent > 90 ? "#ef4444" : vol.usedPercent > 75 ? "#f97316" : "#22c55e" }} />
+                {/* Two segments: live data, then snapshot data that has outgrown the
+                    reserve. They add up to the percentage beside them, because ONTAP's
+                    `used` counts the spill and not the snapshot data still inside the
+                    reserve. */}
+                <div className="capacity-bar" title={t("rmCapacityBarTitle")}>
+                  <div className="capacity-fill" style={{ width: `${Math.min(afsPercent(vol), 100)}%`,
+                    backgroundColor: vol.usedPercent > 90 ? "var(--color-error)" : vol.usedPercent > 75 ? "var(--color-warning)" : "var(--color-success)" }} />
+                  {vol.snapshotSpillBytes > 0 && (
+                    <div className="capacity-fill capacity-fill-snapshot"
+                      style={{ width: `${Math.min(spillPercent(vol), 100)}%` }} />
+                  )}
                 </div>
                 <span className="capacity-label">{vol.usedPercent}%</span>
+                <div className="capacity-breakdown">
+                  <span>{t("rmAfsUsed")}: {capacityLabel(vol.afsUsedBytes)}</span>
+                  <span>
+                    {t("rmSnapshotUsed")}: {capacityLabel(vol.snapshotUsedBytes)}
+                    {vol.snapshotReservePercent > 0 &&
+                      ` / ${t("rmSnapshotReserve")} ${vol.snapshotReservePercent}%`}
+                  </span>
+                  {vol.snapshotSpillBytes > 0 && (
+                    <span className="capacity-spill" title={t("rmSnapshotSpillTitle")}>
+                      ⚠ {t("rmSnapshotSpill")}: {capacityLabel(vol.snapshotSpillBytes)}
+                    </span>
+                  )}
+                </div>
               </td>
               <td><span className={`state-badge state-${vol.state}`}>{vol.state}</span></td>
               <td>{vol.securityStyle}</td>
@@ -371,7 +516,7 @@ export function VolumeManager() {
             </tr>
           ))}
           {volumes.length === 0 && (
-            <tr><td colSpan={6} className="empty-state">{t("rmNoVolumes")}</td></tr>
+            <tr><td colSpan={7} className="empty-state">{t("rmNoVolumes")}</td></tr>
           )}
         </tbody>
       </table>

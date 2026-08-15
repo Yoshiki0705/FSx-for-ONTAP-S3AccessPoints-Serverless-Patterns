@@ -3996,19 +3996,71 @@ button[type="submit"]:disabled {
   height: 6px;
   background: var(--color-border);
   border-radius: 3px;
-  display: inline-block;
+  /* inline-flex, not inline-block: the volume bar carries two segments now, the
+     active file system and the snapshot data that has outgrown its reserve. A
+     single-segment bar behaves the same under it. */
+  display: inline-flex;
   vertical-align: middle;
   margin-right: 0.4rem;
+  overflow: hidden;
 }
 
 .capacity-fill {
   height: 100%;
-  border-radius: 3px;
   transition: width 0.3s ease;
+}
+
+/* Snapshot data past the reserve. It occupies the volume exactly as live data
+   does, so it belongs in the same bar -- but deleting files does not shrink it,
+   which is why it is not the same colour. */
+.capacity-fill-snapshot {
+  background: var(--color-warning);
 }
 
 .capacity-label {
   font-size: 0.75rem;
+  color: var(--color-text-secondary);
+}
+
+/* The numbers behind the bar. A volume can be mostly snapshots, and the bar alone
+   cannot say so. */
+.capacity-breakdown {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  margin-top: 0.2rem;
+  font-size: 0.7rem;
+  color: var(--color-text-secondary);
+  line-height: 1.4;
+}
+
+.capacity-spill {
+  color: var(--color-warning-text);
+  font-weight: 600;
+}
+
+/* FlexVol / FlexGroup. Which one a volume is decides what can be done to it, and
+   until now the table did not say. */
+.vol-style-badge {
+  display: inline-block;
+  padding: 0.1rem 0.4rem;
+  border-radius: 4px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  border: 1px solid var(--color-border);
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+}
+
+.vol-style-badge.style-flexgroup {
+  border-color: var(--color-primary);
+  color: var(--color-primary-text);
+}
+
+.vol-style-note {
+  display: block;
+  margin-top: 0.15rem;
+  font-size: 0.68rem;
   color: var(--color-text-secondary);
 }
 
@@ -6850,7 +6902,11 @@ button[type="submit"]:disabled {
    warning: splitting is a normal decision with consequences, not an error state. The two
    lists inside are long, so the type is set smaller than body and the line height is
    opened up -- what makes this readable is spacing, not colour. */
-.fc-split-guide {
+/* Collapsible explanation attached to a panel. `.rm-guide` shares it: the volume
+   panel needs the same shape for capacity behaviour and volume styles, and a second
+   copy of these rules would be a second thing to keep in step with the dark theme. */
+.fc-split-guide,
+.rm-guide {
   margin: 0.5rem 0 1rem;
   padding: 0.6rem 0.75rem;
   font-size: 0.82rem;
@@ -6859,17 +6915,20 @@ button[type="submit"]:disabled {
   border-radius: 6px;
   background: var(--color-surface-subtle);
 }
-.fc-split-guide summary {
+.fc-split-guide summary,
+.rm-guide summary {
   cursor: pointer;
   font-weight: 600;
   color: var(--color-text);
 }
-.fc-split-guide .fc-split-heading {
+.fc-split-guide .fc-split-heading,
+.rm-guide .fc-split-heading {
   margin: 0.75rem 0 0.25rem;
   font-weight: 600;
   color: var(--color-text);
 }
-.fc-split-guide ul {
+.fc-split-guide ul,
+.rm-guide ul {
   margin: 0;
   padding-left: 1.2rem;
   display: flex;
@@ -6877,6 +6936,7 @@ button[type="submit"]:disabled {
   gap: 0.35rem;
   line-height: 1.6;
 }
-.fc-split-guide .rm-hint {
+.fc-split-guide .rm-hint,
+.rm-guide .rm-hint {
   margin-top: 0.6rem;
 }

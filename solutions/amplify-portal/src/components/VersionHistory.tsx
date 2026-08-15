@@ -296,6 +296,19 @@ export function VersionHistory({ mode = "browse" }: { mode?: "browse" | "diff" }
         </div>
       )}
 
+      {/* What a snapshot costs, on the screen that lists them. A snapshot is the reason
+          a volume's capacity does not fall when files are deleted, and one that a
+          FlexClone was made from cannot be removed at all -- neither fact is visible
+          from a row that shows a name and a timestamp. */}
+      <details className="rm-guide">
+        <summary>{t("snapshotsCapacityGuideTitle")}</summary>
+        <ul>
+          <li>{t("snapshotsCapacityGuide1")}</li>
+          <li>{t("snapshotsCapacityGuide2")}</li>
+          <li>{t("snapshotsCapacityGuide3")}</li>
+        </ul>
+      </details>
+
       {error && <OntapFailureNotice error={error} {...failureDiagnosis(queryError)} />}
 
       {!error && snapshots.length === 0 && !loading && (
