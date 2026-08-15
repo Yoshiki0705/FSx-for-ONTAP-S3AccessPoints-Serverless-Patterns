@@ -286,6 +286,25 @@ whether the origin is the internet or a VPC. It does not advertise every access 
 account, so configuration still decides visibility. If
 `fsx:DescribeS3AccessPointAttachments` is denied, the aliases are returned with
 `lifecycle: UNKNOWN` rather than withheld, so a missing read permission does not stop browsing.
+
+### Check that groups and access points still agree
+
+`groupApMapping` is hand-written, and until now **nothing reported when it stopped matching the
+resources**: replace an access point and the old alias stays in the file, pointing a group at
+something that no longer exists. The mapping remains authoritative; a check reports where it
+disagrees with the access point tags.
+
+```bash
+make check-group-ap-tags                        # default tag key is PortalGroup
+make check-group-ap-tags ARGS="--tag-key Team"
+```
+
+An access point tagged `PortalGroup=engineering` is expected under `engineering` in the mapping. Four
+findings are reported: a group with no tagged access point, an alias that moved to a different one, a
+tag the mapping does not mention, and two access points claiming the same tag value (the mapping can
+name only one). **A missing tag breaks nothing**: configuration still decides visibility and the
+check only says so. Exit code 2 means `portal-config.ts` is absent, which is distinct from
+agreement.
 | `stateMachineArn` | portal-config.ts + start-processing.js | Process tab workflow trigger |
 | `groupApMapping` | portal-config.ts | Per-team file isolation (My Files) |
 | `bedrockKbId` | portal-config.ts | Full-text semantic search |

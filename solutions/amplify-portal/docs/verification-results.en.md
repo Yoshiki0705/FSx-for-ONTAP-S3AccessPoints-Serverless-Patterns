@@ -142,6 +142,20 @@ file system is back to its original 10.
 > date components (Y/M/W/D) and `updateSnaplockRetention` takes `days`. ONTAP accepts seconds, so
 > the limitation is the UI's. **A user cannot currently choose a retention below one day.**
 
+### Re-confirmed 2026-08-16 (C4 re-run after the Lambda redeploys)
+
+C4 was run again after several Lambda redeployments. Same conclusions as before, plus
+confirmation that the lock-display fix holds for a snapshot locked on a live system. The
+`zz_lock_probe` volume (20 GiB) used for it was deleted; nothing is left standing.
+
+| Check | Result |
+|-------|--------|
+| Enabling without the acknowledgement | Refused (`acknowledgeIrreversible=true is required...`) |
+| State after enabling | `snapshotLockingEnabled: true`, `lockedSnapshotCount` rises to 1 |
+| `retentionDays=1` expiry | `expiryTime: 2026-08-16T18:54:28Z`, roughly 24 hours out |
+| **Listing shows the lock** | Reading the same snapshot back through the listing returns `isTamperproof: true` with `snaplockExpiryTime` set. The bug where the listing never read `expiry_time`, and so always reported a locked snapshot as unlocked, is fixed against a live lock |
+| A locked snapshot and volume deletion | The delete succeeded and the volume was gone 20 seconds later, as before |
+
 ### Still unconfirmed (SnapLock)
 
 | Item | Why |
