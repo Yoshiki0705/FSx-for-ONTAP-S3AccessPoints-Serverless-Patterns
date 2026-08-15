@@ -125,6 +125,8 @@ SVM レベルの監査ログ指定を ONTAP REST API で解除すると、AWS AP
 
 本記述時点でも、当該ボリュームは `AuditLogVolume: False` かつ削除不可の状態です。
 
+> **AWS の回答（2026-08）**: 2 つのフィールドは別のことを表しており、不一致ではないとの説明でした。`AuditLogVolume` が現在の指定を表す正しいフィールドで、`snaplock.is_audit_log` は「その SVM の監査ログボリュームとして過去に一度でも設定された」ことを示す履歴マークです。削除をブロックしているのは指定ではなく、監査ログファイルに作成時から適用されている保持期間で、これは指定を解除しても残ります。削除できない理由は `DescribeVolumes` の `LifecycleTransitionReason.Message` に `Cannot delete the volume because it contains unexpired log files.` として出ています。したがって下記の要望 1 は成立せず、要望 2 のうち「理由を返すこと」は既に満たされていることになります。残る差は、満了日時（ONTAP の Expiry Time）が AWS API から見えないことです。
+
 ### 本プロジェクトへの影響
 
 AWS API のみを参照する利用者には「監査ログボリュームではなくなった = 削除できるはず」と読めます。実際の削除可否は変わっていないため、原因の切り分けが AWS API 層では完結せず、ONTAP REST API へのアクセスが必要になります。ポータルのような AWS API ベースのツールでは、この不一致をそのまま画面に出すと誤解を生みます。
@@ -145,8 +147,13 @@ AWS API のみを参照する利用者には「監査ログボリュームでは
 | 保持期間満了前に監査ログボリュームを削除できるか | **不可**（社内確認済み） |
 | ファイルシステムの削除ロックのみ解除できるか | **不可** |
 | アカウント閉鎖以外の経路が存在するか | **存在しない**（明示回答） |
+| 満了前削除の代わりに請求面の配慮を検討できるか | 対象リソースの削除完了が前提。満了後にファイルシステムを削除し、改めて「アカウントおよび請求サポート」窓口へ相談する。配慮が可能である保証はない |
+| SL-1（作成時の警告・確認パラメータ） | 追加予定の言及なし。コンソールの「監査ログボリューム」欄と `CreateVolume` / `UpdateVolume` のドキュメントに 6 か月の最低保持期間が既に記載されている、との回答 |
+| SL-2（削除拒否の理由を返すこと） | 既に `DescribeVolumes` の `LifecycleTransitionReason.Message` で返っている（`Cannot delete the volume because it contains unexpired log files.`） |
+| SL-3（`AuditLogVolume` と `is_audit_log` の一致） | 仕様どおりで不一致ではない。前者は現在の指定、後者は過去に指定されたことを示す履歴マーク |
 
-SL-1〜SL-3 に相当する要望およびその他の確認事項は、継続確認中です。
+満了日時の確認方法として、管理エンドポイントへ SSH して
+`volume snaplock show -vserver <svm> -volume <volume> -instance` の Expiry Time を見る手順が案内されました。この値は AWS API からは取得できません。
 
 ---
 

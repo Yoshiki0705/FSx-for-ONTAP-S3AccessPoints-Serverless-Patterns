@@ -245,11 +245,12 @@ def test_a_snaplock_volume_is_reported_as_blocking_deletion() -> None:
     [item] = pc.collect_fsx(session, "ap-northeast-1", PRICES)
     assert item.irreversible is not None
     assert "zz_verify_auditlog" in item.irreversible
-    # The FSx flag is reported with its source named, because it is not the
-    # authority: ONTAP's read-only snaplock.is_audit_log is, and clearing the
-    # SVM-level designation does not change it.
+    # The FSx flag is reported with its source named, because it states the
+    # current designation and not whether the volume can be deleted: the
+    # retention already applied to the log files outlives the designation.
     assert "AuditLogVolume(FSx API)=True" in item.irreversible
-    assert "snaplock.is_audit_log" in item.irreversible
+    assert "snaplock.expiry_time" in item.irreversible
+    assert "LifecycleTransitionReason" in item.irreversible
 
 
 def test_privileged_delete_permanently_disabled_is_called_terminal() -> None:
