@@ -2883,13 +2883,17 @@ button[type="submit"]:disabled {
   }
 
   /* The two action buttons side by side are what pushed the last column over the
-     edge, so they stack. The cell is a flex row, so the direction is what decides
-     this: `display: block` on the buttons does nothing, because a flex container
-     blockifies its children and keeps them on the main axis regardless. */
-  .snapshot-table .action-cell {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 0.25rem;
+     edge, so they stack. This used to set `flex-direction` because the cell was a
+     flex container; it is a table cell again, so the buttons are blocked out and
+     spaced by margin instead. */
+  .snapshot-table .action-cell > * {
+    display: block;
+    width: 100%;
+  }
+
+  .snapshot-table .action-cell > * + * {
+    margin-left: 0;
+    margin-top: 0.25rem;
   }
 
   /* Without this the column collapses to about 50px and "ロック" wraps one character
@@ -3907,8 +3911,16 @@ button[type="submit"]:disabled {
   /* The cell is a flex row, so the direction is what stacks the buttons. `display:
      block` on them does nothing -- a flex container blockifies its children and keeps
      them on the main axis regardless. Same reasoning as .snapshot-table above. */
-  .admin-table .action-cell {
-    flex-direction: column;
+  /* Stacked on a narrow screen. The cell is no longer a flex container, so the
+     direction that used to do this is gone and the buttons stack as blocks. */
+  .admin-table .action-cell > * {
+    display: block;
+    width: 100%;
+  }
+
+  .admin-table .action-cell > * + * {
+    margin-left: 0;
+    margin-top: 0.25rem;
   }
 
   /* The dropdown keeps its 250px minimum. Relaxing it here looked necessary and was
@@ -4233,9 +4245,20 @@ button[type="submit"]:disabled {
   font-size: 0.9rem;
 }
 
+/* Buttons in a row, in a cell that is still a table cell.
+   This was `display: flex` with a gap, which takes the td out of the table's own
+   layout: it stops stretching to the row's height and stops inheriting the
+   `vertical-align: middle` that `.admin-table td` sets. Neither showed while every
+   row was a single line. The volume table's rows now carry a capacity breakdown
+   under the bar, and the cell came out 18px shorter than its row -- so the buttons
+   sat level with the row above and the row separator stopped short of the last
+   column. Spacing by margin keeps the cell a cell. */
 .action-cell {
-  display: flex;
-  gap: 0.3rem;
+  white-space: nowrap;
+}
+
+.action-cell > * + * {
+  margin-left: 0.3rem;
 }
 
 /* Badge */

@@ -141,7 +141,10 @@ export function VolumeRebalancePanel({ volumeUuid, volumeName, onClose }: Props)
   const { t } = useTranslation();
   const [actionError, setActionError] = useState<string | null>(null);
   const [result, setResult] = useState<string | null>(null);
-  const [maxRuntime, setMaxRuntime] = useState("PT6H");
+  // The first of MAX_RUNTIMES, not ONTAP's own default of 6 hours. Reordering that
+  // list left this behind, so the select still opened on the one value that cannot
+  // start on a volume with a snapshot policy.
+  const [maxRuntime, setMaxRuntime] = useState(MAX_RUNTIMES[0]);
 
   const {
     data: status,

@@ -1,6 +1,6 @@
 # Admin Resource Management — Demo Guide
 
-🌐 **Language / 言語**: [日本語](../ja/admin-resource-management-demo.md) | **English**
+🌐 **Language / 言語**: [日本語](../ja/admin-resource-management-demo.md) | English
 
 **English** | [日本語](../ja/admin-resource-management-demo.md)
 
@@ -420,10 +420,11 @@ aws ec2 describe-route-tables \
 |------|-------------|
 | `docs/screenshots/file-explorer-directories.png` | File Explorer showing directories from FSx for ONTAP S3 AP |
 | `docs/screenshots/resource-management-overview.png` | Resource Management card grid (Storage/Access/Protection/AI categories, full page) |
-| `docs/screenshots/volumes-panel.png` | Volume Manager with live ONTAP data |
+| `docs/screenshots/volumes-panel.png` | Volume Manager with live ONTAP data: volume style (FlexVol / FlexGroup), the capacity split into live data, snapshots and spill past the reserve, and the rebalance action on FlexGroup rows |
+| `docs/screenshots/volume-rebalance-panel.png` | FlexGroup capacity rebalance: state, imbalance for the volume and for the worst constituent, per-constituent usage, and the runtime bounded at 30 minutes |
 | `docs/screenshots/storage-efficiency-panel.png` | Storage Efficiency dashboard |
 | `docs/screenshots/08-arp-admin-panel-en.png` | ARP/AI Administration with 9 volumes |
-| `docs/screenshots/snapshots-version-history.png` | Snapshot Version History with hourly/weekly/daily |
+| `docs/screenshots/snapshots-version-history.png` | Snapshot Version History with hourly/weekly/daily, the SVM-to-volume scope bar, and the note on how snapshots hold capacity |
 | `docs/screenshots/snapshot-lock-confirm.png` | Snapshot lock confirmation dialog (retention input, and that the action cannot be undone) |
 | `docs/screenshots/quota-manager.png` | Quota Manager with volume selector and rule table |
 | `docs/screenshots/quota-create-form.png` | Quota creation form (type, target, limits) |
@@ -434,7 +435,7 @@ aws ec2 describe-route-tables \
 | `solutions/amplify-portal/docs/screenshots/lock-panel-s3objectlock.png` | Lock panel S3 Object Lock tab (ONTAP-independent) |
 | `solutions/amplify-portal/docs/screenshots/qtree-volume-selector.png` | Qtree panel with VolumeSelector search/filter |
 | `docs/screenshots/vscan-setup-guidance.png` | Vscan 5-step setup guidance with 6-vendor comparison table |
-| `docs/screenshots/flexclone-manager.png` | FlexClone panel with clone list and create form |
+| `docs/screenshots/flexclone-manager.png` | FlexClone panel with clone list and create form, plus the guidance on when to split and what a clone costs the parent |
 | `docs/screenshots/snapmirror-status.png` | SnapMirror relationships with state badges, RPO warning, action buttons |
 | `docs/screenshots/snapmirror-create-form.png` | SnapMirror create form (SVM peer selection, prerequisites, preview of the relationship that will be created) |
 | `docs/screenshots/local-user-manager.png` | Local User Manager (Users tab with CRUD operations) |
