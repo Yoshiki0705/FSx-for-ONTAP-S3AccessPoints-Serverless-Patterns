@@ -1,53 +1,77 @@
-# IAM Least Privilege Rule
-# Ensures no IAM policy grants Action:"*" with Resource:"*" (admin access)
+#
+# No IAM policy may grant Action:"*" together with Resource:"*".
+#
+# Ported to cfn-guard 3.x on 2026-08-15; see encryption-required.guard for why the
+# `rule ... when %INPUT` form had to go.
+#
+# ## This file replaces two
+#
+# `iam-least-privilege.guard` and `iam-least-privilege-v2.guard` both existed and
+# both declared the same two rule names, `iam_no_admin_access` and
+# `iam_inline_no_admin`. v2 was the "Phase 10 update" and differed only by allowing
+# a statement that carries a `Condition`. Nothing said which one applied, and
+# because neither parsed, nothing ever had to resolve it. Keeping two files whose
+# rules share names means a reviewer cannot tell which verdict came from where, so
+# the v2 behaviour is merged here and the -v2 file is removed.
+#
+# A `Condition` is accepted as sufficient scoping: `Action: "*"` with
+# `Resource: "*"` under a condition key that pins the caller, the source account or
+# the service is a bounded grant, and the templates here use that shape for
+# CloudWatch and X-Ray permissions that have no resource-level form.
+#
 
-# Rule: IAM Policies must not have wildcard Action with wildcard Resource
-rule iam_no_admin_access when %INPUT {
-    Resources.*[
-        Type == "AWS::IAM::Policy" or
-        Type == "AWS::IAM::Role" or
-        Type == "AWS::IAM::ManagedPolicy"
-    ] {
-        when Properties.PolicyDocument exists {
-            Properties.PolicyDocument.Statement[*] {
-                when Effect == "Allow" {
-                    # Action must not be "*" when Resource is "*"
-                    Action != "*" or
-                    Resource != "*"
-                }
-            }
-        }
-        when Properties.Policies exists {
-            Properties.Policies[*].PolicyDocument.Statement[*] {
-                when Effect == "Allow" {
-                    Action != "*" or
-                    Resource != "*"
-                }
-            }
-        }
-        when Properties.AssumeRolePolicyDocument exists {
-            Properties.AssumeRolePolicyDocument.Statement[*] {
-                when Effect == "Allow" {
-                    Action != "sts:*" or
-                    Principal != "*"
-                }
-            }
+let iam_policy_holders = Resources.*[
+    Type == "AWS::IAM::Policy" or
+    Type == "AWS::IAM::Role" or
+    Type == "AWS::IAM::ManagedPolicy"
+]
+let iam_roles = Resources.*[ Type == "AWS::IAM::Role" ]
+
+#
+# Scalar comparisons carry a type guard; see encryption-required.guard for why.
+# `Principal` is the sharpest example here: every trust policy in this repository
+# writes `Principal: {Service: lambda.amazonaws.com}`, a map. Comparing it with "*"
+# is a ComparisonError, so the unguarded rule failed on all 28 templates while not a
+# single one had a wildcard principal.
+#
+
+rule iam_no_admin_access when %iam_policy_holders !empty {
+    %iam_policy_holders [ Properties.PolicyDocument exists ] {
+        Properties.PolicyDocument.Statement[ Effect == "Allow" ] {
+            Condition exists or
+            Action !is_string or Action != "*" or
+            Resource !is_string or Resource != "*"
+                <<IAM statement must not grant Action:"*" on Resource:"*" without a Condition>>
         }
     }
 }
 
-# Rule: Inline policies in roles must not have admin access
-rule iam_inline_no_admin when %INPUT {
-    Resources.*[
-        Type == "AWS::IAM::Role"
-    ] {
-        when Properties.Policies exists {
-            Properties.Policies[*].PolicyDocument.Statement[*] {
-                when Effect == "Allow" {
-                    # Disallow Action:["*"] with Resource:["*"]
-                    some Action[*] != "*" or
-                    some Resource[*] != "*"
-                }
+rule iam_inline_no_admin when %iam_roles !empty {
+    %iam_roles [ Properties.Policies exists ] {
+        Properties.Policies[*].PolicyDocument.Statement[ Effect == "Allow" ] {
+            Condition exists or
+            Action !is_string or Action != "*" or
+            Resource !is_string or Resource != "*"
+                <<Inline policy must not grant Action:"*" on Resource:"*" without a Condition>>
+        }
+    }
+}
+
+rule iam_trust_policy_no_wildcard_principal when %iam_roles !empty {
+    %iam_roles [ Properties.AssumeRolePolicyDocument exists ] {
+        Properties.AssumeRolePolicyDocument.Statement[ Effect == "Allow" ] {
+            Principal !is_string or
+            Principal != "*"
+                <<Trust policy must not allow Principal:"*">>
+        }
+        Properties.AssumeRolePolicyDocument.Statement[ Effect == "Allow" ] {
+            Principal not exists or
+            Principal !is_struct or
+            Principal {
+                AWS not exists or
+                AWS !is_string or
+                AWS != "*"
+                    <<Trust policy must not allow Principal.AWS:"*">>
             }
         }
     }

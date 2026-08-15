@@ -78,6 +78,8 @@ Resources:
       KeySchema:
         - AttributeName: cache_id
           KeyType: HASH
+      SSESpecification:
+        SSEEnabled: true
       Tags:
         - Key: Project
           Value: fsxn-s3ap-serverless-patterns

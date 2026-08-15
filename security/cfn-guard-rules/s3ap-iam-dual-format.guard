@@ -1,94 +1,80 @@
-# S3 Access Point IAM Dual-Format Rule (Phase 9 Theme D)
 #
-# Ensures that IAM policies granting s3:PutObject to S3 Access Points
-# include BOTH the alias format (arn:aws:s3:::*-ext-s3alias/*) AND the
-# full ARN format (arn:aws:s3:<region>:<account>:accesspoint/<name>/object/*).
+# Bounded IAM grants for the services these patterns touch.
 #
-# Background: FSxN S3AP evaluates IAM against both ARN forms. Alias-only
-# policies silently fail at runtime (AccessDenied) but pass cfn-lint.
-# This rule catches the alias-only pattern at commit time.
+# Ported to cfn-guard 3.x on 2026-08-15; see encryption-required.guard for why the
+# `rule ... when %INPUT` form had to go.
 #
-# See: docs/operational-runbooks/deployment-troubleshooting.md (Failure Mode 6)
-# See: scripts/check_s3ap_iam_patterns.py (Python equivalent)
+# ## What was removed, and why
+#
+# The file previously opened with `s3ap_putobject_dual_format`, whose own comment
+# read "This is a heuristic check — the Python validator is more precise". Its body
+# reduced to `this != "*"`, which does not test the dual-format property at all: the
+# actual requirement is that a policy granting s3:PutObject through an FSx for ONTAP
+# S3 AP names BOTH the `-ext-s3alias` form and the `accesspoint/<name>/object/*` ARN
+# form, because an alias-only policy passes cfn-lint and then denies every request at
+# runtime. That is a relationship between two strings in a list, which is what
+# `scripts/check_s3ap_iam_patterns.py` checks — and that script already runs as a
+# blocking step in validators.yml. A second, weaker implementation of a rule that is
+# already enforced is not extra coverage; it is a place for the two to disagree.
+#
+# `lambda_s3_access_bounded` used a bare `FAIL` keyword, which is not cfn-guard
+# syntax. Rewritten as what it meant: s3:* must not be granted.
+#
 
-# Rule: S3 PutObject statements targeting S3AP must have conditional resource
-rule s3ap_putobject_dual_format when %INPUT {
-    Resources.*[
-        Type == "AWS::IAM::Role"
-    ] {
-        when Properties.Policies exists {
-            Properties.Policies[*].PolicyDocument.Statement[*] {
-                when Effect == "Allow" {
-                    when some Action[*] in ["s3:PutObject", "s3:PutObject*"] {
-                        # If Resource contains s3alias pattern, it should also
-                        # have an accesspoint ARN form (via !If or direct)
-                        # This is a heuristic check — the Python validator is more precise
-                        when some Resource[*] {
-                            this != "*"
-                        }
-                    }
-                }
+let iam_roles = Resources.*[ Type == "AWS::IAM::Role" ]
+
+#
+# Scalar comparisons carry a type guard; see encryption-required.guard for why. Here
+# it matters because a correctly scoped resource is normally written
+# `!Sub "arn:aws:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:${Name}*"`,
+# which is a map. The unguarded form reported 20 of those as "must be scoped to a
+# secret ARN, not *" — a rule failing on exactly the shape it was asking for.
+#
+
+rule s3_actions_not_wildcard when %iam_roles !empty {
+    %iam_roles [ Properties.Policies exists ] {
+        Properties.Policies[*].PolicyDocument.Statement[ Effect == "Allow" ] {
+            Action[*] {
+                this !is_string or
+                this != "s3:*"
+                    <<s3:* is too broad; grant the specific S3 actions the handler uses>>
             }
         }
     }
 }
 
-# Rule: Lambda execution roles must have bounded S3 access
-rule lambda_s3_access_bounded when %INPUT {
-    Resources.*[
-        Type == "AWS::IAM::Role"
-    ] {
-        when Properties.Policies exists {
-            Properties.Policies[*].PolicyDocument.Statement[*] {
-                when Effect == "Allow" {
-                    when some Action[*] in ["s3:*"] {
-                        # s3:* is too broad — should be specific actions
-                        FAIL
-                    }
-                }
+rule dynamodb_access_table_scoped when %iam_roles !empty {
+    %iam_roles [ Properties.Policies exists ] {
+        Properties.Policies[*].PolicyDocument.Statement[
+            Effect == "Allow"
+            some Action[*] in [
+                "dynamodb:PutItem",
+                "dynamodb:GetItem",
+                "dynamodb:Query",
+                "dynamodb:Scan",
+                "dynamodb:UpdateItem",
+                "dynamodb:DeleteItem"
+            ]
+        ] {
+            Resource[*] {
+                this !is_string or
+                this != "*"
+                    <<DynamoDB data actions must be scoped to a table ARN, not "*">>
             }
         }
     }
 }
 
-# Rule: DynamoDB access must be table-scoped (not account-wide)
-rule dynamodb_table_scoped when %INPUT {
-    Resources.*[
-        Type == "AWS::IAM::Role"
-    ] {
-        when Properties.Policies exists {
-            Properties.Policies[*].PolicyDocument.Statement[*] {
-                when Effect == "Allow" {
-                    when some Action[*] in [
-                        "dynamodb:PutItem",
-                        "dynamodb:GetItem",
-                        "dynamodb:Query",
-                        "dynamodb:Scan",
-                        "dynamodb:UpdateItem",
-                        "dynamodb:DeleteItem"
-                    ] {
-                        # Resource must not be "*"
-                        some Resource[*] != "*"
-                    }
-                }
-            }
-        }
-    }
-}
-
-# Rule: Secrets Manager access must be secret-scoped
-rule secrets_manager_scoped when %INPUT {
-    Resources.*[
-        Type == "AWS::IAM::Role"
-    ] {
-        when Properties.Policies exists {
-            Properties.Policies[*].PolicyDocument.Statement[*] {
-                when Effect == "Allow" {
-                    when some Action[*] in ["secretsmanager:GetSecretValue"] {
-                        # Resource must reference a specific secret ARN
-                        some Resource[*] != "*"
-                    }
-                }
+rule secrets_manager_access_scoped when %iam_roles !empty {
+    %iam_roles [ Properties.Policies exists ] {
+        Properties.Policies[*].PolicyDocument.Statement[
+            Effect == "Allow"
+            some Action[*] in ["secretsmanager:GetSecretValue"]
+        ] {
+            Resource[*] {
+                this !is_string or
+                this != "*"
+                    <<secretsmanager:GetSecretValue must be scoped to a secret ARN, not "*">>
             }
         }
     }
