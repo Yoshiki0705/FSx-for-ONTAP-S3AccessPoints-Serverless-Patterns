@@ -698,6 +698,7 @@ arpResponseSweepNote: "Les blocages se lèvent d'eux-mêmes à l'échéance. Pou
   filesLoadedScopeNote:
     "Le tri et le filtre s'appliquent aux {n} entrées chargées jusqu'ici. Choisissez « Charger plus de fichiers » pour inclure le reste.",
   filesSelectAll: "Sélectionner tous les fichiers affichés",
+  filesSelectAllUnavailable: "Aucun fichier sélectionnable dans ce dossier. Les dossiers ne sont pas inclus dans la sélection groupée",
   filesSelectRow: "Sélectionner {name}",
   rowMenuLabel: "Autres actions pour {name}",
   filesSelectedCount: "{n} sélectionné(s)",
@@ -801,6 +802,9 @@ arpResponseSweepNote: "Les blocages se lèvent d'eux-mêmes à l'échéance. Pou
   flUploadLinkFailed: "Impossible de creer le lien",
   flUploadDestination: "Clé de destination",
   flUploadLinkWarning: "L'URL est l'identifiant. Jusqu'à son expiration, toute personne qui la détient peut écrire sur cette clé.",
+  flUploadLinkSelfHint: "Pour téléverser vous-même, utilisez l'onglet Téléverser plutôt que ce lien. Il envoie le fichier directement depuis le navigateur.",
+  flUploadLinkCurlLabel: "La commande à transmettre au destinataire",
+  flUploadLinkPutOnly: "Cette URL sert à téléverser avec PUT. L'ouvrir dans un navigateur envoie un GET et échoue avec SignatureDoesNotMatch, car la signature couvre la méthode HTTP.",
   flCopy: "Copier",
   flCopied: "Copié",
   filesLoadMore: "Charger plus de fichiers",

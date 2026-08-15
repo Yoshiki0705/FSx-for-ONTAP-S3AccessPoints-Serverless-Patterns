@@ -718,6 +718,7 @@ arpResponseSweepNote: "ブロックは指定した期限が過ぎると自動で
   filesLoadedScopeNote:
     "並べ替えと絞り込みは、読み込み済みの {n} 件に対して適用されます。残りを含めるには「さらに読み込む」を押してください。",
   filesSelectAll: "表示中のファイルをすべて選択",
+  filesSelectAllUnavailable: "このフォルダーには選択できるファイルがありません。フォルダーは一括選択の対象外です",
   filesSelectRow: "{name} を選択",
   rowMenuLabel: "{name} のその他の操作",
   filesSelectedCount: "{n} 件を選択中",
@@ -825,6 +826,9 @@ arpResponseSweepNote: "ブロックは指定した期限が過ぎると自動で
   flUploadLinkFailed: "リンクの発行に失敗しました",
   flUploadDestination: "保存先キー",
   flUploadLinkWarning: "この URL 自体が認証情報です。期限まで、URL を持つ誰でもこのキーに書き込めます。",
+  flUploadLinkSelfHint: "自分でアップロードするなら、このリンクではなく「アップロード」タブを使ってください。ブラウザから直接送れます。",
+  flUploadLinkCurlLabel: "渡す相手に伝えるコマンド",
+  flUploadLinkPutOnly: "この URL は PUT でのアップロード専用です。ブラウザで開くと GET になり、SignatureDoesNotMatch で失敗します（署名は HTTP メソッドを含むため）。",
   flCopy: "コピー",
   flCopied: "コピーしました",
   filesLoadMore: "さらに読み込む",

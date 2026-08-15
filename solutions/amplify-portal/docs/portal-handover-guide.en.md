@@ -25,6 +25,12 @@ Once the deployment is done, continue at the [handover checklist](#handover-chec
 
 ## The three things a user needs
 
+> **Before handing over the AI processing tab**: the Step Functions ARN in the resolver is still
+> a placeholder. Handed over unconfigured, a user can press a button that fails. Either configure
+> it or hide the tab by setting `processingEnabled` to `false` in `src/portal-settings.ts`. The
+> steps are in [Extending the portal UI](CONTRIBUTING-UI.en.md#replacing-the-ai-processing-jobs-with-your-own).
+
+
 That is all. **Anything more brings your infrastructure concerns into their hands.**
 
 | What | Where it comes from | How to share it |

@@ -698,6 +698,7 @@ arpResponseSweepNote: "Los bloqueos se levantan por sí solos al vencer el plazo
   filesLoadedScopeNote:
     "La ordenación y el filtro se aplican a las {n} entradas cargadas hasta ahora. Elija «Cargar más archivos» para incluir el resto.",
   filesSelectAll: "Seleccionar todos los archivos mostrados",
+  filesSelectAllUnavailable: "No hay archivos seleccionables en esta carpeta. Las carpetas no se incluyen en la selección múltiple",
   filesSelectRow: "Seleccionar {name}",
   rowMenuLabel: "Más acciones para {name}",
   filesSelectedCount: "{n} seleccionados",
@@ -801,6 +802,9 @@ arpResponseSweepNote: "Los bloqueos se levantan por sí solos al vencer el plazo
   flUploadLinkFailed: "No se pudo crear el enlace",
   flUploadDestination: "Clave de destino",
   flUploadLinkWarning: "La URL es la credencial. Hasta que caduque, cualquiera que la tenga puede escribir en esta clave.",
+  flUploadLinkSelfHint: "Para subir algo usted mismo, use la pestaña Subir en lugar de este enlace. Envía el archivo directamente desde el navegador.",
+  flUploadLinkCurlLabel: "El comando para dar al destinatario",
+  flUploadLinkPutOnly: "Esta URL sirve para subir con PUT. Abrirla en un navegador envía GET y falla con SignatureDoesNotMatch, porque la firma incluye el método HTTP.",
   flCopy: "Copiar",
   flCopied: "Copiado",
   filesLoadMore: "Cargar más archivos",

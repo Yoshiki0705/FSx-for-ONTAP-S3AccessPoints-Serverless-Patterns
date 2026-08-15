@@ -245,6 +245,30 @@ describe("UploadLink", () => {
     expect(screen.getByText(/the credential/i)).toBeTruthy();
   });
 
+  it("says the URL needs PUT, and offers the command", async () => {
+    // Measured on an iPhone: the link looked tappable, Safari sent GET, and S3
+    // answered SignatureDoesNotMatch because the method is part of the signature.
+    // Handing over a link with no way to use it is the defect this pins.
+    fileMutate.mockResolvedValue({
+      uploadUrl: "https://example.invalid/put?X-Amz-Signature=abc",
+      destinationKey: "inbox/a.txt",
+    });
+    open();
+    fireEvent.click(screen.getByText("Create link"));
+    await waitFor(() => expect(screen.getByText("inbox/a.txt")).toBeTruthy());
+    expect(screen.getByText(/SignatureDoesNotMatch/)).toBeTruthy();
+    const command = screen.getByLabelText("The command to give the recipient") as HTMLTextAreaElement;
+    expect(command.value).toContain("curl -X PUT --upload-file");
+    expect(command.value).toContain("https://example.invalid/put?X-Amz-Signature=abc");
+  });
+
+  it("points someone uploading their own file at the Upload tab", async () => {
+    fileMutate.mockResolvedValue({ uploadUrl: "https://example.invalid/put" });
+    open();
+    fireEvent.click(screen.getByText("Create link"));
+    await waitFor(() => expect(screen.getByText(/Upload tab/)).toBeTruthy());
+  });
+
   it("reports a failure instead of showing an empty link box", async () => {
     fileMutate.mockResolvedValue({ uploadUrl: "", error: "NoSuchBucket" });
     open();

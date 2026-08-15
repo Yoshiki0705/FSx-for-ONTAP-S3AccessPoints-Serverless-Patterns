@@ -697,6 +697,7 @@ arpResponseSweepNote: "封鎖會在設定的期限過後自動解除。如需提
   filesLoadedScopeNote:
     "排序與篩選僅套用於已載入的 {n} 個項目。若要納入其餘項目，請選擇「載入更多」。",
   filesSelectAll: "選取列出的所有檔案",
+  filesSelectAllUnavailable: "此資料夾中沒有可選取的檔案。資料夾不列入批次選取",
   filesSelectRow: "選取 {name}",
   rowMenuLabel: "{name} 的更多操作",
   filesSelectedCount: "已選取 {n} 個",
@@ -800,6 +801,9 @@ arpResponseSweepNote: "封鎖會在設定的期限過後自動解除。如需提
   flUploadLinkFailed: "無法產生連結",
   flUploadDestination: "儲存索引鍵",
   flUploadLinkWarning: "該 URL 本身就是憑證。在到期之前，任何持有它的人都可以寫入此索引鍵。",
+  flUploadLinkSelfHint: "如果是自己上傳，請使用「上傳」標籤頁而非此連結。它可直接從瀏覽器傳送檔案。",
+  flUploadLinkCurlLabel: "提供給接收者的命令",
+  flUploadLinkPutOnly: "此 URL 僅用於 PUT 上傳。在瀏覽器中開啟會送出 GET，並因 SignatureDoesNotMatch 失敗（簽章包含 HTTP 方法）。",
   flCopy: "複製",
   flCopied: "已複製",
   filesLoadMore: "載入更多",
