@@ -221,6 +221,20 @@ aws cloudformation describe-stacks \
 |-----------|--------|------|
 | `s3ApAlias` | portal-config.ts | Lambda のファイルアクセスと、`amplify_outputs.json` 経由の Upload タブ |
 | `region` | portal-config.ts | FSx for ONTAP リージョンと一致させる |
+
+### エイリアスは API から引く
+
+`s3ApAlias` を手で書き写すと、削除済みや `MISCONFIGURED` の Access Point でも設定ファイル上は
+正しく見えます。インベントリは FSx API から derive してください。
+
+```bash
+make discover-s3ap ARGS="--lifecycle AVAILABLE --format table"   # 使える AP の一覧
+make discover-s3ap ARGS="--require-alias <alias>"                # 無ければ non-zero
+REGIONS="ap-northeast-1 us-east-1" make discover-s3ap            # 複数リージョン
+make discover-s3ap ARGS="--accounts 111111111111 222222222222 --role-name <role>"
+```
+
+`--require-alias` はデプロイ前のゲートとして使えます（`AVAILABLE` でなければ失敗）。
 | `stateMachineArn` | portal-config.ts + start-processing.js | Process タブのワークフロー起動 |
 | `groupApMapping` | portal-config.ts | チームごとのファイル分離 (My Files) |
 | `bedrockKbId` | portal-config.ts | 全文セマンティック検索 |
