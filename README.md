@@ -22,18 +22,28 @@
 | やりたいこと | ガイド | 所要時間 |
 |---|---|---|
 | FSx なしでデモを試す | [Demo Mode Guide](docs/demo-mode-guide.md) | 5 分 |
-| Web ポータルでファイルを閲覧・処理 | [File Portal UI (Amplify / Nextcloud)](docs/file-portal-amplify-gen2.md) | 10 分 |
-| ポータルのデモを見る (スクリーンショット付き) | [Portal Demo Guide (JA)](docs/ja/portal-demo-guide.md) / [EN](docs/en/portal-demo-guide.md) | 5 分 |
-| ポータルを**使う**（サインイン〜閲覧〜スマートフォン） | [ユーザーガイド (JA)](docs/ja/portal-user-guide.md) / [EN](docs/en/portal-user-guide.md) | 10 分 |
-| ポータルのセクション構成を理解する | [Portal Sections Guide](solutions/amplify-portal/docs/portal-tabs-guide.md) | 5 分 |
 | 構成図を見る（ライト / ダーク） | [構成図インデックス](docs/architecture-diagrams.md) | 5 分 |
-| ポータルを自環境にデプロイ | [Deployment Runbook (JA)](docs/ja/portal-deployment-runbook.md) / [EN](docs/en/portal-deployment-runbook.md) | 15 分 |
 | S3 AP のディレクトリ設計・性能特性を理解する | [設計考慮事項](docs/design-considerations.md) | 15 分 |
+| ストレージ方式を比較する（S3 AP / EFS / NFS / DataSync）| [代替アーキテクチャ比較](docs/comparison-alternatives.md) | 15 分 |
 | パターンを AWS にデプロイ | [Deployment Guide](docs/guides/deployment-guide.md) | 30 分 |
 | 自分のワークロードに合うパターンを探す | [Pattern Selection Guide](docs/pattern-selection-guide.md) | 15 分 |
 | コストを見積もる | [Cost Calculator](docs/cost-calculator.md) | 5 分 |
-| CDK 品質ゲートを理解する | [IaC Governance Patterns](solutions/amplify-portal/docs/iac-governance-patterns.md) | 10 分 |
 | ハンズオン Lab 環境を構築 | [Hands-on Lab IaC](infrastructure/handson-lab/) | 60 分 |
+
+### ファイルポータル — 役割ごとの入口
+
+Web UI からファイルを閲覧・処理する場合の動線です。まず
+[UI の選択肢（Amplify Gen2 / Nextcloud / カスタム）](docs/file-portal-amplify-gen2.md)
+で方式を決め、決まっている場合は以下から自分の役割のガイドに進んでください。
+
+| 役割 | 最初に読むもの | 続き | 所要時間 |
+|---|---|---|---|
+| **利用者**（招待されて使う） | [ユーザーガイド (JA)](docs/ja/portal-user-guide.md) / [EN](docs/en/portal-user-guide.md) | [スマートフォン](docs/ja/portal-mobile-guide.md) / [早見表](docs/ja/portal-quick-reference.md) / [セクション構成](solutions/amplify-portal/docs/portal-tabs-guide.md) / [アクセシビリティ](docs/ja/portal-accessibility.md) | 10 分 |
+| **インフラ担当**（デプロイ・運用） | [Getting Started](solutions/amplify-portal/docs/GETTING-STARTED.md) | [Deployment Runbook (JA)](docs/ja/portal-deployment-runbook.md) / [EN](docs/en/portal-deployment-runbook.md) / [ONTAP 接続](solutions/amplify-portal/docs/ONTAP-CONNECTION-GUIDE.md) / [認可設計](docs/ja/portal-authorization-design.md) / [引き渡し](solutions/amplify-portal/docs/portal-handover-guide.md) / [クリーンアップ](solutions/amplify-portal/docs/cleanup-guide.md) | 15 分 |
+| **Amplify 開発者**（拡張する） | [ポータル UI を拡張する](solutions/amplify-portal/docs/CONTRIBUTING-UI.md) | [Gen2 + CDK 設計判断](solutions/amplify-portal/docs/amplify-gen2-cdk-patterns.md) / [実装ガイド](solutions/amplify-portal/docs/IMPLEMENTATION.md) / [CDK 品質ゲート](docs/agent/portal-cdk-quality-gates.md) / [8 言語 UI](docs/agent/portal-i18n.md) | 20 分 |
+| **評価する**（まず動きを見たい） | [Portal Demo Guide (JA)](docs/ja/portal-demo-guide.md) / [EN](docs/en/portal-demo-guide.md) | [検証結果（どこまで実機確認済みか）](solutions/amplify-portal/docs/verification-results.md) / [PoC から本番へ](docs/ja/portal-poc-to-production.md) | 5 分 |
+
+> 全ガイドの一覧は [ファイルポータル UI の選択肢 — 読者別の実装ガイド](docs/file-portal-amplify-gen2.md#すでに-amplify-gen2-に決めている場合--読者別の実装ガイド) にあります。
 
 ---
 
@@ -224,6 +234,12 @@ graph TB
 
 ### 記事シリーズ
 
+dev.to では**シリーズを 2 つに分けています**。読者が違うためです（S3 AP はデータ処理パイプラインを
+設計する人、ファイルポータルは利用者に Web UI を渡す人）。シリーズ名とタグの規約は
+[dev.to シリーズ構成とタグ付けの規約](docs/devto-series-cleanup-guide.md) にあります。
+
+#### シリーズ 1: FSx for ONTAP S3 Access Points（サーバーレスパターン集）
+
 | トピック | 日本語 | English |
 |---|---|---|
 | 42 パターンの出発点 | [はてなブログ](https://hakobiya.hatenablog.com/entry/fsxn-s3ap-serverless-part1-introduction) | [dev.to](https://dev.to/aws-builders/industry-specific-serverless-automation-patterns-with-fsx-for-ontap-s3-access-points-3e0a) |
@@ -232,6 +248,21 @@ graph TB
 | FPolicy Event-Driven | [はてなブログ](https://hakobiya.hatenablog.com/entry/fsxn-s3ap-serverless-part4-event-driven-fpolicy) | [dev.to](https://dev.to/aws-builders/fpolicy-event-driven-pipeline-multi-account-stacksets-and-cost-optimization-fsx-for-ontap-s3-5bd6) |
 | 28 業種パターン | [はてなブログ](https://hakobiya.hatenablog.com/entry/fsxn-s3ap-serverless-part5-field-ready-28-patterns) | [dev.to](https://dev.to/aws-builders/from-serverless-patterns-to-field-ready-reference-architecture-fsx-for-ontap-s3-access-points-dhj) |
 | GenAI 統合 | [はてなブログ](https://hakobiya.hatenablog.com/entry/fsxn-s3ap-serverless-part6-genai-42-patterns) | — |
+
+#### シリーズ 2: FSx for ONTAP File Portal（ファイルポータル）
+
+**準備中です。** 記事構成と出典の対応は
+[ファイルポータル記事シリーズの計画 (JA)](docs/devto-file-portal-series.md) /
+[EN](docs/devto-file-portal-series.en.md) にあります。
+
+| # | 予定テーマ | 出典となるリポジトリ内ドキュメント |
+|---|---|---|
+| 1 | そもそも作る必要があるか（Transfer Family web apps / Nextcloud / Amplify Gen2 / 作らない選択） | [UI の選択肢](docs/file-portal-amplify-gen2.md) |
+| 2 | 認可を二層で設計する（Cognito × S3 AP × ONTAP） | [認可設計](docs/ja/portal-authorization-design.md) |
+| 3 | Amplify Gen2 で踏んだ制約 | [Gen2 + CDK 設計判断](solutions/amplify-portal/docs/amplify-gen2-cdk-patterns.md) |
+| 4 | 8 言語 UI を型で守る | [ポータル i18n](docs/agent/portal-i18n.md) |
+| 5 | 一度も動いたことがなかった機能をどう見つけたか | [検証結果](solutions/amplify-portal/docs/verification-results.md) |
+| 6 | 利用者に渡す（スマートフォン・引き渡し・一次対応） | [引き渡しガイド](solutions/amplify-portal/docs/portal-handover-guide.md) |
 
 ### 関連リポジトリ
 
