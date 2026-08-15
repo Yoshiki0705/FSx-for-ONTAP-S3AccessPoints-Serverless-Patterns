@@ -217,6 +217,12 @@ Measured: `createUploadLink` presigned with SigV2 against the global endpoint, s
 `signature_version="s3v4"` and `addressing_style="virtual"`; the PUT returns HTTP 200 after it. An object
 over 5 GiB cannot be created here at all -- it needs a multipart upload, which is the very call that fails
 on this Access Point -- so a size check before the copy was added instead, refusing with the reason.
+Deleting a clone and then its parent stops at `has one or more clones`. The cause is ONTAP's volume
+recovery queue (12 hours by default), and `purge` needs diag privilege, so on FSx the only option is to
+wait. **Splitting the clone before deleting it frees the parent immediately**, confirmed A/B, so a split
+belongs in the plan whenever the parent is going to be deleted. What a split does, and when to choose it,
+is now in the FlexClone panel's collapsed guide.
+
 Also found: **a folder cannot be deleted from the UI** (`trashFile` refuses folders and `deleteFileForever`
 is confined to `.trash/`).
 

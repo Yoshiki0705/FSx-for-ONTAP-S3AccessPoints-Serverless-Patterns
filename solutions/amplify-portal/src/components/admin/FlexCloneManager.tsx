@@ -73,6 +73,14 @@ export function FlexCloneManager() {
     } catch (e) { setError(e instanceof Error ? e.message : "Create failed"); }
   };
 
+  /**
+   * Split a clone from its parent.
+   *
+   * The confirmation carries the two things a reader needs at that moment: it cannot be
+   * undone, and on this platform it does not cost the parent's capacity. The second half
+   * used to say the opposite -- "consumes full capacity" -- which is pre-9.4 behaviour and
+   * was measured false here: a 10 GiB clone used 348 KB after its split.
+   */
   const handleSplit = async (clone: FlexClone) => {
     if (!window.confirm(t("fcSplitConfirm").replace("{name}", clone.name))) return;
     try {
@@ -94,6 +102,53 @@ export function FlexCloneManager() {
         <span className="lu-count">{clones.length} FlexClones</span>
         <button className="rm-btn-primary" onClick={() => setShowCreate(true)}>+ {t("fcCreateClone")}</button>
       </div>
+
+      {/* Split is one button and several consequences, and the button alone cannot carry
+          them: it is irreversible, its cost depends on the platform, its progress figure
+          is counted in a unit that surprises people, and whether to press it at all
+          depends on what happens to the parent later. Collapsed, so the panel stays a
+          panel, and open is one click for anyone who has not done this before. */}
+      <details className="fc-split-guide">
+        <summary>{t("fcSplitGuideTitle")}</summary>
+
+        <p className="fc-split-heading">{t("fcSplitWhenTitle")}</p>
+        <ul>
+          <li>{t("fcSplitWhen1")}</li>
+          <li>{t("fcSplitWhen2")}</li>
+          <li>{t("fcSplitWhen3")}</li>
+          <li>{t("fcSplitWhen4")}</li>
+        </ul>
+
+        <p className="fc-split-heading">{t("fcSplitFactsTitle")}</p>
+        <ul>
+          <li>{t("fcSplitFact1")}</li>
+          <li>{t("fcSplitFact2")}</li>
+          <li>{t("fcSplitFact3")}</li>
+          <li>{t("fcSplitFact4")}</li>
+          <li>{t("fcSplitFact5")}</li>
+          <li>{t("fcSplitFact6")}</li>
+        </ul>
+
+        <p className="rm-hint">{t("fcSplitEstimateNote")}</p>
+        <p className="rm-hint">
+          {t("fcSplitSources")}:{" "}
+          <a
+            href="https://docs.netapp.com/us-en/ontap/volumes/split-flexclone-from-parent-task.html"
+            target="_blank"
+            rel="noreferrer"
+          >
+            ONTAP docs
+          </a>
+          {" / "}
+          <a
+            href="https://kb.netapp.com/on-prem/ontap/Ontap_OS/OS-KBs/FAQ_-_FlexClone_split"
+            target="_blank"
+            rel="noreferrer"
+          >
+            NetApp KB
+          </a>
+        </p>
+      </details>
 
       {showCreate && (
         <div className="rm-create-form">
@@ -142,7 +197,9 @@ export function FlexCloneManager() {
                 </td>
                 <td>
                   {!c.splitInitiated && (
-                    <button className="rm-btn-sm" onClick={() => handleSplit(c)}>{t("fcSplit")}</button>
+                    <button className="rm-btn-sm" onClick={() => handleSplit(c)} title={t("fcSplitTitle")}>
+                      {t("fcSplit")}
+                    </button>
                   )}
                 </td>
               </tr>

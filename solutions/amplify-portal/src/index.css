@@ -6845,3 +6845,38 @@ button[type="submit"]:disabled {
 .rm-svm-label {
   white-space: nowrap;
 }
+
+/* The FlexClone split guide. Collapsed by default and styled as guidance rather than as a
+   warning: splitting is a normal decision with consequences, not an error state. The two
+   lists inside are long, so the type is set smaller than body and the line height is
+   opened up -- what makes this readable is spacing, not colour. */
+.fc-split-guide {
+  margin: 0.5rem 0 1rem;
+  padding: 0.6rem 0.75rem;
+  font-size: 0.82rem;
+  color: var(--color-text-secondary);
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  background: var(--color-surface-subtle);
+}
+.fc-split-guide summary {
+  cursor: pointer;
+  font-weight: 600;
+  color: var(--color-text);
+}
+.fc-split-guide .fc-split-heading {
+  margin: 0.75rem 0 0.25rem;
+  font-weight: 600;
+  color: var(--color-text);
+}
+.fc-split-guide ul {
+  margin: 0;
+  padding-left: 1.2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  line-height: 1.6;
+}
+.fc-split-guide .rm-hint {
+  margin-top: 0.6rem;
+}
