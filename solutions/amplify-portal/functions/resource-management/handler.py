@@ -181,11 +181,14 @@ def _seg(value) -> str:
 _IRREVERSIBLE_ACK_FIELD = "acknowledgeIrreversible"
 
 
-def _require_ack(event, effect: str):
+def _require_ack(event, effect: str, reference: str = "docs/tamperproof-snapshot-design.md"):
     """None when the caller acknowledged the lock, or an error response.
 
     `effect` is the consequence in one sentence, so a caller reading only the
-    error learns what the flag is agreeing to.
+    error learns what the flag is agreeing to. `reference` is where to read more:
+    the default suits the SnapLock and snapshot-locking callers, and an operation
+    whose consequence is documented elsewhere says so rather than sending the
+    reader to a page about a different lock.
     """
     if event.get(_IRREVERSIBLE_ACK_FIELD) is True:
         return None
@@ -193,7 +196,7 @@ def _require_ack(event, effect: str):
         "success": False,
         "error": (
             f"{_IRREVERSIBLE_ACK_FIELD}=true is required for this operation. {effect} "
-            "See docs/tamperproof-snapshot-design.md before setting it."
+            f"See {reference} before setting it."
         ),
     }
 
@@ -698,6 +701,12 @@ def _dispatch(event, context):
             return _delete_volume(http, headers, event, user_id)
         elif action == "bringVolumeOnline":
             return _bring_volume_online(http, headers, event, user_id)
+        elif action == "getVolumeRebalance":
+            return _get_volume_rebalance(http, headers, event)
+        elif action == "startVolumeRebalance":
+            return _start_volume_rebalance(http, headers, event, user_id)
+        elif action == "stopVolumeRebalance":
+            return _stop_volume_rebalance(http, headers, event, user_id)
 
         # --- Export Policy Management ---
         elif action == "listExportPolicies":
@@ -1370,15 +1379,22 @@ def _create_volume(http, headers, event, user_id):
 
     # Resolved last, so a request that is going to be refused -- an unacknowledged
     # SnapLock volume, a bad name -- is refused without asking the cluster anything.
-    # A FlexGroup is spread across aggregates by ONTAP, so naming one is neither needed
-    # nor wanted; a FlexVol has to land somewhere specific.
-    if style == "flexvol" and not aggregates:
+    #
+    # Both styles need an aggregate named, for different reasons. A FlexVol has to land
+    # somewhere specific. A FlexGroup is placed automatically in principle, and that
+    # placement cannot succeed on FSx for ONTAP: the aggregate is a FabricPool
+    # aggregate, and auto-selection excludes it. Measured -- a FlexGroup with no
+    # aggregate named failed with "No suitable storage can be found for the specified
+    # requirements. Aggregates not matching FabricPool requirements: aggr1", while the
+    # same request naming aggr1 succeeded. So FlexGroup creation had never worked here
+    # either, in the same way the FlexVol path had not until the aggregate lookup was
+    # added.
+    if not aggregates:
         resolved, error = _first_aggregate(http, headers)
         if error:
             return {"success": False, "error": error}
         aggregates = [resolved]
-    if aggregates:
-        body["aggregates"] = [{"name": a} for a in aggregates]
+    body["aggregates"] = [{"name": a} for a in aggregates]
 
     data = _ontap_request(http, headers, "POST", "/storage/volumes", body=body)
     if data.get("_error"):
@@ -1536,6 +1552,255 @@ def _bring_volume_online(http, headers, event, user_id):
         return {"success": False, "error": message}
 
     logger.info(f"Volume brought online: {vol_name or vol_uuid} by {user_id}")
+    return {"success": True, "error": None}
+
+
+# ─── FlexGroup Capacity Rebalancing ───────────────────────────────────────────
+#
+# A FlexGroup spreads one namespace over several constituents, and files land on a
+# constituent by hash rather than by how full it is. Over time some constituents fill
+# faster than others, and a FlexGroup reports "no space" when any single constituent
+# is full, however much room the others have. Rebalancing moves files between
+# constituents to even that out. ONTAP 9.12.1 and later, FlexGroup volumes only.
+#
+# ONTAP REST: PATCH /api/storage/volumes/{uuid} with a `rebalancing` object.
+# `rebalancing.state` is "starting" or "stopping" on the way in, and reads back as
+# not_running / starting / rebalancing / paused / stopping / unknown.
+
+# ISO-8601 duration, hours and minutes included: P3D, PT6H, PT30M. ONTAP rejects a
+# malformed one, but it does so after the caller has been told the operation started.
+_ISO_DURATION = re.compile(r"^P(?!$)(\d+Y)?(\d+M)?(\d+D)?(T(?=\d)(\d+H)?(\d+M)?(\d+S)?)?$")
+
+# What a start does that cannot be taken back. Rebalancing enables granular data on
+# the volume, and neither file rebalancing nor advanced capacity balancing can be
+# switched off afterwards -- the only documented way back is restoring a snapshot
+# taken before it was enabled (ONTAP docs). It costs nothing and locks no deletion,
+# so it is not in the same class as SnapLock, but it is still a one-way door and the
+# caller says so explicitly.
+_REBALANCE_ACK_EFFECT = (
+    "Starting a capacity rebalance enables granular data on the volume. Granular data "
+    "and capacity balancing cannot be disabled afterwards; the only documented way back "
+    "is to restore a snapshot taken before they were enabled."
+)
+
+
+def _read_volume_rebalancing(http, headers, vol_uuid):
+    """(record, error) for a volume, with its rebalancing sub-object.
+
+    `rebalancing` has to be asked for by name. Without it the volume comes back with
+    no mention of rebalancing at all, which is indistinguishable from a volume that
+    is not rebalancing.
+    """
+    data = _ontap_request(
+        http,
+        headers,
+        "GET",
+        f"/storage/volumes/{vol_uuid}"
+        # `is_object_store` and `granular_data` are asked for because they decide
+        # whether rebalancing is available at all, and `constituents` because the
+        # count is what a FlexGroup is. All are explicit-request fields.
+        f"?fields=name,style,rebalancing,is_object_store,granular_data,granular_data_mode,constituents.name",
+    )
+    if data.get("_error"):
+        return None, data["_message"]
+    return data, None
+
+
+def _get_volume_rebalance(http, headers, event):
+    """Capacity rebalancing state for one volume.
+
+    Answers for a FlexVol too, rather than failing: the panel needs to be able to say
+    why the operation is not offered, and "not a FlexGroup" is the answer most of the
+    time.
+    """
+    vol_uuid = event.get("volumeUuid", "")
+    if not vol_uuid:
+        return {"error": "volumeUuid is required"}
+
+    record, error = _read_volume_rebalancing(http, headers, vol_uuid)
+    if error:
+        return {"rebalance": None, "supported": False, "error": error}
+
+    style = record.get("style", "")
+    if style != "flexgroup":
+        return {
+            "rebalance": None,
+            "supported": False,
+            # The style, not a sentence: the caller renders this and needs it
+            # translated, and there is no third case to distinguish.
+            "reason": "NOT_FLEXGROUP",
+            "volumeStyle": style,
+            "error": None,
+        }
+
+    # An ONTAP S3 bucket's backing volume is a FlexGroup, but capacity rebalancing is
+    # not supported on one: uneven use across constituents after an expansion is
+    # expected there, and only new objects land on the new constituents (NetApp KB).
+    # Reported separately from the style so the panel can say which of the two
+    # reasons applies.
+    if record.get("is_object_store"):
+        return {
+            "rebalance": None,
+            "supported": False,
+            "reason": "OBJECT_STORE",
+            "volumeStyle": style,
+            "constituentCount": len(record.get("constituents", [])),
+            "error": None,
+        }
+
+    rebalancing = record.get("rebalancing", {})
+    return {
+        # Whether ONTAP reported a `rebalancing` object at all. It is not the same
+        # answer as `state: "unknown"`, which ONTAP uses for a volume whose state it
+        # could not determine. An absent object means ONTAP is not tracking
+        # rebalancing for this volume. Measured on this file system with `fields=**`:
+        # neither FlexGroup here carries the object -- one is an ONTAP S3 backing
+        # volume, the other a FlexCache cache -- so a panel without this flag would
+        # read "unknown, 0% out of balance" and offer to start an operation ONTAP has
+        # not said it supports.
+        "reported": bool(rebalancing),
+        "granularData": bool(record.get("granular_data", False)),
+        "granularDataMode": record.get("granular_data_mode", ""),
+        "constituentCount": len(record.get("constituents", [])),
+        "rebalance": {
+            "state": rebalancing.get("state", "unknown"),
+            # How far out of balance the volume is now. `imbalancePercent` is the
+            # volume as a whole; a volume can look balanced while one constituent is
+            # nearly full, which is the case that actually returns ENOSPC, so the
+            # worst constituent is reported beside it.
+            "imbalancePercent": rebalancing.get("imbalance_percent", 0),
+            "imbalanceBytes": rebalancing.get("imbalance_size", 0),
+            "maxConstituentImbalancePercent": rebalancing.get("max_constituent_imbalance_percent", 0),
+            "targetUsedBytes": rebalancing.get("target_used", 0),
+            "usedForImbalanceBytes": rebalancing.get("used_for_imbalance", 0),
+            "dataMovedBytes": rebalancing.get("data_moved", 0),
+            "runtime": rebalancing.get("runtime", ""),
+            "startTime": rebalancing.get("start_time", ""),
+            "stopTime": rebalancing.get("stop_time", ""),
+            # The settings the *next* operation will use. ONTAP keeps them on the
+            # volume and a running operation ignores changes to them, so showing them
+            # as "current" would be wrong while one is running.
+            "maxRuntime": rebalancing.get("max_runtime", ""),
+            "minFileSizeBytes": rebalancing.get("min_file_size", 0),
+            "maxThresholdPercent": rebalancing.get("max_threshold", 0),
+            "minThresholdPercent": rebalancing.get("min_threshold", 0),
+            "maxFileMoves": rebalancing.get("max_file_moves", 0),
+            "excludeSnapshots": bool(rebalancing.get("exclude_snapshots", True)),
+            # ONTAP's own notes about why it is or is not moving files. Dropping
+            # these leaves an operation that reports "rebalancing" and moves nothing
+            # with no explanation anywhere.
+            "notices": [
+                notice.get("message", "") for notice in rebalancing.get("notices", []) if notice.get("message")
+            ],
+        },
+        "supported": True,
+        "volumeStyle": style,
+        "error": None,
+    }
+
+
+def _start_volume_rebalance(http, headers, event, user_id):
+    """Start, or schedule, a capacity rebalance on a FlexGroup volume."""
+    vol_uuid = event.get("volumeUuid", "")
+    if not vol_uuid:
+        return {"success": False, "error": "volumeUuid is required"}
+
+    record, error = _read_volume_rebalancing(http, headers, vol_uuid)
+    if error:
+        return {"success": False, "error": error}
+
+    # Refused here rather than by ONTAP. The style decides whether this operation
+    # exists at all, and a caller that got this far on a FlexVol has a bug worth
+    # naming instead of a 400 to interpret.
+    style = record.get("style", "")
+    if style != "flexgroup":
+        return {
+            "success": False,
+            "error": f"Capacity rebalancing applies to FlexGroup volumes only; this volume is a {style or 'unknown style'}.",
+        }
+
+    if record.get("is_object_store"):
+        return {
+            "success": False,
+            "error": (
+                "Capacity rebalancing is not supported on the backing volume of an ONTAP S3 bucket. "
+                "Uneven use across constituents is expected there; new objects fill the newer constituents."
+            ),
+        }
+
+    current = record.get("rebalancing", {}).get("state", "")
+    if current in ("starting", "rebalancing"):
+        return {
+            "success": False,
+            "error": f"A capacity rebalance is already {current} on this volume. Stop it before starting another.",
+        }
+
+    refused = _require_ack(event, _REBALANCE_ACK_EFFECT, reference="the ONTAP FlexGroup rebalancing documentation")
+    if refused:
+        return refused
+
+    rebalancing = {"state": "starting"}
+
+    # Optional. Without it ONTAP applies its own default of 6 hours, and a rebalance
+    # that has run out of time is not a failure -- it stops and leaves the volume
+    # better balanced than it found it.
+    max_runtime = event.get("maxRuntime")
+    if max_runtime:
+        if not _ISO_DURATION.match(str(max_runtime)):
+            return {
+                "success": False,
+                "error": f"maxRuntime must be an ISO-8601 duration such as PT6H or P1D, not {max_runtime!r}.",
+            }
+        rebalancing["max_runtime"] = str(max_runtime)
+
+    # Scheduling instead of starting now. ONTAP takes the same PATCH with a future
+    # start_time, and "stopping" is what cancels it.
+    start_time = event.get("startTime")
+    if start_time:
+        rebalancing["start_time"] = str(start_time)
+
+    data = _ontap_request(http, headers, "PATCH", f"/storage/volumes/{vol_uuid}", body={"rebalancing": rebalancing})
+    if data.get("_error"):
+        return {"success": False, "error": data["_message"]}
+
+    ok, message = _wait_for_job(http, headers, data.get("job", {}).get("uuid", ""))
+    if not ok:
+        return {"success": False, "error": message}
+
+    logger.info(
+        f"FlexGroup rebalance started: {record.get('name', vol_uuid)} "
+        f"max_runtime={rebalancing.get('max_runtime', 'default')} "
+        f"start_time={rebalancing.get('start_time', 'now')} by {user_id}"
+    )
+    return {"success": True, "scheduled": bool(start_time), "error": None}
+
+
+def _stop_volume_rebalance(http, headers, event, user_id):
+    """Stop a running capacity rebalance, or cancel a scheduled one.
+
+    Files already moved stay where they were moved to. Stopping is not a rollback and
+    leaves the volume part-way between its old layout and an even one, which is a
+    valid place to be.
+    """
+    vol_uuid = event.get("volumeUuid", "")
+    if not vol_uuid:
+        return {"success": False, "error": "volumeUuid is required"}
+
+    data = _ontap_request(
+        http,
+        headers,
+        "PATCH",
+        f"/storage/volumes/{vol_uuid}",
+        body={"rebalancing": {"state": "stopping"}},
+    )
+    if data.get("_error"):
+        return {"success": False, "error": data["_message"]}
+
+    ok, message = _wait_for_job(http, headers, data.get("job", {}).get("uuid", ""))
+    if not ok:
+        return {"success": False, "error": message}
+
+    logger.info(f"FlexGroup rebalance stopped: {event.get('volumeName', vol_uuid)} by {user_id}")
     return {"success": True, "error": None}
 
 

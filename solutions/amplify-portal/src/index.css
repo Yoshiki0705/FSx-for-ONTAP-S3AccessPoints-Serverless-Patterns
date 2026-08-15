@@ -4057,6 +4057,49 @@ button[type="submit"]:disabled {
   color: var(--color-primary-text);
 }
 
+/* FlexGroup capacity rebalancing, opened from a volume row. */
+.rebalance-panel {
+  margin: 0.5rem 0 1rem;
+  padding: 0.75rem 1rem;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  background: var(--color-surface);
+}
+
+.rebalance-panel h4 {
+  margin: 0;
+  font-size: 0.95rem;
+  color: var(--color-text);
+}
+
+.rebalance-status {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 0.5rem 1rem;
+  margin: 0.75rem 0;
+  font-size: 0.85rem;
+  color: var(--color-text);
+}
+
+.rebalance-label {
+  display: block;
+  font-size: 0.72rem;
+  color: var(--color-text-secondary);
+}
+
+.rebalance-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.5rem;
+}
+
+.rebalance-actions label {
+  font-size: 0.8rem;
+  color: var(--color-text-secondary);
+}
+
 .vol-style-note {
   display: block;
   margin-top: 0.15rem;

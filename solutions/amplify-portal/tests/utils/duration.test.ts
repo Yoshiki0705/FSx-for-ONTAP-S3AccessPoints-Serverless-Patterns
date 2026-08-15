@@ -79,10 +79,20 @@ describe("durationLabel", () => {
     expect(durationLabel("P7D", tEn)).toBe("7 days");
   });
 
+  it("labels hours, which the rebalance runtimes are counted in", () => {
+    // The fallback below is why this was needed: the FlexGroup rebalance select
+    // offered ONTAP's own default as the string "PT6H".
+    expect(durationLabel("PT6H", tEn)).toBe("6 hours");
+    expect(durationLabel("PT1H", tEn)).toBe("1 hour");
+    expect(durationLabel("PT6H", t)).toBe("6時間");
+  });
+
   it("returns an unrecognised period unchanged rather than blank", () => {
     // A new period showing as "P42Y" is visible; showing as "" is not.
     expect(durationLabel("P42Y", tEn)).toBe("P42Y");
     expect(durationLabel("", tEn)).toBe("");
+    // Minutes are not offered anywhere, so they stay in the fallback.
+    expect(durationLabel("PT30M", tEn)).toBe("PT30M");
   });
 });
 

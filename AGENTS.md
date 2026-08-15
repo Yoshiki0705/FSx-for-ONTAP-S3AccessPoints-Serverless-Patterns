@@ -27,6 +27,7 @@ optimization).
 | 作業 | 参照先 |
 |---|---|
 | CloudFormation / SAM を書く・デプロイが失敗した | [pitfalls-cfn-sam](docs/agent/pitfalls-cfn-sam.md) |
+| FlexGroup を作る・容量の偏りを直す・型ごとの差を調べる | [pitfalls-flexgroup](docs/agent/pitfalls-flexgroup.md) |
 | S3 AP / ONTAP API を扱う・AccessDenied を調べる | [pitfalls-s3ap-ontap](docs/agent/pitfalls-s3ap-ontap.md) |
 | FlexCache / SnapMirror / SVM ピアを作る・消す | [pitfalls-flexcache-snapmirror](docs/agent/pitfalls-flexcache-snapmirror.md) |
 | ボリューム / FlexCache の作成・削除、SMB ローカルユーザー | [pitfalls-volume-lifecycle](docs/agent/pitfalls-volume-lifecycle.md) |
