@@ -22,7 +22,8 @@
 	lint-python-format format-python lint-cfn drift drift-published security build-uc1 \
 	build-sap deploy-uc1 deploy-sap clean build-SharedLayer build-uc12 deploy-uc12 test-ops1 \
 	test-ops4 test-ops3 test-ops2 test-ops5 test-ops6 test-ops lint-ops lint-cfn-ops \
-	build-ops1 deploy-ops1 security-report security-cfn propose-cleanup ontap-preflight
+	build-ops1 deploy-ops1 security-report security-cfn propose-cleanup ontap-preflight \
+	discover-s3ap
 
 # Target Python version — must match the Lambda runtime in the SAM templates
 # (`Runtime: python3.13`). Declared once here so `install`, the interpreter
@@ -85,6 +86,7 @@ help:
 	@echo "  make drift         — Docs/code drift, i18n coverage, portal action contracts (offline)"
 	@echo "  make ontap-preflight — Name the broken link in the portal's ONTAP chain (calls AWS)"
 	@echo "  make propose-cleanup — Report the backlog, then what is standing and its cost (read-only)"
+	@echo "  make discover-s3ap — Inventory S3 access points from the FSx API (read-only)"
 	@echo "  make clean         — Remove build artifacts"
 	@echo ""
 	@echo "Python: $(PYTHON) (auto-detects .venv/bin/python; override: PYTHON=...)"
@@ -215,6 +217,14 @@ lint-cfn:
 # that changes state.
 propose-cleanup:
 	$(PYTHON) scripts/propose_cleanup.py $(ARGS)
+
+# Inventory of FSx for ONTAP S3 access points, derived from the FSx API rather
+# than a hand-kept list, so a deleted or MISCONFIGURED access point cannot keep
+# looking correct in a config file. Read-only. REGIONS overrides the default;
+# ARGS passes the rest (--accounts/--role-name, --lifecycle, --format,
+# --require-alias). See the module docstring for the cross-account form.
+discover-s3ap:
+	$(PYTHON) scripts/discover_s3_access_points.py --regions $(or $(REGIONS),ap-northeast-1) $(ARGS)
 
 # ============================================================
 # Drift checks
