@@ -1685,7 +1685,8 @@ arpResponseSweepNote: "ブロックは指定した期限が過ぎると自動で
   scCurrentDate: "現行の更新日時",
   scCloneDate: "クローンの更新日時",
   scNoFiles: "このパスにファイルがありません。",
-  sbNotConfigured: "Storage Browser が未設定です。次を設定してください:",
+  sbNotConfigured:
+    "Storage Browser が未設定です。amplify/portal-config.ts に s3ApAlias を設定し、npx ampx sandbox を再実行してください。",
   vhSnapshotFilterAria: "スナップショットの絞り込み",
   vhVolumeSnapshotsAria: "ボリュームのスナップショット",
   epRoSecurity: "読み取り専用アクセスの認証方式",

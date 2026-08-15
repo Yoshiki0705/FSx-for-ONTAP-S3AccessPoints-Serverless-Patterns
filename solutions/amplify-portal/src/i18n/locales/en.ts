@@ -1675,7 +1675,8 @@ arpResponseSweepNote: "Blocks lift themselves once their expiry passes. To lift 
   scCurrentDate: "Current date",
   scCloneDate: "Clone date",
   scNoFiles: "No files found in this path.",
-  sbNotConfigured: "Storage Browser is not configured. Set:",
+  sbNotConfigured:
+    "Storage Browser is not configured. Set s3ApAlias in amplify/portal-config.ts, then re-run npx ampx sandbox.",
   vhSnapshotFilterAria: "Snapshot filter",
   vhVolumeSnapshotsAria: "Volume snapshots",
   epRoSecurity: "Read-only access security",

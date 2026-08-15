@@ -591,7 +591,7 @@ This portal is protected by the following quality gates:
 | Tool | What it checks |
 |--------|------------|
 | cdk-nag (AwsSolutionsChecks) | Over-permissive IAM, encryption, log retention |
-| CDK harness tests (47 assertions) | Lambda count, runtime, environment variables |
+| CDK harness tests (49 assertions) | Lambda count, runtime, environment variables |
 | IAM Access Analyzer | SECURITY_WARNING detection in policies |
 | floci integration tests (9 tests) | S3 ListObjectsV2 + Delimiter behaviour |
 

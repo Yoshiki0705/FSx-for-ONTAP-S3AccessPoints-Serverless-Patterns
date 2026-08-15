@@ -1636,7 +1636,8 @@ arpResponseSweepNote: "阻止会在设定的期限过后自动解除。如需提
   scCurrentDate: "当前日期",
   scCloneDate: "克隆日期",
   scNoFiles: "此路径下没有文件。",
-  sbNotConfigured: "Storage Browser 未配置。请设置：",
+  sbNotConfigured:
+    "Storage Browser 未配置。请在 amplify/portal-config.ts 中设置 s3ApAlias，然后重新运行 npx ampx sandbox。",
   vhSnapshotFilterAria: "快照筛选",
   vhVolumeSnapshotsAria: "卷快照",
   epRoSecurity: "只读访问的安全方式",

@@ -299,12 +299,11 @@ Pour le développement sans FSx for ONTAP :
 1. Créer un S3 AP attaché à votre volume FSx for ONTAP (Internet-origin recommandé)
 2. Noter l'alias AP depuis la Console AWS → FSx → S3 Access Points
 3. Définir `s3ApAlias` dans `portal-config.ts`
-4. Définir `s3ApAlias` dans `src/portal-settings.ts` (même alias — nécessaire pour l'onglet Upload)
-5. Redéployer : `make sandbox`
+4. Redéployer : `make sandbox`
 
 > **Note** : Le Lambda ListFiles s'exécute hors VPC (pas de VpcConfig). C'est intentionnel — les S3 AP Internet-origin sont accessibles sans placement VPC. Si vous utilisez un AP VPC-origin, vous devez ajouter la configuration VPC au Lambda.
 
-> **Onglet Upload** : Storage Browser utilise les identifiants Cognito Identity Pool pour appeler l'API S3 directement depuis le navigateur. Les permissions IAM requises sont automatiquement provisionnées par `backend.ts` (pas de configuration IAM manuelle nécessaire). Assurez-vous que `s3ApAlias` est défini dans `portal-config.ts` et `src/portal-settings.ts`.
+> **Onglet Upload** : Storage Browser utilise les identifiants Cognito Identity Pool pour appeler l'API S3 directement depuis le navigateur. Les permissions IAM requises sont automatiquement provisionnées par `backend.ts` (pas de configuration IAM manuelle nécessaire). L'alias parvient au navigateur via `amplify_outputs.json`, que `npx ampx sandbox` génère depuis `portal-config.ts` : il n'est donc défini qu'à un seul endroit.
 
 > **Workflow onglet Upload** : Sélection de Location → cliquer sur l'alias S3 AP → navigation dans les dossiers → sélection de fichier pour prévisualisation/téléchargement, ou glisser-déposer pour upload. Les fichiers uploadés sont immédiatement accessibles via NFS/SMB (ONTAP strong consistency).
 
@@ -440,11 +439,11 @@ Différences clés par rapport au sandbox :
 
 ## Pièges connus — Apprentissages supplémentaires (2026-07-20)
 
-### 8. L'onglet Upload nécessite la configuration `portal-settings.ts`
+### 8. L'alias de l'onglet Upload provient des outputs générés
 
-L'onglet Upload (Storage Browser for S3) lit `region`, `accountId` et `s3ApAlias` depuis `src/portal-settings.ts` — PAS depuis `amplify/portal-config.ts`. C'est parce que Storage Browser s'exécute entièrement côté client (pas de Lambda) et nécessite un accès direct à l'API S3 via les identifiants Cognito Identity Pool.
+Storage Browser s'exécute côté client et appelle S3 directement : le navigateur a donc besoin de l'alias. Il le lisait auparavant dans `src/portal-settings.ts`, un fichier versionné — celui-ci contenait donc un alias fictif, c'est cet alias fictif qui était utilisé, et tous les envois échouaient sur un access point inexistant. `amplify/backend.ts` publie maintenant l'alias avec `backend.addOutput({ custom: ... })` dans `amplify_outputs.json`, que `src/lib/portalOutputs.ts` lit. `amplify/portal-config.ts` est le seul endroit où le définir.
 
-Si vous voyez "Network Error" dans l'onglet Upload, vérifiez que `portal-settings.ts` a le bon `s3ApAlias`.
+Si l'onglet Upload indique qu'il n'est pas configuré, définissez `s3ApAlias` dans `amplify/portal-config.ts` et relancez `npx ampx sandbox`. `amplify_outputs.json` est ignoré par git : un clone neuf n'a donc aucun alias.
 
 ### 9. ~~Le IAM du Cognito Identity Pool doit autoriser l'accès S3 AP~~ (configuré automatiquement)
 
@@ -517,7 +516,7 @@ amplify-portal/
 ├── src/
 │   ├── main.tsx                    # Amplify configure + wrapper Authenticator
 │   ├── App.tsx                     # Shell à 6 onglets (Files/Upload/Process/Results/History/Analytics)
-│   ├── portal-settings.ts         # Config frontend (onglet Upload, region, accountId)
+│   ├── portal-settings.ts         # Options d'interface (aucune valeur d'environnement)
 │   └── components/
 │       ├── FileExplorer.tsx        # Navigation répertoire + pagination + liens de partage
 │       ├── FilePreview.tsx         # Prévisualisation image via URL présignée + labels Rekognition

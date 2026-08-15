@@ -1637,7 +1637,8 @@ arpResponseSweepNote: "차단은 지정한 기한이 지나면 자동으로 해�
   scCurrentDate: "현재 날짜",
   scCloneDate: "클론 날짜",
   scNoFiles: "이 경로에 파일이 없습니다.",
-  sbNotConfigured: "Storage Browser가 설정되지 않았습니다. 다음을 설정하십시오:",
+  sbNotConfigured:
+    "Storage Browser가 설정되지 않았습니다. amplify/portal-config.ts에 s3ApAlias를 설정한 후 npx ampx sandbox를 다시 실행하십시오.",
   vhSnapshotFilterAria: "스냅샷 필터",
   vhVolumeSnapshotsAria: "볼륨 스냅샷",
   epRoSecurity: "읽기 전용 액세스 보안",

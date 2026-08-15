@@ -1642,7 +1642,8 @@ arpResponseSweepNote: "Les blocages se lèvent d'eux-mêmes à l'échéance. Pou
   scCurrentDate: "Date actuelle",
   scCloneDate: "Date du clone",
   scNoFiles: "Aucun fichier dans ce chemin.",
-  sbNotConfigured: "Storage Browser n'est pas configuré. Définissez :",
+  sbNotConfigured:
+    "Storage Browser n'est pas configuré. Définissez s3ApAlias dans amplify/portal-config.ts, puis relancez npx ampx sandbox.",
   vhSnapshotFilterAria: "Filtre d'instantanés",
   vhVolumeSnapshotsAria: "Instantanés du volume",
   epRoSecurity: "Sécurité de l'accès en lecture seule",
