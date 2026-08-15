@@ -19,8 +19,70 @@ Box や Google Drive のようなファイル管理体験（フォルダナビ�
 
 ---
 
+## すでに Amplify Gen2 に決めている場合 — 読者別の実装ガイド
+
+このドキュメントは**選び方**の資料です。このリポジトリに含まれる Amplify Gen2 実装を使うと
+決めている場合は、比較を読み通す必要はありません。自分の役割のガイドに進んでください。
+
+<details open>
+<summary><strong>👤 利用者（招待されてポータルを使う人）</strong></summary>
+
+| ガイド | 内容 |
+|---|---|
+| **[ユーザーガイド (JA)](./ja/portal-user-guide.md) / [EN](./en/portal-user-guide.md)** | サインイン、閲覧、プレビュー、ダウンロード。ko / zh-CN / zh-TW / fr / de / es もあり |
+| [スマートフォン利用ガイド (JA)](./ja/portal-mobile-guide.md) / [EN](./en/portal-mobile-guide.md) | 実機での利用手順 |
+| [クイックリファレンス (JA)](./ja/portal-quick-reference.md) / [EN](./en/portal-quick-reference.md) | 操作の早見表 |
+| [セクション構成ガイド](../solutions/amplify-portal/docs/portal-tabs-guide.md) | 画面がどう分かれているか |
+| [アクセシビリティ (JA)](./ja/portal-accessibility.md) / [EN](./en/portal-accessibility.md) | キーボード操作・支援技術の対応状況 |
+
+</details>
+
+<details>
+<summary><strong>🛠 インフラ担当（デプロイ・運用・引き渡し）</strong></summary>
+
+| ガイド | 内容 |
+|---|---|
+| **[Getting Started](../solutions/amplify-portal/docs/GETTING-STARTED.md)** | 最初の起動まで。`amplify_outputs.json` と実機到達性の前提 |
+| **[Deployment Runbook (JA)](./ja/portal-deployment-runbook.md) / [EN](./en/portal-deployment-runbook.md)** | デプロイ・削除の運用手順とトラブルシューティング |
+| [Portal README](../solutions/amplify-portal/README.md) | セットアップ全手順と既知の落とし穴 |
+| [ONTAP 接続ガイド](../solutions/amplify-portal/docs/ONTAP-CONNECTION-GUIDE.md) | 管理エンドポイントへの到達性、`make ontap-preflight` |
+| [認可設計 (JA)](./ja/portal-authorization-design.md) / [EN](./en/portal-authorization-design.md) | RBAC（Viewer / Contributor / Storage Admin / Auditor） |
+| [引き渡しと問い合わせ対応](../solutions/amplify-portal/docs/portal-handover-guide.md) | 利用者に渡すときの説明範囲と一次対応 |
+| [PoC から本番へ (JA)](./ja/portal-poc-to-production.md) / [EN](./en/portal-poc-to-production.md) | 段階的な本番化の判断点 |
+| [スケーリングガイド (JA)](./ja/portal-scaling-guide.md) / [EN](./en/portal-scaling-guide.md) | 利用者数・ファイル数が増えたときの設計 |
+| [コンプライアンスガイド (JA)](./ja/portal-compliance-guide.md) / [EN](./en/portal-compliance-guide.md) | 監査証跡とデータ分類の扱い |
+| [AppSync 認可のトラブルシューティング](../solutions/amplify-portal/docs/TROUBLESHOOTING-APPSYNC-AUTH.md) | 管理画面が空になる典型原因 |
+| [クリーンアップガイド](../solutions/amplify-portal/docs/cleanup-guide.md) | 課金を止める削除手順 |
+| [検証結果](../solutions/amplify-portal/docs/verification-results.md) | 機能ごとにどこまで実機確認済みか（実機 E2E / 読み取り / テストのみ） |
+
+</details>
+
+<details>
+<summary><strong>💻 Amplify 開発者（UI とバックエンドを拡張する人）</strong></summary>
+
+| ガイド | 内容 |
+|---|---|
+| **[ポータル UI を拡張する](../solutions/amplify-portal/docs/CONTRIBUTING-UI.md)** | 画面・アクションを追加する手順（最初に読む） |
+| [Amplify Gen2 + CDK 設計判断ガイド](../solutions/amplify-portal/docs/amplify-gen2-cdk-patterns.md) | Gen2 で踏む制約と回避策 |
+| [実装ガイド](../solutions/amplify-portal/docs/IMPLEMENTATION.md) | バックエンド Lambda とデータフロー |
+| [管理機能マップ](../solutions/amplify-portal/docs/admin-capability-map.md) | 各インターフェースの担当範囲と実装状況 |
+| [IaC ガバナンスパターン](../solutions/amplify-portal/docs/iac-governance-patterns.md) | cdk-nag と品質ゲートの構成 |
+| [CDK 品質ゲートの制約](./agent/portal-cdk-quality-gates.md) | Amplify 管理リソースの抑制、クロススタック制約、sandbox の hotswap |
+| [UI 文字列と 8 言語対応](./agent/portal-i18n.md) | `ja.ts` が型の源。ハードコード禁止の理由 |
+| [PR ベース使い捨て環境](../solutions/amplify-portal/docs/pr-ephemeral-environments.md) | PR ごとのプレビュー環境 |
+| [リソース管理デモガイド](../solutions/amplify-portal/docs/resource-management-demo-guide.md) | 管理画面の各パネルの使い方 |
+| [AI エージェントデモガイド](../solutions/amplify-portal/docs/ai-agent-demo-guide.md) | エージェント機能の構成 |
+
+</details>
+
+> Nextcloud を選ぶ場合は [Nextcloud External Storage セットアップガイド](./nextcloud-external-storage-s3ap.md)、
+> フロントエンドを作らない選択肢は [そもそも作る必要があるか](#そもそも作る必要があるか) を参照してください。
+
+---
+
 ## 目次
 
+0. [読者別の実装ガイド](#すでに-amplify-gen2-に決めている場合--読者別の実装ガイド)
 1. [アーキテクチャ概要](#アーキテクチャ概要)
 2. [そもそも作る必要があるか](#そもそも作る必要があるか)
 3. [比較マトリクス](#比較マトリクス)

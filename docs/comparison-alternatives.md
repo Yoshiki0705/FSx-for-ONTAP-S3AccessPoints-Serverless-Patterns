@@ -13,7 +13,8 @@
 | **サーバーレス** | ✅ 完全サーバーレス | ✅ Lambda + EFS | ❌ EC2 必要 | ✅ Lambda (S3 側) |
 | **NTFS ACL 保持** | ✅ ONTAP REST API で取得 | ❌ POSIX のみ | ✅ NFS/SMB 経由 | ❌ S3 にコピー時に喪失 |
 | **スケーラビリティ** | ✅ Lambda 並列 | ✅ Lambda 並列 | ⚠️ EC2 スケール必要 | ✅ Lambda 並列 |
-| **レイテンシ** | 数十 ms (S3 API) | < 1 ms (NFS) | < 1 ms (NFS) | N/A (非同期) |
+| **レイテンシ (読み取り)** | 数十 ms (S3 API) | 約 1 ms | サブ ms (SSD) / 数十 ms (Capacity Pool) | N/A (非同期) |
+| **レイテンシ (書き込み)** | 数十 ms (S3 API) | 約 2.7 ms (Regional) / 約 1.6 ms (One Zone) | サブ ms (SSD) | N/A (非同期) |
 | **スループット** | FSx 帯域共有 | EFS バースト/プロビジョンド | FSx 帯域共有 | DataSync 帯域 |
 | **コスト (処理側)** | Lambda 従量課金 | Lambda + EFS 従量 | EC2 常時稼働 | Lambda 従量課金 |
 | **コスト (ストレージ)** | FSx for ONTAP (既存) | EFS 追加 | FSx for ONTAP (既存) | S3 追加 |
@@ -37,9 +38,10 @@
 ### EFS + Lambda を選ぶべき場合
 
 - ✅ POSIX 権限で十分（NTFS ACL 不要）
-- ✅ サブミリ秒のレイテンシが必要
+- ✅ **読み取り**が約 1 ms で足りる（書き込みは Regional で約 2.7 ms。小さい書き込みが多い場合はこの値で評価してください）
 - ✅ シンプルな構成を優先
 - ✅ FSx for ONTAP を使用していない
+- ⚠️ 書き込みレイテンシを詰めたい場合は One Zone（約 1.6 ms）が選択肢ですが、AZ 冗長性とのトレードオフです
 
 ### EC2 NFS マウントを選ぶべき場合
 
@@ -54,6 +56,125 @@
 - ✅ S3 の全機能（バージョニング、ライフサイクル、Presigned URL）が必要
 - ✅ データのコピーが許容される
 - ✅ FSx for ONTAP を使用していない
+
+## レイテンシの詳細 — どの区間の何を指すか
+
+「レイテンシ」を 1 つの数値で比較すると判断を誤ります。**読み取りと書き込みで桁が違うサービスがあり、
+同じサービスでも構成（ストレージ層、AZ 構成、性能モード）で変わります。** 以下は各サービスが
+公表している数値と、その数値がどの区間を指すか、そこから何を考慮すべきかです。
+
+> 各社の公表値は**最良条件での値**です。Amazon EFS のドキュメントは
+> 「Latency values shown represent best-case performance under optimal conditions.
+> Actual results may vary based on network, workload, and system factors.」と明記しています。
+> 実測は自分のワークロードで取ってください。
+
+### FSx for ONTAP S3 Access Point（S3 API 経由）
+
+| 区間 | 値 | 出典 |
+|---|---|---|
+| S3 API リクエスト単位（読み書き） | 数十 ms | AWS ドキュメント |
+
+AWS は「S3 access points for FSx for ONTAP file systems deliver latency in the tens of
+milliseconds range, consistent with S3 bucket access」と記載しています。**これはストレージの
+レイテンシではなく S3 プロトコル経路のレイテンシです。** 同じファイルを同じファイルシステムから
+NFS で読めばサブ ms なので、差はプロトコルの層にあります。
+
+考慮すべき点:
+
+- **オブジェクト単位の固定オーバーヘッドなので、小さいファイルを大量に処理すると支配的になります。**
+  1 MB × 1,000 個は 1 GB × 1 個より遅くなります。バッチ単位を大きくするか、Lambda を並列に
+  広げて隠します。
+- **一覧取得はページ単位で積み上がります。** `ListObjectsV2` は 1 リクエスト最大 1,000 件なので、
+  10,000 ファイルなら 10 ページ = 約 500 ms が下限です（[S3 AP Performance Considerations](./s3ap-performance-considerations.md)）。
+- **部分更新がありません。** PutObject はオブジェクト全体の置き換えなので、大きいファイルの
+  1 バイト変更にファイル全体の書き込みが発生します。追記型・ランダム更新型のワークロードは
+  この経路に向きません。
+- リアルタイム応答（対話的な UI のブロッキング処理）には数十 ms が積み上がります。定期スキャンや
+  イベント駆動のバッチでは問題になりません。
+
+### Amazon EFS（NFS 経由）
+
+| 構成 | 読み取り | 書き込み | 出典 |
+|---|---|---|---|
+| Regional（Elastic / Provisioned / Bursting） | 約 1 ms | **約 2.7 ms** | AWS ドキュメント |
+| One Zone（同上） | 約 1 ms | **約 1.6 ms** | 同上 |
+| EFS Standard ストレージクラス | 1 ms（first byte） | 2.7 ms（first byte） | 同上 |
+| EFS IA / Archive ストレージクラス | **数十 ms（first byte）** | 数十 ms | 同上 |
+| Max I/O 性能モード | General Purpose より**高い** | 同左 | 同上 |
+
+**書き込みが読み取りの約 2.7 倍というのがこのサービスの性格です。** Regional ファイルシステムは
+書き込みを複数 AZ にコミットしてから応答するため、その分が書き込みレイテンシに乗ります。
+One Zone は約 1.6 ms で、差は AZ 冗長性とのトレードオフです。
+
+考慮すべき点:
+
+- **小さい書き込みを多数出すワークロードで問題になります。** 追記の多いログ処理、SQLite などの
+  ファイルベース DB、`git` のような小ファイル多数の操作は、1 操作ごとにこのレイテンシを払います。
+  I/O サイズを大きくするか並列化して償却します（AWS も「overall throughput generally increases as
+  the average I/O size increases, since the overhead is amortized over a larger amount of data」と
+  説明しています）。
+- **メタデータ操作も同じ経路です。** ディレクトリ走査やファイル作成が多い処理は、データ転送量が
+  小さくてもレイテンシで律速します。
+- **ストレージクラスの自動階層化がテールを作ります。** IA / Archive に落ちたファイルの first byte は
+  数十 ms で、Standard の 1 ms とは 1 桁以上違います。ライフサイクルポリシーとアクセスパターンが
+  合っていないと、体感が読み取り 1 ms から数十 ms に変わります。
+- **Max I/O は選ばないのが現在の推奨です。** AWS は「Due to the higher per-operation latencies with
+  Max I/O, we recommend using General Purpose performance mode for all file systems」と明記して
+  います（One Zone と Elastic throughput では選択自体できません）。
+- 上限は throughput mode でも変わります（Regional Bursting は書き込み 7,000 IOPS、Elastic は
+  500,000 IOPS）。レイテンシが同じでも、詰まれば実効応答時間は伸びます。
+
+### FSx for ONTAP（NFS / SMB 経由、EC2 マウント）
+
+| 区間 | 値 | 出典 |
+|---|---|---|
+| SSD ストレージ上のファイル操作 | **サブ ms（一貫して）** | AWS ドキュメント |
+| Capacity Pool ストレージ上のファイル操作 | **数十 ms** | 同上 |
+
+AWS は Single-AZ / Multi-AZ の**どちらもサブ ms** と記載しています（"FSx for ONTAP Multi-AZ and
+Single-AZ file systems provide consistent sub-millisecond file operation latencies with SSD
+storage and tens of milliseconds of latency with capacity pool storage"）。EFS のように書き込み側の
+公表値が別建てにはなっていません。
+
+考慮すべき点:
+
+- **テールを作るのは AZ 構成ではなく階層化です。** FabricPool で Capacity Pool に落ちたブロックの
+  読み取りは数十 ms です。コールドデータを含む全体スキャンは、SSD 上の数値では見積れません。
+- **NVMe 読み取りキャッシュは構成に依存します。** 対象は Multi-AZ 1 / Multi-AZ 2、2022-11-28 以降に
+  作成しスループット 2 GBps 以上の Single-AZ 1、ペアあたり 6 GBps 以上の Single-AZ 2 です。
+- **第 2 世代では NVMe キャッシュがスループットを下げることがあります。** AWS は高スループット /
+  大 I/O のワークロードでは無効化を推奨しています。レイテンシとスループットのどちらを取るかの選択です。
+- 実測は `qos statistics workload latency show`（fsxadmin）で Network / Data / Disk の内訳が取れます。
+  「遅い」がどの層かを切り分けられるので、体感の劣化を報告する前にこれを見ます。
+
+### DataSync → S3
+
+**per-operation レイテンシの問題ではなく、鮮度（RPO）の問題です。** 読み取り自体は S3 の
+レイテンシですが、支配的なのは「元データの変更がコピー先に現れるまでの時間」＝タスクの実行間隔と
+1 回の転送時間です。
+
+考慮すべき点:
+
+- スケジュール間隔より短い鮮度は得られません。処理側から見ると、直前の変更は見えない前提で
+  設計する必要があります。
+- 差分検出のためのスキャン時間はファイル数に比例します。ファイル数が多いソースでは、転送量が
+  小さくてもタスク時間が縮まりません。
+
+### まとめ — レイテンシで選ぶときの見方
+
+| 問い | 見るべき数値 |
+|---|---|
+| 対話的な UI がブロックするか | 読み取りレイテンシ × 1 操作あたりの往復回数 |
+| 小さい書き込みが多いか | **書き込み**レイテンシ（EFS Regional は読み取りの約 2.7 倍） |
+| コールドデータを含むか | 階層化後のレイテンシ（EFS IA / FSx Capacity Pool はどちらも数十 ms） |
+| ファイル数が多いか | 一覧・メタデータ操作の回数（S3 AP はページ単位、NFS は操作単位） |
+| 鮮度が要件か | コピー方式なら同期間隔。in-place アクセスなら常にリアルタイム |
+
+**出典**:
+[Amazon EFS performance specifications](https://docs.aws.amazon.com/efs/latest/ug/performance.html)（レイテンシ表、ストレージクラス、性能モード） /
+[Amazon FSx for NetApp ONTAP performance](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/performance.html)（SSD / Capacity Pool、NVMe キャッシュの条件） /
+[When to Choose EFS](https://aws.amazon.com/efs/when-to-choose-efs/)（I/O サイズによる償却） /
+[S3 AP Performance Considerations](./s3ap-performance-considerations.md)（一覧のページネーション実測）
 
 ## コスト比較（月額概算、100 files/日、1 MB 平均）
 
@@ -156,7 +277,10 @@
 ## FAQ
 
 **Q: S3 AP のレイテンシ（数十 ms）は問題にならないか？**
-A: バッチ処理（定期スキャン）では問題になりません。リアルタイム応答が必要な場合は EFS + Lambda を検討してください。
+A: バッチ処理（定期スキャン）では問題になりません。1 操作あたり数十 ms が積み上がる対話的な処理には向きません。その場合の代替は NFS 経路ですが、**「NFS なら速い」と一括りにはできません**。詳細は [レイテンシの詳細](#レイテンシの詳細--どの区間の何を指すか) を参照してください。要点は、EFS の書き込みは Regional で約 2.7 ms（読み取りの約 2.7 倍）、FSx for ONTAP は SSD 上ならサブ ms だが Capacity Pool に落ちたデータは数十 ms、という点です。
+
+**Q: 書き込みが多いワークロードではどれを選ぶべきか？**
+A: 書き込みレイテンシで比べます。FSx for ONTAP の NFS/SMB（SSD 上）がサブ ms、EFS One Zone が約 1.6 ms、EFS Regional が約 2.7 ms、S3 AP が数十 ms（かつ部分更新不可なので更新はオブジェクト全体の書き換え）です。小さい追記が多い処理ほどこの差が実行時間に直結します。逆にバッチで大きく書くなら、レイテンシよりスループット上限とコストで選ぶ方が妥当です。
 
 **Q: S3 AP で書き込みもできるか？**
 A: はい。PutObject をサポートしています（オブジェクト上限 50 GB、単一 PutObject は 5 GB まで。5 GB 超は Multipart Upload）。AI 処理結果を同じボリュームに書き戻し、NFS/SMB ユーザーが閲覧できます。
