@@ -1343,6 +1343,16 @@ body {
   flex-shrink: 0;
 }
 
+/* A folder-only listing disables the select-all box, and without this it looked
+   exactly like the enabled one. Reported from an iPhone as "tapping it does
+   nothing", which is the same defect that was fixed for the containment buttons:
+   the state has to be visible, not just present in the DOM. There is no hover on a
+   phone, so the title alone does not carry it. */
+.file-select:disabled {
+  cursor: not-allowed;
+  opacity: 0.4;
+}
+
 /* Below the rule above, not in the 768px block at the top of the file: that block is
    900 lines earlier at the same specificity, so source order discarded it.
 

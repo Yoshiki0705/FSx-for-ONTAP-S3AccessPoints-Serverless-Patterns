@@ -211,6 +211,27 @@ describe("selection", () => {
     expect(screen.queryByLabelText("Select reports")).toBeNull();
   });
 
+  it("says why select-all is unavailable in a folder-only listing", async () => {
+    // Reported from an iPhone: the header box "did nothing" when tapped. It was
+    // already disabled, but a disabled checkbox looked identical to an enabled one
+    // and carried no reason for it.
+    listing[""] = [folder("reports/"), folder("archive/")];
+    renderExplorer();
+    const selectAll = await waitFor(
+      () => screen.getByLabelText("Select all listed files") as HTMLInputElement,
+    );
+    expect(selectAll.disabled).toBe(true);
+    expect(selectAll.title).toMatch(/No selectable files/i);
+  });
+
+  it("leaves select-all usable, and unexplained, when files are present", async () => {
+    renderExplorer();
+    await waitFor(() => expect(screen.getByText("alpha.txt")).toBeInTheDocument());
+    const selectAll = screen.getByLabelText("Select all listed files") as HTMLInputElement;
+    expect(selectAll.disabled).toBe(false);
+    expect(selectAll.title).not.toMatch(/No selectable files/i);
+  });
+
   it("counts the selection and clears it on request", async () => {
     renderExplorer();
     await waitFor(() => expect(screen.getByText("alpha.txt")).toBeInTheDocument());

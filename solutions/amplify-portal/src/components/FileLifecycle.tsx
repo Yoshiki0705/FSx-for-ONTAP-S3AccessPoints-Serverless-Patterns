@@ -331,6 +331,21 @@ export function UploadLink({ destinationPrefix }: UploadLinkProps) {
               <button className="rm-btn-sm" onClick={() => void copy()}>
                 {copied ? t("flCopied") : t("flCopy")}
               </button>
+              {/* The URL is signed for PUT. Opening it in a browser sends GET and
+                  S3 answers SignatureDoesNotMatch, because the method is part of
+                  what was signed. Measured on an iPhone, where the link looked
+                  tappable and produced a wall of XML. Give the recipient the
+                  command instead of a link they cannot use. */}
+              <p className="rm-hint">{t("flUploadLinkPutOnly")}</p>
+              <p className="rm-hint">{t("flUploadLinkCurlLabel")}</p>
+              <textarea
+                readOnly
+                rows={2}
+                className="fl-upload-curl"
+                aria-label={t("flUploadLinkCurlLabel")}
+                value={`curl -X PUT --upload-file <file> "${url}"`}
+              />
+              <p className="rm-hint">{t("flUploadLinkSelfHint")}</p>
               <p className="fl-warning">{t("flUploadLinkWarning")}</p>
             </div>
           )}
