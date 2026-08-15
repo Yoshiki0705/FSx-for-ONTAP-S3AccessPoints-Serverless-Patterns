@@ -712,6 +712,7 @@ arpResponseSweepNote: "Blocks lift themselves once their expiry passes. To lift 
   filesLoadedScopeNote:
     "Sorting and filtering apply to the {n} entries loaded so far. Choose \"Load more files\" to include the rest.",
   filesSelectAll: "Select all listed files",
+  filesSelectAllUnavailable: "No selectable files in this folder. Folders are not included in bulk selection",
   filesSelectRow: "Select {name}",
   rowMenuLabel: "More actions for {name}",
   filesSelectedCount: "{n} selected",
@@ -819,6 +820,9 @@ arpResponseSweepNote: "Blocks lift themselves once their expiry passes. To lift 
   flUploadLinkFailed: "Could not create the link",
   flUploadDestination: "Destination key",
   flUploadLinkWarning: "The URL is the credential. Until it expires, anyone holding it can write to this key.",
+  flUploadLinkSelfHint: "To upload something yourself, use the Upload tab rather than this link. It sends the file straight from the browser.",
+  flUploadLinkCurlLabel: "The command to give the recipient",
+  flUploadLinkPutOnly: "This URL is for uploading with PUT. Opening it in a browser sends GET and fails with SignatureDoesNotMatch, because the signature covers the HTTP method.",
   flCopy: "Copy",
   flCopied: "Copied",
   filesLoadMore: "Load more files",

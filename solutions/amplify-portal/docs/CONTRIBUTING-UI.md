@@ -260,6 +260,137 @@ SnapLock、Snapshot ロック、S3 Object Lock COMPLIANCE、容量リバラン�
 
 ---
 
+## AI 処理ジョブを自分の組織向けに入れ替える
+
+「AI 処理」タブは、選んだユースケースを Step Functions のステートマシンに投げる画面です。
+**既定で 6 個のユースケースが並んでいますが、これはこのリポジトリのサンプルです。** 自分の組織で
+使うときは、まず不要なものを消して、自分のワークフローを足すことになります。触る場所が
+4 か所に分かれているので、順番に示します。
+
+### まず現状を把握する
+
+```bash
+cd solutions/amplify-portal
+grep -n "ProcessingPattern" -A 10 amplify/data/resource.ts   # API が受け付ける値
+grep -n "PATTERN_DESCRIPTIONS" -A 10 src/components/JobSubmitForm.tsx  # 画面に出る一覧
+grep -n "stateMachineArn" amplify/data/resolvers/start-processing.js   # 実際に呼ぶ相手
+grep -n "processingEnabled" src/portal-settings.ts            # タブを出すかどうか
+```
+
+| 触る場所 | 何を決めているか |
+|---|---|
+| `amplify/data/resource.ts` の `ProcessingPattern` | **API が受け付ける値の集合**（GraphQL の enum）。ここに無い値は AppSync が拒否します |
+| `src/components/JobSubmitForm.tsx` の `ProcessingPattern` 型と `PATTERN_DESCRIPTIONS` | **画面のドロップダウンに出る一覧と説明文** |
+| `amplify/data/resolvers/start-processing.js` | **どのステートマシンを呼ぶか**、および渡す入力 JSON |
+| `src/portal-settings.ts` の `processingEnabled` | タブ自体を出すかどうか |
+
+> **この 4 つは自動では揃いません。** 現に enum は 7 個（`FC7_FLEXCLONE_RESTORE` を含む）ですが、
+> 画面の一覧は 6 個で、FC7 は API が受け付けるのに画面から選べません。逆に画面にだけ足しても、
+> enum に無ければ AppSync が拒否します。**両方に同じ値を書く必要があります。**
+
+### 動かす前に必ず必要な設定（ここが未設定だと必ず失敗します）
+
+`amplify/data/resolvers/start-processing.js` の ARN は**プレースホルダーのままです**。
+
+```javascript
+const stateMachineArn =
+  "arn:aws:states:ap-northeast-1:123456789012:stateMachine:amplify-portal-test-workflow";
+```
+
+アカウント ID もステートマシン名も実在しない値なので、**この状態で「処理を開始」を押すと失敗します**。
+自分のステートマシンの ARN に置き換えてください。`portal-config.ts` に `stateMachineArn` という
+項目がありますが、**リゾルバーはそれを読んでいません**（AppSync の JS リゾルバーは実行時に
+設定ファイルを import できないため）。設定値と ARN の 2 か所を自分で揃える必要があります。
+
+IAM 側は別の値で絞っています。`amplify/backend.ts` は `config.stateMachineResourceScope` を
+`states:StartExecution` の `resources` に使います。**ARN を変えたらこのスコープも見直してください。**
+スコープが合っていないと、リゾルバーは正しい ARN を呼びながら AccessDenied で止まります。
+
+### ユースケースを 1 つ消す
+
+不要なユースケースは、上の 2 か所から同じ値を消します。
+
+1. `amplify/data/resource.ts` の `ProcessingPattern` の配列から削除
+2. `src/components/JobSubmitForm.tsx` の `ProcessingPattern` 型（union）と `PATTERN_DESCRIPTIONS` から削除
+
+enum を消すと GraphQL のスキーマが変わるので、`npx ampx sandbox` の再デプロイが必要です。
+型だけ消して enum を残すと、API は受け付けるのに画面から選べない状態（いまの FC7）になります。
+
+### ユースケースを 1 つ足す
+
+```typescript
+// 1. amplify/data/resource.ts — API が受け付ける値
+ProcessingPattern: a.enum([
+  "UC1_LEGAL_COMPLIANCE",
+  "MY_ORG_INVOICE_OCR",        // ← 追加
+]),
+```
+
+```typescript
+// 2. src/components/JobSubmitForm.tsx — 画面に出す
+type ProcessingPattern =
+  | "UC1_LEGAL_COMPLIANCE"
+  | "MY_ORG_INVOICE_OCR";      // ← 追加
+
+const PATTERN_DESCRIPTIONS: Record<ProcessingPattern, string> = {
+  UC1_LEGAL_COMPLIANCE: "...",
+  MY_ORG_INVOICE_OCR: "請求書の OCR と仕訳の下書き",   // ← 追加
+};
+```
+
+`Record<ProcessingPattern, string>` なので、**説明文を書き忘れるとコンパイルが通りません。**
+値を足したのに画面へ出ないときは、まず enum 側の追加漏れを疑ってください。
+
+> **説明文は現状 `t()` を通っていません。** `PATTERN_DESCRIPTIONS` は英語直書きで、8 言語の
+> 仕組みに乗っていません。多言語で使うなら、章 4 の手順で `ja.ts` にキーを足し、
+> `Record<ProcessingPattern, TranslationKeys>` に変えて `t()` で引く形にしてください。
+
+### ステートマシン側が受け取る入力
+
+リゾルバーが渡す JSON はこれだけです。
+
+```javascript
+const input = JSON.stringify({
+  inputPrefix: inputPrefix,
+  parameters: parameters || {},
+  triggeredBy: "amplify-portal",
+  triggeredAt: util.time.nowISO8601(),
+  userId: ctx.identity.username,
+});
+```
+
+**選んだユースケース名は入力に含まれていません。** 実行名（`portal-<pattern>-<epoch>`）にだけ
+入ります。つまり**1 つのステートマシンで複数のユースケースを出し分けることはできません**。
+どちらかにしてください。
+
+- ユースケースごとにステートマシンを分け、リゾルバーで `pattern` から ARN を選ぶ
+- 入力に `pattern` を足し、ステートマシンの `Choice` で分岐する
+
+後者の場合、リゾルバーの `input` に `pattern: pattern` を足します。ステートマシン側の
+入力スキーマを変えることになるので、既存の実行履歴と互換になるか確認してください。
+
+### 履歴の扱い
+
+送信が成功すると `client.models.JobExecution.create` で DynamoDB に 1 行入ります
+（`executionArn` / `pattern` / `inputPrefix` / `status` / `startDate`）。**この保存の失敗は
+握りつぶしています**（`console.warn` のみ）。ジョブ自体は動いているのに履歴に出ない状態が
+ありうるので、履歴を運用の根拠にするならここを直してください。モデルは owner ベースの認可で、
+実行した本人しか読めません。
+
+### 変更後に通すもの
+
+```bash
+cd solutions/amplify-portal
+npx tsc -b            # PATTERN_DESCRIPTIONS の網羅漏れはここで出る
+npx ampx sandbox      # enum を変えたら再デプロイが必要
+```
+
+ステートマシンを持っていない段階では `src/portal-settings.ts` の `processingEnabled` を
+`false` にしてタブを隠せます。**既定は `true`** なので、未設定のまま配ると利用者が
+失敗するボタンを押せてしまいます。
+
+---
+
 ## 0. 最初に知っておくこと
 
 このポータルには**型が届かない境界**が 2 つあります。ここを越える変更が、これまでの
