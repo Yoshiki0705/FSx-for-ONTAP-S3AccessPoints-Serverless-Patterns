@@ -56,6 +56,19 @@ dev.to のタグは**最大 4 個**で、グローバルな名前空間です。
 製品タグは **`fsxforontap` に統一**します。`amazonfsxfornetappontap` は正式名称に忠実ですが
 長く、`fsxontap` と `netapp` は他製品の記事と混ざります。
 
+### 実施済み（2026-08-15、ファイルポータルの 3 本）
+
+Part 1〜3 を S3 AP シリーズから移し、タグを規約に揃えました。
+
+| 記事 | 変更前 | 変更後 |
+|---|---|---|
+| Part 1 | `series: FSx for ONTAP S3 Access Points` / `aws, netapp, serverless, storage` | `series: FSx for ONTAP File Portal` / `aws, amplify, fsxforontap, architecture` |
+| Part 2 | 同上 / `aws, netapp, security, serverless` | 同上 / `aws, amplify, fsxforontap, security` |
+| Part 3 | 同上 / `aws, bedrock, ai, netapp` | 同上 / `aws, amplify, fsxforontap, bedrock` |
+
+**S3 AP シリーズ側の記事のタグは変更していません。** 上の不整合表はその時点の集計なので、
+残りを揃えるかどうかを判断する前に現状を数え直してください（dev.to の Dashboard → Posts）。
+
 > **公開済み記事の再タグ付けは著者の判断です。** タグを変えるとそのタグのフォロワーに
 > 届く範囲が変わります。新規記事は上表に従い、既存記事を揃えるかどうかは
 > リーチへの影響を見て決めてください。

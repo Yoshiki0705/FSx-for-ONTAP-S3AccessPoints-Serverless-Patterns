@@ -181,17 +181,24 @@ These are the features made reachable as of 2026-08-07. Handler and component te
 | QR code generation | Same | Whether the generated QR reaches the presigned URL |
 | Folder watch / event notifications | `functions/list-files/tests/test_notifications.py`, 9 tests | Real delivery from FPolicy through EventBridge to the bridge Lambda, the shape of real events, and the group boundary filter |
 
-### Test totals
+### How to count the automated tests
 
-| Suite | Count |
-|-------|-------|
-| Portal components and utilities (vitest) | 321 (24 files) |
-| `functions/resource-management` (pytest) | 258 |
-| `functions/data-protection` (pytest) | 104 |
-| `functions/list-files` (pytest) | 48 |
-| `functions/thumbnails` (pytest) | 37 |
-| `functions/agent-chat` (pytest) | 21 |
-| Dispatch contract checks (`make drift`) | 173 call sites / 170 actions |
+What is recorded here is how to count, not the counts. This table used to carry a frozen
+number per suite, and five of the six had gone stale: resource-management said 258 against
+an actual 300, vitest said 321 across 24 files against 337 across 26, and the dispatch
+contract said 173/170 against 180/174. A number nobody updates is correct only on the day
+it is written.
+
+| Suite | Command that reports the count |
+|-------|-------------------------------|
+| Portal components and utilities (vitest) | `cd solutions/amplify-portal && npx vitest run` |
+| `functions/*` (pytest) | `python3 -m pytest solutions/amplify-portal/functions/<name>/tests/ -q` |
+| Dispatch contract (call sites and actions) | `python3 scripts/check_portal_action_params.py` |
+| Dispatch action types | `python3 scripts/portal_action_types.py --check` |
+
+Rounded totals live in [AGENTS.md](../../../AGENTS.md). The file counts there are compared
+against the tree by `make drift`, so they fail once they age. **The test counts are not
+compared**, which is why the commands above are the only source for them.
 
 ## DemoMode only
 
