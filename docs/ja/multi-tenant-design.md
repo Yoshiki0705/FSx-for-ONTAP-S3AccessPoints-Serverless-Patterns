@@ -1,6 +1,6 @@
 # マルチテナント設計パターン
 
-> 🌐 言語: **日本語** | [English](../en/multi-tenant-design.md)
+> 🌐 **Language / 言語**: 日本語 | [English](../en/multi-tenant-design.md)
 
 ## 概要
 

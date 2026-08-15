@@ -1,4 +1,4 @@
-> 🌐 Language: [日本語](design-considerations.md) | [English](design-considerations-en.md)
+> 🌐 **Language / 言語**: 日本語 | [English](design-considerations-en.md)
 
 # FSx for ONTAP S3 Access Points — 設計考慮事項
 

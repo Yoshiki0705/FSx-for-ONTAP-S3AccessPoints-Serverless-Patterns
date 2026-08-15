@@ -1,6 +1,6 @@
 # Existing Environment Impact Assessment Guide
 
-🌐 **Language / 言語**: [日本語](impact-assessment.md) | [English](impact-assessment-en.md) | [한국어](impact-assessment-ko.md) | [简体中文](impact-assessment-zh-CN.md) | [繁體中文](impact-assessment-zh-TW.md) | [Français](impact-assessment-fr.md) | [Deutsch](impact-assessment-de.md) | [Español](impact-assessment-es.md)
+🌐 **Language / 言語**: [日本語](impact-assessment.md) | English
 
 ## Overview
 

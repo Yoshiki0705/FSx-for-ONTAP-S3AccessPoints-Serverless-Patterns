@@ -1,6 +1,6 @@
 # Deployment Profiles — FPolicy Event-Driven Pattern
 
-🌐 **Language / 言語**: [日本語](deployment-profiles.md) | [English](deployment-profiles.en.md)
+🌐 **Language / 言語**: [日本語](deployment-profiles.md) | English
 
 ## Overview
 

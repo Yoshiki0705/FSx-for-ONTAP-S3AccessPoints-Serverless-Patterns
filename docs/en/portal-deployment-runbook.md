@@ -1,6 +1,6 @@
 # File Portal Deployment Runbook
 
-> 🌐 Language: **English** | [日本語](../ja/portal-deployment-runbook.md)
+> 🌐 **Language / 言語**: [日本語](../ja/portal-deployment-runbook.md) | English
 
 Step-by-step operational guide for deploying, updating, and tearing down the FSx for ONTAP File Portal. Based on verified deployment procedures (2026-07-20).
 

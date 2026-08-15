@@ -1,6 +1,6 @@
 # Getting Started — FSx for ONTAP File Portal
 
-🌐 **Language / 言語**: [日本語](GETTING-STARTED.md) | [English](GETTING-STARTED.en.md)
+🌐 **Language / 言語**: [日本語](GETTING-STARTED.md) | English
 
 > Working in 30 minutes. With DemoMode you can start without Amazon FSx for NetApp ONTAP (hereafter FSx for ONTAP).
 

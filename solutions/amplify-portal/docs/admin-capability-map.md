@@ -1,6 +1,6 @@
 # 管理機能マップ — 各インターフェースの担当範囲とポータルの実装状況
 
-🌐 **Language / 言語**: **日本語** | [English](admin-capability-map.en.md)
+🌐 **Language / 言語**: 日本語 | [English](admin-capability-map.en.md)
 
 > 目的: ONTAP の運用に使えるインターフェースがそれぞれ何を担うのかを整理し、
 > 本ポータルが現時点でどこまで実装済みなのかを、実測に基づいて示します。

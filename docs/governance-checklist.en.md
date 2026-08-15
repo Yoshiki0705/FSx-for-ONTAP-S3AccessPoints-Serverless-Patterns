@@ -1,6 +1,6 @@
 # Governance Checklist — For Regulated, Public Sector, and Healthcare Workloads
 
-🌐 **Language / 言語**: [日本語](governance-checklist.md) | [English](governance-checklist.en.md)
+🌐 **Language / 言語**: [日本語](governance-checklist.md) | English
 
 ## Overview
 

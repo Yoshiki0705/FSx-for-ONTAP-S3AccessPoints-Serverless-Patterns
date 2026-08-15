@@ -1,6 +1,6 @@
 # Office ファイルプレビュー — 設計調査と選択肢
 
-🌐 **Language / 言語**: [日本語](office-preview-design.md) | [English](office-preview-design.en.md)
+🌐 **Language / 言語**: 日本語 | [English](office-preview-design.en.md)
 
 ## 要件
 

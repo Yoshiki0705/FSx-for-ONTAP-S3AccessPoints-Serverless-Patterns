@@ -1,6 +1,6 @@
 # FSx for ONTAP Dateiportal — Amplify Gen2
 
-🌐 **Sprache**: [日本語](README.ja.md) | [English](README.md) | [한국어](README.ko.md) | [简体中文](README.zh-CN.md) | [繁體中文](README.zh-TW.md) | [Français](README.fr.md) | Deutsch | [Español](README.es.md)
+🌐 **Language / 言語**: [日本語](README.ja.md) | [English](README.md) | [한국어](README.ko.md) | [简体中文](README.zh-CN.md) | [繁體中文](README.zh-TW.md) | [Français](README.fr.md) | Deutsch | [Español](README.es.md)
 
 Webbasiertes Dateiportal zum Durchsuchen, Verarbeiten und Anzeigen von Ergebnissen auf FSx for ONTAP-Volumes über S3 Access Points.
 

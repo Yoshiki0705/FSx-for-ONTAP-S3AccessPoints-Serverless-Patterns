@@ -1,6 +1,6 @@
 # 書き込み操作の検証計画
 
-🌐 **Language / 言語**: **日本語** | [English](write-verification-plan.en.md)
+🌐 **Language / 言語**: 日本語 | [English](write-verification-plan.en.md)
 
 > 目的: [検証結果](verification-results.md) で「未実行」に分類した書き込み操作について、
 > **実行する前に**前提・影響・戻し方を確定させます。実行順もここで決めます。

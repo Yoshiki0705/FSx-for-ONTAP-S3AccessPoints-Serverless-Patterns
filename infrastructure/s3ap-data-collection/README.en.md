@@ -1,6 +1,6 @@
 # FSx for ONTAP S3 Access Points — Data Collection Infrastructure Deployment Guide
 
-> 🌐 Language: [日本語](README.md) | [English](README.en.md)
+> 🌐 **Language / 言語**: [日本語](README.md) | English
 
 A guide to deploying an FSx for ONTAP environment for S3 API data collection using CloudFormation. Design considerations are integrated at each step, enabling smooth progression from PoC to production.
 

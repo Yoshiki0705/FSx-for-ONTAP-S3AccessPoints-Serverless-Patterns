@@ -1,6 +1,6 @@
 # ONTAP Integration Notes — Coexistence Guide for S3 AP and Existing NAS Operations
 
-🌐 **Language / 言語**: [日本語](ontap-integration-notes.md) | [English](ontap-integration-notes.en.md)
+🌐 **Language / 言語**: [日本語](ontap-integration-notes.md) | English
 
 ## Overview
 

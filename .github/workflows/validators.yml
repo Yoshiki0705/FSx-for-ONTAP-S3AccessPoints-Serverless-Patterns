@@ -54,6 +54,18 @@ jobs:
       # reading the page does not reveal it.
       - name: Check translated doc pairs are navigable and their links resolve
         run: python3 scripts/check_doc_pairs.py
+      # The check above asks whether the translations that exist are reachable.
+      # docs/i18n-manifest.toml declares which ones must exist, which is the thing
+      # nothing checked: every i18n check derived groups from the filesystem, so an
+      # absent translation was not a finding. Ratcheted (1 missing, 271 structural as
+      # measured 2026-08-15) because the six non-English locales drifted together
+      # while nothing in CI looked at any locale but English.
+      - name: Check declared translations exist and match the source structure
+        run: python3 scripts/check_i18n_parity.py --quiet
+      # The switcher is generated; hand maintenance across 1,361 files produced 12
+      # label formats and left 53 group members unreachable from their own language.
+      - name: Check the language switchers match the generated form
+        run: python3 scripts/sync_lang_switcher.py --check
       - name: Check the generated dispatch parameter types match the handlers
         run: python3 scripts/portal_action_types.py --check
       # Renovate manages pyproject.toml and requirements.txt as separate managers.
@@ -69,6 +81,53 @@ jobs:
       # the loader checks skip here; the size and pointer checks still apply.
       - name: Check the agent context budget and that its pointers resolve
         run: python3 scripts/check_agent_context_budget.py
+      # A pinned tool is only pinned if it is the one that runs. Measured on a
+      # contributor machine: homebrew ruff 0.15.20 and cfn-lint 1.52.1 came first
+      # on PATH against pins of 0.15.17 and 1.53.3, so `make lint` applied a
+      # different rule set than this pipeline and reported success either way.
+      # Here the runner installs the pins directly, so this confirms the runner is
+      # on them rather than auditing a .venv it does not have.
+      - name: Install pinned dev tooling
+        run: pip install -r requirements-dev.txt
+      - name: Check the resolved tool versions are the pinned ones
+        run: python3 scripts/check_tool_versions.py
+      # The four checks below were in `make drift` and in no workflow, so they ran
+      # only for whoever typed the command and a pull request could merge past all
+      # of them. Found by scripts/tests/test_gates_run_in_ci.py, which now asserts
+      # that the two lists agree. All four passed on the tree when they were added,
+      # so this wires up existing coverage rather than introducing new failures.
+      #
+      # Japanese left in an English document: the file renders, its links resolve,
+      # and only a reader who cannot read Japanese is affected. 96 lines were sitting
+      # in 37 files.
+      - name: Check English docs contain no untranslated Japanese
+        run: python3 scripts/check_en_doc_language.py
+      # A template passing an environment variable under a name its handler does not
+      # read. nonprofit-grant-management sent GRANT_PREFIX while the handler read
+      # GRANT_APPLICATION_PREFIX with a default, so the operator's parameter was
+      # discarded silently and the run discovered nothing.
+      - name: Check pattern templates and handlers agree on env var names
+        run: python3 scripts/check_pattern_env_contract.py
+      # The demo guides tell the operator to copy samconfig.toml.example and deploy,
+      # so a defect in the example is a defect in the documented path. 17 examples
+      # shipped an empty S3AccessPointName, which drops the accesspoint-form ARNs
+      # from the IAM policy: the stack deploys clean and then denies every access.
+      - name: Check samconfig examples match their templates
+        run: python3 scripts/check_samconfig_contract.py
+      # The OPS handlers import shared/ lazily, so a package missing shared/ raises
+      # ImportError only in Lambda at first call. Five of six patterns shipped with
+      # no staging step and every test was green.
+      - name: Check operations patterns stage shared/ into their package
+        run: bash scripts/check_ops_shared_staged.sh
+      # The irreversible-operations guard blocks SnapLock, S3 Object Lock and
+      # snapshot-locking operations before they run. It must be a tracked file:
+      # `.kiro/` is gitignored, so a guard living only there does not exist here or
+      # for a collaborator, and a hook pointing at $HOME protects one machine
+      # silently. Running the corpus in CI is what keeps the guard from being
+      # narrowed by an edit nobody executes. `.kiro/` is absent on the runner, so
+      # the hook-wiring assertion skips here and runs locally.
+      - name: Check the irreversible-operations guard blocks, asks and allows correctly
+        run: python3 scripts/guard_irreversible_ops.py --selftest
 
   handler-name-check:
     name: "Handler undefined-name sweep"
@@ -159,12 +218,28 @@ jobs:
         run: |
           curl --proto '=https' --tlsv1.2 -sSf https://raw.githubusercontent.com/aws-cloudformation/cloudformation-guard/main/install-guard.sh | sh
           echo "$HOME/.guard/bin" >> $GITHUB_PATH
-      - name: Run cfn-guard validation
-        run: |
-          cfn-guard validate \
-            --rules security/cfn-guard-rules/ \
-            --data solutions/**/template-deploy.yaml \
-            --show-summary fail || true
+      # BLOCKING. Measured 2026-08-15: this job had never validated a template.
+      # Three faults stacked, and `|| true` hid all three.
+      #
+      #   1. `solutions/**/template-deploy.yaml` is not expanded by the default
+      #      Actions shell — `**` needs `shopt -s globstar`, which is off. The
+      #      literal string reached cfn-guard, which answered "The path
+      #      `solutions/**/template-deploy.yaml` does not exist" and exited 255. An
+      #      earlier comment in ci.yml records the same symptom being "fixed" by
+      #      removing the quotes; removing quotes does not enable globstar.
+      #   2. All 7 rule files failed to PARSE under cfn-guard 3.x, using the 2.x
+      #      `rule ... when %INPUT` form. A rule that does not parse enforces nothing.
+      #   3. `|| true` turned both into a green check.
+      #
+      # The rules are now ported and the findings triaged: 296 non-compliant
+      # resources on the first working run, 294 of them false positives from
+      # comparing a CloudFormation intrinsic (a map) with a scalar. Type guards took
+      # it to 2 real findings, both recorded in the script's KNOWN_FINDINGS with a
+      # reason. The wrapper exists because cfn-guard has no baseline mechanism: it
+      # fails on a NEW finding, and also on a baseline finding that has been fixed,
+      # so the number cannot drift in either direction.
+      - name: Run cfn-guard against every deployable template (blocking)
+        run: python3 scripts/check_cfn_guard.py
 
   deprecated-models-check:
     name: "Bedrock model EOL guardrail"

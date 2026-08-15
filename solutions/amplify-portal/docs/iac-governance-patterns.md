@@ -1,6 +1,6 @@
 # IaC ガバナンスパターン — AI 時代のガードレール設計
 
-🌐 **Language / 言語**: [日本語](iac-governance-patterns.md) | [English](iac-governance-patterns.en.md)
+🌐 **Language / 言語**: 日本語 | [English](iac-governance-patterns.en.md)
 
 > CDK Conference Japan 2026 Keynote「IaC in the Agentic World」(CDK チーム) + 関連セッションの知見を反映。
 

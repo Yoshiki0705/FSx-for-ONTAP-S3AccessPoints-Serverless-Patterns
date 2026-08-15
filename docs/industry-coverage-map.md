@@ -1,6 +1,6 @@
 # 業界カバレッジマップ
 
-🌐 **Language / 言語**: **日本語** | [English](industry-coverage-map.en.md)
+🌐 **Language / 言語**: 日本語 | [English](industry-coverage-map.en.md)
 
 > **最終更新**: 2026-06-03
 

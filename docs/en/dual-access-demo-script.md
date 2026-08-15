@@ -1,6 +1,6 @@
 # Dual-Access Demo — NFS + S3 AP Simultaneous View
 
-> 🌐 Language: **English** | [日本語](../ja/dual-access-demo-script.md)
+> 🌐 **Language / 言語**: [日本語](../ja/dual-access-demo-script.md) | English
 
 > Shows the same file visible via NFS mount AND S3 AP simultaneously (the core value proposition).
 

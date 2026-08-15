@@ -1,6 +1,6 @@
 # Well-Architected Framework — Self-Review
 
-> 🌐 Language: **English** | [日本語](../ja/well-architected-review.md)
+> 🌐 **Language / 言語**: [日本語](../ja/well-architected-review.md) | English
 
 > Portal architecture assessment against the six pillars of AWS Well-Architected.
 

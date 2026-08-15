@@ -57,6 +57,12 @@ jobs:
             CHANGED=$(git diff --name-only --diff-filter=ACMR "$BASE" HEAD)
           fi
 
+          # Every `|| true` in this file is on a `grep` whose output is captured and
+          # then tested — `HITS=$(grep ... || true)` followed by `if [ -n "$HITS" ]`,
+          # `FAIL=1` and a closing `exit 1`. grep exits 1 when it matches nothing,
+          # which is the clean case and must not abort the step. The verdict comes
+          # from the `-n` test and the `exit 1`, so no scan result is discarded.
+          # Audited 2026-08-15: 10 sites, all this shape.
           # Exclude CI/meta paths from audit
           CHANGED=$(echo "$CHANGED" | grep -vE '^(\.github/|AGENTS\.md|CONTRIBUTING|\.kiro/)' || true)
 

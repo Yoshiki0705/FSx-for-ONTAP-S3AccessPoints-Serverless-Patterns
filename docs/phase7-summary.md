@@ -122,7 +122,10 @@ threads working in coordination. The supporting protocol:
 
 ### cfn-lint status (Phase 7 templates)
 
-All three via `scripts/lint_phase7_templates.sh`:
+All three via `make lint-cfn` (they are covered by the `.cfnlintrc` globs). The
+`scripts/lint_phase7_templates.sh` this table used to cite was removed on 2026-08-15:
+its success condition ignored cfn-lint's exit code, so it printed "ALL PASSED"
+regardless — see [phase7-troubleshooting.md](phase7-troubleshooting.md) §8.1.
 
 | Template | Real errors | Notes |
 |----------|-------------|-------|

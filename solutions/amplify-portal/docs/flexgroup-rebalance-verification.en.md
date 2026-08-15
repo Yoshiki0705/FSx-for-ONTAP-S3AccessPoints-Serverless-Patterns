@@ -1,6 +1,6 @@
 # FlexGroup capacity rebalancing, measured
 
-🌐 **Language / 言語**: [日本語](flexgroup-rebalance-verification.md) | **English**
+🌐 **Language / 言語**: [日本語](flexgroup-rebalance-verification.md) | English
 
 A record of running capacity rebalancing end to end against a FlexGroup on FSx for
 ONTAP through the REST API. The centre of it is that **two constraints are not in the

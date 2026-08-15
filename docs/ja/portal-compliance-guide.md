@@ -1,6 +1,6 @@
 # ファイルポータル — セキュリティ・コンプライアンス担当者ガイド
 
-> 🌐 Language: [English](../en/portal-compliance-guide.md) | **日本語** | [한국어](../ko/portal-compliance-guide.md) | [简体中文](../zh-CN/portal-compliance-guide.md) | [繁體中文](../zh-TW/portal-compliance-guide.md) | [Français](../fr/portal-compliance-guide.md) | [Deutsch](../de/portal-compliance-guide.md) | [Español](../es/portal-compliance-guide.md)
+> 🌐 **Language / 言語**: 日本語 | [English](../en/portal-compliance-guide.md)
 
 セキュリティ担当者、コンプライアンスアナリスト、データ保護担当者向けのガイドです。ストレージ管理を行わず、ポータル経由で規制統制を**検証**するための手順をまとめています。以下のタスクはすべて読み取り専用アクセスで実行でき、`storage-admin` 権限は不要です。
 

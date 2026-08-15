@@ -1,6 +1,6 @@
 # 本番 Amplify Hosting デプロイガイド
 
-🌐 **Language / 言語**: **日本語** | [English](../en/amplify-hosting-production-guide.md)
+🌐 **Language / 言語**: 日本語 | [English](../en/amplify-hosting-production-guide.md)
 
 FSx for ONTAP ファイルポータルを、ブランチベース CI/CD・カスタムドメイン・エンタープライズ認証付きの本番 Web アプリケーションとしてデプロイする手順。
 

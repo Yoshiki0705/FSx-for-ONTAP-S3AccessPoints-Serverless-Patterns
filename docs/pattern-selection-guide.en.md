@@ -1,6 +1,6 @@
 # Pattern Selection Guide — Use Case Recommendations Based on Customer Situations
 
-🌐 **Language / 言語**: [日本語](pattern-selection-guide.md) | [English](pattern-selection-guide.en.md)
+🌐 **Language / 言語**: [日本語](pattern-selection-guide.md) | English
 
 ## Overview
 

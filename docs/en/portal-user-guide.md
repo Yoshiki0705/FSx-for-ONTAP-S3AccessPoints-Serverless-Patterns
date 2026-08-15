@@ -1,6 +1,6 @@
 # File Portal — User Guide
 
-> 🌐 Language: **English** | [日本語](../ja/portal-user-guide.md) | [한국어](../ko/portal-user-guide.md) | [简体中文](../zh-CN/portal-user-guide.md) | [繁體中文](../zh-TW/portal-user-guide.md) | [Français](../fr/portal-user-guide.md) | [Deutsch](../de/portal-user-guide.md) | [Español](../es/portal-user-guide.md)
+> 🌐 **Language / 言語**: [日本語](../ja/portal-user-guide.md) | English
 
 A guide for end users who have been invited to an already-deployed File Portal. This document assumes a portal administrator has completed deployment and created your account — you do not need AWS CLI access or deployment knowledge.
 

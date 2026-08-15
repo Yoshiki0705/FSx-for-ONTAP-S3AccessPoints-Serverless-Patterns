@@ -1,6 +1,6 @@
 # 外部 IdP セットアップ — SAML / OIDC フェデレーション
 
-> 🌐 言語: **日本語** | [English](../en/external-idp-setup.md)
+> 🌐 **Language / 言語**: 日本語 | [English](../en/external-idp-setup.md)
 
 > ファイルポータルを組織の ID プロバイダー（AD FS、Okta、Azure AD など）と接続します
 

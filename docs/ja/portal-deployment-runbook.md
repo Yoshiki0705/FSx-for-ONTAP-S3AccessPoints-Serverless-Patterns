@@ -1,6 +1,6 @@
 # ファイルポータル デプロイ運用手順書
 
-> 🌐 言語: **日本語** | [English](../en/portal-deployment-runbook.md)
+> 🌐 **Language / 言語**: 日本語 | [English](../en/portal-deployment-runbook.md)
 
 FSx for ONTAP ファイルポータルのデプロイ・更新・削除の運用手順書。2026-07-20 の検証で得た知見を反映。
 

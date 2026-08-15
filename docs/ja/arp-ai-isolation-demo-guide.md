@@ -1,6 +1,6 @@
 # ARP/AI 隔離デモガイド
 
-🌐 **Language / 言語**: **日本語** | [English](../en/arp-ai-isolation-demo-guide.md)
+🌐 **Language / 言語**: 日本語 | [English](../en/arp-ai-isolation-demo-guide.md)
 
 > ポータルのインシデント対応機能を示します。ARP/AI でランサムウェアの挙動を検知し、侵害されたユーザーや IP をブラウザから直接隔離します（外部ツールなし）。
 

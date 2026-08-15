@@ -1,6 +1,6 @@
 # Amplify Gen2 + CDK 設計判断ガイド
 
-🌐 **Language / 言語**: [日本語](amplify-gen2-cdk-patterns.md) | [English](amplify-gen2-cdk-patterns.en.md)
+🌐 **Language / 言語**: 日本語 | [English](amplify-gen2-cdk-patterns.en.md)
 
 > CDK Conference Japan 2026 セッション「Amplify Gen2 で backend.ts に CDK を定義する/しないことによる CDK の挙動の違いとユースケース」の知見を反映。
 

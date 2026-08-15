@@ -1,6 +1,6 @@
 # Amplify Portal クリーンアップガイド
 
-🌐 **Language / 言語**: [日本語](cleanup-guide.md) | [English](cleanup-guide.en.md)
+🌐 **Language / 言語**: 日本語 | [English](cleanup-guide.en.md)
 
 このガイドでは、Amplify ポータルおよび関連リソースを安全に削除する手順を説明します。
 

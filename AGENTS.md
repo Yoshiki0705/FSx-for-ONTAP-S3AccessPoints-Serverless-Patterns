@@ -12,7 +12,7 @@ CloudFormation/SAM template sharing the Python modules in `shared/`.
 **Two pillars**: `solutions/` (S3 AP data processing) + `operations/` (file system operational
 optimization).
 
-**Test coverage**: ~4,470 Python tests across 252 files + ~331 vitest tests across 26 files.
+**Test coverage**: ~4,470 Python tests across 261 files + ~331 vitest tests across 26 files.
 
 > ファイル数は `make drift` がツリーと照合するので、古くなれば fail する。テスト総数は
 > `make test` / ポータルハンドラの個別実行 / vitest の 3 系統の合計なので概数。誰も保守
@@ -51,18 +51,13 @@ optimization).
 
 ### ブラウザ自動化で対話を止めない（常時適用）
 
-詳細は上表の `pitfalls-browser-automation` にあるが、次の 3 つは**踏むとユーザーの操作を
-数分ブロックする**ので参照表任せにしない。
+理由と再現手順は [pitfalls-browser-automation](docs/agent/pitfalls-browser-automation.md)。
+この 3 つだけは**踏むとユーザーの操作を数分ブロックする**ので参照表任せにしない。
 
-- **`page.addInitScript()` は呼んだ分だけ蓄積し、解除 API が無い。** リロードで毎回全部が
-  再実行される。「前のを直してもう一度入れる」は追加になるだけ。ページ内で何かを書き換え
-  たいなら、撮影直前の `page.evaluate()` を使う。
-- **DOM を書き換える処理を `MutationObserver` から呼ばない。** 自分の書き換えが自分の監視を
-  再発火させ、レンダラーが CPU 100% で回り続ける。描画は通るので「見た目は正常なのに
-  自動化だけ返らない」形で出る。
-- **返らなくなったらリトライしない。** `ps aux | grep 'Google Chrome' | sort -k3 -rn | head -3`
-  で CPU 100% 付近のレンダラーを特定し、その pid だけ `kill` する。同じ呼び出しを重ねると
-  タイムアウト待ちが積み上がるだけで原因は消えない。
+- `page.addInitScript()` は蓄積し解除できない → 書き換えは撮影直前の `page.evaluate()` で。
+- DOM を書き換える処理を `MutationObserver` から呼ばない → レンダラーが 100% で回り、
+  「見た目は正常なのに自動化だけ返らない」形になる。
+- 返らなくなったらリトライしない → 暴走レンダラーの pid を特定して kill する。
 
 ## Core Commands
 `make help` が現役のターゲット一覧を出す。ここには毎回使うものだけを置く。
@@ -70,10 +65,11 @@ optimization).
 ```bash
 make test-quick     # 主要パターンのテスト（コミット前に必須）
 make test           # 全テスト
-make lint           # ruff check + ruff format --check（CI と同じ 2 段）
+make lint           # ruff（2 段）+ cfn-lint
 make format-python  # フォーマット差分の修正
-make drift          # ドキュメント/コード乖離、i18n 網羅、テーマトークン、action-parameter 契約
-make security       # セキュリティスキャン
+make drift          # 乖離・到達性チェック一式（中身は Verification Checklist を見る）
+make security       # bandit
+make security-cfn   # cfn-guard（cfn-guard バイナリが必要）
 make clean          # ビルド成果物の削除
 
 make test-uc1 / test-ops1 / test-fc1 / test-sap   # 単一パターン（番号を差し替える）
@@ -230,14 +226,13 @@ python3 -m pytest solutions/sap/erp-adjacent/tests/ -v
 
 ## Self-Review (4-Axis Check)
 
-Before running the Verification Checklist below, walk these four axes to catch issues that automated checks miss:
+4 軸（実装漏れ / 違和感 / 磨き込み / 退行リスク）の定義はグローバル steering
+`yoshiki-ai-development-principles` にある。あちらも常時ロードなので、ここに転記すると
+同じ規約が 2 か所に存在し、片方だけが更新される。このリポジトリ固有の読み替えだけを置く:
 
-1. **Implementation gaps** — Is anything in the agreed scope still missing? (e.g., updated a handler but forgot the parallel change in `template.yaml`; tests not added; docs not updated; JA/EN parity broken)
-2. **Oddities** — Is anything in the diff strange or inconsistent? (dead code, leftover variable names from a prior shape, error messages that no longer make sense, half-applied refactors, hardcoded values that should be parameters)
-3. **Polish opportunities** — Are there small in-scope improvements noticed and dismissed as "out of scope"? Default to including them in the same change if they touch the same files and carry no behavior-break risk; defer only when they belong to a genuinely different concern.
-4. **Regression risk** — Full `make test-quick` run (not just the new tests)? Any renamed/removed shared/ exports that other patterns depend on? Any behavior change in shared modules that breaks DemoMode or production path?
-
-Surface findings explicitly and fix them before finalizing. The cost of one more pass is small compared to a follow-up fix or a missed regression.
+- **実装漏れ**: handler を変えて `template.yaml` を忘れていないか。JA/EN parity。
+- **退行リスク**: `make test-quick` を通したか。`shared/` の export を消していないか
+  （全パターンが import する）。DemoMode と本番パスの両方を壊していないか。
 
 ## Verification Checklist
 変更を出す前に、毎回:
@@ -246,9 +241,13 @@ Surface findings explicitly and fix them before finalizing. The cost of one more
 2. `make lint` — `ruff check` と `ruff format --check` の両方。CI が別ステップなので、
    片方だけではローカルを通って CI で落ちる。差分は `make format-python`
 3. `cfn-lint` — 変更したテンプレート
-4. `make drift` — action インベントリ、i18n 網羅、陳腐化ルール、テーマトークン（色リテラル /
-   インラインスタイル / 未定義トークン / ロケールの過剰エスケープ）、画像とリンクの解決、
-   ポータルの action-parameter 契約
+4. `make drift` — ゲート自身の健全性（.PHONY 網羅、ツール不在で落ちるか、ピン留めした
+   バージョンが実際に走るか、`make drift` の各チェックが CI からも走るか）、テストディレクトリ
+   の網羅、action インベントリと action-parameter 契約、i18n（manifest が要求する翻訳の存在・
+   全 8 言語の構造 parity・生成されたスイッチャ）、陳腐化ルール、テーマトークン、画像とリンクの
+   解決、samconfig 例、env var 契約
+5. `make security-cfn` — テンプレートを触ったとき。cfn-guard は暗号化・公開アクセス・
+   最小権限・SageMaker 分離を見る（cfn-lint はテンプレートの妥当性しか見ない）
 
 変更内容に応じて:
 
@@ -316,7 +315,7 @@ decision = evaluate_confidence(confidence=0.72)
 
 | Real Data | Placeholder |
 |-----------|-------------|
-| AWS Account ID | `123456789012` |
+| AWS Account ID | `123456789012`。複数アカウントを書き分けるときは下記の 3 形状のいずれかを使う |
 | Secret ARN suffix | `-XXXXXX` |
 | VPC/Subnet/SG IDs | `vpc-0123456789abcdef0` |
 | File System ID | `fs-0123456789abcdef0` |
@@ -326,14 +325,16 @@ decision = evaluate_confidence(confidence=0.72)
 | Personal file paths | Relative paths or `${PROJECT_DIR}` |
 | S3 AP Alias | Use parameter reference `!Ref S3AccessPointAlias` |
 
-> **なぜ IP を 2 行に分けているか**: `10.0.0.0/16` のような CIDR はプライベートアドレス
-> 空間の例示であり、これを RFC 5737 に置き換えるのは誤り（実際にプライベートである点が
-> 説明の一部だから）。一方、**特定の 1 台**を指す `blockedIp` や「攻撃元ワークステーションの
-> IP」は、まさに PII 監査が守ろうとしている対象なので RFC 5737 のドキュメント用レンジを
-> 使う。`scripts/portal-probes/` が `203.0.113.99` を選んでいるのも同じ理由。
->
-> 判断基準は「そのアドレスは 1 人の端末を指しているか」。指しているなら置換し、
-> ネットワークを指しているなら残す。
+> **アカウント ID は値ではなく形状で許可される**: 許可されるのは同一数字の繰り返し
+> （`111111111111`）、4 桁ずつの繰り返し（`111122223333`、AWS 公式ドキュメントの慣行）、
+> ±1 の連番（`123456789012`、`987654321098`）。形状判定なのでアカウントを 1 つ増やすときに
+> この表を編集する必要はない。実在 ID を書かざるを得ないなら行に `allow:account-id` と理由を
+> 付ける。強制と例外は `scripts/check_account_id_placeholders.py` にある
+
+> **IP が 2 行ある理由**: 判断基準は「そのアドレスは 1 人の端末を指しているか」。指すなら
+> RFC 5737 に置換し（PII 監査が守る対象そのもの。`scripts/portal-probes/` が
+> `203.0.113.99` を使うのも同じ理由）、ネットワークを指すなら `10.0.0.0/16` のまま残す
+> ——「プライベートである」ことが説明の一部だから。
 
 ### 機械強制されているもの
 

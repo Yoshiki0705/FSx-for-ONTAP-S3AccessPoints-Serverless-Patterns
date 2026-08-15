@@ -1,6 +1,6 @@
 # UC19: Werbung & Marketing / Creative Asset Management — Asset-Katalogisierung und Markenkonformitätsprüfung
 
-🌐 **Language / Sprache**: [日本語](architecture.md) | [English](architecture.en.md) | [한국어](architecture.ko.md) | [简体中文](architecture.zh-CN.md) | [繁體中文](architecture.zh-TW.md) | [Français](architecture.fr.md) | Deutsch | [Español](architecture.es.md)
+🌐 **Language / 言語**: [日本語](architecture.md) | [English](architecture.en.md) | [한국어](architecture.ko.md) | [简体中文](architecture.zh-CN.md) | [繁體中文](architecture.zh-TW.md) | [Français](architecture.fr.md) | Deutsch | [Español](architecture.es.md)
 
 ## End-to-End-Architektur (Eingabe → Ausgabe)
 

@@ -1,6 +1,6 @@
 # ファイルポータル — クイックリファレンス
 
-> 🌐 Language: [English](../en/portal-quick-reference.md) | **日本語** | [한국어](../ko/portal-quick-reference.md) | [简体中文](../zh-CN/portal-quick-reference.md) | [繁體中文](../zh-TW/portal-quick-reference.md) | [Français](../fr/portal-quick-reference.md) | [Deutsch](../de/portal-quick-reference.md) | [Español](../es/portal-quick-reference.md)
+> 🌐 **Language / 言語**: 日本語 | [English](../en/portal-quick-reference.md)
 
 日常のポータル操作を 1 ページにまとめたチートシート。印刷またはブックマークしてください。
 

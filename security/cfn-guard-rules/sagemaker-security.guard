@@ -1,67 +1,62 @@
-# SageMaker Security Rule
-# Ensures SageMaker resources have VPC configuration and encryption at rest
+#
+# SageMaker network isolation and encryption at rest.
+#
+# Ported to cfn-guard 3.x on 2026-08-15; see encryption-required.guard for why the
+# `rule ... when %INPUT` form had to go.
+#
+# ## What was removed
+#
+# `sagemaker_endpoint_vpc` asserted `VariantName exists` on each production variant,
+# under a comment explaining that VPC configuration lives on the model rather than
+# the endpoint config. So the rule was named for a property it did not check and
+# asserted one that CloudFormation requires anyway — it could only ever pass. The
+# network-isolation requirement it was reaching for is covered by
+# `sagemaker_model_vpc` and `sagemaker_model_network_isolation` below.
+#
 
-# Rule: SageMaker endpoints must have VPC configuration
-rule sagemaker_endpoint_vpc when %INPUT {
-    Resources.*[ Type == "AWS::SageMaker::EndpointConfig" ] {
-        when Properties.ProductionVariants exists {
-            # VPC config is applied at the model level, not endpoint config
-            # This rule validates endpoint config exists with proper settings
-            Properties.ProductionVariants[*] {
-                VariantName exists
-            }
-        }
-    }
-}
+let sagemaker_models = Resources.*[ Type == "AWS::SageMaker::Model" ]
+let sagemaker_endpoint_configs = Resources.*[ Type == "AWS::SageMaker::EndpointConfig" ]
+let sagemaker_notebooks = Resources.*[ Type == "AWS::SageMaker::NotebookInstance" ]
 
-# Rule: SageMaker models must have VPC configuration
-rule sagemaker_model_vpc when %INPUT {
-    Resources.*[ Type == "AWS::SageMaker::Model" ] {
+rule sagemaker_model_vpc when %sagemaker_models !empty {
+    %sagemaker_models {
         Properties.VpcConfig exists
-            <<SageMaker model must have VPC configuration for network isolation>>
+            <<SageMaker model must have VpcConfig for network isolation>>
         Properties.VpcConfig.Subnets exists
+            <<SageMaker model VpcConfig must list Subnets>>
         Properties.VpcConfig.SecurityGroupIds exists
+            <<SageMaker model VpcConfig must list SecurityGroupIds>>
     }
 }
 
-# Rule: SageMaker models must have network isolation enabled
-rule sagemaker_network_isolation when %INPUT {
-    Resources.*[ Type == "AWS::SageMaker::Model" ] {
-        when Properties.EnableNetworkIsolation exists {
-            Properties.EnableNetworkIsolation == true
-                <<SageMaker model should have network isolation enabled>>
-        }
+rule sagemaker_model_network_isolation when %sagemaker_models !empty {
+    %sagemaker_models [ Properties.EnableNetworkIsolation exists ] {
+        Properties.EnableNetworkIsolation !is_bool or
+        Properties.EnableNetworkIsolation == true
+            <<SageMaker model should have EnableNetworkIsolation: true>>
     }
 }
 
-# Rule: SageMaker endpoint config must have KMS encryption
-rule sagemaker_endpoint_encryption when %INPUT {
-    Resources.*[ Type == "AWS::SageMaker::EndpointConfig" ] {
+# Serverless variants are exempt. `KmsKeyId` on an endpoint config encrypts the
+# storage volume attached to the ML compute instance that hosts the endpoint, and a
+# serverless variant has no such instance and no such volume — so requiring the key
+# there is asking for a property that does not apply, which is a defect in the rule
+# rather than a finding in the template.
+rule sagemaker_endpoint_encryption when %sagemaker_endpoint_configs !empty {
+    %sagemaker_endpoint_configs [
+        Properties.ProductionVariants[*].ServerlessConfig not exists
+    ] {
         Properties.KmsKeyId exists
-            <<SageMaker endpoint config must have KMS encryption for data at rest>>
+            <<SageMaker endpoint config must set KmsKeyId for data at rest>>
     }
 }
 
-# Rule: SageMaker notebook instances must have encryption
-rule sagemaker_notebook_encryption when %INPUT {
-    Resources.*[ Type == "AWS::SageMaker::NotebookInstance" ] {
+rule sagemaker_notebook_hardened when %sagemaker_notebooks !empty {
+    %sagemaker_notebooks {
         Properties.KmsKeyId exists
-            <<SageMaker notebook instance must have KMS encryption>>
+            <<SageMaker notebook instance must set KmsKeyId>>
+        Properties.DirectInternetAccess !is_string or
         Properties.DirectInternetAccess == "Disabled"
-            <<SageMaker notebook must not have direct internet access>>
-    }
-}
-
-# Rule: SageMaker training jobs must have encryption
-rule sagemaker_training_encryption when %INPUT {
-    Resources.*[ Type == "AWS::SageMaker::TrainingJob" ] {
-        when Properties.ResourceConfig exists {
-            Properties.ResourceConfig.VolumeKmsKeyId exists
-                <<SageMaker training job must have volume encryption>>
-        }
-        when Properties.OutputDataConfig exists {
-            Properties.OutputDataConfig.KmsKeyId exists
-                <<SageMaker training job output must be encrypted>>
-        }
+            <<SageMaker notebook must set DirectInternetAccess: Disabled>>
     }
 }

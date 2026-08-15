@@ -1,6 +1,6 @@
 # Using the portal on a phone — File Portal walkthrough
 
-🌐 **Language / 言語**: [日本語](../ja/portal-mobile-guide.md) | **English**
+🌐 **Language / 言語**: [日本語](../ja/portal-mobile-guide.md) | English
 
 > A walkthrough for people using the file portal from a phone browser. **No deployment knowledge required.**
 > Each step carries the screen it describes, so you can follow it with the phone in your hand.

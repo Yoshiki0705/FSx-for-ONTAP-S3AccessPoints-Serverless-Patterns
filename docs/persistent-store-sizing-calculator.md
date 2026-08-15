@@ -1,6 +1,6 @@
 # FPolicy Persistent Store Sizing Calculator
 
-🌐 **Language / 言語**: **日本語** | [English](persistent-store-sizing-calculator.en.md)
+🌐 **Language / 言語**: 日本語 | [English](persistent-store-sizing-calculator.en.md)
 
 ## 概要
 

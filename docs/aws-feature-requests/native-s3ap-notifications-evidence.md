@@ -1,6 +1,6 @@
 # Why Native S3AP Notifications Still Matter
 
-🌐 **Language / 言語**: [日本語](native-s3ap-notifications-evidence.md) | [English](native-s3ap-notifications-evidence.en.md)
+🌐 **Language / 言語**: 日本語 | [English](native-s3ap-notifications-evidence.en.md)
 
 ## 概要
 

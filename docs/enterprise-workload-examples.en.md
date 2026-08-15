@@ -1,6 +1,6 @@
 # Enterprise Workload Examples
 
-🌐 **Language / 言語**: [日本語](enterprise-workload-examples.md) | [English](enterprise-workload-examples.en.md)
+🌐 **Language / 言語**: [日本語](enterprise-workload-examples.md) | English
 
 ## Overview
 

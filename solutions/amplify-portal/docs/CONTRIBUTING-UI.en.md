@@ -1,6 +1,6 @@
 # Extending the portal UI — developer guide
 
-🌐 **Language / 言語**: [日本語](CONTRIBUTING-UI.md) | **English**
+🌐 **Language / 言語**: [日本語](CONTRIBUTING-UI.md) | English
 
 > For developers **adding a feature to the portal or changing an existing screen**.
 > It says what breaks when you touch what, and which gate catches what, in the order

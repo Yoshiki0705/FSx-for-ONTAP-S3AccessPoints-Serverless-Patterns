@@ -1,6 +1,6 @@
 # Amplify Gen2 File Portal — セクション構成ガイド
 
-> 🌐 言語: **日本語** | [English](portal-tabs-guide.en.md)
+> 🌐 **Language / 言語**: 日本語 | [English](portal-tabs-guide.en.md)
 
 > **最終更新**: 2026-07-22
 > **検証**: CDK Sandbox デプロイ → Cognito ログイン → 17 セクション全表示確認済み

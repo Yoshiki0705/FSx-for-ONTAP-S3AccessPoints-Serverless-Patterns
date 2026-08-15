@@ -36,7 +36,12 @@ jobs:
         run: |
           pip install zizmor
 
-      - name: Run zizmor scan
+      # `|| true` is deliberate HERE and only here: zizmor exits non-zero when it
+      # finds anything, and the SARIF file has to exist for the upload step below
+      # regardless of the verdict. Discarding the status of the report-writing run
+      # is safe because the run that decides the outcome is the blocking one after
+      # the upload.
+      - name: Run zizmor scan (writes SARIF for code scanning)
         run: |
           echo "🔍 GitHub Actions セキュリティリント実行中..."
           zizmor --format sarif . > zizmor-results.sarif || true
@@ -48,7 +53,13 @@ jobs:
           sarif_file: zizmor-results.sarif
           category: zizmor
 
-      - name: Run zizmor (human-readable output)
+      # This one used to end in `|| true` as well, which meant the workflow named
+      # "GitHub Actions Security Lint" could not fail — a finding was uploaded to
+      # code scanning and the job went green, so nothing stopped a pull request that
+      # introduced one. Measured 2026-08-15 on this tree: `zizmor .` exits 0 with
+      # "No findings to report (55 suppressed)", so making it blocking costs nothing
+      # today and is the only reason the step means anything tomorrow.
+      - name: Run zizmor (blocking)
         run: |
           echo "📋 zizmor 結果サマリー:"
-          zizmor . || true
+          zizmor .

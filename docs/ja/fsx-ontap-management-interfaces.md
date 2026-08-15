@@ -1,6 +1,6 @@
 # FSx for ONTAP の管理インターフェース — 何に到達できて、何に到達できないか
 
-🌐 **Language / 言語**: **日本語** | [English](../en/fsx-ontap-management-interfaces.md)
+🌐 **Language / 言語**: 日本語 | [English](../en/fsx-ontap-management-interfaces.md)
 
 > 目的: Amazon FSx for NetApp ONTAP（以降 FSx for ONTAP）を運用するときに
 > 実際に使えるインターフェースを、公式ドキュメントの根拠付きで確定させます。

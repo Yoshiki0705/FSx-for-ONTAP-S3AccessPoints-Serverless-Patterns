@@ -1,6 +1,6 @@
 # ONTAP Integration Notes — S3 AP と既存 NAS 運用の共存ガイド
 
-🌐 **Language / 言語**: [日本語](ontap-integration-notes.md) | [English](ontap-integration-notes.en.md)
+🌐 **Language / 言語**: 日本語 | [English](ontap-integration-notes.en.md)
 
 ## 概要
 
