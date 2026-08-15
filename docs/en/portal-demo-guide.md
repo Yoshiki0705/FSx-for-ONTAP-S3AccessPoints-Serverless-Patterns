@@ -362,6 +362,16 @@ The name and size are listed. The file goes to Safari's configured download loca
 > far as the browser is concerned, so iOS leaves no entry in the download manager. `npm run copy-sw`
 > places the worker (`npm start` and `npm run phone` run it for you).
 
+### Administration reaches the phone too, though tables are cramped
+
+![Volume management on a phone](../screenshots/portal-mobile/04-admin-volumes-phone.png)
+
+Members of the `storage-admin` group see the management sections. Above is the volume list, with the
+target SVM selector and volume creation on the same screen. **Known limitation**: at this width the
+table headers wrap one character per line and rows are cut off horizontally. It is readable but not
+comfortable, so reviewing a list is better done in landscape or on a desktop. Checking state and
+performing a single operation during an incident works fine.
+
 > **A phone needs HTTPS**: `http://<LAN-IP>` cannot sign in. Sign-in uses `crypto.subtle` and copying
 > a share link uses `navigator.clipboard`, both of which browsers restrict to a secure context. Use
 > the tunnel from `npm run phone`, or Amplify Hosting.
