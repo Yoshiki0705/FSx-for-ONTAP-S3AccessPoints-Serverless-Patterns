@@ -319,7 +319,7 @@ export function ArpAdminManager() {
               </td>
               <td>
                 {vol.attackProbability !== "none" && (
-                  <span className="state-badge" style={{ backgroundColor: vol.attackProbability === "high" ? "#ef4444" : "#f97316", color: "var(--color-text-inverse)" }}>
+                  <span className="state-badge" style={{ backgroundColor: vol.attackProbability === "high" ? "var(--color-error)" : "var(--color-warning)", color: "var(--color-text-inverse)" }}>
                     {vol.attackProbability}
                   </span>
                 )}

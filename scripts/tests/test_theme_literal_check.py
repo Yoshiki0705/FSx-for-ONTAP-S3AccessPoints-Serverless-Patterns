@@ -144,6 +144,31 @@ class TestInlineStyleLiterals:
         """One is reported. There is no case for a literal that cannot be restyled."""
         assert self._run(tmp_path, monkeypatch, 'const s = { color: "#fff" };\n')
 
+    def test_finds_literals_a_ternary_puts_past_the_colon(self, tmp_path, monkeypatch):
+        """The shape this rule could not see, taken from the volume capacity bar.
+
+        The value of a colour property is an expression as often as it is a string.
+        Anchoring on a quote directly after the colon meant three hex fills chosen
+        by a ternary were invisible here, and they stayed light under the dark theme.
+        """
+        findings = self._run(
+            tmp_path,
+            monkeypatch,
+            'const bar = { backgroundColor: pct > 90 ? "#ef4444" : pct > 75 ? "#f97316" : "#22c55e" };\n',
+        )
+        # One finding per literal: each is a separate fill somebody has to replace.
+        assert len(findings) == 3
+        reported = " ".join(f.detail for f in findings)
+        assert all(literal in reported for literal in ("#ef4444", "#f97316", "#22c55e"))
+
+    def test_accepts_a_ternary_that_picks_between_tokens(self, tmp_path, monkeypatch):
+        """The fix for the above, which must not be reported in turn."""
+        assert not self._run(
+            tmp_path,
+            monkeypatch,
+            'const bar = { backgroundColor: pct > 90 ? "var(--color-error)" : "var(--color-success)" };\n',
+        )
+
     def test_reports_each_occurrence_separately(self, tmp_path, monkeypatch):
         """Per-line, unlike the stylesheet count: each one is a specific component."""
         findings = self._run(

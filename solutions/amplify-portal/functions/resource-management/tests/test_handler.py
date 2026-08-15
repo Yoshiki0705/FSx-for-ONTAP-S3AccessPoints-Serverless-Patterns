@@ -157,6 +157,97 @@ class TestListVolumes:
         assert result["volumes"][0]["securityStyle"] == "unix"
 
 
+class TestVolumeCapacityBreakdown:
+    """What a volume is holding, split into the parts that behave differently.
+
+    `space.used` answers a narrower question than the volume row implies, and it does
+    not answer it the same way on two volumes: snapshot data inside the reserve is
+    excluded from it while snapshot data past the reserve is included. Both shapes are
+    fixed here from measurements taken on the file system this portal manages.
+    """
+
+    @pytest.fixture(autouse=True)
+    def _secrets(self, mock_secrets):
+        """Every case in here reaches ONTAP, so the credential read is always mocked."""
+
+    def _volumes(self, record):
+        from handler import handler
+
+        with patch("handler.urllib3.PoolManager") as mock_pool:
+            mock_pool.return_value = MockHttp(
+                {"/storage/volumes": {"status": 200, "data": {"records": [record], "num_records": 1}}}
+            )
+            return handler({"action": "listVolumes"}, None)["volumes"][0]
+
+    def test_snapshot_usage_inside_the_reserve_is_reported_and_is_not_spill(self):
+        """Measured on clone03: used 18.1 MiB, snapshots 77.3 MiB, reserve 5 GiB.
+
+        The snapshots hold four times what the active file system does, and `used`
+        does not mention them because they fit in the reserve. Deleting files here
+        moves blocks into that hidden number instead of releasing them.
+        """
+        vol = self._volumes(
+            {
+                "name": "clone03",
+                "uuid": "uuid-c3",
+                "size": 107374182400,
+                "space": {
+                    "used": 18_979_840,
+                    "used_by_afs": 18_979_840,
+                    "snapshot": {
+                        "used": 81_055_744,
+                        "reserve_percent": 5,
+                        "reserve_size": 5_368_709_120,
+                        "autodelete_enabled": False,
+                    },
+                },
+            }
+        )
+
+        assert vol["afsUsedBytes"] == 18_979_840
+        assert vol["snapshotUsedBytes"] == 81_055_744
+        assert vol["snapshotReservePercent"] == 5
+        # Nothing has escaped the reserve, so the active file system is not being
+        # squeezed yet -- which is a different situation from the one below and has
+        # to stay distinguishable.
+        assert vol["snapshotSpillBytes"] == 0
+        assert vol["snapshotAutodeleteEnabled"] is False
+
+    def test_snapshot_usage_past_the_reserve_is_reported_as_spill(self):
+        """With no reserve, every snapshot block competes with live data."""
+        vol = self._volumes(
+            {
+                "name": "ds_migtoaws_bk",
+                "uuid": "uuid-ds",
+                "size": 2199023255552,
+                "space": {
+                    "used": 87_745_069_056,
+                    "used_by_afs": 85_916_483_584,
+                    "snapshot": {"used": 1_828_585_472, "reserve_percent": 0, "reserve_size": 0},
+                },
+            }
+        )
+
+        assert vol["snapshotSpillBytes"] == 1_828_585_472
+        # `used` already counts the spill, so the two must not be added together by a
+        # caller trying to reconstruct the total.
+        assert vol["usedBytes"] == vol["afsUsedBytes"] + vol["snapshotSpillBytes"]
+
+    def test_a_volume_reporting_no_space_object_still_produces_numbers(self):
+        """Absent fields read as zero rather than as a missing key.
+
+        The list is rendered straight into a table, and one volume answering with a
+        shorter record than the rest used to be able to take the row down with it.
+        """
+        vol = self._volumes({"name": "bare", "uuid": "uuid-b", "size": 1024})
+
+        assert vol["afsUsedBytes"] == 0
+        assert vol["snapshotUsedBytes"] == 0
+        assert vol["snapshotReserveBytes"] == 0
+        assert vol["snapshotSpillBytes"] == 0
+        assert vol["snapshotAutodeleteEnabled"] is False
+
+
 class TestCreateVolume:
     def test_validates_name_format(self, mock_secrets):
         from handler import handler
