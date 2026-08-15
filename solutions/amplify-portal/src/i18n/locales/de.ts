@@ -155,6 +155,8 @@ export const de: Record<TranslationKeys, string> = {
   arpResponseDisconnect: "SMB-Sitzungen trennen",
   arpResponseDisconnected: "Sitzungen getrennt",
 arpResponseSweepNote: "Sperren heben sich nach Ablauf der Frist selbst auf. Für eine frühere Aufhebung nutzen Sie den Tab „Aktive Sperren“.",
+  durationMinute: "{n} Minute",
+  durationMinutes: "{n} Minuten",
   durationHour: "{n} Stunde",
   durationHours: "{n} Stunden",
   durationDay: "{n} Tag",

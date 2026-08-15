@@ -160,6 +160,8 @@ export const ja = {
   arpResponseDisconnect: "SMB セッションを切断",
   arpResponseDisconnected: "セッションを切断しました",
 arpResponseSweepNote: "ブロックは指定した期限が過ぎると自動で解除されます。期限前に解除する場合は「有効なブロック」タブから操作してください。",
+  durationMinute: "{n}分",
+  durationMinutes: "{n}分",
   durationHour: "{n}時間",
   durationHours: "{n}時間",
   durationDay: "{n}日",

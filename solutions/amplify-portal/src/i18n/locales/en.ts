@@ -157,6 +157,8 @@ export const en: Record<TranslationKeys, string> = {
   arpResponseDisconnect: "Disconnect SMB sessions",
   arpResponseDisconnected: "Sessions disconnected",
 arpResponseSweepNote: "Blocks lift themselves once their expiry passes. To lift one sooner, use the Active Blocks tab.",
+  durationMinute: "{n} minute",
+  durationMinutes: "{n} minutes",
   durationHour: "{n} hour",
   durationHours: "{n} hours",
   durationDay: "{n} day",
