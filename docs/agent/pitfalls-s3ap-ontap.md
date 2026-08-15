@@ -154,14 +154,22 @@ authenticated ロール）:
 
 つまり CRC32 のフレキシブルチェックサムは通る。落ちるのは `if-none-match` だけ。
 
-**ポータルでこれが表面化した経路**: `@aws-amplify/ui-react-storage` の Storage Browser は
-`preventOverwrite`（UI の "Overwrite existing files" チェックボックス）を `if-none-match: *`
-に変換し、upload と createFolder の両ハンドラーがこれを送る。読み取りは無関係なので
-「一覧は見えるのに書き込みだけ全件失敗する」形になる。ヘッダーは SigV4 の `SignedHeaders`
-に含まれるため、署名後に取り除くことはできない。差し替えられるのはハンドラーだけで、
-`createStorageBrowser({ actions: { default: { upload, createFolder } } })` がその口。
-実装は `solutions/amplify-portal/src/lib/storageBrowserWriteHandlers.ts`。
+Storage Browser は `preventOverwrite`（"Overwrite existing files" チェックボックス）を
+このヘッダーに変換し、upload と createFolder の両ハンドラーが送る。読み取りは無関係なので
+「一覧は見えるのに書き込みだけ全件失敗する」形になる。ヘッダーは `SignedHeaders` に入るため
+署名後に除去できず、差し替えられるのはハンドラーだけ（`createStorageBrowser({ actions })`）。
+上書き防止は書き込み前の `list` で代替する。原子性はないので同時書き込みは両方が不在と判定
+しうる。実装と経緯は `solutions/amplify-portal/src/lib/storageBrowserWriteHandlers.ts`。
 
-**上書き防止をどう残すか**: 書き込み前に同じキーを `list`（prefix 一致）で引き、存在したら
-`OVERWRITE_PREVENTED` を返す。`if-none-match` のような原子性はないので、同じキーへの同時
-書き込みは両方が「不在」と判定しうる。このエンドポイントでの代替案は「上書き防止なし」。
+**代替実装で踏んだ罠**: 存在確認と書き込みを並行に走らせると、小さいファイルでは PUT が先に
+完了し、直後の一覧が**自分が書いたオブジェクト**を見つけて `OVERWRITE_PREVENTED` を返す。
+画面は失敗、AP にはオブジェクトが存在する（1.8 MB で実際に発生）。確認は書き込み開始の
+**前**に完了させる。
+
+## 有効な S3 AP は API から引く（台帳を持たない）
+
+手書きの一覧は無言で古くなる（削除済みや `MISCONFIGURED` の AP も設定ファイル上は正しく
+見える）。インベントリ源は `fsx describe-s3-access-point-attachments` の 1 つだけ。
+必ずページングを追う: 1 ページ目だけ読むと、存在する AP が「存在しない」と区別できない
+形で欠ける。`make discover-s3ap`（`scripts/discover_s3_access_points.py`）と使い方は
+[portal-deployment-runbook](../ja/portal-deployment-runbook.md) にある。

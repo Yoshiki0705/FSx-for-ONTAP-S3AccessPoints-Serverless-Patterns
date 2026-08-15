@@ -24,10 +24,11 @@
  * Reads were never affected, because GET and ListObjectsV2 send neither header.
  * That is why browsing worked while every write failed.
  *
- * The replacement is a lookup before the write. It is not atomic the way
- * `if-none-match` is: two clients writing the same key at the same moment can
- * both see it as absent, and the later write wins. The alternative on this
- * endpoint is no overwrite protection at all.
+ * The replacement is a lookup before the write, and the order matters -- see the
+ * comment in the upload handler. It is not atomic the way `if-none-match` is:
+ * two clients writing the same key at the same moment can both see it as absent,
+ * and the later write wins. The alternative on this endpoint is no overwrite
+ * protection at all.
  */
 import { list, uploadData } from "@aws-amplify/storage/internals";
 import { isCancelError } from "aws-amplify/storage";
@@ -108,27 +109,43 @@ export const uploadWithoutConditionalWrite = ({
   const { key, file, preventOverwrite } = data;
   const onProgress = options?.onProgress;
 
-  const guard = preventOverwrite ? exists(config, key) : Promise.resolve(false);
+  /*
+   * The lookup has to finish before the upload starts. Running the two
+   * concurrently and discarding the upload if the key turned out to exist looked
+   * equivalent and was not: for a small file the PUT can win the race, the
+   * lookup then finds the object the PUT has just written, and the handler
+   * reports OVERWRITE_PREVENTED for a file that uploaded correctly. That is what
+   * a 1.8 MB upload from a phone did -- "failed to upload" on screen, object
+   * present in the access point.
+   *
+   * `uploadData` therefore starts only after the answer is known, and the
+   * controls the view needs are forwarded to it once it exists. A cancel that
+   * arrives while the lookup is still running is remembered and applied.
+   */
+  let started: ReturnType<typeof uploadData> | undefined;
+  let cancelRequested = false;
 
-  // `uploadData` has to be called synchronously to expose cancel/pause/resume,
-  // so the guard is applied by racing it: the upload starts, and if the key
-  // turns out to exist it is cancelled before the result is reported.
-  const { cancel, pause, resume, result } = uploadData({
-    path: key,
-    data: file,
-    options: {
-      ...sharedOptions(config),
-      onProgress: (event) => onProgress?.(data, ratio(event)),
-    },
-  });
-
-  const guarded: UploadHandlerOutput["result"] = guard.then(async (found) => {
-    if (found) {
-      cancel();
+  const result: UploadHandlerOutput["result"] = (async () => {
+    if (preventOverwrite && (await exists(config, key))) {
       return overwritePrevented(key);
     }
+    if (cancelRequested) {
+      const error = new Error("Upload canceled");
+      return { error, message: error.message, status: "CANCELED" as const };
+    }
+
+    started = uploadData({
+      path: key,
+      data: file,
+      options: {
+        ...sharedOptions(config),
+        onProgress: (event) => onProgress?.(data, ratio(event)),
+      },
+    });
+    if (cancelRequested) started.cancel();
+
     try {
-      const output = await result;
+      const output = await started.result;
       return { status: "COMPLETE" as const, value: { key: output.path } };
     } catch (caught) {
       const error = caught as Error;
@@ -138,16 +155,23 @@ export const uploadWithoutConditionalWrite = ({
         status: isCancelError(error) ? ("CANCELED" as const) : ("FAILED" as const),
       };
     }
-  });
+  })();
 
   // Pause and resume only exist for multipart uploads; offering them for a
   // single PutObject would render controls that cannot do anything.
   const controls =
     file.size > MULTIPART_UPLOAD_THRESHOLD_BYTES
-      ? { cancel, pause, resume }
+      ? {
+          cancel: () => {
+            cancelRequested = true;
+            started?.cancel();
+          },
+          pause: () => started?.pause(),
+          resume: () => started?.resume(),
+        }
       : { cancel: undefined, pause: undefined, resume: undefined };
 
-  return { ...controls, result: guarded };
+  return { ...controls, result };
 };
 
 export const createFolderWithoutConditionalWrite = ({
