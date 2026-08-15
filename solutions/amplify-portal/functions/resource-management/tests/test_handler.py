@@ -742,9 +742,7 @@ class TestVolumeRebalance:
         from handler import handler
 
         with patch("handler.urllib3.PoolManager") as mock_pool:
-            mock_pool.return_value = self._http(
-                {"name": "fg_oss", "style": "flexgroup", "is_object_store": True}
-            )
+            mock_pool.return_value = self._http({"name": "fg_oss", "style": "flexgroup", "is_object_store": True})
             result = handler(
                 {"action": "startVolumeRebalance", "volumeUuid": "uuid-1", "acknowledgeIrreversible": True},
                 None,
