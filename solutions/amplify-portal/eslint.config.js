@@ -30,6 +30,10 @@ export default tseslint.config(
       "coverage/**",
       "playwright-report/**",
       "test-results/**",
+      // Copied verbatim from @aws-amplify/ui-react-storage by `npm run copy-sw`.
+      // It is a service worker, so it legitimately uses globals this config does
+      // not declare, and it is not ours to fix.
+      "public/**",
     ],
   },
   js.configs.recommended,
