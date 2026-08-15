@@ -1,6 +1,6 @@
 # Partner Workshop Guide — 導入先向け PoC ワークショップ
 
-🌐 **Language / 言語**: [日本語](workshop-guide.md) | [English](workshop-guide.en.md)
+🌐 **Language / 言語**: 日本語 | [English](workshop-guide.en.md)
 
 ## 概要
 

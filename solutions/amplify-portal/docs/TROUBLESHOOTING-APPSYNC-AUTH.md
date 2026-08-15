@@ -1,6 +1,6 @@
 # AppSync 認可のトラブルシューティング（Amplify Gen2）
 
-🌐 **Language / 言語**: [日本語](TROUBLESHOOTING-APPSYNC-AUTH.md) | [English](TROUBLESHOOTING-APPSYNC-AUTH.en.md)
+🌐 **Language / 言語**: 日本語 | [English](TROUBLESHOOTING-APPSYNC-AUTH.en.md)
 
 ## 事象: カスタム Query / Mutation で "User is not authorized"
 

@@ -1,6 +1,6 @@
 # FPolicy Setup Guide
 
-🌐 **Language / 言語**: [日本語](fpolicy-setup-guide.md) | **English** | [한국어](fpolicy-setup-guide-ko.md) | [简体中文](fpolicy-setup-guide-zh-CN.md) | [繁體中文](fpolicy-setup-guide-zh-TW.md) | [Français](fpolicy-setup-guide-fr.md) | [Deutsch](fpolicy-setup-guide-de.md) | [Español](fpolicy-setup-guide-es.md)
+🌐 **Language / 言語**: [日本語](fpolicy-setup-guide.md) | English | [한국어](fpolicy-setup-guide-ko.md) | [简体中文](fpolicy-setup-guide-zh-CN.md) | [繁體中文](fpolicy-setup-guide-zh-TW.md) | [Français](fpolicy-setup-guide-fr.md) | [Deutsch](fpolicy-setup-guide-de.md) | [Español](fpolicy-setup-guide-es.md)
 
 **Phase 10 — ONTAP FPolicy Event-Driven Integration**
 

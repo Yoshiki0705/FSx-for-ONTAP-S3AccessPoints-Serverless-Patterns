@@ -1,6 +1,6 @@
 # Comparatif d'intégration CDN / edge — Diffusion depuis FSx for ONTAP S3 Access Points
 
-🌐 **Language / 言語**: [日本語](cdn-comparison.md) | [English](cdn-comparison.en.md) | [한국어](cdn-comparison.ko.md) | [简体中文](cdn-comparison.zh-CN.md) | [繁體中文](cdn-comparison.zh-TW.md) | [Français](cdn-comparison.fr.md) | [Deutsch](cdn-comparison.de.md) | [Español](cdn-comparison.es.md)
+🌐 **Language / 言語**: [日本語](cdn-comparison.md) | [English](cdn-comparison.en.md) | [한국어](cdn-comparison.ko.md) | [简体中文](cdn-comparison.zh-CN.md) | [繁體中文](cdn-comparison.zh-TW.md) | Français | [Deutsch](cdn-comparison.de.md) | [Español](cdn-comparison.es.md)
 
 ## 0. Portée
 

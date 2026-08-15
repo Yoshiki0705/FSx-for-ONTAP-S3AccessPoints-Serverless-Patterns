@@ -1,0 +1,271 @@
+# Which documents must exist in which languages.
+#
+# ## Why this file exists
+#
+# Every i18n check in this repository used to be *existence-driven*: it discovered
+# translation groups by looking at what happened to be on disk, so a document with
+# no twin was simply "not a pair" and a missing translation was invisible by
+# construction. `check_doc_pairs.py` verifies that the translations which exist are
+# reachable and their links resolve; nothing said which ones ought to exist.
+#
+# That is the defect a translation actually produces. A section added to the
+# Japanese source and never carried across leaves no trace: the other file still
+# renders, its links still resolve, and only a reader who cannot read Japanese is
+# affected — which is to say, nobody who would notice. Measured 2026-08-15 across
+# 209 translation groups: 51 groups had a heading-count mismatch in at least one
+# locale, 277 locale-level mismatches in total, and the six non-English locales
+# drift together because they were produced in one batch and never re-run.
+#
+# Declaring the requirement here makes the gap a number instead of an absence.
+#
+# ## The current backlog, and how to work it down
+#
+#   python3 scripts/check_i18n_parity.py --by-source
+#
+# 271 structural findings is not 271 problems. They come from 51 source documents,
+# and most contribute exactly 7 — one per locale, because the six non-English
+# translations were produced in one batch and none of them received the sections the
+# Japanese source gained afterwards. `en` shows 41 findings and each of the other six
+# shows exactly 36; that symmetry is the batch showing through.
+#
+# So the unit of work is the source document, and re-running one document's
+# translations closes about seven findings. The queue is dominated by
+# `solutions/industry/*/docs/demo-guide.md` (207 of the 271), where Japanese gained a
+# FlexClone scenario the translations never received. The worst single entry is
+# `docs/guides/fpolicy-setup-guide.md`: 45 headings in Japanese against 10-11 in every
+# translation, which means those seven files are summaries rather than translations.
+#
+# `scripts/translate_readmes.py` is the existing Bedrock pipeline. Its output has to
+# be read before being committed — a machine translation that silently drops a section
+# leaves exactly the gap this check exists to find.
+#
+# ## Format
+#
+#   [[rule]]
+#   glob    = "solutions/industry/*/README.md"   # matched against the SOURCE file
+#   locales = "all"                              # or "keep", or an explicit list
+#   why     = "..."                              # required; reviewed, not decorative
+#
+# `locales = "all"` means the eight this repository publishes in:
+#   ja (source), en, ko, zh-CN, zh-TW, fr, de, es
+#
+# `locales = "keep"` adds no obligation: it means "whichever locales exist today
+# must continue to exist and must stay in structural parity". That distinction
+# matters more than it looks. Requiring English across all 279 documents in `docs/`
+# would have declared 245 obligations this repository never adopted — an aspiration
+# dressed up as a gate, whose number nobody can act on. What is worth preventing
+# there is the *regression*: a document that has an English twin quietly losing it,
+# or the twin falling behind. `keep` states exactly that and nothing more.
+#
+# Later rules win, so a specific glob can narrow a broad one. Rules are applied to
+# the Japanese source document; the checker derives the expected sibling paths
+# under whichever convention that directory uses (`X.en.md` beside `X.md`, or
+# `docs/en/X.md` beside `docs/ja/X.md`).
+#
+# ## Tiers, and why they differ
+#
+# Two audiences, two obligations. A pattern README and its demo guide are what a
+# partner or customer opens first, so they carry all eight. Operational runbooks,
+# agent notes and internal design docs are read by people working in this
+# repository, where Japanese and English are enough — translating them into six more
+# languages produces six more things to keep in step and no additional reader.
+
+locales_all = ["ja", "en", "ko", "zh-CN", "zh-TW", "fr", "de", "es"]
+source_locale = "ja"
+
+# --------------------------------------------------------------------------
+# Eight languages: customer- and partner-facing entry points.
+# --------------------------------------------------------------------------
+
+[[rule]]
+glob = "README.md"
+locales = "all"
+why = "The repository's front door. Measured: already complete in all 8."
+
+[[rule]]
+glob = "solutions/*/*/README.md"
+locales = "all"
+why = """
+Every pattern README across industry, flexcache, edge, genai, sap, ha and
+event-driven. Measured: 46 of these groups already carry all 8, which is the
+convention AGENTS.md states for a pattern directory.
+"""
+
+[[rule]]
+glob = "solutions/industry/*/docs/*.md"
+locales = "all"
+why = """
+Architecture and demo guides sit beside the README a partner is following, so a
+guide that stops at Japanese strands the reader mid-task. Measured: 56 of these
+groups carry all 8, which makes this a convention rather than a wish.
+
+Deliberately scoped to `industry` and not `solutions/*/*/docs/`. The flexcache,
+genai, sap and ha families keep their guides in ja or ja+en only — broadening the
+glob added 250+ obligations those families never took on, which is an aspiration
+with a gate attached, not a finding. They are covered by `keep` below.
+"""
+
+[[rule]]
+glob = "solutions/event-driven/fpolicy/docs/*.md"
+locales = "all"
+why = "The only non-industry pattern whose guides are already complete in all 8; holding it there."
+
+[[rule]]
+glob = "solutions/edge/media-ivs-vod-publishing/architecture.md"
+locales = "all"
+why = "Already 8, and kept one level up rather than under docs/, so it needs its own rule."
+
+[[rule]]
+glob = "docs/guides/fpolicy-setup-guide.md"
+locales = "all"
+why = "Already 8. The sibling docs/guides entry is ja+en, so this is named rather than globbed."
+
+# --------------------------------------------------------------------------
+# Japanese + English: read by people working in this repository.
+# --------------------------------------------------------------------------
+
+[[rule]]
+glob = "docs/*.md"
+locales = "keep"
+why = """
+Cross-cutting reference material, and the case `keep` exists for. Measured: 279
+source documents in docs/, and only 34 have an English twin. Requiring ja+en across
+all of them would report 245 missing translations on the first run — a number that
+describes an ambition nobody signed up for and that no reviewer can act on. What is
+worth catching is a doc that HAS an English twin losing it, or the twin drifting,
+which is invisible today. Promote a specific file to ["ja","en"] when its English
+version becomes something readers are pointed at.
+"""
+
+[[rule]]
+glob = "docs/guides/*.md"
+locales = "keep"
+why = "One of the two here is 8-locale (named above); the other is ja+en. Hold both where they are."
+
+[[rule]]
+glob = "solutions/*/*/docs/*.md"
+locales = "keep"
+why = """
+The flexcache, genai, sap and ha guides. They are ja or ja+en and that is the
+convention in those families; the 8-locale requirement above is scoped to industry
+patterns. Holding what exists prevents the regression without inventing 250+
+obligations.
+"""
+
+[[rule]]
+glob = "solutions/*/*/architecture.md"
+locales = "keep"
+why = "Same reasoning as the docs/ guides above; the one that is already 8 is named separately."
+
+[[rule]]
+glob = "docs/ja/*.md"
+locales = ["ja", "en"]
+why = "The docs/ja + docs/en pair convention. All 28 groups are ja+en today."
+
+[[rule]]
+glob = "docs/aws-feature-requests/*.md"
+locales = ["ja", "en"]
+why = "Written to be handed to AWS; Japanese for the author and English for the recipient."
+
+[[rule]]
+glob = "docs/aws-feature-requests/fsxn-s3ap-improvements.md"
+locales = ["en"]
+why = """
+English-primary, deliberately, and the one file in this directory that is. Measured:
+the body is 15,725 characters with zero CJK, and the Japanese appears only in
+"Appendix B: Japanese Summary" — 359 CJK characters in 1,254. It is a feature request
+addressed to AWS Support, so English is the document and the appendix is the author's
+summary, not a translation.
+
+Recorded here because the checker cannot work this out on its own. It detects an
+English-primary file by finding a `.ja.md` twin beside it (which is how
+solutions/amplify-portal/README.md is handled), and this file has no twin at all —
+it is a single bilingual document. So it was reported as "no en translation" while
+being the English one. Declaring the locale is the fix; inferring base language from
+character counts would guess wrong on any document that quotes at length.
+"""
+
+[[rule]]
+glob = "operations/*/README.md"
+locales = ["ja", "en"]
+why = """
+OPS1-OPS6 are file-system operational optimisation, run by whoever operates the
+file system. All 6 are ja+en; the 8-language convention applies to the S3 AP
+pattern library that partners demo, not to these.
+"""
+
+[[rule]]
+glob = "solutions/amplify-portal/docs/*.md"
+locales = ["ja", "en"]
+why = "Portal deployment and authorization docs, for whoever deploys the portal. All 20 are ja+en."
+
+[[rule]]
+glob = "infrastructure/*/README.md"
+locales = "keep"
+why = """
+Shared verification infrastructure. Only knfsd-file-cache is ja+en (named below);
+handson-lab and pstk-automation are Japanese-only. Requiring English across the
+directory reported 7 missing translations for material that is a local verification
+harness, not something a reader is sent to.
+"""
+
+[[rule]]
+glob = "infrastructure/*/docs/*.md"
+locales = "keep"
+why = "Same reasoning as the infrastructure READMEs above."
+
+[[rule]]
+glob = "infrastructure/knfsd-file-cache/README.md"
+locales = ["ja", "en"]
+why = "The read-cache pattern is referenced from the docs index and is already ja+en."
+
+[[rule]]
+glob = "infrastructure/knfsd-file-cache/docs/*.md"
+locales = ["ja", "en"]
+why = "Its four guides are already ja+en; holding them there."
+
+[[rule]]
+glob = "docs/agent/*.md"
+locales = ["ja"]
+why = """
+Agent-facing pitfall notes. Deliberately Japanese-only and deliberately listed:
+without a rule they would look like 16 documents missing 7 translations each. They
+are loaded by a coding agent through .kiro/steering/, not read as documentation, and
+AGENTS.md itself is a single mixed-language file with no twin to pair against.
+"""
+
+# --------------------------------------------------------------------------
+# Narrower rules. These win over the broader ones above.
+# --------------------------------------------------------------------------
+
+[[rule]]
+glob = "solutions/amplify-portal/README.md"
+locales = "all"
+why = """
+The portal's own front door, and the inverted case in this repository: README.md is
+ENGLISH with README.ja.md beside it, the opposite of every other group. The checker
+decides which file is the source by looking at which twin exists rather than by
+position, because assuming the base is Japanese made this the one group whose
+language read as unknown.
+"""
+
+[[rule]]
+glob = "docs/partner-si-one-pager.md"
+locales = ["ja", "en", "ko", "zh-CN"]
+why = """
+Recorded as it is rather than as it should be: ja, en, ko and zh-CN exist; fr, de,
+es and zh-TW do not. Declaring "all" here would add four entries to the missing
+list on the first run and say nothing new, since the absence is already known.
+Widen this rule when the four are written — that is the change that should make the
+number go down.
+"""
+
+[[rule]]
+glob = "docs/impact-assessment.md"
+locales = ["ja", "en"]
+why = """
+ja 42 headings, en 38, and the six other locales between 7 and 10 — the non-English
+files are a summary, not a translation. Scoped to ja+en so the six stubs are not
+counted as translations that merely drifted; rewriting or removing them is separate
+work and should not be hidden inside a parity number.
+"""

@@ -1,6 +1,6 @@
 # パターン選択ガイド — 導入先の状況に応じたユースケース推奨
 
-🌐 **Language / 言語**: [日本語](pattern-selection-guide.md) | [English](pattern-selection-guide.en.md)
+🌐 **Language / 言語**: 日本語 | [English](pattern-selection-guide.en.md)
 
 ## 概要
 

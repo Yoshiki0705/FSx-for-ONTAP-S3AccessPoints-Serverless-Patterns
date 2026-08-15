@@ -1,6 +1,6 @@
 # Multi-Tenant Design Patterns
 
-> 🌐 Language: **English** | [日本語](../ja/multi-tenant-design.md)
+> 🌐 **Language / 言語**: [日本語](../ja/multi-tenant-design.md) | English
 
 ## Overview
 

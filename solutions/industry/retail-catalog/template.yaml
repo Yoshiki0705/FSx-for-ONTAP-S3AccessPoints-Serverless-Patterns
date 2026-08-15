@@ -1119,6 +1119,8 @@ Resources:
       KeySchema:
         - AttributeName: file_key
           KeyType: HASH
+      SSESpecification:
+        SSEEnabled: true
       Tags:
         - Key: UseCase
           Value: retail-catalog
@@ -1142,6 +1144,8 @@ Resources:
       KeySchema:
         - AttributeName: record_id
           KeyType: HASH
+      SSESpecification:
+        SSEEnabled: true
       Tags:
         - Key: UseCase
           Value: retail-catalog

@@ -1,6 +1,6 @@
 # S3 Access Points for FSx for ONTAP — Performance Considerations
 
-🌐 **Language / 言語**: [日本語](s3ap-performance-considerations.md) | [English](s3ap-performance-considerations.en.md)
+🌐 **Language / 言語**: [日本語](s3ap-performance-considerations.md) | English
 
 ## Overview
 

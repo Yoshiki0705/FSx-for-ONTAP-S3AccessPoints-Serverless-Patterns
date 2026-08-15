@@ -1,6 +1,6 @@
 # コスト計測 — サンドボックスの実測コスト
 
-> 🌐 言語: **日本語** | [English](../en/cost-measurement.md)
+> 🌐 **Language / 言語**: 日本語 | [English](../en/cost-measurement.md)
 
 > ポータルのサンドボックスを稼働させたあと、AWS Cost Explorer から実際のコストを計測する手法です。
 

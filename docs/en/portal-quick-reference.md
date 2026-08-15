@@ -1,6 +1,6 @@
 # File Portal — Quick Reference Card
 
-> 🌐 Language: **English** | [日本語](../ja/portal-quick-reference.md) | [한국어](../ko/portal-quick-reference.md) | [简体中文](../zh-CN/portal-quick-reference.md) | [繁體中文](../zh-TW/portal-quick-reference.md) | [Français](../fr/portal-quick-reference.md) | [Deutsch](../de/portal-quick-reference.md) | [Español](../es/portal-quick-reference.md)
+> 🌐 **Language / 言語**: [日本語](../ja/portal-quick-reference.md) | English
 
 One-page cheat sheet for daily portal operations. Print or bookmark this page.
 

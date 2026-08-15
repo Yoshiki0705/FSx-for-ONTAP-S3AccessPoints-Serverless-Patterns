@@ -1,6 +1,6 @@
 # SIEM 連携 — ARP/AI 脅威イベント
 
-> 🌐 言語: **日本語** | [English](../en/siem-integration.md)
+> 🌐 **Language / 言語**: 日本語 | [English](../en/siem-integration.md)
 
 ## 概要
 

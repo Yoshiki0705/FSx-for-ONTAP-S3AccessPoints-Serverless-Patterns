@@ -1,6 +1,6 @@
 # ONTAP REST API 接続ガイド — File Portal
 
-🌐 **Language / 言語**: [日本語](ONTAP-CONNECTION-GUIDE.md) | [English](ONTAP-CONNECTION-GUIDE.en.md)
+🌐 **Language / 言語**: 日本語 | [English](ONTAP-CONNECTION-GUIDE.en.md)
 
 > ファイルポータルと FSx for ONTAP の接続アーキテクチャ、トラブルシューティング、およびデプロイ時の重要な注意事項。
 

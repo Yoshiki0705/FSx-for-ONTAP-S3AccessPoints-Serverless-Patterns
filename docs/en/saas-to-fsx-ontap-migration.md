@@ -1,6 +1,6 @@
 # Migrating and integrating SaaS / cloud storage with FSx for ONTAP
 
-🌐 **Language / 言語**: [日本語](../ja/saas-to-fsx-ontap-migration.md) | [English](../en/saas-to-fsx-ontap-migration.md)
+🌐 **Language / 言語**: [日本語](../ja/saas-to-fsx-ontap-migration.md) | English
 
 How to move data into Amazon FSx for NetApp ONTAP from Box, Dropbox, OneDrive, Google Drive, Wasabi and similar services — or integrate without moving it. Which routes work, which do not, and whether an infrastructure team can execute centrally, with the criterion that decides it.
 

@@ -1,6 +1,6 @@
 # Trigger Mode Decision Guide — POLLING / EVENT_DRIVEN / HYBRID
 
-🌐 **Language / 言語**: [日本語](trigger-mode-decision-guide.md) | [English](trigger-mode-decision-guide.en.md)
+🌐 **Language / 言語**: [日本語](trigger-mode-decision-guide.md) | English
 
 ## Overview
 

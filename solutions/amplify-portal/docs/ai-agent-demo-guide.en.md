@@ -1,6 +1,6 @@
 # AI Agent Demo Guide
 
-🌐 **Language / 言語**: [日本語](ai-agent-demo-guide.md) | **English**
+🌐 **Language / 言語**: [日本語](ai-agent-demo-guide.md) | English
 
 > End-to-end walkthrough from admin enablement to end-user AI interactions.
 

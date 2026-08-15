@@ -1,6 +1,6 @@
 # Amazon IVS Live-to-FSx for ONTAP VOD Publishing Pattern
 
-🌐 **Language / Sprache**: [日本語](README.md) | [English](README.en.md) | [한국어](README.ko.md) | [简体中文](README.zh-CN.md) | [繁體中文](README.zh-TW.md) | [Français](README.fr.md) | Deutsch | [Español](README.es.md)
+🌐 **Language / 言語**: [日本語](README.md) | [English](README.en.md) | [한국어](README.ko.md) | [简体中文](README.zh-CN.md) | [繁體中文](README.zh-TW.md) | [Français](README.fr.md) | Deutsch | [Español](README.es.md)
 
 > Referenzmuster, das **Amazon Interactive Video Service (Amazon IVS)** Live-Streaming mit
 > **Amazon FSx for NetApp ONTAP** + **Amazon S3 Access Points** kombiniert, um einen

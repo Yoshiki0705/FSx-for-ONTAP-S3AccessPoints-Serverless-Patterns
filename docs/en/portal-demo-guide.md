@@ -1,6 +1,6 @@
 # File Portal Demo Guide — FSx for ONTAP S3 Access Points
 
-> 🌐 Language: **English** | [日本語](../ja/portal-demo-guide.md)
+> 🌐 **Language / 言語**: [日本語](../ja/portal-demo-guide.md) | English
 
 Step-by-step demo guide for the web-based file portal that provides file browsing, upload, AI analysis, and processing workflow trigger against FSx for ONTAP volume data.
 

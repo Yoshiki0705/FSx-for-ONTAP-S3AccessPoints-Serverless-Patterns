@@ -1,6 +1,6 @@
 # Amplify Gen2 File Portal — Section Layout Guide
 
-> 🌐 Language: **English** | [日本語](portal-tabs-guide.md)
+> 🌐 **Language / 言語**: [日本語](portal-tabs-guide.md) | English
 
 > **Last updated**: 2026-07-22
 > **Verified**: CDK Sandbox deploy → Cognito login → all 17 sections confirmed to render

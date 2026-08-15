@@ -1,6 +1,6 @@
 # ポータル認可設計 — ロールベースアクセス制御
 
-> 🌐 言語: **日本語** | [English](../en/portal-authorization-design.md)
+> 🌐 **Language / 言語**: 日本語 | [English](../en/portal-authorization-design.md)
 
 FSx for ONTAP ファイルポータルの認可モデルを定義します。ユーザーロールがファイル操作・AI 処理・データ保護管理の各機能にどのようにマッピングされるかを記載。
 

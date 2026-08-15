@@ -1,6 +1,6 @@
 # NFS / S3 AP 書き込み競合の考慮事項
 
-> 🌐 言語: **日本語** | [English](../en/nfs-s3ap-write-conflict.md)
+> 🌐 **Language / 言語**: 日本語 | [English](../en/nfs-s3ap-write-conflict.md)
 
 ## 概要
 

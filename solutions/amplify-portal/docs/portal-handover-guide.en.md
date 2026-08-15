@@ -1,6 +1,6 @@
 # Handing the portal over, and answering the questions — File Portal
 
-🌐 **Language / 言語**: [日本語](portal-handover-guide.md) | **English**
+🌐 **Language / 言語**: [日本語](portal-handover-guide.md) | English
 
 > For the person who prepared the infrastructure: **what to hand to users**, and **what to answer when
 > they ask**. Every item says where the value comes from, where it is managed, and how to share it.

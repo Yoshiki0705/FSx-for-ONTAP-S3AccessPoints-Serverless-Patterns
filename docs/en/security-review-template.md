@@ -1,6 +1,6 @@
 # Security Review Template — File Portal
 
-> 🌐 Language: **English** | [日本語](../ja/security-review-template.md)
+> 🌐 **Language / 言語**: [日本語](../ja/security-review-template.md) | English
 
 > One-page sign-off document for CISO / security team approval before production deployment.
 

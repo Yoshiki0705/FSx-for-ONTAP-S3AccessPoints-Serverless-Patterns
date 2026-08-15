@@ -1,6 +1,6 @@
 # Production Readiness — Maturity Model
 
-🌐 **Language / 言語**: [日本語](production-readiness.md) | [English](production-readiness.en.md)
+🌐 **Language / 言語**: 日本語 | [English](production-readiness.en.md)
 
 ## 概要
 

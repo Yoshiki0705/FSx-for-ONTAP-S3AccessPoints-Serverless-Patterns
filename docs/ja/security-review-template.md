@@ -1,6 +1,6 @@
 # セキュリティレビューテンプレート — ファイルポータル
 
-> 🌐 言語: **日本語** | [English](../en/security-review-template.md)
+> 🌐 **Language / 言語**: 日本語 | [English](../en/security-review-template.md)
 
 > 本番デプロイ前に CISO / セキュリティチームの承認を得るための、1 ページのサインオフ文書です。
 

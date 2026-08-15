@@ -1,6 +1,6 @@
 # Demo Mode Guide — Experience Patterns Without FSx for ONTAP
 
-🌐 **Language / 言語**: [日本語](demo-mode-guide.md) | [English](demo-mode-guide.en.md)
+🌐 **Language / 言語**: [日本語](demo-mode-guide.md) | English
 
 ## Overview
 

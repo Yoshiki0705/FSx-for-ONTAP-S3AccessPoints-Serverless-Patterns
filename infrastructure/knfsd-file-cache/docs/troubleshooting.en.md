@@ -1,6 +1,6 @@
 # KNFSD File Cache — Troubleshooting
 
-🌐 **Language / 言語**: [日本語](troubleshooting.md) | [English](troubleshooting.en.md)
+🌐 **Language / 言語**: [日本語](troubleshooting.md) | English
 
 > All issues below were encountered during real testing in ap-northeast-1 + FSx for ONTAP + arm64 (2026-07-22).
 

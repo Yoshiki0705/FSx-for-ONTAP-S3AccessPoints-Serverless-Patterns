@@ -1,6 +1,6 @@
 # SIEM Integration — ARP/AI Threat Events
 
-> 🌐 Language: **English** | [日本語](../ja/siem-integration.md)
+> 🌐 **Language / 言語**: [日本語](../ja/siem-integration.md) | English
 
 ## Overview
 

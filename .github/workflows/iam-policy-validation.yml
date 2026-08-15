@@ -46,6 +46,10 @@ jobs:
         run: |
           echo "::group::Finding templates with IAM policies"
           TEMPLATES=$(find solutions/industry -name "template.yaml" | head -20)
+          # `|| true` because `find` exits non-zero when the directory is absent, and
+          # a checkout without infrastructure/ is a legitimate state. The result is
+          # tested with `-n` below, so an empty list is handled explicitly rather than
+          # swallowed.
           INFRA_TEMPLATES=$(find infrastructure -name "*.yaml" 2>/dev/null || true)
           echo "Found: $(echo $TEMPLATES $INFRA_TEMPLATES | wc -w) templates"
           echo "::endgroup::"

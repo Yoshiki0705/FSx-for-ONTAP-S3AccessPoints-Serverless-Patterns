@@ -1,6 +1,6 @@
 # デュアルアクセスデモ — NFS + S3 AP の同時参照
 
-> 🌐 言語: **日本語** | [English](../en/dual-access-demo-script.md)
+> 🌐 **Language / 言語**: 日本語 | [English](../en/dual-access-demo-script.md)
 
 > 同一ファイルが NFS マウントと S3 AP の両方から同時に見えることを示します（本パターンの中核的な価値）。
 

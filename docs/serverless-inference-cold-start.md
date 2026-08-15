@@ -1,6 +1,6 @@
 # SageMaker Serverless Inference コールドスタート特性ガイド
 
-🌐 **Language / 言語**: [日本語](serverless-inference-cold-start.md) | [English](serverless-inference-cold-start-en.md)
+🌐 **Language / 言語**: 日本語 | [English](serverless-inference-cold-start-en.md)
 
 ## 概要
 

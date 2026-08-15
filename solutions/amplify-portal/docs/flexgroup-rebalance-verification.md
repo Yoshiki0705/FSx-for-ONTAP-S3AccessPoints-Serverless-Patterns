@@ -1,6 +1,6 @@
 # FlexGroup 容量リバランスの実測記録
 
-🌐 **Language / 言語**: **日本語** | [English](flexgroup-rebalance-verification.en.md)
+🌐 **Language / 言語**: 日本語 | [English](flexgroup-rebalance-verification.en.md)
 
 FSx for ONTAP の FlexGroup に対する容量リバランス（capacity rebalancing）を、REST API 経由で
 一巡実行して観測した記録です。**ドキュメントに書かれていない制約が 2 つあり、その 2 つが

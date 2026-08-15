@@ -1,6 +1,6 @@
 # FSx for ONTAP ファイルポータル — Amplify Gen2
 
-🌐 **言語**: 日本語 | [English](README.md) | [한국어](README.ko.md) | [简体中文](README.zh-CN.md) | [繁體中文](README.zh-TW.md) | [Français](README.fr.md) | [Deutsch](README.de.md) | [Español](README.es.md)
+🌐 **Language / 言語**: 日本語 | [English](README.md) | [한국어](README.ko.md) | [简体中文](README.zh-CN.md) | [繁體中文](README.zh-TW.md) | [Français](README.fr.md) | [Deutsch](README.de.md) | [Español](README.es.md)
 
 FSx for ONTAP ボリュームの S3 Access Point 経由でファイルの閲覧・処理・結果表示を行う Web ベースのファイルポータルです。
 

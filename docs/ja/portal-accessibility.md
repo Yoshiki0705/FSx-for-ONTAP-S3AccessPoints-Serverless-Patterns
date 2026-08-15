@@ -1,6 +1,6 @@
 # ファイルポータル — アクセシビリティ声明
 
-> 🌐 言語: **日本語** | [English](../en/portal-accessibility.md)
+> 🌐 **Language / 言語**: 日本語 | [English](../en/portal-accessibility.md)
 
 > 実装済みのアクセシビリティ機能と、追加検証に向けたガイダンス。
 

@@ -1,6 +1,6 @@
 # FSx for ONTAP 文件门户 — Amplify Gen2
 
-🌐 **语言**: [日本語](README.ja.md) | [English](README.md) | [한국어](README.ko.md) | 简体中文 | [繁體中文](README.zh-TW.md) | [Français](README.fr.md) | [Deutsch](README.de.md) | [Español](README.es.md)
+🌐 **Language / 言語**: [日本語](README.ja.md) | [English](README.md) | [한국어](README.ko.md) | 简体中文 | [繁體中文](README.zh-TW.md) | [Français](README.fr.md) | [Deutsch](README.de.md) | [Español](README.es.md)
 
 基于 Web 的文件门户，通过 S3 Access Point 浏览、处理和查看 FSx for ONTAP 卷上的文件结果。
 

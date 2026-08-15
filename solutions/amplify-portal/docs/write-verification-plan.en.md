@@ -1,6 +1,6 @@
 # Write Verification Plan
 
-🌐 **Language / 言語**: [日本語](write-verification-plan.md) | **English**
+🌐 **Language / 言語**: [日本語](write-verification-plan.md) | English
 
 > Purpose: for the write operations [Verification Results](verification-results.en.md) groups as
 > not yet run, settle the prerequisites, the impact and the rollback **before running them**. The

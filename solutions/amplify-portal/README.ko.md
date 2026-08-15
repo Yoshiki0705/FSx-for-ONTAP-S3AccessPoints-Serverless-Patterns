@@ -1,6 +1,6 @@
 # FSx for ONTAP 파일 포털 — Amplify Gen2
 
-🌐 **언어**: [日本語](README.ja.md) | [English](README.md) | 한국어 | [简体中文](README.zh-CN.md) | [繁體中文](README.zh-TW.md) | [Français](README.fr.md) | [Deutsch](README.de.md) | [Español](README.es.md)
+🌐 **Language / 言語**: [日本語](README.ja.md) | [English](README.md) | 한국어 | [简体中文](README.zh-CN.md) | [繁體中文](README.zh-TW.md) | [Français](README.fr.md) | [Deutsch](README.de.md) | [Español](README.es.md)
 
 FSx for ONTAP 볼륨의 S3 Access Point를 통해 파일 탐색, 처리 및 결과 조회를 수행하는 웹 기반 파일 포털입니다.
 

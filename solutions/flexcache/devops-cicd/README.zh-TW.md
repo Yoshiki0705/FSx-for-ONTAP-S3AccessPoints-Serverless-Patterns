@@ -1,6 +1,6 @@
 # FC7: DevOps FlexClone + S3AP — 開發/測試資料更新與 CI/CD 管線整合
 
-🌐 **Language / 語言**: [日本語](README.md) | [English](README.en.md) | [한국어](README.ko.md) | [简体中文](README.zh-CN.md) | 繁體中文 | [Français](README.fr.md) | [Deutsch](README.de.md) | [Español](README.es.md)
+🌐 **Language / 言語**: [日本語](README.md) | [English](README.en.md) | [한국어](README.ko.md) | [简体中文](README.zh-CN.md) | 繁體中文 | [Français](README.fr.md) | [Deutsch](README.de.md) | [Español](README.es.md)
 
 📚 **文件**: [架構](docs/architecture.en.md) | [示範指南](docs/demo-guide.en.md)
 

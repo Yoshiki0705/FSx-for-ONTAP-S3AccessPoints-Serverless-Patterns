@@ -17,6 +17,13 @@ jobs:
         with:
           persist-credentials: false
 
+      # Every `|| true` in this file is on a command substitution whose result is
+      # then tested, e.g. `result=$(git ls-files ... || true)` followed by
+      # `if [ -n "$result" ]; then ... exit 1; fi`. `git ls-files` and `grep` exit 1
+      # when they match nothing, which under `set -e` would abort the step on the
+      # CLEAN case — the opposite of what is wanted. The verdict comes from the `-n`
+      # test and the explicit `exit 1`, not from the pipeline status, so nothing is
+      # being discarded here. Audited 2026-08-15.
       - name: Check .kiro/ not tracked
         run: |
           result=$(git ls-files .kiro/ 2>/dev/null || true)
@@ -54,12 +61,27 @@ jobs:
           fi
           echo "✅ No personal .pem paths"
 
+      # Runs unconditionally and needs no secret, which is what keeps the
+      # account-ID coverage below out of a vacuous state. It is shape-based, so it
+      # catches ANY real account ID rather than only a configured one.
+      - name: Check account IDs are documented placeholders
+        run: python3 scripts/check_account_id_placeholders.py
+
       - name: Check no real AWS account ID
         env:
           SECURITY_CHECK_ACCOUNT_ID: ${{ secrets.SECURITY_CHECK_ACCOUNT_ID }}
         run: |
+          # An absent secret used to be indistinguishable from a clean result, so
+          # this step sat green without ever running. It is now only the precise
+          # half of a pair: the shape-based step above always runs, so skipping
+          # here leaves coverage in place rather than leaving a silent hole, and a
+          # fork pull request -- which cannot read secrets at all -- still gets
+          # checked.
           if [ -z "$SECURITY_CHECK_ACCOUNT_ID" ]; then
-            echo "⚠️ SECURITY_CHECK_ACCOUNT_ID secret not set — skipping account ID check"
+            echo "::notice::SECURITY_CHECK_ACCOUNT_ID is not set, so the exact-match"
+            echo "pass is skipped. The shape-based check in the previous step ran and"
+            echo "covers any real account ID. Set the secret to also pin one specific"
+            echo "ID, which additionally catches it in non-account-ID positions."
             exit 0
           fi
           result=$(git ls-files | xargs grep -rl "$SECURITY_CHECK_ACCOUNT_ID" 2>/dev/null || true)

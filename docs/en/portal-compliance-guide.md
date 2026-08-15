@@ -1,6 +1,6 @@
 # File Portal — Security & Compliance Officer Guide
 
-> 🌐 Language: **English** | [日本語](../ja/portal-compliance-guide.md) | [한국어](../ko/portal-compliance-guide.md) | [简体中文](../zh-CN/portal-compliance-guide.md) | [繁體中文](../zh-TW/portal-compliance-guide.md) | [Français](../fr/portal-compliance-guide.md) | [Deutsch](../de/portal-compliance-guide.md) | [Español](../es/portal-compliance-guide.md)
+> 🌐 **Language / 言語**: [日本語](../ja/portal-compliance-guide.md) | English
 
 A guide for security officers, compliance analysts, and data protection staff who need to **verify** regulatory controls via the portal without performing storage administration. You do not need `storage-admin` privileges — all tasks below use read-only access.
 

@@ -1,6 +1,6 @@
 # リソース管理 デモガイド
 
-🌐 **Language / 言語**: **日本語** | [English](resource-management-demo-guide.en.md)
+🌐 **Language / 言語**: 日本語 | [English](resource-management-demo-guide.en.md)
 
 > `管理 → リソース管理` の 20 パネルを操作する手順です。
 > 各パネルがどの ONTAP REST API を呼ぶか、何が確認できれば成功かを示します。
