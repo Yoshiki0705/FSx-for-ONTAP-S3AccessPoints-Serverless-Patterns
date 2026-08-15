@@ -12,8 +12,23 @@ serverless patterns; the reasoning and the naming rules are in
 
 ## Status
 
-**Not published.** What follows is a plan; the articles do not exist yet. Do not link to
-them as though they did.
+**Parts 1 to 3 are published.** The three articles that had been in the S3 AP series were
+moved into this one on 2026-08-15 (their `series` and `tags` changed to the definitions
+above). The dev.to widget now reads `FSx for ONTAP File Portal (3 Part Series)`.
+
+| # | Article | Status |
+|---|---|---|
+| 1 | [Adding a File Portal to FSx for ONTAP S3 Access Points](https://dev.to/aws-builders/adding-a-file-portal-to-fsx-for-ontap-s3-access-points-choosing-between-amplify-gen2-and-887) | Published (EN); Japanese version on Hatena Blog |
+| 2 | [Embedding Storage Operations into a File Portal](https://dev.to/aws-builders/embedding-storage-operations-into-a-file-portal-from-arpai-incident-response-to-regulatory-1oih) | Published (EN); Japanese version on Hatena Blog |
+| 3 | [Embedding AI Agents into a File Portal](https://dev.to/aws-builders/embedding-ai-agents-into-a-file-portal-from-agentcore-mcp-to-multi-agent-teams-part-3-19m1) | Published (EN); Japanese version on Hatena Blog |
+| 4 | Putting ONTAP operations into the portal (174 actions) | **Drafted, not published.** The JA and EN drafts are `drafts/blog/article-file-portal-part4-draft{,.en}.md` (`drafts/` is gitignored, so they cannot be linked) |
+
+**The Japanese series (`FSx for ONTAP ファイルポータル`) has no articles yet.** The Japanese
+versions of Parts 1 to 3 are on Hatena Blog and were not posted to dev.to. Starting the
+Japanese series there requires posting an article first.
+
+The article plan below lists **candidate themes not yet written**. It does not correspond to
+the three published articles.
 
 ## Why it is a separate series
 

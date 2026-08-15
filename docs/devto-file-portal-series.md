@@ -11,8 +11,22 @@ dev.to のファイルポータルシリーズの構成です。S3 AP サーバ�
 
 ## 状態
 
-**未公開です。** 以下は計画であり、記事本文はまだありません。公開済みの記事があるかのように
-リンクを張らないこと。
+**Part 1〜3 は公開済みです。** もともと S3 AP シリーズに属していた 3 本を、2026-08-15 に
+このシリーズへ移しました（`series` と `tags` を上表の定義に変更）。dev.to のシリーズ
+ウィジェットは `FSx for ONTAP File Portal (3 Part Series)` を表示します。
+
+| # | 記事 | 状態 |
+|---|---|---|
+| 1 | [Adding a File Portal to FSx for ONTAP S3 Access Points](https://dev.to/aws-builders/adding-a-file-portal-to-fsx-for-ontap-s3-access-points-choosing-between-amplify-gen2-and-887) | 公開済み（EN）/ [はてなブログ（JA）](https://hakobiya.hatenablog.com/entry/fsxn-file-portal-1-browser-access) |
+| 2 | [Embedding Storage Operations into a File Portal](https://dev.to/aws-builders/embedding-storage-operations-into-a-file-portal-from-arpai-incident-response-to-regulatory-1oih) | 公開済み（EN）/ [はてなブログ（JA）](https://hakobiya.hatenablog.com/entry/fsxn-file-portal-2-ransomware-worm) |
+| 3 | [Embedding AI Agents into a File Portal](https://dev.to/aws-builders/embedding-ai-agents-into-a-file-portal-from-agentcore-mcp-to-multi-agent-teams-part-3-19m1) | 公開済み（EN）/ [はてなブログ（JA）](https://hakobiya.hatenablog.com/entry/fsxn-file-portal-3-ai-agent-mcp) |
+| 4 | ONTAP の運用操作を載せる（174 アクション） | **下書きあり・未公開**。JA / EN の下書きは `drafts/blog/article-file-portal-part4-draft{,.en}.md`（`drafts/` は gitignore なのでリンクは張れません）|
+
+**JA 側のシリーズ（`FSx for ONTAP ファイルポータル`）にはまだ記事がありません。** Part 1〜3 の
+日本語版ははてなブログにあり、dev.to には投稿していません。dev.to の JA シリーズを立てるなら
+先に記事を投稿する必要があります。
+
+下の「記事構成（案）」は**まだ書いていないテーマの候補**です。公開済みの 3 本とは対応しません。
 
 ## なぜ別シリーズにするか
 

@@ -178,17 +178,23 @@ S3 オブジェクト、および作業用ボリューム `zz_probe_a` はすべ
 | QR コード生成 | 同上 | 生成した QR から署名付き URL に到達できるか |
 | フォルダー監視 / イベント通知 | `functions/list-files/tests/test_notifications.py` 9 件 | FPolicy → EventBridge → ブリッジ Lambda の実配送、実イベントの形状、グループ境界の絞り込み |
 
-### 自動テストの内訳
+### 自動テストの数え方
 
-| スイート | 件数 |
-|---------|------|
-| ポータルのコンポーネント / ユーティリティ（vitest） | 321（24 ファイル） |
-| `functions/resource-management`（pytest） | 258 |
-| `functions/data-protection`（pytest） | 104 |
-| `functions/list-files`（pytest） | 48 |
-| `functions/thumbnails`（pytest） | 37 |
-| `functions/agent-chat`（pytest） | 21 |
-| ディスパッチ契約の検査（`make drift`） | 173 呼び出し箇所 / 170 アクション |
+件数そのものではなく、**数える方法**を書きます。この表は以前 6 スイート分の件数を固定値で
+持っていて、そのうち 5 つが古くなっていました（resource-management は 258 と書いて実際は
+300、vitest は 321/24 ファイルで実際は 337/26 ファイル、ディスパッチ契約は 173/170 で実際は
+180/174）。誰も更新しない数値は、書いた時点でしか正しくありません。
+
+| スイート | 件数を出すコマンド |
+|---------|------------------|
+| ポータルのコンポーネント / ユーティリティ（vitest） | `cd solutions/amplify-portal && npx vitest run` |
+| `functions/*`（pytest） | `python3 -m pytest solutions/amplify-portal/functions/<name>/tests/ -q` |
+| ディスパッチ契約（呼び出し箇所とアクション） | `python3 scripts/check_portal_action_params.py` |
+| ディスパッチのアクション型 | `python3 scripts/portal_action_types.py --check` |
+
+規模の目安（丸めた総数）は [AGENTS.md](../../../AGENTS.md) にあります。そちらのファイル数は
+`make drift` がツリーと照合するので、古くなれば fail します。**件数は照合していない**ため、
+上のコマンドが唯一の出典です。
 
 ## DemoMode のみ
 
