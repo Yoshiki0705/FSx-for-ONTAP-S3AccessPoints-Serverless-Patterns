@@ -1,6 +1,6 @@
 # ファイルポータル 検証結果
 
-🌐 **Language / 言語**: **日本語** | [English](verification-results.en.md)
+🌐 **Language / 言語**: 日本語 | [English](verification-results.en.md)
 
 このドキュメントは、ファイルポータルの各機能について**どこまで実機で確認されたか**を記録します。実機確認と自動テストのみの状態を明確に分けることが目的です。
 
@@ -94,7 +94,8 @@ S3 オブジェクト、および作業用ボリューム `zz_probe_a` はすべ
 | クローン削除後の親ボリューム削除（再確認中に判明） | クローンを削除した直後は**親を削除できない**。API からクローンは見えない（`entry doesn't exist`、クローン一覧にも出ない）のに、親は「has one or more clones」で拒否する。親に残る `clone_<name>.<ts>` の削除ジョブも 10 秒で終わらない。推定は ONTAP の recovery queue（既定 12 時間）だが、確認には ONTAP CLI が必要で未確認 | [ボリュームライフサイクル](../../../docs/agent/pitfalls-volume-lifecycle.md) |
 | スナップショット削除の 202 を待つ（同上） | `functions/data-protection` にジョブ待ちが 1 つも無く、202 をそのまま成功として返していた。上記のスナップショットは**削除成功と 2 回報告されながら一覧に残っていた**。ジョブを追って失敗理由を返すようにした | 同上 |
 | 失敗した削除は親を offline のまま残す（同上） | 削除の 2 段目（offline）は成功するので、ジョブが失敗した親は offline のまま。ポータルに戻す手段が無かったので `bringVolumeOnline` を追加した | 同上 |
-| 分割してからクローンを削除すると親をすぐ消せる（A/B 実測） | 同一環境で分割の有無だけを変えて比較。未分割のクローンを削除 → 親の削除は失敗（`has one or more clones`、7 分後・15 分後も同じ）。分割 → 削除 → 親の削除は数秒後に成功。原因は ONTAP の volume recovery queue（RW/DP の削除は既定 12 時間キューに保持され、その間もアグリゲート容量を消費し、親から見るとクローンが存在する）。`purge` は diag 権限が必要で FSx の fsxadmin では到達できない | [Volume Recovery Queue (KB)](https://kb.netapp.com/on-prem/ontap/Ontap_OS/OS-KBs/How_to_use_the_Volume_Recovery_Queue) |
+| 分割してからクローンを削除すると親をすぐ消せる（A/B 実測） | 同一環境で分割の有無だけを変えて比較。未分割のクローンを削除 → 親の削除は失敗（`has one or more clones`、7 分後・15 分後も同じ）。分割 → 削除 → 親の削除は数秒後に成功。原因は ONTAP の volume recovery queue（RW/DP の削除は既定 12 時間キューに保持され、その間もアグリゲート容量を消費し、親から見るとクローンが存在する） | [Volume Recovery Queue (KB)](https://kb.netapp.com/on-prem/ontap/Ontap_OS/OS-KBs/How_to_use_the_Volume_Recovery_Queue) |
+| recovery queue は REST から読めて purge も `fsxadmin` で通る（**以前の記述を訂正**） | 「`purge` は diag 権限が必要で fsxadmin では到達できない、つまり待つしかない」と書いていたが誤り。`GET /api/private/cli/volume/recovery-queue` で一覧でき、`POST /api/private/cli/volume/recovery-queue/purge` が 202 を返して 20 秒ほどでキューから消える。ブロックしていたクローンを purge した直後に親（`zz_recheck_src`）の削除が成功。キュー上の名前にはサフィックスが付く（`zz_recheck_clone_1106`）ので元の名前では照合できない。`DELETE` はコレクションに無く 405、`fields=*` も拒否される。purge は取り消せないので、自分が削除したと分かっているボリュームにのみ使う | [ボリュームライフサイクル](../../../docs/agent/pitfalls-volume-lifecycle.md) |
 | 分割の UI 補足（今回追加） | FlexClone パネルに「使いどころ」4 点と「性質」6 点を折りたたみで追加（9.4 以降はメタデータのみでデータをコピーしない / 元に戻せない / 進捗は inode 基準 / 分割中はクローンにスナップショットを作れない / オフラインで中断・オンラインで再開 / アグリゲートは選べず DP 関係のクローンは分割不可）。確認文の「容量を全量消費します」は 9.4 以降では誤りだったため訂正。削除が「クローンがある」で失敗したときは、recovery queue と分割の案内をエラーに添える | [ONTAP docs](https://docs.netapp.com/us-en/ontap/volumes/split-flexclone-from-parent-task.html) / [KB](https://kb.netapp.com/on-prem/ontap/Ontap_OS/OS-KBs/FAQ_-_FlexClone_split) |
 
 ### 2026-08-15 に追加（容量とボリュームタイプ、ONTAP 9.17.1P6）
