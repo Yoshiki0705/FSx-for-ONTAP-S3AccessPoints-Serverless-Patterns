@@ -235,6 +235,13 @@ make discover-s3ap ARGS="--accounts 111111111111 222222222222 --role-name <role>
 ```
 
 `--require-alias` はデプロイ前のゲートとして使えます（`AVAILABLE` でなければ失敗）。
+
+ポータル自身も実行時に同じ API を引きます。Upload タブの location 一覧は `listAccessPoints`
+アクション（ListFiles Lambda）が返す値で、`portal-config.ts` の alias と `groupApMapping` の
+うち**呼び出し元のグループに対応するもの**だけを、`Lifecycle` と Internet/VPC 由来を添えて
+返します。account 内の全 AP を出すわけではないので、可視範囲は従来どおり設定が決めます。
+`fsx:DescribeS3AccessPointAttachments` が拒否された場合は `lifecycle: UNKNOWN` として
+そのまま返す（読み取り権限の不足でブラウズ不能にしない）。
 | `stateMachineArn` | portal-config.ts + start-processing.js | Process タブのワークフロー起動 |
 | `groupApMapping` | portal-config.ts | チームごとのファイル分離 (My Files) |
 | `bedrockKbId` | portal-config.ts | 全文セマンティック検索 |
