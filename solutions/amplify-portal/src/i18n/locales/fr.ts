@@ -308,7 +308,7 @@ arpResponseSweepNote: "Les blocages se lèvent d'eux-mêmes à l'échéance. Pou
   rmDeleting: "Suppression…",
   rmSnaplockDocs: "Documentation SnapLock",
   rmDeleteConfirm: "Voulez-vous vraiment supprimer \"{name}\" ?",
-  rmDeleteBlockedByCloneHint: "ONTAP conserve un clone supprimé dans sa recovery queue pendant 12 heures par défaut, et ce volume le compte comme clone pendant tout ce temps : la suppression est donc refusée. Détacher le clone d'abord (Détacher, dans le panneau FlexClone) puis le supprimer évite cette attente.",
+  rmDeleteBlockedByCloneHint: "ONTAP conserve un clone supprimé 12 heures par défaut dans sa recovery queue, et ce volume le compte comme un clone pendant tout ce temps, d'où le refus. Détacher le clone d'abord (Détachement, panneau FlexClone) puis le supprimer évite l'attente. Si le clone a déjà disparu, attendez ou videz l'entrée avec volume recovery-queue purge, via la CLI ONTAP ou la private CLI REST. Un purge est irréversible : vérifiez qu'il s'agit d'un volume que vous avez supprimé.",
   rmQosDeleteConfirm: "Supprimer « {name} » ? Tout volume affecté à cette stratégie est détaché et se retrouve sans limite. Pour lever la limite sur un seul volume en conservant la stratégie, utilisez le retrait plutôt que la suppression.",
   rmDeleted: "\"{name}\" supprimé",
   rmCreate: "Créer",

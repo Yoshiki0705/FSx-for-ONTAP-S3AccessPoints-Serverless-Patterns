@@ -308,7 +308,7 @@ arpResponseSweepNote: "阻止会在设定的期限过后自动解除。如需提
   rmDeleting: "正在删除…",
   rmSnaplockDocs: "SnapLock 文档",
   rmDeleteConfirm: "确定要删除「{name}」吗？",
-  rmDeleteBlockedByCloneHint: "ONTAP 默认会将删除的克隆在 recovery queue 中保留 12 小时，在此期间该卷会以\"存在克隆\"为由拒绝删除。先在 FlexClone 面板中分割克隆再删除，即可避免这段等待。",
+  rmDeleteBlockedByCloneHint: "ONTAP 默认将已删除的克隆在 recovery queue 中保留 12 小时，在此期间本卷仍被视为\"存在克隆\"而无法删除。先分割克隆（FlexClone 面板的\"分割\"）再删除可避免这一等待。若克隆已被删除，则等待，或通过 ONTAP CLI / REST 的 private CLI（volume recovery-queue purge）从队列中清除。purge 无法撤销，请先确认该卷是您自己删除的。",
   rmQosDeleteConfirm: "要删除 \"{name}\" 吗？分配了该策略的卷会被解除分配并变为无上限。若只想解除某个卷而保留策略，请使用解除功能而不是删除。",
   rmDeleted: "已删除「{name}」",
   rmCreate: "创建",
