@@ -14,6 +14,8 @@ ONTAP の素の API がそのまま使える形になっていない。どちら
 | 作成が 787140 で失敗 | `style` を送る（`flexvol` / `flexgroup`）|
 | **クローン**作成が 787140 で失敗 | `clone.is_flexclone: true` を送る。これが無いと ONTAP は通常のボリューム作成と読む。**アグリゲートを足して 787140 を消すと成功が返るが、できるのは 20 MB の普通のボリュームでクローン関係は無い**（2026-08-15 実測） |
 | `style: flexvol` でも 918242 で失敗 | アグリゲートを 1 つ指定する。名前は `GET /storage/aggregates` で引く |
+| `style: flexgroup` が「No suitable storage can be found」で失敗 | **FlexGroup でもアグリゲートを指定する**。理由は [FlexGroup の罠](pitfalls-flexgroup.md) |
+| FlexGroup 作成が「Size "200GB" is too small」で失敗 | 既定の 4 コンスティチュエント構成では合計 400 GB 以上にする。同上 |
 | 削除の offline が 524546 で失敗 | 先に unmount する（`{"nas": {"path": ""}}`）|
 | ローカルユーザーの有効化に `enabled` を送ると 262179 | `account_disabled` を使う（意味は反転）|
 

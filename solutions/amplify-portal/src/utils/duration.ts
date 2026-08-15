@@ -40,6 +40,15 @@ const fill = (template: string, values: Record<string, string | number>): string
 export function durationLabel(period: string, t: Translate): string {
   if (period === "custom") return t("durationCustom");
 
+  // Hours, which arrived with the FlexGroup rebalance runtimes. ONTAP's default there
+  // is PT6H and the select offered it raw, because the fallback below returns the
+  // period unchanged -- readable to somebody who knows ISO-8601 and to nobody else.
+  const hours = /^PT(\d+)H$/.exec(period);
+  if (hours) {
+    const count = Number(hours[1]);
+    return fill(t(count === 1 ? "durationHour" : "durationHours"), { n: count });
+  }
+
   const match = /^P(\d+)D$/.exec(period);
   if (!match) return period;
 
