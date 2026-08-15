@@ -117,6 +117,14 @@ fi
   "It needs AWS credentials and takes a few minutes on a first run."
 echo "  ✔ amplify_outputs.json"
 
+# Storage Browser downloads a file by handing it to a service worker, which has
+# to be served from the app's own origin. Without it the component falls back to
+# an in-memory blob, and on a phone that lands nowhere the user can find: iOS
+# shows no entry in the download manager. The file is copied out of the installed
+# package rather than committed, so it cannot drift from the package version.
+npm run copy-sw >/dev/null
+echo "  ✔ public/amplify-storage-download/download-sw.js"
+
 if [ "$START_TUNNEL" -eq 1 ]; then
   command -v cloudflared >/dev/null 2>&1 || fail \
     "cloudflared not found." \

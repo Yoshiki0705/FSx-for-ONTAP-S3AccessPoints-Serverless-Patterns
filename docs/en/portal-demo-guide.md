@@ -357,6 +357,9 @@ aws fsx detach-and-delete-s3-access-point \
 **Q: Files tab shows "No files"**
 A: `portal-config.ts` has empty `s3ApAlias`. Set it and re-run `make sandbox`.
 
+**Q: A downloaded file cannot be found on iPhone or iPad**
+A: Storage Browser downloads through a service worker. When it is not registered the component falls back to an in-memory blob, which leaves nothing in the download manager. `npm run copy-sw` places `public/amplify-storage-download/download-sw.js` (`npm start` and `npm run phone` run it for you). Once registered, the file goes to Safari's download location, by default Files → Downloads.
+
 **Q: Upload tab says it is not configured**
 A: Set `s3ApAlias` in `amplify/portal-config.ts` and re-run `make sandbox`. The alias reaches the browser through `amplify_outputs.json`, and the same run provisions the IAM permissions.
 
