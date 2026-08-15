@@ -432,9 +432,31 @@ A: FSx for ONTAP S3 AP supports objects up to 50 GB. A single PutObject is cappe
 
 ---
 
+## If you are extending the Amplify Gen2 portal instead
+
+This document covers wiring Nextcloud to an S3 AP through External Storage. If you are using
+**the Amplify Gen2 portal against the same S3 AP, or running both**, the steps for extending it
+are elsewhere.
+
+Either way, **the FSx for ONTAP volume stays usable over NFS and SMB**: an S3 AP adds one path
+and does not replace an existing mount ([AWS: Accessible from Amazon S3](https://aws.amazon.com/fsx/netapp-ontap/features/)).
+How the two divide responsibilities is in
+[File portal UI options](./file-portal-amplify-gen2.en.md#coexistence-architecture-amplify-gen2--nextcloud).
+
+| What you want to do | What to read |
+|---|---|
+| Get the portal running (DemoMode works without FSx for ONTAP) | [Getting Started](../solutions/amplify-portal/docs/GETTING-STARTED.en.md) |
+| **Add or change a screen — a path that works if Amplify is new to you** | [Extending the portal UI](../solutions/amplify-portal/docs/CONTRIBUTING-UI.en.md) |
+| Add one ONTAP operation (handler through to UI) | "Hands on — three stages" in that guide |
+| Which ONTAP operations the portal reaches | [Admin capability map](../solutions/amplify-portal/docs/admin-capability-map.en.md) |
+| How much is verified against real hardware | [Verification record](../solutions/amplify-portal/docs/verification-results.en.md) |
+
+---
+
 ## Related Documents
 
 - [File Portal UI Options (Amplify Gen2 / Nextcloud / Custom)](./file-portal-amplify-gen2.en.md) — Architecture comparison and selection guide
+- [Extending the portal UI](../solutions/amplify-portal/docs/CONTRIBUTING-UI.en.md) — Adding a feature to the Amplify Gen2 portal
 - [S3AP Compatibility Notes](./s3ap-compatibility-notes.en.md) — Known S3 AP constraints including Presigned URL limitation
 - [AD-Joined SVM S3 AP Prerequisites](./en/ad-joined-svm-s3ap-prerequisites.md) — AD DC reachability requirements
 - [S3AP Performance Considerations](./s3ap-performance-considerations.en.md) — Throughput design guidance

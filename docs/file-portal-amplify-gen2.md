@@ -226,23 +226,44 @@ Storage Browser for Amazon S3 をベースにしたマネージドなブラウ�
 
 以下は、上の分岐で「作る」と判断した場合の 3 択です。Transfer Family は**列に含めていません** — プロトコル提供とブラウザ UI 開発は同じ軸で比べられないためです。両方が要る構成（Transfer Family で授受、Amplify Gen2 で処理指示）も成り立ちます。
 
-| 観点 | Amplify Gen2 | Nextcloud | カスタムビルド (CDK) |
-|------|:---:|:---:|:---:|
-| **セットアップ時間 (PoC)** | 2-3日 | 1-2日（経験者） | 1-2週間 |
-| **ファイル閲覧 (組み込み)** | カスタム UI 必要 | 組み込みファイルマネージャ | カスタム UI 必要 |
-| **処理ジョブ起動** | AppSync Mutation → SFn | Workflow App or webhook | API Gateway → SFn |
-| **認証** | Cognito (SAML/OIDC) | LDAP/SAML/OIDC | Cognito / カスタム |
-| **ホスティングモデル** | サーバーレス (Amplify Hosting) | サーバー (EC2/ECS) | CloudFront + S3 / Amplify |
-| **運用負荷** | 低（マネージド） | 中（パッチ、アップグレード） | 低〜中 |
-| **FSx for ONTAP アクセス** | S3 AP via Lambda | External Storage (S3 AP 直接) | S3 AP via Lambda |
-| **マルチプロトコル可視性** | S3 AP 経由のみ | NFS マウント + S3 AP | S3 AP 経由のみ |
-| **オフラインファイル編集** | 不可 | デスクトップ/モバイル同期クライアント | 不可 |
-| **コラボレーション機能** | カスタム実装 | 組み込み（共有、コメント） | カスタム実装 |
-| **インフラコスト** | ~$5-10/月 | ~$50-100/月 (EC2) | ~$5-20/月 |
-| **言語/フレームワーク** | TypeScript + React | PHP（サーバー） | 任意 |
-| **AD 統合** | Cognito フェデレーション | ネイティブ LDAP/AD | Cognito フェデレーション |
-| **モバイルアクセス** | レスポンシブ Web | ネイティブアプリ (iOS/Android) | レスポンシブ Web |
-| **S3 AP Presigned URL** | 動作する（※ドキュメント上 Not supported。[詳細](./s3ap-compatibility-notes.md#presigned-url-support)） | 同左 | 同左 |
+### 表を読む前に — この表が比べているのは「ポータル」だけです
+
+**どの選択肢を選んでも、FSx for ONTAP のボリュームは NFS / SMB のファイルプロトコルでそのまま使えます。** ポータルを足すことは、既存のマウントを置き換えることではありません。AWS は S3 Access Point について次のように書いています。
+
+> You can access your data in FSx for NetApp ONTAP just like you access data in an S3 bucket—while the data continues to reside on a file system and be accessible natively via the file protocols (e.g., NFS).
+
+出典: [Amazon FSx for NetApp ONTAP Features — Accessible from Amazon S3](https://aws.amazon.com/fsx/netapp-ontap/features/)（AWS）
+
+つまり想定している使い方はこうです。**利用者は普段どおり NFS / SMB でマウントして作業し、外部共有やデータ活用のときだけポータル（= S3 AP 経路）を使う。** 同じボリュームの同じファイルを、両方から見ます。FSx for ONTAP は NFS と SMB の同時アクセスを同一データに対して提供し（[AWS: Multi-protocol](https://aws.amazon.com/fsx/netapp-ontap/features/)）、S3 AP はそこに 3 つ目の経路を足すものです。
+
+したがって、表の各行は次の意味です。
+
+- 「ポータルが〜」と書いた行 = **ポータルアプリケーション自身**がどうデータに到達するか。利用者が使える経路の一覧ではありません
+- 「組み込み」と書いた行 = **素のフレームワーク / 製品が最初から持っているか**。本リポジトリのポータルが実装済みかどうかは別列に分けました
+- 各行に**根拠**を付けています。仕様は変わるので、採用判断の前にリンク先で現在の記載を確認してください。根拠が「本リポジトリ」の行は、この検証環境での実測または実装状況であって、一般的なサービス仕様ではありません
+
+### マトリクス
+
+| 観点 | Amplify Gen2（素） | 本リポジトリのポータル | Nextcloud | カスタムビルド (CDK) | 根拠 |
+|------|:---:|:---:|:---:|:---:|---|
+| **セットアップ時間 (PoC)** | 2-3日 | DemoMode は 30 分 | 1-2日（経験者） | 1-2週間 | [本リポジトリ](../solutions/amplify-portal/docs/GETTING-STARTED.md)（この環境での実測。所要時間は前提に依存します）|
+| **ファイル閲覧 UI** | 自分で作る | 実装済み（ファイルエクスプローラー） | 組み込みファイルマネージャ | 自分で作る | [Nextcloud: Files](https://docs.nextcloud.com/server/latest/user_manual/en/files/index.html) / [本リポジトリ](../solutions/amplify-portal/docs/portal-tabs-guide.md) |
+| **処理ジョブ起動** | AppSync Mutation → Step Functions | 実装済み | Workflow / webhook | API Gateway → Step Functions | [AWS AppSync](https://docs.aws.amazon.com/appsync/latest/devguide/what-is-appsync.html) / [Nextcloud: File workflows](https://docs.nextcloud.com/server/latest/admin_manual/file_workflows/index.html) / [Webhooks](https://docs.nextcloud.com/server/latest/admin_manual/webhook_listeners/index.html) |
+| **認証** | Cognito（SAML / OIDC フェデレーション） | 同左（Cognito グループで認可） | LDAP / AD、SAML・OIDC はアプリ追加 | Cognito / 自作 | [AWS: Cognito フェデレーション](https://docs.aws.amazon.com/cognito/latest/developerguide/cognito-user-pools-identity-federation.html) / [Nextcloud: LDAP](https://docs.nextcloud.com/server/latest/admin_manual/configuration_user/user_auth_ldap.html) |
+| **ホスティング** | サーバーレス（Amplify Hosting） | 同左 | サーバー（EC2 / ECS）| CloudFront + S3 / Amplify | [AWS: Amplify Hosting](https://docs.aws.amazon.com/amplify/latest/userguide/welcome.html) |
+| **利用者が自分でパッチを当てる対象** | なし（マネージド） | なし | PHP / OS / Nextcloud 本体 | Lambda ランタイム等 | [Nextcloud: Upgrade](https://docs.nextcloud.com/server/latest/admin_manual/maintenance/upgrade.html) |
+| **ポータルがデータに到達する経路** | — | S3 AP（VPC 外 Lambda 経由）| S3 AP を External Storage として直接、または**ホストの NFS マウント**を Local ストレージとして | S3 AP（Lambda 経由）| [AWS: S3 AP で FSx for ONTAP のデータにアクセス](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/s3-access-points.html) / [Nextcloud: Amazon S3](https://docs.nextcloud.com/server/latest/admin_manual/configuration_files/external_storage/amazons3.html) / [Nextcloud: Local](https://docs.nextcloud.com/server/latest/admin_manual/configuration_files/external_storage/local.html) |
+| **利用者の NFS / SMB マウント** | **3 択とも変わりません**（ポータルはマウントを置き換えません）| ← | ← | ← | [AWS: Accessing your FSx for ONTAP data](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/supported-fsx-clients.html) |
+| **オフライン編集** | ポータル自体には同期クライアントなし。**NFS / SMB マウント経由なら従来どおり可能** | 同左 | 加えて Nextcloud のデスクトップ / モバイル同期クライアントがある | ポータル自体にはなし | [Nextcloud: Desktop and mobile sync](https://docs.nextcloud.com/server/latest/user_manual/en/desktop/index.html) |
+| **共有・コメント等の協業機能** | 自分で作る | ファイル操作と通知は実装済み。コメント / バージョン共有 UI は未実装 | 組み込み | 自分で作る | [Nextcloud: Sharing](https://docs.nextcloud.com/server/latest/user_manual/en/files/sharing.html) / [本リポジトリ](../solutions/amplify-portal/docs/portal-tabs-guide.md) |
+| **モバイル** | レスポンシブ Web | レスポンシブ Web（[実測は 390×844 のエミュレーション](../solutions/amplify-portal/docs/verification-results.md)）| ネイティブアプリ (iOS / Android) | レスポンシブ Web | [Nextcloud: Clients](https://nextcloud.com/clients/) / 本リポジトリ |
+| **言語 / フレームワーク** | TypeScript + React | 同左（UI は 8 言語）| PHP | 任意 | [本リポジトリ](../solutions/amplify-portal/docs/CONTRIBUTING-UI.md) |
+| **S3 AP Presigned URL** | 動作する（※ドキュメント上 Not supported）| 同左 | 同左 | 同左 | [本リポジトリの実測メモ](./s3ap-compatibility-notes.md#presigned-url-support) |
+| **インフラコスト（概算）** | 〜$5-10/月 | 同左 | 〜$50-100/月 (EC2) | 〜$5-20/月 | **概算・時点情報。根拠となる価格表を引いていません。**[コストの計測](./ja/cost-measurement.md)を読み、[AWS Pricing Calculator](https://calculator.aws/) で自分の構成を見積もってください |
+
+> **AD について**: 上の「認証」行はポータルにサインインする人の認証です。**FSx for ONTAP の SVM を Active Directory に参加させるかどうかは別の軸**で、SMB アクセスと NTFS ACL に効きます。ポータルの認可（Cognito グループ）と ONTAP 側の認可は二層で、両方を設計する必要があります。[認可モデル](./ja/portal-authorization-model.md)を参照してください。
+
+> **「未実装」と「できない」は違います**: 上の表で「自分で作る」「未実装」と書いた欄は、本リポジトリのポータルが現時点で持っていないという意味で、Amplify Gen2 で作れないという意味ではありません。逆に「実装済み」の欄も、どこまで実機で確認したかは[検証結果](../solutions/amplify-portal/docs/verification-results.md)の 4 区分（実機 E2E / 実機読み取り / 自動テストのみ / DemoMode のみ）で分けています。
 
 ---
 

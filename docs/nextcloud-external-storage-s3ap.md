@@ -435,9 +435,29 @@ A: **パススタイルを有効にする**が最も重要です。S3 AP エイ�
 
 ---
 
+## Amplify Gen2 ポータル側を拡張する場合
+
+この文書は Nextcloud を External Storage で S3 AP に繋ぐ手順です。**同じ S3 AP に対して
+Amplify Gen2 のポータルを使う / 併用する**場合は、拡張の手順が別にあります。
+
+どちらを選んでも、**FSx for ONTAP のボリュームは NFS / SMB でそのまま使えます**（S3 AP は
+経路が 1 つ増えるだけで、既存のマウントを置き換えません。[AWS: Accessible from Amazon S3](https://aws.amazon.com/fsx/netapp-ontap/features/)）。
+併用構成の役割分担は [ファイルポータル UI の選択肢](./file-portal-amplify-gen2.md#amplify-gen2-と-nextcloud-の共存アーキテクチャ) にあります。
+
+| やりたいこと | 読むもの |
+|---|---|
+| ポータルをまず動かす（FSx for ONTAP なしの DemoMode 可）| [Getting Started](../solutions/amplify-portal/docs/GETTING-STARTED.md) |
+| **画面を足す / 直す — Amplify がはじめてでも辿れる手順** | [ポータル UI を拡張する](../solutions/amplify-portal/docs/CONTRIBUTING-UI.md) |
+| ONTAP の操作を 1 つ増やす（ハンドラから UI まで）| 同ガイドの「手を動かす — 3 段階」 |
+| ポータルが到達できる ONTAP 操作の一覧 | [管理機能マップ](../solutions/amplify-portal/docs/admin-capability-map.md) |
+| どこまで実機で確認済みか | [検証結果](../solutions/amplify-portal/docs/verification-results.md) |
+
+---
+
 ## 関連ドキュメント
 
 - [ファイルポータル UI の選択肢 (Amplify Gen2 / Nextcloud / カスタムビルド)](./file-portal-amplify-gen2.md) — アーキテクチャ比較と選択ガイド
+- [ポータル UI を拡張する](../solutions/amplify-portal/docs/CONTRIBUTING-UI.md) — Amplify Gen2 ポータルに機能を追加する手順
 - [S3AP 互換性ノート](./s3ap-compatibility-notes.md) — Presigned URL 制限を含む既知の制約
 - [AD-Joined SVM S3 AP 前提条件](./en/ad-joined-svm-s3ap-prerequisites.md) — AD DC 到達性要件
 - [S3AP パフォーマンス考慮事項](./s3ap-performance-considerations.md) — スループット設計ガイダンス
