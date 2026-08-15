@@ -1144,6 +1144,69 @@ def check_unsubstituted_placeholders() -> list[Finding]:
     return findings
 
 
+_S3_CLIENT = re.compile(r"boto3\.client\(\s*[\"']s3[\"']")
+_PRESIGN = re.compile(r"generate_presigned_url")
+
+
+def check_presign_safe_s3_clients() -> list[Finding]:
+    """An S3 client in the portal that cannot presign a usable URL.
+
+    `generate_presigned_url` does not sign with SigV4 unless told to, and under the
+    default addressing style botocore presigns the global `s3.amazonaws.com` even with a
+    region configured. S3 answers such a URL with 301 PermanentRedirect naming the
+    regional host, and the signature covers `host`, so the redirect cannot be followed.
+    The upload link the portal handed out was unusable for exactly this reason, and had
+    been since it shipped.
+
+    Six other functions in the portal presign too, and all six were already correct --
+    each naming an explicit regional `endpoint_url` alongside `s3v4`. Measured
+    2026-08-15: both that shape (path-style) and `addressing_style="virtual"` return 200
+    against an Access Point alias. The one that broke was the one client written without
+    either.
+
+    So the rule is not about which of the two shapes to use. It is that a module which
+    presigns must not leave both to the default, because the default is the one
+    combination that does not work.
+    """
+    findings: list[Finding] = []
+    functions = PORTAL / "functions"
+    if not functions.is_dir():
+        return [Finding("presign-config", "functions", "the functions directory is missing")]
+
+    sources = sorted(p for p in functions.rglob("*.py") if "tests" not in p.parts)
+    if not sources:
+        return [Finding("presign-config", "functions", "no handlers found, so nothing is covered")]
+
+    for path in sources:
+        text = path.read_text(encoding="utf-8")
+        if not _PRESIGN.search(text) or not _S3_CLIENT.search(text):
+            continue
+        # The client construction spans lines, so the whole module is the window. A
+        # module that builds two clients and configures one is not distinguished here;
+        # that would need the call extent, and no module in the portal does it.
+        if "s3v4" not in text:
+            findings.append(
+                Finding(
+                    "presign-config",
+                    str(path.relative_to(PORTAL)),
+                    "presigns a URL with an S3 client that does not ask for SigV4. "
+                    'Add config=Config(signature_version="s3v4", ...)',
+                )
+            )
+            continue
+        if "endpoint_url" not in text and "addressing_style" not in text:
+            findings.append(
+                Finding(
+                    "presign-config",
+                    str(path.relative_to(PORTAL)),
+                    "asks for SigV4 but leaves the endpoint to the default, which presigns "
+                    "the global host and answers 301. Name a regional endpoint_url, or "
+                    's3={"addressing_style": "virtual"}',
+                )
+            )
+    return findings
+
+
 _USE_QUERY = re.compile(r"\buseQuery\s*\(")
 # Start-of-line so a stray `enabled` inside a queryFn body is not read as the option.
 _ENABLED_OPTION = re.compile(r"^\s*enabled\s*:", re.MULTILINE)
@@ -1850,6 +1913,7 @@ def main() -> int:
         + check_breakpoint_agreement()
         + check_locale_escaping()
         + check_unsubstituted_placeholders()
+        + check_presign_safe_s3_clients()
         + check_query_gate_reads()
     )
 

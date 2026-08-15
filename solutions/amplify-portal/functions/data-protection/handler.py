@@ -44,6 +44,7 @@ import json
 import logging
 import os
 import re
+import time
 from datetime import datetime, timedelta, timezone
 from urllib.parse import quote
 
@@ -331,6 +332,46 @@ class OntapLookupFailed(Exception):
         self.diagnosis = diagnosis
 
 
+def _wait_for_job(http, headers, job_uuid: str, attempts: int = 10) -> tuple[bool, str]:
+    """Follow an ONTAP job to its end, and report why it failed if it did.
+
+    ONTAP answers most state changes with 202 and a job. This module had no job handling
+    at all: a 202 was reported as success, so `deleteSnapshot` said the snapshot was gone
+    while its job was still queued -- and when the job then failed, nothing said so.
+    Measured 2026-08-15 on a clone's base snapshot, which the delete reported gone twice
+    and which was still in the listing both times.
+
+    Args:
+        http: The pool manager.
+        headers: Request headers, already carrying credentials.
+        job_uuid: The job to follow. An empty string means the call was synchronous.
+        attempts: How many times to poll, one second apart.
+
+    Returns:
+        (ok, message). `ok` is False only when the job reported failure or never
+        finished; a job that cannot be read is treated as done, because the alternative
+        is failing a request that probably succeeded.
+    """
+    if not job_uuid:
+        return True, ""
+
+    for _ in range(attempts):
+        data = _ontap_get(http, headers, f"/cluster/jobs/{job_uuid}", "fields=state,message,code")
+        state = data.get("state", "")
+        if state in ("success", "failure"):
+            message = data.get("message", "")
+            if state == "failure":
+                return False, message or f"job {job_uuid} failed"
+            return True, message
+        if not state:
+            # Unreadable rather than unfinished. Reported as done: refusing here would
+            # turn a permissions gap on /cluster/jobs into a failed snapshot delete.
+            return True, ""
+        time.sleep(1)
+
+    return False, f"job {job_uuid} did not finish within {attempts}s"
+
+
 def _get_volume_uuid(http, headers, event: dict | None = None) -> str:
     """Resolve volume UUID from name.
 
@@ -598,6 +639,13 @@ def _create_snapshot(http, headers, event):
     resp_data = json.loads(resp.data)
 
     if resp.status in (201, 202):
+        # Same reason as the delete below: a 202 says the job was accepted, and a
+        # snapshot the caller is about to look for is worth waiting one job for.
+        body = json.loads(resp.data) if resp.data else {}
+        ok, message = _wait_for_job(http, headers, body.get("job", {}).get("uuid", ""))
+        if not ok:
+            logger.warning(f"Snapshot create job failed: {name} — {message}")
+            return {"success": False, "snapshotName": "", "error": message}
         logger.info(f"Snapshot created: {name} by {user_id}")
         return {"success": True, "snapshotName": name, "error": None}
     else:
@@ -625,6 +673,15 @@ def _delete_snapshot(http, headers, event):
     resp = http.request("DELETE", url, headers=headers)
 
     if resp.status in (200, 202):
+        # The 202 is a queued job, not a deletion. Waiting for it is the difference
+        # between "deleted" and "asked": a clone's base snapshot came back reported as
+        # deleted twice while remaining in the listing, because the job that refused it
+        # was never read.
+        body = json.loads(resp.data) if resp.data else {}
+        ok, message = _wait_for_job(http, headers, body.get("job", {}).get("uuid", ""))
+        if not ok:
+            logger.warning(f"Snapshot delete job failed: {snap_name} — {message}")
+            return {"success": False, "error": message}
         logger.info(f"Snapshot deleted: {snap_name} ({snap_uuid}) by {user_id}")
         return {"success": True, "error": None}
     else:

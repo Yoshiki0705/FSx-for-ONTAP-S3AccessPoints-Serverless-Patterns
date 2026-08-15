@@ -241,6 +241,12 @@ drift:
 # version of the rule reported the four call sites that use the fill() and withNodes()
 # helpers, and a rule that reports correct code is a rule someone turns off.
 	$(PYTHON) -m pytest scripts/tests/test_i18n_placeholder_check.py --tb=short -q
+# The presign-safe S3 client rule, also inside check_portal_drift.py. The portal's upload
+# link had never worked: `generate_presigned_url` signs with SigV2 unless told otherwise,
+# and the default addressing style presigns the global host, which answers 301 with a
+# regional one the signature cannot follow. Six other functions presign and all six were
+# already correct, so the rule accepts both working shapes and rejects only the default.
+	$(PYTHON) -m pytest scripts/tests/test_presign_config_check.py --tb=short -q
 	$(PYTHON) scripts/check_portal_drift.py
 # boto3 and urllib3 are pinned in pyproject.toml and requirements.txt both, and
 # Renovate manages the two as separate managers. It raised boto3 in pyproject.toml
