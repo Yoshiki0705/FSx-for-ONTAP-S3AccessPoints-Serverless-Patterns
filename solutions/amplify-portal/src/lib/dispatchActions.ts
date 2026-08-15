@@ -414,6 +414,9 @@ export interface ResourceMgmtActionParams {
   getVolume: {
     volumeUuid: VolumeUuid;
   };
+  getVolumeRebalance: {
+    volumeUuid: VolumeUuid;
+  };
   getVscanStatus: {
     svm?: string;
   };
@@ -578,6 +581,16 @@ export interface ResourceMgmtActionParams {
     svm?: string;
   };
   splitFlexClone: {
+    volumeUuid: VolumeUuid;
+    volumeName?: string;
+  };
+  startVolumeRebalance: {
+    volumeUuid: VolumeUuid;
+    acknowledgeIrreversible?: true;
+    maxRuntime?: string;
+    startTime?: string;
+  };
+  stopVolumeRebalance: {
     volumeUuid: VolumeUuid;
     volumeName?: string;
   };

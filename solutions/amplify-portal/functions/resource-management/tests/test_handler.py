@@ -320,22 +320,60 @@ class TestCreateVolume:
         assert body["style"] == "flexvol"
         assert body["aggregates"] == [{"name": "aggr1"}]
 
-    def test_a_flexgroup_is_placed_by_ontap(self, mock_secrets):
-        """ONTAP spreads a FlexGroup itself, so naming an aggregate is wrong here."""
+    def test_a_flexgroup_is_given_an_aggregate_too(self, mock_secrets):
+        """This used to assert the opposite, on the strength of how ONTAP is documented.
+
+        A FlexGroup is placed automatically in principle, and that placement cannot
+        succeed on FSx for ONTAP: the aggregate is a FabricPool aggregate and automatic
+        selection excludes it. Measured -- a FlexGroup with no aggregate named failed
+        with "No suitable storage can be found for the specified requirements.
+        Aggregates not matching FabricPool requirements: aggr1", and the same request
+        naming aggr1 succeeded. The FlexCache path already knew this and says so with
+        `use_tiered_aggregate`; the volume path did not, so creating a FlexGroup here
+        had never worked.
+        """
         from handler import handler
 
-        http = MockHttp({"/storage/volumes": {"status": 202, "data": {}}})
+        http = MockHttp(
+            {
+                "/storage/aggregates": {"data": {"records": [{"name": "aggr1"}]}},
+                "/storage/volumes": {"status": 202, "data": {}},
+            }
+        )
         with patch("handler.urllib3.PoolManager") as mock_pool:
             mock_pool.return_value = http
             result = handler(
-                {"action": "createVolume", "name": "big_vol", "sizeGiB": 50, "style": "flexgroup"},
+                {"action": "createVolume", "name": "big_vol", "sizeGiB": 400, "style": "flexgroup"},
                 None,
             )
 
         assert result["success"] is True
         body = json.loads(http.find("POST", "/storage/volumes")[2]["body"])
         assert body["style"] == "flexgroup"
-        assert "aggregates" not in body
+        assert body["aggregates"] == [{"name": "aggr1"}]
+
+    def test_a_named_aggregate_is_used_as_given(self, mock_secrets):
+        """A caller that knows which aggregate it wants is not overridden."""
+        from handler import handler
+
+        http = MockHttp({"/storage/volumes": {"status": 202, "data": {}}})
+        with patch("handler.urllib3.PoolManager") as mock_pool:
+            mock_pool.return_value = http
+            handler(
+                {
+                    "action": "createVolume",
+                    "name": "big_vol",
+                    "sizeGiB": 400,
+                    "style": "flexgroup",
+                    "aggregates": ["aggr2"],
+                },
+                None,
+            )
+
+        body = json.loads(http.find("POST", "/storage/volumes")[2]["body"])
+        assert body["aggregates"] == [{"name": "aggr2"}]
+        # And the aggregate listing is not consulted when one was named.
+        assert not any("/storage/aggregates" in call[1] for call in http.calls)
 
     def test_an_empty_aggregate_list_is_explained(self, mock_secrets):
         """ONTAP's own 918242 asks for a value the caller cannot know."""
@@ -553,6 +591,260 @@ class TestBringVolumeOnline:
 
         bodies = [json.loads(c[2]["body"]) for c in http.calls if c[0] == "PATCH"]
         assert all("nas" not in b for b in bodies)
+
+
+class TestVolumeRebalance:
+    """Capacity rebalancing on a FlexGroup volume.
+
+    A FlexGroup reports no space when any one constituent is full, so the interesting
+    question is not the volume's used percentage but how far its constituents have
+    drifted apart. Three things have to stay distinguishable here, because two of them
+    read the same way if the code is careless: a volume of the wrong style, a FlexGroup
+    ONTAP does not track rebalancing for, and a FlexGroup with nothing to do.
+    """
+
+    @pytest.fixture(autouse=True)
+    def _secrets(self, mock_secrets):
+        """Every case here reaches ONTAP."""
+
+    @staticmethod
+    def _http(volume: dict):
+        return MockHttp({"/storage/volumes/uuid-1": {"data": volume}})
+
+    FLEXGROUP = {
+        "name": "fg1",
+        "style": "flexgroup",
+        "constituents": [{"name": "fg1__0001"}, {"name": "fg1__0002"}],
+        "rebalancing": {
+            "state": "not_running",
+            "imbalance_percent": 3,
+            "imbalance_size": 12288,
+            "max_constituent_imbalance_percent": 27,
+            "max_runtime": "PT6H",
+            "min_file_size": 104857600,
+            "max_threshold": 20,
+            "min_threshold": 5,
+            "max_file_moves": 25,
+            "exclude_snapshots": True,
+        },
+    }
+
+    def test_a_flexvol_is_answered_rather_than_failed(self):
+        """The panel has to be able to say why the operation is not offered."""
+        from handler import handler
+
+        with patch("handler.urllib3.PoolManager") as mock_pool:
+            mock_pool.return_value = self._http({"name": "vol1", "style": "flexvol"})
+            result = handler({"action": "getVolumeRebalance", "volumeUuid": "uuid-1"}, None)
+
+        assert result["error"] is None
+        assert result["supported"] is False
+        assert result["reason"] == "NOT_FLEXGROUP"
+        assert result["volumeStyle"] == "flexvol"
+
+    def test_an_object_store_volume_is_reported_by_its_own_reason(self):
+        """An ONTAP S3 bucket's backing volume is a FlexGroup and still unsupported.
+
+        Reporting only the style here would leave the panel offering the operation on
+        the one FlexGroup where NetApp documents it as unavailable.
+        """
+        from handler import handler
+
+        with patch("handler.urllib3.PoolManager") as mock_pool:
+            mock_pool.return_value = self._http(
+                {"name": "fg_oss", "style": "flexgroup", "is_object_store": True, "constituents": [{"name": "a"}]}
+            )
+            result = handler({"action": "getVolumeRebalance", "volumeUuid": "uuid-1"}, None)
+
+        assert result["supported"] is False
+        assert result["reason"] == "OBJECT_STORE"
+        assert result["constituentCount"] == 1
+
+    def test_a_flexgroup_without_a_rebalancing_object_is_not_reported_as_unknown(self):
+        """Measured on this file system with every field requested: a FlexCache cache
+        volume is a FlexGroup and carries no rebalancing object at all. Defaulting its
+        state to "unknown" with zeroes would look like a balanced volume ONTAP had
+        merely failed to inspect, and the panel would offer to start an operation.
+        """
+        from handler import handler
+
+        with patch("handler.urllib3.PoolManager") as mock_pool:
+            mock_pool.return_value = self._http({"name": "cache1", "style": "flexgroup"})
+            result = handler({"action": "getVolumeRebalance", "volumeUuid": "uuid-1"}, None)
+
+        assert result["supported"] is True
+        assert result["reported"] is False
+
+    def test_reports_the_worst_constituent_alongside_the_volume(self):
+        """The volume can read 3% out of balance while a constituent is at 27%.
+
+        The constituent is the one that returns ENOSPC, so both numbers travel.
+        """
+        from handler import handler
+
+        with patch("handler.urllib3.PoolManager") as mock_pool:
+            mock_pool.return_value = self._http(self.FLEXGROUP)
+            result = handler({"action": "getVolumeRebalance", "volumeUuid": "uuid-1"}, None)
+
+        assert result["reported"] is True
+        assert result["constituentCount"] == 2
+        assert result["rebalance"]["imbalancePercent"] == 3
+        assert result["rebalance"]["maxConstituentImbalancePercent"] == 27
+        # The settings the next run will use, read from the volume rather than assumed.
+        assert result["rebalance"]["maxRuntime"] == "PT6H"
+        assert result["rebalance"]["minFileSizeBytes"] == 104857600
+        assert result["rebalance"]["maxThresholdPercent"] == 20
+
+    def test_asks_ontap_for_the_fields_that_decide_eligibility(self):
+        """`rebalancing`, `is_object_store` and `constituents` are explicit-request
+        fields. Without them the answer is silence, which reads as "nothing to do".
+        """
+        from handler import handler
+
+        http = self._http(self.FLEXGROUP)
+        with patch("handler.urllib3.PoolManager") as mock_pool:
+            mock_pool.return_value = http
+            handler({"action": "getVolumeRebalance", "volumeUuid": "uuid-1"}, None)
+
+        _, url, _ = http.find("GET", "/storage/volumes/uuid-1")
+        for field in ("rebalancing", "is_object_store", "granular_data", "constituents"):
+            assert field in url
+
+    def test_start_requires_the_acknowledgement(self):
+        """Starting enables granular data, which cannot be switched off again."""
+        from handler import handler
+
+        with patch("handler.urllib3.PoolManager") as mock_pool:
+            mock_pool.return_value = self._http(self.FLEXGROUP)
+            result = handler({"action": "startVolumeRebalance", "volumeUuid": "uuid-1"}, None)
+
+        assert result["success"] is False
+        assert "acknowledgeIrreversible" in result["error"]
+        assert "granular data" in result["error"]
+        # And it points at the rebalancing documentation rather than at the SnapLock
+        # design note, which is where the shared helper's default sends readers.
+        assert "tamperproof" not in result["error"]
+
+    def test_start_refuses_a_flexvol(self):
+        from handler import handler
+
+        with patch("handler.urllib3.PoolManager") as mock_pool:
+            mock_pool.return_value = self._http({"name": "vol1", "style": "flexvol"})
+            result = handler(
+                {"action": "startVolumeRebalance", "volumeUuid": "uuid-1", "acknowledgeIrreversible": True},
+                None,
+            )
+
+        assert result["success"] is False
+        assert "FlexGroup" in result["error"]
+
+    def test_start_refuses_an_object_store_volume(self):
+        from handler import handler
+
+        with patch("handler.urllib3.PoolManager") as mock_pool:
+            mock_pool.return_value = self._http(
+                {"name": "fg_oss", "style": "flexgroup", "is_object_store": True}
+            )
+            result = handler(
+                {"action": "startVolumeRebalance", "volumeUuid": "uuid-1", "acknowledgeIrreversible": True},
+                None,
+            )
+
+        assert result["success"] is False
+        assert "ONTAP S3" in result["error"]
+
+    def test_start_refuses_while_one_is_running(self):
+        """Two rebalances on one volume is not a state ONTAP offers."""
+        from handler import handler
+
+        running = dict(self.FLEXGROUP, rebalancing={"state": "rebalancing"})
+        with patch("handler.urllib3.PoolManager") as mock_pool:
+            mock_pool.return_value = self._http(running)
+            result = handler(
+                {"action": "startVolumeRebalance", "volumeUuid": "uuid-1", "acknowledgeIrreversible": True},
+                None,
+            )
+
+        assert result["success"] is False
+        assert "already" in result["error"]
+
+    def test_start_refuses_a_runtime_that_is_not_a_period(self):
+        """ONTAP rejects it too, but only after the caller has been told it started."""
+        from handler import handler
+
+        with patch("handler.urllib3.PoolManager") as mock_pool:
+            mock_pool.return_value = self._http(self.FLEXGROUP)
+            result = handler(
+                {
+                    "action": "startVolumeRebalance",
+                    "volumeUuid": "uuid-1",
+                    "acknowledgeIrreversible": True,
+                    "maxRuntime": "6h",
+                },
+                None,
+            )
+
+        assert result["success"] is False
+        assert "ISO-8601" in result["error"]
+
+    def test_start_sends_the_state_and_the_options_it_was_given(self):
+        from handler import handler
+
+        http = self._http(self.FLEXGROUP)
+        with patch("handler.urllib3.PoolManager") as mock_pool:
+            mock_pool.return_value = http
+            result = handler(
+                {
+                    "action": "startVolumeRebalance",
+                    "volumeUuid": "uuid-1",
+                    "acknowledgeIrreversible": True,
+                    "maxRuntime": "P1D",
+                    "startTime": "2026-08-20T02:00:00Z",
+                },
+                None,
+            )
+
+        assert result["success"] is True
+        # A start_time makes it a schedule rather than a start, and the caller is told
+        # which of the two happened.
+        assert result["scheduled"] is True
+        _, _, kwargs = http.find("PATCH", "/storage/volumes/uuid-1")
+        assert json.loads(kwargs["body"]) == {
+            "rebalancing": {"state": "starting", "max_runtime": "P1D", "start_time": "2026-08-20T02:00:00Z"}
+        }
+
+    def test_start_without_a_runtime_leaves_ontaps_default_alone(self):
+        """Six hours. Sending an explicit value would freeze a default that is ONTAP's
+        to choose, and a run that hits the limit is not a failure.
+        """
+        from handler import handler
+
+        http = self._http(self.FLEXGROUP)
+        with patch("handler.urllib3.PoolManager") as mock_pool:
+            mock_pool.return_value = http
+            handler(
+                {"action": "startVolumeRebalance", "volumeUuid": "uuid-1", "acknowledgeIrreversible": True},
+                None,
+            )
+
+        _, _, kwargs = http.find("PATCH", "/storage/volumes/uuid-1")
+        assert json.loads(kwargs["body"]) == {"rebalancing": {"state": "starting"}}
+
+    def test_stop_sends_stopping_and_needs_no_acknowledgement(self):
+        """Stopping takes nothing away that starting had not already committed."""
+        from handler import handler
+
+        http = self._http({})
+        with patch("handler.urllib3.PoolManager") as mock_pool:
+            mock_pool.return_value = http
+            result = handler(
+                {"action": "stopVolumeRebalance", "volumeUuid": "uuid-1", "volumeName": "fg1"},
+                None,
+            )
+
+        assert result["success"] is True
+        _, _, kwargs = http.find("PATCH", "/storage/volumes/uuid-1")
+        assert json.loads(kwargs["body"]) == {"rebalancing": {"state": "stopping"}}
 
 
 class TestResizeVolume:

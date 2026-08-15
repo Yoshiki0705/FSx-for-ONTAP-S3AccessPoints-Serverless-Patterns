@@ -5,6 +5,7 @@ import { errorMessage, unwrap } from "../../lib/portalQuery";
 import { adminMutate, dispatch } from "../../lib/dispatch";
 import { asIsoDuration, type IsoDuration, type VolumeUuid } from "../../lib/dispatchActions";
 import { SnaplockConfirmDialog } from "../SnaplockConfirmDialog";
+import { VolumeRebalancePanel } from "./VolumeRebalancePanel";
 import { durationLabel, durationRange } from "../../utils/duration";
 import { oneOf } from "../../utils/oneOf";
 import type { SnaplockIntent } from "../../utils/snaplockConsequences";
@@ -99,6 +100,9 @@ export function VolumeManager() {
 
   /** Set while the consequence dialog is open; null when nothing is pending. */
   const [pendingSnaplock, setPendingSnaplock] = useState<SnaplockIntent | null>(null);
+
+  /** The FlexGroup whose rebalance panel is open, if any. */
+  const [rebalancing, setRebalancing] = useState<{ uuid: VolumeUuid; name: string } | null>(null);
 
   const {
     data: volumes = [],
@@ -405,6 +409,35 @@ export function VolumeManager() {
           <li>{t("rmStyleGuide2")}</li>
           <li>{t("rmStyleGuide3")}</li>
           <li>{t("rmStyleGuide4")}</li>
+          <li>{t("rmStyleGuide5")}</li>
+        </ul>
+
+        {/* Conversion has no button because it has no REST API: `volume conversion
+            start` is an advanced-privilege CLI command, and AWS recommends copying to a
+            new FlexGroup rather than converting in place. What this can do is put the
+            preconditions and the consequences where somebody is looking at the volume,
+            rather than leaving them to find out mid-conversion. */}
+        <p className="fc-split-heading">{t("rmConvertTitle")}</p>
+        <ul>
+          <li>{t("rmConvert1")}</li>
+          <li>{t("rmConvert2")}</li>
+          <li>{t("rmConvert3")}</li>
+          <li>{t("rmConvert4")}</li>
+          <li>{t("rmConvert5")}</li>
+          <li>{t("rmConvert6")}</li>
+        </ul>
+        <p className="rm-hint">
+          <code>volume conversion start -vserver &lt;svm&gt; -volume &lt;name&gt;</code>
+          {" — "}
+          {t("rmConvertCommandNote")}
+        </p>
+
+        <p className="fc-split-heading">{t("rmBackupTitle")}</p>
+        <ul>
+          <li>{t("rmBackup1")}</li>
+          <li>{t("rmBackup2")}</li>
+          <li>{t("rmBackup3")}</li>
+          <li>{t("rmBackup4")}</li>
         </ul>
 
         <p className="rm-hint">
@@ -434,6 +467,14 @@ export function VolumeManager() {
           </a>
         </p>
       </details>
+
+      {rebalancing && (
+        <VolumeRebalancePanel
+          volumeUuid={rebalancing.uuid}
+          volumeName={rebalancing.name}
+          onClose={() => setRebalancing(null)}
+        />
+      )}
 
       <table className="admin-table">
         <thead>
@@ -502,6 +543,13 @@ export function VolumeManager() {
               <td className="action-cell">
                 <button onClick={() => handleResize(vol.uuid, vol.name)} className="btn-sm"
                   title={t("rmResize")}>↔</button>
+                {/* FlexGroup only, because the operation exists only there. Offering it
+                    on a FlexVol and refusing on click would make the style column
+                    decorative. */}
+                {vol.style === "flexgroup" && (
+                  <button onClick={() => setRebalancing({ uuid: vol.uuid, name: vol.name })}
+                    className="btn-sm" title={t("rblOpenTitle")}>⇄</button>
+                )}
                 {/* Offered only where it applies. A delete takes the volume offline before
                     removing it, and a delete that then fails -- ONTAP refuses one whose
                     clone was deleted moments earlier -- leaves it offline, with its
