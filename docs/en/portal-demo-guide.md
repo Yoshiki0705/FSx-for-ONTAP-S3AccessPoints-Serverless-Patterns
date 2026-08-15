@@ -331,6 +331,49 @@ The portal supports 8 languages with instant switching via the dropdown in the t
 
 ---
 
+## Using the Portal From a Phone (verified on a device)
+
+The steps below were exercised on an iPhone with Safari. Identifiers are masked in the captures.
+
+### 1. Open a folder and tap the download icon on the row
+
+![Download icon at the end of a file row](../screenshots/portal-mobile/01-download-row.png)
+
+Open the location (the S3 AP) in the Upload tab and navigate into a folder; each row ends with a
+download icon. Narrow screens drop columns, and at this width the row shows last modified, size and
+the download control only.
+
+### 2. Safari's address bar gains a download indicator
+
+![Download indicator at the left of the address bar](../screenshots/portal-mobile/02-safari-download-indicator.png)
+
+The ⤓ to the left of the address means the browser accepted the response as a file. Nothing there
+means the service worker did not register (see below).
+
+### 3. Tap ⤓ and the file is in Downloads
+
+![Safari's Downloads list](../screenshots/portal-mobile/03-safari-downloads-list.png)
+
+The name and size are listed. The file goes to Safari's configured download location, by default
+**Files → Downloads**. The magnifier opens that location in the Files app.
+
+> **When a download "finishes" and cannot be found**: Storage Browser downloads through a service
+> worker, and without it the component falls back to an in-memory blob. A blob is not a download as
+> far as the browser is concerned, so iOS leaves no entry in the download manager. `npm run copy-sw`
+> places the worker (`npm start` and `npm run phone` run it for you).
+
+> **A phone needs HTTPS**: `http://<LAN-IP>` cannot sign in. Sign-in uses `crypto.subtle` and copying
+> a share link uses `navigator.clipboard`, both of which browsers restrict to a secure context. Use
+> the tunnel from `npm run phone`, or Amplify Hosting.
+
+> **When an upload reports "Overwrite prevented"**: a file of that name is already there. Tick
+> "Overwrite existing files" in the Upload panel to replace it. This access point does not implement
+> S3 conditional writes (`If-None-Match`), so the portal looks the key up before writing instead.
+> Unlike `If-None-Match`, two clients writing the same key at the same moment can both see it as
+> absent.
+
+---
+
 ## Cleanup
 
 After the demo, delete resources in this order:
