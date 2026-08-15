@@ -52,6 +52,28 @@ FSx for ONTAP のアグリゲートは FabricPool アグリゲートで、自動
 
 判定に使えるフィールド: `is_object_store`、`granular_data`、`granular_data_mode`。
 
+### 開始が受理される条件（2026-08-15 実測、リファレンス未記載）
+
+```
+30 分 <= max_runtime < （開始時刻から次回スナップショット取得までの残り時間）
+```
+
+- 下限を割ると `144182221`「must be 30 minutes or longer」
+- 上限に触れると `13107433`。メッセージに次回スナップショットの実時刻が入る
+- **ONTAP 既定の 6 時間、および `max_runtime` 省略のどちらも上限に触れて失敗する**
+- 既定スナップショットポリシー（毎時 :05）では、開始できるのは**毎時 :05〜:35 の間だけ**
+- 予約実行でも要求時に判定され、起点は予約時刻
+
+ボリューム状態には**リファレンスのボリューム側一覧に無い値**が返る。`idle`（実行中・移動
+対象なし）と `scheduled`（予約あり）。`idle` はリファレンス上コンスティチュエントの状態
+として説明されている。状態名を列挙する実装は、この 2 つを取り逃す。
+
+移動対象が無い実行は notice を出さず、`imbalance_percent` も `data_moved` も 0 のまま
+`runtime` だけが増える。区別できるのは `rebalancing.engine`（明示要求）の
+`scanner.files_scanned` と `scanner.files_skipped`（`too_small` / `in_snapshot` など）。
+
+一巡の観測ログ: [FlexGroup 容量リバランスの実測記録](../../solutions/amplify-portal/docs/flexgroup-rebalance-verification.md)
+
 通常の FlexGroup で実測した既定値（ドキュメントの記載と一致）:
 
 | フィールド | 実測値 |

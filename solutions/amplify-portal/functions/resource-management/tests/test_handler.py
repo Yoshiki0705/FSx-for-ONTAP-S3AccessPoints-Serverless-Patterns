@@ -751,13 +751,21 @@ class TestVolumeRebalance:
         assert result["success"] is False
         assert "ONTAP S3" in result["error"]
 
-    def test_start_refuses_while_one_is_running(self):
-        """Two rebalances on one volume is not a state ONTAP offers."""
+    @pytest.mark.parametrize("state", ["rebalancing", "starting", "idle", "scheduled", "paused", "stopping"])
+    def test_start_refuses_whenever_an_operation_exists(self, state):
+        """Any state but "no operation" is an operation, listed or not.
+
+        This named `starting` and `rebalancing` and missed both states a real volume
+        actually reported: a running rebalance with nothing to move sits in `idle`,
+        which ONTAP documents only for constituents, and a future start reports
+        `scheduled`, which is not documented at all. ONTAP refuses the second start
+        itself (144182216), so the cost was a wasted round trip -- but a guard that
+        enumerates the states it knows keeps missing the ones it does not.
+        """
         from handler import handler
 
-        running = dict(self.FLEXGROUP, rebalancing={"state": "rebalancing"})
         with patch("handler.urllib3.PoolManager") as mock_pool:
-            mock_pool.return_value = self._http(running)
+            mock_pool.return_value = self._http(dict(self.FLEXGROUP, rebalancing={"state": state}))
             result = handler(
                 {"action": "startVolumeRebalance", "volumeUuid": "uuid-1", "acknowledgeIrreversible": True},
                 None,
@@ -765,6 +773,71 @@ class TestVolumeRebalance:
 
         assert result["success"] is False
         assert "already" in result["error"]
+        assert state in result["error"]
+
+    @pytest.mark.parametrize("state", ["not_running", "unknown"])
+    def test_start_proceeds_when_no_operation_exists(self, state):
+        """The other side of the rule above: neither of these blocks a start."""
+        from handler import handler
+
+        with patch("handler.urllib3.PoolManager") as mock_pool:
+            mock_pool.return_value = self._http(dict(self.FLEXGROUP, rebalancing={"state": state}))
+            result = handler(
+                {"action": "startVolumeRebalance", "volumeUuid": "uuid-1", "acknowledgeIrreversible": True},
+                None,
+            )
+
+        assert result["success"] is True
+
+    def test_reports_each_constituent_and_the_scanner_counters(self):
+        """The imbalance percentages are a summary of the members, and a summary
+        cannot be acted on. The scanner counters are the only answer to a rebalance
+        that reports itself running while moving nothing -- measured, that state emits
+        no notice at all.
+        """
+        from handler import handler
+
+        volume = dict(
+            self.FLEXGROUP,
+            constituents=[
+                {"name": "fg1__0001", "space": {"size": 107374182400, "used": 537300992}},
+                {"name": "fg1__0002", "space": {"size": 107374182400, "used": 90000000000}},
+            ],
+            rebalancing=dict(
+                self.FLEXGROUP["rebalancing"],
+                engine={
+                    "scanner": {
+                        "files_scanned": 12,
+                        # Only the non-zero reasons travel: ONTAP returns thirteen of
+                        # these per volume and a row of zeroes is not a finding.
+                        "files_skipped": {"too_small": 4, "in_snapshot": 2, "metadata": 0},
+                    },
+                    "movement": {"file_moves_started": 3},
+                },
+            ),
+        )
+        with patch("handler.urllib3.PoolManager") as mock_pool:
+            mock_pool.return_value = self._http(volume)
+            result = handler({"action": "getVolumeRebalance", "volumeUuid": "uuid-1"}, None)
+
+        assert result["constituents"] == [
+            {"name": "fg1__0001", "sizeBytes": 107374182400, "usedBytes": 537300992},
+            {"name": "fg1__0002", "sizeBytes": 107374182400, "usedBytes": 90000000000},
+        ]
+        assert result["rebalance"]["filesScanned"] == 12
+        assert result["rebalance"]["fileMovesStarted"] == 3
+        assert result["rebalance"]["filesSkipped"] == {"too_small": 4, "in_snapshot": 2}
+
+    def test_a_volume_without_engine_counters_reads_as_zero(self):
+        """The engine sub-object is absent until an operation has run."""
+        from handler import handler
+
+        with patch("handler.urllib3.PoolManager") as mock_pool:
+            mock_pool.return_value = self._http(self.FLEXGROUP)
+            result = handler({"action": "getVolumeRebalance", "volumeUuid": "uuid-1"}, None)
+
+        assert result["rebalance"]["filesScanned"] == 0
+        assert result["rebalance"]["filesSkipped"] == {}
 
     def test_start_refuses_a_runtime_that_is_not_a_period(self):
         """ONTAP rejects it too, but only after the caller has been told it started."""
