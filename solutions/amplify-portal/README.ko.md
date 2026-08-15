@@ -299,12 +299,11 @@ FSx for ONTAP 없이 개발하는 경우:
 1. FSx for ONTAP 볼륨에 S3 AP 생성 (Internet-origin 권장)
 2. AWS 콘솔 → FSx → S3 Access Points에서 AP 별칭 확인
 3. `portal-config.ts`에 `s3ApAlias` 설정
-4. `src/portal-settings.ts`에 `s3ApAlias` 설정 (동일 별칭 — Upload 탭에 필요)
-5. 재배포: `make sandbox`
+4. 재배포: `make sandbox`
 
 > **참고**: ListFiles Lambda는 VPC 외부에서 실행됩니다 (VpcConfig 없음). 이는 의도적입니다 — Internet-origin S3 AP는 VPC 배치 없이 액세스 가능합니다. VPC-origin AP를 사용하는 경우 Lambda에 VPC 설정을 추가해야 합니다.
 
-> **Upload 탭**: Storage Browser는 Cognito Identity Pool 자격 증명을 사용하여 브라우저에서 직접 S3 API를 호출합니다. 필요한 IAM 권한은 `backend.ts`에서 자동으로 프로비저닝됩니다 (수동 IAM 설정 불필요). `s3ApAlias`가 `portal-config.ts`와 `src/portal-settings.ts` 모두에 설정되어 있는지 확인하세요.
+> **Upload 탭**: Storage Browser는 Cognito Identity Pool 자격 증명을 사용하여 브라우저에서 직접 S3 API를 호출합니다. 필요한 IAM 권한은 `backend.ts`에서 자동으로 프로비저닝됩니다 (수동 IAM 설정 불필요). 별칭은 `npx ampx sandbox`가 `portal-config.ts`에서 생성하는 `amplify_outputs.json`을 통해 브라우저에 전달되므로 설정 위치는 한 곳입니다.
 
 > **Upload 탭 워크플로우**: Location 선택 → S3 AP alias 클릭 → 폴더 네비게이션 → 파일 선택으로 미리보기/다운로드, 또는 드래그 앤 드롭으로 업로드. 업로드한 파일은 NFS/SMB에서 즉시 참조 가능합니다 (ONTAP strong consistency).
 
@@ -440,11 +439,11 @@ Step Functions 상태 머신 ARN은 **두 곳**에 설정해야 합니다:
 
 ## 알려진 함정 — 추가 학습 (2026-07-20)
 
-### 8. Upload 탭은 `portal-settings.ts` 설정이 필요
+### 8. Upload 탭의 별칭은 생성된 outputs에서 옵니다
 
-Upload 탭 (Storage Browser for S3)은 `src/portal-settings.ts`에서 `region`, `accountId`, `s3ApAlias`를 읽습니다 — `amplify/portal-config.ts`가 아닙니다. 이는 Storage Browser가 완전히 클라이언트 사이드에서 실행되며 (Lambda 없음) Cognito Identity Pool 자격 증명을 통한 직접 S3 API 액세스가 필요하기 때문입니다.
+Storage Browser는 클라이언트 사이드에서 실행되며 S3를 직접 호출하므로 브라우저에 별칭이 필요합니다. 이전에는 `src/portal-settings.ts`에서 읽었지만 이 파일은 커밋 대상이므로 자리표시자 별칭이 들어 있었고, 그 자리표시자가 실행되어 존재하지 않는 Access Point에 대한 업로드가 모두 실패했습니다. 이제 `amplify/backend.ts`가 `backend.addOutput({ custom: ... })`로 `amplify_outputs.json`에 기록하고 `src/lib/portalOutputs.ts`가 읽습니다. 설정하는 곳은 `amplify/portal-config.ts` 한 곳입니다.
 
-Upload 탭에서 "Network Error"가 표시되면 `portal-settings.ts`에 올바른 `s3ApAlias`가 있는지 확인하세요.
+Upload 탭이 설정되지 않았다고 표시되면 `amplify/portal-config.ts`에 `s3ApAlias`를 설정하고 `npx ampx sandbox`를 다시 실행하십시오. `amplify_outputs.json`은 gitignore되므로 새로 클론한 상태에는 별칭이 없습니다.
 
 ### 9. ~~Cognito Identity Pool IAM은 S3 AP 액세스를 허용해야 함~~ (자동 설정됨)
 
@@ -517,7 +516,7 @@ amplify-portal/
 ├── src/
 │   ├── main.tsx                    # Amplify configure + Authenticator 래퍼
 │   ├── App.tsx                     # 6개 탭 쉘 (Files/Upload/Process/Results/History/Analytics)
-│   ├── portal-settings.ts         # 프론트엔드 설정 (Upload 탭, region, accountId)
+│   ├── portal-settings.ts         # 프론트엔드 기능 스위치 (환경 값 없음)
 │   └── components/
 │       ├── FileExplorer.tsx        # 디렉토리 탐색 + 페이지네이션 + 공유 링크
 │       ├── FilePreview.tsx         # Presigned URL로 이미지 미리보기 + Rekognition 라벨

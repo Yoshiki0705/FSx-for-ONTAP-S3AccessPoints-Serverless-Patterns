@@ -31,13 +31,8 @@ make install
 cp amplify/portal-config.example.ts amplify/portal-config.ts
 # → Set s3ApAlias to your S3 AP alias
 
-# 3. Frontend settings (for Upload tab)
-# Edit src/portal-settings.ts:
-#   region: "ap-northeast-1"  (your FSx region)
-#   accountId: "your AWS account ID"
-#   s3ApAlias: "same S3 AP alias"
-
-# 4. Deploy backend (~5 min)
+# 3. Deploy backend (~5 min)
+#    The alias the Upload tab uses is written to amplify_outputs.json
 make sandbox
 
 # 5. Create Cognito user
@@ -362,8 +357,8 @@ aws fsx detach-and-delete-s3-access-point \
 **Q: Files tab shows "No files"**
 A: `portal-config.ts` has empty `s3ApAlias`. Set it and re-run `make sandbox`.
 
-**Q: Upload tab shows AccessDenied**
-A: Check `src/portal-settings.ts` has `s3ApAlias` and `accountId` set. Re-deploy with `make sandbox` to auto-provision IAM permissions.
+**Q: Upload tab says it is not configured**
+A: Set `s3ApAlias` in `amplify/portal-config.ts` and re-run `make sandbox`. The alias reaches the browser through `amplify_outputs.json`, and the same run provisions the IAM permissions.
 
 **Q: Process tab shows red banner**
 A: Step Functions ARN not configured. Run `make sfn-test-create` and set the ARN in `portal-config.ts` and `start-processing.js`.

@@ -302,12 +302,11 @@ FSx for ONTAP なしで開発する場合:
 1. FSx for ONTAP ボリュームにアタッチされた S3 AP を作成（Internet-origin 推奨）
 2. AWS Console → FSx → S3 Access Points から AP エイリアスをメモ
 3. `portal-config.ts` で `s3ApAlias` を設定
-4. `src/portal-settings.ts` で `s3ApAlias` を設定（同じエイリアス — Upload タブに必要）
-5. 再デプロイ: `make sandbox`
+4. 再デプロイ: `make sandbox`
 
 > **注**: ListFiles Lambda は VPC 外で実行されます（VpcConfig なし）。これは意図的な設計です — Internet-origin S3 AP は VPC 配置なしでアクセス可能です。VPC-origin AP を使用する場合は、Lambda に VPC 設定を追加する必要があります。
 
-> **Upload タブ**: Storage Browser は Cognito Identity Pool 認証情報を使用してブラウザから直接 S3 API を呼び出します。必要な IAM 権限は `backend.ts` により自動プロビジョニングされます（手動の IAM 設定は不要）。`portal-config.ts` と `src/portal-settings.ts` の両方で `s3ApAlias` が設定されていることを確認してください。
+> **Upload タブ**: Storage Browser は Cognito Identity Pool 認証情報を使用してブラウザから直接 S3 API を呼び出します。必要な IAM 権限は `backend.ts` により自動プロビジョニングされます（手動の IAM 設定は不要）。エイリアスは `npx ampx sandbox` が `portal-config.ts` から生成する `amplify_outputs.json` 経由でブラウザに届くため、設定箇所は 1 か所です。
 
 > **Upload タブワークフロー**: Location 選択 → S3 AP alias をクリック → フォルダナビゲーション → ファイル選択でプレビュー/ダウンロード、またはドラッグ＆ドロップでアップロード。アップロードしたファイルは NFS/SMB から即座に参照可能です（ONTAP の strong consistency）。
 
@@ -443,11 +442,11 @@ Step Functions ステートマシン ARN は**2 箇所**に設定する必要が
 
 ## 既知の注意点 — 追加の学び（2026-07-20）
 
-### 8. Upload タブには `portal-settings.ts` の設定が必要
+### 8. Upload タブのエイリアスは生成された outputs から来る
 
-Upload タブ（Storage Browser for S3）は `region`、`accountId`、`s3ApAlias` を `src/portal-settings.ts` から読み取ります — `amplify/portal-config.ts` からではありません。これは Storage Browser が完全にクライアントサイドで動作し（Lambda なし）、Cognito Identity Pool 認証情報を使用して直接 S3 API にアクセスする必要があるためです。
+Storage Browser はクライアントサイドで動作し S3 を直接呼ぶため、エイリアスをブラウザ側で必要とします。以前は `src/portal-settings.ts` から読んでいましたが、このファイルはコミット対象なのでプレースホルダーのエイリアスが入っており、そのプレースホルダーで動作して存在しない Access Point に対するアップロードが全件失敗しました。現在は `amplify/backend.ts` が `backend.addOutput({ custom: ... })` で `amplify_outputs.json` に書き出し、`src/lib/portalOutputs.ts` が読みます。設定する場所は `amplify/portal-config.ts` だけです。
 
-Upload タブで "Network Error" が表示される場合は、`portal-settings.ts` の `s3ApAlias` が正しいか確認してください。
+Upload タブが未設定と表示する場合は、`amplify/portal-config.ts` に `s3ApAlias` を設定して `npx ampx sandbox` を再実行してください。`amplify_outputs.json` は gitignore されているため、クローン直後はエイリアスを持ちません。
 
 ### 9. ~~Cognito Identity Pool IAM で S3 AP アクセスを許可する必要がある~~ (自動設定済み)
 
@@ -520,7 +519,7 @@ amplify-portal/
 ├── src/
 │   ├── main.tsx                    # Amplify configure + Authenticator ラッパー
 │   ├── App.tsx                     # 6 タブシェル（Files/Upload/Process/Results/History/Analytics）
-│   ├── portal-settings.ts         # フロントエンド設定（Upload タブ、region、accountId）
+│   ├── portal-settings.ts         # フロントエンドの機能スイッチ（環境値は持たない）
 │   └── components/
 │       ├── FileExplorer.tsx        # ディレクトリ閲覧 + ページネーション + 共有リンク
 │       ├── FilePreview.tsx         # Presigned URL による画像プレビュー + Rekognition ラベル

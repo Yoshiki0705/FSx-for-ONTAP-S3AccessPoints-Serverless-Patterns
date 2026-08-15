@@ -743,7 +743,7 @@ cd solutions/amplify-portal
 make install
 cp amplify/portal-config.example.ts amplify/portal-config.ts
 # Edit portal-config.ts: set region and s3ApAlias (from your S3 AP)
-# Edit src/portal-settings.ts: set region, accountId, s3ApAlias (for Upload tab)
+# The Upload tab reads the same alias from the generated amplify_outputs.json
 make sandbox       # ~10-15 min first time, ~7s code-only, ~3min infra changes
 make dev           # Start local dev server → http://localhost:5173
 ```
@@ -756,8 +756,6 @@ aws fsx describe-s3-access-point-attachments \
   --query "S3AccessPointAttachments[?Lifecycle=='AVAILABLE'].S3AccessPoint.Alias" \
   --region ap-northeast-1 --output text
 
-# Account ID (for portal-settings.ts)
-aws sts get-caller-identity --query Account --output text
 
 # Step Functions ARN (if you've deployed a UC pattern)
 aws stepfunctions list-state-machines --region ap-northeast-1 \

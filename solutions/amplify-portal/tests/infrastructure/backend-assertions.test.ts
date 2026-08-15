@@ -548,3 +548,31 @@ describe("shared layer and shared imports", () => {
     },
   );
 });
+
+/*
+ * The Upload tab uploaded every file to `my-ap-0123456789abcdef0-ext-s3alias` and
+ * reported "All files failed to upload", because that placeholder sat in the
+ * committed `src/portal-settings.ts` and Storage Browser read the alias from
+ * there. Nothing failed at build time: a placeholder is a valid string. These
+ * assertions are the part a type checker cannot express -- that the environment
+ * is named once, in the gitignored config, and reaches the browser through the
+ * generated outputs.
+ */
+describe("Storage Browser configuration source", () => {
+  const settingsSource = readFileSync(resolve(HERE, "../../src/portal-settings.ts"), "utf-8");
+  const settingsBody = settingsSource.slice(settingsSource.indexOf("export const portalSettings"));
+
+  it("publishes the S3 AP alias and region as custom outputs", () => {
+    expect(backendSource).toMatch(
+      /backend\.addOutput\(\{\s*custom:\s*\{[^}]*s3ApAlias:\s*config\.s3ApAlias/,
+    );
+    expect(backendSource).toMatch(/backend\.addOutput\(\{\s*custom:\s*\{[^}]*region:\s*config\.region/);
+  });
+
+  it("keeps environment values out of the committed settings file", () => {
+    // Comments may discuss the history; the exported object may not carry it.
+    expect(settingsBody).not.toMatch(/s3ApAlias|accountId|\bregion\b/);
+    expect(settingsBody).not.toMatch(/s3alias/i);
+    expect(settingsBody).not.toMatch(/\b\d{12}\b/);
+  });
+});

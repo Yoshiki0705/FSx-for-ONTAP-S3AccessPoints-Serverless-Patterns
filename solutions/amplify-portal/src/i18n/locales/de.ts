@@ -1643,7 +1643,8 @@ arpResponseSweepNote: "Sperren heben sich nach Ablauf der Frist selbst auf. Für
   scCurrentDate: "Aktuelles Datum",
   scCloneDate: "Klon-Datum",
   scNoFiles: "In diesem Pfad wurden keine Dateien gefunden.",
-  sbNotConfigured: "Storage Browser ist nicht konfiguriert. Legen Sie fest:",
+  sbNotConfigured:
+    "Storage Browser ist nicht konfiguriert. Setzen Sie s3ApAlias in amplify/portal-config.ts und führen Sie npx ampx sandbox erneut aus.",
   vhSnapshotFilterAria: "Snapshot-Filter",
   vhVolumeSnapshotsAria: "Volume-Snapshots",
   epRoSecurity: "Sicherheit für Lesezugriff",
