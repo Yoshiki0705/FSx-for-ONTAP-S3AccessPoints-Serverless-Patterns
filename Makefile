@@ -22,7 +22,7 @@
 	lint-python-format format-python lint-cfn drift drift-published security build-uc1 \
 	build-sap deploy-uc1 deploy-sap clean build-SharedLayer build-uc12 deploy-uc12 test-ops1 \
 	test-ops4 test-ops3 test-ops2 test-ops5 test-ops6 test-ops lint-ops lint-cfn-ops \
-	build-ops1 deploy-ops1 security-report propose-cleanup ontap-preflight
+	build-ops1 deploy-ops1 security-report security-cfn propose-cleanup ontap-preflight
 
 # Target Python version — must match the Lambda runtime in the SAM templates
 # (`Runtime: python3.13`). Declared once here so `install`, the interpreter
@@ -58,6 +58,18 @@ ifneq (,$(wildcard .venv/bin/bandit))
   VENV_BANDIT := .venv/bin/bandit
 else
   VENV_BANDIT := bandit
+endif
+
+# And cfn-lint, which was the one left calling whatever PATH offered. On this
+# machine that is homebrew's 1.52.1 while requirements-dev.txt pins 1.53.3, so
+# `make lint-cfn` was validating templates with a different rule set than the
+# lint workflow and reporting success either way. A version that disagrees with
+# CI is the case this indirection exists for; leaving one tool out of it meant
+# the whole convention only appeared to hold.
+ifneq (,$(wildcard .venv/bin/cfn-lint))
+  VENV_CFN_LINT := .venv/bin/cfn-lint
+else
+  VENV_CFN_LINT := cfn-lint
 endif
 
 # Default target
@@ -188,7 +200,7 @@ format-python:
 # Informational (I) and warning (W) findings are printed but do not fail the
 # build; only errors (E) do.
 lint-cfn:
-	cfn-lint --non-zero-exit-code error
+	$(VENV_CFN_LINT) --non-zero-exit-code error
 
 # ============================================================
 # Cleanup proposal
@@ -211,6 +223,55 @@ propose-cleanup:
 # The rules' own tests run under `make test` with the rest of scripts/tests; this
 # target runs them too so a rule change can be checked without the full suite.
 drift:
+# The gates themselves, before anything they check. A gate that reports success
+# without running is worse than no gate, and three shapes of that had shipped:
+# `security` not declared .PHONY (make answered "up to date" and ran bandit zero
+# times while sitting in the pre-commit list), `lint-python-check` and `lint-ops`
+# ending in `|| <same command without the config>` (the fallback always ran and
+# `||` reports only its status), and `lint-cfn` calling whatever cfn-lint PATH
+# offered — homebrew 1.52.1 against a pinned 1.53.3, a different rule set
+# reporting success either way. These run the gate targets with an empty PATH and
+# require each to fail, rather than reading the recipes and reasoning about them.
+	$(PYTHON) -m pytest scripts/tests/test_makefile_phony.py scripts/tests/test_gate_integrity.py --tb=short -q
+# The pinned binary is only pinned if it is the one that runs. Fails rather than
+# warns: a warning about a silent divergence is the same kind of thing as the
+# divergence, something that scrolls past while the wrong tool keeps answering.
+	$(PYTHON) -m pytest scripts/tests/test_check_tool_versions.py --tb=short -q
+	$(PYTHON) scripts/check_tool_versions.py
+# A tests/ directory no runner lists does not fail — it passes on the machine of
+# whoever types the path, and is absent from every pipeline. 790 tests were in
+# neither the Makefile nor CI before pattern-test-dirs.txt became the single list;
+# 53 more (thumbnails 37, snapshots 13, security 3) were still outside it after.
+	$(PYTHON) -m pytest scripts/tests/test_test_dir_coverage.py --tb=short -q
+# `make drift` and the workflows are two lists of checks, and nothing made them
+# agree. Four checks below this line ran here and in no workflow at all, so a pull
+# request could merge past every one of them: check_en_doc_language,
+# check_pattern_env_contract, check_samconfig_contract and check_ops_shared_staged.
+	$(PYTHON) -m pytest scripts/tests/test_gates_run_in_ci.py --tb=short -q
+# The irreversible-operations guard. It has to be a TRACKED file: `.kiro/` is
+# gitignored, so a guard living only there does not exist for a collaborator, a
+# fresh clone, or CI, and a hook pointing at $HOME silently protects one machine.
+# In the sibling repository the $HOME copy was the one executing and it allowed 10
+# of the 26 cases the tracked copy documented. These tests assert the guard is in
+# the repository, that the hook runs the tracked path, and that all three outcomes
+# (block / ask / allow) behave as declared — a guard tested only on block cases
+# could be blocking everything.
+	$(PYTHON) -m pytest scripts/tests/test_guard_irreversible_ops.py --tb=short -q
+# A workflow step that ends in `|| true` cannot fail. 24 occurrences were audited
+# on 2026-08-15: 21 were the grep-no-match idiom (output captured, then tested),
+# and 3 were disarmed gates. cfn-guard was given `solutions/**/template-deploy.yaml`,
+# which the Actions shell does not expand, so it exited 255 having scanned nothing
+# — in two duplicated jobs — while all 7 of its rule files also failed to parse
+# under 3.x. `zizmor .` could not fail either, so the workflow named "Actions
+# Security Lint" was advisory without saying so.
+	$(PYTHON) -m pytest scripts/tests/test_workflow_gate_integrity.py --tb=short -q
+# The cfn-guard rules and the gate that runs them. Only the tests run here: the scan
+# itself needs the cfn-guard binary, which is installed in CI but not assumed on a
+# laptop, so it lives in `make security-cfn` and the tests skip when it is absent.
+# The static half — no 2.x `when %INPUT`, no bare `FAIL`, no duplicate rule names —
+# runs everywhere, because those are the faults that made the gate vacuous and they
+# are all visible without the tool.
+	$(PYTHON) -m pytest scripts/tests/test_check_cfn_guard.py --tb=short -q
 	$(PYTHON) -m pytest scripts/tests/test_stale_claim_rules.py --tb=short -q
 # A name the code depends on and no template creates. Both rules below exist because
 # the same shape shipped twice: five endpoints guarded on a Cognito group that
@@ -270,6 +331,21 @@ drift:
 # dead because ../../docs/ from that directory is solutions/docs/, which does not
 # exist. A dead relative link renders as ordinary text until someone clicks it.
 	$(PYTHON) scripts/check_doc_pairs.py
+# check_doc_pairs above verifies the translations that EXIST are reachable. Nothing
+# said which ones ought to exist: every i18n check here discovered groups from what
+# was on disk, so a document with no twin was not a finding, it was a smaller group
+# — a missing translation invisible by construction. docs/i18n-manifest.toml declares
+# the requirement, and this compares the tree against it. It also compares heading
+# structure across ALL locales; the older parity check covers docs/ja vs docs/en only
+# (28 of 209 groups) and nothing looked at the other six languages at all, which is
+# why they drifted together: produced in one batch, never re-run as the sources grew.
+	$(PYTHON) -m pytest scripts/tests/test_i18n_parity.py --tb=short -q
+	$(PYTHON) scripts/check_i18n_parity.py --quiet
+# The language switcher is generated. Hand-maintained across 1,361 files it produced
+# 12 different label formats, marked the current language three different ways, and
+# left 53 group members with no switcher at all — so a reader who landed on one
+# language had no way to reach their own. `--check` makes a hand edit a build failure.
+	$(PYTHON) scripts/sync_lang_switcher.py --check
 # AGENTS.md is loaded on every turn and cannot be made conditional, so it had grown
 # to 78 KB carrying pitfall tables that matter only while doing that one kind of
 # work. Splitting it into task-triggered steering is undone by one useful paragraph
@@ -359,6 +435,15 @@ BANDIT_PATHS := shared/ solutions/ operations/ infrastructure/ scripts/
 security:
 	$(VENV_BANDIT) -r $(BANDIT_PATHS) -ll -c .bandit
 
+# cfn-guard over every deployable template. Separate from `security` because it needs
+# the cfn-guard binary rather than a pip package, and separate from `lint-cfn` because
+# cfn-lint checks template validity while these rules check security posture —
+# encryption at rest, no public access, least-privilege IAM, SageMaker isolation.
+# Fails on any finding not in the recorded baseline, and also when a baseline finding
+# has been fixed, so progress gets locked in rather than leaving room to reopen.
+security-cfn:
+	$(PYTHON) scripts/check_cfn_guard.py
+
 # Same scan, machine-readable, for upload as a CI artifact. Non-blocking on
 # purpose: `security` above is the gate, and having two blocking scans of the same
 # tree means fixing the same finding twice.
@@ -439,13 +524,17 @@ test-ops6:
 test-ops:
 	$(PYTHON) -m pytest operations/ --tb=short -q
 
+# One invocation with the pinned binary. It used to be two: the first with
+# `--config pyproject.toml 2>/dev/null`, then `|| ` the same command without it.
+# The fallback always ran — the first form's exit code was discarded along with
+# its stderr — so this target silently linted with a different config than it
+# named, and could not fail in the first place because `||` only reports the
+# second command's status. Same shape that `lint-python-check` was fixed for.
 lint-ops:
-	ruff check operations/ shared/ontap_metrics.py shared/demo_data_loader.py shared/schemas/ops_events.py \
-		--config pyproject.toml 2>/dev/null || \
-	ruff check operations/ shared/ontap_metrics.py shared/demo_data_loader.py shared/schemas/ops_events.py
+	$(VENV_RUFF) check operations/ shared/ontap_metrics.py shared/demo_data_loader.py shared/schemas/ops_events.py
 
 lint-cfn-ops:
-	cfn-lint operations/capacity-rightsizing/template.yaml \
+	$(VENV_CFN_LINT) operations/capacity-rightsizing/template.yaml \
 		operations/snapshot-lifecycle/template.yaml \
 		operations/tiering-optimizer/template.yaml \
 		operations/storage-efficiency/template.yaml \

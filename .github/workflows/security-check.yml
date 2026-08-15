@@ -17,6 +17,13 @@ jobs:
         with:
           persist-credentials: false
 
+      # Every `|| true` in this file is on a command substitution whose result is
+      # then tested, e.g. `result=$(git ls-files ... || true)` followed by
+      # `if [ -n "$result" ]; then ... exit 1; fi`. `git ls-files` and `grep` exit 1
+      # when they match nothing, which under `set -e` would abort the step on the
+      # CLEAN case — the opposite of what is wanted. The verdict comes from the `-n`
+      # test and the explicit `exit 1`, not from the pipeline status, so nothing is
+      # being discarded here. Audited 2026-08-15.
       - name: Check .kiro/ not tracked
         run: |
           result=$(git ls-files .kiro/ 2>/dev/null || true)
@@ -58,9 +65,20 @@ jobs:
         env:
           SECURITY_CHECK_ACCOUNT_ID: ${{ secrets.SECURITY_CHECK_ACCOUNT_ID }}
         run: |
+          # Skip-and-succeed, narrowed. A fork pull request cannot read secrets, so
+          # failing there would block every outside contribution — but on this
+          # repository an absent secret means the check is silently not running, and
+          # "not configured" then looks exactly like "no account ID found". The two
+          # cases are separated: skip on a fork, fail here.
           if [ -z "$SECURITY_CHECK_ACCOUNT_ID" ]; then
-            echo "⚠️ SECURITY_CHECK_ACCOUNT_ID secret not set — skipping account ID check"
-            exit 0
+            if [ "${GITHUB_EVENT_NAME}" = "pull_request" ] && \
+               [ "${GITHUB_REPOSITORY}" != "${GITHUB_HEAD_REPOSITORY:-$GITHUB_REPOSITORY}" ]; then
+              echo "⚠️ fork PR: SECURITY_CHECK_ACCOUNT_ID is unavailable, skipping"
+              exit 0
+            fi
+            echo "::error::SECURITY_CHECK_ACCOUNT_ID is not set, so this check has not run."
+            echo "Set the repository secret, or delete this step rather than leaving it passing vacuously."
+            exit 1
           fi
           result=$(git ls-files | xargs grep -rl "$SECURITY_CHECK_ACCOUNT_ID" 2>/dev/null || true)
           if [ -n "$result" ]; then
