@@ -111,6 +111,18 @@ export function FlexCloneManager() {
       <details className="fc-split-guide">
         <summary>{t("fcSplitGuideTitle")}</summary>
 
+        {/* Why the parent's capacity stops moving once a clone exists. First, because it
+            is what makes the rest of this worth reading: a clone is cheap to make, and
+            the cost it does have is paid by the parent's snapshot, in a place neither
+            this panel nor the volume list used to mention. */}
+        <p className="fc-split-heading">{t("fcLockTitle")}</p>
+        <ul>
+          <li>{t("fcLock1")}</li>
+          <li>{t("fcLock2")}</li>
+          <li>{t("fcLock3")}</li>
+          <li>{t("fcLock4")}</li>
+        </ul>
+
         <p className="fc-split-heading">{t("fcSplitWhenTitle")}</p>
         <ul>
           <li>{t("fcSplitWhen1")}</li>
