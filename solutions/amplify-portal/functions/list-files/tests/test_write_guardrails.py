@@ -27,6 +27,7 @@ import sys
 from pathlib import Path
 from typing import Any
 from unittest.mock import MagicMock, patch
+from urllib.parse import urlsplit
 
 import pytest
 
@@ -389,3 +390,53 @@ class TestCopyCeiling:
 
         assert result["success"] is True
         assert portal.s3.copy_object.call_count == 1
+
+
+class TestPresignedUploadUrl:
+    """The upload link is signed and addressed the way S3 will accept.
+
+    Not a style preference. The URL this handler hands out is the whole feature, and it
+    had never worked: `generate_presigned_url` signs with SigV2 unless told otherwise, and
+    under the default addressing style botocore presigns the global `s3.amazonaws.com`
+    even with a region set. S3 answers the PUT with 301 PermanentRedirect naming the
+    regional host, which the signature cannot follow because it covers `host`.
+
+    Asserted on the real client rather than a mock, because the defect was in how the
+    client was constructed -- a mocked `generate_presigned_url` returns whatever the test
+    says and proves nothing about it.
+    """
+
+    # Credentials and a region have to be present when the module is imported, because
+    # that is when the client is built and `boto3.client` resolves credentials for its
+    # signer there and then. Patching them around the signing call instead looked right
+    # and failed with NoCredentialsError on a machine with no profile -- which is every CI
+    # runner. Stand-in values are enough: what these tests assert is the URL's shape.
+    ENV = {
+        "S3_AP_ALIAS": ALIAS,
+        "AWS_ACCESS_KEY_ID": "AKIAIOSFODNN7EXAMPLE",
+        "AWS_SECRET_ACCESS_KEY": "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY",
+        "AWS_DEFAULT_REGION": "ap-northeast-1",
+        "AWS_REGION": "ap-northeast-1",
+    }
+
+    def test_the_client_signs_with_sigv4(self) -> None:
+        module = load_module(self.ENV)
+
+        assert module.s3.meta.config.signature_version == "s3v4"
+
+    def test_the_client_addresses_the_bucket_virtually(self) -> None:
+        """Which is what puts the region in the host that gets signed."""
+        module = load_module(self.ENV)
+
+        assert module.s3.meta.config.s3["addressing_style"] == "virtual"
+
+    def test_the_signed_url_names_a_regional_host(self) -> None:
+        """The end of the chain: v4 plus virtual addressing, so no redirect is needed."""
+        module = load_module(self.ENV)
+
+        url = module.s3.generate_presigned_url("put_object", Params={"Bucket": ALIAS, "Key": "probe.txt"}, ExpiresIn=60)
+
+        host = urlsplit(url).netloc
+        assert host.startswith(f"{ALIAS}.s3.")
+        assert host != f"{ALIAS}.s3.amazonaws.com", "the global host is the one S3 redirects"
+        assert "X-Amz-Algorithm=AWS4-HMAC-SHA256" in url

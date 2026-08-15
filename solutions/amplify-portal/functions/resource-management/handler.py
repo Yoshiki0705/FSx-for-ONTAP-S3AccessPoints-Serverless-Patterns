@@ -696,6 +696,8 @@ def _dispatch(event, context):
             return _resize_volume(http, headers, event, user_id)
         elif action == "deleteVolume":
             return _delete_volume(http, headers, event, user_id)
+        elif action == "bringVolumeOnline":
+            return _bring_volume_online(http, headers, event, user_id)
 
         # --- Export Policy Management ---
         elif action == "listExportPolicies":
@@ -1469,6 +1471,45 @@ def _delete_volume(http, headers, event, user_id):
         return {"success": False, "jobId": job_id, "error": message}
 
     logger.info(f"Volume deleted: {vol_name} ({vol_uuid}) by {user_id}")
+    return {"success": True, "error": None}
+
+
+def _bring_volume_online(http, headers, event, user_id):
+    """Bring a volume back online.
+
+    ONTAP REST: PATCH /api/storage/volumes/{uuid} with state=online
+
+    This exists because the delete above takes a volume offline as its second step, and
+    the delete can fail after it: ONTAP refused one with "it has one or more clones" even
+    after the clone had gone, leaving a volume offline -- unreachable to its clients --
+    with nothing in the portal able to reverse the one step that had succeeded. Measured
+    2026-08-15.
+
+    Unmounting is not undone here. The junction path the delete cleared is a separate
+    decision, and remounting a volume at a path the operator has not named again would be
+    a guess at where it belongs.
+    """
+    vol_uuid = event.get("volumeUuid", "")
+    vol_name = event.get("volumeName", "")
+
+    if not vol_uuid:
+        return {"success": False, "error": "volumeUuid is required"}
+
+    data = _ontap_request(
+        http,
+        headers,
+        "PATCH",
+        f"/storage/volumes/{vol_uuid}",
+        body={"state": "online"},
+    )
+    if data.get("_error"):
+        return {"success": False, "error": data["_message"]}
+
+    ok, message = _wait_for_job(http, headers, data.get("job", {}).get("uuid", ""))
+    if not ok:
+        return {"success": False, "error": message}
+
+    logger.info(f"Volume brought online: {vol_name or vol_uuid} by {user_id}")
     return {"success": True, "error": None}
 
 
@@ -4409,6 +4450,14 @@ def _get_snapmirror_transfers(event):
                 "duration": _plausible_duration(tr.get("total_duration", "")),
             }
         )
+
+    # Newest first, because ONTAP does not order these and the panel presents them as a
+    # history. Measured after an update: the transfer that had just run came back third of
+    # five, so the row a reader looks at first was not the one they had just caused. A
+    # transfer still running has no end time and belongs at the top, which is where an
+    # empty string sorts to under a reverse sort on a fixed-width prefix -- so it is given
+    # one explicitly rather than left to that coincidence.
+    transfers.sort(key=lambda t: t["endTime"] or "9999", reverse=True)
 
     return {"transfers": transfers, "count": len(transfers), "error": None}
 
