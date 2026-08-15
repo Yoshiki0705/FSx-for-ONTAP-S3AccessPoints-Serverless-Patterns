@@ -308,7 +308,7 @@ arpResponseSweepNote: "Sperren heben sich nach Ablauf der Frist selbst auf. Für
   rmDeleting: "Wird gelöscht…",
   rmSnaplockDocs: "SnapLock-Dokumentation",
   rmDeleteConfirm: "Soll \"{name}\" wirklich gelöscht werden?",
-  rmDeleteBlockedByCloneHint: "ONTAP behält einen gelöschten Clone standardmäßig 12 Stunden in der recovery queue, und dieses Volume zählt ihn währenddessen als Clone — die Löschung wird deshalb verweigert. Den Clone zuerst trennen (Trennen im FlexClone-Panel) und dann löschen vermeidet die Wartezeit.",
+  rmDeleteBlockedByCloneHint: "ONTAP hält einen gelöschten Klon standardmäßig 12 Stunden in der Recovery Queue, und dieses Volume zählt ihn die ganze Zeit als Klon, weshalb das Löschen abgelehnt wird. Den Klon zuerst zu trennen (Trennen, im FlexClone-Panel) und dann zu löschen vermeidet die Wartezeit. Ist der Klon schon weg, warten Sie oder räumen den Eintrag mit volume recovery-queue purge über die ONTAP-CLI oder die REST private CLI ab. Ein Purge ist nicht umkehrbar: prüfen Sie, dass es ein Volume ist, das Sie gelöscht haben.",
   rmQosDeleteConfirm: "„{name}“ löschen? Jedes Volume mit dieser Richtlinie wird gelöst und bleibt ohne Limit. Um das Limit nur für ein Volume aufzuheben und die Richtlinie zu behalten, das Entfernen statt des Löschens verwenden.",
   rmDeleted: "\"{name}\" wurde gelöscht",
   rmCreate: "Erstellen",

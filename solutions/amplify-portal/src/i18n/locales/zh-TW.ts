@@ -308,7 +308,7 @@ arpResponseSweepNote: "封鎖會在設定的期限過後自動解除。如需提
   rmDeleting: "正在刪除…",
   rmSnaplockDocs: "SnapLock 文件",
   rmDeleteConfirm: "確定要刪除「{name}」嗎？",
-  rmDeleteBlockedByCloneHint: "ONTAP 預設會將刪除的複本在 recovery queue 中保留 12 小時，期間此磁碟區會以「存在複本」為由拒絕刪除。先在 FlexClone 面板中分割複本再刪除，即可避免這段等待。",
+  rmDeleteBlockedByCloneHint: "ONTAP 預設將已刪除的複製在 recovery queue 中保留 12 小時，在此期間本磁碟區仍被視為「存在複製」而無法刪除。先分割複製（FlexClone 面板的「分割」）再刪除可避免這段等待。若複製已被刪除，則等待，或透過 ONTAP CLI / REST 的 private CLI（volume recovery-queue purge）從佇列中清除。purge 無法復原，請先確認該磁碟區是您自己刪除的。",
   rmQosDeleteConfirm: "要刪除 \"{name}\" 嗎？指派了此原則的磁碟區會被解除指派並變為無上限。若只想解除某個磁碟區而保留原則，請使用解除功能而非刪除。",
   rmDeleted: "已刪除「{name}」",
   rmCreate: "建立",

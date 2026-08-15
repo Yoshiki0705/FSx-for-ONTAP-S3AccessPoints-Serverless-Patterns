@@ -308,7 +308,7 @@ arpResponseSweepNote: "차단은 지정한 기한이 지나면 자동으로 해�
   rmDeleting: "삭제 중…",
   rmSnaplockDocs: "SnapLock 문서",
   rmDeleteConfirm: "「{name}」을(를) 정말 삭제하시겠습니까?",
-  rmDeleteBlockedByCloneHint: "ONTAP는 삭제한 클론을 기본 12시간 동안 recovery queue에 보관하며, 그 사이 이 볼륨은 \"클론이 있다\"며 삭제되지 않습니다. 클론을 먼저 분할(FlexClone 패널의 분할)한 뒤 삭제하면 이 대기가 발생하지 않습니다.",
+  rmDeleteBlockedByCloneHint: "ONTAP은 삭제한 클론을 기본 12시간 recovery queue에 보관하며, 그동안 이 볼륨은 \"클론이 있다\"고 판단해 삭제할 수 없습니다. 클론을 먼저 분할(FlexClone 패널의 \"분할\")한 뒤 삭제하면 이 대기가 발생하지 않습니다. 이미 삭제한 경우에는 기다리거나 ONTAP CLI / REST의 private CLI(volume recovery-queue purge)로 큐에서 제거합니다. purge는 취소할 수 없으므로 자신이 삭제한 볼륨인지 확인한 후 실행하십시오.",
   rmQosDeleteConfirm: "\"{name}\"을 삭제할까요? 이 정책이 할당된 볼륨은 할당이 해제되어 한도가 없어집니다. 정책을 유지하면서 한 볼륨만 해제하려면 삭제 대신 해제 기능을 사용하세요.",
   rmDeleted: "「{name}」을(를) 삭제했습니다",
   rmCreate: "생성",

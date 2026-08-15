@@ -311,7 +311,7 @@ arpResponseSweepNote: "Blocks lift themselves once their expiry passes. To lift 
   rmDeleting: "Deleting…",
   rmSnaplockDocs: "SnapLock documentation",
   rmDeleteConfirm: "Are you sure you want to delete \"{name}\"?",
-  rmDeleteBlockedByCloneHint: "ONTAP keeps a deleted clone in its recovery queue for 12 hours by default, and this volume counts it as a clone throughout, so the delete is refused. Splitting the clone first (Split, in the FlexClone panel) and then deleting it avoids the wait.",
+  rmDeleteBlockedByCloneHint: "ONTAP keeps a deleted clone in its recovery queue for 12 hours by default, and this volume counts it as a clone throughout, so the delete is refused. Splitting the clone first (Split, in the FlexClone panel) and then deleting it avoids the wait. If the clone is already gone, either wait or clear the entry with volume recovery-queue purge over the ONTAP CLI or the REST private CLI. A purge cannot be undone, so confirm the volume is one you deleted.",
   rmQosDeleteConfirm: "Delete \"{name}\"? Any volume assigned to this policy is detached and left with no limit. To lift the limit on one volume while keeping the policy, use the release control instead of deleting.",
   rmDeleted: "Deleted \"{name}\"",
   rmCreate: "Create",

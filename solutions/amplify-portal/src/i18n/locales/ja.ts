@@ -314,7 +314,7 @@ arpResponseSweepNote: "ブロックは指定した期限が過ぎると自動で
   rmDeleting: "削除中…",
   rmSnaplockDocs: "SnapLock のドキュメント",
   rmDeleteConfirm: "「{name}」を本当に削除しますか？",
-  rmDeleteBlockedByCloneHint: "ONTAP は削除したクローンを既定 12 時間 recovery queue に保持し、その間このボリュームは「クローンがある」として削除できません。クローンを先に分割（FlexClone パネルの「分割」）してから削除すると、この待ちは発生しません。",
+  rmDeleteBlockedByCloneHint: "ONTAP は削除したクローンを既定 12 時間 recovery queue に保持し、その間このボリュームは「クローンがある」として削除できません。クローンを先に分割（FlexClone パネルの「分割」）してから削除すると、この待ちは発生しません。すでに削除してしまった場合は、待つか、ONTAP CLI / REST の private CLI（volume recovery-queue purge）でキューから消します。purge は取り消せないので、自分が削除したボリュームであることを確認してから実行してください。",
   rmQosDeleteConfirm: "「{name}」を削除しますか？このポリシーを割り当てているボリュームは割り当てが外れ、上限なしになります。上限を残したまま 1 つのボリュームだけ外す場合は、削除ではなく「QoS を外す」を使ってください。",
   rmDeleted: "「{name}」を削除しました",
   rmCreate: "作成",
