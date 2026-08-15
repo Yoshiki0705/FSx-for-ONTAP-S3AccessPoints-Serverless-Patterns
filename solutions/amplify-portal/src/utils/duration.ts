@@ -40,13 +40,22 @@ const fill = (template: string, values: Record<string, string | number>): string
 export function durationLabel(period: string, t: Translate): string {
   if (period === "custom") return t("durationCustom");
 
-  // Hours, which arrived with the FlexGroup rebalance runtimes. ONTAP's default there
-  // is PT6H and the select offered it raw, because the fallback below returns the
-  // period unchanged -- readable to somebody who knows ISO-8601 and to nobody else.
-  const hours = /^PT(\d+)H$/.exec(period);
-  if (hours) {
-    const count = Number(hours[1]);
-    return fill(t(count === 1 ? "durationHour" : "durationHours"), { n: count });
+  // Hours and minutes, which arrived with the FlexGroup rebalance runtimes. The
+  // fallback below returns the period unchanged -- readable to somebody who knows
+  // ISO-8601 and to nobody else -- so the select offered ONTAP's default as "PT6H"
+  // and then, once 30 minutes led the list, as "PT30M".
+  //
+  // The `T` is required rather than optional: `P30M` is thirty months and `PT30M` is
+  // thirty minutes, and the two differ by a factor of about forty thousand.
+  const time = /^PT(?:(\d+)H)?(?:(\d+)M)?$/.exec(period);
+  if (time && (time[1] || time[2])) {
+    const hours = Number(time[1] ?? 0);
+    const minutes = Number(time[2] ?? 0);
+    if (hours && !minutes) return fill(t(hours === 1 ? "durationHour" : "durationHours"), { n: hours });
+    if (minutes && !hours) return fill(t(minutes === 1 ? "durationMinute" : "durationMinutes"), { n: minutes });
+    // A mixed value is a clock, for the same reason an elapsed time is one below:
+    // composing two translated patterns reads worse than "1:30" in every language.
+    return elapsedLabel(period);
   }
 
   const match = /^P(\d+)D$/.exec(period);

@@ -79,6 +79,20 @@ describe("durationLabel", () => {
     expect(durationLabel("P7D", tEn)).toBe("7 days");
   });
 
+  it("labels minutes, and does not confuse them with months", () => {
+    // ONTAP's floor for a rebalance runtime is 30 minutes, so PT30M leads that select
+    // and was rendering as the raw period. P30M is thirty months, which is why the
+    // `T` decides this rather than the `M`.
+    expect(durationLabel("PT30M", tEn)).toBe("30 minutes");
+    expect(durationLabel("PT1M", tEn)).toBe("1 minute");
+    expect(durationLabel("PT30M", t)).toBe("30分");
+    expect(durationLabel("P30M", tEn)).toBe("P30M");
+  });
+
+  it("renders a mixed hours-and-minutes period as a clock", () => {
+    expect(durationLabel("PT1H30M", tEn)).toBe("1:30:00");
+  });
+
   it("labels hours, which the rebalance runtimes are counted in", () => {
     // The fallback below is why this was needed: the FlexGroup rebalance select
     // offered ONTAP's own default as the string "PT6H".
@@ -91,8 +105,8 @@ describe("durationLabel", () => {
     // A new period showing as "P42Y" is visible; showing as "" is not.
     expect(durationLabel("P42Y", tEn)).toBe("P42Y");
     expect(durationLabel("", tEn)).toBe("");
-    // Minutes are not offered anywhere, so they stay in the fallback.
-    expect(durationLabel("PT30M", tEn)).toBe("PT30M");
+    // Seconds are not offered anywhere as a period, so they stay in the fallback.
+    expect(durationLabel("PT45S", tEn)).toBe("PT45S");
   });
 });
 
