@@ -17,6 +17,35 @@ ONTAP の素の API がそのまま使える形になっていない。どちら
 | 削除の offline が 524546 で失敗 | 先に unmount する（`{"nas": {"path": ""}}`）|
 | ローカルユーザーの有効化に `enabled` を送ると 262179 | `account_disabled` を使う（意味は反転）|
 
+## クローンを削除した親は、しばらく削除できない（2026-08-15 実測）
+
+クローンを削除してから親を削除しようとすると、ONTAP は次で止まる。
+
+```
+Failed to delete volume "X" in SVM "Y" because it has one or more clones.
+Only the cluster administrator can delete the clones associated with this volume.
+```
+
+このとき **クローンはもう API から見えない**（`GET /storage/volumes/{uuid}` は
+`entry doesn't exist`、`clone.is_flexclone=true` の一覧にも出ない）。それでも親は
+「クローンがある」と言う。
+
+観測した事実だけを並べると:
+
+- 親に残る `clone_<name>.<timestamp>` スナップショットの削除ジョブが 10 秒で終わらず、
+  30 秒後もスナップショットは残っている
+- 親の削除は 3 回試して 3 回同じエラー
+- 削除の 2 段目（offline）は成功しているので、**失敗した削除は親を offline のまま残す**
+
+**推定（未確認）**: ONTAP のボリューム recovery queue が削除済みクローンを保持しており
+（既定 12 時間）、その間クローン関係が残る。確認するには ONTAP CLI の
+`volume recovery-queue show` が必要で、これは VPC 内からの SSH を要する。
+
+実務上の意味:
+
+- クローンで検証したら、**親ボリュームはその日のうちには消せない**前提で計画する
+- 失敗した削除で offline になった親は、`bringVolumeOnline` で戻す（この理由で実装した）
+
 ## FlexClone の作成と分割（2026-08-15 実測）
 
 クローンは `POST /storage/volumes` に相乗りしているため、ボリューム作成と同じ入口の罠を踏む。

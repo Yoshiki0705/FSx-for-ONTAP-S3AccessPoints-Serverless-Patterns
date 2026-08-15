@@ -166,9 +166,28 @@ export function VolumeManager() {
       });
       if (data) {
         if (data.success) { setActionResult(t("rmDeleted").replace("{name}", name)); loadVolumes(); }
-        else setError(data.error || "Delete failed");
+        // Reloaded on failure too: the delete takes the volume offline first, so a
+        // failed one leaves the row's state stale as well as the volume unusable.
+        else { setError(data.error || "Delete failed"); loadVolumes(); }
       }
     } catch (err) { setError(err instanceof Error ? err.message : "Delete failed"); }
+  };
+
+  /** Reverse the offline step a failed delete left behind. */
+  const handleBringOnline = async (uuid: VolumeUuid, name: string) => {
+    setError(null);
+    try {
+      const data = await adminMutate<{ success?: boolean }>({
+        action: "bringVolumeOnline",
+        params: { volumeUuid: uuid, volumeName: name },
+      });
+      if (data?.success) {
+        setActionResult(t("rmBroughtOnline").replace("{name}", name));
+        loadVolumes();
+      } else setError(data?.error || t("rmActionFailed"));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : t("rmActionFailed"));
+    }
   };
 
   if (loading) return <p className="loading">{t("loading")}</p>;
@@ -328,6 +347,14 @@ export function VolumeManager() {
               <td className="action-cell">
                 <button onClick={() => handleResize(vol.uuid, vol.name)} className="btn-sm"
                   title={t("rmResize")}>↔</button>
+                {/* Offered only where it applies. A delete takes the volume offline before
+                    removing it, and a delete that then fails -- ONTAP refuses one whose
+                    clone was deleted moments earlier -- leaves it offline, with its
+                    clients cut off and nothing here able to undo the step that worked. */}
+                {vol.state === "offline" && (
+                  <button onClick={() => handleBringOnline(vol.uuid, vol.name)} className="btn-sm"
+                    title={t("rmBringOnlineTitle")}>{t("rmBringOnline")}</button>
+                )}
                 <button onClick={() => handleDelete(vol.uuid, vol.name)} className="btn-sm btn-danger"
                   title={t("rmDelete")}>✕</button>
               </td>

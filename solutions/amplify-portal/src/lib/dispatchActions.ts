@@ -123,6 +123,10 @@ export interface ResourceMgmtActionParams {
     confirm: boolean;
     relationshipUuid: SnapmirrorUuid;
   };
+  bringVolumeOnline: {
+    volumeUuid: VolumeUuid;
+    volumeName?: string;
+  };
   clearArpSuspects: {
     volumeUuid: VolumeUuid;
   };
