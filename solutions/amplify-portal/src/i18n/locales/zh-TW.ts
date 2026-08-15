@@ -1636,7 +1636,8 @@ arpResponseSweepNote: "封鎖會在設定的期限過後自動解除。如需提
   scCurrentDate: "目前日期",
   scCloneDate: "複本日期",
   scNoFiles: "此路徑下沒有檔案。",
-  sbNotConfigured: "Storage Browser 未設定。請設定：",
+  sbNotConfigured:
+    "Storage Browser 未設定。請在 amplify/portal-config.ts 中設定 s3ApAlias，然後重新執行 npx ampx sandbox。",
   vhSnapshotFilterAria: "快照篩選",
   vhVolumeSnapshotsAria: "磁碟區快照",
   epRoSecurity: "唯讀存取的安全方式",

@@ -299,12 +299,11 @@ Für Entwicklung ohne FSx for ONTAP:
 1. S3 AP an Ihrem FSx for ONTAP-Volume erstellen (Internet-origin empfohlen)
 2. AP-Alias aus AWS-Konsole → FSx → S3 Access Points notieren
 3. `s3ApAlias` in `portal-config.ts` setzen
-4. `s3ApAlias` in `src/portal-settings.ts` setzen (gleicher Alias — für Upload-Tab benötigt)
-5. Neu deployen: `make sandbox`
+4. Neu deployen: `make sandbox`
 
 > **Hinweis**: Das ListFiles Lambda läuft VPC-extern (kein VpcConfig). Dies ist beabsichtigt — Internet-origin S3 APs sind ohne VPC-Platzierung erreichbar. Bei Verwendung eines VPC-origin AP müssen Sie dem Lambda VPC-Konfiguration hinzufügen.
 
-> **Upload-Tab**: Storage Browser verwendet Cognito Identity Pool-Anmeldedaten, um die S3 API direkt vom Browser aufzurufen. Die erforderlichen IAM-Berechtigungen werden automatisch von `backend.ts` bereitgestellt (keine manuelle IAM-Konfiguration nötig). Stellen Sie sicher, dass `s3ApAlias` sowohl in `portal-config.ts` als auch in `src/portal-settings.ts` gesetzt ist.
+> **Upload-Tab**: Storage Browser verwendet Cognito Identity Pool-Anmeldedaten, um die S3 API direkt vom Browser aufzurufen. Die erforderlichen IAM-Berechtigungen werden automatisch von `backend.ts` bereitgestellt (keine manuelle IAM-Konfiguration nötig). Der Alias erreicht den Browser über `amplify_outputs.json`, das `npx ampx sandbox` aus `portal-config.ts` generiert — er wird also nur an einer Stelle gesetzt.
 
 > **Upload-Tab-Workflow**: Location auswählen → S3 AP Alias klicken → Ordnernavigation → Datei auswählen für Vorschau/Download oder Drag-and-Drop zum Upload. Hochgeladene Dateien sind sofort über NFS/SMB verfügbar (ONTAP strong consistency).
 
@@ -440,11 +439,11 @@ Wesentliche Unterschiede zur Sandbox:
 
 ## Bekannte Fallstricke — Zusätzliche Erkenntnisse (2026-07-20)
 
-### 8. Upload-Tab erfordert `portal-settings.ts` Konfiguration
+### 8. Der Alias des Upload-Tabs kommt aus den generierten Outputs
 
-Der Upload-Tab (Storage Browser for S3) liest `region`, `accountId` und `s3ApAlias` aus `src/portal-settings.ts` — NICHT aus `amplify/portal-config.ts`. Dies liegt daran, dass Storage Browser vollständig clientseitig läuft (kein Lambda) und direkten S3 API-Zugriff über Cognito Identity Pool-Anmeldedaten benötigt.
+Storage Browser läuft clientseitig und ruft S3 direkt auf, der Browser braucht den Alias also selbst. Früher las er ihn aus `src/portal-settings.ts`, einer versionierten Datei — dort stand daher ein Platzhalter-Alias, dieser Platzhalter wurde verwendet, und alle Uploads scheiterten an einem Access Point, der nicht existiert. `amplify/backend.ts` veröffentlicht den Alias jetzt mit `backend.addOutput({ custom: ... })` in `amplify_outputs.json`, gelesen von `src/lib/portalOutputs.ts`. Gesetzt wird er nur in `amplify/portal-config.ts`.
 
-Wenn "Network Error" im Upload-Tab erscheint, prüfen Sie ob `portal-settings.ts` den korrekten `s3ApAlias` enthält.
+Meldet der Upload-Tab, dass er nicht konfiguriert ist, setzen Sie `s3ApAlias` in `amplify/portal-config.ts` und führen Sie `npx ampx sandbox` erneut aus. `amplify_outputs.json` ist gitignoriert, ein frischer Clone hat also keinen Alias.
 
 ### 9. ~~Cognito Identity Pool IAM muss S3 AP-Zugriff erlauben~~ (automatisch konfiguriert)
 
@@ -499,7 +498,7 @@ amplify-portal/
 ├── src/
 │   ├── main.tsx                    # Amplify configure + Authenticator-Wrapper
 │   ├── App.tsx                     # 6-Tab-Shell (Files/Upload/Process/Results/History/Analytics)
-│   ├── portal-settings.ts         # Frontend-Config (Upload-Tab, Region, accountId)
+│   ├── portal-settings.ts         # Frontend-Schalter (keine Umgebungswerte)
 │   └── components/                 # React-Komponenten (FileExplorer, AiPanel, etc.)
 ├── functions/
 │   ├── notification-bridge/handler.py  # EventBridge → DynamoDB (FPolicy + SFTP-Events)

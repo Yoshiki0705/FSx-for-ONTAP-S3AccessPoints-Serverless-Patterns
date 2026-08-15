@@ -75,19 +75,16 @@ export const config: PortalConfig = {
 };
 ```
 
-`src/portal-settings.ts` を編集:
+`src/portal-settings.ts` は UI の機能スイッチだけを持ちます:
 
 ```typescript
 export const portalSettings = {
   processingEnabled: false,       // SFn ARN 設定後に true
-  fileListingEnabled: true,       // s3ApAlias 設定後に true
-  region: "ap-northeast-1",      // portal-config と同じ
-  accountId: "123456789012",     // AWS アカウント ID
-  s3ApAlias: "portal-demo-xxx-ext-s3alias",  // 同じ alias
+  aiAgentEnabled: false,          // Bedrock KB は課金が継続するため既定 false
 };
 ```
 
-> **検証で得た知見**: 同じ S3 AP alias を 2 つのファイルに設定する必要があります — `portal-config.ts`（バックエンド Lambda）と `portal-settings.ts`（フロントエンドの Storage Browser）。片方を忘れると Files タブが "No files" になるか、Upload タブが "AccessDenied" になります。
+> **検証で得た知見**: S3 AP alias を書く場所は `amplify/portal-config.ts` の 1 か所だけです。以前は `src/portal-settings.ts` にも同じ alias が必要で、こちらはコミット対象だったためプレースホルダーのまま出荷され、Upload タブが存在しない Access Point に対して全件失敗していました。現在は `amplify/backend.ts` が `backend.addOutput({ custom: ... })` で `amplify_outputs.json` に書き出し、ブラウザはそれを読みます。
 
 ---
 
@@ -189,7 +186,7 @@ aws cloudformation describe-stacks \
 |------|------|------|
 | Files タブ "No files" | s3ApAlias 未設定 | portal-config.ts に設定 → `make sandbox` |
 | **Files タブ "No files" (DemoMode)** | **s3ApResourceArns に S3 AP ARN のみ、バケット ARN がない** | **`arn:aws:s3:::your-bucket` + `arn:aws:s3:::your-bucket/*` を追加** |
-| Upload タブ AccessDenied | portal-settings.ts 未設定 | alias + accountId 設定 → リロード |
+| Upload タブが「未設定」と表示 | portal-config.ts の s3ApAlias が空、または sandbox 未実行 | alias を設定 → `npx ampx sandbox` → リロード |
 | Upload タブ "ListCallerAccessGrants" | 旧コードが `createManagedAuthAdapter` を使用 | StorageBrowserTab.tsx を direct auth モードに更新 |
 | Process タブ赤バナー | SFn ARN がプレースホルダー | `make sfn-test-create` |
 | ログイン失敗 | ユーザー未作成 | Step 4 実行 |
@@ -221,10 +218,8 @@ aws cloudformation describe-stacks \
 
 | パラメータ | ファイル | 用途 |
 |-----------|--------|------|
-| `s3ApAlias` | portal-config.ts | バックエンド Lambda のファイルアクセス |
-| `s3ApAlias` | portal-settings.ts | フロントエンド Storage Browser |
-| `accountId` | portal-settings.ts | Storage Browser (クライアントサイド S3 呼び出し) |
-| `region` | 両ファイル | FSx for ONTAP リージョンと一致させる |
+| `s3ApAlias` | portal-config.ts | Lambda のファイルアクセスと、`amplify_outputs.json` 経由の Upload タブ |
+| `region` | portal-config.ts | FSx for ONTAP リージョンと一致させる |
 | `stateMachineArn` | portal-config.ts + start-processing.js | Process タブのワークフロー起動 |
 | `groupApMapping` | portal-config.ts | チームごとのファイル分離 (My Files) |
 | `bedrockKbId` | portal-config.ts | 全文セマンティック検索 |

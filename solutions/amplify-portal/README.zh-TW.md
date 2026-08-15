@@ -299,12 +299,11 @@ make dev
 1. 在 FSx for ONTAP 卷上建立 S3 AP（建議 Internet-origin）
 2. 從 AWS 主控台 → FSx → S3 Access Points 記下 AP 別名
 3. 在 `portal-config.ts` 中設定 `s3ApAlias`
-4. 在 `src/portal-settings.ts` 中設定 `s3ApAlias`（同一別名 — Upload 標籤需要）
-5. 重新部署：`make sandbox`
+4. 重新部署：`make sandbox`
 
 > **注意**：ListFiles Lambda 在 VPC 外部執行（無 VpcConfig）。這是刻意的 — Internet-origin S3 AP 無需 VPC 配置即可存取。如使用 VPC-origin AP，必須為 Lambda 新增 VPC 設定。
 
-> **Upload 標籤**：Storage Browser 使用 Cognito Identity Pool 憑證從瀏覽器直接呼叫 S3 API。所需 IAM 權限由 `backend.ts` 自動佈建（無需手動 IAM 設定）。確保 `s3ApAlias` 在 `portal-config.ts` 和 `src/portal-settings.ts` 中均已設定。
+> **Upload 標籤**：Storage Browser 使用 Cognito Identity Pool 憑證從瀏覽器直接呼叫 S3 API。所需 IAM 權限由 `backend.ts` 自動佈建（無需手動 IAM 設定）。別名透過 `npx ampx sandbox` 從 `portal-config.ts` 產生的 `amplify_outputs.json` 傳遞到瀏覽器，因此只需在一處設定。
 
 > **Upload 標籤工作流程**：選擇 Location → 點擊 S3 AP alias → 資料夾導覽 → 選擇檔案預覽/下載，或拖放上傳。上傳的檔案可從 NFS/SMB 立即存取（ONTAP strong consistency）。
 
@@ -440,11 +439,11 @@ Step Functions 狀態機 ARN 必須在**兩處**設定：
 
 ## 已知陷阱 — 額外學習（2026-07-20）
 
-### 8. Upload 標籤需要 `portal-settings.ts` 設定
+### 8. Upload 標籤的別名來自產生的 outputs
 
-Upload 標籤（Storage Browser for S3）從 `src/portal-settings.ts` 讀取 `region`、`accountId` 和 `s3ApAlias` — 而非 `amplify/portal-config.ts`。這是因為 Storage Browser 完全在用戶端執行（無 Lambda），需要透過 Cognito Identity Pool 憑證直接存取 S3 API。
+Storage Browser 在用戶端執行並直接呼叫 S3，因此瀏覽器需要別名。它曾從 `src/portal-settings.ts` 讀取，而該檔案是提交對象，因此其中放的是佔位別名，執行時用的就是這個佔位值，針對不存在的 Access Point 的上傳全部失敗。現在 `amplify/backend.ts` 透過 `backend.addOutput({ custom: ... })` 寫入 `amplify_outputs.json`，由 `src/lib/portalOutputs.ts` 讀取。只需在 `amplify/portal-config.ts` 一處設定。
 
-如果 Upload 標籤顯示 "Network Error"，請檢查 `portal-settings.ts` 中的 `s3ApAlias` 是否正確。
+如果 Upload 標籤顯示未設定，請在 `amplify/portal-config.ts` 中設定 `s3ApAlias` 並重新執行 `npx ampx sandbox`。`amplify_outputs.json` 已被 gitignore，因此剛複製的儲存庫沒有別名。
 
 ### 9. ~~Cognito Identity Pool IAM 必須允許 S3 AP 存取~~ （已自動設定）
 
@@ -517,7 +516,7 @@ amplify-portal/
 ├── src/
 │   ├── main.tsx                    # Amplify configure + Authenticator 包裝器
 │   ├── App.tsx                     # 6 標籤殼（Files/Upload/Process/Results/History/Analytics）
-│   ├── portal-settings.ts         # 前端設定（Upload 標籤、region、accountId）
+│   ├── portal-settings.ts         # 前端功能開關（不含環境值）
 │   └── components/
 │       ├── FileExplorer.tsx        # 目錄瀏覽 + 分頁 + 共享連結
 │       ├── FilePreview.tsx         # 透過 Presigned URL 的圖片預覽 + Rekognition 標籤

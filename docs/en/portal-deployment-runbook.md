@@ -86,19 +86,16 @@ export const config: PortalConfig = {
 };
 ```
 
-Edit `src/portal-settings.ts`:
+`src/portal-settings.ts` holds UI feature switches only:
 
 ```typescript
 export const portalSettings = {
   processingEnabled: false,       // Set true after configuring SFn ARN
-  fileListingEnabled: true,       // Set true when s3ApAlias is configured
-  region: "ap-northeast-1",      // Same as portal-config
-  accountId: "123456789012",     // Your AWS account ID
-  s3ApAlias: "portal-demo-xxx-ext-s3alias",  // Same alias
+  aiAgentEnabled: false,          // Bedrock KB bills continuously, so default off
 };
 ```
 
-> **Learned**: Two files need the same S3 AP alias — `portal-config.ts` (backend Lambda) and `portal-settings.ts` (frontend Storage Browser). Forgetting one causes "No files" in Files tab or "AccessDenied" in Upload tab.
+> **Learned**: The S3 AP alias belongs in exactly one file, `amplify/portal-config.ts`. It used to be needed in `src/portal-settings.ts` as well, and because that file is committed it shipped with a placeholder — so the Upload tab uploaded to an access point that does not exist and failed every file. `amplify/backend.ts` now publishes the alias through `backend.addOutput({ custom: ... })` into `amplify_outputs.json`, which the browser reads.
 
 ---
 
@@ -232,7 +229,7 @@ aws cloudformation describe-stacks \
 |---------|-------|-----|
 | Files tab: "No files" | `s3ApAlias` empty in portal-config.ts | Set alias, re-run `make sandbox` |
 | **Files tab: "No files" (DemoMode)** | **`s3ApResourceArns` only has S3 AP ARNs, not bucket ARNs** | **Add `arn:aws:s3:::your-bucket` + `arn:aws:s3:::your-bucket/*` to `s3ApResourceArns`** |
-| Upload tab: "AccessDenied" | `portal-settings.ts` missing alias/accountId | Set both values, reload browser |
+| Upload tab: "not configured" | `s3ApAlias` empty in portal-config.ts, or sandbox not run | Set the alias, run `npx ampx sandbox`, reload |
 | Upload tab: "ListCallerAccessGrants" | Old code using `createManagedAuthAdapter` | Update StorageBrowserTab.tsx to direct auth mode |
 | Process tab: red banner | Step Functions ARN is placeholder | `make sfn-test-create` or deploy UC pattern |
 | Login fails | User not created or password not set | Run Step 4 commands |
@@ -264,10 +261,8 @@ aws cloudformation describe-stacks \
 
 | Parameter | File | Purpose |
 |-----------|------|---------|
-| `s3ApAlias` | portal-config.ts | Backend Lambda file access |
-| `s3ApAlias` | portal-settings.ts | Frontend Storage Browser |
-| `accountId` | portal-settings.ts | Storage Browser (client-side S3 calls) |
-| `region` | Both files | Must match FSx for ONTAP region |
+| `s3ApAlias` | portal-config.ts | Backend Lambda file access, and the Upload tab via `amplify_outputs.json` |
+| `region` | portal-config.ts | Must match FSx for ONTAP region |
 | `stateMachineArn` | portal-config.ts + start-processing.js | Process tab workflow trigger |
 | `groupApMapping` | portal-config.ts | Per-team file isolation (My Files) |
 | `bedrockKbId` | portal-config.ts | Full-text semantic search |

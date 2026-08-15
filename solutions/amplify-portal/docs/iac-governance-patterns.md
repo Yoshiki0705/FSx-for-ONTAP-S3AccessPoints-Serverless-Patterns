@@ -44,7 +44,7 @@ PR ゲートがすべて通過 → マージ可能
 | セキュリティルール | cfn-guard (security/) | ✅ CI 統合済み |
 | AWS ベストプラクティス | cdk-nag (AwsSolutionsChecks) | ⚠️ `CDK_NAG=1` で opt-in（CI 未統合） |
 | IAM 権限検証 | Access Analyzer ValidatePolicy | ✅ CI workflow 追加済み |
-| 構造リグレッション | CDK ハーネステスト (47 tests) | ✅ vitest 統合済み |
+| 構造リグレッション | CDK ハーネステスト (49 tests) | ✅ vitest 統合済み |
 | シークレットリーク | gitleaks | ✅ pre-commit hook |
 | GitHub Actions セキュリティ | zizmor | ✅ pre-commit hook |
 | 依存関係更新 | Renovate | ✅ 自動 PR |

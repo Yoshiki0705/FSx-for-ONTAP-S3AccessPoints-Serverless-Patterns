@@ -83,7 +83,7 @@ Enable frontend features in `src/portal-settings.ts`:
 ```typescript
 export const portalSettings = {
   processingEnabled: true,  // Enable after stateMachineArn is configured
-  fileListingEnabled: true, // Enable after S3 AP alias is configured
+  aiAgentEnabled: false,    // Bedrock KB bills continuously, so default off
 };
 ```
 

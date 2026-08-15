@@ -1,21 +1,14 @@
 /**
  * Frontend portal settings.
  *
- * These control UI behavior (not backend configuration).
- * Set `processingEnabled` to true once you have configured a real
- * Step Functions state machine ARN in the backend.
- *
- *
- * The values below are placeholders and this file is committed. Put the real ones
- * in `amplify/portal-config.ts`, which is gitignored.
- *
- * UPLOAD TAB (Storage Browser for S3):
- *   The Upload tab requires `region`, `accountId`, and `s3ApAlias` below.
- *   - region: Same as your FSx for ONTAP region (e.g., "ap-northeast-1")
- *   - accountId: Your AWS account ID (aws sts get-caller-identity --query Account --output text)
- *   - s3ApAlias: Same alias used in portal-config.ts (e.g., "my-ap-xxxxx-ext-s3alias")
- *   These are used client-side by Storage Browser to call S3 API directly
- *   (via Cognito Identity Pool credentials, no Lambda proxy needed).
+ * These are feature switches for the UI, and nothing here describes an
+ * environment. This file is committed, so anything environment-specific would
+ * ship as a placeholder and the placeholder would be what runs -- which is what
+ * happened to the Upload tab while `region`, `accountId` and `s3ApAlias` lived
+ * here. Those moved out: `amplify/portal-config.ts` (gitignored) holds them, and
+ * `amplify/backend.ts` publishes what the browser needs into
+ * `amplify_outputs.json`, read by `src/lib/portalOutputs.ts`. `accountId` was
+ * read by nothing at all and is gone.
  */
 export const portalSettings = {
   /**
@@ -37,16 +30,4 @@ export const portalSettings = {
    * This compile-time flag is the FALLBACK when DynamoDB settings are unavailable.
    */
   aiAgentEnabled: false,
-
-  /**
-   * Storage Browser configuration.
-   * Required for the Upload tab (Storage Browser for S3 component).
-   * Set these to match your FSx for ONTAP S3 AP and account.
-   */
-  region: "ap-northeast-1",
-  accountId: "123456789012",
-  // Placeholder, like `accountId` above. This file is committed, so a real alias
-  // here is published: an S3 AP alias names a live access point and belongs in
-  // the gitignored `amplify/portal-config.ts` with the rest of the environment.
-  s3ApAlias: "my-ap-0123456789abcdef0-ext-s3alias",
 };

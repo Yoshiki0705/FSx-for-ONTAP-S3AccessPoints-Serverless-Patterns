@@ -16,7 +16,7 @@
 import { createStorageBrowser } from "@aws-amplify/ui-react-storage/browser";
 import "@aws-amplify/ui-react-storage/styles.css";
 import { fetchAuthSession } from "aws-amplify/auth";
-import { portalSettings } from "../portal-settings";
+import { s3ApAlias, outputsRegion } from "../lib/portalOutputs";
 import { useTranslation } from "../i18n";
 
 const { StorageBrowser } = createStorageBrowser({
@@ -42,7 +42,7 @@ const { StorageBrowser } = createStorageBrowser({
       return {
         items: [
           {
-            bucket: portalSettings.s3ApAlias,
+            bucket: s3ApAlias,
             id: "fsxn-s3ap",
             permissions: ["delete", "get", "list", "write"] as const,
             prefix: "",
@@ -52,7 +52,7 @@ const { StorageBrowser } = createStorageBrowser({
         nextToken: undefined,
       };
     },
-    region: portalSettings.region,
+    region: outputsRegion,
     registerAuthListener: (_onAuthStateChange: () => void) => {
       // Called when auth state changes
     },
@@ -70,15 +70,12 @@ const { StorageBrowser } = createStorageBrowser({
  */
 export function StorageBrowserTab() {
   const { t } = useTranslation();
-  if (!portalSettings.s3ApAlias) {
+  if (!s3ApAlias) {
     return (
       <div className="storage-browser-tab">
         <div className="storage-browser-header">
           <h2>{t("uploadTitle")}</h2>
-          <p className="storage-browser-description">
-            {t("sbNotConfigured")} <code>s3ApAlias</code> in{" "}
-            <code>src/portal-settings.ts</code> to enable file upload.
-          </p>
+          <p className="storage-browser-description">{t("sbNotConfigured")}</p>
         </div>
       </div>
     );
