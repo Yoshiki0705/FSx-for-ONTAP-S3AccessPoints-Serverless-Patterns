@@ -8,6 +8,261 @@
 >
 > To use the portal, read the [User Guide](../../../docs/en/portal-user-guide.md) instead;
 > to stand one up, [Getting Started](GETTING-STARTED.en.md).
+>
+> **New to Amplify? Read from "The shape of it" through "Hands on" in order.**
+> Section 0 onward is about which gate catches what, and does not need to be read first.
+
+---
+
+## The shape of it — which file is which screen
+
+The first step in extending anything is guessing which file holds the screen you want to
+change. The portal is **one page whose section is switched from the sidebar on the left**, and
+one sidebar entry corresponds to one component.
+
+![The portal's sidebar and content area. On the left, sections grouped into Browse, AI and processing, Data protection, and Admin; the chosen section fills the wide area on the right](screenshots/portal-sidebar-layout.png)
+
+Three places tell you the mapping.
+
+| What you want to know | Where to look |
+|---|---|
+| Which entries the sidebar has | `NAV_ITEMS` in `src/App.tsx` (an array of `{ id, icon, labelKey, group }`) |
+| What is drawn when one is chosen | `{activeSection === "..." && <XxxPanel />}` in the same `src/App.tsx` |
+| The entry's label string | The key named by `labelKey` in `src/i18n/locales/ja.ts` |
+
+Admin panels live in `src/components/admin/`, file operations in `src/components/`. The names
+track the screen names (the SMB share screen is `admin/CifsShareManager.tsx`).
+
+**The best file to read first** is `src/components/admin/EfficiencyPanel.tsx` (132 lines). It is
+the minimal shape of a read-only panel and contains one of everything that follows:
+`dispatch`, `useQuery`, `t()`, and error rendering.
+
+---
+
+## Starting the environment
+
+Two commands. `sandbox` **once**, `npm start` from then on.
+
+```bash
+cd solutions/amplify-portal
+
+npx ampx sandbox   # once; creates your own AWS environment and amplify_outputs.json
+npm start          # sandbox + Vite. Opens http://localhost:5173
+```
+
+`npx ampx sandbox` is Amplify Gen2 creating **a backend of your own** on AWS (Cognito, AppSync,
+Lambda, DynamoDB). The `amplify_outputs.json` it generates is gitignored, and **the screen will
+not start without it**. The first run takes 3 to 15 minutes, depending on whether a VPC is
+configured ([the measured breakdown](verification-results.en.md)).
+
+You get a sign-in screen.
+
+![The portal's sign-in screen, with email and password fields and a sign-in button in the centre](screenshots/portal-login.png)
+
+After signing in, this. Getting here means you are set up.
+
+![The portal after sign-in: the sidebar on the left and a file listing in the content area](screenshots/portal-main-view.png)
+
+> **No FSx for ONTAP yet?** With `DemoMode=true` the portal starts without one and drives an
+> ordinary S3 bucket, and the ONTAP admin panels say "ONTAP connection required". See
+> [Getting Started](GETTING-STARTED.en.md).
+>
+> **Want it on a real phone?** `npm run phone`. Signing in over `http://<LAN-IP>` does not work,
+> because `crypto.subtle` is restricted to a secure context.
+
+---
+
+## Hands on — three stages
+
+**Do not start with a new feature.** The three stages below widen the blast radius and add
+gates in this order. Stage 1 shows you the loop from edit to screen; stage 3 shows the loop for
+adding a new ONTAP operation.
+
+### Stage 1 (10 minutes) — change one string on screen
+
+**Purpose**: experience the edit → screen → gate loop with a change that cannot break anything.
+
+UI strings are **not written in components**. They live as keys in the eight language files and
+are read with `t("key")`.
+
+1. Search the locale file for the text you want to change. To change what an English reader
+   sees, that is `en.ts`.
+
+```bash
+grep -n "Storage Efficiency" solutions/amplify-portal/src/i18n/locales/en.ts
+```
+
+This example returns **two** hits (`dashEfficiency` and `rmEfficiency`), because the same string
+is used on two screens. **Confirm which key the screen uses before changing it** — searching the
+component (`src/components/admin/EfficiencyPanel.tsx` here) for `t("...")` is the reliable way.
+Change one and the other screen keeps the old text.
+
+2. Change the value of the key you want.
+
+```typescript
+// src/i18n/locales/en.ts
+rmEfficiency: "Storage Efficiency",   // the admin panel's heading
+```
+
+Editing an existing translation is per-locale like this. **Adding a new key is different**: it
+goes into `ja.ts` first, because that file is the source of the type the other seven implement.
+
+3. The browser reloads itself (Vite HMR). Open the same screen in English and you get the value
+   from `en.ts`.
+
+![The file listing in Japanese](screenshots/portal-ja-allfiles.png)
+![The same screen in English, with the sidebar entries and headings in English](screenshots/portal-en-allfiles.png)
+
+4. **If you added a new key**, add it to `ja.ts` first and then to the other seven languages. A
+   missing key **does not compile**, because `ja.ts` is the source of the type and the others
+   implement a `Record` of the same keys.
+
+```bash
+make drift   # eight-language coverage, and the hardcoded-string check
+```
+
+> **How not to write it**
+>
+> ```tsx
+> <h2>Storage efficiency</h2>                      // ✗ reaches only one language
+> <button aria-label="Delete">                     // ✗ aria-label, title and placeholder count too
+> <h2>{t("rmEfficiency") || "Storage efficiency"}</h2>  // ✗ the right side is unreachable (below)
+> <h2>{t("rmEfficiency")}</h2>                     // ✓
+> ```
+>
+> Product names, technical terms (ONTAP, FlexCache, SnapLock, S3 AP) and SQL literals are **not
+> translated**.
+
+### Stage 2 (30 minutes) — add a read-only row to an existing panel
+
+**Purpose**: surface a value the ONTAP response already carries but the screen does not show.
+No handler change, so no backend redeploy.
+
+Take the storage efficiency panel. This screen:
+
+![The storage efficiency panel. Per volume, the dedupe and compression settings, logical used, physical used and savings ratio in a table, with the overall savings ratio above it](../../../docs/screenshots/storage-efficiency-panel.png)
+
+The shape of the response is declared as an `interface` at the top of
+`src/components/admin/EfficiencyPanel.tsx`.
+
+```typescript
+interface VolumeEfficiency {
+  name: string;
+  dedupe: string;          // ONTAP's enum string; anything but "none" means on
+  compression: string;
+  logicalUsedBytes: number;
+  physicalUsedBytes: number;
+  savingsRatio: number;
+}
+```
+
+**That `interface` is a declaration of what the handler returns, not a contract.** There was a
+defect where the `interface` and the response disagreed, and the panel rendered empty (the
+comment at the top of the file has the history). **Look at the real response first.** Browser
+devtools → Network → the `adminQuery` response is the quickest route.
+
+Three steps:
+
+1. Add the field to the `interface`, **under the name the handler actually returns**
+2. Add a heading (`<th>`) with `t("...")`. Put the string in `ja.ts` as in stage 1
+3. Add the value (`<td>`). For bytes, reuse the existing `toGiB()`
+
+```bash
+cd solutions/amplify-portal
+npx tsc -b && npm run lint && npx vitest run
+cd ../.. && make drift
+```
+
+> **Where this trips people up**: a value that stays `undefined` is usually a **name spelled
+> differently from the handler's**, or an `interface` nested differently from the real response.
+> An `interface` is only a declaration, so TypeScript cannot check that the handler returns that
+> name.
+
+### Stage 3 (1 hour) — add one ONTAP operation
+
+**Purpose**: go around the whole loop, backend to UI. From here you cross **a boundary types do
+not reach**, so the order matters. Skip a step and you get a button that renders and fails on
+every click.
+
+Section 0 explains why the boundary exists; the steps first.
+
+**(1) Add it to the handler** (`functions/resource-management/handler.py`)
+
+```python
+elif action == "myNewAction":
+    return _my_new_action(http, headers, event, user_id)
+```
+
+**(2) Regenerate the types** (never by hand)
+
+```bash
+python3 scripts/portal_action_types.py --emit > solutions/amplify-portal/src/lib/dispatchActions.ts
+```
+
+**(3) Call it from the screen**
+
+```typescript
+import { adminMutate } from "../../lib/dispatch";
+
+await adminMutate<{ success?: boolean }>({
+  action: "myNewAction",              // a literal, always. A computed name is unreadable to the checker
+  params: { volumeUuid: vol.uuid },   // names must match the handler's exactly
+});
+```
+
+**(4) Check the contract**
+
+```bash
+python3 scripts/check_portal_action_params.py
+python3 scripts/check_portal_action_params.py --list-opaque   # calls that could not be read statically
+python3 scripts/portal_action_types.py --check
+```
+
+If your call appears under `--list-opaque`, it is **a call that is not checked**. Remove a layer
+of wrapping so that `action` is a literal.
+
+**(5) Reuse the existing parts when a volume has to be chosen**
+
+The hierarchy is file system → SVM → volume, and the selectors exist:
+
+![The qtree panel's volume selector: dropdowns for choosing an SVM and then a volume](screenshots/qtree-volume-selector.png)
+
+```tsx
+<VolumeSelector label={t("rmSelectVolume")} onSelect={(vol) => setVolumeName(vol?.name ?? "")} />
+```
+
+`onSelect` **hands you `null`** (when the SVM changes and invalidates the pick, and when the
+placeholder is selected). Writing `vol.name` is a compile error. The type is that way because
+**a volume name is unique within an SVM, not within a file system**: resolving a leftover name
+against a different SVM lands on a different volume.
+
+**(6) If it cannot be undone, a confirmation is not enough**
+
+SnapLock, snapshot locking, S3 Object Lock COMPLIANCE and starting a capacity rebalance **cannot
+be undone**. "Are you sure?" leaves the person pressing it without the blast radius. The
+existing dialog states the date and the range in words.
+
+![The snapshot lock confirmation, giving the date until which deletion is impossible and stating that it cannot be undone](../../../docs/screenshots/snapshot-lock-confirm.png)
+
+Use `SnaplockConfirmDialog` with `src/utils/snaplockConsequences.ts`, and require
+`acknowledgeIrreversible` in the handler as well, so a call that bypasses the UI meets the same
+gate. Section 5 has the detail.
+
+### Changing a colour
+
+Colours are read through `var(--color-*)`. Map them **by role, not by value**.
+
+```tsx
+<div style={{ color: "#fff" }}>              // ✗ unreadable in dark mode, and cannot be overridden
+<div className="my-panel-title">             // ✓ use var(--color-text-inverse) in the CSS
+```
+
+The same screen, light and dark. A colour written inline breaks one of them.
+
+![The file listing in the dark theme](screenshots/portal-files-dark.png)
+
+A new token is defined in **both** `:root` and `[data-theme="dark"]`. One of the two fails
+`make drift`.
 
 ---
 
