@@ -172,6 +172,14 @@ BLOCK_CASES: list[tuple[str, dict[str, object]]] = [
 
 ASK_CASES: list[tuple[str, dict[str, object]]] = [
     (
+        # The looser mode asks rather than blocks: the rule can be replaced and a
+        # caller with the bypass permission can delete the object at once. The
+        # stricter mode is in BLOCK_CASES, and enabling Object Lock on a bucket
+        # stays there too, so relaxing this one did not relax those.
+        "portal putS3ObjectLockRetention GOVERNANCE",
+        {"action": "putS3ObjectLockRetention", "params": {"bucket": "b", "mode": "GOVERNANCE", "days": 1}},
+    ),
+    (
         "FSx delete-file-system",
         {"command": "aws fsx delete-file-system --file-system-id fs-0123456789abcdef0"},
     ),
