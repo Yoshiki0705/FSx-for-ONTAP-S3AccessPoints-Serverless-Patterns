@@ -428,6 +428,9 @@ export interface ResourceMgmtActionParams {
   };
   /** No parameters. */
   listClusterPeers: Record<string, never>;
+  listExpiredRetention: {
+    svm?: string;
+  };
   listExportPolicies: {
     svm?: string;
   };
@@ -1066,6 +1069,7 @@ export const ACTIONS_ACCEPTING_SVM: ReadonlySet<string> = new Set([
   "listActiveBlocks",
   "listArpVolumes",
   "listCifsShares",
+  "listExpiredRetention",
   "listExportPolicies",
   "listFlexClones",
   "listFpolicyEvents",
