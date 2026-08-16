@@ -737,6 +737,8 @@ def _dispatch(event, context):
         # --- SnapLock Management ---
         elif action == "getSnaplockConfig":
             return _get_snaplock_config(http, headers, event)
+        elif action == "listExpiredRetention":
+            return _list_expired_retention(http, headers, event)
         elif action == "updateSnaplockRetention":
             return _update_snaplock_retention(http, headers, event, user_id)
 
@@ -2252,6 +2254,119 @@ def _get_snaplock_config(http, headers, event):
             "retentionMaximum": snaplock.get("retention", {}).get("maximum"),
             "autocommitPeriod": snaplock.get("autocommit_period"),
         },
+        "error": None,
+    }
+
+
+def _list_expired_retention(http, headers, event):
+    """Locked snapshots and SnapLock volumes whose retention has passed.
+
+    Step one of expiry-driven deletion, and read-only on purpose: the deletion
+    that follows is irreversible, so the enumeration it depends on is worth
+    getting right against real data before anything acts on it.
+
+    Judged against ONTAP's compliance clock, not the Lambda's wall clock. SnapLock
+    decides expiry by that clock, and the two drift. Comparing against wall time
+    produces entries ONTAP will refuse to delete, which reads as a broken deletion
+    job rather than a clock difference. When no volume reports a compliance clock
+    the answer says so instead of quietly falling back to system time, because a
+    silent fallback is how an early deletion attempt would get built.
+
+    Retention can be extended, so this answer goes stale. A caller that deletes
+    must re-read immediately before doing so rather than trusting a plan made
+    here.
+
+    Args:
+        http: Connection pool used for the ONTAP REST calls.
+        headers: Authorization headers for those calls.
+        event: Dispatch event; `svm` selects the SVM, defaulting to the configured one.
+
+    Returns:
+        `complianceClockTime`, `clockSource`, `expired` and `pending`, each entry
+        naming its resource type, identity, expiry and the volume it belongs to.
+    """
+    svm = event.get("svm") or SVM_NAME
+    volumes = _ontap_request(
+        http,
+        headers,
+        "GET",
+        f"/storage/volumes?svm.name={_qval(svm)}&fields=uuid,name,snaplock",
+    )
+    if volumes.get("_error"):
+        return {"expired": [], "pending": [], "complianceClockTime": None, "error": volumes["_message"]}
+
+    records = volumes.get("records", [])
+    clock = next(
+        (
+            r["snaplock"]["compliance_clock_time"]
+            for r in records
+            if (r.get("snaplock") or {}).get("compliance_clock_time")
+        ),
+        None,
+    )
+    if not clock:
+        # No SnapLock volume on this SVM means no compliance clock to read. Said
+        # plainly rather than substituted, so a caller cannot mistake wall time
+        # for the clock retention is actually measured against.
+        return {
+            "expired": [],
+            "pending": [],
+            "complianceClockTime": None,
+            "clockSource": "unavailable",
+            "error": "No volume on this SVM reports a compliance clock, so expiry cannot be judged",
+        }
+
+    expired: list[dict] = []
+    pending: list[dict] = []
+
+    def _place(entry: dict, expiry: str | None) -> None:
+        """File an entry by comparing its expiry with the compliance clock."""
+        if not expiry:
+            return
+        (expired if expiry <= clock else pending).append({**entry, "expiryTime": expiry})
+
+    for record in records:
+        snaplock = record.get("snaplock") or {}
+        name = record.get("name", "")
+        uuid = record.get("uuid", "")
+        if snaplock.get("type", "non_snaplock") != "non_snaplock":
+            _place(
+                {
+                    "resourceType": "volume",
+                    "volumeName": name,
+                    "volumeUuid": uuid,
+                    "snaplockType": snaplock.get("type"),
+                },
+                snaplock.get("expiry_time"),
+            )
+        # Both fields are read: `expiry_time` is the snapshot's own lock and
+        # `snaplock_expiry_time` comes from a SnapLock volume. Reading one and not
+        # the other is what once made locked snapshots look unlocked.
+        snapshots = _ontap_request(
+            http,
+            headers,
+            "GET",
+            f"/storage/volumes/{uuid}/snapshots?fields=uuid,name,expiry_time,snaplock_expiry_time",
+        )
+        if snapshots.get("_error"):
+            continue
+        for snapshot in snapshots.get("records", []):
+            _place(
+                {
+                    "resourceType": "snapshot",
+                    "volumeName": name,
+                    "volumeUuid": uuid,
+                    "snapshotName": snapshot.get("name", ""),
+                    "snapshotUuid": snapshot.get("uuid", ""),
+                },
+                snapshot.get("expiry_time") or snapshot.get("snaplock_expiry_time"),
+            )
+
+    return {
+        "expired": expired,
+        "pending": pending,
+        "complianceClockTime": clock,
+        "clockSource": "ontap",
         "error": None,
     }
 
