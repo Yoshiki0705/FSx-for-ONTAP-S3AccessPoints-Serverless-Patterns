@@ -156,6 +156,29 @@ confirmation that the lock-display fix holds for a snapshot locked on a live sys
 | **Listing shows the lock** | Reading the same snapshot back through the listing returns `isTamperproof: true` with `snaplockExpiryTime` set. The bug where the listing never read `expiry_time`, and so always reported a locked snapshot as unlocked, is fixed against a live lock |
 | A locked snapshot and volume deletion | The delete succeeded and the volume was gone 20 seconds later, as before |
 
+### Added 2026-08-16 (C5, C6, C7)
+
+| Group | Check | Result |
+|-------|-------|--------|
+| C5 | Creating, assigning and deleting a snapshot policy that carries retention | Refused without the acknowledgement. With `retentionPeriod: P1D`, create, assign, revert to default and delete all succeeded |
+| C5 | Lock state after assigning it | **`snapshotLockingEnabled` stays `false`**; only `snapshotPolicy` changes. Read from the status panel alone, it says nothing is locked. See [tamperproof-snapshot-design.md](../../../docs/tamperproof-snapshot-design.md) |
+| C6 | Object Lock GOVERNANCE, 1 day | Rule `{Mode: GOVERNANCE, Days: 1}`. The object inherits `GOVERNANCE until ...`. Deleting without the bypass is refused; with `--bypass-governance-retention` it **succeeds** |
+| C7 | Object Lock COMPLIANCE, 1 day | Refused without the acknowledgement. Rule `{Mode: COMPLIANCE, Days: 1}`. **A delete carrying the bypass is refused too**, so the GOVERNANCE escape does not apply |
+| C6/C7 | Telling the modes apart | **The refusal is worded identically** (`AccessDenied ... object protected by object lock`). Read the mode from `get-object-lock-configuration` and `head-object`'s `ObjectLockMode` |
+
+`zz_policy_probe` (20 GiB) and `zz_lock_1d` were deleted. The bucket
+`zz-objectlock-probe-<last 6>` holds one COMPLIANCE object, so it **cannot be deleted until
+2026-08-16T19:24:41Z** (a few dozen bytes, effectively $0, removed after expiry).
+
+**Unconfirmed**: whether snapshots taken once the C5 schedule fires are actually locked. The daily
+schedule was not waited out.
+
+> **This required a guard change.** The irreversible-operation guard blocked every
+> `putS3ObjectLockRetention` while advising GOVERNANCE in its own message, so the advice could not be
+> taken. Enabling Object Lock on a bucket still blocks; setting the default rule now asks; the
+> stricter mode still blocks. The reasoning is in
+> [tamperproof-snapshot-design.md](../../../docs/tamperproof-snapshot-design.md).
+
 ### Still unconfirmed (SnapLock)
 
 | Item | Why |
