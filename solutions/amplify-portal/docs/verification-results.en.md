@@ -173,11 +173,14 @@ confirmation that the lock-display fix holds for a snapshot locked on a live sys
 **Unconfirmed**: whether snapshots taken once the C5 schedule fires are actually locked. The daily
 schedule was not waited out.
 
-> **This required a guard change.** The irreversible-operation guard blocked every
-> `putS3ObjectLockRetention` while advising GOVERNANCE in its own message, so the advice could not be
-> taken. Enabling Object Lock on a bucket still blocks; setting the default rule now asks; the
-> stricter mode still blocks. The reasoning is in
-> [tamperproof-snapshot-design.md](../../../docs/tamperproof-snapshot-design.md).
+> **Running C6 required a guard change.** The irreversible-operation guard blocked every
+> `putS3ObjectLockRetention` while its refusal advised GOVERNANCE, so there was no way to take that
+> advice and the GOVERNANCE check could not start. Enabling Object Lock on a bucket still blocks,
+> setting the default rule now asks, and the stricter mode still blocks. How the tiers are divided is
+> in [tamperproof-snapshot-design.md](../../../docs/tamperproof-snapshot-design.md).
+>
+> Side effect: the guard matches on shell command text, so editing a file whose contents mention the
+> mode is blocked too. Dedicated editing tools go through.
 
 ### Still unconfirmed (SnapLock)
 
@@ -297,11 +300,31 @@ The recorded deploy times disagree across documents. Rather than averaging them,
 
 > **Lambda Layer caveat**: changing `shared/` updates the Lambda by hotswap and skips the LayerVersion content change (there is no flag to disable hotswap). Recreate the sandbox to be certain the change is live.
 
+## Verified on a phone (2026-08-16)
+
+An iPhone running Safari, connected through the tunnel. **Browsing, upload, download, folder
+creation and delete** all work. The walkthrough and screenshots are in the
+[demo guide](../../../docs/en/portal-demo-guide.md).
+
+| Item | Result |
+|------|--------|
+| Sign-in | Works. HTTPS is required: `http://<LAN-IP>` cannot sign in because `crypto.subtle` is unavailable |
+| Listing and folder navigation | Works |
+| Folder creation | Works |
+| Upload | Works. At phone width the upload panel's columns are cut off at the right edge |
+| Download | Works. Goes through the service worker into the browser's download manager (Safari's download location, by default Files → Downloads) |
+| Delete | Works |
+| Management sections (storage-admin) | Shown. At this width table headers wrap one character per line and rows are cut off horizontally |
+
+> **Only visible on a device**: Storage Browser downloads through a service worker, and without it
+> the component falls back to an in-memory blob. A blob is not a download as far as the browser is
+> concerned, so iOS leaves no entry in the download manager and the file "finishes" with nothing to
+> open. Emulation did not surface this.
+
 ## Verified under browser emulation only
 
-Checked under Chrome device emulation at 390×844, not on physical hardware. A real
-handset's browser chrome — address bar height and so on — differs, so this is kept apart
-from the "real system" sections above.
+These are layout measurements taken under Chrome device emulation at 390×844. The section above
+covers whether operations succeed; this one covers dimensions.
 
 | Item | What was checked |
 |------|------------------|
