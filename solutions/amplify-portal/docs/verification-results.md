@@ -153,6 +153,28 @@ C4 は Lambda を数回再デプロイしたあとに走らせ直しました。
 | **一覧のロック表示** | 同じ Snapshot を一覧側から読み直して `isTamperproof: true` / `snaplockExpiryTime` あり。`expiry_time` を読まずロック表示が壊れていた不具合の修正が、実機のロック済み Snapshot で効いている |
 | ロック済み Snapshot とボリューム削除 | 削除は成功し、20 秒後に一覧から消えた（前回と同じ） |
 
+### 2026-08-16 に追加（C5 / C6 / C7）
+
+| 区分 | 確認内容 | 結果 |
+|------|---------|------|
+| C5 | 保持期間付き Snapshot ポリシーの作成・割り当て・削除 | 承認フラグ無しは拒否。`retentionPeriod: P1D` で作成・割り当て・既定への差し戻し・削除がすべて成功 |
+| C5 | 割り当て後のロック状態表示 | **`snapshotLockingEnabled` は `false` のまま**で、変わるのは `snapshotPolicy` だけ。状態パネルだけを見ると「何もロックされない」と読める。詳細は [tamperproof-snapshot-design.md](../../../docs/tamperproof-snapshot-design.md) |
+| C6 | Object Lock GOVERNANCE 1 日 | 既定ルール `{Mode: GOVERNANCE, Days: 1}`。オブジェクトは `GOVERNANCE until ...` を継承。bypass 無しの削除は拒否、`--bypass-governance-retention` 付きは**成功** |
+| C7 | Object Lock COMPLIANCE 1 日 | 承認フラグ無しは拒否。既定ルール `{Mode: COMPLIANCE, Days: 1}`。**bypass を付けた削除も拒否**され、GOVERNANCE の逃げ道が効かないことを実測 |
+| C6/C7 | 2 モードの区別 | **拒否メッセージが同一**（`AccessDenied ... object protected by object lock`）。モードは `get-object-lock-configuration` と `head-object` の `ObjectLockMode` で読む |
+
+検証に使った `zz_policy_probe`（20 GiB）と `zz_lock_1d` は削除済みです。
+バケット `zz-objectlock-probe-<下 6 桁>` は COMPLIANCE オブジェクト 1 つのため
+**2026-08-16T19:24:41Z まで削除できません**（数十バイト、実質 $0、満了後に削除）。
+
+**未確認**: C5 のスケジュールが発火して生成された Snapshot が実際にロックされるか。
+日次スケジュールの発火を待っていません。
+
+> **ガードの変更を伴いました。** 不可逆操作ガードは `putS3ObjectLockRetention` を無条件に
+> ブロックしつつ、文面で GOVERNANCE を勧めていたため、勧めた選択肢を取れませんでした。
+> 有効化はブロック、既定ルールの設定は確認（ask）、厳格モードはブロックのまま、に分離しました。
+> 判断の理由は [tamperproof-snapshot-design.md](../../../docs/tamperproof-snapshot-design.md)。
+
 ### 未確認のまま残るもの（SnapLock）
 
 | 項目 | なぜ未確認か |
