@@ -146,12 +146,15 @@ BLOCK: list[tuple[str, str, str]] = [
         "GOVERNANCE モードで足りるか再検討してください。",
     ),
     (
-        r"\bput-object-lock-configuration\b|ObjectLockEnabled" + SEP + r"Enabled|"
-        r"\"?action\"?" + SEP + r"[\"']?putS3ObjectLockRetention",
-        "S3 Object Lock のバケット有効化 / 保持期間の設定",
-        "バケットに対して一度有効化すると解除できません。COMPLIANCE の保持期間は短縮もできません。"
-        "オブジェクト単位なら GOVERNANCE で足りるか、そもそもバージョニングとライフサイクルで"
-        "足りるかを先に検討してください。",
+        # Enabling Object Lock on a bucket, which cannot be undone. Setting the
+        # default retention *rule* is a different operation and is handled in ASK
+        # below: a GOVERNANCE rule can be replaced, so blocking it outright
+        # contradicted this guard's own advice to prefer GOVERNANCE. The stricter
+        # mode still blocks, through the rule above that matches the mode itself.
+        r"\bput-object-lock-configuration\b|ObjectLockEnabled" + SEP + r"Enabled",
+        "S3 Object Lock のバケット有効化",
+        "バケットに対して一度有効化すると解除できません。"
+        "そもそもバージョニングとライフサイクルで足りるかを先に検討してください。",
     ),
     (
         r"\b(?:initiate|complete)-vault-lock\b",
@@ -182,6 +185,18 @@ BLOCK: list[tuple[str, str, str]] = [
 # silence means two different things.
 # --------------------------------------------------------------------------
 ASK: list[tuple[str, str]] = [
+    (
+        # Reached only when no stricter-mode pattern matched, because BLOCK is
+        # applied first. A GOVERNANCE default retention rule can be replaced, and
+        # an object written under it can be deleted at once by a caller holding
+        # s3:BypassGovernanceRetention, so this is destructive-but-recoverable
+        # rather than terminal. Enabling Object Lock on the bucket is separate and
+        # still blocks.
+        r"\"?action\"?" + SEP + r"[\"']?putS3ObjectLockRetention",
+        "Object Lock の既定保持ルールを設定します。以後書き込むオブジェクトは指定期間削除できません。"
+        "GOVERNANCE なら s3:BypassGovernanceRetention を持つ呼び出し元は即削除でき、ルール自体も"
+        "上書きできます。より厳格なモードはブロックされます。バケットの有効化とは別の操作です。",
+    ),
     (
         r"\bfsx\b.{0,40}\bdelete[-_](file[-_]?system|storage[-_]?virtual[-_]?machine|volume)|"
         r"\"?operation_?name\"?\W*[:=]\W*[\"']?Delete(FileSystem|StorageVirtualMachine|Volume)|"
