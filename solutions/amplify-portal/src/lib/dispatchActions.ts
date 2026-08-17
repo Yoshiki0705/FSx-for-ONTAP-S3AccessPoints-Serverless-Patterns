@@ -324,6 +324,11 @@ export interface ResourceMgmtActionParams {
     index?: number;
     svm?: string;
   };
+  deleteObjectStoreBucket: {
+    confirm: boolean;
+    name: string;
+    svm?: string;
+  };
   deleteQosPolicy: {
     policyUuid: PolicyUuid;
   };
@@ -414,6 +419,10 @@ export interface ResourceMgmtActionParams {
   getVolume: {
     volumeUuid: VolumeUuid;
   };
+  getVolumeMountInfo: {
+    volumeUuid: VolumeUuid;
+    svm?: string;
+  };
   getVolumeRebalance: {
     volumeUuid: VolumeUuid;
   };
@@ -468,6 +477,10 @@ export interface ResourceMgmtActionParams {
   listNetworkInterfaces: Record<string, never>;
   /** No parameters. */
   listNodes: Record<string, never>;
+  listObjectStoreBuckets: {
+    svm?: string;
+    volumeName?: string;
+  };
   listProtocolServices: {
     svm?: string;
   };
@@ -508,6 +521,11 @@ export interface ResourceMgmtActionParams {
     volumeUuid: VolumeUuid;
     acknowledgeIrreversible?: true;
     retentionDays?: number;
+  };
+  mountVolume: {
+    junctionPath: string;
+    volumeUuid: VolumeUuid;
+    volumeName?: string;
   };
   moveNameMapping: {
     direction?: string;
@@ -594,6 +612,11 @@ export interface ResourceMgmtActionParams {
     startTime?: string;
   };
   stopVolumeRebalance: {
+    volumeUuid: VolumeUuid;
+    volumeName?: string;
+  };
+  unmountVolume: {
+    confirm: boolean;
     volumeUuid: VolumeUuid;
     volumeName?: string;
   };
@@ -1053,6 +1076,7 @@ export const ACTIONS_ACCEPTING_SVM: ReadonlySet<string> = new Set([
   "deleteLocalGroup",
   "deleteLocalUser",
   "deleteNameMapping",
+  "deleteObjectStoreBucket",
   "deleteQtree",
   "deleteVscanPolicy",
   "disconnectSessions",
@@ -1065,6 +1089,7 @@ export const ACTIONS_ACCEPTING_SVM: ReadonlySet<string> = new Set([
   "getQuotaReport",
   "getSnaplockConfig",
   "getSnaplockStatus",
+  "getVolumeMountInfo",
   "getVscanStatus",
   "listActiveBlocks",
   "listArpVolumes",
@@ -1078,6 +1103,7 @@ export const ACTIONS_ACCEPTING_SVM: ReadonlySet<string> = new Set([
   "listLocalGroups",
   "listLocalUsers",
   "listNameMappings",
+  "listObjectStoreBuckets",
   "listProtocolServices",
   "listQosPolicies",
   "listQtrees",
