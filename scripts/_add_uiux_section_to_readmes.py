@@ -54,7 +54,7 @@ The same approach is applied across all industries, not just Public Sector
 
 **Phase-specific views** (`docs/screenshots/masked/phase{1..7}/`):
 - Phase 1-6b: Infrastructure build / feature addition technical views (CloudFormation stacks, Lambda function lists, SageMaker Endpoints, etc.)
-- Phase 7: Common FSx S3 Access Points views etc. for UC15/16/17
+- Phase 7: Common FSx for ONTAP S3 APs views etc. for UC15/16/17
 
 Image file specifications are managed under `docs/screenshots/masked/phase{N}/README.md`.
 Masking target guide: [`docs/screenshots/MASK_GUIDE.md`](docs/screenshots/MASK_GUIDE.md).
@@ -102,7 +102,7 @@ Public Sector (UC15/16/17)뿐만 아니라 모든 업종의 UC에서 동일한 �
 
 **Phase별 뷰** (`docs/screenshots/masked/phase{1..7}/`):
 - Phase 1-6b: 인프라 구축 / 기능 추가 시 기술자용 화면
-- Phase 7: UC15/16/17 공통 FSx S3 Access Points 뷰 등
+- Phase 7: UC15/16/17 공통 FSx for ONTAP S3 APs 뷰 등
 
 산업 매핑 표 (8 언어): [`docs/screenshots/uc-industry-mapping.md`](docs/screenshots/uc-industry-mapping.md).
 추가 워크플로: [`docs/screenshots/SCREENSHOT_ADDITION_WORKFLOW.md`](docs/screenshots/SCREENSHOT_ADDITION_WORKFLOW.md).
@@ -147,7 +147,7 @@ Public Sector (UC15/16/17)뿐만 아니라 모든 업종의 UC에서 동일한 �
 
 **按 Phase 视图** (`docs/screenshots/masked/phase{1..7}/`):
 - Phase 1-6b: 基础设施构建 / 功能添加时的技术人员视图
-- Phase 7: UC15/16/17 公共 FSx S3 Access Points 视图等
+- Phase 7: UC15/16/17 公共 FSx for ONTAP S3 APs 视图等
 
 行业映射表 (8 语言): [`docs/screenshots/uc-industry-mapping.md`](docs/screenshots/uc-industry-mapping.md).
 添加工作流: [`docs/screenshots/SCREENSHOT_ADDITION_WORKFLOW.md`](docs/screenshots/SCREENSHOT_ADDITION_WORKFLOW.md).
@@ -192,7 +192,7 @@ Public Sector (UC15/16/17)뿐만 아니라 모든 업종의 UC에서 동일한 �
 
 **依 Phase 檢視** (`docs/screenshots/masked/phase{1..7}/`):
 - Phase 1-6b: 基礎設施建構 / 功能新增時的技術人員檢視
-- Phase 7: UC15/16/17 共通 FSx S3 Access Points 檢視等
+- Phase 7: UC15/16/17 共通 FSx for ONTAP S3 APs 檢視等
 
 業種對映表 (8 語言): [`docs/screenshots/uc-industry-mapping.md`](docs/screenshots/uc-industry-mapping.md).
 新增工作流程: [`docs/screenshots/SCREENSHOT_ADDITION_WORKFLOW.md`](docs/screenshots/SCREENSHOT_ADDITION_WORKFLOW.md).
@@ -242,7 +242,7 @@ Secteur Public (UC15/16/17):
 
 **Vues par phase** (`docs/screenshots/masked/phase{1..7}/`):
 - Phase 1-6b: vues techniques pour construction infrastructure / ajout fonctionnalités
-- Phase 7: vues communes FSx S3 Access Points pour UC15/16/17
+- Phase 7: vues communes FSx for ONTAP S3 APs pour UC15/16/17
 
 Table de mappage sectoriel (8 langues): [`docs/screenshots/uc-industry-mapping.md`](docs/screenshots/uc-industry-mapping.md).
 Workflow d'ajout: [`docs/screenshots/SCREENSHOT_ADDITION_WORKFLOW.md`](docs/screenshots/SCREENSHOT_ADDITION_WORKFLOW.md).
@@ -292,7 +292,7 @@ Derselbe Ansatz wird für alle Branchen angewendet, nicht nur für den
 
 **Phase-spezifische Ansichten** (`docs/screenshots/masked/phase{1..7}/`):
 - Phase 1-6b: technische Ansichten für Infrastrukturaufbau / Funktionserweiterung
-- Phase 7: gemeinsame FSx S3 Access Points-Ansichten für UC15/16/17
+- Phase 7: gemeinsame FSx for ONTAP S3 APs-Ansichten für UC15/16/17
 
 Branchen-Mapping-Tabelle (8 Sprachen): [`docs/screenshots/uc-industry-mapping.md`](docs/screenshots/uc-industry-mapping.md).
 Hinzufügungs-Workflow: [`docs/screenshots/SCREENSHOT_ADDITION_WORKFLOW.md`](docs/screenshots/SCREENSHOT_ADDITION_WORKFLOW.md).
@@ -342,7 +342,7 @@ Público (UC15/16/17):
 
 **Vistas por fase** (`docs/screenshots/masked/phase{1..7}/`):
 - Phase 1-6b: vistas técnicas para construcción de infraestructura / adición de características
-- Phase 7: vistas comunes FSx S3 Access Points para UC15/16/17
+- Phase 7: vistas comunes FSx for ONTAP S3 APs para UC15/16/17
 
 Tabla de mapeo sectorial (8 idiomas): [`docs/screenshots/uc-industry-mapping.md`](docs/screenshots/uc-industry-mapping.md).
 Flujo de adición: [`docs/screenshots/SCREENSHOT_ADDITION_WORKFLOW.md`](docs/screenshots/SCREENSHOT_ADDITION_WORKFLOW.md).

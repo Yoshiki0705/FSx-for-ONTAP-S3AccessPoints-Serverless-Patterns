@@ -345,7 +345,7 @@ API and must be detached before the backing volume can be deleted.
 ```bash
 REGION=ap-northeast-1
 
-# List the FSx S3 access point attachments
+# List the FSx for ONTAP S3 AP attachments
 aws fsx describe-s3-access-point-attachments --region "$REGION" \
     --query "S3AccessPointAttachments[].[Name,Lifecycle]" --output table
 

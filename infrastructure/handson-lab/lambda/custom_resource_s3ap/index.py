@@ -69,7 +69,7 @@ def create_s3_access_point(properties: dict[str, Any]) -> tuple[str, dict[str, s
     ap_name = properties["AccessPointName"]
     user_type = properties.get("FileSystemUserType", "WINDOWS")
 
-    # Build S3 configuration for FSx S3 Access Point
+    # Build S3 configuration for FSx for ONTAP S3 AP
     s3_config: dict[str, Any] = {
         "AutoImportPolicy": {"Events": ["NEW", "CHANGED", "DELETED"]},
         "AutoExportPolicy": {"Events": ["NEW", "CHANGED", "DELETED"]},

@@ -2,7 +2,7 @@ AWSTemplateFormatVersion: '2010-09-09'
 Description: >
   AgentCore Gateway Service Role for Web Search Tool
   us-east-1 にデプロイし、Web Search コネクタ用の権限を付与する。
-  FSx ONTAP S3 AP パターンのハイブリッド RAG で利用。
+  FSx for ONTAP S3 AP パターンのハイブリッド RAG で利用。
 
 Parameters:
   GatewayName:

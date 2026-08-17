@@ -83,7 +83,7 @@ echo ""
 
 # --- 4. S3 Access Points ---
 echo "=== 4. S3 Access Points ==="
-# FSx S3 APs are discovered via the FSx API
+# FSx for ONTAP S3 APs are discovered via the FSx API
 S3AP_JSON=$(aws fsx describe-s3-access-points \
   --region "$REGION" \
   --filters "Name=file-system-id,Values=$FS_ID" \

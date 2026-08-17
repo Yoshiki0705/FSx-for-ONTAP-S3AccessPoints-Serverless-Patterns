@@ -400,7 +400,7 @@ check_security_group_egress() {
     --region "$REGION" --output json 2>/dev/null || echo "[]")
 
   if [[ "$sgs" == "[]" ]]; then
-    info "No Lambda/FSxN security groups found in $TARGET_VPC"
+    info "No Lambda/FSx for ONTAP security groups found in $TARGET_VPC"
     info "  → Security groups will be created during stack deployment"
     return
   fi

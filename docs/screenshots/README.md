@@ -47,7 +47,7 @@ docs/screenshots/
 | `phase1-eventbridge-scheduler.png` | EventBridge Scheduler |
 | `phase1-fsx-file-systems.png` | FSx ファイルシステム一覧 |
 | `phase1-fsx-filesystem-detail.png` | FSx ファイルシステム詳細 |
-| `phase1-fsx-s3-access-point.png` | FSx S3 Access Point |
+| `phase1-fsx-s3-access-point.png` | FSx for ONTAP S3 AP |
 | `phase1-fsx-volume-detail.png` | FSx ボリューム詳細 |
 | `phase1-fsx-volumes-list.png` | FSx ボリューム一覧 |
 | `phase1-glue-data-catalog-tables.png` | Glue Data Catalog テーブル |
