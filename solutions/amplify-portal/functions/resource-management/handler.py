@@ -4246,8 +4246,17 @@ def _get_ems_events(http, headers, event):
 # volume had just refused deletion the collection came back empty, and on an SVM
 # running a native ONTAP S3 server it returned that server's three `type: s3` buckets
 # and not the `amazon-fsx-` one either. So the bucket that blocks the delete is not
-# visible through this endpoint, and removing it needs a route this handler does not
-# have -- the ONTAP CLI's `vserver object-store-server bucket` commands.
+# visible through this endpoint. It can also answer 401 `User is not authorized.`
+# (ONTAP 6691623) to the FSx `fsxadmin` account, so an empty list here is not even
+# evidence that the collection was read.
+#
+# **The block is temporary, and the CLI is not the answer.** Measured 2026-08-18:
+# retried about a day after the refusal, `DeleteVolume` removed both volumes in 60-90
+# seconds with no CLI involved. The association clears asynchronously. This comment
+# previously concluded that removal "needs the ONTAP CLI", which would have sent the
+# next reader to request cluster-level SSH for a problem that resolves by waiting. How
+# long the wait is was not measured -- one observation, roughly a day -- so retry on a
+# schedule rather than treating any single interval as the number.
 #
 # What these two actions do cover is ONTAP-native object-store buckets, which is
 # worth having: they are what makes an SVM unable to host an FSx for ONTAP S3 AP.

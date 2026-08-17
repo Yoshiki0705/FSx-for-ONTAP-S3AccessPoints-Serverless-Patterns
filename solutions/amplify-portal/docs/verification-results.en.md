@@ -209,18 +209,22 @@ max `PT5M`, 20 GiB). A five-minute retention expires in minutes, after which the
 | **The refusal does not name its cause** | The access point refuses with `AccessDenied ... Access Denied` and **no mention of WORM or retention.** It is indistinguishable from a permissions problem, so the first thing to check is the file's WORM state rather than the policy |
 | **`listExpiredRetention` against real WORM data** | `expired` held the now-expired `zz_sl_s3ap`, `pending` held the audit log volume expiring 2027-02-06, and `clockSource` was `"ontap"`. Only the clock-unavailable response had been confirmed before |
 
-> **The cleanup is not finished.** Every WORM file was allowed to expire and then
-> removed, but `zz_sl_worm` and `zz_sl_s3ap` both remain. **Detaching and deleting the
-> S3 access point leaves the ONTAP-side `amazon-fsx-<volume-id>` bucket behind**, and
-> `deleteVolume` fails naming it (while the FSx side reports no attachment at all). An
-> attach that went `FAILED` leaves the same remnant, still there a day later.
-> **`GET /protocols/s3/buckets` does not report these NAS buckets** — the collection
-> was empty on the SVM whose volume had just refused, and on an SVM running a native
-> ONTAP S3 server it returned only that server's three `type: s3` buckets. Removing
-> them needs the ONTAP CLI's `vserver object-store-server bucket` commands.
-> **This is not a WORM lock, so they are removable.** Both volumes are offline with
-> their junctions cleared, and their 20 GiB sits inside the provisioned SSD, so
-> nothing is being charged for them.
+> **The NAS bucket an S3 access point leaves behind blocks deletion only temporarily
+> (confirmed cleared 2026-08-18).** Detaching and deleting the access point leaves the
+> ONTAP-side `amazon-fsx-<volume-id>` bucket in place, and `deleteVolume` fails naming
+> it while the FSx side reports no attachment at all. An attach that went `FAILED`
+> leaves the same remnant, still there a day later. **`GET /protocols/s3/buckets` does
+> not report these NAS buckets** — the collection was empty on the SVM whose volume had
+> just refused, and on an SVM running a native ONTAP S3 server it returned only that
+> server's three `type: s3` buckets. (That endpoint can also answer 401
+> `User is not authorized.` to the FSx `fsxadmin` account.)
+>
+> **The ONTAP CLI turned out not to be needed.** Retried about a day after the refusal,
+> `DeleteVolume` removed both `zz_sl_s3ap` and `zz_sl_worm` within 60-90 seconds, with
+> no CLI involved. The association clears asynchronously, so the correct response is to
+> wait and retry rather than to go looking for
+> `vserver object-store-server bucket delete`. How long it takes was not measured: one
+> observation, roughly a day. **This is not a WORM lock.**
 
 ### Added 2026-08-17 (mount management: `mountVolume` / `unmountVolume` / `getVolumeMountInfo`)
 

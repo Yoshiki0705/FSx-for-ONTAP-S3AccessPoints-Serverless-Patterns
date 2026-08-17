@@ -207,15 +207,19 @@ max `PT1H`、20 GiB）と `zz_sl_s3ap`（fsxsvm02、compliance、min `PT0S` / de
 | **拒否メッセージが原因を示さない** | S3 AP 側の拒否は `AccessDenied ... Access Denied` だけで、**WORM も保持期間も出てきません。** IAM の問題と区別できないため、最初に確認するのは権限ではなくファイルの WORM 状態 |
 | **`listExpiredRetention` を実 WORM データで確認** | `expired` に満了済みの `zz_sl_s3ap`、`pending` に 2027-02-06 満了の監査ログボリューム、`clockSource: "ontap"`。これまで clock 不在時の応答しか確認できていませんでした |
 
-> **後片付けが完了していません。** WORM ファイルはすべて満了させて削除しましたが、`zz_sl_worm` と
-> `zz_sl_s3ap` の 2 本が残っています。**S3 AP を detach・delete しても ONTAP 側の
-> `amazon-fsx-<volume-id>` バケットが残り**、`deleteVolume` がそれを名指しして失敗します
-> （FSx 側の attachment は 0 件になっている）。`FAILED` になった attach でも同じ残骸ができ、
-> 1 日後も残っていました。**`GET /protocols/s3/buckets` はこの NAS バケットを返しません**——
-> 該当 SVM では 0 件、ネイティブ S3 サーバーがある SVM でも `type: s3` の 3 本だけで
-> `amazon-fsx-` は出てきません。削除には ONTAP CLI の
-> `vserver object-store-server bucket` が必要です。**WORM のロックではないので、消せる状態です。**
-> 2 本とも offline / junction 消去済み、20 GiB は provisioned SSD 内なので追加課金はありません。
+> **S3 AP が残す NAS バケットのブロックは一時的です（2026-08-18 に解消を確認）。** S3 AP を
+> detach・delete しても ONTAP 側の `amazon-fsx-<volume-id>` バケットが残り、`deleteVolume` が
+> それを名指しして失敗します（FSx 側の attachment は 0 件）。`FAILED` になった attach でも
+> 同じ残骸ができ、1 日後も残っていました。**`GET /protocols/s3/buckets` はこの NAS バケットを
+> 返しません**——該当 SVM では 0 件、ネイティブ S3 サーバーがある SVM でも `type: s3` の 3 本
+> だけです（このエンドポイントは FSx の `fsxadmin` では 401 `User is not authorized.` を返す
+> こともあります）。
+>
+> **ONTAP CLI は不要でした。** 拒否から約 1 日後に `DeleteVolume` を再実行すると `zz_sl_s3ap` /
+> `zz_sl_worm` はどちらも 60〜90 秒で削除完了しました（CLI 操作は一切していません）。関連は
+> 非同期に解けるので、正しい対処は `vserver object-store-server bucket delete` を探すことでは
+> なく**時間を置いて再試行すること**です。解消までの正確な時間は測っていません（約 1 日後に
+> 成功したという 1 点のみ）。**WORM のロックではありません。**
 
 ### 2026-08-17 に追加（マウント管理: `mountVolume` / `unmountVolume` / `getVolumeMountInfo`）
 
