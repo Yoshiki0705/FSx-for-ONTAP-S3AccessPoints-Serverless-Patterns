@@ -40,6 +40,23 @@ except ImportError:
     )
     sys.exit(2)
 
+if not SENSITIVE_STRINGS:
+    # An empty inventory means "cannot check", not "nothing to find", and the difference
+    # is not cosmetic. The CI job substituted scripts/_sensitive_strings.py.example --
+    # which defines SENSITIVE_STRINGS as an empty tuple -- whenever the secret holding
+    # the real list was absent. The secret was never configured, so from 2026-05-13 the
+    # check "Screenshot OCR sensitive-leak scan" compared 460 images against zero
+    # strings and reported a green "No leaks detected" every time. It was green on
+    # 2026-06-06 while three screenshots carrying a real AWS account id were committed,
+    # and stayed green for the ten weeks they sat in a public repository.
+    print(
+        "SENSITIVE_STRINGS が空です。検査対象が無いので「リーク無し」とは報告できません。\n"
+        "CI では SENSITIVE_STRINGS_PY secret を設定してください。ローカルでは実際の識別子を\n"
+        "scripts/_sensitive_strings.py に定義してください。",
+        file=sys.stderr,
+    )
+    sys.exit(2)
+
 # File extensions to scan for text leaks
 TEXT_EXTENSIONS = {".md", ".yaml", ".yml", ".json", ".sh", ".py", ".ts", ".js", ".txt"}
 IMAGE_SUFFIXES = {".png", ".jpg", ".jpeg", ".gif", ".webp"}
