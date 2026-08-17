@@ -9,8 +9,13 @@ Usage:
     python3 scripts/_check_sensitive_leaks.py          # scan images + text
     python3 scripts/_check_sensitive_leaks.py --images  # images only
     python3 scripts/_check_sensitive_leaks.py --text    # text files only
+    python3 scripts/_check_sensitive_leaks.py a.png b.md   # only these paths
 
-GITIGNORED.
+The string list lives in scripts/_sensitive_strings.py, which IS gitignored and
+must never be committed: it is the inventory of the real identifiers being kept out
+of the repository. This file is tracked, so a fresh checkout has the checker but not
+the list, and supplying your own is the intended setup step. It used to import the
+list at module scope, which meant a clean checkout could not even reach --help.
 """
 
 from __future__ import annotations
@@ -21,10 +26,23 @@ from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(PROJECT_ROOT / "scripts"))
-from _sensitive_strings import SENSITIVE_STRINGS  # type: ignore
+try:
+    from _sensitive_strings import SENSITIVE_STRINGS  # type: ignore
+except ImportError:
+    # Exit 2, distinct from the exit 1 that means "leaks found", so a caller can tell
+    # "this machine cannot check" apart from "this content is clean". Conflating those
+    # is how a checker starts reporting success without having looked at anything.
+    print(
+        "scripts/_sensitive_strings.py が見つかりません（gitignore 対象なので clone には含まれません）。\n"
+        "検査したい実際の識別子を SENSITIVE_STRINGS: list[str] として定義してください。\n"
+        "例: SENSITIVE_STRINGS = ['123456789012', 'fs-0123456789abcdef0', '10.1.2.3']",
+        file=sys.stderr,
+    )
+    sys.exit(2)
 
 # File extensions to scan for text leaks
 TEXT_EXTENSIONS = {".md", ".yaml", ".yml", ".json", ".sh", ".py", ".ts", ".js", ".txt"}
+IMAGE_SUFFIXES = {".png", ".jpg", ".jpeg", ".gif", ".webp"}
 
 # Paths to exclude from text scanning (relative to PROJECT_ROOT)
 EXCLUDE_PATHS = {
@@ -98,16 +116,29 @@ def scan_text_file(path: Path) -> list[tuple[str, int, str]]:
 
 
 def scan_images() -> dict[str, list[tuple[str, str]]]:
-    """Scan masked screenshots for sensitive string leaks via OCR."""
-    root = PROJECT_ROOT / "docs" / "screenshots" / "masked"
+    """Scan every git-tracked image for sensitive string leaks via OCR.
+
+    Scope note: this used to glob docs/screenshots/masked/**.png only. 87 of the 279
+    tracked images sit outside that directory -- docs/screenshots/ itself, portal-demo,
+    phase11 -- so a clean run described one subtree while being reported as describing
+    the repository. What a checker looked at is part of its result, and the text half
+    of this file had always enumerated tracked files rather than one directory.
+
+    Two things this still cannot tell you: OCR only reads text it can resolve, so a
+    leak rendered small enough may not be read (verified: a 12-digit id at the default
+    PIL bitmap size was missed, the same id at 44px was read verbatim), and it only
+    matches the strings listed in _sensitive_strings.py.
+    """
     leaks: dict[str, list[tuple[str, str]]] = {}
     total = 0
-    for p in sorted(root.rglob("*.png")):
+    for p in sorted(get_tracked_files()):
+        if p.suffix.lower() not in IMAGE_SUFFIXES or is_excluded(p) or not p.exists():
+            continue
         total += 1
         hits = scan_image(p)
         if hits:
             leaks[str(p.relative_to(PROJECT_ROOT))] = hits
-    print(f"Scanned: {total} masked images")
+    print(f"Scanned: {total} tracked images")
     print(f"Images with detectable sensitive substrings: {len(leaks)}")
     return leaks
 
@@ -133,8 +164,48 @@ def scan_text_files() -> dict[str, list[tuple[str, int, str]]]:
     return leaks
 
 
+UNAVAILABLE = -1
+
+
+def scan_explicit(paths: list[Path]) -> int:
+    """Scan exactly the paths given. Returns the count of files with leaks.
+
+    Returns UNAVAILABLE if OCR could not run at all, which the caller must not read
+    as "clean". The commit gate uses this mode: it knows which files are staged, and
+    re-scanning the whole screenshot tree does not fit a PreToolUse timeout.
+    """
+    files_with_leaks = 0
+    for path in paths:
+        if not path.exists():
+            print(f"  skipped (missing): {path}")
+            continue
+        if path.suffix.lower() in IMAGE_SUFFIXES:
+            hits = scan_image(path)
+            if any(token in ("IMPORT_ERROR", "OCR_ERROR") for token, _ in hits):
+                print(f"  cannot scan {path}: {hits[0][1]}", file=sys.stderr)
+                return UNAVAILABLE
+            for token, word in hits:
+                print(f"  {path}: leaked='{token}' in OCR word='{word}'")
+        else:
+            text_hits = scan_text_file(path)
+            hits = [(token, line) for token, _, line in text_hits]
+            for token, line_num, line in text_hits:
+                print(f"  {path}: L{line_num} leaked='{token}' in: {line}")
+        if hits:
+            files_with_leaks += 1
+    return files_with_leaks
+
+
 def main() -> None:
     args = sys.argv[1:]
+    explicit = [Path(a) for a in args if not a.startswith("-")]
+    if explicit:
+        found = scan_explicit(explicit)
+        if found == UNAVAILABLE:
+            sys.exit(2)
+        print(f"Scanned {len(explicit)} path(s); files with leaks: {found}")
+        sys.exit(1 if found else 0)
+
     scan_img = "--images" in args or not args
     scan_txt = "--text" in args or not args
 
