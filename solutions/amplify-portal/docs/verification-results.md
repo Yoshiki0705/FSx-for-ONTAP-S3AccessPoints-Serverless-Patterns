@@ -199,7 +199,7 @@ max `PT1H`、20 GiB）と `zz_sl_s3ap`（fsxsvm02、compliance、min `PT0S` / de
 | **`retention.maximum` が縛るのは確定時の割り当てだけ** | 2 段階で測りました。**確定前**に atime を max より 1 分先（`PT5M` のボリュームで +6 分）に設定してから `chmod a-w` すると、touch は rc=0 だが確定後の満了は既定の 5 分後になり、**要求した値は残らない**（同じボリュームで既定のまま確定したファイルと同一時刻）。一方**確定後**に同じ +6 分へ延長すると rc=0 で**満了が max を 1 分超えた時刻に変わる**。max `PT1H` のボリュームで +70 分が通ったのと同じ挙動で、こちらはより小さい差で確認しました。短縮は rc=1。**つまり max は確定時の上限であって、その後の延長の天井ではありません** |
 | **満了後（NFS）** | `rm` が成功。ただし**上書きは満了後も拒否**され、mode も `-r--r--r--` のまま。**満了は削除を許すだけで、ファイルを普通のファイルに戻しません** |
 | **S3 AP は SnapLock ボリュームに attach できる** | `zz_sl_s3ap` に対して `CreateAndAttachS3AccessPoint` が約 15 秒で `AVAILABLE`。SnapLock は attach の障害にならない |
-| **ONTAP S3 サーバーがある SVM には attach できない** | fsxsvm01 では `FAILED` になり `existing ONTAP object storage server on SVM ...` と返る。**同一 SVM で ONTAP ネイティブ S3 と FSx S3 AP は共存しない** |
+| **ONTAP S3 サーバーがある SVM には attach できない** | fsxsvm01 では `FAILED` になり `existing ONTAP object storage server on SVM ...` と返る。**同一 SVM で ONTAP ネイティブ S3 と FSx for ONTAP S3 AP は共存しない** |
 | **ONTAP REST で設定した junction は FSx API に即座に映らない** | マウント直後の attach が `the volume is not mounted` で失敗し、`describe-volumes` の `JunctionPath` は 5 分以上 null。`update-volume` に `JunctionPath` を渡すと**成功を返して値は変わらない**（無言の no-op）。その後収束したが、収束が `update-volume` によるものか自然な同期かは切り分けていない。**エラーメッセージは正しくない原因を名指しします** |
 | S3 AP 経由の書き込みと一覧 | `PutObject` / `ListObjectsV2` / `GetObject` が成功。`StorageClass` は `FSX_ONTAP` |
 | **満了前の S3 AP 削除・上書き** | `DeleteObject` と `PutObject`（上書き）がともに `AccessDenied`。`GetObject` は成功し ETag も不変 |
