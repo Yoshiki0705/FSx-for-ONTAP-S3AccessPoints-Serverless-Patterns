@@ -1644,6 +1644,9 @@ arpResponseSweepNote: "Les blocages se lèvent d'eux-mêmes à l'échéance. Pou
   scNoFiles: "Aucun fichier dans ce chemin.",
   sbNotConfigured:
     "Storage Browser n'est pas configuré. Définissez s3ApAlias dans amplify/portal-config.ts, puis relancez npx ampx sandbox.",
+  sbUnavailableTitle: "Points d'accès inutilisables",
+  sbUnavailableDesc:
+    "Ils sont configurés mais ne peuvent pas servir les opérations de données, ils ne sont donc pas proposés comme emplacements. La raison provient de l'API FSx.",
   vhSnapshotFilterAria: "Filtre d'instantanés",
   vhVolumeSnapshotsAria: "Instantanés du volume",
   epRoSecurity: "Sécurité de l'accès en lecture seule",

@@ -1687,6 +1687,9 @@ arpResponseSweepNote: "ブロックは指定した期限が過ぎると自動で
   scNoFiles: "このパスにファイルがありません。",
   sbNotConfigured:
     "Storage Browser が未設定です。amplify/portal-config.ts に s3ApAlias を設定し、npx ampx sandbox を再実行してください。",
+  sbUnavailableTitle: "利用できないアクセスポイント",
+  sbUnavailableDesc:
+    "設定済みですが、現在データ操作に使えないため一覧に出していません。理由は FSx の API が返した内容です。",
   vhSnapshotFilterAria: "スナップショットの絞り込み",
   vhVolumeSnapshotsAria: "ボリュームのスナップショット",
   epRoSecurity: "読み取り専用アクセスの認証方式",

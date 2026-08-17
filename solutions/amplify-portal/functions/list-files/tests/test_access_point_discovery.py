@@ -46,11 +46,32 @@ def module() -> ModuleType:
     )
 
 
-def _attachment(alias: str, name: str, lifecycle: str = "AVAILABLE", vpc: str | None = None) -> dict:
+def _attachment(
+    alias: str,
+    name: str,
+    lifecycle: str = "AVAILABLE",
+    vpc: str | None = None,
+    volume_id: str = "fsvol-0123456789abcdef0",
+    reason: str = "",
+    file_system_key: str = "OntapConfiguration",
+) -> dict:
+    """One attachment as `DescribeS3AccessPointAttachments` returns it.
+
+    The volume config defaults to present and under `OntapConfiguration`, which is
+    the shape the live API returns for FSx for ONTAP (measured 2026-08-18). It used
+    to be omitted entirely, and that omission is why reading the OpenZFS key instead
+    went unnoticed: with no volume config at all, the correct key and the wrong key
+    both yield "" and an assertion on "" passes either way.
+    """
     access_point: dict = {"Alias": alias}
     if vpc:
         access_point["VpcConfiguration"] = {"VpcId": vpc}
-    return {"Name": name, "Lifecycle": lifecycle, "S3AccessPoint": access_point}
+    attachment: dict = {"Name": name, "Lifecycle": lifecycle, "S3AccessPoint": access_point}
+    if volume_id:
+        attachment[file_system_key] = {"VolumeId": volume_id}
+    if reason:
+        attachment["LifecycleTransitionReason"] = {"Message": reason}
+    return attachment
 
 
 def _fsx(pages: list[list[dict]]) -> MagicMock:
@@ -71,9 +92,55 @@ def test_default_alias_is_annotated_from_the_api(module: ModuleType) -> None:
             "name": "portal",
             "lifecycle": "AVAILABLE",
             "origin": "internet",
-            "volumeId": "",
+            "volumeId": "fsvol-0123456789abcdef0",
+            "reason": "",
         }
     ]
+
+
+def test_the_volume_id_comes_from_the_ontap_key(module: ModuleType) -> None:
+    """The regression that shipped: reading the OpenZFS key on an ONTAP attachment."""
+    pages = [[_attachment(DEFAULT_ALIAS, "portal", volume_id="fsvol-00000000000000001")]]
+    with patch.object(module.boto3, "client", return_value=_fsx(pages)):
+        result = module.handler({"action": "listAccessPoints", "groups": []}, None)
+
+    assert result["accessPoints"][0]["volumeId"] == "fsvol-00000000000000001"
+
+
+def test_an_openzfs_attachment_still_reports_its_volume(module: ModuleType) -> None:
+    """The other file system type is read as a fallback rather than ignored."""
+    pages = [
+        [
+            _attachment(
+                DEFAULT_ALIAS,
+                "portal",
+                volume_id="fsvol-00000000000000002",
+                file_system_key="OpenZFSConfiguration",
+            )
+        ]
+    ]
+    with patch.object(module.boto3, "client", return_value=_fsx(pages)):
+        result = module.handler({"action": "listAccessPoints", "groups": []}, None)
+
+    assert result["accessPoints"][0]["volumeId"] == "fsvol-00000000000000002"
+
+
+def test_a_failed_attachment_carries_the_api_reason(module: ModuleType) -> None:
+    """Without the reason the UI can only drop a broken alias without saying why.
+
+    The measured case: an attach onto an SVM that already runs a native ONTAP S3
+    server fails, and the attachment then sits FAILED indefinitely.
+    """
+    message = (
+        "Amazon FSx is unable to create an S3 access point because of an existing "
+        "ONTAP object storage server on SVM svm-0123456789abcdef0."
+    )
+    pages = [[_attachment(DEFAULT_ALIAS, "portal", lifecycle="FAILED", reason=message)]]
+    with patch.object(module.boto3, "client", return_value=_fsx(pages)):
+        result = module.handler({"action": "listAccessPoints", "groups": []}, None)
+
+    assert result["accessPoints"][0]["lifecycle"] == "FAILED"
+    assert result["accessPoints"][0]["reason"] == message
 
 
 def test_a_group_alias_comes_before_the_default(module: ModuleType) -> None:
@@ -137,6 +204,7 @@ def test_a_denied_describe_leaves_the_alias_usable(module: ModuleType) -> None:
             "isDefault": True,
             "name": "",
             "lifecycle": "UNKNOWN",
+            "reason": "",
             "origin": "",
             "volumeId": "",
         }

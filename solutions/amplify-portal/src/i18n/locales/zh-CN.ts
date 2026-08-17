@@ -1638,6 +1638,9 @@ arpResponseSweepNote: "阻止会在设定的期限过后自动解除。如需提
   scNoFiles: "此路径下没有文件。",
   sbNotConfigured:
     "Storage Browser 未配置。请在 amplify/portal-config.ts 中设置 s3ApAlias，然后重新运行 npx ampx sandbox。",
+  sbUnavailableTitle: "不可用的接入点",
+  sbUnavailableDesc:
+    "已配置但当前无法执行数据操作，因此未列为可选位置。原因来自 FSx API。",
   vhSnapshotFilterAria: "快照筛选",
   vhVolumeSnapshotsAria: "卷快照",
   epRoSecurity: "只读访问的安全方式",

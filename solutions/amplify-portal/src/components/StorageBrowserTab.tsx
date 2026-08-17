@@ -13,6 +13,7 @@
  *
  * Credentials come from Cognito Identity Pool (authenticated user).
  */
+import { useEffect, useState } from "react";
 import { createStorageBrowser, defaultActionConfigs } from "@aws-amplify/ui-react-storage/browser";
 import type { LocationData } from "@aws-amplify/ui-react-storage/browser";
 import "@aws-amplify/ui-react-storage/styles.css";
@@ -32,6 +33,8 @@ type DiscoveredAccessPoint = {
   lifecycle: string;
   origin: string;
   isDefault: boolean;
+  /** Why this lifecycle, straight from `DescribeS3AccessPointAttachments`. */
+  reason: string;
 };
 
 /**
@@ -145,8 +148,47 @@ const { StorageBrowser } = createStorageBrowser({
  * Delete: select files → delete
  * Copy: select file → copy to another location
  */
+/**
+ * Configured aliases that exist but cannot serve data operations.
+ *
+ * `discoverLocations` already drops these, correctly -- offering one produces an
+ * error the user cannot act on. Dropping them silently is the problem: two
+ * attachments sat `FAILED` for six weeks because nothing in the portal said an
+ * alias had stopped working, and the API had been returning the reason all along.
+ * Best effort, like the discovery it mirrors: a failed read leaves the notice
+ * empty rather than blocking the browser.
+ */
+function useUnavailableAccessPoints(): DiscoveredAccessPoint[] {
+  const [unavailable, setUnavailable] = useState<DiscoveredAccessPoint[]>([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const parsed = await fileQuery<{ accessPoints?: DiscoveredAccessPoint[] }>({
+          action: "listAccessPoints",
+        });
+        if (cancelled) return;
+        setUnavailable(
+          (parsed?.accessPoints ?? []).filter(
+            (ap) => ap.alias && ap.lifecycle !== "AVAILABLE" && ap.lifecycle !== "UNKNOWN"
+          )
+        );
+      } catch {
+        // Leave the notice empty; the browser itself does not depend on this.
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  return unavailable;
+}
+
 export function StorageBrowserTab() {
   const { t } = useTranslation();
+  const unavailable = useUnavailableAccessPoints();
   if (!s3ApAlias) {
     return (
       <div className="storage-browser-tab">
@@ -166,6 +208,22 @@ export function StorageBrowserTab() {
           {t("uploadDesc")}
         </p>
       </div>
+      {unavailable.length > 0 && (
+        <div className="storage-browser-unavailable" role="status">
+          <div>
+            <strong>{t("sbUnavailableTitle")}</strong>
+            <p>{t("sbUnavailableDesc")}</p>
+            <ul>
+              {unavailable.map((ap) => (
+                <li key={ap.alias}>
+                  <code>{ap.name || ap.alias}</code> — {ap.lifecycle}
+                  {ap.reason ? `: ${ap.reason}` : ""}
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+      )}
       <StorageBrowser />
     </div>
   );

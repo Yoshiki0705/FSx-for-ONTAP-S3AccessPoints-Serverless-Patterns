@@ -1644,6 +1644,9 @@ arpResponseSweepNote: "Los bloqueos se levantan por sí solos al vencer el plazo
   scNoFiles: "No se han encontrado archivos en esta ruta.",
   sbNotConfigured:
     "Storage Browser no está configurado. Defina s3ApAlias en amplify/portal-config.ts y vuelva a ejecutar npx ampx sandbox.",
+  sbUnavailableTitle: "Puntos de acceso no utilizables",
+  sbUnavailableDesc:
+    "Están configurados pero no pueden atender operaciones de datos, por lo que no se ofrecen como ubicaciones. El motivo lo devuelve la API de FSx.",
   vhSnapshotFilterAria: "Filtro de instantáneas",
   vhVolumeSnapshotsAria: "Instantáneas del volumen",
   epRoSecurity: "Seguridad del acceso de solo lectura",

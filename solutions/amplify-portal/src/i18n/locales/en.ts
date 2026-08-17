@@ -1677,6 +1677,9 @@ arpResponseSweepNote: "Blocks lift themselves once their expiry passes. To lift 
   scNoFiles: "No files found in this path.",
   sbNotConfigured:
     "Storage Browser is not configured. Set s3ApAlias in amplify/portal-config.ts, then re-run npx ampx sandbox.",
+  sbUnavailableTitle: "Access points that are not usable",
+  sbUnavailableDesc:
+    "These are configured but cannot serve data operations, so they are not offered as locations. The reason comes from the FSx API.",
   vhSnapshotFilterAria: "Snapshot filter",
   vhVolumeSnapshotsAria: "Volume snapshots",
   epRoSecurity: "Read-only access security",
