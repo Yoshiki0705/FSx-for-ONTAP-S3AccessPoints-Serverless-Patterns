@@ -23,7 +23,7 @@ classifiers = [
 ]
 
 dependencies = [
-    "boto3==1.43.68",
+    "boto3==1.43.73",
     "urllib3==2.7.0",
     # requirements.txt と同じ値に保つ。理由と検証内容はそちらのコメント参照。
     "jsonschema==4.26.0",
