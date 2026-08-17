@@ -4235,7 +4235,7 @@ def _get_ems_events(http, headers, event):
 # They were added for a cleanup problem they turn out not to solve, and the measured
 # limit is recorded here so the next attempt does not start from the same assumption.
 #
-# Attaching an FSx S3 access point creates a bucket on the ONTAP side named
+# Attaching an FSx for ONTAP S3 AP creates a bucket on the ONTAP side named
 # `amazon-fsx-<volume-id>`, and **removing the access point does not remove it**.
 # Measured 2026-08-17: after `detach-and-delete-s3-access-point` reported the
 # attachment gone, `deleteVolume` still failed with "because it is associated with
@@ -4250,7 +4250,7 @@ def _get_ems_events(http, headers, event):
 # have -- the ONTAP CLI's `vserver object-store-server bucket` commands.
 #
 # What these two actions do cover is ONTAP-native object-store buckets, which is
-# worth having: they are what makes an SVM unable to host an FSx S3 access point.
+# worth having: they are what makes an SVM unable to host an FSx for ONTAP S3 AP.
 
 
 def _list_object_store_buckets(http, headers, event):
@@ -4288,7 +4288,7 @@ def _list_object_store_buckets(http, headers, event):
                 "svmUuid": b.get("svm", {}).get("uuid", ""),
                 "volumeName": bucket_volume,
                 # "nas" for a bucket backed by a volume's namespace, which is what an
-                # FSx S3 access point creates. An ONTAP-native S3 bucket reads "s3".
+                # FSx for ONTAP S3 AP creates. An ONTAP-native S3 bucket reads "s3".
                 "type": b.get("type", ""),
                 "sizeBytes": b.get("size", 0),
             }

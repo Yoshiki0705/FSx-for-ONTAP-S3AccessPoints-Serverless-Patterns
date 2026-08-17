@@ -771,7 +771,7 @@ class TestUnmountVolume:
 class TestObjectStoreBuckets:
     """ONTAP's own buckets, which are not the account's AWS S3 buckets.
 
-    Attaching an FSx S3 access point creates one of these, and removing the access
+    Attaching an FSx for ONTAP S3 AP creates one of these, and removing the access
     point does not remove it -- measured 2026-08-17, where `deleteVolume` kept failing
     with "associated with the following object store NAS buckets" after the attachment
     was gone. Without these two actions the portal could create a volume it could not
