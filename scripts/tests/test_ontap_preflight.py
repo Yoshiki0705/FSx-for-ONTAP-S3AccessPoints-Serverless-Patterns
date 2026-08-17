@@ -317,7 +317,7 @@ class TestItReadsTheRealConfigShape:
     """The first version of the parser read none of these four.
 
     It required a quote immediately after the colon. The actual file assigns
-    `ontapMgmtIp: process.env.ONTAP_MGMT_IP || "172.30.131.210"`, so every value came
+    `ontapMgmtIp: process.env.ONTAP_MGMT_IP || "10.0.0.1"`, so every value came
     back absent and the preflight would have reported an unconfigured deployment on a
     configured one -- a new wrong answer in place of the old one.
     """
@@ -331,7 +331,7 @@ class TestItReadsTheRealConfigShape:
     }
 
     export const config: PortalConfig = {
-      ontapMgmtIp: process.env.ONTAP_MGMT_IP || "172.30.131.210",
+      ontapMgmtIp: process.env.ONTAP_MGMT_IP || "10.0.0.1",
       ontapSecretName: process.env.ONTAP_SECRET_NAME || "fsx-ontap-fsxadmin-credentials",
       ontapSvmName: process.env.ONTAP_SVM_NAME || "fsxsvm01",
       ontapVolumeName: process.env.ONTAP_VOLUME_NAME || "vol1",
@@ -340,7 +340,7 @@ class TestItReadsTheRealConfigShape:
 
     def test_it_takes_the_fallback_and_not_the_type_declaration(self):
         assert parse_portal_config(self.SOURCE) == {
-            "ontapMgmtIp": "172.30.131.210",
+            "ontapMgmtIp": "10.0.0.1",
             "ontapSecretName": "fsx-ontap-fsxadmin-credentials",
             "ontapSvmName": "fsxsvm01",
             "ontapVolumeName": "vol1",

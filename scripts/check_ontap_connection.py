@@ -124,7 +124,7 @@ def parse_portal_config(text: str) -> dict[str, str]:
 
     Two shapes have to be read. The interface declares `ontapMgmtIp: string;`, which
     carries no value, and the config assigns
-    `ontapMgmtIp: process.env.ONTAP_MGMT_IP || "172.30.131.210"`, where the value is the
+    `ontapMgmtIp: process.env.ONTAP_MGMT_IP || "10.0.0.1"`, where the value is the
     fallback. So the pattern takes the first quoted literal after the key on the same
     statement, and the declaration -- having none before its semicolon -- is skipped
     rather than read as an empty value. The environment variable wins at deploy time; if

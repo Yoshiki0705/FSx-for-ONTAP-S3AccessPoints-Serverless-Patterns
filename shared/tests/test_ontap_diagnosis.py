@@ -118,9 +118,9 @@ class TestUnreachable:
     """No response at all -- the only class the original advice was written for."""
 
     def test_an_exception_names_the_layer_to_check(self):
-        diagnosis = diagnose_exception(TimeoutError("timed out"), mgmt_ip="172.30.131.210")
+        diagnosis = diagnose_exception(TimeoutError("timed out"), mgmt_ip="10.0.0.1")
         assert diagnosis.failure is OntapFailure.UNREACHABLE
-        assert "172.30.131.210" in diagnosis.message
+        assert "10.0.0.1" in diagnosis.message
         assert "TCP/443" in diagnosis.message
 
     def test_the_exception_type_is_reported(self):

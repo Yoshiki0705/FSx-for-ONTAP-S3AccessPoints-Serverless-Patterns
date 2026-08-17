@@ -95,7 +95,7 @@ inline 方式は同期 API の上限（5 MB）に収まる必要がある。`S3A
 
 - `Internet`: Accessible from anywhere with valid credentials.
   - ⚠️ ここには以前「NOT via S3 Gateway VPC Endpoint」と書いていたが、2026-08-12 の実測と
-    整合しない。NAT を撤去済みでパブリック IP を持たない VPC Lambda（`subnet-0dc75edfe8650bf44`）
+    整合しない。NAT を撤去済みでパブリック IP を持たない VPC Lambda（`subnet-0123456789abcdef0`）
     から Internet-origin AP への ListObjectsV2 / PutObject が成功した。この subnet の主ルート
     テーブルには S3 ゲートウェイエンドポイントが紐づいており、他に外向き経路が無い。
     **パケット経路を直接観測したわけではない**ので断定はしないが、「ゲートウェイエンドポイント
