@@ -357,6 +357,53 @@ aws fsx delete-volume --region "$REGION" --volume-id "<fsvol-id>" \
     --ontap-configuration '{"SkipFinalBackup":true}'
 ```
 
+### Still refused after the attachment is gone
+
+```
+Cannot delete volume "<name>" in SVM "<svm>" because it is associated with the
+following object store NAS buckets: "amazon-fsx-<fsvol-id>"
+```
+
+Attaching creates an ONTAP-side bucket named `amazon-fsx-<volume-id>`, and it
+outlives the access point. `describe-s3-access-point-attachments` reports no
+attachment while `DeleteVolume` still names the bucket.
+
+**Wait and retry — the association clears on its own.** Measured: refused
+2026-08-17, then deleted in 60-90 seconds on 2026-08-18 with no ONTAP CLI
+involved. How long it takes was not measured; that is one observation, roughly a
+day, so retry on a schedule rather than treating any interval as the number.
+
+Two things not to do. Do not go looking for `vserver object-store-server bucket
+delete`: cluster SSH is not needed for this. Do not use `GET
+/protocols/s3/buckets` to check whether the bucket is gone — it never lists
+these NAS buckets, and it can answer `401 User is not authorized.` to the FSx
+`fsxadmin` account, so an empty result is not evidence either way.
+
+### A FAILED attachment is not cleaned up for you
+
+An attach that fails leaves the attachment in `FAILED` **indefinitely**, and it
+keeps its remnant bucket. Two of them sat `FAILED` for six weeks here before
+anyone looked, because nothing surfaces them: the portal drops non-`AVAILABLE`
+aliases from the location list, correctly, and until 2026-08-18 it dropped them
+without saying why.
+
+`detach-and-delete-s3-access-point` works on a `FAILED` attachment, takes about
+30 seconds, and removes the S3-side access point as well (`aws s3control
+list-access-points` shows no leftover afterwards).
+
+Include this in a periodic check, since no alarm covers it:
+
+```bash
+aws fsx describe-s3-access-point-attachments --region "$REGION" \
+    --query "S3AccessPointAttachments[?Lifecycle!='AVAILABLE'].[Name,Lifecycle]" \
+    --output table
+```
+
+The most common cause of the failure itself is attaching onto an SVM that
+already runs a native ONTAP S3 server, which reports
+`existing ONTAP object storage server on SVM <svm-id>`. An SVM cannot host both,
+so pick a different SVM rather than retrying.
+
 ### Affected patterns
 
 UC29 (`uc29-ai-knowledge-smb`), UC30 (`uc30-quick-workspace-smb`), and any

@@ -2439,6 +2439,31 @@ button[type="submit"]:disabled {
   color: var(--color-text-secondary);
 }
 
+/* Configured access points that exist but cannot serve data operations. Uses the
+   existing warning tokens, which are defined for both themes, so this adds no new
+   token that a theme could be missing. */
+.storage-browser-unavailable {
+  display: flex;
+  gap: 0.75rem;
+  padding: 0.55rem 0.75rem;
+  margin: 0.75rem 0;
+  font-size: 0.85rem;
+  line-height: 1.5;
+  border: 1px solid var(--color-warning);
+  border-radius: 6px;
+  background: var(--color-warning-bg);
+}
+
+.storage-browser-unavailable p {
+  margin: 0.25rem 0 0.35rem;
+  color: var(--color-text-secondary);
+}
+
+.storage-browser-unavailable ul {
+  margin: 0;
+  padding-left: 1.1rem;
+}
+
 /* ===== Mobile Responsive (C-5) ===== */
 
 /* Tablet: 768px and below */

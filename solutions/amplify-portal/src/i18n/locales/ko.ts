@@ -1675,6 +1675,9 @@ arpResponseSweepNote: "차단은 지정한 기한이 지나면 자동으로 해�
   scNoFiles: "이 경로에 파일이 없습니다.",
   sbNotConfigured:
     "Storage Browser가 설정되지 않았습니다. amplify/portal-config.ts에 s3ApAlias를 설정한 후 npx ampx sandbox를 다시 실행하십시오.",
+  sbUnavailableTitle: "사용할 수 없는 액세스 포인트",
+  sbUnavailableDesc:
+    "구성되어 있지만 현재 데이터 작업에 사용할 수 없어 목록에 표시하지 않습니다. 이유는 FSx API가 반환한 내용입니다.",
   vhSnapshotFilterAria: "스냅샷 필터",
   vhVolumeSnapshotsAria: "볼륨 스냅샷",
   epRoSecurity: "읽기 전용 액세스 보안",

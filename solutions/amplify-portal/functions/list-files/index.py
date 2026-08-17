@@ -95,8 +95,9 @@ def _list_access_points(user_groups: list[str]) -> dict:
         user_groups: The caller's Cognito groups.
 
     Returns:
-        `accessPoints`, one record per alias with name, lifecycle, origin and
-        volumeId where known, and `discoveryError` when annotation failed.
+        `accessPoints`, one record per alias with name, lifecycle, origin,
+        volumeId and the API's reason for a non-usable lifecycle, plus
+        `discoveryError` when annotation failed.
     """
     aliases = _aliases_for(user_groups)
     if not aliases:
@@ -116,13 +117,28 @@ def _list_access_points(user_groups: list[str]) -> dict:
                 if not alias:
                     continue
                 vpc = access_point.get("VpcConfiguration") or {}
+                # An FSx for ONTAP attachment carries `OntapConfiguration`, and that
+                # is the only per-file-system key it has: measured 2026-08-18, the
+                # attachment keys are CreationTime, Lifecycle, Name, OntapConfiguration,
+                # S3AccessPoint, Type. This read `OpenZFSConfiguration`, which is the
+                # key for the other file system type, so `volumeId` was empty for every
+                # attachment this portal has ever discovered. The test fixture never
+                # supplied a volume config at all, so the wrong key and the right key
+                # both produced "" and the assertion locked in the empty value.
+                file_system = attachment.get("OntapConfiguration") or attachment.get("OpenZFSConfiguration") or {}
                 found[alias] = {
                     "name": attachment.get("Name") or "",
                     "lifecycle": attachment.get("Lifecycle") or "UNKNOWN",
                     # No VPC configuration means Internet-origin, which is what a
                     # browser needs; a VPC id means the caller has to be inside it.
                     "origin": vpc.get("VpcId") or "internet",
-                    "volumeId": (attachment.get("OpenZFSConfiguration") or {}).get("VolumeId") or "",
+                    "volumeId": file_system.get("VolumeId") or "",
+                    # Why an alias is not usable, straight from the API. Without it the
+                    # UI can only drop a broken alias silently, which is how two FAILED
+                    # attachments sat unnoticed for six weeks: the reason existed in
+                    # `DescribeS3AccessPointAttachments` the whole time and was thrown
+                    # away here.
+                    "reason": (attachment.get("LifecycleTransitionReason") or {}).get("Message") or "",
                 }
     except (ClientError, BotoCoreError) as exc:
         logger.warning("access point discovery failed: %s", exc)
@@ -133,7 +149,10 @@ def _list_access_points(user_groups: list[str]) -> dict:
             {
                 "alias": alias,
                 "isDefault": alias == DEFAULT_AP_ALIAS,
-                **found.get(alias, {"name": "", "lifecycle": "UNKNOWN", "origin": "", "volumeId": ""}),
+                **found.get(
+                    alias,
+                    {"name": "", "lifecycle": "UNKNOWN", "origin": "", "volumeId": "", "reason": ""},
+                ),
             }
             for alias in aliases
         ],

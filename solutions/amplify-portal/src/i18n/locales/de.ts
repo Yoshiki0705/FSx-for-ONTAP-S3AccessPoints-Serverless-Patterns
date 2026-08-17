@@ -1682,6 +1682,9 @@ arpResponseSweepNote: "Sperren heben sich nach Ablauf der Frist selbst auf. Für
   scNoFiles: "In diesem Pfad wurden keine Dateien gefunden.",
   sbNotConfigured:
     "Storage Browser ist nicht konfiguriert. Setzen Sie s3ApAlias in amplify/portal-config.ts und führen Sie npx ampx sandbox erneut aus.",
+  sbUnavailableTitle: "Nicht nutzbare Access Points",
+  sbUnavailableDesc:
+    "Sie sind konfiguriert, können aber keine Datenoperationen ausführen und werden daher nicht als Speicherorte angeboten. Die Begründung stammt aus der FSx-API.",
   vhSnapshotFilterAria: "Snapshot-Filter",
   vhVolumeSnapshotsAria: "Volume-Snapshots",
   epRoSecurity: "Sicherheit für Lesezugriff",

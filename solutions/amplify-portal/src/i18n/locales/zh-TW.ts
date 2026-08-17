@@ -1672,6 +1672,9 @@ arpResponseSweepNote: "封鎖會在設定的期限過後自動解除。如需提
   scNoFiles: "此路徑下沒有檔案。",
   sbNotConfigured:
     "Storage Browser 未設定。請在 amplify/portal-config.ts 中設定 s3ApAlias，然後重新執行 npx ampx sandbox。",
+  sbUnavailableTitle: "無法使用的存取點",
+  sbUnavailableDesc:
+    "已設定但目前無法執行資料操作，因此未列為可選位置。原因來自 FSx API。",
   vhSnapshotFilterAria: "快照篩選",
   vhVolumeSnapshotsAria: "磁碟區快照",
   epRoSecurity: "唯讀存取的安全方式",
