@@ -182,11 +182,62 @@ schedule was not waited out.
 > Side effect: the guard matches on shell command text, so editing a file whose contents mention the
 > mode is blocked too. Dedicated editing tools go through.
 
+### Added 2026-08-16 to 17 (C8 / C9: WORM commit, deletion block, deletion through an S3 access point, mount management)
+
+**An NFS client (t3.micro / AL2023) was stood up inside the VPC, so files were committed to WORM for
+the first time.** The volumes used were `zz_sl_worm` (fsxsvm01, compliance, min `PT0S` / default
+`PT5M` / max `PT1H`, 20 GiB) and `zz_sl_s3ap` (fsxsvm02, compliance, min `PT0S` / default `PT5M` /
+max `PT5M`, 20 GiB). A five-minute retention expires in minutes, after which the volume is deletable.
+
+| Feature | What was confirmed |
+|---------|--------------------|
+| **Committing to WORM (NFS)** | `chmod a-w` produces `-r--r--r--`, and **the atime carries the expiry** |
+| **The expiry is computed on the compliance clock** | A file committed at wall clock `03:37:33Z` expired at `03:42:14Z`. With a five-minute default, the clock read `03:37:14` at commit — **about 19 seconds behind the wall clock**. The same gap appeared on the second volume |
+| Operations refused after the commit (NFS) | Overwrite (`>`), `rm`, `chmod u+w`, `truncate` and `mv` all returned rc=1. Reads succeed |
+| **Writes that do not truncate return success and are silently discarded** | `>>` returned rc=0, and so did Python's `open('a').write()` and `open('r+').write()`. Size 29 and the md5 were unchanged. Only `dd` surfaced it, at `close()`, as `Read-only file system` (EROFS). **To an application, the write succeeded and vanished** |
+| **Deleting a volume that holds an unexpired WORM file** | `deleteVolume` fails inside its job and states the reason (`The volume has unexpired WORM files or ...`). Unlike the AWS FSx API's silent success, ONTAP REST says why |
+| **A refused delete strands the volume** | The delete runs unmount → offline → delete, and the first two steps succeed before the third is refused. The result is `nas.path` cleared and the state offline, unreachable by any client. `bringVolumeOnline` deliberately does not remount |
+| Expiry enumeration while offline | `listExpiredRetention` returns `clockSource: "unavailable"` and refuses to judge, which is by design. But it means **a refused delete blinds the expiry enumeration** |
+| **`retention.maximum` bounds only what the commit assigns** | Measured in two stages. **Before** the commit, setting the atime one minute past the maximum (+6 minutes on a `PT5M` volume) and then running `chmod a-w` returns rc=0, but the resulting expiry is the five-minute default — **the requested value does not survive** (it matched a file committed with no atime set at all). **After** the commit, the same +6 minute extension returns rc=0 and **moves the expiry one minute past the maximum.** That is the same behaviour as the +70 minutes accepted on a `PT1H` volume, confirmed here with a far smaller margin. Shortening returns rc=1. **So the maximum is a ceiling on the commit, not on later extensions** |
+| **After expiry (NFS)** | `rm` succeeds. But **overwrite is still refused** and the mode stays `-r--r--r--`. **Expiry permits deletion; it does not turn the file back into an ordinary file** |
+| **An S3 access point attaches to a SnapLock volume** | `CreateAndAttachS3AccessPoint` on `zz_sl_s3ap` reached `AVAILABLE` in about 15 seconds. SnapLock is not an obstacle to attaching |
+| **An SVM with an ONTAP S3 server cannot host one** | On fsxsvm01 it went `FAILED` with `existing ONTAP object storage server on SVM ...`. **A native ONTAP S3 server and an FSx S3 access point do not coexist on one SVM** |
+| **A junction set through ONTAP REST is not immediately visible to the FSx API** | An attach issued right after mounting failed with `the volume is not mounted`, and `describe-volumes` reported `JunctionPath` as null for over five minutes. `update-volume` with `JunctionPath` **returned success and changed nothing** (a silent no-op). The value converged later; whether that was the `update-volume` call or ordinary sync was not established. **The error message names the wrong cause** |
+| Writing and listing through the access point | `PutObject`, `ListObjectsV2` and `GetObject` all succeed. The `StorageClass` is `FSX_ONTAP` |
+| **Deleting and overwriting through the access point before expiry** | `DeleteObject` and `PutObject` (overwrite) both return `AccessDenied`. `GetObject` succeeds and the ETag is unchanged |
+| **Deleting through the access point after expiry** | `DeleteObject` **succeeds**, and the object disappears from the listing and from the file system. **Overwrite is still `AccessDenied` after expiry**, matching the NFS behaviour |
+| **The refusal does not name its cause** | The access point refuses with `AccessDenied ... Access Denied` and **no mention of WORM or retention.** It is indistinguishable from a permissions problem, so the first thing to check is the file's WORM state rather than the policy |
+| **`listExpiredRetention` against real WORM data** | `expired` held the now-expired `zz_sl_s3ap`, `pending` held the audit log volume expiring 2027-02-06, and `clockSource` was `"ontap"`. Only the clock-unavailable response had been confirmed before |
+
+> **The cleanup is not finished.** Every WORM file was allowed to expire and then
+> removed, but `zz_sl_worm` and `zz_sl_s3ap` both remain. **Detaching and deleting the
+> S3 access point leaves the ONTAP-side `amazon-fsx-<volume-id>` bucket behind**, and
+> `deleteVolume` fails naming it (while the FSx side reports no attachment at all). An
+> attach that went `FAILED` leaves the same remnant, still there a day later.
+> **`GET /protocols/s3/buckets` does not report these NAS buckets** — the collection
+> was empty on the SVM whose volume had just refused, and on an SVM running a native
+> ONTAP S3 server it returned only that server's three `type: s3` buckets. Removing
+> them needs the ONTAP CLI's `vserver object-store-server bucket` commands.
+> **This is not a WORM lock, so they are removable.** Both volumes are offline with
+> their junctions cleared, and their 20 GiB sits inside the provisioned SSD, so
+> nothing is being charged for them.
+
+### Added 2026-08-17 (mount management: `mountVolume` / `unmountVolume` / `getVolumeMountInfo`)
+
+**The "online but unmounted" state a refused delete leaves behind can now be reversed from the
+portal.** `bringVolumeOnline` undid the offline step, and nothing could put the junction back.
+
+| Feature | What was confirmed |
+|---------|--------------------|
+| The `bringVolumeOnline` → `mountVolume` round trip | `zz_sl_worm`, stranded by a refused delete, was brought online and remounted at `/zz_sl_worm`. **This route did not exist before** |
+| Remounting a volume that is already mounted | Refused, naming the current path (`already mounted at "/zz_sl_worm"`), so moving a junction is never a side effect |
+| `getVolumeMountInfo` | Returns the data LIFs (only those carrying `data_nfs`), `cifsServerName`, `cifsDomain`, and `nfsReady` / `smbReady`. The management LIF is not offered |
+| The proposed path when unmounted | `suggestedPath` returns `/<volume name>`, which the UI uses as the initial value |
+
 ### Still unconfirmed (SnapLock)
 
 | Item | Why |
 |------|------------|
-| Committing a file to WORM, and the deletion block that follows | Making a file read-only needs an NFS or SMB client; it cannot be committed through the S3 Access Point. Waiting on a client inside the VPC |
 | Privileged delete on an enterprise volume | It requires an audit log volume, and that blocks deletion of the volume, then the SVM, then the file system for **at least six months**. The AWS API has no field for the audit log's retention, so the six-month default applies. **There is no way to shorten it, so it is not run** |
 
 ## Live read (write paths not confirmed)

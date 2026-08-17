@@ -67,6 +67,8 @@
 | [SaaS → FSx for ONTAP migration and integration (EN)](en/saas-to-fsx-ontap-migration.md) | English version: the group test for DataSync coverage, tenant-wide admin APIs, the three mappings, and the no-migration path |
 | [SnapLock Audit Log Retention FR (JA)](aws-feature-requests/snaplock-audit-log-retention.md) | SL-1〜SL-3: 監査ログ保持期間の指定手段、無言で失敗する `DeleteVolume`、`AuditLogVolume` の表示と実態の不一致 |
 | [SnapLock Audit Log Retention FR (EN)](aws-feature-requests/snaplock-audit-log-retention.en.md) | English version of SL-1 to SL-3 |
+| [監査ログボリューム — コンソールでの操作ポイント (JA)](ja/snaplock-audit-log-console-guardrails.md) | 実画面 3 枚。作成画面の警告が「ボリュームまで」で SVM とファイルシステムに触れないこと、保持期間の 3 欄が WORM ファイル用で監査ログの指定欄が無いこと、詰まった後に読むべきは `ライフサイクル移行メッセージ` であること、満了日時の読み方、AWS サポートの回答 |
+| [Audit log volumes — console operating points (EN)](en/snaplock-audit-log-console-guardrails.md) | English version: what the console warning covers and does not, the three retention fields, the one field that carries the reason |
 | [S3 Bucket User Guide](s3-bucket-user-guide.md) | Standard S3 vs FSx for ONTAP S3 AP differences |
 | [Bedrock Inference Profiles](bedrock-inference-profiles.md) | Nova/Claude on-demand requirement, IAM (foundation-model + inference-profile), data residency, CI enforcement |
 | [AD-Joined SVM S3 AP Prerequisites](en/ad-joined-svm-s3ap-prerequisites.md) | AD DC reachability, Internet-origin AP + VPC-external Lambda, same-account policy |
