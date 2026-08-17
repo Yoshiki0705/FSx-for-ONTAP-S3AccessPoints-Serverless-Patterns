@@ -194,16 +194,27 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y tesseract-ocr tesseract-ocr-jpn
           pip install pillow pytesseract
+      # BLOCKING when the list is unavailable. Measured 2026-08-17: this job had never
+      # compared an image against a single string. The secret was never configured, so
+      # the step below fell back to _sensitive_strings.py.example, whose
+      # SENSITIVE_STRINGS is an empty tuple. The scanner dutifully reported
+      # "No leaks detected" for 460 images and exited 0, and the check had been green
+      # since 2026-05-13 on that basis -- including on 2026-06-06, when three
+      # screenshots carrying a real AWS account id were committed. They stayed in the
+      # public repository for ten weeks behind a green check.
+      #
+      # A substitute that cannot fail is worse than no check: it produces the evidence
+      # of safety without the safety. If the list is missing the job now fails, because
+      # "we could not look" must not render as "we looked and it was fine".
       - name: Materialise sensitive strings from secret
         env:
           SENSITIVE_STRINGS_PY: ${{ secrets.SENSITIVE_STRINGS_PY }}
         run: |
           if [ -z "$SENSITIVE_STRINGS_PY" ]; then
-            echo "SENSITIVE_STRINGS_PY secret not configured — using example (no-op) file."
-            cp scripts/_sensitive_strings.py.example scripts/_sensitive_strings.py
-          else
-            printf '%s' "$SENSITIVE_STRINGS_PY" > scripts/_sensitive_strings.py
+            echo "::error::SENSITIVE_STRINGS_PY secret is not configured, so this job cannot verify anything. Set it with: gh secret set SENSITIVE_STRINGS_PY < scripts/_sensitive_strings.py"
+            exit 1
           fi
+          printf '%s' "$SENSITIVE_STRINGS_PY" > scripts/_sensitive_strings.py
       - name: Run sensitive-leak scan
         run: python3 scripts/_check_sensitive_leaks.py
 
