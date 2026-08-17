@@ -593,6 +593,502 @@ class TestBringVolumeOnline:
         assert all("nas" not in b for b in bodies)
 
 
+class TestMountVolume:
+    """Putting a junction path back, which nothing could do before.
+
+    `bringVolumeOnline` deliberately does not remount, and the delete's first step
+    clears the junction. So a refused delete -- measured on a SnapLock volume holding
+    an unexpired WORM file -- left the volume online, unmounted and unreachable, with
+    no way back through the portal. These cases pin the two failure modes that would
+    make the new action report a mount that clients cannot use.
+    """
+
+    @pytest.fixture(autouse=True)
+    def _secrets(self, mock_secrets):
+        """Every case here reaches ONTAP."""
+
+    def test_requires_a_uuid(self):
+        from handler import handler
+
+        with patch("handler.urllib3.PoolManager") as mock_pool:
+            mock_pool.return_value = MockHttp()
+            result = handler({"action": "mountVolume", "junctionPath": "/vol1"}, None)
+
+        assert result["success"] is False
+        assert "volumeUuid" in result["error"]
+
+    def test_requires_a_path(self):
+        from handler import handler
+
+        with patch("handler.urllib3.PoolManager") as mock_pool:
+            mock_pool.return_value = MockHttp()
+            result = handler({"action": "mountVolume", "volumeUuid": "uuid-1"}, None)
+
+        assert result["success"] is False
+        assert "junctionPath" in result["error"]
+
+    @pytest.mark.parametrize(
+        ("path", "reason"),
+        [
+            ("vol1", "absolute"),
+            ("/", "root"),
+            ("/a/../b", ".."),
+            ("/vol1/", "slash"),
+        ],
+    )
+    def test_refuses_a_path_ontap_would_reject_later(self, path, reason):
+        """Refused before the PATCH, so the failure names the path rather than a job.
+
+        ONTAP rejects each of these too, but only after the caller has been told the
+        mount was requested, and its message for "/" reports an internal error rather
+        than the reason.
+        """
+        from handler import handler
+
+        http = MockHttp()
+        with patch("handler.urllib3.PoolManager") as mock_pool:
+            mock_pool.return_value = http
+            result = handler({"action": "mountVolume", "volumeUuid": "uuid-1", "junctionPath": path}, None)
+
+        assert result["success"] is False, reason
+        assert http.calls == [], "the cluster was asked about a path that could not work"
+
+    def test_mounts_an_online_unmounted_volume(self):
+        from handler import handler
+
+        http = MockHttp({"/storage/volumes/uuid-1": {"data": {"name": "vol1", "state": "online", "nas": {}}}})
+        with patch("handler.urllib3.PoolManager") as mock_pool:
+            mock_pool.return_value = http
+            result = handler(
+                {
+                    "action": "mountVolume",
+                    "volumeUuid": "uuid-1",
+                    "junctionPath": "/vol1",
+                    "volumeName": "vol1",
+                },
+                None,
+            )
+
+        assert result["success"] is True
+        assert result["junctionPath"] == "/vol1"
+        method, url, kwargs = http.find("PATCH", "/storage/volumes/uuid-1")
+        assert json.loads(kwargs["body"]) == {"nas": {"path": "/vol1"}}
+
+    def test_refuses_an_offline_volume(self):
+        """A junction on an offline volume is a mount no client can use.
+
+        The PATCH succeeds on an offline volume, so without this the panel would
+        report success and the operator would be left with an unreachable path --
+        the false success this handler removes elsewhere.
+        """
+        from handler import handler
+
+        http = MockHttp({"/storage/volumes/uuid-1": {"data": {"name": "vol1", "state": "offline", "nas": {}}}})
+        with patch("handler.urllib3.PoolManager") as mock_pool:
+            mock_pool.return_value = http
+            result = handler(
+                {"action": "mountVolume", "volumeUuid": "uuid-1", "junctionPath": "/vol1"},
+                None,
+            )
+
+        assert result["success"] is False
+        assert "offline" in result["error"]
+        assert not [c for c in http.calls if c[0] == "PATCH"]
+
+    def test_refuses_to_move_a_mounted_volume_silently(self):
+        """Moving a junction disconnects clients, so it is not a side effect of mounting."""
+        from handler import handler
+
+        http = MockHttp(
+            {"/storage/volumes/uuid-1": {"data": {"name": "vol1", "state": "online", "nas": {"path": "/old"}}}}
+        )
+        with patch("handler.urllib3.PoolManager") as mock_pool:
+            mock_pool.return_value = http
+            result = handler(
+                {"action": "mountVolume", "volumeUuid": "uuid-1", "junctionPath": "/new"},
+                None,
+            )
+
+        assert result["success"] is False
+        assert "/old" in result["error"]
+        assert not [c for c in http.calls if c[0] == "PATCH"]
+
+
+class TestUnmountVolume:
+    """Removing a junction path as the operation, not as a step inside a delete."""
+
+    @pytest.fixture(autouse=True)
+    def _secrets(self, mock_secrets):
+        """Every case here reaches ONTAP."""
+
+    def test_requires_confirmation(self):
+        from handler import handler
+
+        http = MockHttp()
+        with patch("handler.urllib3.PoolManager") as mock_pool:
+            mock_pool.return_value = http
+            result = handler({"action": "unmountVolume", "volumeUuid": "uuid-1"}, None)
+
+        assert result["success"] is False
+        assert "confirm=true" in result["error"]
+        assert http.calls == []
+
+    def test_clears_the_path(self):
+        from handler import handler
+
+        http = MockHttp({"/storage/volumes/uuid-1": {"data": {"nas": {"path": "/vol1"}}}})
+        with patch("handler.urllib3.PoolManager") as mock_pool:
+            mock_pool.return_value = http
+            result = handler(
+                {"action": "unmountVolume", "volumeUuid": "uuid-1", "volumeName": "vol1", "confirm": True},
+                None,
+            )
+
+        assert result["success"] is True
+        assert result["previousPath"] == "/vol1"
+        assert result["alreadyUnmounted"] is False
+        method, url, kwargs = http.find("PATCH", "/storage/volumes/uuid-1")
+        assert json.loads(kwargs["body"]) == {"nas": {"path": ""}}
+
+    def test_an_already_unmounted_volume_is_a_distinct_answer(self):
+        """Not a silent success: the operator is deciding what to do about this row.
+
+        `_unmount_if_mounted` reports only whether a delete may continue, so it treats
+        this as nothing to do. Here it is the answer.
+        """
+        from handler import handler
+
+        http = MockHttp({"/storage/volumes/uuid-1": {"data": {"nas": {}}}})
+        with patch("handler.urllib3.PoolManager") as mock_pool:
+            mock_pool.return_value = http
+            result = handler({"action": "unmountVolume", "volumeUuid": "uuid-1", "confirm": True}, None)
+
+        assert result["success"] is True
+        assert result["alreadyUnmounted"] is True
+        assert not [c for c in http.calls if c[0] == "PATCH"]
+
+
+class TestObjectStoreBuckets:
+    """ONTAP's own buckets, which are not the account's AWS S3 buckets.
+
+    Attaching an FSx for ONTAP S3 AP creates one of these, and removing the access
+    point does not remove it -- measured 2026-08-17, where `deleteVolume` kept failing
+    with "associated with the following object store NAS buckets" after the attachment
+    was gone. Without these two actions the portal could create a volume it could not
+    delete and show nothing that explained why.
+    """
+
+    @pytest.fixture(autouse=True)
+    def _secrets(self, mock_secrets):
+        """Every case here reaches ONTAP."""
+
+    def test_lists_buckets_for_the_svm(self):
+        from handler import handler
+
+        http = MockHttp(
+            {
+                "/protocols/s3/buckets": {
+                    "data": {
+                        "records": [
+                            {
+                                "name": "amazon-fsx-fsvol-1",
+                                "uuid": "b-1",
+                                "svm": {"name": "svm1", "uuid": "s-1"},
+                                "volume": {"name": "vol1"},
+                                "type": "nas",
+                            }
+                        ]
+                    }
+                }
+            }
+        )
+        with patch("handler.urllib3.PoolManager") as mock_pool:
+            mock_pool.return_value = http
+            result = handler({"action": "listObjectStoreBuckets", "userId": "u"}, None)
+
+        assert result["count"] == 1
+        assert result["buckets"][0]["name"] == "amazon-fsx-fsvol-1"
+        assert result["buckets"][0]["volumeName"] == "vol1"
+
+    def test_narrows_to_one_volume(self):
+        """The caller's question is which buckets belong to the volume that refused."""
+        from handler import handler
+
+        http = MockHttp(
+            {
+                "/protocols/s3/buckets": {
+                    "data": {
+                        "records": [
+                            {"name": "for-vol1", "uuid": "b-1", "volume": {"name": "vol1"}},
+                            {"name": "for-vol2", "uuid": "b-2", "volume": {"name": "vol2"}},
+                        ]
+                    }
+                }
+            }
+        )
+        with patch("handler.urllib3.PoolManager") as mock_pool:
+            mock_pool.return_value = http
+            result = handler({"action": "listObjectStoreBuckets", "userId": "u", "volumeName": "vol2"}, None)
+
+        assert [b["name"] for b in result["buckets"]] == ["for-vol2"]
+
+    def test_delete_requires_a_name(self):
+        from handler import handler
+
+        with patch("handler.urllib3.PoolManager") as mock_pool:
+            mock_pool.return_value = MockHttp()
+            result = handler({"action": "deleteObjectStoreBucket", "userId": "u", "confirm": True}, None)
+
+        assert result["success"] is False
+        assert "name" in result["error"]
+
+    def test_delete_requires_confirmation(self):
+        from handler import handler
+
+        http = MockHttp()
+        with patch("handler.urllib3.PoolManager") as mock_pool:
+            mock_pool.return_value = http
+            result = handler({"action": "deleteObjectStoreBucket", "userId": "u", "name": "b"}, None)
+
+        assert result["success"] is False
+        assert "confirm=true" in result["error"]
+        assert http.calls == [], "the cluster was asked about a delete that was going to be refused"
+
+    def test_delete_resolves_both_uuids_from_the_name(self):
+        """The operator reads a bucket name out of a failure, not a pair of UUIDs."""
+        from handler import handler
+
+        http = MockHttp(
+            {
+                "/protocols/s3/buckets": {
+                    "data": {
+                        "records": [
+                            {
+                                "name": "amazon-fsx-fsvol-1",
+                                "uuid": "b-1",
+                                "svm": {"uuid": "s-1"},
+                                "volume": {"name": "vol1"},
+                            }
+                        ]
+                    }
+                }
+            }
+        )
+        with patch("handler.urllib3.PoolManager") as mock_pool:
+            mock_pool.return_value = http
+            result = handler(
+                {
+                    "action": "deleteObjectStoreBucket",
+                    "userId": "u",
+                    "name": "amazon-fsx-fsvol-1",
+                    "confirm": True,
+                },
+                None,
+            )
+
+        assert result["success"] is True
+        assert result["volumeName"] == "vol1"
+        http.find("DELETE", "/protocols/s3/buckets/s-1/b-1")
+
+    def test_delete_reports_a_name_that_does_not_exist(self):
+        from handler import handler
+
+        http = MockHttp({"/protocols/s3/buckets": {"data": {"records": []}}})
+        with patch("handler.urllib3.PoolManager") as mock_pool:
+            mock_pool.return_value = http
+            result = handler(
+                {"action": "deleteObjectStoreBucket", "userId": "u", "name": "missing", "confirm": True},
+                None,
+            )
+
+        assert result["success"] is False
+        assert "No object-store bucket named" in result["error"]
+        assert not [c for c in http.calls if c[0] == "DELETE"]
+
+
+class TestVolumeMountInfo:
+    """The inputs a client needs, and the reason when there are none.
+
+    Three things have to hold before a mount command can work, and any one of them
+    can be false on a volume that looks healthy in the list: the protocol is enabled,
+    a usable data LIF exists, and the volume is mounted. A panel that assembled the
+    command from a LIF list alone would hand the operator a management address or a
+    LIF that is down, and the result is a timeout rather than an error.
+    """
+
+    @pytest.fixture(autouse=True)
+    def _secrets(self, mock_secrets):
+        """Every case here reaches ONTAP."""
+
+    @staticmethod
+    def _cluster(volume=None, interfaces=None, nfs_enabled=True, cifs=None, shares=None):
+        """Responses for the five reads the action makes."""
+        return MockHttp(
+            {
+                "/storage/volumes/uuid-1": {
+                    "data": volume
+                    if volume is not None
+                    else {"name": "vol1", "state": "online", "nas": {"path": "/vol1"}, "svm": {"name": "svm1"}}
+                },
+                "/network/ip/interfaces": {
+                    "data": {
+                        "records": interfaces
+                        if interfaces is not None
+                        else [
+                            {
+                                "name": "nfs_lif1",
+                                "ip": {"address": "10.0.1.10"},
+                                "enabled": True,
+                                "state": "up",
+                                "services": ["data_nfs", "data_cifs"],
+                            },
+                            {
+                                "name": "mgmt",
+                                "ip": {"address": "10.0.1.9"},
+                                "enabled": True,
+                                "state": "up",
+                                "services": ["management_ssh"],
+                            },
+                        ]
+                    }
+                },
+                "/protocols/nfs/services": {"data": {"records": [{"enabled": nfs_enabled}]}},
+                "/protocols/cifs/services": {
+                    "data": {
+                        "records": [cifs]
+                        if cifs is not None
+                        else [{"enabled": True, "name": "FSXSVM01", "ad_domain": {"fqdn": "EXAMPLE.LOCAL"}}]
+                    }
+                },
+                "/protocols/cifs/shares": {
+                    "data": {"records": shares if shares is not None else [{"name": "vol1_share", "path": "/vol1"}]}
+                },
+            }
+        )
+
+    def test_requires_a_uuid(self):
+        from handler import handler
+
+        with patch("handler.urllib3.PoolManager") as mock_pool:
+            mock_pool.return_value = MockHttp()
+            result = handler({"action": "getVolumeMountInfo"}, None)
+
+        assert "volumeUuid" in result["error"]
+
+    def test_reports_the_lif_that_serves_data_not_the_management_one(self):
+        from handler import handler
+
+        with patch("handler.urllib3.PoolManager") as mock_pool:
+            mock_pool.return_value = self._cluster()
+            result = handler({"action": "getVolumeMountInfo", "volumeUuid": "uuid-1"}, None)
+
+        assert [lif["address"] for lif in result["nfsLifs"]] == ["10.0.1.10"]
+        assert result["nfsReady"] is True
+        assert result["junctionPath"] == "/vol1"
+
+    def test_a_lif_that_is_down_is_listed_but_not_counted_as_ready(self):
+        """Listed so the panel can name the LIF to bring up, rather than finding none."""
+        from handler import handler
+
+        interfaces = [
+            {
+                "name": "nfs_lif1",
+                "ip": {"address": "10.0.1.10"},
+                "enabled": False,
+                "state": "down",
+                "services": ["data_nfs"],
+            }
+        ]
+        with patch("handler.urllib3.PoolManager") as mock_pool:
+            mock_pool.return_value = self._cluster(interfaces=interfaces)
+            result = handler({"action": "getVolumeMountInfo", "volumeUuid": "uuid-1"}, None)
+
+        assert len(result["nfsLifs"]) == 1
+        assert result["nfsLifs"][0]["usable"] is False
+        assert result["nfsReady"] is False
+
+    def test_an_unmounted_volume_is_not_nfs_ready_and_proposes_a_path(self):
+        from handler import handler
+
+        volume = {"name": "vol1", "state": "online", "nas": {}, "svm": {"name": "svm1"}}
+        with patch("handler.urllib3.PoolManager") as mock_pool:
+            mock_pool.return_value = self._cluster(volume=volume)
+            result = handler({"action": "getVolumeMountInfo", "volumeUuid": "uuid-1"}, None)
+
+        assert result["mounted"] is False
+        assert result["nfsReady"] is False
+        assert result["suggestedPath"] == "/vol1"
+
+    def test_nfs_disabled_is_not_ready_however_many_lifs_exist(self):
+        from handler import handler
+
+        with patch("handler.urllib3.PoolManager") as mock_pool:
+            mock_pool.return_value = self._cluster(nfs_enabled=False)
+            result = handler({"action": "getVolumeMountInfo", "volumeUuid": "uuid-1"}, None)
+
+        assert result["nfsEnabled"] is False
+        assert result["nfsReady"] is False
+
+    def test_shares_below_the_junction_belong_to_the_volume(self):
+        """A share usually points at a directory or qtree inside the volume.
+
+        Matching the junction exactly would report no SMB path for the common case.
+        """
+        from handler import handler
+
+        shares = [
+            {"name": "at_junction", "path": "/vol1"},
+            {"name": "inside", "path": "/vol1/team"},
+            {"name": "elsewhere", "path": "/other"},
+            {"name": "prefix_trap", "path": "/vol10"},
+        ]
+        with patch("handler.urllib3.PoolManager") as mock_pool:
+            mock_pool.return_value = self._cluster(shares=shares)
+            result = handler({"action": "getVolumeMountInfo", "volumeUuid": "uuid-1"}, None)
+
+        assert [s["name"] for s in result["shares"]] == ["at_junction", "inside"]
+
+    def test_smb_is_not_ready_without_a_share(self):
+        """A CIFS server with no share for this volume has no UNC path to offer."""
+        from handler import handler
+
+        with patch("handler.urllib3.PoolManager") as mock_pool:
+            mock_pool.return_value = self._cluster(shares=[{"name": "elsewhere", "path": "/other"}])
+            result = handler({"action": "getVolumeMountInfo", "volumeUuid": "uuid-1"}, None)
+
+        assert result["cifsEnabled"] is True
+        assert result["shares"] == []
+        assert result["smbReady"] is False
+
+    def test_reports_the_cifs_server_and_domain_the_unc_host_is_built_from(self):
+        from handler import handler
+
+        with patch("handler.urllib3.PoolManager") as mock_pool:
+            mock_pool.return_value = self._cluster()
+            result = handler({"action": "getVolumeMountInfo", "volumeUuid": "uuid-1"}, None)
+
+        assert result["cifsServerName"] == "FSXSVM01"
+        assert result["cifsDomain"] == "EXAMPLE.LOCAL"
+        assert result["smbReady"] is True
+
+    def test_reads_the_lifs_of_the_volumes_own_svm(self):
+        """A UUID can belong to an SVM other than the selected one.
+
+        Naming the selected SVM's LIF there produces a command that cannot work.
+        """
+        from handler import handler
+
+        volume = {"name": "vol1", "state": "online", "nas": {"path": "/vol1"}, "svm": {"name": "other_svm"}}
+        http = self._cluster(volume=volume)
+        with patch("handler.urllib3.PoolManager") as mock_pool:
+            mock_pool.return_value = http
+            result = handler({"action": "getVolumeMountInfo", "volumeUuid": "uuid-1", "svm": "svm1"}, None)
+
+        assert result["svm"] == "other_svm"
+        _, url, _ = http.find("GET", "/network/ip/interfaces")
+        assert "other_svm" in url
+
+
 class TestVolumeRebalance:
     """Capacity rebalancing on a FlexGroup volume.
 

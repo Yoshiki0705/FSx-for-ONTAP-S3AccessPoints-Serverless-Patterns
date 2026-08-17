@@ -6,6 +6,7 @@ import { adminMutate, dispatch } from "../../lib/dispatch";
 import { asIsoDuration, type IsoDuration, type VolumeUuid } from "../../lib/dispatchActions";
 import { SnaplockConfirmDialog } from "../SnaplockConfirmDialog";
 import { VolumeRebalancePanel } from "./VolumeRebalancePanel";
+import { VolumeMountPanel } from "./VolumeMountPanel";
 import { durationLabel, durationRange } from "../../utils/duration";
 import { oneOf } from "../../utils/oneOf";
 import type { SnaplockIntent } from "../../utils/snaplockConsequences";
@@ -22,6 +23,14 @@ interface Volume {
   style: string;
   securityStyle: string;
   snaplockType: string;
+  /**
+   * Where the volume is mounted, or "" when it is not mounted at all.
+   *
+   * An unmounted volume is listed as online and is invisible to every NFS and SMB
+   * client, so without this the row cannot distinguish reachable from orphaned --
+   * and orphaned is what a refused delete leaves behind, since it unmounts first.
+   */
+  junctionPath: string;
   /** "none" | "cache" | "origin". A cache is always a FlexGroup. */
   flexcacheEndpointType: string;
   /** The active file system alone, with snapshots accounted for separately below. */
@@ -103,6 +112,9 @@ export function VolumeManager() {
 
   /** The FlexGroup whose rebalance panel is open, if any. */
   const [rebalancing, setRebalancing] = useState<{ uuid: VolumeUuid; name: string } | null>(null);
+
+  /** The volume whose mount panel is open, if any. */
+  const [mounting, setMounting] = useState<{ uuid: VolumeUuid; name: string } | null>(null);
 
   const {
     data: volumes = [],
@@ -476,6 +488,17 @@ export function VolumeManager() {
         />
       )}
 
+      {mounting && (
+        <VolumeMountPanel
+          volumeUuid={mounting.uuid}
+          volumeName={mounting.name}
+          onClose={() => setMounting(null)}
+          // Each row shows its junction path, so a mount made in the panel has to
+          // reach this list or the row goes on showing the state before it.
+          onChanged={loadVolumes}
+        />
+      )}
+
       <table className="admin-table">
         <thead>
           <tr>
@@ -494,6 +517,20 @@ export function VolumeManager() {
               <td className="vol-name">
                 {vol.name}
                 {vol.snaplockType !== "non_snaplock" && <span className="badge-lock">🔒</span>}
+                {/* The path clients reach the volume through, under the name it
+                    belongs to rather than in a column of its own -- the table is
+                    already wide, and the two are read together.
+
+                    An unmounted volume is called out rather than shown as blank. It is
+                    listed as online and reaches no client, which looks like a healthy
+                    row until somebody tries to use it. */}
+                {vol.junctionPath ? (
+                  <small className="vol-junction">{vol.junctionPath}</small>
+                ) : (
+                  <small className="vol-junction vol-junction-none" title={t("rmUnmountedTitle")}>
+                    {t("rmUnmounted")}
+                  </small>
+                )}
               </td>
               <td>
                 <span className={`vol-style-badge style-${vol.style}`} title={t(styleTitleKey(vol.style))}>
@@ -543,6 +580,11 @@ export function VolumeManager() {
               <td className="action-cell">
                 <button onClick={() => handleResize(vol.uuid, vol.name)} className="btn-sm"
                   title={t("rmResize")}>↔</button>
+                {/* Offered on every row, mounted or not: the panel is both where a
+                    junction is set and where the mount command for an already-mounted
+                    volume is read. */}
+                <button onClick={() => setMounting({ uuid: vol.uuid, name: vol.name })}
+                  className="btn-sm" title={t("vmOpenTitle")}>⇱</button>
                 {/* FlexGroup only, because the operation exists only there. Offering it
                     on a FlexVol and refusing on click would make the style column
                     decorative. */}

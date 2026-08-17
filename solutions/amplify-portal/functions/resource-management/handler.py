@@ -701,6 +701,12 @@ def _dispatch(event, context):
             return _delete_volume(http, headers, event, user_id)
         elif action == "bringVolumeOnline":
             return _bring_volume_online(http, headers, event, user_id)
+        elif action == "getVolumeMountInfo":
+            return _get_volume_mount_info(http, headers, event)
+        elif action == "mountVolume":
+            return _mount_volume(http, headers, event, user_id)
+        elif action == "unmountVolume":
+            return _unmount_volume(http, headers, event, user_id)
         elif action == "getVolumeRebalance":
             return _get_volume_rebalance(http, headers, event)
         elif action == "startVolumeRebalance":
@@ -819,6 +825,10 @@ def _dispatch(event, context):
         # --- S3 Object Lock ---
         elif action == "getS3ObjectLockStatus":
             return _get_s3_object_lock_status(event)
+        elif action == "listObjectStoreBuckets":
+            return _list_object_store_buckets(http, headers, event)
+        elif action == "deleteObjectStoreBucket":
+            return _delete_object_store_bucket(http, headers, event, user_id)
         elif action == "listS3Buckets":
             return _list_s3_buckets(event)
         elif action == "putS3ObjectLockRetention":
@@ -1140,6 +1150,13 @@ def _list_volumes(http, headers, event):
                 "type": v.get("type", ""),
                 "style": v.get("style", ""),
                 "securityStyle": v.get("nas", {}).get("security_style", ""),
+                # Where the volume is mounted in the SVM namespace, or "" when it is
+                # not mounted at all. An unmounted volume is invisible to every NFS
+                # and SMB client while still being listed here as online, so a row
+                # without this cannot distinguish "reachable" from "orphaned" -- which
+                # is the state a refused delete leaves behind, since the delete
+                # unmounts first and ONTAP does not put the junction back.
+                "junctionPath": v.get("nas", {}).get("path", ""),
                 "snaplockType": v.get("snaplock", {}).get("type", "non_snaplock"),
                 # "none" | "cache" | "origin". A FlexCache does not support snapshots,
                 # quotas, qtrees, cloning, SnapRestore, SnapMirror, ARP or tiering, so
@@ -1555,6 +1572,289 @@ def _bring_volume_online(http, headers, event, user_id):
 
     logger.info(f"Volume brought online: {vol_name or vol_uuid} by {user_id}")
     return {"success": True, "error": None}
+
+
+# ─── Mounting: the junction path, and what a client needs to reach it ─────────
+#
+# A volume with no junction path is invisible to every NFS and SMB client. Nothing
+# here could set one: `_create_volume` mounts at /<name> once, `_unmount_if_mounted`
+# clears the path as the first step of a delete, and `_bring_volume_online` reverses
+# only the offline step. So a delete that ONTAP refuses -- measured on a SnapLock
+# volume holding an unexpired WORM file, and earlier on a volume with a clone --
+# left the volume online, unmounted, and unreachable, with no way back through the
+# portal. Both halves are needed for the round trip.
+#
+# The AWS console shows the operator the mount command for the volume they are
+# looking at rather than making them assemble it. `_get_volume_mount_info` collects
+# the same inputs, on the server, because choosing the right LIF and composing the
+# UNC host from the CIFS server and the DNS domain is knowledge about ONTAP, not
+# about React.
+
+# A junction path is absolute, has no traversal, and is not the SVM root. ONTAP
+# rejects each of these too, but only after the caller has been told the mount was
+# requested, and its message for "/" names an internal error rather than the reason.
+_JUNCTION_PATH = re.compile(r"^/[^\0]*$")
+
+
+def _validate_junction_path(path: str) -> str:
+    """The reason a junction path is unusable, or "" when it is fine."""
+    if not path:
+        return "junctionPath is required"
+    if not _JUNCTION_PATH.match(path):
+        return 'junctionPath must be absolute, starting with "/"'
+    if path == "/":
+        return "junctionPath cannot be the SVM root itself"
+    if ".." in path.split("/"):
+        return 'junctionPath cannot contain ".."'
+    if path.endswith("/"):
+        return "junctionPath cannot end with a slash"
+    return ""
+
+
+def _mount_volume(http, headers, event, user_id):
+    """Mount a volume at a junction path in the SVM namespace.
+
+    ONTAP REST: PATCH /api/storage/volumes/{uuid} with nas.path
+
+    The path is required rather than defaulted to /<name>. `_bring_volume_online`
+    documents why: remounting where the operator has not said would be a guess, and
+    a volume can legitimately be mounted somewhere other than under its own name.
+    The UI proposes /<name> and the operator confirms it, so the guess is made where
+    it can be seen and corrected.
+
+    Mounting an offline volume is refused here rather than at ONTAP. The PATCH
+    succeeds on an offline volume, which produces a junction path clients still
+    cannot reach and a panel that reports the mount worked -- the same shape of
+    false success this handler removes elsewhere.
+    """
+    vol_uuid = event.get("volumeUuid", "")
+    junction_path = event.get("junctionPath", "")
+    vol_name = event.get("volumeName", "")
+
+    if not vol_uuid:
+        return {"success": False, "error": "volumeUuid is required"}
+    # Spelled out here as well as inside the validator, because the generated
+    # parameter map derives "required" from this shape. Behind a helper call the
+    # path would be typed optional, and a caller could omit it and compile.
+    if not junction_path:
+        return {"success": False, "error": "junctionPath is required"}
+    invalid = _validate_junction_path(junction_path)
+    if invalid:
+        return {"success": False, "error": invalid}
+
+    current = _ontap_request(http, headers, "GET", f"/storage/volumes/{vol_uuid}?fields=nas.path,state,name")
+    if current.get("_error"):
+        return {"success": False, "error": current["_message"]}
+    if current.get("state") != "online":
+        return {
+            "success": False,
+            "error": (
+                f"The volume is {current.get('state') or 'not online'}. Bring it online first: "
+                "a junction path on an offline volume is not reachable by any client."
+            ),
+        }
+    existing = current.get("nas", {}).get("path", "")
+    if existing:
+        return {
+            "success": False,
+            "error": (
+                f'The volume is already mounted at "{existing}". Unmount it first to move it, '
+                "which disconnects clients using the current path."
+            ),
+        }
+
+    data = _ontap_request(
+        http,
+        headers,
+        "PATCH",
+        f"/storage/volumes/{vol_uuid}",
+        body={"nas": {"path": junction_path}},
+    )
+    if data.get("_error"):
+        return {"success": False, "error": data["_message"]}
+
+    ok, message = _wait_for_job(http, headers, data.get("job", {}).get("uuid", ""))
+    if not ok:
+        return {"success": False, "error": message}
+
+    logger.info(f"Volume mounted: {vol_name or vol_uuid} at {junction_path} by {user_id}")
+    return {"success": True, "junctionPath": junction_path, "error": None}
+
+
+def _unmount_volume(http, headers, event, user_id):
+    """Remove a volume's junction path, deliberately.
+
+    ONTAP REST: PATCH /api/storage/volumes/{uuid} with nas.path=""
+
+    Separate from `_unmount_if_mounted`, which is a step inside deleting a volume and
+    reports only whether the delete may continue. Here the unmount is the operation,
+    so an already-unmounted volume is a distinct answer rather than a silent success:
+    the operator is looking at a row to decide what to do about it.
+
+    Confirm-gated, not acknowledgement-gated. Every client loses access the moment
+    the junction goes, which is disruptive and immediately reversible -- the same
+    class as taking a LIF down, and not the same class as SnapLock.
+    """
+    vol_uuid = event.get("volumeUuid", "")
+    vol_name = event.get("volumeName", "")
+
+    if not vol_uuid:
+        return {"success": False, "error": "volumeUuid is required"}
+    if not event.get("confirm", False):
+        return {
+            "success": False,
+            "error": (
+                "confirm=true is required to unmount a volume. Every NFS and SMB client "
+                "loses access to it until it is mounted again."
+            ),
+        }
+
+    current = _ontap_request(http, headers, "GET", f"/storage/volumes/{vol_uuid}?fields=nas.path")
+    if current.get("_error"):
+        return {"success": False, "error": current["_message"]}
+    previous = current.get("nas", {}).get("path", "")
+    if not previous:
+        return {"success": True, "alreadyUnmounted": True, "previousPath": "", "error": None}
+
+    data = _ontap_request(http, headers, "PATCH", f"/storage/volumes/{vol_uuid}", body={"nas": {"path": ""}})
+    if data.get("_error"):
+        return {"success": False, "error": data["_message"]}
+
+    ok, message = _wait_for_job(http, headers, data.get("job", {}).get("uuid", ""))
+    if not ok:
+        return {"success": False, "error": message}
+
+    logger.info(f"Volume unmounted: {vol_name or vol_uuid} from {previous} by {user_id}")
+    return {"success": True, "alreadyUnmounted": False, "previousPath": previous, "error": None}
+
+
+# ONTAP's service name for a LIF that serves NFS or SMB data. A LIF carries a list of
+# services, and the management ones are on the same cluster: handing an operator a
+# management address to mount from produces a timeout rather than an error.
+_NFS_DATA_SERVICE = "data_nfs"
+_CIFS_DATA_SERVICE = "data_cifs"
+
+
+def _get_volume_mount_info(http, headers, event):
+    """Everything a client needs to reach one volume, and what is missing.
+
+    Reads, in one call: the volume's junction path and state, the SVM's NFS and SMB
+    data LIFs, whether those protocols are enabled, the CIFS server name and DNS
+    domain the UNC host is built from, and the SMB shares that lead to this volume.
+
+    One action rather than four because the parts are only useful together, and
+    because deciding which LIF to name and which share belongs to this volume is
+    knowledge about ONTAP. Assembled in the UI, each panel would repeat it and the
+    ones that got it wrong would show a command that times out.
+
+    Nothing here is a mount instruction in prose -- the caller renders those. What
+    this returns is the inputs, plus `nfsReady` / `smbReady` so a panel can say why
+    it cannot offer a command instead of offering a broken one.
+    """
+    svm = event.get("svm", SVM_NAME)
+    vol_uuid = event.get("volumeUuid", "")
+    if not vol_uuid:
+        return {"error": "volumeUuid is required"}
+
+    volume = _ontap_request(http, headers, "GET", f"/storage/volumes/{vol_uuid}?fields=name,nas.path,state,svm.name")
+    if volume.get("_error"):
+        return {"error": volume["_message"]}
+
+    vol_name = volume.get("name", "")
+    junction_path = volume.get("nas", {}).get("path", "")
+    # The volume's own SVM, not the selected one: a caller can hold a UUID from a
+    # different SVM, and naming the wrong SVM's LIF is a command that cannot work.
+    vol_svm = volume.get("svm", {}).get("name", "") or svm
+
+    lifs = _ontap_request(
+        http,
+        headers,
+        "GET",
+        f"/network/ip/interfaces?svm.name={_qval(vol_svm)}"
+        f"&fields=name,ip.address,enabled,state,services&max_records=100",
+    )
+    nfs_lifs: list[dict] = []
+    smb_lifs: list[dict] = []
+    lif_error = lifs.get("_message", "") if lifs.get("_error") else ""
+    for record in lifs.get("records", []) if not lifs.get("_error") else []:
+        services = record.get("services", []) or []
+        entry = {
+            "name": record.get("name", ""),
+            "address": record.get("ip", {}).get("address", ""),
+            # A LIF that is administratively down or not up serves nothing, and it is
+            # listed rather than filtered out so a panel with no usable LIF can say
+            # which one to bring up instead of appearing to have found none.
+            "usable": bool(record.get("enabled", False)) and record.get("state", "") == "up",
+        }
+        if _NFS_DATA_SERVICE in services:
+            nfs_lifs.append(entry)
+        if _CIFS_DATA_SERVICE in services:
+            smb_lifs.append(entry)
+
+    nfs = _ontap_request(http, headers, "GET", f"/protocols/nfs/services?svm.name={_qval(vol_svm)}&fields=enabled")
+    nfs_enabled = bool(((nfs.get("records") or [{}])[0]).get("enabled", False)) if not nfs.get("_error") else False
+
+    cifs = _ontap_request(
+        http,
+        headers,
+        "GET",
+        f"/protocols/cifs/services?svm.name={_qval(vol_svm)}&fields=enabled,name,ad_domain.fqdn",
+    )
+    cifs_record = (cifs.get("records") or [{}])[0] if not cifs.get("_error") else {}
+    cifs_enabled = bool(cifs_record.get("enabled", False))
+    # The NetBIOS/CIFS server name, which is the host part of a UNC path. Reported
+    # separately from the domain because `\\SERVER\share` works inside the domain
+    # while the FQDN is what works from a client resolving through another suffix.
+    cifs_server = cifs_record.get("name", "")
+    cifs_domain = cifs_record.get("ad_domain", {}).get("fqdn", "")
+
+    shares: list[dict] = []
+    if cifs_enabled and junction_path:
+        share_data = _ontap_request(
+            http,
+            headers,
+            "GET",
+            f"/protocols/cifs/shares?svm.name={_qval(vol_svm)}&fields=name,path,encryption&max_records=50",
+        )
+        for share in share_data.get("records", []) if not share_data.get("_error") else []:
+            path = share.get("path", "")
+            # The share's path is a namespace path, so a share for this volume is one
+            # at its junction or below it. Matching on equality alone would hide the
+            # shares that point at a qtree or a directory inside the volume, which is
+            # how shares are usually made.
+            if path == junction_path or path.startswith(junction_path.rstrip("/") + "/"):
+                shares.append(
+                    {
+                        "name": share.get("name", ""),
+                        "path": path,
+                        "encryption": bool(share.get("encryption", False)),
+                    }
+                )
+
+    return {
+        "volumeName": vol_name,
+        "svm": vol_svm,
+        "state": volume.get("state", ""),
+        "junctionPath": junction_path,
+        "mounted": bool(junction_path),
+        # The path the UI proposes when the volume is not mounted. Computed here so
+        # the convention `_create_volume` uses is stated in one place.
+        "suggestedPath": f"/{vol_name}" if vol_name else "",
+        "nfsLifs": nfs_lifs,
+        "smbLifs": smb_lifs,
+        "nfsEnabled": nfs_enabled,
+        "cifsEnabled": cifs_enabled,
+        "cifsServerName": cifs_server,
+        "cifsDomain": cifs_domain,
+        "shares": shares,
+        # Whether a working command can be offered at all. Three things have to hold
+        # and any one of them can be false on a healthy-looking volume: the protocol
+        # is on, a usable data LIF exists, and the volume is mounted.
+        "nfsReady": bool(nfs_enabled and junction_path and any(lif["usable"] for lif in nfs_lifs)),
+        "smbReady": bool(cifs_enabled and shares and any(lif["usable"] for lif in smb_lifs)),
+        "lifError": lif_error,
+        "error": None,
+    }
 
 
 # ─── FlexGroup Capacity Rebalancing ───────────────────────────────────────────
@@ -3924,6 +4224,148 @@ def _get_ems_events(http, headers, event):
 
 
 # ─── SMB Local Users and Groups ───────────────────────────────────────────────
+
+
+# ─── ONTAP object-store buckets, which are not AWS S3 buckets ─────────────────
+#
+# `listS3Buckets` above lists the account's AWS S3 buckets. These two list and
+# remove ONTAP's own object-store buckets, which is a different namespace reached
+# through the ONTAP API.
+#
+# They were added for a cleanup problem they turn out not to solve, and the measured
+# limit is recorded here so the next attempt does not start from the same assumption.
+#
+# Attaching an FSx for ONTAP S3 AP creates a bucket on the ONTAP side named
+# `amazon-fsx-<volume-id>`, and **removing the access point does not remove it**.
+# Measured 2026-08-17: after `detach-and-delete-s3-access-point` reported the
+# attachment gone, `deleteVolume` still failed with "because it is associated with
+# the following object store NAS buckets", naming that bucket, and it failed the same
+# way on a volume whose attach attempt had FAILED a day earlier.
+#
+# **`GET /protocols/s3/buckets` does not report those NAS buckets.** On the SVM whose
+# volume had just refused deletion the collection came back empty, and on an SVM
+# running a native ONTAP S3 server it returned that server's three `type: s3` buckets
+# and not the `amazon-fsx-` one either. So the bucket that blocks the delete is not
+# visible through this endpoint. It can also answer 401 `User is not authorized.`
+# (ONTAP 6691623) to the FSx `fsxadmin` account, so an empty list here is not even
+# evidence that the collection was read.
+#
+# **The block is temporary, and the CLI is not the answer.** Measured 2026-08-18:
+# retried about a day after the refusal, `DeleteVolume` removed both volumes in 60-90
+# seconds with no CLI involved. The association clears asynchronously. This comment
+# previously concluded that removal "needs the ONTAP CLI", which would have sent the
+# next reader to request cluster-level SSH for a problem that resolves by waiting. How
+# long the wait is was not measured -- one observation, roughly a day -- so retry on a
+# schedule rather than treating any single interval as the number.
+#
+# What these two actions do cover is ONTAP-native object-store buckets, which is
+# worth having: they are what makes an SVM unable to host an FSx for ONTAP S3 AP.
+
+
+def _list_object_store_buckets(http, headers, event):
+    """List ONTAP object-store buckets, optionally for one volume.
+
+    ONTAP REST: GET /api/protocols/s3/buckets
+
+    `volumeName` narrows the result, which is the question a caller actually has:
+    a volume refused deletion and named a bucket, and what they need to know is
+    which buckets belong to that volume.
+    """
+    svm = event.get("svm", SVM_NAME)
+    volume_name = event.get("volumeName", "")
+
+    data = _ontap_request(
+        http,
+        headers,
+        "GET",
+        f"/protocols/s3/buckets?svm.name={_qval(svm)}"
+        f"&fields=name,uuid,svm.name,svm.uuid,volume.name,type,size&max_records=100",
+    )
+    if data.get("_error"):
+        return {"buckets": [], "error": data["_message"]}
+
+    buckets = []
+    for b in data.get("records", []):
+        bucket_volume = b.get("volume", {}).get("name", "")
+        if volume_name and bucket_volume != volume_name:
+            continue
+        buckets.append(
+            {
+                "name": b.get("name", ""),
+                "uuid": b.get("uuid", ""),
+                "svm": b.get("svm", {}).get("name", ""),
+                "svmUuid": b.get("svm", {}).get("uuid", ""),
+                "volumeName": bucket_volume,
+                # "nas" for a bucket backed by a volume's namespace, which is what an
+                # FSx for ONTAP S3 AP creates. An ONTAP-native S3 bucket reads "s3".
+                "type": b.get("type", ""),
+                "sizeBytes": b.get("size", 0),
+            }
+        )
+
+    return {"buckets": buckets, "count": len(buckets), "error": None}
+
+
+def _delete_object_store_bucket(http, headers, event, user_id):
+    """Remove an ONTAP object-store bucket.
+
+    ONTAP REST: DELETE /api/protocols/s3/buckets/{svm.uuid}/{uuid}
+
+    Confirm-gated rather than acknowledgement-gated: this is disruptive and not
+    irreversible. Any S3 access point still reading through the bucket loses its
+    data path, which is why the refusal says so rather than only asking.
+
+    The caller names the bucket, and the SVM UUID is resolved here -- the path needs
+    it and an operator reading a `deleteVolume` failure has the bucket name, not a
+    pair of UUIDs.
+    """
+    svm = event.get("svm", SVM_NAME)
+    name = event.get("name", "")
+
+    if not name:
+        return {"success": False, "error": "name is required"}
+    if not event.get("confirm", False):
+        return {
+            "success": False,
+            "error": (
+                "confirm=true is required to delete an object-store bucket. Any S3 access "
+                "point still attached through it loses access to the data."
+            ),
+        }
+
+    listing = _ontap_request(
+        http,
+        headers,
+        "GET",
+        f"/protocols/s3/buckets?svm.name={_qval(svm)}&name={_qval(name)}&fields=uuid,svm.uuid,volume.name",
+    )
+    if listing.get("_error"):
+        return {"success": False, "error": listing["_message"]}
+    records = listing.get("records", [])
+    if not records:
+        return {"success": False, "error": f"No object-store bucket named '{name}' on SVM '{svm}'"}
+
+    bucket = records[0]
+    svm_uuid = bucket.get("svm", {}).get("uuid", "")
+    bucket_uuid = bucket.get("uuid", "")
+    if not svm_uuid or not bucket_uuid:
+        return {"success": False, "error": f"ONTAP did not report both UUIDs for bucket '{name}'"}
+
+    data = _ontap_request(
+        http,
+        headers,
+        "DELETE",
+        f"/protocols/s3/buckets/{_seg(svm_uuid)}/{_seg(bucket_uuid)}",
+    )
+    if data.get("_error"):
+        return {"success": False, "error": data["_message"]}
+
+    ok, message = _wait_for_job(http, headers, data.get("job", {}).get("uuid", ""))
+    if not ok:
+        return {"success": False, "error": message}
+
+    logger.info(f"Object-store bucket deleted: {name} on {svm} by {user_id}")
+    return {"success": True, "volumeName": bucket.get("volume", {}).get("name", ""), "error": None}
 
 
 def _get_svm_uuid(http, headers, svm_name):

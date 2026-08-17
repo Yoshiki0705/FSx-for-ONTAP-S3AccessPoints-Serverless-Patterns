@@ -4088,6 +4088,90 @@ button[type="submit"]:disabled {
   background: var(--color-surface);
 }
 
+/* Mount management, sharing the rebalance panel's chrome: both are a per-volume
+   panel opened above the table from a row button. */
+.mount-panel {
+  margin: 0.5rem 0 1rem;
+  padding: 0.75rem 1rem;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  background: var(--color-surface);
+}
+
+.mount-panel h4 {
+  margin: 0;
+  font-size: 0.95rem;
+  color: var(--color-text);
+}
+
+.mount-panel h5 {
+  margin: 0.9rem 0 0.35rem;
+  font-size: 0.85rem;
+  color: var(--color-text);
+}
+
+.mount-state {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.4rem 0.75rem;
+  margin: 0.6rem 0;
+  font-size: 0.85rem;
+}
+
+.mount-label {
+  color: var(--color-text-secondary);
+}
+
+.mount-path {
+  color: var(--color-text);
+}
+
+/* Named as a state rather than shown as an empty cell: an unmounted volume looks
+   healthy in the list and reaches no client. */
+.mount-unmounted {
+  color: var(--color-warning);
+  font-weight: 600;
+}
+
+.mount-form {
+  align-items: flex-end;
+}
+
+.mount-form-action {
+  flex: 0 0 auto;
+}
+
+.mount-actions,
+.mount-copy-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin: 0.4rem 0;
+}
+
+.mount-protocol {
+  border-top: 1px solid var(--color-border);
+  padding-top: 0.5rem;
+  margin-top: 0.75rem;
+}
+
+.mount-share + .mount-share {
+  margin-top: 0.6rem;
+}
+
+/* The junction path under the volume name in the list. */
+.vol-junction {
+  display: block;
+  font-size: 0.72rem;
+  color: var(--color-text-secondary);
+}
+
+.vol-junction-none {
+  color: var(--color-warning);
+}
+
 .rebalance-panel h4 {
   margin: 0;
   font-size: 0.95rem;

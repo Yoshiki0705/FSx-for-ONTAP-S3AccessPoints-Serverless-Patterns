@@ -180,11 +180,63 @@ C4 は Lambda を数回再デプロイしたあとに走らせ直しました。
 > 副作用として、ガードはシェルコマンドの文字列を見るため、モード名を含むソース編集も
 > ブロックします。専用の編集ツールを使えば通ります。
 
+### 2026-08-16〜17 に追加（C8 / C9: WORM 確定、削除ブロック、S3 AP 経由の削除、マウント管理）
+
+**VPC 内に NFS クライアント（t3.micro / AL2023）を立てて、これまで確定できなかった WORM を実際に
+確定しました。** 使用したボリュームは `zz_sl_worm`（fsxsvm01、compliance、min `PT0S` / default `PT5M` /
+max `PT1H`、20 GiB）と `zz_sl_s3ap`（fsxsvm02、compliance、min `PT0S` / default `PT5M` / max `PT5M`、
+20 GiB）。保持 5 分なので数分で満了し、その後削除できます。
+
+| 機能 | 確認内容 |
+|------|---------|
+| **WORM 確定（NFS）** | `chmod a-w` で `-r--r--r--` になり、**atime が満了日時を保持**する |
+| **満了日時は compliance clock 基準** | 壁時計 `03:37:33Z` に確定したファイルの満了が `03:42:14Z`。既定 5 分なので確定時点の clock は `03:37:14`——**壁時計より約 19 秒遅れ**。別ボリュームでも同じ差 |
+| 確定後に拒否される操作（NFS） | 上書き（`>`）、`rm`、`chmod u+w`、`truncate`、`mv` がすべて rc=1。読み取りは可 |
+| **切り詰めない書き込みは成功を返して無言で捨てられる** | `>>` が rc=0、Python の `open('a').write()` と `open('r+').write()` も rc=0。しかし size 29 と md5 は不変。唯一 `dd` が `close()` で `Read-only file system`（EROFS）を出した。**アプリから見ると書き込みが成功して消えます** |
+| **未満了 WORM があるボリュームの削除** | `deleteVolume` がジョブ失敗で理由を返す（`The volume has unexpired WORM files or ...`）。AWS FSx API の無言成功とは別で、ONTAP REST は理由を言う |
+| **拒否された削除がボリュームを孤立させる** | 削除は unmount → offline → delete の 3 段で、前 2 段が成功してから拒否される。結果として `nas.path` が消え state が offline になり、クライアントから到達できない。`bringVolumeOnline` は意図的に再マウントしない設計 |
+| offline 中の満了列挙 | `listExpiredRetention` が `clockSource: "unavailable"` を返し判定を拒否する（設計どおり）。ただし**拒否された削除が満了列挙を盲目にする**連鎖になる |
+| **`retention.maximum` が縛るのは確定時の割り当てだけ** | 2 段階で測りました。**確定前**に atime を max より 1 分先（`PT5M` のボリュームで +6 分）に設定してから `chmod a-w` すると、touch は rc=0 だが確定後の満了は既定の 5 分後になり、**要求した値は残らない**（同じボリュームで既定のまま確定したファイルと同一時刻）。一方**確定後**に同じ +6 分へ延長すると rc=0 で**満了が max を 1 分超えた時刻に変わる**。max `PT1H` のボリュームで +70 分が通ったのと同じ挙動で、こちらはより小さい差で確認しました。短縮は rc=1。**つまり max は確定時の上限であって、その後の延長の天井ではありません** |
+| **満了後（NFS）** | `rm` が成功。ただし**上書きは満了後も拒否**され、mode も `-r--r--r--` のまま。**満了は削除を許すだけで、ファイルを普通のファイルに戻しません** |
+| **S3 AP は SnapLock ボリュームに attach できる** | `zz_sl_s3ap` に対して `CreateAndAttachS3AccessPoint` が約 15 秒で `AVAILABLE`。SnapLock は attach の障害にならない |
+| **ONTAP S3 サーバーがある SVM には attach できない** | fsxsvm01 では `FAILED` になり `existing ONTAP object storage server on SVM ...` と返る。**同一 SVM で ONTAP ネイティブ S3 と FSx for ONTAP S3 AP は共存しない** |
+| **ONTAP REST で設定した junction は FSx API に即座に映らない** | マウント直後の attach が `the volume is not mounted` で失敗し、`describe-volumes` の `JunctionPath` は 5 分以上 null。`update-volume` に `JunctionPath` を渡すと**成功を返して値は変わらない**（無言の no-op）。その後収束したが、収束が `update-volume` によるものか自然な同期かは切り分けていない。**エラーメッセージは正しくない原因を名指しします** |
+| S3 AP 経由の書き込みと一覧 | `PutObject` / `ListObjectsV2` / `GetObject` が成功。`StorageClass` は `FSX_ONTAP` |
+| **満了前の S3 AP 削除・上書き** | `DeleteObject` と `PutObject`（上書き）がともに `AccessDenied`。`GetObject` は成功し ETag も不変 |
+| **満了後の S3 AP 削除** | `DeleteObject` が**成功**し、一覧からも NFS 側からも消えた。**上書きは満了後も `AccessDenied`**（NFS 側と同じ挙動） |
+| **拒否メッセージが原因を示さない** | S3 AP 側の拒否は `AccessDenied ... Access Denied` だけで、**WORM も保持期間も出てきません。** IAM の問題と区別できないため、最初に確認するのは権限ではなくファイルの WORM 状態 |
+| **`listExpiredRetention` を実 WORM データで確認** | `expired` に満了済みの `zz_sl_s3ap`、`pending` に 2027-02-06 満了の監査ログボリューム、`clockSource: "ontap"`。これまで clock 不在時の応答しか確認できていませんでした |
+
+> **S3 AP が残す NAS バケットのブロックは一時的です（2026-08-18 に解消を確認）。** S3 AP を
+> detach・delete しても ONTAP 側の `amazon-fsx-<volume-id>` バケットが残り、`deleteVolume` が
+> それを名指しして失敗します（FSx 側の attachment は 0 件）。`FAILED` になった attach でも
+> 同じ残骸ができ、1 日後も残っていました。**`GET /protocols/s3/buckets` はこの NAS バケットを
+> 返しません**——該当 SVM では 0 件、ネイティブ S3 サーバーがある SVM でも `type: s3` の 3 本
+> だけです（このエンドポイントは FSx の `fsxadmin` では 401 `User is not authorized.` を返す
+> こともあります）。
+>
+> **ONTAP CLI は不要でした。** 拒否から約 1 日後に `DeleteVolume` を再実行すると `zz_sl_s3ap` /
+> `zz_sl_worm` はどちらも 60〜90 秒で削除完了しました（CLI 操作は一切していません）。関連は
+> 非同期に解けるので、正しい対処は `vserver object-store-server bucket delete` を探すことでは
+> なく**時間を置いて再試行すること**です。解消までの正確な時間は測っていません（約 1 日後に
+> 成功したという 1 点のみ）。**WORM のロックではありません。**
+
+### 2026-08-17 に追加（マウント管理: `mountVolume` / `unmountVolume` / `getVolumeMountInfo`）
+
+**拒否された削除が残す「online だが未マウント」の状態を、ポータルから戻せるようにしました。**
+`bringVolumeOnline` が offline を戻す一方、junction を戻す手段が無かったためです。
+
+| 機能 | 確認内容 |
+|------|---------|
+| `bringVolumeOnline` → `mountVolume` の往復 | 拒否された削除で孤立した `zz_sl_worm` を online に戻し、`/zz_sl_worm` に再マウントして復旧。**この経路は以前は存在しませんでした** |
+| マウント済みボリュームへの再マウント要求 | 現在のパスを名指しして拒否（`already mounted at "/zz_sl_worm"`）。移動を副作用にしない |
+| `getVolumeMountInfo` | データ LIF（`data_nfs` を持つ LIF のみ）、`cifsServerName`、`cifsDomain`、`nfsReady` / `smbReady` を返す。管理 LIF は候補に出ない |
+| 未マウント時の提案パス | `suggestedPath` が `/<ボリューム名>` を返し、UI がそれを初期値にする |
+
 ### 未確認のまま残るもの（SnapLock）
 
 | 項目 | なぜ未確認か |
 |------|------------|
-| WORM ファイルの確定と、それによる削除ブロック | ファイルを読み取り専用にする操作に NFS / SMB クライアントが必要で、S3 AP 経由では確定できない。VPC 内にクライアントを立ててから |
 | enterprise の privileged delete | 監査ログボリュームを要求し、それが**最短 6 か月**ボリューム → SVM → ファイルシステムの削除をブロックする。AWS API に監査ログの保持期間を指定するフィールドが無く、既定の 6 か月が適用される。**値を短くする逃げ道が無いため実行しない** |
 
 ## 実機 読み取り確認済み（書き込み系は未確認）
