@@ -107,6 +107,88 @@ BLOCK_CASES: list[tuple[str, dict[str, object]]] = [
         "portal createVolume carrying snaplockType",
         {"action": "createVolume", "params": {"name": "v1", "snaplockType": "compliance"}},
     ),
+    # A short `retention.maximum` was briefly treated as bounding the worst case,
+    # so that an acknowledged request could ask instead of block. Measured false on
+    # 2026-08-16: a client set a file's expiry past the maximum over NFS and ONTAP
+    # accepted it. All of these block, including the shape that was once exempt.
+    (
+        "SnapLock acknowledged and bounded to PT1H, which is not a bound",
+        {
+            "action": "createVolume",
+            "params": {
+                "name": "v1",
+                "snaplockType": "compliance",
+                "retentionDefault": "PT5M",
+                "retentionMax": "PT1H",
+                "acknowledgeIrreversible": True,
+            },
+        },
+    ),
+    (
+        "SnapLock acknowledged but with no retention maximum",
+        {
+            "action": "createVolume",
+            "params": {"name": "v1", "snaplockType": "compliance", "acknowledgeIrreversible": True},
+        },
+    ),
+    (
+        "SnapLock acknowledged with a maximum beyond a day",
+        {
+            "action": "createVolume",
+            "params": {
+                "name": "v1",
+                "snaplockType": "compliance",
+                "retentionMax": "P30D",
+                "acknowledgeIrreversible": True,
+            },
+        },
+    ),
+    (
+        # P1M is one month. Read as a minute it would look like the shortest bound
+        # in the corpus while being the longest.
+        "SnapLock maximum P1M is a month, not a minute",
+        {
+            "action": "createVolume",
+            "params": {
+                "name": "v1",
+                "snaplockType": "compliance",
+                "retentionMax": "P1M",
+                "acknowledgeIrreversible": True,
+            },
+        },
+    ),
+    (
+        "SnapLock bounded but not acknowledged",
+        {"action": "createVolume", "params": {"name": "v1", "snaplockType": "compliance", "retentionMax": "PT1H"}},
+    ),
+    (
+        # The exemption skips one pattern, not the tier. An audit-log volume dressed
+        # in the same acknowledgement and maximum still matches its own rule — and
+        # the maximum would not bound it anyway, since the audit-log retention is a
+        # separate setting with no API field.
+        "audit-log volume wearing the bounded exemption",
+        {
+            "action": "createVolume",
+            "params": {
+                "name": "v1",
+                "auditLogVolume": True,
+                "snaplockType": "compliance",
+                "retentionMax": "PT1H",
+                "acknowledgeIrreversible": True,
+            },
+        },
+    ),
+    (
+        # A raw REST call has no acknowledgement field, so the exemption cannot be
+        # reached from one however short the maximum is.
+        "ONTAP REST snaplock.type with a short maximum and no acknowledgement",
+        {
+            "command": (
+                "curl -X POST /api/storage/volumes -d "
+                '\'{"name":"v","snaplock":{"type":"compliance","retention":{"maximum":"PT1H"}}}\''
+            )
+        },
+    ),
     # --- Terminal states ---
     (
         "PrivilegedDelete permanently disabled",
@@ -194,6 +276,13 @@ ASK_CASES: list[tuple[str, dict[str, object]]] = [
     (
         "create-volume with an opaque external payload",
         {"command": "aws fsx create-volume --cli-input-json file://volume.json"},
+    ),
+    (
+        # The portal's dispatch endpoint reaches createVolume and
+        # enableSnapshotLocking, and the tier-1 patterns match on a payload that is
+        # in a file here rather than in the command.
+        "lambda invoke with an opaque external payload",
+        {"command": "aws lambda invoke --function-name rm-fn --payload fileb:///tmp/p.json /tmp/out.json"},
     ),
     (
         "portal deleteVolume",
@@ -425,6 +514,21 @@ def test_covers_every_global_block_category() -> None:
             if guard.classify(payload)[0] != 2:
                 missing.append(label)
     assert not missing, "the global guard blocks these but the tracked guard does not: " + ", ".join(missing)
+
+
+@pytest.mark.skipif(not GLOBAL_GUARD.is_file(), reason="no global guard on this machine")
+def test_no_ask_case_is_blocked_by_the_global_guard() -> None:
+    """An ask case the global copy blocks means this file narrowed the floor.
+
+    The block-coverage test above only walks BLOCK_CASES, so moving a category from
+    block to ask here would pass it while the two copies disagree about the same
+    payload — the drift that test exists to catch, arriving through the other door.
+    A case this file asks about and the global copy merely allows is fine: adding
+    strictness is permitted, removing it is not.
+    """
+    other = _load(GLOBAL_GUARD, "global_guard3")
+    narrowed = [label for label, payload in ASK_CASES if other.scan(json.dumps(payload, ensure_ascii=False))[0] == 2]
+    assert not narrowed, "the global guard blocks these but the tracked guard only asks: " + ", ".join(narrowed)
 
 
 @pytest.mark.skipif(not GLOBAL_GUARD.is_file(), reason="no global guard on this machine")

@@ -70,6 +70,17 @@ import sys
 # string inside the event JSON.
 SEP = r"[\s\\\"':=]{0,8}"
 
+# Named because `scan` has to recognise this one rule to apply the bounded-volume
+# exemption below. Matching on the label instead would break the moment the label
+# is reworded, which is not the kind of thing that should change what executes.
+_SNAPLOCK_VOLUME_CREATE = (
+    r"create[-_]snaplock[-_]?configuration|"
+    r"snaplock[-_]?type" + SEP + r"(compliance|enterprise)|"
+    r"\"SnaplockType\"\s*:\s*\"(COMPLIANCE|ENTERPRISE)\"|"
+    # ONTAP REST shape: {"snaplock": {"type": "compliance"}}
+    r"snaplock[\"'\\\s]*:[^{]{0,8}\{[^{}]{0,160}type" + SEP + r"(compliance|enterprise)"
+)
+
 # --------------------------------------------------------------------------
 # Tier 1 — BLOCK.
 #
@@ -96,14 +107,11 @@ BLOCK: list[tuple[str, str, str]] = [
         "親リソースの削除を連鎖的にブロックする）。REST 経由でも保持期間の既定は変わりません。",
     ),
     (
-        r"create[-_]snaplock[-_]?configuration|"
-        r"snaplock[-_]?type" + SEP + r"(compliance|enterprise)|"
-        r"\"SnaplockType\"\s*:\s*\"(COMPLIANCE|ENTERPRISE)\"|"
-        # ONTAP REST shape: {"snaplock": {"type": "compliance"}}
-        r"snaplock[\"'\\\s]*:[^{]{0,8}\{[^{}]{0,160}type" + SEP + r"(compliance|enterprise)",
+        _SNAPLOCK_VOLUME_CREATE,
         "SnapLock ボリュームの作成",
         "snaplock.type は作成時のみ指定可能で、後から変更も解除もできません。"
-        "未満了の WORM ファイルは親リソースの削除をブロックします。",
+        "未満了の WORM ファイルは親リソースの削除をブロックします。"
+        "retention.maximum を短く指定しても上限にはなりません（下の測定を参照）。",
     ),
     (
         r"privileged[-_]?delete" + SEP + r"permanently_disabled",
@@ -211,6 +219,21 @@ ASK: list[tuple[str, str]] = [
         "SnaplockConfiguration が含まれていないか確認してください（含まれていれば不可逆です）。",
     ),
     (
+        # The same opaque-payload hole, through the portal instead of the FSx CLI.
+        # `aws lambda invoke --payload fileb://...` reaches every action the
+        # resource-management handler dispatches -- including `createVolume` with
+        # `snaplockType` and `enableSnapshotLocking` -- and the tier-1 patterns match
+        # on the payload, which is in a file the guard cannot read. Found while
+        # working out how to get a blocked create past this guard, which is the
+        # reason it is closed rather than used.
+        r"\blambda\b[^|;&]{0,200}\binvoke\b[^|;&]{0,200}--payload[^|;&]{0,40}\bfileb?://",
+        "lambda invoke の payload が外部ファイルにあり、このガードから中身が読めません。"
+        "ポータルの dispatch は SnapLock ボリュームの作成や Snapshot locking の有効化にも到達します。"
+        "不可逆な action が含まれていないか、ファイルの中身を確認してください。"
+        "読み取り目的の呼び出しは payload をコマンドに直接書けば（--cli-binary-format raw-in-base64-out "
+        'と --payload \'{"action":"listVolumes"}\'）このガードが読めるため、確認を求められません。',
+    ),
+    (
         r"expiry[-_]?time.{0,80}(snapshot|POST|PATCH)|snapshots?/.{0,80}expiry[-_]?time",
         "Snapshot のロック（expiry_time）は延長のみ可能で、短縮も解除もできません。",
     ),
@@ -243,6 +266,34 @@ ALLOW_ACTIONS = re.compile(
     r"\"?action\"?" + SEP + r"[\"']?(?:get|list|describe)[A-Za-z0-9_]*",
     re.IGNORECASE,
 )
+
+# --------------------------------------------------------------------------
+# An exemption was added here and removed the same day. Recorded so it is not
+# re-derived from the same reasoning.
+#
+# The idea: a SnapLock *data* volume created with a short `retention.maximum`
+# bounds its own worst case, because every WORM file on it would expire inside
+# that window — unlike the audit-log volume this guard was written for, which has
+# no field to shorten. Acknowledged plus bounded would therefore be a
+# confirmation rather than a refusal.
+#
+# Measured 2026-08-16/17 on ONTAP 9.18.1P3D1, and it does not hold.
+#
+# `retention.maximum` bounds what the *commit* assigns and nothing after it. On a
+# volume with maximum PT5M, setting a file's atime six minutes out before
+# committing left the expiry at the five-minute default -- the request did not
+# survive. Extending the same file after it was committed moved the expiry to six
+# minutes, one minute past the maximum, and ONTAP accepted it. The same happened at
+# +70 minutes on a PT1H volume. Shortening is refused either way.
+#
+# So a volume created with a short maximum can still hold a file locked far beyond
+# it, through an extension the storage accepts, and the maximum cannot be read as a
+# bound on how long the parent resources stay undeletable.
+#
+# A guard whose exemption rests on a limit the storage does not enforce is worse
+# than no exemption: it reports that it checked something it did not. So SnapLock
+# volume creation blocks unconditionally, as before.
+# --------------------------------------------------------------------------
 
 
 def scan(subject: str) -> tuple[int, str]:
