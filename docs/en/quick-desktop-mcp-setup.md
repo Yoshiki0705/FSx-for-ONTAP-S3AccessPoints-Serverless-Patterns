@@ -96,6 +96,16 @@ aws cloudformation deploy \
   --region us-east-1
 ```
 
+> **`S3AccessPointName` is required, and it is not the alias.** IAM authorizes an S3 access
+> point only through the `accesspoint`-form ARN
+> (`arn:aws:s3:<region>:<account>:accesspoint/<name>`); a bucket-form ARN built from the alias
+> authorizes nothing. The alias is the value you pass as the S3 API `Bucket` parameter, not an
+> authorization subject. Look the name up with:
+> ```bash
+> aws fsx describe-s3-access-point-attachments --region <region> \
+>   --query "S3AccessPointAttachments[?S3AccessPoint.Alias=='<your-alias>'].Name" --output text
+> ```
+
 After deployment, manually execute the script's Steps 3–5 for Gateway creation.
 
 ### Step 2: Quick Desktop Sign-in
