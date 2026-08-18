@@ -89,9 +89,9 @@ EC2 (EDA simulations) --NFS--> FSx for ONTAP <--S3 API-- AgentCore Gateway <--MC
 
 **UC30 への取り込み**:
 - Quick Index のデータソース設定手順を `docs/demo-guide.md` に反映
-- AD Windows identity での S3 AP 構成が前提条件であることを明記
+- Workshop の手順が AD Windows identity での S3 AP 構成を前提にしていることを明記（**Quick 側の要件ではなく Workshop のシナリオ**）
 
-> **制約**: UNIX identity の S3 AP では Quick のデータアクセスロールを AP ポリシーに追加できない。AD ベースの Windows identity で構成する必要がある。
+> **以前ここには「UNIX identity の S3 AP では Quick のデータアクセスロールを AP ポリシーに追加できない。AD ベースの Windows identity で構成する必要がある」と書いていましたが、撤回しました。** `MalformedPolicy: Invalid principal` は IAM プリンシパルの検証エラーで、`FileSystemIdentity` の型は AP ポリシーの検証経路に現れません。UNIX セキュリティスタイルのボリューム上の AP に IAM ロールを `Principal` とする AP ポリシーを適用できることは実測されています（[S3 AP 認可モデル](s3ap-authorization-model.md#allow-を狭く書くことは絞り込みではない)）。当時の失敗の原因は未確認です。詳細は [SaaS ギャップ分析の FR-9](aws-feature-requests/file-portal-service-gap.md) にあります。
 
 ---
 

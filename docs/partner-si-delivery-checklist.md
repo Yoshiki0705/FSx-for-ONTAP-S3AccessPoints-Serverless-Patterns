@@ -60,7 +60,7 @@
 | レイヤー | 確認項目 | 設計判断 |
 |---------|---------|---------|
 | AWS IAM | Lambda Role の権限範囲 | ListBucket + GetObject (最小限) or + PutObject |
-| S3 AP Policy | リソースポリシーの設定 | Principal 制限 + Condition (OrgID, VPC) |
+| S3 AP Policy | リソースポリシーの設定 | **明示的な `Deny` + Condition**（`aws:PrincipalArn` / `aws:PrincipalOrgID` / `aws:SourceVpce`）。同一アカウントでは `Allow` を狭くしても絞り込みにならない |
 | VPC Endpoint Policy | VPC 制限の要否 | VPC Origin AP の場合は必須 |
 | SCP | Organization レベルの制御 | 規制環境では必須 |
 | ONTAP File System | AP に関連付ける identity | 専用ユーザー（root 禁止） |

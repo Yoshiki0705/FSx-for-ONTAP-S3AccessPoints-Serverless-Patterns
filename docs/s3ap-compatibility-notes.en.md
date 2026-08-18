@@ -325,24 +325,31 @@ AWS Support has escalated documentation improvements to the FSx for ONTAP servic
 
 | Symptom | Likely Cause | Resolution | Related UC |
 |---------|-------------|------------|-----------|
-| `AccessDenied` on ListObjectsV2 | Incorrect Resource ARN format in IAM policy | Use `arn:aws:s3:{region}:{account}:accesspoint/{name}` format (not alias) | All |
-| `AccessDenied` on GetObject | S3 AP resource policy not configured | Add resource policy with `s3control put-access-point-policy` | All |
+| `AccessDenied` on ListObjectsV2 | Incorrect Resource ARN format in IAM policy | Use `arn:aws:s3:{region}:{account}:accesspoint/{name}` format (not alias). [Source](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/troubleshooting-access-points-for-fsxn.html) | All |
+| `AccessDenied` on GetObject (`HeadBucket` succeeds) | **Layer 2**: insufficient file permissions for the identity pinned to the AP, or an AD-joined SVM that cannot reach its AD DC | Check the identity's effective permissions. Adding an AP policy does not fix this | All |
+| `AccessDenied` (matched a `Deny` in the AP policy) | The error body contains `with an explicit deny in a resource-based policy` | Check the `Deny` statement in the AP policy and its `Condition` | All |
 | `Connection timed out` from VPC Lambda | Accessing Internet Origin AP via S3 Gateway VPC Endpoint | Switch to VPC-external Lambda, or route via NAT Gateway | All |
 | `Connection timed out` from VPC Lambda (VPC Origin AP) | Lambda is outside the AP's bound VPC | Place Lambda in the AP's bound VPC and verify S3 Gateway EP | All |
 | Empty ListObjectsV2 response | Incorrect Prefix, or volume junction path mismatch | Verify volume junction path via ONTAP REST API and correct the Prefix | All |
 | `ServiceUnavailable` on GetObject | Cannot reach FSx data plane | Verify FSx management IP / data LIF subnet and routing | All |
-| `MalformedPolicy` on put-access-point-policy | Policy contains invalid actions (e.g., GetBucketLocation) | Only ListBucket + GetObject + PutObject are usable | All |
+| `MalformedPolicy: invalid action` on put-access-point-policy | `s3:GetBucketLocation` or `s3:ListBucketMultipartUploads` included in the AP policy ([measured](../solutions/edge/media-ivs-vod-publishing/direct-recording-experiment.md); no other action is confirmed as rejected) | Move them to the identity-based policy. `s3:GetBucketLocation` is usable there | All |
+| `MalformedPolicy: Normalized policy document exceeds the maximum allowed size` | The policy exceeds the limit. **The check runs post-normalization**, so the byte count of your local JSON does not predict it (measured: 24,620 B accepted / 24,861 B rejected) | Shrink the policy or split the access point | All |
 | Slow response at high concurrency | FSx Throughput Capacity saturation | Increase FSx Throughput Capacity (256/512 MBps), or reduce concurrency | UC with batch processing |
 | Cross-region Textract/Comprehend failure | Service not available in ap-northeast-1 | Specify us-east-1 etc. via `TextractRegion` / `ComprehendMedicalRegion` parameter | UC2, UC5 |
 | Lambda timeout (> 15 min) | Large file processing or FSx queuing due to high concurrency | Use Range GET for partial reads, or limit Map State concurrency | UC4, UC5, UC8 |
 
 ### Diagnostic Steps
 
-1. **IAM verification**: Confirm the caller with `aws sts get-caller-identity`
-2. **ARN verification**: Confirm IAM policy Resource uses `arn:aws:s3:{region}:{account}:accesspoint/{name}` format
-3. **Network verification**: Check the combination of Lambda VPC settings and S3 AP NetworkOrigin (Internet/VPC)
-4. **S3 AP policy verification**: Check resource policy with `aws s3control get-access-point-policy`
-5. **ONTAP-side verification**: Confirm file system identity permissions (UNIX UID or Windows AD user)
+**Identify the layer first.** The same `AccessDenied` is returned from both Layer 1 (AWS side) and Layer 2 (file-system side), so investigating without fixing the layer means searching where the cause is not.
+
+1. **Layer split**: call `HeadBucket` on the same AP. **If it succeeds while the data operation fails, it is Layer 2** (`HeadBucket` only reaches the S3 metadata layer). If the error body contains `with an explicit deny in a resource-based policy`, it is an explicit deny at Layer 1
+2. **Layer 2 verification**: check the effective permissions of the identity pinned to the AP. On an AD-joined SVM, also check AD DC reachability ([AD-joined SVM prerequisites](en/ad-joined-svm-s3ap-prerequisites.md))
+3. **IAM verification**: confirm the caller with `aws sts get-caller-identity`
+4. **ARN verification**: confirm the IAM policy Resource uses the `arn:aws:s3:{region}:{account}:accesspoint/{name}` format
+5. **Network verification**: check the combination of Lambda VPC settings and S3 AP NetworkOrigin (Internet/VPC)
+6. **S3 AP policy verification**: check for a **`Deny` statement** with `aws s3control get-access-point-policy`. **The absence of a policy (`NoSuchAccessPointPolicy`) is not a cause** — within a single account the identity-based policy alone establishes the allow
+
+> **The inverse symptom is in the same table.** If a principal you thought you excluded still gets through, the cause is that only `Allow` is written in the AP policy. Same-account requests are evaluated as a combination with identity-based policies, so a narrow `Allow` does not restrict anything. See [S3 AP Authorization Model](s3ap-authorization-model.en.md).
 
 ---
 

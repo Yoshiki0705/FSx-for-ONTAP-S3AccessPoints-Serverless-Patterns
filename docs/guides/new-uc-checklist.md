@@ -45,13 +45,24 @@ checklist when adding a new UC to the pattern library.
 
 ⚠️ **FSx for ONTAP S3 AP の制約** — 詳細: `docs/guides/s3ap-fsxn-specification.md`
 
-- [ ] S3 AP は**読み取り専用**。PutObject は使用不可（書き込みは NFS/SMB のみ）
 - [ ] IAM ポリシーの Resource ARN: `arn:aws:s3:{region}:{account}:accesspoint/{name}` 形式を使用（エイリアスではない）
 - [ ] GetObject の Resource: `arn:aws:s3:{region}:{account}:accesspoint/{name}/object/*`
-- [ ] `s3:GetBucketLocation` は S3 AP では無効（使用しないこと）
+- [ ] `s3:GetBucketLocation` は **AP リソースポリシーでは使用不可**（`MalformedPolicy: invalid action`）。**identity-based ポリシーでは使用可**なので、テンプレート側の記述はそのままでよい
 - [ ] VPC 内 Lambda から S3 AP にアクセスする場合: **タイムアウトする**（S3 Gateway EP 経由不可）
 - [ ] S3 AP アクセスが必要な Lambda は VPC 外実行 or NAT Gateway 経由にする
-- [ ] S3 AP リソースポリシーが未設定の場合、IAM ポリシーだけでは AccessDenied になる場合がある
+- [ ] 書き込みを止めたい場合、**AP ポリシーの `Allow` を狭くするだけでは止まらない**。明示的な `Deny` を書くか、書き込み権限を持たない ID を AP に固定する（[認可モデル](../s3ap-authorization-model.md#least-privilege-設計ガイドライン)）
+- [ ] `FileSystemIdentity` は**作成後に変更できない**。用途ごとに AP を分けるかどうかを作成前に決める
+
+> **S3 AP は読み取り専用ではありません。** ここには以前「PutObject は使用不可」と書いていましたが、
+> 誤りです。単一 `PutObject` は 5 GiB、マルチパートでオブジェクト全体 50 GiB まで書き込めます
+> （[サイズ上限の実測](../s3ap-object-size-limits-verification.md)）。`DeleteObject` と
+> `MultipartUpload` も使用できます。
+>
+> **AP リソースポリシーが未設定でも AccessDenied にはなりません。** ここには以前
+> 「IAM ポリシーだけでは AccessDenied になる場合がある」と書いていましたが、同一アカウントでは
+> identity-based ポリシーと AP ポリシーは**結合**して評価され、どちらかが許可すれば通ります
+> （実測 2026-08-17/18, `ap-northeast-1`, ONTAP 9.18.1P3D1）。クロスアカウントの場合は両方が
+> 必要です。
 
 ## Observability (gated by CreateCloudWatchAlarms)
 

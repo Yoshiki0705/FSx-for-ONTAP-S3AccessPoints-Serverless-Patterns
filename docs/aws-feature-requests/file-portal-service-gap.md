@@ -343,12 +343,16 @@ export const storage = defineStorage({
 3. 「S3 bucket URL」に `s3://<S3-AP-alias>` を入力
 4. 同期完了後、Chat Agent で自然言語検索が動作
 
-**前回の検証失敗の原因（2026-06-12）**:
-当プロジェクトの検証では、S3 AP を **UNIX root identity** で構成していたため、Quick のデータアクセスロールを AP ポリシーに追加できなかった（`MalformedPolicy: Invalid principal`）。これはサービス制約ではなく、**S3 AP の FileSystemIdentity 設定の問題**。AD ベースの Windows identity で構成すれば正常動作する。
+**前回の検証失敗（2026-06-12）— 原因は未確認**:
+当プロジェクトの検証では、Quick のデータアクセスロールを AP ポリシーに追加しようとして `MalformedPolicy: Invalid principal` になりました。**当時これを「S3 AP を UNIX root identity で構成していたため」と記録していましたが、この因果は成立しません。**
 
-**Action**: 
-- AD identity で S3 AP を再構成して Quick 接続の自環境検証を再実行
-- FR-9 は取り下げ（機能要望ではなく構成の問題）
+`MalformedPolicy: Invalid principal` は S3 のコントロールプレーンが IAM プリンシパルを検証して返すエラーです。`FileSystemIdentity`（ONTAP 側の Layer 2 の構成）は AP ポリシーの検証経路に現れません。実際、**UNIX セキュリティスタイルのボリューム上の AP に、IAM ロールを `Principal` に持つ AP ポリシーを適用できることが実測されています**（[S3 Access Point の権限設計](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/blob/main/docs/ja/domains/security-governance/notes/access-point-authorization-layers.md#設定例--6-パターン)、実測 2026-08-17/18, `ap-northeast-1`, ONTAP 9.18.1P3D1）。
+
+**真の原因は未確認です。** 参照したロールが当時まだ作成されていなかった、ARN が誤っていた、といった可能性が残ります。**2026-06-12 の環境は再現できないため、再測定していません。**
+
+**Action**:
+- FR-9 は取り下げ（サービス制約ではない。AWS 公式ブログと Workshop に動作手順がある）
+- **AD identity が必須という結論は撤回**。Quick 接続を自環境で検証する場合、`FileSystemIdentity` の型は原因候補から外して切り分ける
 
 ---
 

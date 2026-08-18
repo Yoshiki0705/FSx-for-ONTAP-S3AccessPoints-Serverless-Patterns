@@ -606,7 +606,7 @@ aws fsx create-and-attach-s3-access-point ...
 | `VpcEndpoint already exists` | 別のスタックまたは手動作成が既にエンドポイントを所有 | `EnableVpcEndpoints=false` と `EnableS3GatewayEndpoint=false` に設定 |
 | `Unable to assume role` | Lambda 実行ロールがまだ伝搬していない | 30 秒待って再試行; IAM ロール伝搬に最大 10 秒かかる場合がある |
 | `Network timeout` (ONTAP 接続) | VPC 内 Lambda が ONTAP 管理 LIF に到達できない | SG がポート 443 のエグレスを許可しているか確認; ONTAP 管理 IP がプライベートサブネットから到達可能か確認 |
-| `Access Denied` (S3 AP 操作) | IAM ポリシーまたは S3 AP リソースポリシーの不一致 | IAM アイデンティティポリシーと S3 AP リソースポリシーの両方がアクションを許可しているか確認 |
+| `Access Denied` (S3 AP 操作) | Layer 1（IAM ポリシー、ARN 形式、AP ポリシーの明示的な `Deny`）または Layer 2（AP に固定した ID のファイル権限） | まず `HeadBucket` を投げる。成功してデータ操作が失敗するなら Layer 2。同一アカウントでは IAM ポリシーと AP ポリシーは**結合**して評価されるため、AP ポリシーが無いことは原因にならない（[認可モデル](../s3ap-authorization-model.md)） |
 | `Secret not found` | シークレット名のタイポまたはリージョン間違い | `aws secretsmanager describe-secret --secret-id <NAME>` で確認 |
 | `ONTAP S3 server exists on SVM` | ONTAP ネイティブ S3 が FSx for ONTAP S3 AP と競合 | 別の SVM を使用するか、ONTAP S3 サーバーを削除（既知の制約事項を参照） |
 | `Bedrock InvokeModel AccessDenied` | リージョンでモデルアクセスが有効化されていない | Bedrock コンソールでモデルアクセスを有効化; クロスリージョン推論プロファイル ID を使用 |

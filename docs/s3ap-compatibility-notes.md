@@ -318,24 +318,31 @@ AWS サポートは FSx for ONTAP サービスチームにドキュメント改�
 
 | Symptom | Likely Cause | Resolution | Related UC |
 |---------|-------------|------------|-----------|
-| `AccessDenied` on ListObjectsV2 | IAM policy の Resource ARN 形式が間違い | `arn:aws:s3:{region}:{account}:accesspoint/{name}` 形式を使用（エイリアスではない） | All |
-| `AccessDenied` on GetObject | S3 AP リソースポリシー未設定 | `s3control put-access-point-policy` でリソースポリシーを追加 | All |
+| `AccessDenied` on ListObjectsV2 | IAM policy の Resource ARN 形式が間違い | `arn:aws:s3:{region}:{account}:accesspoint/{name}` 形式を使用（エイリアスではない）。[出典](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/troubleshooting-access-points-for-fsxn.html) | All |
+| `AccessDenied` on GetObject（`HeadBucket` は成功する） | **Layer 2**: AP に固定した ID のファイル権限不足、または AD 参加 SVM で AD DC 到達不能 | ID の実効権限を確認。AP ポリシーの追加では解決しない | All |
+| `AccessDenied`（AP ポリシーの `Deny` に当たった） | エラー本文に `with an explicit deny in a resource-based policy` が入る | AP ポリシーの `Deny` 文とその `Condition` を確認 | All |
 | `Connection timed out` from VPC Lambda | Internet Origin AP に S3 Gateway VPC Endpoint 経由でアクセス | VPC 外 Lambda に変更、または NAT Gateway 経由にする | All |
 | `Connection timed out` from VPC Lambda (VPC Origin AP) | Lambda が AP のバインド VPC 外にある | Lambda を AP バインド VPC 内に配置し、S3 Gateway EP を確認 | All |
 | Empty ListObjectsV2 response | Prefix が間違い、またはボリュームの junction path 不一致 | ONTAP REST API でボリュームの junction path を確認し、Prefix を修正 | All |
 | `ServiceUnavailable` on GetObject | FSx データプレーンへの到達不可 | FSx の管理 IP / データ LIF のサブネットとルーティングを確認 | All |
-| `MalformedPolicy` on put-access-point-policy | 無効なアクション（GetBucketLocation 等）を含む | ListBucket + GetObject + PutObject のみ使用可能 | All |
+| `MalformedPolicy: invalid action` on put-access-point-policy | `s3:GetBucketLocation` / `s3:ListBucketMultipartUploads` を AP ポリシーに含めた（[実測](../solutions/edge/media-ivs-vod-publishing/direct-recording-experiment.md)。この 2 つ以外の拒否は確認されていない） | これらは identity-based ポリシー側へ移す。`s3:GetBucketLocation` は identity policy では使用可 | All |
+| `MalformedPolicy: Normalized policy document exceeds the maximum allowed size` | ポリシーが上限超過。**判定は正規化後**で、手元の JSON のバイト数では予測できない（実測: 24,620 B 受理 / 24,861 B 拒否） | ポリシーを縮小するか AP を分割する | All |
 | Slow response at high concurrency | FSx Throughput Capacity の飽和 | FSx Throughput Capacity を増加（256/512 MBps）、または並列度を下げる | UC with batch processing |
 | Cross-region Textract/Comprehend failure | サービスが ap-northeast-1 で未提供 | `TextractRegion` / `ComprehendMedicalRegion` パラメータで us-east-1 等を指定 | UC2, UC5 |
 | Lambda timeout (> 15 min) | 大ファイル処理 or 高並列による FSx キューイング | Range GET で部分読み取り、または Map State の並列度を制限 | UC4, UC5, UC8 |
 
 ### Diagnostic Steps
 
-1. **IAM 確認**: `aws sts get-caller-identity` で呼び出し元を確認
-2. **ARN 確認**: IAM ポリシーの Resource が `arn:aws:s3:{region}:{account}:accesspoint/{name}` 形式か確認
-3. **ネットワーク確認**: Lambda の VPC 設定と S3 AP の NetworkOrigin (Internet/VPC) の組み合わせを確認
-4. **S3 AP ポリシー確認**: `aws s3control get-access-point-policy` でリソースポリシーを確認
-5. **ONTAP 側確認**: ファイルシステム identity の権限（UNIX UID or Windows AD ユーザー）を確認
+**まず層を切り分けてください。** 同じ `AccessDenied` が Layer 1（AWS 側）と Layer 2（ファイルシステム側）の両方から返るため、層を決めずに調べると原因のない場所を探すことになります。
+
+1. **層の切り分け**: 同じ AP に `HeadBucket` を投げる。**成功してデータ操作が失敗するなら Layer 2** です（`HeadBucket` は S3 メタデータ層しか見ないため）。エラー本文に `with an explicit deny in a resource-based policy` があれば Layer 1 の明示的な拒否です
+2. **Layer 2 の確認**: AP に固定した ID の実効権限を確認。AD 参加 SVM なら AD DC 到達性も確認（[AD 参加 SVM の前提条件](ja/ad-joined-svm-s3ap-prerequisites.md)）
+3. **IAM 確認**: `aws sts get-caller-identity` で呼び出し元を確認
+4. **ARN 確認**: IAM ポリシーの Resource が `arn:aws:s3:{region}:{account}:accesspoint/{name}` 形式か確認
+5. **ネットワーク確認**: Lambda の VPC 設定と S3 AP の NetworkOrigin (Internet/VPC) の組み合わせを確認
+6. **S3 AP ポリシー確認**: `aws s3control get-access-point-policy` で **`Deny` 文の有無**を確認。**ポリシーが無いこと（`NoSuchAccessPointPolicy`）は原因になりません** — 同一アカウントでは identity-based ポリシーだけで認可が成立します
+
+> **逆向きの症状も同じ表で拾えます。** 「絞ったつもりの主体が通ってしまう」場合、原因は AP ポリシーに `Allow` しか書いていないことです。同一アカウントでは identity-based と結合して評価されるため、`Allow` を狭くしても絞り込みになりません。詳細は [S3 AP 認可モデル](s3ap-authorization-model.md)。
 
 ---
 

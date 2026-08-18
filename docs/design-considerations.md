@@ -249,11 +249,30 @@ FSx for ONTAP S3 AP は「S3 互換」だが「Amazon S3 と同一」ではな�
 
 ```
 Volume: vol_production_data
-├── S3 AP: prod-readonly     → GET/LIST のみ (分析 Lambda 用)
-├── S3 AP: prod-ingestion    → PUT のみ (データ収集 Lambda 用)
-├── S3 AP: prod-training     → GET のみ (ML トレーニング用)
-└── S3 AP: prod-audit        → GET/LIST のみ (監査 Lambda 用、別 UNIX ユーザー)
+├── S3 AP: prod-readonly     → 読み取り専用 (分析 Lambda 用)
+├── S3 AP: prod-ingestion    → 書き込み可 (データ収集 Lambda 用)
+├── S3 AP: prod-training     → 読み取り専用 (ML トレーニング用)
+└── S3 AP: prod-audit        → 読み取り専用 (監査 Lambda 用、別 UNIX ユーザー)
 ```
+
+> **「AP を分けた」だけでは権限は分離されません。** 上の分離を成立させるものは、AP そのものでは
+> なく次の 2 つです。
+>
+> 1. **各 AP に固定する `FileSystemIdentity`** — `prod-readonly` に書き込み権限を持たない UNIX
+>    ユーザーを固定すれば、Layer 2 で書き込みが止まります。**これが硬い担保です。**
+>    ただし `FileSystemIdentity` は**作成後に変更できません**（変更 API がなく、AP を作り直すと
+>    エイリアスが変わります）。**AP を作る前に決めてください。**
+> 2. **AP ポリシーの明示的な拒否** — `Allow` を `s3:GetObject` だけにするのは絞り込みになりません。
+>    同一アカウントでは identity-based ポリシーと結合して評価されるため、管理者権限を持つ主体は
+>    `prod-readonly` 経由でそのまま書けます（実測 2026-08-17/18, `ap-northeast-1`,
+>    ONTAP 9.18.1P3D1）。止めるには `Deny` + `Condition StringNotEquals aws:PrincipalArn` を
+>    書きます。
+>
+> 詳細は [S3 AP 認可モデル](s3ap-authorization-model.md#least-privilege-設計ガイドライン)。
+>
+> **監査の粒度も AP の分割で決まります。** ONTAP のファイルアクセス監査に残るのは AP に固定した
+> ID であり、呼び出し元の IAM プリンシパルではありません。上の 4 つを 1 つの共用 AP にまとめると、
+> ファイル操作の主体を後から分離できません。
 
 ### 二層認可モデル
 
@@ -265,15 +284,21 @@ S3 AP のアクセスは二層で制御される。両層の AND 条件が必要
 │ - IAM Identity Policy (Lambda 実行ロール)                     │
 │ - S3 AP Resource Policy (オプション、クロスアカウント時に必須)    │
 │ - 制御対象: 誰が / どのリソースに / どの API を呼べるか         │
+│ - ※ 層内は AND ではない。同一アカウントでは上の 2 つは結合され、  │
+│   どちらかが許可すれば通る。絞るのは明示的な Deny                │
 └─────────────────────────────────────────────────────────────┘
                             ↓ (両方 Allow で通過)
 ┌─────────────────────────────────────────────────────────────┐
 │ Layer 2: NAS ファイルシステム権限                              │
-│ - FileSystemIdentity (UNIX UID/GID or Windows AD user)       │
+│ - FileSystemIdentity (UNIX ユーザー or Windows ユーザー)       │
+│   ※ AD 参加は必須ではない。workgroup モードのローカル Windows   │
+│     ユーザー、および LDAP なしのローカル UNIX ユーザーで実測     │
 │ - UNIX パーミッション / POSIX ACL / NTFS ACL                  │
 │ - 制御対象: ファイル・ディレクトリ単位のアクセス制御             │
 └─────────────────────────────────────────────────────────────┘
 ```
+
+**層をまたいだ AND は正しいが、層内は違います。** Layer 1 の中では identity-based ポリシーと AP ポリシーが結合して評価されます（同一アカウント。クロスアカウントは両方が必要）。`AccessDenied` は両方の層から返るため、`HeadBucket` で層を切り分けてから原因を探してください。
 
 ### IAM ポリシーのベストプラクティス
 
@@ -298,10 +323,11 @@ S3 AP のアクセスは二層で制御される。両層の AND 条件が必要
 ```
 
 **設計ポイント**:
-- 各 Lambda 関数に専用の IAM ロールを付与（共有ロール禁止）
-- S3 AP ARN にはリージョンとアカウント ID が必須（バケット ARN 形式は不可）
+- 各 Lambda 関数に専用の IAM ロールを付与（共有ロール禁止）。**上の例が絞り込みとして機能するのは、この専用ロール自身の権限を絞っているからです。** AP への他の経路を絞るものではありません
+- S3 AP ARN にはリージョンとアカウント ID が必須（バケット ARN 形式は不可。[出典](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/troubleshooting-access-points-for-fsxn.html)）
 - 同一アカウント内では AP Resource Policy は不要（IAM Identity Policy のみで認可可能）
-- クロスアカウントアクセス時のみ AP Resource Policy を追加
+- クロスアカウントアクセスでは AP Resource Policy と相手側 Identity Policy の**両方**が必要。**AP を別アカウントのボリュームに作ることはできないが、AP 経由で別アカウントからデータを読むことは成立する**（実測）
+- **AP 単位で絞りたい場合は AP Resource Policy に明示的な `Deny` を書く。** `Allow` を狭くすることは絞り込みにならない
 
 ---
 
@@ -341,7 +367,10 @@ FSx for ONTAP S3 AP を使用するサーバーレスパターンの PoC で確�
 
 - [ ] 用途別 S3 AP 分割設計を確認
 - [ ] IAM ロールの最小権限を確認
-- [ ] FileSystemIdentity（UNIX ユーザー）の選定と NAS パーミッションの整合性
+- [ ] FileSystemIdentity（UNIX / Windows ユーザー）の選定と NAS パーミッションの整合性
+- [ ] **`FileSystemIdentity` は作成後に変更できないことを織り込む**（変更 API なし。AP の作り直しになり、**エイリアスが変わる**）。「あとで読み取り専用の ID に差し替える」は成立しない
+- [ ] **読み取り専用をどの層で担保するかを決定**（AP ポリシーの明示的な `Deny` か、書き込み権限を持たない ID の固定か）。`Allow` を狭くするだけでは担保にならない
+- [ ] **主体別のファイル操作追跡が要件なら AP の分割で担保する**（ONTAP のファイルアクセス監査には AP に固定した ID が記録され、呼び出し元 IAM プリンシパルは残らない。特定には CloudTrail との突き合わせが必要）
 - [ ] Secrets Manager によるクレデンシャル管理パターンの確認
 
 ### 運用

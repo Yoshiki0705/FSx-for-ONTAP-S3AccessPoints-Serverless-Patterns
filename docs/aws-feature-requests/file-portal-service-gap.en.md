@@ -293,7 +293,19 @@ Authentication mechanisms differ per protocol, but ONTAP's multi-protocol identi
 
 **Status**: **Resolved (implementation issue, not service limitation)**
 
-Amazon Quick Suite works with FSx for ONTAP S3 AP when configured with AD-based Windows identity (not UNIX root identity). Documented in [AWS Storage Blog](https://aws.amazon.com/blogs/storage/enabling-ai-powered-analytics-on-enterprise-file-data-configuring-s3-access-points-for-amazon-fsx-for-netapp-ontap-with-active-directory/) and [AWS Workshop](https://catalog.us-east-1.prod.workshops.aws/workshops/9cd82e0b-8348-456b-932a-818b9e5825a1/en-US/08-quicksuite/61-setup).
+Amazon Quick Suite works with FSx for ONTAP S3 AP. The procedure is documented in the [AWS Storage Blog](https://aws.amazon.com/blogs/storage/enabling-ai-powered-analytics-on-enterprise-file-data-configuring-s3-access-points-for-amazon-fsx-for-netapp-ontap-with-active-directory/) and the [AWS Workshop](https://catalog.us-east-1.prod.workshops.aws/workshops/9cd82e0b-8348-456b-932a-818b9e5825a1/en-US/08-quicksuite/61-setup), both of which use an AD-based Windows identity.
+
+> **A retracted claim.** This entry previously read "when configured with AD-based Windows identity
+> (not UNIX root identity)", attributing a 2026-06-12 `MalformedPolicy: Invalid principal` failure to
+> the access point's `FileSystemIdentity`. **That causal claim does not hold.** `Invalid principal`
+> is returned by the S3 control plane validating an IAM principal; `FileSystemIdentity` is a Layer 2
+> ONTAP construct that never appears in the access point policy's validation path. An access point on
+> a UNIX security style volume has since been measured accepting an access point policy with an IAM
+> role as its `Principal` ([S3 Access Point permission design](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/blob/main/docs/en/domains/security-governance/notes/access-point-authorization-layers.md),
+> 2026-08-17/18, `ap-northeast-1`, ONTAP 9.18.1P3D1). **The real cause of the 2026-06 failure is
+> unconfirmed** — a role that did not exist yet, or a malformed ARN, remain possible. The environment
+> from that date cannot be reproduced, so it was not re-measured. AD-based Windows identity is what
+> the blog and workshop use; it is not established as a Quick requirement.
 
 ---
 

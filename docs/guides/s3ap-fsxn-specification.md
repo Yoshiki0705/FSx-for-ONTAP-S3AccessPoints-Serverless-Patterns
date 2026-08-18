@@ -58,8 +58,13 @@ arn:aws:s3:{region}:{account-id}:accesspoint/{access-point-name}/object/*
 # ❌ S3 AP エイリアスをバケット ARN として使用
 arn:aws:s3:::fsxn-eda-s3ap-xxx-ext-s3alias
 
-# ❌ GetBucketLocation を S3 AP リソースポリシーで使用（MalformedPolicy エラー）
+# ❌ GetBucketLocation / ListBucketMultipartUploads を S3 AP リソースポリシーで使用
+#    （MalformedPolicy: invalid action）
 Action: s3:GetBucketLocation  ← リソースポリシーでは無効（IAM identity policy では使用可）
+
+# ❌ AP ポリシーの Allow を狭くして「読み取り専用の AP」を作ったつもりになる
+#    同一アカウントでは identity-based と結合するため、管理者権限の主体はそのまま書ける
+Statement: [{ Effect: Allow, Action: [s3:GetObject] }]  ← これだけでは絞れない
 ```
 
 ### CloudFormation テンプレートでの正しい記述
@@ -123,9 +128,12 @@ aws s3control put-access-point-policy \
 
 ### 無効なアクション（MalformedPolicy エラー）
 
-以下のアクションは S3 AP **リソースポリシー**で使用不可:
-- `s3:GetBucketLocation`（IAM identity policy では使用可）
-- `s3:PutBucketPolicy`
+以下のアクションは S3 AP **リソースポリシー**で拒否されることを実測しています（`MalformedPolicy: invalid action`。[実測記録](../../solutions/edge/media-ivs-vod-publishing/direct-recording-experiment.md)）:
+
+- `s3:GetBucketLocation`（**IAM identity policy では使用可**。本リポジトリの多くのテンプレートが identity policy 側で使用しています）
+- `s3:ListBucketMultipartUploads`
+
+**「これ以外は使えない」という制限は確認されていません。** `s3:DeleteObject` を含む AP ポリシーは正常に適用されます（実測 2026-08-17/18, `ap-northeast-1`, ONTAP 9.18.1P3D1 — [認可モデル](../s3ap-authorization-model.md#ap-ポリシーで使えないアクション)）。`s3:PutBucketPolicy` は AWS が非対応操作として挙げていますが、AP ポリシーに含めた場合の挙動を**本リポジトリでは測定していません。**
 
 ---
 
@@ -203,7 +211,8 @@ response["Body"].close()
 | `AccessDenied` on PutObject | file system identity に書き込み権限なし | ONTAP ボリュームの UNIX/NTFS 権限を確認 |
 | `ServiceUnavailable` | VPC 内からの Internet Origin AP アクセス | VPC 外実行 or NAT Gateway 経由 |
 | `Connection timed out` (120s) | Internet Origin AP に S3 Gateway EP 経由でアクセス | Lambda の VPC 設定を外す or NAT Gateway 追加 |
-| `MalformedPolicy` | リソースポリシーに無効なアクション使用 | ListBucket + GetObject + PutObject のみ使用 |
+| `MalformedPolicy: invalid action` | リソースポリシーに `s3:GetBucketLocation` / `s3:ListBucketMultipartUploads` を使用 | これらを identity policy 側へ移す |
+| `MalformedPolicy: Normalized policy document exceeds...` | ポリシーサイズ超過（**判定は正規化後**。実測 24,620 B 受理 / 24,861 B 拒否） | ポリシーを縮小するか AP を分割 |
 | `EntityTooLarge` | 5 GB 超のアップロード | マルチパートアップロードを使用 |
 | `MISCONFIGURED` 状態 | file system identity が解決不可 | ボリュームのマウント状態を確認 |
 

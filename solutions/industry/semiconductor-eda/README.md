@@ -308,13 +308,15 @@ UC6 で生成した DRC 統計・設計メタデータ・レビューサマリ�
 
 ### セットアップ手順（概要）
 
-1. FSx for ONTAP S3 AP を **AD ユーザー（Windows identity）** で作成
+1. FSx for ONTAP S3 AP を作成（AWS ハンズオンの手順は AD ユーザー（Windows identity）を使います）
 2. Amazon Quick コンソール → Integrations → Knowledge bases → Amazon S3
 3. S3 bucket URL に `s3://<S3-AP-alias>` を入力して同期
 4. DRC 統計ダッシュボード: Athena → Quick Sight データセットとして追加
 5. Quick Flows で DRC 閾値超過時のアラート・レビュー依頼を自動化
 
-> **前提条件**: S3 AP は AD ベースの Windows identity で構成する必要があります（UNIX identity では Quick のデータアクセスロールを AP ポリシーに追加できません）。詳細な手順は [AWS Workshop Studio ハンズオン](https://catalog.us-east-1.prod.workshops.aws/workshops/9cd82e0b-8348-456b-932a-818b9e5825a1/en-US/08-quicksuite/61-setup) を参照してください。
+> **手順の出典**: 上記は [AWS Workshop Studio ハンズオン](https://catalog.us-east-1.prod.workshops.aws/workshops/9cd82e0b-8348-456b-932a-818b9e5825a1/en-US/08-quicksuite/61-setup) に沿った流れです。詳細な手順はそちらを参照してください。
+>
+> **以前ここには「S3 AP は AD ベースの Windows identity で構成する必要があります（UNIX identity では Quick のデータアクセスロールを AP ポリシーに追加できません）」と書いていましたが、撤回しました。** `MalformedPolicy: Invalid principal` は IAM プリンシパルの検証エラーで、`FileSystemIdentity`（ONTAP 側の構成）は AP ポリシーの検証経路に現れません。UNIX セキュリティスタイルのボリューム上の AP に IAM ロールを `Principal` とする AP ポリシーを適用できることは実測されています（[S3 AP 認可モデル](../../../docs/s3ap-authorization-model.md)）。当時の失敗の原因は未確認です。AD ユーザーはハンズオンが採る構成であって、Quick 側の要件として確認されたものではありません。
 
 ### EDA チーム向けユースケース例
 

@@ -609,7 +609,7 @@ See [infrastructure/demo-ad-environment.yaml](../../infrastructure/demo-ad-envir
 | `VpcEndpoint already exists` | Another stack or manual creation owns this endpoint | Set `EnableVpcEndpoints=false` and `EnableS3GatewayEndpoint=false` |
 | `Unable to assume role` | Lambda execution role not yet propagated | Wait 30s and retry; IAM role propagation can take up to 10s |
 | `Network timeout` connecting to ONTAP | Lambda in VPC cannot reach ONTAP management LIF | Verify SG allows egress to port 443; confirm ONTAP management IP is reachable from private subnets |
-| `Access Denied` on S3 AP operations | IAM policy or S3 AP resource policy mismatch | Check both IAM identity policy and S3 AP resource policy allow the action |
+| `Access Denied` on S3 AP operations | Layer 1 (IAM identity policy, ARN format, or an explicit `Deny` in the AP policy) or Layer 2 (file permissions of the identity pinned to the AP) | Call `HeadBucket` first: if it succeeds while the data operation fails, the cause is Layer 2. Same-account, the identity policy and the AP policy are **combined** — a missing AP policy is not a cause ([authorization model](../s3ap-authorization-model.en.md)) |
 | `Secret not found` | Secret name typo or wrong region | Verify with `aws secretsmanager describe-secret --secret-id <NAME>` |
 | `ONTAP S3 server exists on SVM` | ONTAP native S3 conflicts with FSx for ONTAP S3 AP | Use a different SVM or remove the ONTAP S3 server (see Known Constraints) |
 | `Template size exceeds 51200 bytes` | Template too large for `--template-body` | Use `sam deploy` (handles S3 upload) or upload template to S3 first |

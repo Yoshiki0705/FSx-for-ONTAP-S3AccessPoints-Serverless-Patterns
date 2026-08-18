@@ -73,6 +73,18 @@ Resources:
           PolicyDocument:
             Version: "2012-10-17"
             Statement:
+              # WARNING: the bucket-style ARN below does NOT authorize S3 AP access.
+              # IAM does not recognize arn:aws:s3:::<alias> for an FSx for ONTAP S3
+              # access point; the access point ARN form is required. See AWS
+              # "Troubleshooting access points" (Access Denied with default S3 access
+              # point permissions for automatically created service roles):
+              # https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/troubleshooting-access-points-for-fsxn.html
+              #
+              # This statement is kept because the alias is also used as the Bucket
+              # parameter at call time, but it grants nothing on its own. The working
+              # grant is S3APReadViaArn below, which is conditional on
+              # S3AccessPointName. **Supply S3AccessPointName** — without it this role
+              # has no usable S3 AP permission.
               - Sid: S3APReadViaAlias
                 Effect: Allow
                 Action:

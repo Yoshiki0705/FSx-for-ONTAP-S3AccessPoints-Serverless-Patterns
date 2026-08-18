@@ -203,7 +203,7 @@ aws stepfunctions list-executions \
 |------|------|
 | Lambda タイムアウト | Lambda のタイムアウト値を増加 |
 | IAM 権限不足 | IAM ロールにポリシーを追加 |
-| S3 AP AccessDenied | S3 AP ポリシーと IAM ロールを確認 |
+| S3 AP AccessDenied | `HeadBucket` で層を切り分ける。成功してデータ操作が失敗するなら Layer 2（AP に固定した ID のファイル権限、AD 参加 SVM なら AD DC 到達性）。失敗するなら Layer 1（IAM ロール、ARN 形式、AP ポリシーの `Deny`）。[認可モデル](../s3ap-authorization-model.md) |
 | ONTAP API 接続失敗 | VPC Endpoint と Secrets Manager を確認 |
 
 #### Lambda エラー率アラーム
