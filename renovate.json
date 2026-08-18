@@ -31,8 +31,7 @@
       "automerge": true
     },
     {
-      "description": "Group boto3/botocore (AWS SDK for Python) minor/patch and automerge",
-      "matchManagers": ["pip_requirements", "pep621"],
+      "description": "Group boto3/botocore (AWS SDK for Python) minor/patch and automerge. No matchManagers filter on purpose: boto3 is pinned in both requirements.txt and pyproject.toml, and scripts/check_runtime_pins_agree.py fails if the two disagree, so a PR that raises one file alone can never be green. That happened -- 2026-08-16 produced #328 for requirements.txt under this group and #329 for pyproject.toml ungrouped, and both were red on the pins check. Naming the managers is what let them split, so the match is by package name only.",
       "matchPackageNames": ["/^boto/"],
       "matchUpdateTypes": ["minor", "patch"],
       "groupName": "aws-sdk-python",
@@ -40,7 +39,6 @@
     },
     {
       "description": "AWS SDK major bumps require Dashboard approval",
-      "matchManagers": ["pip_requirements", "pep621"],
       "matchPackageNames": ["/^boto/"],
       "matchUpdateTypes": ["major"],
       "groupName": "aws-sdk-python (major)",
