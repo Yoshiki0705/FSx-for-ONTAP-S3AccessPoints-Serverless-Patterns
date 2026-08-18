@@ -365,7 +365,12 @@ jobs:
       - staleness-checks
       - portal-test
       - storage-browser-demo-build
-      - security-cfn
+      # `security-cfn` used to be listed here. The job was removed on 2026-08-15 as a
+      # duplicate of validators.yml `cfn-guard-security`, and this reference was left
+      # behind. GitHub rejects a workflow whose `needs` names a job that does not
+      # exist, so from that day **this entire workflow stopped starting** -- 94 runs
+      # recorded as failures without executing a single step, and no pull request run
+      # at all. cfn-guard still runs, in validators.yml.
       - security-python
     if: always()
     steps:
