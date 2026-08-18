@@ -266,6 +266,14 @@ drift:
 # request could merge past every one of them: check_en_doc_language,
 # check_pattern_env_contract, check_samconfig_contract and check_ops_shared_staged.
 	$(PYTHON) -m pytest scripts/tests/test_gates_run_in_ci.py --tb=short -q
+# A workflow GitHub refuses to load runs nothing, and the run list says "failure",
+# which reads like a failing test rather than a file that never started. ci.yml sat
+# like that for three days: a job was deleted and its name left in
+# `final-status.needs`, so all 8 of its jobs were absent from every pull request
+# merged in between while 94 runs were recorded as failures. yaml.safe_load parses
+# that file happily -- a dangling `needs` is valid YAML and invalid only against the
+# Actions schema -- so nothing local could see it.
+	$(PYTHON) -m pytest scripts/tests/test_workflows_are_loadable.py --tb=short -q
 # The irreversible-operations guard. It has to be a TRACKED file: `.kiro/` is
 # gitignored, so a guard living only there does not exist for a collaborator, a
 # fresh clone, or CI, and a hook pointing at $HOME silently protects one machine.
