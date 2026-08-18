@@ -8,7 +8,7 @@ JSON annotation として標準 S3 バケット上の出力オブジェクトに
     FSx for ONTAP S3 Access Points は PutObjectAnnotation / GetObjectAnnotation を
     現時点でサポートしていない可能性がある（未検証）。
     このモジュールは OutputDestination=STANDARD_S3 の出力先に対して使用する。
-    FSxN S3 AP 経由の annotation サポート状況は docs/s3ap-compatibility-notes.md を参照。
+    FSx for ONTAP S3 AP 経由の annotation サポート状況は docs/s3ap-compatibility-notes.md を参照。
 
 Usage:
     from shared.s3_annotations import AnnotationHelper, ProcessingAnnotation

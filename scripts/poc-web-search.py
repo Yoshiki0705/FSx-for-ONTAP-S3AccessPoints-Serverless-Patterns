@@ -240,7 +240,7 @@ def cmd_search(args: argparse.Namespace) -> None:
 HYBRID_SYSTEM_PROMPT = """あなたは企業向け業務アシスタントです。
 
 回答の根拠として2種類の情報源を使い分けてください:
-1. <internal_documents> — 社内文書（FSx ONTAP 上のファイル由来）。信頼度が高い内部情報。
+1. <internal_documents> — 社内文書（FSx for ONTAP 上のファイル由来）。信頼度が高い内部情報。
 2. <web_search_results> — リアルタイム Web 検索結果。最新の外部情報。
 
 ルール:

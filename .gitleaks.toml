@@ -2,7 +2,7 @@
 # カスタムルール: 標準ルール + オンプレ/内部情報の漏洩防止
 # https://github.com/gitleaks/gitleaks
 
-title = "gitleaks config for FSxN RAG project"
+title = "gitleaks config for the FSx for ONTAP S3 AP patterns repository"
 
 [extend]
 # gitleaks 標準ルールを継承

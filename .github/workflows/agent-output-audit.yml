@@ -69,33 +69,54 @@ jobs:
           # Split into markdown and text (all auditable) file lists
           MD_FILES=$(echo "$CHANGED" | grep -E '\.md$' || true)
           TEXT_FILES=$(echo "$CHANGED" | grep -E '\.(md|yaml|yml|py|sql|json|sh)$' || true)
+          # Naming has its own list, wider than both. The standard covers code
+          # comments as well as documents, and scanning only .md let the violation
+          # sit in a shell comment, a Python comment and a CloudFormation
+          # description indefinitely: nothing looked there. TypeScript is included
+          # because the portal's user-facing strings live in .ts.
+          NAMING_FILES=$(echo "$CHANGED" | grep -E '\.(md|yaml|yml|py|sql|json|sh|ts|tsx)$' || true)
 
           # Write to files for later steps
           echo "$MD_FILES" > /tmp/changed_md.txt
           echo "$TEXT_FILES" > /tmp/changed_text.txt
+          echo "$NAMING_FILES" > /tmp/changed_naming.txt
 
           # grep -c prints "0" and exits 1 on no match; use `|| true` (not `|| echo 0`,
           # which would append a second line and break the GITHUB_OUTPUT format).
           MD_COUNT=$(grep -c . /tmp/changed_md.txt || true)
           TEXT_COUNT=$(grep -c . /tmp/changed_text.txt || true)
+          NAMING_COUNT=$(grep -c . /tmp/changed_naming.txt || true)
           echo "md_count=${MD_COUNT:-0}" >> "$GITHUB_OUTPUT"
           echo "text_count=${TEXT_COUNT:-0}" >> "$GITHUB_OUTPUT"
+          echo "naming_count=${NAMING_COUNT:-0}" >> "$GITHUB_OUTPUT"
 
-      - name: "Check: Naming standard (changed .md only)"
-        if: steps.changes.outputs.md_count > 0
+      - name: "Check: Naming standard (changed docs, code and comments)"
+        if: steps.changes.outputs.naming_count > 0
         run: |
           FAIL=0
           while IFS= read -r file; do
             [ -z "$file" ] && continue
             [ ! -f "$file" ] && continue
-            # Exclude lines with allow:naming comment
-            HITS=$(grep -nE '\bFSxN\b|FSx ONTAP|FSx S3 AP' "$file" | grep -v 'allow:naming' || true)
+            # The abbreviation alone missed the spelled-out form, and three documents
+            # carried it past a green check because it is the same violation written
+            # out and the pattern only knew the short one.
+            #
+            # The exclusions drop identifiers rather than prose: a CloudWatch
+            # namespace that dashboards and alarms are keyed on, a parameter value,
+            # and another project's name. Rewriting any of them would break something,
+            # and reporting them would bury the real findings.
+            #
+            # Both lists are variables so the markers below can sit on their own line:
+            # a pattern that bans a spelling has to contain that spelling.
+            NAMING_PATTERN='\bFSxN\b|FSx ONTAP|FSx S3 AP|FSx S3 [Aa]ccess ?[Pp]oint'  # allow:naming
+            NAMING_EXCLUDE='allow:naming|FSxN-S3AP|FSXN_S3AP|RAG-FSxN'  # allow:naming
+            HITS=$(grep -nE "$NAMING_PATTERN" "$file" | grep -vE "$NAMING_EXCLUDE" || true)
             if [ -n "$HITS" ]; then
               echo "::error file=$file::Naming violation (use 'FSx for ONTAP' / 'FSx for ONTAP S3 AP')"
               echo "$HITS" | head -5
               FAIL=1
             fi
-          done < /tmp/changed_md.txt
+          done < /tmp/changed_naming.txt
 
           # Forbidden tools
           while IFS= read -r file; do

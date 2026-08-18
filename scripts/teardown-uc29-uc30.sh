@@ -11,11 +11,11 @@
 #     scripts/cleanup_generic_ucs.py (and scripts/cleanup_stacks.sh for
 #     DELETE_FAILED repair). Do NOT use this script for them.
 #   * UC29/UC30 additionally create NON-CloudFormation resources (AOSS,
-#     Managed AD, Windows EC2, FSx SVM/volumes, FSx S3 access points, Bedrock
+#     Managed AD, Windows EC2, FSx SVM/volumes, FSx for ONTAP S3 APs, Bedrock
 #     KB) that the generic CFN tooling cannot reach -> hence this UC-specific
 #     orchestrator. Its CFN-blocker handling (Athena WG recursive delete,
 #     versioned-bucket emptying) mirrors the generic scripts' conventions.
-#   * Reusable lessons unique to this script (FSx S3 AP detach, Bedrock KB
+#   * Reusable lessons unique to this script (FSx for ONTAP S3 AP detach, Bedrock KB
 #     RETAIN-before-delete) are also documented for cross-UC reuse in
 #     docs/operational-runbooks/cleanup-troubleshooting.md (Failure Mode 7/8).
 #
@@ -215,7 +215,7 @@ else
 fi
 
 # =============================================================================
-log "Phase 7a — Detach FSx S3 Access Points (blocks volume delete otherwise)"
+log "Phase 7a — Detach FSx for ONTAP S3 APs (blocks volume delete otherwise)"
 # =============================================================================
 # LESSON: an FSx for ONTAP S3 access point attached to a volume blocks DeleteVolume
 # with: "Cannot delete volume while it has one or multiple S3 access points".
