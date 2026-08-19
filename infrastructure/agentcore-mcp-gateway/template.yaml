@@ -17,10 +17,17 @@ Parameters:
 
   S3AccessPointName:
     Type: String
-    Default: ""
+    MinLength: 3
+    MaxLength: 50
+    AllowedPattern: "^[a-z0-9][a-z0-9-]*[a-z0-9]$"
     Description: >
-      S3 AP 名（ARN ベースの IAM 権限付与用）。
-      空の場合は Alias ベースのみ。本番環境では指定推奨。
+      S3 AP 名（Alias ではない）。**必須です。**
+      IAM が S3 AP を認可できるのは accesspoint 形式の ARN
+      （arn:aws:s3:<region>:<account>:accesspoint/<name>）だけで、
+      バケット形式（arn:aws:s3:::<alias>）では認可されません。
+      名前が無いとこのロールに使える S3 AP 権限が存在しなくなるため、
+      以前の Default: "" は削除しました。
+      出典: https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/troubleshooting-access-points-for-fsxn.html
 
   GatewayName:
     Type: String
@@ -40,13 +47,6 @@ Parameters:
     MinValue: 5
     MaxValue: 300
     Description: Lambda タイムアウト (秒)
-
-# =====================================================================
-# Conditions
-# =====================================================================
-Conditions:
-  HasS3AccessPointName:
-    !Not [!Equals [!Ref S3AccessPointName, ""]]
 
 # =====================================================================
 # Resources
@@ -73,39 +73,24 @@ Resources:
           PolicyDocument:
             Version: "2012-10-17"
             Statement:
-              # WARNING: the bucket-style ARN below does NOT authorize S3 AP access.
-              # IAM does not recognize arn:aws:s3:::<alias> for an FSx for ONTAP S3
-              # access point; the access point ARN form is required. See AWS
-              # "Troubleshooting access points" (Access Denied with default S3 access
-              # point permissions for automatically created service roles):
+              # The access point ARN form is the only one IAM recognizes for an FSx for
+              # ONTAP S3 access point. A bucket-style ARN (arn:aws:s3:::<alias>) grants
+              # nothing, so no alias-based statement is written here — one used to be,
+              # and it made a misconfigured stack look permissioned.
               # https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/troubleshooting-access-points-for-fsxn.html
               #
-              # This statement is kept because the alias is also used as the Bucket
-              # parameter at call time, but it grants nothing on its own. The working
-              # grant is S3APReadViaArn below, which is conditional on
-              # S3AccessPointName. **Supply S3AccessPointName** — without it this role
-              # has no usable S3 AP permission.
-              - Sid: S3APReadViaAlias
+              # The alias is still passed to the Lambda as S3_AP_ALIAS: it is the value
+              # the S3 API takes as the Bucket parameter. Authorization and addressing
+              # use different forms of the same access point.
+              - Sid: S3APReadViaArn
                 Effect: Allow
                 Action:
                   - s3:GetObject
                   - s3:ListBucket
                   - s3:GetBucketLocation
                 Resource:
-                  - !Sub "arn:aws:s3:::${S3AccessPointAlias}"
-                  - !Sub "arn:aws:s3:::${S3AccessPointAlias}/*"
-              - !If
-                - HasS3AccessPointName
-                - Sid: S3APReadViaArn
-                  Effect: Allow
-                  Action:
-                    - s3:GetObject
-                    - s3:ListBucket
-                    - s3:GetBucketLocation
-                  Resource:
-                    - !Sub "arn:aws:s3:${AWS::Region}:${AWS::AccountId}:accesspoint/${S3AccessPointName}"
-                    - !Sub "arn:aws:s3:${AWS::Region}:${AWS::AccountId}:accesspoint/${S3AccessPointName}/object/*"
-                - !Ref AWS::NoValue
+                  - !Sub "arn:${AWS::Partition}:s3:${AWS::Region}:${AWS::AccountId}:accesspoint/${S3AccessPointName}"
+                  - !Sub "arn:${AWS::Partition}:s3:${AWS::Region}:${AWS::AccountId}:accesspoint/${S3AccessPointName}/object/*"
       Tags:
         - Key: UseCase
           Value: agentcore-mcp-eda

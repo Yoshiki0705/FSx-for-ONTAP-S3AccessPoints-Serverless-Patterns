@@ -96,6 +96,15 @@ aws cloudformation deploy \
   --region us-east-1
 ```
 
+> **`S3AccessPointName` は必須です（Alias とは別物）。** IAM が S3 AP を認可できるのは
+> `accesspoint` 形式の ARN（`arn:aws:s3:<region>:<account>:accesspoint/<name>`）だけで、
+> Alias から作るバケット形式 ARN では認可されません。Alias は S3 API の `Bucket`
+> パラメータに渡す値で、認可の主体ではありません。名前は次で引けます:
+> ```bash
+> aws fsx describe-s3-access-point-attachments --region <region> \
+>   --query "S3AccessPointAttachments[?S3AccessPoint.Alias=='<your-alias>'].Name" --output text
+> ```
+
 デプロイ後、Gateway 作成はスクリプトの Step 3〜5 を手動実行。
 
 ### Step 2: Quick Desktop サインイン

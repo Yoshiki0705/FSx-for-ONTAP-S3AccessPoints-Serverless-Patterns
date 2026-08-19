@@ -60,7 +60,7 @@ while [[ $# -gt 0 ]]; do
     --from-stack) FROM_STACK="$2"; ACTION="from-stack"; shift 2 ;;
     --cleanup) ACTION="cleanup"; shift ;;
     --help|-h)
-      echo "Usage: $0 --s3ap-alias <alias> [--s3ap-name <name>] [--stack-name <name>]"
+      echo "Usage: $0 --s3ap-alias <alias> --s3ap-name <name> [--stack-name <name>]"
       echo "       $0 --from-stack <stack-name>"
       echo "       $0 --cleanup --stack-name <name>"
       exit 0
@@ -127,6 +127,17 @@ elif [[ -z "$S3AP_ALIAS" ]]; then
   die "Specify --s3ap-alias or --from-stack"
 fi
 
+# --s3ap-name is required for a fresh deploy. IAM only authorizes an FSx for ONTAP
+# S3 access point through the accesspoint-form ARN, which needs the name; the alias
+# is the Bucket parameter, not an authorization subject. Passing only the alias used
+# to deploy "successfully" and then fail on every data call.
+if [[ "$ACTION" != "from-stack" && -z "$S3AP_NAME" ]]; then
+  die "Specify --s3ap-name. The alias alone cannot authorize S3 AP access (IAM needs
+  arn:aws:s3:<region>:<account>:accesspoint/<name>). Find it with:
+    aws fsx describe-s3-access-point-attachments --region $GATEWAY_REGION \\
+      --query \"S3AccessPointAttachments[?S3AccessPoint.Alias=='$S3AP_ALIAS'].Name\" --output text"
+fi
+
 ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
 TEMPLATE_DIR="$(cd "$(dirname "$0")/../infrastructure/agentcore-mcp-gateway" && pwd)"
 TEMPLATE_FILE="$TEMPLATE_DIR/template.yaml"
@@ -138,7 +149,7 @@ log "  Account:      $ACCOUNT_ID"
 log "  Region:       $GATEWAY_REGION"
 log "  Stack:        $STACK_NAME"
 log "  S3 AP Alias:  $S3AP_ALIAS"
-log "  S3 AP Name:   ${S3AP_NAME:-'(not set)'}"
+log "  S3 AP Name:   ${S3AP_NAME:-'(from existing stack)'}"
 log "  Gateway Name: $GATEWAY_NAME"
 log ""
 
@@ -147,7 +158,7 @@ if [[ "$ACTION" != "from-stack" ]]; then
   log "Step 1/5: Deploying CloudFormation stack..."
   PARAMS="ParameterKey=S3AccessPointAlias,ParameterValue=$S3AP_ALIAS"
   PARAMS="$PARAMS ParameterKey=GatewayName,ParameterValue=$GATEWAY_NAME"
-  [[ -n "$S3AP_NAME" ]] && PARAMS="$PARAMS ParameterKey=S3AccessPointName,ParameterValue=$S3AP_NAME"
+  PARAMS="$PARAMS ParameterKey=S3AccessPointName,ParameterValue=$S3AP_NAME"
 
   aws cloudformation deploy \
     --template-file "$TEMPLATE_FILE" \
