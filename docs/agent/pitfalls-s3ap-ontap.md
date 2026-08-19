@@ -38,25 +38,40 @@ Resource: !Sub "arn:aws:s3:${AWS::Region}:${AWS::AccountId}:accesspoint/${S3Acce
 Resource: !Sub "arn:aws:s3:::${S3AccessPointAlias}"
 ```
 
+Source: AWS [Troubleshooting access points](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/troubleshooting-access-points-for-fsxn.html).
+
 ### Dual-Layer Authorization
 
-Both must Allow:
-1. **AWS-side**: IAM identity policy + S3 AP resource policy
-2. **ONTAP-side**: File system identity (UNIX UID or Windows AD user)
+**Both layers must Allow — but *within* Layer 1 the policies are combined, not ANDed.** Measurements
+and policy examples: [authorization model](../s3ap-authorization-model.md).
+
+- **A missing AP policy is not a cause of `AccessDenied`** — same-account identity-based alone allows.
+- **A narrow `Allow` does not narrow access.** Narrow with an explicit `Deny` +
+  `Condition StringNotEquals aws:PrincipalArn` (not `NotPrincipal`: needs account ARN + session ARN,
+  no wildcards).
+- **Layer 2 returns `AccessDenied` too** — volume root `uidgid`/mode bits flipped `PutObject` with no
+  AP policy attached. A Layer 2 denial has a **bare** `Access Denied` body; Layer 1's explicit deny
+  appends `with an explicit deny in a resource-based policy`. Same results on UNIX and NTFS volumes.
+- **A SLAG on a UNIX volume denies every protocol** until a unix→win name mapping exists. Not
+  S3-specific; NFS stops too. A permissive ACE does not help, and a reachable DC is not enough.
+- **Read-only needs a Layer 2 identity without write permission.** `FileSystemIdentity` has no update
+  API; recreating the AP changes the alias. Decide before creating it.
 
 ### Supported Operations
 
 PutObject, GetObject, ListObjectsV2, HeadObject, DeleteObject, MultipartUpload.
 **Measured size limits** (2026-08-02, ap-northeast-1 — see [size limit verification](../s3ap-object-size-limits-verification.md)):
-- Single `PutObject`: **5 GiB = 5,368,709,120 bytes**. Rejected on Content-Length (immediate, ~2.7s) with 400 `EntityTooLarge` + `MaxSizeAllowed`.
-- `UploadPart` per part: **5 GiB** (same value, same fast rejection).
+- Single `PutObject` and `UploadPart` per part: **5 GiB = 5,368,709,120 bytes**. Rejected on
+  Content-Length (immediate, ~2.7s) with 400 `EntityTooLarge` + `MaxSizeAllowed`.
 - Whole object (upload): **50 GiB = 53,687,091,200 bytes**. 50 GiB succeeds; 50 GiB + 1 fails.
 - ⚠️ The whole-object limit is checked **only at `CompleteMultipartUpload`, after the entire payload is transferred** (~10 min for 50 GiB). `UploadPart` has no cumulative check, and the Complete error omits `MaxSizeAllowed`. **Validate object size client-side before uploading.**
-- `CompleteMultipartUpload` took ~557s to assemble a 50 GiB object — set a long `read_timeout`.
-- Docs say "5 GB"/"50 GB" but both are **binary** (GiB).
+- `CompleteMultipartUpload` took ~557s for 50 GiB — set a long `read_timeout`. Docs say "GB"; both
+  limits are **binary** (GiB).
 `UploadPartCopy` is documented as Supported but **fails with `NoSuchKey`** in practice (`CopyObject` works) — server-side assembly of large objects is not possible.
 NOT supported: GetBucketNotificationConfiguration.
-Presigned URLs: Listed as "Not supported" in the AWS compatibility table, but observed working (client-side SigV4 calculation → standard GetObject). AWS Support has since confirmed ONTAP-layer support (v4 from ONTAP 9.11.1, v2 from 9.16.1) and submitted a doc correction — **not yet published**, so continue to avoid production reliance until it is. See docs/s3ap-compatibility-notes.md for details.
+Presigned URLs: listed as "Not supported" by AWS but observed working (client-side SigV4 → plain
+GetObject). A vendor-confirmed doc correction is **not yet published**, so avoid production reliance
+until it is. Details: [compatibility notes](../s3ap-compatibility-notes.md).
 
 ### AI サービスは S3 参照で AP を読めない（2026-08-12 実測）
 
@@ -86,9 +101,8 @@ textract.detect_document_text(Document={"Bytes": doc_bytes})
 | Textract `StartDocumentAnalysis` / `StartDocumentTextDetection`（非同期） | `DocumentLocation.S3Object` のみ | `financial-idp/ocr` |
 | Rekognition Video `StartContentModeration` 等（stored video） | `Video.S3Object` のみ | `edge/media-ivs-vod-publishing/moderation` |
 
-inline 方式は同期 API の上限（5 MB）に収まる必要がある。`S3ApHelper.get_object_bytes()` は
-`head_object` で**取得前に**上限判定して落とす（取得後に気づくと、無駄に転送した上でサービス側が
-曖昧なエラーを返す）。
+inline 方式は同期 API の上限（5 MB）に収まる必要がある。`S3ApHelper.get_object_bytes()` が
+`head_object` で**取得前に**判定して落とす。
 
 ### NetworkOrigin (Immutable After Creation)
 
@@ -103,35 +117,17 @@ inline 方式は同期 API の上限（5 MB）に収まる必要がある。`S3A
 
 ### AD-Joined SVM: AD DC Reachability Required for Data Operations
 
-On AD-joined SVMs (CIFS enabled), **every S3 AP data operation** (ListObjectsV2, GetObject, PutObject) requires the SVM to successfully contact its AD domain controllers. ONTAP's multiprotocol identity pipeline performs a `unix→win` reverse lookup for every file system operation when CIFS is enabled — even on UNIX security style volumes accessed via S3 AP.
+On AD-joined SVMs (CIFS enabled), **every S3 AP data operation** needs the SVM to reach its AD domain
+controllers — ONTAP does a `unix→win` reverse lookup per file-system operation, even on UNIX security
+style volumes. **`HeadBucket` succeeds anyway**, so it is a false positive: ListObjectsV2, GetObject
+and PutObject all return `AccessDenied` while HeadBucket, IAM, AP policy and network all pass. The
+cause is the ONTAP layer, not any of the layers the symptom points at.
 
-**Diagnostic pattern**:
-| Test | AD DC Reachable | AD DC Unreachable |
-|------|:---:|:---:|
-| HeadBucket | ✅ | ✅ (false positive) |
-| ListObjectsV2 | ✅ | ❌ AccessDenied |
-| GetObject | ✅ | ❌ AccessDenied |
-| PutObject | ✅ | ❌ AccessDenied |
-
-**Pre-flight check** (recommended for Step Functions workflows on AD-joined SVMs):
-```python
-# 1. Check if SVM has CIFS enabled (= AD-joined)
-cifs = ontap_request("GET", f"/protocols/cifs/services?svm.name={svm}&fields=ad_domain.fqdn")
-if cifs["records"]:
-    # 2. Verify DC discovery
-    domains = ontap_request("GET", f"/protocols/cifs/domains?svm.name={svm}&fields=discovered_servers")
-    if not domains["records"] or domains["records"][0].get("discovered_servers") == []:
-        raise RuntimeError("AD DC unreachable — S3 AP data operations will fail with AccessDenied")
-```
-
-**Why this is confusing**: HeadBucket succeeds because it only validates at the S3 metadata layer. All IAM, AP policy, and network checks also pass. This leads developers to investigate the wrong layers. The root cause is at the ONTAP file-system layer (reverse name-mapping requires AD DC LDAP/Kerberos connectivity).
-
-**When this happens**:
-- AD (Managed AD or self-managed) is deleted, stopped, or network-unreachable
-- SVM DNS IPs point to old/dead AD DC addresses after AD recreation
-- Security Group or NACL blocks AD ports (53/88/389/445/636) from SVM ENIs to DC IPs
-
-> **Note**: This pattern was verified in `fsxn-observability-integrations` (restore-verification workflow). The patterns in this repo work without AD because they typically target pure UNIX SVMs (no CIFS enabled).
+**Pre-flight check**: use `shared/ad_health_check.check_ad_dc_reachability()`. Do not hand-roll it —
+a non-empty `discovered_servers` list is **not** sufficient (entries persist after the controllers
+stop answering); the entry must have `server_type=ms_dc` and `state=ok`. Procedure and Step Functions
+wiring: [AD-joined SVM prerequisites](../en/ad-joined-svm-s3ap-prerequisites.md). Re-joining, OU
+paths, DNS restore and audit-subject behaviour: [pitfalls-ad-smb](pitfalls-ad-smb.md).
 
 ---
 

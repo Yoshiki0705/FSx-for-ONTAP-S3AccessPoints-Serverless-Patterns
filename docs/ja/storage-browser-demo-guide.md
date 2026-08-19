@@ -267,8 +267,12 @@ npm run dev
 
 | ID タイプ | ユースケース | 備考 |
 |---|---|---|
-| UNIX (uid/gid) | NFS 主体のボリューム、Linux ワークロード | 最もシンプル、AD 不要 |
-| WINDOWS (AD ユーザー) | SMB 主体のボリューム、AD 連携エンタープライズ | SVM AD-join 必須、NTFS ACL 適用 |
+| UNIX (ユーザー名) | NFS 主体のボリューム、Linux ワークロード | 最もシンプル。ローカル UNIX ユーザーで足り、**LDAP も NIS も不要** |
+| WINDOWS (ユーザー名) | SMB 主体のボリューム、NTFS ACL を適用したい場合 | NTFS ACL が適用される。**AD 参加は必須ではない** — workgroup モードの CIFS サーバーのローカル Windows ユーザーでも動作する（実測）。**ユーザー名のみを渡すこと**（`DOMAIN\user` は不可） |
+
+> **どちらのタイプも AP 作成後に変更できません。** 変更 API がなく、変更するには AP を作り直すことになり、**エイリアスが変わります。** 作る前に決めてください。
+
+> **AP ポリシーで絞る場合は明示的な `Deny` を書いてください。** 同一アカウントでは AP ポリシーは identity-based ポリシーと結合して評価されるため、`Allow` を狭くしても、IAM 側で許可されている主体はそのまま通ります（[認可モデル](../s3ap-authorization-model.md)）。
 
 ---
 

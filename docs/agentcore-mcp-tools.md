@@ -301,11 +301,14 @@ Policies:
           - s3:ListBucket
           - s3:GetBucketLocation
         Resource:
+          # 下の 2 行が実際に効く形。バケット形式 ARN（上の 2 行）は S3 AP には効かない
           - !Sub "arn:aws:s3:::${S3AccessPointAlias}"
           - !Sub "arn:aws:s3:::${S3AccessPointAlias}/*"
           - !Sub "arn:aws:s3:${AWS::Region}:${AWS::AccountId}:accesspoint/${S3AccessPointName}"
           - !Sub "arn:aws:s3:${AWS::Region}:${AWS::AccountId}:accesspoint/${S3AccessPointName}/object/*"
 ```
+
+> **バケット形式 ARN は S3 AP の認可には使えません。** `arn:aws:s3:::<alias>` は IAM が S3 AP として認識しないため、`accesspoint/` 形式が必要です（[出典](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/troubleshooting-access-points-for-fsxn.html)）。上の例に両方が入っているのは、エイリアスを `Bucket` パラメータとして渡す実装との対応を示すためで、**認可を成立させているのは下の 2 行です。**
 
 ### Lambda 設定
 

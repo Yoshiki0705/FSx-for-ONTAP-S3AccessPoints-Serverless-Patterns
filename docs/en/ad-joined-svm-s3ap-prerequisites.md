@@ -298,8 +298,20 @@ The IAM identity policy alone is sufficient:
 |----------|:---:|:---:|
 | Same-account access | ❌ | ✅ |
 | Cross-account access | ✅ | ✅ |
-| Condition key restrictions | ✅ | ✅ |
-| Restrict beyond IAM (explicit deny) | ✅ | ✅ |
+| Condition keys scoped to the access point regardless of who calls | ✅ | ✅ |
+| Restrict beyond the caller's own IAM policy (explicit deny) | ✅ | ✅ |
+
+> **Read the third row precisely.** Condition keys are not exclusive to the access
+> point policy — `aws:PrincipalArn`, `aws:SourceVpce` and `aws:PrincipalOrgID` can all
+> be written into an identity-based policy. The access point policy is required when
+> the condition has to apply to **every** caller of that access point, including
+> principals whose identity-based policies you do not control.
+>
+> **The fourth row is the one that matters for narrowing.** Within a single account the
+> identity-based policy and the access point policy are **combined** — either one
+> allowing is sufficient. So a narrow `Allow` in the access point policy does not
+> restrict anything; an explicit `Deny` does. See
+> [S3 AP Authorization Model](../s3ap-authorization-model.en.md#writing-a-narrow-allow-does-not-narrow-access).
 
 ### CloudFormation Example (Same-Account, No AP Policy Needed)
 
@@ -668,7 +680,9 @@ No. If the SVM has no CIFS service enabled, S3 AP operations do not require AD. 
 
 ### Q: Is `put_access_point_policy` required for same-account access?
 
-No. For same-account access, the IAM identity policy on the calling role is sufficient. An explicit AP resource policy is only needed for cross-account access or condition-key restrictions.
+No. For same-account access, the IAM identity policy on the calling role is sufficient. An explicit AP resource policy is needed for cross-account access, and when a condition or a deny has to apply to **every** principal that calls the access point.
+
+**Conversely, attaching an AP policy does not by itself restrict who can call.** Within a single account the identity-based policy and the AP policy are combined, so narrowing the AP policy's `Allow` still lets through any principal whose identity-based policy allows the action. Narrowing requires an explicit `Deny` ([S3 AP Authorization Model](../s3ap-authorization-model.en.md#narrowing-at-layer-1--the-explicit-deny)).
 
 ### Q: Why does Internet-origin S3 AP not work from a VPC Lambda?
 

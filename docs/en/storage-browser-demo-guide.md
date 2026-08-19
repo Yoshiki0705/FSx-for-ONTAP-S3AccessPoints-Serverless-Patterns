@@ -317,13 +317,17 @@ Do NOT embed AWS credentials in frontend code. Use one of:
 
 ### S3 AP Resource Policy
 
-For production, add a resource policy to restrict access:
+For production, restrict access with a resource policy. **The `Deny` statement is what restricts —
+the `Allow` alone does not.** Same-account, the access point policy is combined with identity-based
+policies, so any principal already permitted by IAM gets through regardless of how narrow the `Allow`
+is ([authorization model](../s3ap-authorization-model.en.md)).
 
 ```json
 {
   "Version": "2012-10-17",
   "Statement": [
     {
+      "Sid": "AllowStorageBrowserRole",
       "Effect": "Allow",
       "Principal": {
         "AWS": "arn:aws:iam::123456789012:role/StorageBrowserUserRole"
@@ -333,17 +337,39 @@ For production, add a resource policy to restrict access:
         "arn:aws:s3:ap-northeast-1:123456789012:accesspoint/your-ap-name",
         "arn:aws:s3:ap-northeast-1:123456789012:accesspoint/your-ap-name/object/*"
       ]
+    },
+    {
+      "Sid": "DenyEveryOtherPrincipal",
+      "Effect": "Deny",
+      "Principal": "*",
+      "Action": ["s3:ListBucket", "s3:GetObject", "s3:PutObject", "s3:DeleteObject"],
+      "Resource": [
+        "arn:aws:s3:ap-northeast-1:123456789012:accesspoint/your-ap-name",
+        "arn:aws:s3:ap-northeast-1:123456789012:accesspoint/your-ap-name/object/*"
+      ],
+      "Condition": {
+        "StringNotEquals": {
+          "aws:PrincipalArn": "arn:aws:iam::123456789012:role/StorageBrowserUserRole"
+        }
+      }
     }
   ]
 }
 ```
 
+> Use `Condition` with `aws:PrincipalArn` rather than `NotPrincipal`. `NotPrincipal` also requires the
+> account ARN and, for a role, the assumed-role session ARN — and it accepts no wildcards, so "any
+> session of this role" cannot be expressed.
+
 ### FileSystemIdentity Considerations
 
 | Identity Type | Use case | Notes |
 |---|---|---|
-| UNIX (uid/gid) | NFS-primary volumes, Linux workloads | Simplest setup, no AD required |
-| WINDOWS (AD user) | SMB-primary volumes, enterprise with AD | Requires SVM AD-join, enforces NTFS ACLs |
+| UNIX (user name) | NFS-primary volumes, Linux workloads | Simplest setup. A local UNIX user is enough — **no LDAP or NIS required** |
+| WINDOWS (user name) | SMB-primary volumes, NTFS ACL enforcement | Enforces NTFS ACLs. **An AD join is not required** — a local Windows user on a workgroup-mode CIFS server also works (measured). Pass the user name only, never `DOMAIN\user` |
+
+> **Neither type can be changed after the access point is created.** There is no update API; changing
+> it means recreating the access point, which changes the alias. Decide before you create it.
 
 ---
 

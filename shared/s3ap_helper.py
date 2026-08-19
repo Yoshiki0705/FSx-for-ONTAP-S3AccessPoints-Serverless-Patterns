@@ -38,12 +38,24 @@ logger = logging.getLogger(__name__)
 #
 # ここで「AD の問題だ」と断定はしない。SVM 名を知らないので判定できない。両方の
 # 可能性と、切り分ける手順を示すのが正しい。
+#
+# AWS 側の案内で ARN 形式に触れるのは、これが公式に記録された原因だから:
+# https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/troubleshooting-access-points-for-fsxn.html
+# （"Access Denied with default S3 access point permissions for automatically created
+# service roles" — バケット ARN 形式が使われている場合は AP の ARN に直す）
+#
+# 「AP ポリシーが無いこと」は原因として挙げない。同一アカウントでは identity-based と
+# AP ポリシーが結合して評価され、どちらかが許可すれば通るため、ポリシー未設定は
+# 正常に動作する状態である（実測 2026-08-17/18, ap-northeast-1, ONTAP 9.18.1P3D1 —
+# docs/s3ap-authorization-model.md）。原因になるのは AP ポリシー側の明示的な拒否で、
+# その場合はエラー本文に with an explicit deny in a resource-based policy が入る。
 _ACCESS_DENIED_LAYERS = (
     "AccessDenied has two possible layers here.\n"
-    "  1. AWS side — the IAM identity policy or the Access Point policy. Note that "
-    "the Resource ARN must be the Access Point form "
+    "  1. AWS side — the IAM identity policy, or an explicit Deny in the Access Point "
+    "policy. Note that the Resource ARN must be the Access Point form "
     "(arn:aws:s3:<region>:<account>:accesspoint/<name>[/object/*]); a bucket-style "
-    "ARN does not work.\n"
+    "ARN does not work. Having no Access Point policy at all is not a cause: within a "
+    "single account the identity-based policy alone establishes the allow.\n"
     "  2. ONTAP file-system side — on an AD-joined SVM (CIFS enabled), every data "
     "operation needs the SVM to reach its AD domain controllers. When they are "
     "unreachable, this call fails while IAM, the AP policy and the network are all "

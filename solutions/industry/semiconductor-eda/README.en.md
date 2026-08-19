@@ -308,13 +308,15 @@ By integrating UC6 outputs (DRC statistics, design metadata, review summaries) w
 
 ### Setup Steps (Overview)
 
-1. Create FSx for ONTAP S3 AP with **AD user (Windows identity)**
+1. Create the FSx for ONTAP S3 AP (the AWS hands-on lab uses an AD user / Windows identity)
 2. Amazon Quick console → Integrations → Knowledge bases → Amazon S3
 3. Enter `s3://<S3-AP-alias>` as the S3 bucket URL and sync
 4. DRC statistics dashboard: Add Athena as a Quick Sight dataset
 5. Configure Quick Flows for DRC threshold alerts and review automation
 
-> **Prerequisite**: The S3 AP must be configured with an AD-based Windows identity (UNIX identity does not allow adding Quick's data access role to the AP policy). See the [AWS Workshop Studio hands-on lab](https://catalog.us-east-1.prod.workshops.aws/workshops/9cd82e0b-8348-456b-932a-818b9e5825a1/en-US/08-quicksuite/61-setup) for detailed steps.
+> **Source of these steps**: the flow above follows the [AWS Workshop Studio hands-on lab](https://catalog.us-east-1.prod.workshops.aws/workshops/9cd82e0b-8348-456b-932a-818b9e5825a1/en-US/08-quicksuite/61-setup). See it for the detailed procedure.
+>
+> **This previously read "The S3 AP must be configured with an AD-based Windows identity (UNIX identity does not allow adding Quick's data access role to the AP policy)". That has been retracted.** `MalformedPolicy: Invalid principal` is an IAM principal validation error; `FileSystemIdentity` is an ONTAP-side construct that never appears in the access point policy's validation path. An access point on a UNIX security style volume has been measured accepting an access point policy with an IAM role as its `Principal` ([S3 AP Authorization Model](../../../docs/s3ap-authorization-model.en.md)). The cause of the original failure is unconfirmed. The AD user is what the hands-on lab uses; it is not established as a Quick requirement.
 
 ### EDA Team Use Case Examples
 

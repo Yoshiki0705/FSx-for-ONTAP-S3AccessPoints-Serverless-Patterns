@@ -249,11 +249,31 @@ Create multiple S3 APs on a single volume to separate purposes and permissions:
 
 ```
 Volume: vol_production_data
-├── S3 AP: prod-readonly     → GET/LIST only (analytics Lambda)
-├── S3 AP: prod-ingestion    → PUT only (data collection Lambda)
-├── S3 AP: prod-training     → GET only (ML training)
-└── S3 AP: prod-audit        → GET/LIST only (audit Lambda, different UNIX user)
+├── S3 AP: prod-readonly     → read-only (analytics Lambda)
+├── S3 AP: prod-ingestion    → writable (data collection Lambda)
+├── S3 AP: prod-training     → read-only (ML training)
+└── S3 AP: prod-audit        → read-only (audit Lambda, different UNIX user)
 ```
+
+> **Splitting the access points does not by itself separate permissions.** What makes the
+> separation above hold is not the access point but these two things.
+>
+> 1. **The `FileSystemIdentity` pinned to each access point** — pin a UNIX user without write
+>    permission to `prod-readonly` and writes stop at Layer 2. **That is the hard guarantee.**
+>    But `FileSystemIdentity` **cannot be changed after creation** (there is no update API, and
+>    recreating the access point changes its alias). **Decide before you create it.**
+> 2. **An explicit deny in the access point policy** — restricting `Allow` to `s3:GetObject` is
+>    not a restriction. Same-account requests are evaluated as a combination with identity-based
+>    policies, so a principal with administrator permissions can write straight through
+>    `prod-readonly` (measured 2026-08-17/18, `ap-northeast-1`, ONTAP 9.18.1P3D1). To stop it,
+>    write `Deny` with `Condition StringNotEquals aws:PrincipalArn`.
+>
+> See [S3 AP Authorization Model](s3ap-authorization-model.en.md#least-privilege-design-guidelines).
+>
+> **Audit granularity is also set by how you split access points.** What the ONTAP file access
+> audit records is the identity pinned to the access point, not the calling IAM principal. Collapse
+> the four above into one shared access point and the subject of a file operation can no longer be
+> separated after the fact.
 
 ### Two-Layer Authorization Model
 
@@ -265,15 +285,23 @@ S3 AP access is controlled at two layers. Both layers must Allow (AND condition)
 │ - IAM Identity Policy (Lambda execution role)                │
 │ - S3 AP Resource Policy (optional; required for cross-acct)  │
 │ - Controls: who / which resource / which API                 │
+│ - NOTE: NOT an AND within the layer. Same-account, the two   │
+│   above are COMBINED - either allowing suffices. Narrowing    │
+│   is done with an explicit Deny                              │
 └─────────────────────────────────────────────────────────────┘
                             ↓ (both Allow to pass)
 ┌─────────────────────────────────────────────────────────────┐
 │ Layer 2: NAS File System Permissions                         │
-│ - FileSystemIdentity (UNIX UID/GID or Windows AD user)       │
+│ - FileSystemIdentity (UNIX user or Windows user)             │
+│   NOTE: an AD join is NOT required. Measured with a          │
+│   workgroup-mode local Windows user, and with a local UNIX   │
+│   user on an SVM with no LDAP                                │
 │ - UNIX permissions / POSIX ACL / NTFS ACL                    │
 │ - Controls: file/directory level access                      │
 └─────────────────────────────────────────────────────────────┘
 ```
+
+**The AND across the layers is correct; within a layer it is not.** Inside Layer 1, the identity-based policy and the access point policy are evaluated as a combination (same account; cross-account needs both). `AccessDenied` comes from both layers, so split the layer with `HeadBucket` before looking for a cause.
 
 ### IAM Policy Best Practices
 
@@ -298,10 +326,11 @@ S3 AP access is controlled at two layers. Both layers must Allow (AND condition)
 ```
 
 **Design points**:
-- Assign a dedicated IAM role to each Lambda function (no shared roles)
-- S3 AP ARNs require region and account ID (bucket-style ARN does not work)
+- Assign a dedicated IAM role to each Lambda function (no shared roles). **The example above works as a restriction because it narrows that dedicated role's own permissions.** It does not narrow other paths to the access point
+- S3 AP ARNs require region and account ID (bucket-style ARN does not work. [Source](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/troubleshooting-access-points-for-fsxn.html))
 - Same-account access does not require AP Resource Policy (IAM Identity Policy alone is sufficient)
-- Add AP Resource Policy only for cross-account access
+- Cross-account access requires **both** the AP Resource Policy and the other side's Identity Policy. **You cannot create an access point on a volume in another account, but reading data from another account through an access point does work** (measured)
+- **To restrict at the access point itself, write an explicit `Deny` in the AP Resource Policy.** Narrowing `Allow` is not a restriction
 
 ---
 
@@ -341,7 +370,10 @@ Items to verify in a PoC for serverless patterns using FSx for ONTAP S3 AP:
 
 - [ ] Confirm purpose-based S3 AP separation design
 - [ ] Confirm least-privilege IAM roles
-- [ ] Confirm FileSystemIdentity (UNIX user) selection and NAS permission alignment
+- [ ] Confirm FileSystemIdentity (UNIX / Windows user) selection and NAS permission alignment
+- [ ] **Account for `FileSystemIdentity` being immutable after creation** (no update API; it becomes a recreation and **the alias changes**). "Swap in a read-only identity later" does not work
+- [ ] **Decide which layer guarantees read-only** (an explicit `Deny` in the AP policy, or pinning an identity with no write permission). Narrowing `Allow` guarantees nothing
+- [ ] **If per-subject tracking of file operations is a requirement, guarantee it by splitting access points** (the ONTAP file access audit records the identity pinned to the access point; the calling IAM principal does not survive, and identifying it requires correlation with CloudTrail)
 - [ ] Confirm Secrets Manager credential management pattern
 
 ### Operations

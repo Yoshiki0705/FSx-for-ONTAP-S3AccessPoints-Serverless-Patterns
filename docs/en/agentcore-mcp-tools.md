@@ -301,11 +301,14 @@ Policies:
           - s3:ListBucket
           - s3:GetBucketLocation
         Resource:
+          # The last two lines are the ones that work. The bucket-style ARNs above do not
           - !Sub "arn:aws:s3:::${S3AccessPointAlias}"
           - !Sub "arn:aws:s3:::${S3AccessPointAlias}/*"
           - !Sub "arn:aws:s3:${AWS::Region}:${AWS::AccountId}:accesspoint/${S3AccessPointName}"
           - !Sub "arn:aws:s3:${AWS::Region}:${AWS::AccountId}:accesspoint/${S3AccessPointName}/object/*"
 ```
+
+> **A bucket-style ARN does not authorize S3 AP access.** IAM does not recognize `arn:aws:s3:::<alias>` as an FSx for ONTAP S3 access point; the `accesspoint/` form is required ([source](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/troubleshooting-access-points-for-fsxn.html)). Both forms appear above to line up with the implementation, which passes the alias as the `Bucket` parameter — but **the authorization comes from the last two lines.**
 
 ### Lambda settings
 

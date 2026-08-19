@@ -60,7 +60,7 @@ Details: [Deployment Profiles](deployment-profiles.en.md)
 | Layer | Verification Item | Design Decision |
 |-------|-------------------|-----------------|
 | AWS IAM | Lambda Role permission scope | ListBucket + GetObject (minimum) or + PutObject |
-| S3 AP Policy | Resource policy configuration | Principal restriction + Condition (OrgID, VPC) |
+| S3 AP Policy | Resource policy configuration | **An explicit `Deny` + Condition** (`aws:PrincipalArn` / `aws:PrincipalOrgID` / `aws:SourceVpce`). Same-account, narrowing `Allow` is not a restriction |
 | VPC Endpoint Policy | VPC restriction requirement | Required for VPC Origin AP |
 | SCP | Organization-level controls | Required in regulated environments |
 | ONTAP File System | Identity associated with AP | Dedicated user (root prohibited) |

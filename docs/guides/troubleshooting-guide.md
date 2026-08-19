@@ -21,10 +21,18 @@
 Lambda 関数のログに以下のようなエラーが出力される:
 
 ```
-S3ApHelperError: Access denied to S3 Access Point '<your-ap-alias>'.
-Verify that the IAM role has s3:ListBucket permission on the Access Point
-and that the Access Point policy allows the operation.
+S3ApHelperError: Access denied: ListObjectsV2 on S3 Access Point '<your-ap-alias>'.
+AccessDenied has two possible layers here.
+  1. AWS side — the IAM identity policy or the Access Point policy. ...
+  2. ONTAP file-system side — on an AD-joined SVM (CIFS enabled), every data
+     operation needs the SVM to reach its AD domain controllers. ...
+To tell them apart, call HeadBucket on the same Access Point. ...
 ```
+
+> **メッセージが 2 つの層を挙げているのは意図的です。** `AccessDenied` は Layer 1（AWS 側）と
+> Layer 2（ファイルシステム側）の両方から返るため、片方だけを案内すると原因が他方にあるときに
+> 真逆の方向へ調査が進みます。本文は `shared/s3ap_helper.py` の `access_denied_message()` が
+> 生成しています。
 
 ### 原因と対処法
 
@@ -62,19 +70,43 @@ aws iam list-attached-role-policies \
 }
 ```
 
-#### 原因 2: S3 Access Point ポリシーの制限
+#### 原因 2: S3 Access Point ポリシーの明示的な拒否
+
+**AP ポリシーを「付けていない」ことは原因になりません。** 同一アカウントでは identity-based ポリシーと AP ポリシーが結合して評価され、どちらかが許可すれば通ります。したがって `NoSuchAccessPointPolicy` が返る状態は正常に動作します（[認可モデル](../s3ap-authorization-model.md#allow-を狭く書くことは絞り込みではない)）。
+
+**原因になるのは、AP ポリシーに明示的な拒否がある場合だけです。** エラー本文に `with an explicit deny in a resource-based policy` が入っていれば、これに当たっています。
 
 **確認方法**:
 
 ```bash
-# S3 AP ポリシーの確認
+# S3 AP ポリシーの確認（Deny 文とその Condition を見る）
 aws s3control get-access-point-policy \
   --account-id <your-account-id> \
   --name <your-ap-name> \
-  --region ap-northeast-1
+  --region ap-northeast-1 \
+  --query Policy --output text | python3 -m json.tool
 ```
 
-**対処法**: S3 AP ポリシーで Lambda 実行ロールからのアクセスを許可する。
+**対処法**: `Deny` 文の `Condition` が意図より広く効いていないかを確認する。`Condition StringNotEquals aws:PrincipalArn` で許可対象を列挙している場合、対象ロールの ARN が漏れていないかを見る。
+
+> **`Deny` を消して直さないでください。** `Deny` は Layer 1 で絞り込みを担う唯一の手段です。消すと、`Allow` に書いていない主体まで通るようになります。
+
+#### 原因 2-b: ファイルシステム側の権限不足（Layer 2）
+
+**`AccessDenied` は Layer 2 からも返ります。** IAM も AP ポリシーもネットワークも正常なまま失敗します。
+
+**確認方法**: 同じ AP に `HeadBucket` を投げる。**成功してデータ操作が失敗するなら Layer 2** です（`HeadBucket` は S3 メタデータ層しか見ないため、この状況でも成功します）。
+
+```bash
+aws s3api head-bucket --bucket <your-ap-alias> --region ap-northeast-1
+```
+
+**対処法**: AP に固定した ID（UNIX / Windows ユーザー）が対象パスに対して持つ権限を確認する。AD 参加 SVM の場合は AD DC への到達性も確認する（[AD 参加 SVM の S3 AP 前提条件](../ja/ad-joined-svm-s3ap-prerequisites.md)）。
+
+```bash
+# ONTAP CLI: AP に固定した ID の実効権限
+vserver security file-directory show -vserver <SVM_NAME> -path <PATH>
+```
 
 #### 原因 3: S3 AP のネットワークオリジン設定
 
@@ -671,7 +703,7 @@ aws s3control put-access-point-policy \
 
 - FSx for ONTAP S3AP は通常の S3 とは異なるデータプレーンを使用する
 - 認証/認可エラーが `AccessDenied` ではなく `ConnectionClosedError` として表面化する場合がある
-- IAM identity-based policy だけでなく、S3AP resource policy の両方が必要
+- **同一アカウントでは IAM identity-based policy と S3AP resource policy は結合して評価される**（どちらかが許可すれば通る）。resource policy が無いことは原因にならない。原因になるのは resource policy 側の明示的な `Deny`。クロスアカウントの場合のみ両方が必要（[認可モデル](../s3ap-authorization-model.md)）
 - S3AP attachment の Lifecycle が `AVAILABLE` であることを必ず確認する
 
 
