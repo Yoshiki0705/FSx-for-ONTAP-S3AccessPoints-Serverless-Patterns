@@ -50,7 +50,10 @@ and policy examples: [authorization model](../s3ap-authorization-model.md).
   `Condition StringNotEquals aws:PrincipalArn` (not `NotPrincipal`: needs account ARN + session ARN,
   no wildcards).
 - **Layer 2 returns `AccessDenied` too** — volume root `uidgid`/mode bits flipped `PutObject` with no
-  AP policy attached.
+  AP policy attached. A Layer 2 denial has a **bare** `Access Denied` body; Layer 1's explicit deny
+  appends `with an explicit deny in a resource-based policy`. Same results on UNIX and NTFS volumes.
+- **A SLAG on a UNIX volume denies every protocol** until a unix→win name mapping exists. Not
+  S3-specific; NFS stops too. A permissive ACE does not help, and a reachable DC is not enough.
 - **Read-only needs a Layer 2 identity without write permission.** `FileSystemIdentity` has no update
   API; recreating the AP changes the alias. Decide before creating it.
 
@@ -114,26 +117,17 @@ inline 方式は同期 API の上限（5 MB）に収まる必要がある。`S3A
 
 ### AD-Joined SVM: AD DC Reachability Required for Data Operations
 
-On AD-joined SVMs (CIFS enabled), **every S3 AP data operation** (ListObjectsV2, GetObject, PutObject) requires the SVM to successfully contact its AD domain controllers. ONTAP's multiprotocol identity pipeline performs a `unix→win` reverse lookup for every file system operation when CIFS is enabled — even on UNIX security style volumes accessed via S3 AP.
-
-**Diagnostic pattern**:
-| Test | AD DC Reachable | AD DC Unreachable |
-|------|:---:|:---:|
-| HeadBucket | ✅ | ✅ (false positive) |
-| ListObjectsV2 | ✅ | ❌ AccessDenied |
-| GetObject | ✅ | ❌ AccessDenied |
-| PutObject | ✅ | ❌ AccessDenied |
+On AD-joined SVMs (CIFS enabled), **every S3 AP data operation** needs the SVM to reach its AD domain
+controllers — ONTAP does a `unix→win` reverse lookup per file-system operation, even on UNIX security
+style volumes. **`HeadBucket` succeeds anyway**, so it is a false positive: ListObjectsV2, GetObject
+and PutObject all return `AccessDenied` while HeadBucket, IAM, AP policy and network all pass. The
+cause is the ONTAP layer, not any of the layers the symptom points at.
 
 **Pre-flight check**: use `shared/ad_health_check.check_ad_dc_reachability()`. Do not hand-roll it —
 a non-empty `discovered_servers` list is **not** sufficient (entries persist after the controllers
 stop answering); the entry must have `server_type=ms_dc` and `state=ok`. Procedure and Step Functions
-wiring: [AD-joined SVM prerequisites](../en/ad-joined-svm-s3ap-prerequisites.md).
-
-**Why this is confusing**: HeadBucket succeeds because it only validates at the S3 metadata layer. All IAM, AP policy, and network checks also pass. This leads developers to investigate the wrong layers. The root cause is at the ONTAP file-system layer (reverse name-mapping requires AD DC LDAP/Kerberos connectivity).
-
-**When this happens**: AD deleted / stopped / unreachable; SVM DNS pointing at dead DC addresses after
-an AD recreation; SG or NACL blocking AD ports (53/88/389/445/636) from SVM ENIs. Most patterns here
-target pure UNIX SVMs (no CIFS), so they are unaffected.
+wiring: [AD-joined SVM prerequisites](../en/ad-joined-svm-s3ap-prerequisites.md). Re-joining, OU
+paths, DNS restore and audit-subject behaviour: [pitfalls-ad-smb](pitfalls-ad-smb.md).
 
 ---
 

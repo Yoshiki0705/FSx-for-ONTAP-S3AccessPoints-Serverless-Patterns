@@ -303,9 +303,12 @@ Amazon Quick Suite works with FSx for ONTAP S3 AP. The procedure is documented i
 > a UNIX security style volume has since been measured accepting an access point policy with an IAM
 > role as its `Principal` ([S3 Access Point permission design](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/blob/main/docs/en/domains/security-governance/notes/access-point-authorization-layers.md),
 > 2026-08-17/18, `ap-northeast-1`, ONTAP 9.18.1P3D1). **The real cause of the 2026-06 failure is
-> unconfirmed** — a role that did not exist yet, or a malformed ARN, remain possible. The environment
-> from that date cannot be reproduced, so it was not re-measured. AD-based Windows identity is what
-> the blog and workshop use; it is not established as a Quick requirement.
+> unconfirmed.** The condition that produces the error *was* measured: an access point policy naming an
+> existing IAM role applies cleanly to a UNIX-identity access point, and `Invalid principal in policy`
+> came back **only when the role ARN did not exist** (2026-08-18/19, `ap-northeast-1`, ONTAP
+> `9.18.1P3D1`). What was missing on 2026-06-12 — a role not yet created, or a malformed ARN — was not
+> established, because that environment cannot be reproduced. AD-based Windows identity is what the
+> blog and workshop use; it is not established as a Quick requirement.
 
 ---
 

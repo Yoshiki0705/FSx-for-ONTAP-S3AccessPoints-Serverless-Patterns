@@ -348,7 +348,9 @@ export const storage = defineStorage({
 
 `MalformedPolicy: Invalid principal` は S3 のコントロールプレーンが IAM プリンシパルを検証して返すエラーです。`FileSystemIdentity`（ONTAP 側の Layer 2 の構成）は AP ポリシーの検証経路に現れません。実際、**UNIX セキュリティスタイルのボリューム上の AP に、IAM ロールを `Principal` に持つ AP ポリシーを適用できることが実測されています**（[S3 Access Point の権限設計](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/blob/main/docs/ja/domains/security-governance/notes/access-point-authorization-layers.md#設定例--6-パターン)、実測 2026-08-17/18, `ap-northeast-1`, ONTAP 9.18.1P3D1）。
 
-**真の原因は未確認です。** 参照したロールが当時まだ作成されていなかった、ARN が誤っていた、といった可能性が残ります。**2026-06-12 の環境は再現できないため、再測定していません。**
+**このエラーが返る条件は実測しました。** UNIX identity の AP に対し、実在する IAM ロールを `Principal` とする AP ポリシーは正常に適用でき、`Deny` + `Condition` も適用できました。`Invalid principal in policy` が返ったのは、**存在しないロール ARN を指定した場合だけ**です（実測 2026-08-18/19, `ap-northeast-1`, ONTAP 9.18.1P3D1）。
+
+**2026-06-12 に何が存在しなかったかは未確認です。** 参照したロールが当時まだ作成されていなかった、ARN が誤っていた、といった可能性が残ります。**当時の環境は再現できないため、そこは特定していません。**
 
 **Action**:
 - FR-9 は取り下げ（サービス制約ではない。AWS 公式ブログと Workshop に動作手順がある）

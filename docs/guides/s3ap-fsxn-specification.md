@@ -58,9 +58,10 @@ arn:aws:s3:{region}:{account-id}:accesspoint/{access-point-name}/object/*
 # ❌ S3 AP エイリアスをバケット ARN として使用
 arn:aws:s3:::fsxn-eda-s3ap-xxx-ext-s3alias
 
-# ❌ GetBucketLocation / ListBucketMultipartUploads を S3 AP リソースポリシーで使用
-#    （MalformedPolicy: invalid action）
+# ❌ バケット設定系 / AP 管理系のアクションを S3 AP リソースポリシーで使用
+#    （MalformedPolicy: Policy has invalid action。本文は原因のアクションを名指ししない）
 Action: s3:GetBucketLocation  ← リソースポリシーでは無効（IAM identity policy では使用可）
+Action: s3:PutAccessPointPolicy  ← 同様に無効
 
 # ❌ AP ポリシーの Allow を狭くして「読み取り専用の AP」を作ったつもりになる
 #    同一アカウントでは identity-based と結合するため、管理者権限の主体はそのまま書ける
@@ -128,12 +129,17 @@ aws s3control put-access-point-policy \
 
 ### 無効なアクション（MalformedPolicy エラー）
 
-以下のアクションは S3 AP **リソースポリシー**で拒否されることを実測しています（`MalformedPolicy: invalid action`。[実測記録](../../solutions/edge/media-ivs-vod-publishing/direct-recording-experiment.md)）:
+S3 AP **リソースポリシー**が拒否するアクション（20 件を単独適用して判定。実測 2026-08-18/19, `ap-northeast-1`, ONTAP 9.18.1P3D1 — 全一覧は [認可モデル](../s3ap-authorization-model.md#ap-ポリシーで使えないアクション)）:
 
 - `s3:GetBucketLocation`（**IAM identity policy では使用可**。本リポジトリの多くのテンプレートが identity policy 側で使用しています）
-- `s3:ListBucketMultipartUploads`
+- `s3:PutBucketPolicy` / `s3:DeleteBucketPolicy`
+- `s3:GetBucketVersioning` / `s3:PutBucketVersioning`
+- `s3:PutBucketNotification`
+- `s3:PutAccessPointPolicy`
 
-**「これ以外は使えない」という制限は確認されていません。** `s3:DeleteObject` を含む AP ポリシーは正常に適用されます（実測 2026-08-17/18, `ap-northeast-1`, ONTAP 9.18.1P3D1 — [認可モデル](../s3ap-authorization-model.md#ap-ポリシーで使えないアクション)）。`s3:PutBucketPolicy` は AWS が非対応操作として挙げていますが、AP ポリシーに含めた場合の挙動を**本リポジトリでは測定していません。**
+**エラー本文は `Policy has invalid action` だけで、どのアクションが原因かを名指ししません。** 複数を 1 つのポリシーに入れて拒否されたときは、1 つずつ適用して切り分けてください。
+
+**`s3:ListBucketMultipartUploads` は受理されます。** 以前ここには拒否と書いていましたが、単独適用で 3/3 受理されました。`s3:GetBucketLocation` と併記したときだけ拒否になるため、旧記述は原因を両方に帰属させたものです。
 
 ---
 
@@ -207,8 +213,10 @@ response["Body"].close()
 | 症状 | 原因 | 解決策 |
 |------|------|--------|
 | `AccessDenied` on ListObjectsV2 | IAM Resource ARN が間違い | `arn:aws:s3:{region}:{account}:accesspoint/{name}` 形式を使用 |
-| `AccessDenied` (IAM 正しいのに) | S3 AP リソースポリシー未設定 | `s3control put-access-point-policy` で追加 |
+| `AccessDenied` (IAM 正しいのに) | **Layer 2**（AP に固定した ID のファイル権限）。同一アカウントでは AP ポリシー未設定は原因にならない | `HeadBucket` で層を切り分ける。成功してデータ操作が失敗するなら Layer 2（[認可モデル](../s3ap-authorization-model.md)） |
+| `AccessDenied`（本文に `explicit deny in a resource-based policy`） | AP ポリシーの明示的な `Deny` に当たった | `Deny` 文の `Condition` を確認 |
 | `AccessDenied` on PutObject | file system identity に書き込み権限なし | ONTAP ボリュームの UNIX/NTFS 権限を確認 |
+| `AccessDenied`（SLAG を付けた直後から全操作） | UNIX ボリュームの SLAG が unix→win マッピングを必須にした | SLAG を外すか、unix→win の name-mapping を設定（[認可モデル](../s3ap-authorization-model.md#unix-ボリュームへの-slag-は-unixwin-マッピングを必須にする)） |
 | `ServiceUnavailable` | VPC 内からの Internet Origin AP アクセス | VPC 外実行 or NAT Gateway 経由 |
 | `Connection timed out` (120s) | Internet Origin AP に S3 Gateway EP 経由でアクセス | Lambda の VPC 設定を外す or NAT Gateway 追加 |
 | `MalformedPolicy: invalid action` | リソースポリシーに `s3:GetBucketLocation` / `s3:ListBucketMultipartUploads` を使用 | これらを identity policy 側へ移す |

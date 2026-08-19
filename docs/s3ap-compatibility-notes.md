@@ -325,7 +325,7 @@ AWS サポートは FSx for ONTAP サービスチームにドキュメント改�
 | `Connection timed out` from VPC Lambda (VPC Origin AP) | Lambda が AP のバインド VPC 外にある | Lambda を AP バインド VPC 内に配置し、S3 Gateway EP を確認 | All |
 | Empty ListObjectsV2 response | Prefix が間違い、またはボリュームの junction path 不一致 | ONTAP REST API でボリュームの junction path を確認し、Prefix を修正 | All |
 | `ServiceUnavailable` on GetObject | FSx データプレーンへの到達不可 | FSx の管理 IP / データ LIF のサブネットとルーティングを確認 | All |
-| `MalformedPolicy: invalid action` on put-access-point-policy | `s3:GetBucketLocation` / `s3:ListBucketMultipartUploads` を AP ポリシーに含めた（[実測](../solutions/edge/media-ivs-vod-publishing/direct-recording-experiment.md)。この 2 つ以外の拒否は確認されていない） | これらは identity-based ポリシー側へ移す。`s3:GetBucketLocation` は identity policy では使用可 | All |
+| `MalformedPolicy: Policy has invalid action` on put-access-point-policy | AP ポリシーで受理されないアクションを含めた（[実測した 20 件の一覧](s3ap-authorization-model.md#ap-ポリシーで使えないアクション)）。**エラー本文はどのアクションが原因かを名指ししない** | 1 つずつ適用して切り分ける。バケット設定系（`GetBucketLocation` 等）と AP 管理系（`PutAccessPointPolicy`）は identity-based 側へ移す | All |
 | `MalformedPolicy: Normalized policy document exceeds the maximum allowed size` | ポリシーが上限超過。**判定は正規化後**で、手元の JSON のバイト数では予測できない（実測: 24,620 B 受理 / 24,861 B 拒否） | ポリシーを縮小するか AP を分割する | All |
 | Slow response at high concurrency | FSx Throughput Capacity の飽和 | FSx Throughput Capacity を増加（256/512 MBps）、または並列度を下げる | UC with batch processing |
 | Cross-region Textract/Comprehend failure | サービスが ap-northeast-1 で未提供 | `TextractRegion` / `ComprehendMedicalRegion` パラメータで us-east-1 等を指定 | UC2, UC5 |

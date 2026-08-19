@@ -17,7 +17,9 @@ Amazon FSx for NetApp ONTAP S3 Access Points use a **dual-layer authorization mo
 | **Layer 1: AWS-side IAM authorization** | The calling principal and the `s3:` action | **An explicit deny** (`Deny`) |
 | **Layer 2: File-system-side permissions** | The file permissions held by the single identity pinned to the access point (UNIX / Windows user) | **mode bits / ACLs** |
 
-> **Evidence**: every measured value in this document comes from `ap-northeast-1` / ONTAP `9.18.1P3D1`, verified 2026-08-17 and 2026-08-18, with a same-session control for each finding. The full procedure and results are in [S3 Access Point permission design — evaluation order and the two layers that narrow access](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/blob/main/docs/en/domains/security-governance/notes/access-point-authorization-layers.md).
+> **Evidence**: every measured value in this document comes from `ap-northeast-1` / ONTAP `9.18.1P3D1`, with a same-session control for each finding.
+> - **2026-08-17 / 08-18**: Layer 1 evaluation order, condition keys, `NotPrincipal`, policy size, the Layer 2 paired measurement, and the audit subject. Procedure and full results in [S3 Access Point permission design — evaluation order and the two layers that narrow access](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/blob/main/docs/en/domains/security-governance/notes/access-point-authorization-layers.md).
+> - **2026-08-18 / 08-19 (measured in this repository)**: Layer 1 evaluation on an NTFS volume, the 20 actions an access point policy accepts or rejects, the cause of the SLAG denial, the audit subject on an AD-joined SVM, and applying an IAM principal to a UNIX-identity access point.
 
 ## Authorization Flow
 
@@ -66,6 +68,8 @@ Amazon FSx for NetApp ONTAP S3 Access Points use a **dual-layer authorization mo
 | S3 Access Point resource policy | Resource policy on the AP itself. **Not a bucket policy** — there is no S3 bucket underneath, so `put-bucket-policy` has no target | `s3control put-access-point-policy` |
 | VPC endpoint policy | Endpoint policy for VPC-restricted APs | VPC Console |
 | Service Control Policies | Organization-level controls | AWS Organizations |
+
+**This evaluation does not depend on the volume's security style.** The same twelve trials were run on a UNIX-style and an NTFS-style volume and produced no difference (the NTFS side used a WINDOWS-identity access point on a non-AD SVM).
 
 ### Writing a narrow `Allow` does not narrow access
 
@@ -160,9 +164,25 @@ Two things follow. **The account ARN (`arn:aws:iam::<account>:root`) must be lis
 
 ### Actions that cannot be used in an access point policy
 
-**Two are confirmed as rejected.** Including `s3:GetBucketLocation` or `s3:ListBucketMultipartUploads` in an access point policy returns `MalformedPolicy: invalid action` ([measurement record](../solutions/edge/media-ivs-vod-publishing/direct-recording-experiment.md)). `s3:GetBucketLocation` **is usable in an identity-based policy** — many templates in this repository use it. The restriction is specific to the access point resource policy.
+**Twenty actions were applied one at a time to determine this.**
 
-**There is no confirmed restriction limiting policies to three actions.** Access point policies containing `s3:DeleteObject` applied cleanly and behaved as intended.
+| Verdict | Actions |
+|---|---|
+| **Rejected** | `s3:GetBucketLocation` / `s3:PutBucketPolicy` / `s3:DeleteBucketPolicy` / `s3:GetBucketVersioning` / `s3:PutBucketVersioning` / `s3:PutBucketNotification` / `s3:PutAccessPointPolicy` |
+| Accepted | `s3:ListBucket` / `s3:GetBucketPolicy` / `s3:ListBucketVersions` / `s3:GetBucketNotification` / `s3:ListBucketMultipartUploads` / `s3:AbortMultipartUpload` / `s3:ListMultipartUploadParts` / `s3:GetObjectVersion` / `s3:GetObject` / `s3:DeleteObject` / `s3:PutObjectTagging` / `s3:GetObjectTagging` / `s3:GetObjectAttributes` / `s3:*` |
+
+**The error does not name the offending action.** All you get back is `Policy has invalid action`. **When several actions are in one policy and it is rejected, the message does not tell you which one is at fault.** Apply them one at a time to find out.
+
+> **A correction to this repository's earlier text.** This section previously said the two rejected
+> actions were `s3:GetBucketLocation` and `s3:ListBucketMultipartUploads`. **`s3:ListBucketMultipartUploads`
+> is accepted** (3/3 when applied alone). The
+> [measurement record](../solutions/edge/media-ivs-vod-publishing/direct-recording-experiment.md) the
+> earlier text drew on had both in a single policy, and because the message names neither action, the
+> rejection was attributed to both. `s3:PutBucketPolicy` was rejected 3/3.
+
+`s3:GetBucketLocation` **is usable in an identity-based policy** — many templates in this repository use it. The restriction is specific to the access point resource policy.
+
+**`s3:ListObjectsV2` and `s3:HeadBucket` are also rejected, for a different reason.** Neither is an IAM action name (the IAM action behind both `ListObjectsV2` and `HeadBucket` is `s3:ListBucket`). **It does not mean those operations are unsupported.**
 
 ### IAM Policy ARN Format
 
@@ -211,6 +231,8 @@ The file system ID specified when creating the S3 Access Point is used for autho
 | `7101` / `7100` / `755` | The same user | **Succeeds** |
 
 **This `AccessDenied` comes from Layer 2, not Layer 1.** Looking only at Layer 1 means searching for the cause inside a policy that does not contain it.
+
+**A Layer 2 `AccessDenied` carries a bare `Access Denied` body.** Matching an explicit deny at Layer 1 appends `with an explicit deny in a resource-based policy`, so the body itself distinguishes the layers.
 
 ### The pinned identity must be resolvable by the SVM
 
@@ -286,14 +308,58 @@ To apply least privilege, access must be restricted at **both layers** — and *
 | Question | Reality |
 |---|---|
 | The calling IAM principal | **Not available.** What remains is the SID of the pinned identity; `SubjectUserName` and `SubjectDomainName` are `Not Present` (unresolved). **Identifying the caller requires correlation with AWS CloudTrail** |
-| Tracing the source through `SubjectIP` | **Not possible.** It is an AWS service-side address, and two consecutive requests from one client produced different values. **An audit requirement based on caller IP cannot be met over this path** |
+| **Does an AD-joined SVM resolve the name** | **No.** Even with a reachable DC and a **real domain account** pinned to the access point, both stayed `Not Present` (below) |
+| Tracing the source through `SubjectIP` | **Not possible.** It is an AWS service-side address, and **six requests produced five distinct values** (two consecutive requests for the same object differed). **An audit requirement based on caller IP cannot be met over this path** |
 | Does splitting authorization by group split the audit by subject | No. **Everything is recorded as the single identity bound to the access point** |
 | Does enabling auditing on the SVM record every volume | **A volume with an effective UNIX style and mode bits only produced 0 records** (the same-session NTFS control produced 2). Mode bits carry no audit information; recording requires a SACL |
-| Can `SubjectUserIsLocal` tell you whether the user is local | No. `false` was recorded for a local user |
+| Can `SubjectUserIsLocal` tell you whether the user is local | **`false` was recorded for a local user.** But `false` for a domain user is correct (below) |
+
+### `SubjectUserName` is not resolved on an AD-joined SVM either
+
+**Measured on an AD-joined SVM (`ms_dc` state `ok`) with a real domain account pinned to a WINDOWS-type access point.** An audit ACE was placed on an NTFS volume and `PutObject` / `GetObject` were issued through the access point.
+
+| Field | Recorded value |
+|---|---|
+| `Source` | `HTTP` (most) / `S3` (one) |
+| `EventID` | `4656` (Create Object) / `4663` (Read Object) |
+| `SubjectUserSid` | A domain SID (`S-1-5-21-…-1112`) |
+| `SubjectUserName` | **`Not Present`** |
+| `SubjectDomainName` | **`Not Present`** |
+| `SubjectUserIsLocal` | `false` — **correct**, the user is a domain user |
+| `SubjectIP` | Five distinct AWS public addresses |
+| `SubjectUnix Uid` / `Gid` | `65535` / `65535` |
+
+**An AD join is not the condition for name resolution.** The `Not Present` observed with a workgroup-mode local user generalizes to AD-joined environments. The conclusion that **identifying the caller requires correlation with CloudTrail** is unchanged.
+
+**`SubjectUserIsLocal` is not "always wrong".** `false` for a local user is wrong, but `false` for a domain user matches reality. **Do not use this field to decide whether a user is local** is the accurate statement.
+
+> **Management operations do keep their subject.** In the same log, `EventID 4719` (audit policy change) alone carried the real administrative user name in `SubjectUserName` and the real client's private IP in `SubjectIP`. **It is data-operation auditing that loses the subject.**
 
 > **Governance note**: **a design with one shared access point instead of one per purpose records every caller as the same subject in the file access audit, even when the access point policy distinguishes them.** Where per-subject tracking of file-level operations is a requirement, **splitting access points is what sets the audit granularity.** This is why the portal in this repository separates access points per team.
 
-> **Unconfirmed**: SLAG (storage-level access guard) is the route for attaching audit ACEs to a UNIX volume, but **the UNIX identity path of the S3 access point returned `AccessDenied` immediately after one was applied.** This was confirmed in both directions (denied on add, restored on remove) and adding a permissive SLAG (`Everyone` / `full_control`) did not resolve it. **The cause is unconfirmed.** If you adopt this as a workaround, do so knowing there is a measurement in which it breaks the data path. Where file-level auditing is a requirement, **decide the volume security style at design time.**
+### A SLAG on a UNIX volume makes unix→win mapping mandatory
+
+SLAG (storage-level access guard) is the route for attaching audit ACEs to a UNIX volume, but **access is denied as soon as one is applied.** Five states were measured (probe: NFSv3; the same denial was also observed over the S3 access point path).
+
+| # | SLAG | CIFS server | DC reachable | unix→win mapping | Permissive ACE | Result |
+|---|---|---|---|---|---|---|
+| A | none | none | — | none | — | Succeeds |
+| B | audit only | none | — | none | none | **Denied** |
+| B' | audit only | present | **yes** | none | none | **Denied** |
+| C | audit + allow | present | yes | none | `Everyone` / `full_control` | **Denied** |
+| D | audit + allow | present | yes | **`root` → `<NetBIOS>\Admin`** | yes | **Restored** |
+
+**The cause is the unix→win name mapping.** A SLAG is a Windows security descriptor, so evaluating it requires a Windows credential for the accessing UNIX identity. When that mapping fails, **the request is denied regardless of what the SLAG's ACEs say.** ONTAP names the reason in EMS `secd.nfsAuth.noNameMap` — `Successfully authenticated with DC` immediately followed by `Could not find Windows name 'root'` and `No default Windows user defined`.
+
+Three consequences for design:
+
+- **It is not specific to the S3 access point. NFS is denied at the same time.** The whole volume stops
+- **DC reachability alone is not enough** (B'). A matching Windows account has to exist
+- **Adding a permissive ACE does not resolve it** (C). "The DACL is empty" does not explain it
+
+**Providing the mapping restores access with the SLAG left in place** (D). That introduces its own cost, though: maintaining the mapping across SVMs, and carrying an identity correspondence in the design. **Where file-level auditing is a requirement, deciding the volume security style at design time is simpler.**
+
+> **Scope**: the restoration (D) was **confirmed over NFS.** The denial was observed over both the S3 access point and NFS, but restoration over the S3 access point path was not measured — the SVM used as the control runs a native ONTAP S3 server, which [blocks access point creation](#by-product-a-native-ontap-s3-server-blocks-access-point-creation).
 
 ## Application in This Project
 
@@ -329,7 +395,7 @@ The patterns in this repository adopt the following design:
 | Timeout from VPC Lambda | Accessing Internet Origin AP via S3 Gateway EP | Place Lambda outside VPC, or route via NAT Gateway |
 | MISCONFIGURED state | File system ID unresolvable, or the volume is offline / unmounted | Check that the ID resolves on the SVM, and check the volume's junction path |
 | AccessDenied on specific directories only | ONTAP export policy restrictions | Check SVM export policy rules (NFS export and S3 AP are different paths but share the same volume permissions) |
-| `MalformedPolicy` on put-access-point-policy | `s3:GetBucketLocation` or `s3:ListBucketMultipartUploads` included in the access point policy | Those cannot be used there; move them to the identity-based policy |
+| `Policy has invalid action` on put-access-point-policy | An action the access point policy does not accept ([list](#actions-that-cannot-be-used-in-an-access-point-policy)). **The message does not name which one** | Apply them one at a time to isolate it. Move bucket-configuration and access-point-management actions to the identity-based policy |
 | A policy change does not take effect | Propagation takes seconds | Six seconds after applying, the previous decision was still returned; it settled after 10–12 seconds. **Looking only at the first attempt leads to the wrong conclusion** |
 
 ### Verification Command Examples
@@ -371,9 +437,13 @@ vserver security file-directory show -vserver <SVM_NAME> -path <PATH>
 vserver services access-check authentication show-creds \
   -vserver <SVM_NAME> -unix-user-name <USER> -show-partial-unix-creds true
 
+# 7. ONTAP side: check for a native S3 service (its presence blocks AP creation)
+#    REST: GET /api/protocols/s3/services?svm.name=<SVM_NAME>
+vserver object-store-server show -vserver <SVM_NAME>
+
 # === VPC / Network ===
 
-# 7. Check VPC Endpoint policy
+# 8. Check VPC Endpoint policy
 aws ec2 describe-vpc-endpoints \
   --filters Name=service-name,Values=com.amazonaws.<REGION>.s3 \
   --query 'VpcEndpoints[*].{Id:VpcEndpointId,Policy:PolicyDocument}'
@@ -395,17 +465,32 @@ aws ec2 describe-vpc-endpoints \
 | With no `s3:` action in the AP policy, files are unreachable | They are reachable. **The two layers are independent** |
 | UNIX identities need LDAP and Windows identities need an AD join | Neither is required. Measured with a local UNIX user and with a workgroup-mode local Windows user |
 | The audit log tells you the calling IAM principal | It does not. Only the SID of the pinned identity remains. **Correlation with CloudTrail is required** |
-| `SubjectIP` in the audit log traces the caller | It does not. It is an AWS service-side address and changed between consecutive requests |
+| `SubjectIP` in the audit log traces the caller | It does not. It is an AWS service-side address; six requests produced five distinct values |
 | Enabling auditing on the SVM records every volume | A UNIX-style volume with mode bits only produced **0 records**. An audit ACE is required |
+| An AD-joined SVM puts the subject's name in the audit log | It does not. **Even a real domain account stays `Not Present`** |
+| Adding a SLAG to a UNIX volume lets you audit it | Access is denied. **It makes unix→win mapping mandatory** |
+| Layer 1 evaluation changes with the volume's security style | It does not. UNIX and NTFS produced the same results |
+| An access point can be created on an SVM running native ONTAP S3 | It cannot. Creation ends in `FAILED` |
+
+## By-product: a native ONTAP S3 server blocks access point creation
+
+**If an SVM runs a native ONTAP S3 service, you cannot create an S3 access point on that SVM's volumes.** The access point reaches `FAILED` and states the reason:
+
+```
+Amazon FSx is unable to create an S3 access point because of an existing
+ONTAP object storage server on SVM svm-0123456789abcdef0
+```
+
+ONTAP S3 buckets surface as FlexGroup volumes named `fg_oss_*`, so **check the target SVM for those and for `/protocols/s3/services` before creating an access point.** The workaround is a different SVM.
 
 ## Limits of This Description
 
-- **Layer 1 policy behaviour was measured on UNIX security style volumes only.** Layer 2 and the audit were measured on both UNIX and NTFS, but **policy evaluation was not re-measured on an NTFS volume.**
-- **The cause of the UNIX identity path being denied after a SLAG was applied is unconfirmed.** The phenomenon was confirmed in both directions.
-- **The Windows identity path was measured with a workgroup-mode local user.** Whether `SubjectUserName` resolves on an AD-joined SVM was not measured.
+- **The lockout from writing `s3:*` in a `Deny` was not measured.** Recovery may require recreating the access point, so it was deliberately not attempted.
+- **Restoration after removing the SLAG condition was confirmed over NFS.** Restoration over the S3 access point path was not measured (reason in that section).
 - **The cross-account measurement was one run between one pair of accounts.**
-- The audit measurement used one configuration: `file_operations` events, XML format.
-- Measurements come from one Region (`ap-northeast-1`) and one file system.
+- **The audit measurement on an AD-joined SVM used one domain account** (the directory's administrative account). Ordinary domain users were not measured.
+- The audit measurement used one configuration: `file_operations` events, XML format. Other event types and log formats populate different fields.
+- Measurements come from one Region (`ap-northeast-1`), ONTAP `9.18.1P3D1`, and one file system.
 
 ## References
 
