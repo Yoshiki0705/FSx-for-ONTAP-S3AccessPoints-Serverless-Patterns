@@ -155,7 +155,7 @@ graph TB
 
 | 제약 사항 | 해결 방법 |
 |---|---|
-| S3 Event Notifications 미지원 | EventBridge Scheduler 폴링 또는 FPolicy |
+| S3 Event Notifications 미지원 | EventBridge Scheduler 폴링 (FPolicy는 액세스 포인트 경유 쓰기를 감지하지 않음. 2026-08-26 실측, ONTAP 9.18.1P3D1) |
 | Presigned URL 비공식 | 실제로 동작하지만 프로덕션에서는 비권장 |
 | 최대 객체 크기 50 GB (단일 PutObject 5 GB) | 5 GB 초과 시 Multipart Upload |
 | Athena 결과를 S3AP에 쓸 수 없음 | 표준 S3 버킷으로 출력 |

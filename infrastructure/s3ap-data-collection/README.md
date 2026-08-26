@@ -255,7 +255,7 @@ graph TD
 | 注意点 | 影響 | 対策 |
 |--------|------|------|
 | **条件付き書き込み非対応** | Delta Lake / Iceberg のコミットプロトコルが動作しない | メタストアを通常 S3 に配置、データのみ S3 AP |
-| **S3 Event Notification 非対応** | PutObject トリガーの Lambda は使えない | FPolicy + EventBridge でイベント駆動を実現 |
+| **S3 Event Notification 非対応** | PutObject トリガーの Lambda は使えない | EventBridge Scheduler ポーリング。**FPolicy は AP 経由の PutObject を検知しない**ため代替にならない（実測 2026-08-26 / ONTAP 9.18.1P3D1） |
 | **Versioning 非対応** | オブジェクトの世代管理ができない | ONTAP Snapshot（ボリューム単位のポイントインタイム）で代替 |
 | **ListObjectsV2 性能特性** | 大量ファイルディレクトリで遅延 | Hive パーティション + Prefix 限定 + 外部カタログ |
 | **オブジェクト上限 50 GB（単一 PutObject は 5 GB）** | 50 GB 超のファイルは分割が必要 | 5〜50 GB は Multipart Upload (ONTAP 9.16.1+) |

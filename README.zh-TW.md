@@ -155,7 +155,7 @@ graph TB
 
 | 限制 | 解決方案 |
 |---|---|
-| 不支援 S3 Event Notifications | EventBridge Scheduler 輪詢或 FPolicy |
+| 不支援 S3 Event Notifications | EventBridge Scheduler 輪詢（FPolicy 無法偵測透過存取點的寫入。實測 2026-08-26，ONTAP 9.18.1P3D1） |
 | Presigned URL 非官方支援 | 實際可用但不建議用於生產環境 |
 | 物件大小上限 50 GB（單次 PutObject 5 GB） | 超過 5 GB 使用 Multipart Upload |
 | 無法將 Athena 結果寫入 S3AP | 輸出到標準 S3 儲存桶 |

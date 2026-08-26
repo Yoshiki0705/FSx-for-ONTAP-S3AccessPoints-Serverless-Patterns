@@ -519,6 +519,133 @@ def check_doc_contradictions() -> list[Finding]:
     return findings
 
 
+# Claims a measurement has disproved. Separate from CONTRADICTIONS above because
+# the retirement condition differs: a CONTRADICTIONS rule retires itself when the
+# code it names starts doing the thing, whereas a measurement does not stop being
+# true. What could change is the product, and that shows up as a new measurement
+# under a new date, not as a marker appearing in a handler.
+#
+# The scan range differs too, and that is the point. CONTRADICTIONS only reads
+# DOC_GLOBS, which excludes `docs/*.md` at the top level -- and that is where most
+# of this claim lived: the design considerations table, the S3 bucket user guide,
+# the compatibility notes, the trigger-mode decision guide, the data-collection
+# README and a CloudFormation parameter description. A guard that had only read
+# `docs/ja/` and `docs/en/` would have reported PASS over all of them.
+#
+# Each pattern names the false assertion -- FPolicy offered as the answer to a
+# missing S3 event notification, or as a control on the access point path -- not
+# the topic. "FPolicy detects NFS/SMB file operations" is true and must not match;
+# so must "FPolicy is not a substitute", which is the corrected wording and
+# contains both words.
+MEASURED_FALSE = [
+    {
+        "name": "fpolicy-covers-s3ap",
+        "claim": re.compile(
+            # FPolicy named as the alternative to the absent notification feature.
+            r"(?:代替|alternative)\s*[:：]\s*FPolicy"
+            r"|FPolicy\s*(?:\+\s*EventBridge\s*)?で(?:同等機能を実現|イベント駆動を実現)"
+            r"|FPolicy\s*\+\s*EventBridge\s*で"
+            r"|FPolicy\s+(?:or|または)\s+EventBridge\s+Scheduler\s+を?使用"
+            r"|Use\s+FPolicy\s+or\s+EventBridge\s+Scheduler"
+            r"|FPolicy\s+\+\s+EventBridge\s+for\s+(?:event-driven|equivalent)"
+            # FPolicy asserted to cover, or pair with, the access point path.
+            r"|FPolicy\s*\+\s*S3\s*AP"
+            r"|FPolicy\s*(?:が|は)\s*S3\s*AP\s*経由[^。\n]{0,20}(?:検知|通知|記録)し(?!ない|ません)"
+            r"|FPolicy\s+(?:sees|covers|detects)\s+(?:operations\s+)?(?:through|via)\s+"
+            r"(?:the\s+)?S3\s+access\s+point"
+            # FPolicy counted as an enforcement boundary alongside the S3 controls.
+            r"|ACL\s*\+\s*FPolicy\s*\+\s*S3\s*AP"
+            r"|ONTAP\s*ACL/FPolicy"
+            # The phrasings the published articles actually used. They say the same
+            # thing as the table rows above in different words, which is how the
+            # first version of this rule reported PASS over all four of them. Each
+            # carries a negative lookahead for the qualifier that makes the sentence
+            # true, so the corrected wording does not match -- the qualifier has to
+            # sit in the same paragraph, because scan_text reads a paragraph at a
+            # time and a note appended at the end of an article is out of reach.
+            r"|EVENT_DRIVEN\s*\(\s*FPolicy-based"
+            r"(?![\s\S]{0,700}?(?:only where writes arrive over NFS"
+            r"|raise no FPolicy notification))"
+            r"|S3 Access Points はネイティブのイベント通知をサポートしていません"
+            r"(?![\s\S]{0,700}?(?:NFS / SMB 経由で届く場合"
+            r"|FPolicy 通知を発火(?:せず|しない)))"
+            r"|The answer is ONTAP FPolicy"
+            r"(?![\s\S]{0,700}?(?:only where writes arrive over NFS"
+            r"|writes that arrive over NFS"
+            r"|raise no FPolicy notification))"
+            r"|interim event-driven pattern"
+            r"(?![\s\S]{0,700}?(?:only where writes arrive over NFS"
+            r"|writes that arrive over NFS"
+            r"|raise no FPolicy notification))",
+            re.IGNORECASE,
+        ),
+        # Not a code marker: the record of the measurement. If this file is ever
+        # renamed away, check_measured_false_claims raises rather than passing
+        # quietly -- a guard that cannot find its own evidence has not run.
+        "evidence": "docs/aws-feature-requests/native-s3ap-notifications-evidence.md",
+        "why": (
+            "measured 2026-08-26 on ONTAP 9.18.1P3D1: operations through an FSx for ONTAP "
+            "S3 access point raise no FPolicy notification and are not blocked even by a "
+            "`mandatory` synchronous policy, so FPolicy is not an alternative to S3 event "
+            "notifications on that path and is not an enforcement boundary for it"
+        ),
+    },
+]
+
+
+def check_measured_false_claims() -> list[Finding]:
+    """Claims that a measurement has disproved, across every tracked document.
+
+    Reads Markdown and CloudFormation alike, because the claim reached a template
+    parameter description as well as prose, and a reader configuring `TriggerMode`
+    never opens the docs.
+
+    An empty corpus is a failure, not a pass. `git ls-files` returns nothing when
+    it is run outside a work tree, and every scan built on it then reports clean.
+    """
+    findings: list[Finding] = []
+    for rule in MEASURED_FALSE:
+        evidence = ROOT / rule["evidence"]
+        if not evidence.exists():
+            raise SystemExit(
+                f"check_measured_false_claims: evidence file missing for rule "
+                f"{rule['name']!r}: {rule['evidence']}. The guard cannot run; "
+                f"restore the file or update the rule."
+            )
+
+    candidates = [
+        path
+        for name in tracked_files()
+        if name.endswith((".md", ".yaml", ".yml"))
+        and not name.startswith((".aws-sam/", "node_modules/"))
+        and "/.aws-sam/" not in name
+        and "/.amplify/" not in name
+        and (path := ROOT / name).is_file()
+    ]
+    if not candidates:
+        raise SystemExit(
+            "check_measured_false_claims: no tracked documents found. `git ls-files` "
+            "returned nothing, so this scan proves nothing."
+        )
+
+    for path in sorted(candidates):
+        text = path.read_text(encoding="utf-8", errors="replace")
+        if EXEMPT_FILE.search(text):
+            continue
+        lines = text.split("\n")
+        for rule, number, matched in scan_text(text, MEASURED_FALSE):
+            if EXEMPT_LINE.search(lines[number - 1]):
+                continue
+            findings.append(
+                Finding(
+                    "measured-false-claim",
+                    f"{path.relative_to(ROOT)}:{number}",
+                    f"{rule['why']}: {matched[:110]}",
+                )
+            )
+    return findings
+
+
 # Counts a document states about the portal, paired with where the real number
 # lives. The CONTRADICTIONS rules above cannot cover these: a rule matches the
 # *false half of a phrasing*, and "13 sections" is not a phrasing — it is a
@@ -1911,6 +2038,7 @@ def main() -> int:
         check_action_inventories()
         + hardcoded
         + check_doc_contradictions()
+        + check_measured_false_claims()
         + check_count_claims()
         + check_cognito_groups()
         + check_orphan_env_reads()

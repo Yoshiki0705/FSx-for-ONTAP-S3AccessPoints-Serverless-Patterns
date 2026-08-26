@@ -16,7 +16,6 @@ It instantly detects file create, write, delete, and rename operations via NFS/S
 - You want to treat NFS/SMB file changes as AWS events
 - You want to route from a single event source to multiple use cases
 - You want to process file operations asynchronously without blocking them (asynchronous mode)
-- You want to achieve event-driven architecture in environments where S3 event notifications are unavailable
 
 ### When This Pattern Is Not a Good Fit
 
@@ -24,6 +23,7 @@ It instantly detects file create, write, delete, and rename operations via NFS/S
 - Periodic batch scanning is sufficient (S3 AP polling pattern recommended)
 - Your environment uses only the NFSv4.2 protocol (not supported by FPolicy)
 - Network reachability to the ONTAP REST API cannot be ensured
+- You want to detect data written through an S3 access point (operations on that path raise no FPolicy notification and are not blocked even by a `mandatory` synchronous policy; measured 2026-08-26, ONTAP 9.18.1P3D1 — use EventBridge Scheduler polling or the ONTAP native audit log)
 
 ### Key Features
 

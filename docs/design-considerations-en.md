@@ -220,7 +220,7 @@ FSx for ONTAP S3 AP is "S3 compatible" but NOT "identical to Amazon S3." Conside
 | CopyObject | ✅ | — | Same AP only |
 | Versioning | ❌ | ONTAP Snapshot (volume-level) | Version management via Snapshot + FlexClone |
 | Conditional writes (If-None-Match) | ❌ | Application-level locking | Returns 501 Not Implemented |
-| S3 Event Notification | ❌ | FPolicy + EventBridge | FPolicy captures ONTAP-layer file operation events |
+| S3 Event Notification | ❌ | EventBridge Scheduler polling | **FPolicy is not a substitute**: operations through the access point raise no notification and are not blocked even by a `mandatory` policy (measured 2026-08-26, ONTAP 9.18.1P3D1). What FPolicy captures is NFS / SMB operations only |
 | Lifecycle Rules | ❌ | FabricPool / ONTAP Tiering Policy | `AUTO` / `SNAPSHOT_ONLY` for automatic tiering |
 | Object Lock / WORM | ❌ | SnapLock | SnapLock Compliance for regulatory requirements |
 | S3 Select | ❌ | Athena + Glue Data Catalog | Process with external analytics engines |
@@ -235,7 +235,7 @@ FSx for ONTAP S3 AP is "S3 compatible" but NOT "identical to Amazon S3." Conside
 | Pattern | Affected Constraint | Mitigation |
 |---------|-------------------|-----------|
 | Delta Lake / Iceberg tables | Conditional writes unsupported | Application-level locking, or place metastore on standard S3 |
-| Event-driven processing | S3 Event Notification unsupported | FPolicy + EventBridge for equivalent functionality |
+| Event-driven processing | S3 Event Notification unsupported | EventBridge Scheduler polling. FPolicy + EventBridge applies **only where writes arrive over NFS or SMB** (a write through the access point raises no notification; measured 2026-08-26) |
 | Lifecycle management | Lifecycle Rules unsupported | ONTAP Tiering Policy + Snapshot auto-delete policy |
 | Compliance retention | Object Lock unsupported | SnapLock Compliance volume |
 

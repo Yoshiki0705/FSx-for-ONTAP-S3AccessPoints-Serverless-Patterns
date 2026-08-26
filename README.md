@@ -219,7 +219,7 @@ graph TB
 
 | 制約 | 回避策 |
 |---|---|
-| S3 Event Notifications 非対応 | EventBridge Scheduler ポーリング or FPolicy |
+| S3 Event Notifications 非対応 | EventBridge Scheduler ポーリング（FPolicy は AP 経由の書き込みを検知しない。実測 2026-08-26 / ONTAP 9.18.1P3D1） |
 | Presigned URL 非公式 | 動作するが本番非推奨 |
 | オブジェクトサイズ上限 50 GB（単一 PutObject は 5 GB） | 5 GB 超は Multipart Upload で対応 |
 | Athena 結果を S3AP に書き戻し不可 | 標準 S3 バケットに出力 |

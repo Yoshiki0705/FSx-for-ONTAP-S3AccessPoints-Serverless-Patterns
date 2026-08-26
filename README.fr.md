@@ -155,7 +155,7 @@ Diagrammes d'architecture détaillés par catégorie :
 
 | Contrainte | Solution de contournement |
 |---|---|
-| Pas de S3 Event Notifications | Polling EventBridge Scheduler ou FPolicy |
+| Pas de S3 Event Notifications | Polling EventBridge Scheduler (FPolicy ne détecte pas les écritures via l'access point ; mesuré le 2026-08-26, ONTAP 9.18.1P3D1) |
 | URLs présignées non officielles | Fonctionnent en pratique mais non recommandées en production |
 | Taille d'objet max. de 50 Go (PutObject unique 5 Go) | Multipart Upload au-delà de 5 Go |
 | Impossible d'écrire les résultats Athena sur S3AP | Sortie vers un bucket S3 standard |

@@ -220,7 +220,7 @@ FSx for ONTAP S3 AP は「S3 互換」だが「Amazon S3 と同一」ではな�
 | CopyObject | ✅ | — | 同一 AP 内のみ |
 | Versioning | ❌ | ONTAP Snapshot（ボリューム単位） | バージョン管理は Snapshot + FlexClone で代替 |
 | 条件付き書き込み (If-None-Match) | ❌ | アプリケーションレベルのロック | 501 Not Implemented が返る |
-| S3 Event Notification | ❌ | FPolicy + EventBridge | FPolicy で ONTAP 層のファイル操作イベントを取得 |
+| S3 Event Notification | ❌ | EventBridge Scheduler ポーリング | **FPolicy は代替にならない**: AP 経由の操作は通知されず、`mandatory` 指定でも遮断されない（実測 2026-08-26 / ONTAP 9.18.1P3D1）。FPolicy で取れるのは NFS / SMB 経由の操作のみ |
 | Lifecycle Rules | ❌ | FabricPool / ONTAP Tiering Policy | `AUTO` / `SNAPSHOT_ONLY` で自動階層化 |
 | Object Lock / WORM | ❌ | SnapLock | コンプライアンス要件には SnapLock Compliance |
 | S3 Select | ❌ | Athena + Glue Data Catalog | 外部分析エンジンで処理 |
@@ -235,7 +235,7 @@ FSx for ONTAP S3 AP は「S3 互換」だが「Amazon S3 と同一」ではな�
 | パターン | 影響する機能制約 | 対策 |
 |---------|----------------|------|
 | Delta Lake / Iceberg テーブル | 条件付き書き込み非対応 | アプリケーション側の排他制御、または標準 S3 にメタストア配置 |
-| イベント駆動処理 | S3 Event Notification 非対応 | FPolicy + EventBridge で同等機能を実現 |
+| イベント駆動処理 | S3 Event Notification 非対応 | EventBridge Scheduler ポーリング。FPolicy + EventBridge が使えるのは**書き込みが NFS / SMB 経由で届く場合のみ**（AP 経由の書き込みは通知されない。実測 2026-08-26） |
 | ライフサイクル管理 | Lifecycle Rules 非対応 | ONTAP Tiering Policy + Snapshot 自動削除ポリシー |
 | コンプライアンス保持 | Object Lock 非対応 | SnapLock Compliance ボリューム |
 
