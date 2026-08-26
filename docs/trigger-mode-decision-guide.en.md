@@ -11,7 +11,7 @@ This repository provides 3 trigger modes. Select the optimal mode based on your 
 | Mode | Choose when | Avoid when |
 |------|-------------|------------|
 | **POLLING** | Hourly/batch processing is sufficient | Sub-minute detection is required |
-| **EVENT_DRIVEN** | Near-real-time ingestion is needed and event loss during reconnection is acceptable | Compliance requires durable event capture |
+| **EVENT_DRIVEN** | Near-real-time ingestion is needed, event loss during reconnection is acceptable, **and writes arrive over NFS or SMB** | **Writes arrive through an S3 access point** (operations on that path raise no FPolicy notification; measured 2026-08-26, ONTAP 9.18.1P3D1). Compliance requires durable event capture |
 | **HYBRID** | Faster detection + periodic consistency checks are needed | Simplest operational model is desired |
 
 ## Detailed Comparison
@@ -24,7 +24,7 @@ This repository provides 3 trigger modes. Select the optimal mode based on your 
 | **Event Durability** | High (no loss — full scan each time) | Medium (gaps during Fargate restart) | High (periodic scan fills gaps) |
 | **Scalability** | High (Lambda parallel execution) | Medium (depends on Fargate task count) | High |
 | **ONTAP Dependency** | None (S3 AP only) | High (FPolicy configuration, external-engine) | High |
-| **Supported Protocols** | All (via S3 AP) | NFSv3/NFSv4.0/NFSv4.1/SMB | All |
+| **Supported Protocols** | All (via S3 AP) | NFSv3/NFSv4.0/NFSv4.1/SMB only. **Operations through the S3 access point are not detected** | All, but a write through the S3 access point is picked up only by the polling half, so it is not seconds |
 
 ## Details for Each Mode
 

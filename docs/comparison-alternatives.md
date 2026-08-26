@@ -19,7 +19,7 @@
 | **コスト (処理側)** | Lambda 従量課金 | Lambda + EFS 従量 | EC2 常時稼働 | Lambda 従量課金 |
 | **コスト (ストレージ)** | FSx for ONTAP (既存) | EFS 追加 | FSx for ONTAP (既存) | S3 追加 |
 | **VPC 依存** | NetworkOrigin による | ✅ VPC 必須 | ✅ VPC 必須 | ❌ 不要 (S3 側) |
-| **イベント駆動** | FPolicy (Phase 10) | S3 Event (コピー後) | inotify/FPolicy | S3 Event Notifications |
+| **イベント駆動** | EventBridge Scheduler ポーリング（FPolicy は AP 経由の操作を検知しない。実測 2026-08-26 / ONTAP 9.18.1P3D1） | S3 Event (コピー後) | inotify/FPolicy | S3 Event Notifications |
 | **マルチプロトコル** | NFS + SMB + S3 | NFS のみ | NFS or SMB | S3 のみ (コピー後) |
 | **データ鮮度** | リアルタイム | リアルタイム | リアルタイム | 同期遅延あり |
 | **運用複雑性** | 中 | 低 | 高 | 中 |

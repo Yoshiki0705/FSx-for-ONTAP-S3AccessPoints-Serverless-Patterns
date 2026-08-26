@@ -328,10 +328,29 @@ def test_empty_body_is_an_error_not_a_pass(published, monkeypatch, payload):
 
 
 def test_manifest_covers_both_platforms_and_all_parts(published):
+    """Every series a rule can apply to, in both languages, with no duplicate URL.
+
+    Asserted per series rather than as one total, because the total is what let the
+    corpus fall behind: the list held the file-portal series only, and
+    `check_published_articles.py` reported PASS over four S3 AP serverless posts
+    carrying a claim the 2026-08-26 measurement had disproved. A count of six was
+    correct for one series and silent about the other.
+    """
     kinds = {article["kind"] for article in published.ARTICLES}
     assert kinds == {"devto", "hatena"}
-    assert len(published.ARTICLES) == 6, "the series is three parts in two languages"
-    assert len({article["url"] for article in published.ARTICLES}) == 6
+    urls = {article["url"] for article in published.ARTICLES}
+    assert len(urls) == len(published.ARTICLES), "a URL is listed twice"
+
+    file_portal = [a for a in published.ARTICLES if "file-portal" in a["url"]]
+    assert len(file_portal) == 6, "the file-portal series is three parts in two languages"
+    assert {a["kind"] for a in file_portal} == {"devto", "hatena"}
+
+    s3ap = [a for a in published.ARTICLES if a not in file_portal]
+    assert len(s3ap) == 4, (
+        "the S3 AP serverless posts carrying the FPolicy / S3 access point claim are "
+        "Phase 10 and Phase 13, in two languages each"
+    )
+    assert {a["kind"] for a in s3ap} == {"devto", "hatena"}
 
 
 def test_no_exempt_marker_escape_hatch_for_published_text(published):
@@ -543,7 +562,7 @@ COUNT_PHRASINGS = {
         "**6 operations optimization patterns (OPS1-OPS6)**",
         "├── operations/             # Operational optimization patterns (6, all built)",
     ),
-    "pytest-files": (266, "~4,503 Python tests across 266 files", None),
+    "pytest-files": (267, "~4,580 Python tests across 267 files", None),
     "vitest-files": (29, "~365 vitest tests across 29 files", None),
 }
 

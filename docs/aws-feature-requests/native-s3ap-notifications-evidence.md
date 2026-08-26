@@ -6,7 +6,7 @@
 
 本ドキュメントは、FSx for ONTAP S3 Access Points に対するネイティブイベント通知機能の必要性を、FPolicy ベースの実装経験から得られた evidence に基づいて整理したものです。
 
-> **位置づけ**: FPolicy による Event-Driven パターンは「動作する回避策」として実証済みですが、ネイティブ機能があれば解消される運用上の課題が明確に存在します。本ドキュメントはその課題を定量化し、AWS サービスチームへのフィードバックとして活用することを目的としています。
+> **位置づけ**: FPolicy による Event-Driven パターンは NFS / SMB 経由の書き込みに対しては実証済みですが、**S3 Access Point 経由で書き込まれたデータには適用できません**（実測 2026-08-26 / ONTAP 9.18.1P3D1、下記「課題 0」）。したがって AP 経由の書き込みについては、現時点で回避策が存在しません。本ドキュメントはその欠落と、FPolicy を使える場合でも残る運用上の課題を定量化し、AWS サービスチームへのフィードバックとして活用することを目的としています。
 
 ## 利用者課題（Working Backwards）
 
@@ -18,12 +18,31 @@
 
 エンタープライズのお客様は FSx for ONTAP に保存されたファイルデータに対して、変更検知 → 自動処理のパイプラインを構築したいと考えています。現在、S3 Access Points は `GetBucketNotificationConfiguration` をサポートしていないため、以下の 2 つの選択肢しかありません:
 
-1. **ポーリング**: EventBridge Scheduler + ListObjectsV2 による定期スキャン（リアルタイム性なし）
-2. **FPolicy**: ONTAP ネイティブの FPolicy External Server を自前で運用（高い運用複雑性）
+1. **ポーリング**: EventBridge Scheduler + ListObjectsV2 による定期スキャン（検知は次回スキャンまで遅延）
+2. **FPolicy**: ONTAP ネイティブの FPolicy External Server を自前で運用（高い運用複雑性）。**ただし書き込みが S3 Access Point 経由で届く場合、この選択肢は成立しません**（課題 0）
 
-どちらも「S3 バケットに EventBridge を設定するだけ」という S3 ネイティブの体験とは大きく乖離しています。
+書き込みが AP 経由で届くワークロードでは、実質的に選択肢は 1 つ（ポーリング）だけです。どちらも「S3 バケットに EventBridge を設定するだけ」という S3 ネイティブの体験とは大きく乖離しています。
 
 ## FPolicy 実装から明らかになった運用課題
+
+### 課題 0: FPolicy は S3 Access Point 経由の操作を検知しない（最も重い制約）
+
+| 測定項目 | 結果 |
+|---|---|
+| 無操作 90 秒（対照） | 通知 0 件 |
+| S3 AP データプレーン 9 回（PUT 3 / GET 3 / HEAD 1 / LIST 1 / DELETE 1） | 通知 **0 件** |
+| 同一ボリュームへの NFSv3 create + read + delete（対照） | 通知 3 件 |
+| `mandatory` 指定の同期ポリシー + 応答するエンジン | AP 経由の操作は**遮断されない** |
+| UNIX identity + NFS / WINDOWS identity + SMB | どちらも同じ結果 |
+
+構造的な根拠: ONTAP 9.18.1P3D1 の FPolicy event が受け付ける `protocol` は `cifs` / `nfsv3` / `nfsv4`
+の 3 値のみで、`s3` / `object` / `http` はいずれも HTTP 400 で拒否されます（12 候補を個別に POST して列挙）。
+S3 AP 経由の書き込みがボリュームに到達していることは、同じボリュームを NFS でマウントして確認済みです。
+
+測定条件: 2026-08-26、ap-northeast-1、ONTAP 9.18.1P3D1、SINGLE_AZ_1 / 128 MBps。
+
+**ネイティブ通知があれば**: 書き込み経路に依存せず検知できます。これは運用コストの削減ではなく、
+**現在存在しない機能の提供**です。
 
 ### 課題 1: 長時間稼働 TCP リスナーの運用
 

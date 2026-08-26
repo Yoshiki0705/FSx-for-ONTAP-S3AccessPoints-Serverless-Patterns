@@ -16,7 +16,7 @@ Amazon S3 標準バケットを普段使用している方が、FSx for ONTAP S3
 | Versioning | ✅ Supported | ❌ Not supported |
 | Object Lock (WORM) | ✅ Supported | ❌ Not supported (代替: SnapLock) |
 | Lifecycle policies | ✅ Supported | ❌ Not supported (代替: Snapshot/SnapMirror) |
-| S3 Event Notifications | ✅ Supported | ❌ Not supported (代替: FPolicy) |
+| S3 Event Notifications | ✅ Supported | ❌ Not supported (代替: EventBridge Scheduler ポーリング。FPolicy は AP 経由の操作を検知しない) |
 | Presigned URLs | ✅ Supported | ⚠️ Works but listed as "Not supported" (docs) |
 | S3 Replication | ✅ Supported | ❌ Not supported (代替: SnapMirror) |
 | File protocol access (NFS/SMB) | ❌ | ✅ Alongside S3 API |
@@ -72,10 +72,10 @@ S3 Versioning と ONTAP Snapshot は異なるリカバリモデルです:
 
 | S3 機能 | ONTAP 代替 | 説明 |
 |---|---|---|
-| S3 Event Notifications | **FPolicy** (event-driven pipeline) | ファイル作成/書込/名前変更を TCP 経由で通知 |
+| S3 Event Notifications | **FPolicy** (event-driven pipeline) | NFS / SMB 経由のファイル作成/書込/名前変更を TCP で通知。**S3 AP 経由の操作は通知しない**（実測 2026-08-26 / ONTAP 9.18.1P3D1） |
 | EventBridge S3 events | **EventBridge Scheduler** (polling) | 定期的に ListObjectsV2 で新規ファイルを検出 |
 
-本パターンライブラリは主に EventBridge Scheduler を使用しますが、リアルタイムイベント処理が必要な場合は Phase 10-12 の FPolicy パイプラインを参照してください。
+本パターンライブラリは主に EventBridge Scheduler を使用します。FPolicy パイプライン（Phase 10-12）が使えるのは、書き込みが NFS / SMB 経由で届く場合に限られます。S3 AP 経由の書き込みは FPolicy 通知を発火しません（実測 2026-08-26 / ONTAP 9.18.1P3D1）。
 
 ## Performance の違い
 
@@ -148,7 +148,7 @@ File-system:    FSx CloudWatch metrics, ONTAP REST API, FPolicy audit logs
 | Presigned URL は使えますか？ | **動作する**（ドキュメント上は Not supported だが、GetObject の署名付きリクエストとして成功する。ただし本番依存は AWS が非推奨） |
 | NFS/SMB からもアクセスできますか？ | **はい**。同じデータに並行アクセス可能 |
 | データレイクとして使うべきですか？ | **通常 No**。Integration boundary として使い、分析出力は標準 S3 へ |
-| S3 Event Notifications は使えますか？ | **いいえ**。FPolicy または EventBridge Scheduler を使用 |
+| S3 Event Notifications は使えますか？ | **いいえ**。EventBridge Scheduler を使用。FPolicy が使えるのは書き込みが NFS / SMB 経由の場合のみ（AP 経由の書き込みは通知されない） |
 
 ---
 

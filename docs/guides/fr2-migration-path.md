@@ -7,7 +7,7 @@ Amazon FSx for ONTAP の S3 Access Points が将来的にネイティブイベ�
 ## 前提条件
 
 - **FR-2 (Feature Request)**: S3AP ネイティブ通知は AWS ロードマップ上の機能リクエスト
-- **現在の状態**: FPolicy + ECS Fargate による TCP ベースのイベント検知が稼働中
+- **現在の状態**: FPolicy + ECS Fargate による TCP ベースのイベント検知が稼働中。**ただし FPolicy が検知するのは NFS / SMB 経由の操作のみで、S3 Access Point 経由の書き込みは通知されない**（実測 2026-08-26 / ONTAP 9.18.1P3D1）。AP 経由で書き込まれるデータについては、現在ストレージ層のイベント駆動手段が存在しない。これが FR-2 を必要とする理由そのものである
 - **TriggerMode**: 全 17 UC テンプレートで POLLING / EVENT_DRIVEN / HYBRID を切り替え可能
 
 ## 移行フェーズ
@@ -175,7 +175,7 @@ fpolicy enable -vserver FSxN_OnPre -policy-name fpolicy_aws -sequence-number 1
 
 2. **operation_type の粒度**: S3 イベントは `ObjectCreated` / `ObjectRemoved` の 2 種類。FPolicy の `rename` / `setattr` に相当するイベントがない可能性がある。
 
-3. **リアルタイム性**: S3AP 通知のレイテンシは S3 Event Notifications と同等（数秒）。FPolicy は TCP 接続で即座に通知されるため、レイテンシ要件が厳しい UC では FPolicy が優位。
+3. **検知レイテンシ**: S3AP 通知のレイテンシは S3 Event Notifications と同等（数秒）。FPolicy は TCP 接続で即座に通知されるため、レイテンシ要件が厳しく **かつ書き込みが NFS / SMB 経由で届く** UC では FPolicy を残す選択がある。書き込みが AP 経由の UC では FPolicy がそもそも通知しないため、この比較は成り立たない。
 
 4. **EventBridge Rule の変更**: `source` フィールドが `fsxn.fpolicy` → `aws.s3` に変わるため、全 UC の EventBridge Rule を更新する必要がある。
 

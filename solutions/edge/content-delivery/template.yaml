@@ -93,6 +93,10 @@ Parameters:
       トリガーモード。POLLING を主対象とする。EVENT_DRIVEN / HYBRID は
       パラメータ定義のみで、本雛形では FPolicy 連携・冪等化（idempotency）は未実装
       （shared/idempotency_checker.py への拡張ポイント）。
+      なお FPolicy 連携を実装しても、S3 Access Point 経由で書き込まれたコンテンツは
+      検知できない。AP 経由の操作は FPolicy 通知を発火しないため（実測 2026-08-26 /
+      ONTAP 9.18.1P3D1）、EVENT_DRIVEN が成立するのは書き込みが NFS / SMB 経由で
+      届く場合に限られる。
 
   EnableCloudFront:
     Type: String

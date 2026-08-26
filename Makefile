@@ -304,6 +304,13 @@ drift:
 # output does not contain the value it found — CI logs are public here.
 	$(PYTHON) -m pytest scripts/tests/test_check_account_id_placeholders.py --tb=short -q
 	$(PYTHON) -m pytest scripts/tests/test_stale_claim_rules.py --tb=short -q
+# The measured-false claim rule. Separate from the stale-claim rules above because it
+# retires on a new measurement rather than on a code marker, and because its scan range
+# is every tracked document rather than DOC_GLOBS -- the older globs read docs/ja/ and
+# docs/en/, and all twelve occurrences of the claim were outside both, in docs/*.md, an
+# infrastructure README and a CloudFormation parameter description. Its own tests assert
+# that an empty corpus and a missing evidence file both fail rather than report clean.
+	$(PYTHON) -m pytest scripts/tests/test_measured_false_claims.py --tb=short -q
 # A name the code depends on and no template creates. Both rules below exist because
 # the same shape shipped twice: five endpoints guarded on a Cognito group that
 # `defineAuth` never declared, and handlers reading environment variables nothing

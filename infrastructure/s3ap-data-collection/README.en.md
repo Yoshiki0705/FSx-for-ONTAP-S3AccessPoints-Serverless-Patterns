@@ -255,7 +255,7 @@ Key differences when implementing serverless patterns on this infrastructure:
 | Note | Impact | Mitigation |
 |------|--------|-----------|
 | **Conditional writes unsupported** | Delta Lake / Iceberg commit protocol won't work | Place metastore on standard S3, data on S3 AP |
-| **S3 Event Notification unsupported** | Can't use PutObject-triggered Lambda | FPolicy + EventBridge for event-driven |
+| **S3 Event Notification unsupported** | Can't use PutObject-triggered Lambda | EventBridge Scheduler polling. **FPolicy does not see a PutObject through the access point**, so it is not a substitute (measured 2026-08-26, ONTAP 9.18.1P3D1) |
 | **Versioning unsupported** | No object generation management | ONTAP Snapshot (volume-level point-in-time) |
 | **ListObjectsV2 performance** | Delay with large file directories | Hive partitioning + prefix-limited + external catalog |
 | **50 GB object limit (single PutObject 5 GB)** | Files above 50 GB need splitting | Multipart Upload for 5-50 GB (ONTAP 9.16.1+) |

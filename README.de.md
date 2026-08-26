@@ -155,7 +155,7 @@ Detaillierte Architekturdiagramme je Kategorie:
 
 | Einschränkung | Workaround |
 |---|---|
-| Keine S3 Event Notifications | EventBridge Scheduler-Polling oder FPolicy |
+| Keine S3 Event Notifications | EventBridge Scheduler-Polling (FPolicy erkennt Schreibvorgänge über den Access Point nicht; gemessen 2026-08-26, ONTAP 9.18.1P3D1) |
 | Presigned URLs inoffiziell | Funktionieren in der Praxis, aber nicht für Produktion empfohlen |
 | Max. Objektgröße 50 GB (einzelnes PutObject 5 GB) | Multipart Upload oberhalb von 5 GB |
 | Athena-Ergebnisse können nicht auf S3AP geschrieben werden | Ausgabe in Standard-S3-Bucket |
