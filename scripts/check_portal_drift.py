@@ -570,7 +570,13 @@ MEASURED_FALSE = [
             r"(?![\s\S]{0,700}?(?:NFS / SMB 経由で届く場合"
             r"|FPolicy 通知を発火(?:せず|しない)))"
             r"|The answer is ONTAP FPolicy"
-            r"|interim event-driven pattern",
+            r"(?![\s\S]{0,700}?(?:only where writes arrive over NFS"
+            r"|writes that arrive over NFS"
+            r"|raise no FPolicy notification))"
+            r"|interim event-driven pattern"
+            r"(?![\s\S]{0,700}?(?:only where writes arrive over NFS"
+            r"|writes that arrive over NFS"
+            r"|raise no FPolicy notification))",
             re.IGNORECASE,
         ),
         # Not a code marker: the record of the measurement. If this file is ever
