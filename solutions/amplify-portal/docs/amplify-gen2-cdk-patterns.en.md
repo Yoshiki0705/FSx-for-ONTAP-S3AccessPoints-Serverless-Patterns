@@ -75,7 +75,7 @@ environment: { ONTAP_MGMT_IP: process.env.ONTAP_MGMT_IP || "" }
 ```
 npx ampx sandbox --once
   ├── cdk synth (backend.ts → CloudFormation template generation)
-  │     └── cdk-nag does NOT run (opt-in, applied only when CDK_NAG=1)
+  │     └── cdk-nag does NOT run here (only with CDK_NAG=1; CI synthesises in its own job)
   ├── cdk deploy (applies the diff only)
   │     ├── First run: Cognito User Pool + AppSync API + Lambda x N + DynamoDB
   │     └── Subsequent runs: hot-swaps only the changed Lambda code (seconds)
@@ -90,7 +90,7 @@ npx ampx sandbox --once
 ## Recommended workflow
 
 1. **During development**: `npx ampx sandbox` (watch mode) — Lambda code changes apply within seconds
-2. **Verification**: `npx tsc --noEmit` + `npx vitest run` + `npm run build`. To look at cdk-nag, run `npm run nag` separately (not integrated into CI)
+2. **Verification**: `npx tsc --noEmit` + `npx vitest run` + `npm run build`. For cdk-nag, `npm run nag` (CI compares it against the baseline in Stage 2b)
 3. **Production**: `npx ampx pipeline-deploy` (the Amplify Hosting CI/CD pipeline)
 
 ## Related references

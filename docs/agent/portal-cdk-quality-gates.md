@@ -28,7 +28,7 @@ This project implements a 6-layer defense architecture for infrastructure code q
 | Layer | Tool | Purpose |
 |:---:|------|---------|
 | 1 | cfn-lint | Template syntax validation |
-| 2 | cdk-nag (AwsSolutionsChecks) | AWS compliance checks (**manual opt-in, not a PR gate**, see below) |
+| 2 | cdk-nag (AwsSolutionsChecks) | AWS compliance checks. Blocking in CI against `security/cdk-nag-baseline.txt`; off in the deploy path (see below) |
 | 3 | gitleaks + zizmor | Secrets + Actions security |
 | 4 | IAM Access Analyzer | Over-permissive policy detection |
 | 5 | CDK harness tests (47 assertions) | Structural regression prevention |
@@ -38,35 +38,34 @@ This project implements a 6-layer defense architecture for infrastructure code q
 
 **Problem**: registering cdk-nag during synth makes any reported violation interrupt synthesis and block deployment (v2 raised `[AssemblyError] Found errors`; v3 raises `ValidationFailed`). Amplify Gen2 creates resources (AppSync, Cognito, internal S3 buckets, DynamoDB) that produce Non-Compliant findings (ASC3, S1, S10, COG1, COG7, COG8, IAM4, IAM5) which are **NOT user-configurable** — Amplify controls their creation and does not expose configuration hooks for these properties.
 
-**Solution**: cdk-nag is **opt-in via the `CDK_NAG=1` environment variable**, run by hand:
+**Solution**: off in the deployment path (`npx ampx sandbox` / `amplify deploy` synth
+without it, so nothing blocks a deploy), on in a job of its own. Neither path needs AWS
+credentials — nothing is deployed and no AWS call is made.
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│ Deployment Flow (sandbox & production)                       │
-│ npx ampx sandbox / amplify deploy                           │
-│ → synth → deploy (NO cdk-nag → no blocking)                │
-└─────────────────────────────────────────────────────────────┘
+**It is a PR gate (since 2026-08-28)**, run by ci.yml's "Stage 2b: Amplify Portal" job,
+which already has node_modules and the portal-config it needs. `npm run nag` synthesises;
+`scripts/check_cdk_nag_baseline.py` compares the result to `security/cdk-nag-baseline.txt`,
+which holds the 121 known findings one per line. A finding that is not there fails, and a
+recorded one that gets fixed fails too.
 
-┌─────────────────────────────────────────────────────────────┐
-│ Manual run (local, needs Amplify credentials)                │
-│ npm run nag   (synthesises; never deploys)                 │
-│ → synth WITH cdk-nag → NagReport CSVs                      │
-└─────────────────────────────────────────────────────────────┘
-```
-
-**`CDK_NAG=1` is not run by any workflow.** It appears in no file under
-`.github/workflows/`, so nothing about it blocks a pull request. It used to be
-described here as "CI-only", which reads as a gate. Verify before relying on it:
+**Do not verify it with `grep -rn CDK_NAG .github/workflows/`.** That produced no output
+before the gate existed and still produces none: `scripts/cdk-nag.sh` sets the variable
+itself. This file used to give that grep as the check, so it would report "no gate" either
+way. Ask instead:
 
 ```bash
-grep -rn CDK_NAG .github/workflows/    # no output means no gate
+grep -rn check_cdk_nag_baseline .github/workflows/ Makefile
 ```
 
-It is not wired up because `ampx generate outputs` needs credentials for a real
-Amplify app, which the PR workflows do not have. What *is* gated on every PR is
-`tests/infrastructure/`, including `cdk-nag-v3.test.ts` — that runs the real
-`AwsSolutionsChecks` pack over real constructs offline, so the API wiring and the
-acknowledgment mechanism are checked even though the portal's own synth is not.
+The other claim that was wrong: the documented `CDK_NAG=1 npx ampx generate outputs` reads
+a deployed stack's outputs and never synthesises, so it reported nothing whether or not
+findings existed. `ampx` has no synth-only command, so the script runs `amplify/backend.ts`
+as the CDK app it is — CDK synthesises on exit when `CDK_OUTDIR` is set, and
+`CDK_CONTEXT_JSON` supplies the context keys Amplify reads.
+
+`tests/infrastructure/cdk-nag-v3.test.ts` is separate and still runs: it exercises the
+`AwsSolutionsChecks` pack over constructs built in-test, so the API wiring is checked
+without a portal synth.
 
 **What this means for new code:**
 - Adding a Lambda with `resources: ["*"]` → cdk-nag reports it on a manual run → acknowledge with a reason

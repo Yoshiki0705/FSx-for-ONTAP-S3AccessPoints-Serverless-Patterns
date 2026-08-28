@@ -51,6 +51,53 @@ export const S3_READ_ACTIONS = ["s3:GetObject", "s3:ListBucket", "s3:GetBucketLo
  */
 export const S3_WRITE_ACTIONS = ["s3:PutObject", "s3:DeleteObject"];
 
+/**
+ * The configured ARNs with a wildcard account or region replaced by this deployment's.
+ *
+ * `s3ApResourceArns` ships as `arn:aws:s3:*:*:accesspoint/*`, and the two `*` in the region
+ * and account positions grant every access point in every account this principal could
+ * reach. Nothing needs that: an access point is addressed by an alias that resolves within
+ * one account, so a deployment reaching another account's access point could not work
+ * anyway -- that access point's own policy would have to name this principal.
+ *
+ * So the account and region are filled in from the deployment. This is a narrowing of what
+ * the configuration asked for, which is why it is a named function with tests rather than
+ * an inline edit: the resulting policy is what the operator can read in the template, and
+ * `portal-config.example.ts` says it happens.
+ *
+ * What it does *not* do is narrow the access point name. That is the wildcard that matters
+ * for tenant isolation, and only the operator knows which access points exist;
+ * `authorizationConfigProblems` refuses it at synth once `groupApMapping` is in use.
+ *
+ * Fields other than a bare `*` are left alone, and so is anything that is not a six-field
+ * S3 ARN. A plain bucket ARN carries empty region and account fields by design
+ * (`arn:aws:s3:::bucket`), and filling those would break it.
+ *
+ * @param arns The configured resource ARNs.
+ * @param scope The deployment's account and region. CDK pseudo-parameters are expected, so
+ *   the value resolves per stack at deploy time.
+ */
+export function scopeS3ApArns(
+  arns: readonly string[],
+  scope: { account: string; region: string }
+): string[] {
+  return arns.map((arn) => {
+    const parts = arn.split(":");
+    // arn : partition : service : region : account : resource — and the resource may
+    // itself contain colons, so anything shorter is not an ARN this should touch.
+    if (parts.length < 6 || parts[0] !== "arn" || parts[2] !== "s3") return arn;
+    const [prefix, partition, service, region, account, ...resource] = parts;
+    return [
+      prefix,
+      partition,
+      service,
+      region === "*" ? scope.region : region,
+      account === "*" ? scope.account : account,
+      ...resource,
+    ].join(":");
+  });
+}
+
 export type DirectS3Grant = {
   group: string;
   /** Cognito precedence. Lower wins; 0 is the highest priority. */
@@ -96,30 +143,6 @@ export const DIRECT_S3_BY_GROUP: DirectS3Grant[] = [
   { group: SCOPE_INTERNAL, precedence: 5, actions: S3_READ_ACTIONS },
 ];
 
-/**
- * The resource ARNs whose cdk-nag finding can be acknowledged, of those given.
- *
- * Two properties of `Validations.acknowledge`, both measured with `npm run nag` on
- * 2026-08-27, decide what belongs here:
- *
- *   A coarse id suppresses nothing. cdk-nag reports each finding under a granular name --
- *   `AwsSolutions-IAM5[Resource::<arn>]` -- and `AwsSolutions-IAM5` matches none of them.
- *   Acknowledging the coarse id left all 18 findings on the auth roles in place.
- *
- *   An id containing more than one `::` is rejected, because the API splits on that
- *   delimiter to separate an optional prefix. A granular id carries one inside
- *   `[Resource::…]`, so it is accepted -- unless the ARN contributes another, which
- *   `arn:aws:s3:::bucket/*` does. Passing one of those throws at synth, so they are
- *   filtered out here and their findings stay reported.
- *
- * An ARN with no wildcard produces no finding, so acknowledging it would leave a
- * suppression for something that was never raised.
- *
- * @param arns The configured `s3ApResourceArns`.
- */
-export function nagAcknowledgeableWildcards(arns: readonly string[]): string[] {
-  return arns.filter((arn) => arn.includes("*") && !arn.includes(":::"));
-}
 
 /**
  * Reasons this mapping and the declared groups disagree. Empty when they match.

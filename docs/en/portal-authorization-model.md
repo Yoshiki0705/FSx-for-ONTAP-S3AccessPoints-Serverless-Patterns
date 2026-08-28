@@ -143,6 +143,8 @@ The grant now sits on the group roles, with precedence stated explicitly:
 | `internal` | 5 | read only |
 | (no group) | — | read only, via the authenticated role |
 
+**The region and account in these ARNs are filled in from the deployment.** The shipped `arn:aws:s3:*:*:accesspoint/*` grants every access point in every account, and nothing needs that: an access point is addressed by an alias that resolves within one account (`scopeS3ApArns`). **The access-point name stays wildcarded** — that is the wildcard that matters for tenant isolation, and only the operator knows which access points exist, so it is refused at synth only once `groupApMapping` is in use.
+
 **Putting `external` first is the load-bearing choice.** Exactly one role is selected, so a
 single ordering can honour only one of the two axes, and for an external member the scope
 has to win: their reach is defined by path prefixes, and **a policy on a role shared by

@@ -580,8 +580,8 @@ CloudTrail S3 データイベントを Athena で検索。フィルター: フ�
 | ツール | チェック内容 |
 |--------|------------|
 | cdk-nag (AwsSolutionsChecks) | IAM 過剰権限、暗号化、ログ保持 |
-| CDK ハーネステスト (112 assertions) | Lambda 数、ランタイム、環境変数 |
+| CDK ハーネステスト (114 assertions) | Lambda 数、ランタイム、環境変数 |
 | IAM Access Analyzer | ポリシーの SECURITY_WARNING 検知 |
 | floci 統合テスト (9 tests) | S3 ListObjectsV2 + Delimiter 動作 |
 
-cdk-nag は既定で無効（opt-in）。見たいときだけ `npm run nag` を実行する。CI には未統合。
+cdk-nag はデプロイ経路では無効（`CDK_NAG=1` のときだけ有効）。手元では `npm run nag`。CI では Stage 2b がベースラインと比較し、記録に無い finding で落ちる。

@@ -261,6 +261,17 @@ jobs:
         run: npm run lint
       - name: Run vitest
         run: npx vitest run
+      # cdk-nag, held to a baseline. This job is where it belongs rather than in the
+      # Python validators: it needs node_modules and the portal-config copied above.
+      #
+      # It used to be a manual check nobody could run — the documented command
+      # (`CDK_NAG=1 npx ampx generate outputs`) reads a deployed stack's outputs and
+      # never synthesises, so it reported nothing whether or not there were findings.
+      # `npm run nag` synthesises without deploying; the baseline makes a new finding
+      # fail while the 105 recorded ones stay recorded with a reason each.
+      - name: cdk-nag against the baseline
+        working-directory: .
+        run: python3 scripts/check_cdk_nag_baseline.py
       # src/main.tsx imports ../amplify_outputs.json, which `ampx sandbox`
       # generates and .gitignore excludes — so `npm run build` cannot resolve it
       # on a clean checkout, only on a machine that has already deployed a

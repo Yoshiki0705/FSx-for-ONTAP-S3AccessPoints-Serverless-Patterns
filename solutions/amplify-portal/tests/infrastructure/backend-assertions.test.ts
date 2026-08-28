@@ -886,7 +886,10 @@ describe("Portal activity ledger", () => {
     );
     expect(declaration).toMatch(/removalPolicy: RemovalPolicy\.RETAIN/);
     expect(declaration).toMatch(/timeToLiveAttribute: "ttl"/);
-    expect(declaration).toMatch(/pointInTimeRecovery: true/);
+    // `pointInTimeRecoveryEnabled`, not `pointInTimeRecovery`. The flat property is
+    // deprecated and CDK warns on every synth; matching the enabled flag inside the
+    // specification asserts the same thing without pinning the spelling that is going away.
+    expect(declaration).toMatch(/pointInTimeRecoveryEnabled: true/);
   });
 
   it("honours a table name a deployment already set", () => {
