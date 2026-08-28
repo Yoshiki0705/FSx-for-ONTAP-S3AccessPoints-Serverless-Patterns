@@ -17,6 +17,9 @@ export function request(ctx) {
       endDate: ctx.arguments.endDate || "",
       eventType: ctx.arguments.eventType || "ALL",
       maxResults: ctx.arguments.maxResults || 50,
+      // Which trail to read. Defaults to CloudTrail so a caller that does not pass
+      // it stays on the path it was already using.
+      source: ctx.arguments.source || "CLOUDTRAIL",
       userId: ctx.identity.username,
     },
   };

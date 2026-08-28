@@ -125,14 +125,20 @@ def parse_portal_config(text: str) -> dict[str, str]:
     Two shapes have to be read. The interface declares `ontapMgmtIp: string;`, which
     carries no value, and the config assigns
     `ontapMgmtIp: process.env.ONTAP_MGMT_IP || "10.0.0.1"`, where the value is the
-    fallback. So the pattern takes the first quoted literal after the key on the same
-    statement, and the declaration -- having none before its semicolon -- is skipped
+    fallback. So the pattern takes the first quoted literal after the key up to the
+    statement's semicolon, and the declaration -- having none before its own -- is skipped
     rather than read as an empty value. The environment variable wins at deploy time; if
     one is set here, pass --mgmt-ip and the rest to say so.
+
+    The statement, not the line. A long value wrapped across lines by the formatter used
+    to read as absent, and stage 1 then said "set ontapSecretName" about a value that was
+    set -- sending the reader to add what was already there. An unparseable value and a
+    missing one are different problems and must not produce the same sentence.
     """
     found: dict[str, str] = {}
     for key in _CONFIG_KEYS:
-        match = re.search(rf"{key}\s*:\s*[^;\n]*?[\"'`]([^\"'`]*)[\"'`]", text)
+        # `[^;]*?` spans newlines; the semicolon is what ends a statement in this file.
+        match = re.search(rf"\b{key}\s*:\s*[^;]*?[\"'`]([^\"'`]*)[\"'`]", text)
         if match:
             found[key] = match.group(1)
     return found
@@ -422,6 +428,145 @@ def check_secret(aws: Aws, secret_name: str) -> Stage:
     )
 
 
+def check_secret_belongs_to_file_system(
+    aws: Aws,
+    secret_name: str,
+    file_system_id: str,
+) -> Stage:
+    """Whether the secret is for the file system the management IP resolves to.
+
+    The gap this closes: stage 5 establishes that the secret is readable, is JSON and
+    carries a password. It cannot tell whose password. An account with two file systems
+    has two `fsxadmin` accounts with two passwords, and a configuration pairing one
+    cluster's address with the other's credentials passes every stage up to the last one.
+
+    Which matters more than a wrong answer would, because of how ONTAP refuses. The reply
+    to a wrong password is `6691623 "User is not authorized."`, and `fsxadmin` is measured
+    with `max-failed-login-attempts=5` and `lockout-duration=0` -- so five requests with
+    the wrong file system's password lock the account out, and waiting does not clear it.
+    A mismatched pair does not merely fail to connect; it takes the cluster's
+    administrative credential out of service until somebody resets the password.
+
+    **Nothing here authenticates.** Verifying the pair by trying it would spend attempts
+    against the same counter, which is the failure being guarded against.
+
+    The link is read from the secret's `FileSystemId` tag, and from its description as a
+    fallback. When neither names a file system the result is SKIP, not OK: an unverifiable
+    pair reported as verified is how the mismatch survived this long.
+
+    Args:
+        aws: The AWS caller.
+        secret_name: `ontapSecretName` from the portal configuration.
+        file_system_id: The file system the management IP belongs to.
+
+    Returns:
+        The stage. FAIL when the secret names a different file system, or one that no
+        longer exists.
+    """
+    code, out, err = aws.run(
+        "secretsmanager",
+        "describe-secret",
+        "--secret-id",
+        secret_name,
+        "--output",
+        "json",
+    )
+    if code != 0:
+        return Stage(
+            name="secret pairing",
+            outcome=Outcome.FAIL,
+            detail=(
+                f"Could not describe the secret {secret_name!r}, so which file system it "
+                "belongs to cannot be established."
+            ),
+            facts={"stderr": err.strip()[:400]},
+        )
+
+    try:
+        described = json.loads(out or "{}")
+    except ValueError:
+        return Stage(
+            name="secret pairing",
+            outcome=Outcome.FAIL,
+            detail="describe-secret did not return JSON.",
+        )
+
+    tagged = {tag.get("Key"): tag.get("Value") for tag in (described.get("Tags") or [])}
+    claimed = tagged.get("FileSystemId")
+    source = "the FileSystemId tag"
+    if not claimed:
+        found = re.findall(r"fs-[0-9a-f]{8,}", described.get("Description") or "")
+        # Only when the description names exactly one. Two would be a description that
+        # mentions a migration, and picking either would be a guess.
+        if len(set(found)) == 1:
+            claimed = found[0]
+            source = "the description"
+
+    facts = {
+        "secret": secret_name,
+        "configuredFileSystem": file_system_id,
+        "secretClaims": claimed or "(nothing names a file system)",
+    }
+
+    if not claimed:
+        return Stage(
+            name="secret pairing",
+            outcome=Outcome.SKIP,
+            detail=(
+                "Cannot verify: the secret has no FileSystemId tag and its description "
+                "names no file system. Tag it so this stage can check the pair -- "
+                f"`aws secretsmanager tag-resource --secret-id {secret_name} "
+                f"--tags Key=FileSystemId,Value={file_system_id}`. Until then, a pair "
+                "that authenticates against the wrong cluster looks correct here."
+            ),
+            facts=facts,
+        )
+
+    if claimed == file_system_id:
+        return Stage(
+            name="secret pairing",
+            outcome=Outcome.OK,
+            detail=f"The secret names the same file system, per {source}.",
+            facts=facts,
+        )
+
+    # A different id. Whether that id still exists changes the advice, not the verdict.
+    exists_code, _, _ = aws.run(
+        "fsx",
+        "describe-file-systems",
+        "--file-system-ids",
+        claimed,
+        "--output",
+        "json",
+    )
+    if exists_code != 0:
+        return Stage(
+            name="secret pairing",
+            outcome=Outcome.FAIL,
+            detail=(
+                f"The secret names {claimed} per {source}, and no such file system exists. "
+                "The reference is stale, so it cannot be trusted to say whose password "
+                "this is. Establish which cluster the value belongs to, then correct the "
+                "tag -- a stale tag sends the next reader to a cluster that is gone."
+            ),
+            facts=facts,
+        )
+
+    return Stage(
+        name="secret pairing",
+        outcome=Outcome.FAIL,
+        detail=(
+            f"The management IP resolves to {file_system_id} but the secret is for "
+            f"{claimed} per {source}. These are different clusters with different "
+            "fsxadmin passwords. Do not deploy and do not retry: five attempts with the "
+            "wrong password lock the account out, and lockout-duration is 0, so it does "
+            "not clear on its own. Point ontapSecretName at the secret for "
+            f"{file_system_id}, or point ontapMgmtIp at {claimed}."
+        ),
+        facts=facts,
+    )
+
+
 def check_ontap_auth(aws: Aws, function_name: str) -> Stage:
     """Stage 6: does ONTAP accept the credentials.
 
@@ -546,6 +691,25 @@ def run_checks(
                 stages.append(check_volume(aws, svm_id, config["ontapVolumeName"]))
 
     stages.append(check_secret(aws, config["ontapSecretName"]))
+
+    # After the secret is known to be well formed, before anything authenticates. This
+    # is the stage that would have caught pairing one cluster's address with another's
+    # password -- a configuration every earlier stage passes.
+    if file_system_id:
+        stages.append(check_secret_belongs_to_file_system(aws, config["ontapSecretName"], file_system_id))
+    else:
+        stages.append(
+            Stage(
+                name="secret pairing",
+                outcome=Outcome.SKIP,
+                detail=(
+                    "Pass --file-system-id to check that the secret belongs to the file "
+                    "system the management IP resolves to. Without it, a pair that "
+                    "authenticates against the wrong cluster cannot be told from a "
+                    "correct one."
+                ),
+            )
+        )
 
     if via_lambda:
         stages.append(check_ontap_auth(aws, via_lambda))

@@ -3,14 +3,24 @@ from __future__ import annotations
 import json
 import logging
 import os
+from typing import Any
 
 import boto3
 from botocore.config import Config
 from botocore.exceptions import BotoCoreError, ClientError
 
+from shared.portal_activity_ledger import (
+    ACTION_DELETE,
+    ACTION_UPLOAD_LINK,
+    record_activity,
+)
+from shared.portal_external_policy import share_link_denial_reason
 from shared.portal_path_scope import MAX_KEY_BYTES  # noqa: F401  (kept for callers/tests)
 from shared.portal_path_scope import allowed_prefixes as _shared_allowed_prefixes
+from shared.portal_path_scope import key_is_visible as _key_is_visible
+from shared.portal_path_scope import prefix_is_reachable as _prefix_is_reachable
 from shared.portal_path_scope import reject_key as _reject_key
+from shared.portal_path_scope import resolve_ap_alias as _shared_resolve_ap_alias
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -42,19 +52,23 @@ NOTIFICATION_TABLE = os.environ.get("NOTIFICATION_TABLE_NAME", "")
 # Cognito group -> allowed path prefixes, the same multi-tenancy boundary the
 # agent applies to file access.
 GROUP_PATH_PREFIXES = json.loads(os.environ.get("GROUP_PATH_PREFIXES", "{}"))
+# Whether a caller from outside the organisation may mint an upload link, by role.
+# Absent means denied, so an unset variable does not hand out write credentials.
+EXTERNAL_SHARE_LINKS_BY_ROLE = json.loads(os.environ.get("EXTERNAL_SHARE_LINKS_BY_ROLE", "{}"))
+# Per-user activity ledger. Empty means no ledger is configured and the writes are
+# skipped; the actions themselves are unaffected either way.
+ACTIVITY_LEDGER_TABLE = os.environ.get("URL_AUDIT_TABLE_NAME", "")
 
 
 def resolve_ap_alias(groups: list[str]) -> str:
     """Resolve S3 AP alias based on user's Cognito groups.
 
-    Returns the first matching group's AP alias, or the default.
-    This enables per-team file visibility (My Files).
+    Binds this function's environment to the shared rule, like `_allowed_prefixes`
+    above. The mapping existed here and in the thumbnail path, and two other
+    functions that were handed it never consulted it -- which is how presigned URLs
+    came to be signed against the default access point regardless of the caller.
     """
-    if GROUP_AP_MAPPING and groups:
-        for group_name, ap_alias in GROUP_AP_MAPPING.items():
-            if group_name in groups:
-                return ap_alias
-    return DEFAULT_AP_ALIAS
+    return _shared_resolve_ap_alias(groups, GROUP_AP_MAPPING, DEFAULT_AP_ALIAS)
 
 
 def _aliases_for(groups: list[str]) -> list[str]:
@@ -297,6 +311,39 @@ def _list_notifications(event, user_groups):
     }
 
 
+def _record(
+    action: str,
+    event: dict[str, Any],
+    *,
+    key: str,
+    ap_alias: str,
+    detail: dict[str, Any] | None = None,
+) -> None:
+    """Append one row to the per-user activity ledger.
+
+    A wrapper so each call site names only what differs. The identity fields come from the
+    same event in every case, and reading them at each site is how one of them ends up
+    recording the wrong user or forgetting the groups.
+
+    Args:
+        action: One of the `ACTION_*` constants.
+        event: The resolver's payload, carrying `userId` and `groups`.
+        key: The object key the action applied to.
+        ap_alias: The access point the action went through.
+        detail: Action-specific fields.
+    """
+    groups = event.get("groups")
+    record_activity(
+        table_name=ACTIVITY_LEDGER_TABLE,
+        action=action,
+        user_id=event.get("userId", "unknown"),
+        key=key,
+        access_point=ap_alias,
+        groups=groups if isinstance(groups, list) else None,
+        detail=detail,
+    )
+
+
 def handler(event, context):
     """List files in S3 AP with pagination and directory navigation.
 
@@ -368,6 +415,16 @@ def handler(event, context):
         try:
             s3.copy_object(Bucket=ap_alias, CopySource=f"{ap_alias}/{key}", Key=trash_key)
             s3.delete_object(Bucket=ap_alias, Key=key)
+            # Recorded as a delete, because that is what it is from the file system's
+            # side: the object is gone from where it was. The trash key is kept in the
+            # row so the row also says where it went.
+            _record(
+                ACTION_DELETE,
+                event,
+                key=key,
+                ap_alias=ap_alias,
+                detail={"trash_key": trash_key, "reversible": True},
+            )
             return {"success": True, "trashKey": trash_key, "error": None}
         except Exception as e:
             return {"success": False, "trashKey": "", "error": str(e)}
@@ -484,6 +541,15 @@ def handler(event, context):
             }
         try:
             s3.delete_object(Bucket=ap_alias, Key=key)
+            # The object is not versioned, so this row is the only remaining evidence
+            # that the file existed and who removed it.
+            _record(
+                ACTION_DELETE,
+                event,
+                key=key,
+                ap_alias=ap_alias,
+                detail={"reversible": False},
+            )
             return {"success": True, "deletedKey": key, "error": None}
         except Exception as e:
             return {"success": False, "error": str(e)}
@@ -493,6 +559,18 @@ def handler(event, context):
         dest_prefix = event.get("destinationPrefix", "uploads/")
         file_name = event.get("fileName", "")
         expires_in = min(event.get("expiresIn", 3600), 86400)  # Max 24h
+
+        # Refused outright rather than shortened, unlike the download URL. This action
+        # exists to be handed to somebody who is not signed in -- the comment above
+        # says so -- and it produces a write credential valid for up to a day. There is
+        # no in-session use to preserve by clamping it.
+        denied = share_link_denial_reason(
+            user_groups if isinstance(user_groups, list) else [],
+            share_links_by_role=EXTERNAL_SHARE_LINKS_BY_ROLE,
+        )
+        if denied:
+            logger.info("Upload link refused for an external caller: %s", denied)
+            return {"uploadUrl": "", "destinationKey": "", "expiresIn": 0, "error": denied}
         import uuid as _uuid
 
         dest_key = f"{dest_prefix.rstrip('/')}/{file_name or _uuid.uuid4().hex[:8]}"
@@ -507,6 +585,13 @@ def handler(event, context):
                 "put_object",
                 Params={"Bucket": ap_alias, "Key": dest_key},
                 ExpiresIn=expires_in,
+            )
+            _record(
+                ACTION_UPLOAD_LINK,
+                event,
+                key=dest_key,
+                ap_alias=ap_alias,
+                detail={"expires_in_seconds": expires_in},
             )
             return {"uploadUrl": url, "destinationKey": dest_key, "expiresIn": expires_in, "error": None}
         except Exception as e:
@@ -541,15 +626,14 @@ def handler(event, context):
     # requires a session but the prefix arrived unchecked. Browsing the root is still
     # allowed and shows only what the caller may see, which is what makes the
     # restriction navigable rather than a dead end.
-    if allowed and prefix:
-        if not any(prefix.startswith(p) or p.startswith(prefix) for p in allowed):
-            return {
-                "files": [],
-                "isTruncated": False,
-                "nextContinuationToken": None,
-                "resolvedAp": ap_alias,
-                "scope": "denied",
-            }
+    if prefix and not _prefix_is_reachable(prefix, allowed):
+        return {
+            "files": [],
+            "isTruncated": False,
+            "nextContinuationToken": None,
+            "resolvedAp": ap_alias,
+            "scope": "denied",
+        }
 
     params = {
         "Bucket": ap_alias,
@@ -562,9 +646,21 @@ def handler(event, context):
 
     try:
         response = s3.list_objects_v2(**params)
+        # Filtered, not just bounded by the requested prefix. The check above refuses a
+        # prefix outside the boundary, but it cannot run at the root: with `prefix == ""`
+        # there is nothing to compare, so every top-level name came back unfiltered and
+        # a caller confined to `team-a/` saw `team-b/` in the listing. Opening it was
+        # refused, which made the leak look like a cosmetic glitch rather than the
+        # boundary not applying.
+        #
+        # Layer 2 does not close this either. Measured 2026-08-26: with per-identity
+        # access points on one volume, an identity denied a directory's contents still
+        # saw its name, because listing the parent needs only traversal on the parent.
+        # The two mechanisms overlap on contents and neither covers names alone.
         folders = [
             {"key": cp["Prefix"], "size": 0, "lastModified": None, "storageClass": "DIRECTORY"}
             for cp in response.get("CommonPrefixes", [])
+            if _prefix_is_reachable(cp["Prefix"], allowed)
         ]
         files = [
             {
@@ -574,7 +670,7 @@ def handler(event, context):
                 "storageClass": obj.get("StorageClass", "STANDARD"),
             }
             for obj in response.get("Contents", [])
-            if not obj["Key"].endswith("/")
+            if not obj["Key"].endswith("/") and _key_is_visible(obj["Key"], allowed)
         ]
         # Determine scope label for UI
         scope = "default"
@@ -584,6 +680,11 @@ def handler(event, context):
                     scope = g
                     break
 
+        # A filtered page can come back empty while `isTruncated` is true, because the
+        # filter runs after S3 has already counted the page against MaxKeys. That is not
+        # the end of the listing, so the continuation token is returned as given and the
+        # caller keeps paging. Collapsing an empty page to "no more results" would hide
+        # a scoped caller's files behind another tenant's.
         return {
             "files": folders + files,
             "isTruncated": response.get("IsTruncated", False),

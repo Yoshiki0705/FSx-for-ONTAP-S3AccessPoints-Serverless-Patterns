@@ -567,11 +567,11 @@ aws fsx create-and-attach-s3-access-point \
     "NetworkOrigin": "Internet"
   }'
 
-# INCORRECT — domain prefix causes AccessDenied on data-plane operations
+# INCORRECT — an AD domain prefix makes every data operation 503 ServiceUnavailable
 # "WindowsUser": {"Name": "DEMO\\Admin"}  ← DO NOT USE
 ```
 
-The domain prefix (`DOMAIN\username`) is accepted at the CLI/API level without error, but subsequent data-plane operations (ListObjects, GetObject, PutObject) will return `AccessDenied`. This is a known behavior, not a transient error.
+The AD domain prefix (`DOMAIN\username`) is accepted at the CLI/API level without error and the access point reaches `AVAILABLE`, but every subsequent data operation returns **503 ServiceUnavailable** — `HeadBucket`, ListObjects, GetObject and PutObject alike. This is a known behavior, not a transient error, and the status is 503 rather than `AccessDenied`: looking for a 403 sends you to the IAM policy, the access point policy and the ACLs, none of which are the cause. `HeadBucket` failing is also what distinguishes this from an unreachable AD DC, where `HeadBucket` succeeds. A **CIFS server name** prefix (`CIFSSRV\username`) was measured working.
 
 **Setting up the AD environment:**
 
@@ -614,7 +614,7 @@ See [infrastructure/demo-ad-environment.yaml](../../infrastructure/demo-ad-envir
 | `ONTAP S3 server exists on SVM` | ONTAP native S3 conflicts with FSx for ONTAP S3 AP | Use a different SVM or remove the ONTAP S3 server (see Known Constraints) |
 | `Template size exceeds 51200 bytes` | Template too large for `--template-body` | Use `sam deploy` (handles S3 upload) or upload template to S3 first |
 | `Bedrock InvokeModel AccessDenied` | Model access not enabled in the region | Enable model access in Bedrock console; use cross-region inference profile ID |
-| `AccessDenied` on WINDOWS S3 AP data ops | `WindowsUser.Name` contains domain prefix | Remove domain prefix — use `"Admin"` not `"DOMAIN\\Admin"` |
+| **503 ServiceUnavailable** on WINDOWS S3 AP data ops, `HeadBucket` included | `WindowsUser.Name` contains an AD domain prefix | Remove the AD domain prefix — use `"Admin"` not `"DOMAIN\\Admin"`. Measured as 503 rather than `AccessDenied`, and `HeadBucket` fails too, which is how it is told apart from an unreachable AD DC |
 | S3 AP creation fails (WINDOWS type) | SVM not joined to AD domain | Join SVM to AD first: `./scripts/demo-ad-join-svm.sh` |
 | Deployment succeeds but every object access fails with `AccessDenied` at runtime | Deployed with `S3AccessPointName` empty. `HasS3AccessPointName` becomes false, dropping the accesspoint-form ARNs from the IAM policy and leaving only the bucket-form ARN, which does not authorize an S3 AP | Pass the access point name. Since 2026-08 the `samconfig.toml.example` files carry a placeholder instead of an empty value |
 | `Invalid value for '--parameter-overrides': Key= is not a valid format` | The empty-value shorthand is not accepted on the command line (measured on SAM CLI 1.162.1) | Use `ParameterKey=Key,ParameterValue=`. Inside `samconfig.toml`, `parameter_overrides` still accepts `Key=` |

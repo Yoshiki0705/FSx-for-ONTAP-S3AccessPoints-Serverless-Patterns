@@ -15,6 +15,10 @@
 type CustomOutputs = {
   s3ApAlias?: string;
   region?: string;
+  // The authorization policy. Strings, because custom outputs are a flat string map.
+  enforceRoles?: string;
+  externalAiEnabled?: string;
+  externalShareLinksByRole?: string;
 };
 
 type AmplifyOutputs = {
@@ -40,3 +44,60 @@ export const s3ApAlias: string = outputs.custom?.s3ApAlias ?? "";
  * already records for Cognito, since the two are the same deployment.
  */
 export const outputsRegion: string = outputs.custom?.region ?? outputs.auth?.aws_region ?? "";
+
+/*
+ * The authorization policy, published so the UI can describe the account accurately
+ * instead of reproducing the server's rules from memory.
+ *
+ * Each value is read through a named function rather than inline, because the default
+ * for an *absent* value is the part worth testing and an inline `!== "false"` cannot be
+ * exercised without deleting `amplify_outputs.json`. Absent is the ordinary case: a
+ * fresh clone, CI, and any deployment made before these were published.
+ */
+
+/**
+ * Whether the deployment emits the role-based AppSync rules.
+ *
+ * Absent reads as **true**, so the UI describes an account as more limited than it might
+ * be rather than offering a control the server will refuse. Overstating what an account
+ * can do is the failure worth avoiding; understating it is visible and gets asked about.
+ */
+export function readEnforceRoles(raw: string | undefined): boolean {
+  return raw !== "false";
+}
+export const enforceRoles: boolean = readEnforceRoles(outputs.custom?.enforceRoles);
+
+/**
+ * Whether callers holding the `external` scope may use the AI endpoints.
+ *
+ * The opposite default, for the same reason: absent is the restrictive answer. Sending
+ * an outside member's files to a model is a thing a deployment opts into, so only the
+ * literal "true" enables it. Matches `ai_denial_reason`, which is the enforcement.
+ */
+export function readExternalAiEnabled(raw: string | undefined): boolean {
+  return raw === "true";
+}
+export const externalAiEnabled: boolean = readExternalAiEnabled(
+  outputs.custom?.externalAiEnabled
+);
+
+/**
+ * Which roles may mint share links, for callers holding the `external` scope.
+ *
+ * A role absent from the map is denied, so an unparseable or missing value becomes `{}`
+ * -- everything denied. That is how `share_link_denial_reason` reads it too, which is
+ * the point: two places answering the same question have to fail the same way.
+ */
+export function readExternalShareLinksByRole(raw: string | undefined): Record<string, boolean> {
+  try {
+    const parsed: unknown = JSON.parse(raw ?? "{}");
+    return parsed && typeof parsed === "object" && !Array.isArray(parsed)
+      ? (parsed as Record<string, boolean>)
+      : {};
+  } catch {
+    return {};
+  }
+}
+export const externalShareLinksByRole: Record<string, boolean> = readExternalShareLinksByRole(
+  outputs.custom?.externalShareLinksByRole
+);

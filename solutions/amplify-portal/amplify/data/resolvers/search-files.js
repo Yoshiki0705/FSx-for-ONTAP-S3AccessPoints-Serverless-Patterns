@@ -10,6 +10,8 @@ export function request(ctx) {
   return {
     operation: "Invoke",
     payload: {
+      // Search results are object keys, so they are filtered to the caller.
+      groups: ctx.identity.claims ? ctx.identity.claims["cognito:groups"] || [] : [],
       action: "searchFiles",
       query: ctx.arguments.query,
       maxResults: ctx.arguments.maxResults || 5,

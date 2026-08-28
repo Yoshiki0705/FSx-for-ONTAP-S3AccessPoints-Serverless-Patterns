@@ -239,27 +239,86 @@ class TestCheckAdDcReachability:
         assert status.dc_reachable is False
         assert status.is_healthy is False
 
-    def test_ad_joined_discovered_servers_none(self, mock_ontap_client):
-        """AD参加SVM + discovered_servers が None → 確認不可、楽観的続行"""
-        mock_ontap_client.get.side_effect = [
-            # CIFS services response
+    @staticmethod
+    def _cifs_then_domains_without_the_field() -> list[dict]:
+        """AD 参加が確定し、REST が `discovered_servers` を省略した状態。
+
+        実測（2026-08-26 / ONTAP 9.18.1P3D1）の応答の形。フィールドは有効な名前だが、
+        空のときは省略され `[]` は返らない。したがってこの形は「DC が 0 件」と
+        「取得できなかった」の両方で現れ、それ自体では区別できない。
+        """
+        return [
             {
                 "records": [{"enabled": True, "ad_domain": {"fqdn": "demo.fsx.local"}}],
                 "num_records": 1,
             },
-            # CIFS domains response — discovered_servers is None
-            {
-                "records": [{"discovered_servers": None}],
-                "num_records": 1,
-            },
+            {"records": [{}], "num_records": 1},
+        ]
+
+    def test_an_omitted_field_with_zero_cli_records_is_a_failure(self, mock_ontap_client):
+        """省略 + CLI が 0 件 → **到達不能と判定する**。
+
+        これがこのモジュールが取り逃がしていた障害そのもの。以前はフィールドの不在を
+        「確認不可」に丸めて楽観的に続行していたため、DC が 1 台も検出されていない SVM
+        でも `is_healthy` が True になっていた。
+        """
+        mock_ontap_client.get.side_effect = [
+            *self._cifs_then_domains_without_the_field(),
+            {"records": [], "num_records": 0},
+        ]
+
+        status = check_ad_dc_reachability(mock_ontap_client, "svm-no-dc")
+
+        assert status.is_ad_joined is True
+        assert status.dc_reachable is False
+        assert status.is_healthy is False
+        assert "cannot reach any AD Domain Controllers" in status.message
+        assert "CLI reports 0 discovered servers" in status.message
+
+    def test_an_omitted_field_with_an_unreadable_cli_stays_unverified(self, mock_ontap_client):
+        """省略 + CLI も読めない → 本当に確認不可。診断が新しい障害要因になってはいけない。"""
+        mock_ontap_client.get.side_effect = [
+            *self._cifs_then_domains_without_the_field(),
+            OntapClientError("CLI passthrough refused"),
         ]
 
         status = check_ad_dc_reachability(mock_ontap_client, "svm-unknown")
 
-        assert status.is_ad_joined is True
         assert status.dc_reachable is None
         assert status.is_healthy is True
-        assert "cannot verify" in status.message
+        assert "Cannot verify DC reachability" in status.message
+
+    def test_rest_and_cli_disagreeing_yields_no_verdict(self, mock_ontap_client):
+        """省略されたのに CLI は件数を返す → 見えているものが違うので断定しない。"""
+        mock_ontap_client.get.side_effect = [
+            *self._cifs_then_domains_without_the_field(),
+            {"records": [{"domain": "demo.fsx.local"}], "num_records": 1},
+        ]
+
+        status = check_ad_dc_reachability(mock_ontap_client, "svm-disagree")
+
+        assert status.dc_reachable is None
+        assert status.is_healthy is True
+        assert "the two disagree" in status.message
+
+    def test_a_uuid_only_caller_cannot_use_the_cli_fallback(self, mock_ontap_client):
+        """CLI は vserver を名前で取る。名前が無いまま UUID を渡すと 0 件が返り、
+        DC 不在と区別できない結果になるので、問い合わせずに確認不可とする。"""
+        mock_ontap_client.get.side_effect = [
+            # 応答に svm.name が無いので表示名は uuid= のまま
+            {
+                "records": [{"enabled": True, "ad_domain": {"fqdn": "demo.fsx.local"}}],
+                "num_records": 1,
+            },
+            {"records": [{}], "num_records": 1},
+        ]
+
+        status = check_ad_dc_reachability(mock_ontap_client, svm_uuid="1234-abcd")
+
+        assert status.dc_reachable is None
+        assert "needs the SVM name" in status.message
+        # 3 回目の呼び出しはしていない: CIFS と domains の 2 回で終わっている
+        assert mock_ontap_client.get.call_count == 2
 
     def test_ad_joined_no_domain_records(self, mock_ontap_client):
         """AD参加SVM + ドメインレコードなし → 確認不可、楽観的続行"""
@@ -326,10 +385,15 @@ class TestRequireAdDcReachability:
         assert "AD CONNECTIVITY FAILURE" in str(exc_info.value)
 
     def test_dc_unknown_does_not_raise(self, mock_ontap_client):
-        """DC確認不可時は例外を投げない（楽観的続行）"""
+        """DC確認不可時は例外を投げない（楽観的続行）
+
+        「確認不可」に到達するのは、REST がフィールドを省略し、なおかつ CLI でも
+        件数が読めなかったときだけになった。省略だけでは確認不可にならない。
+        """
         mock_ontap_client.get.side_effect = [
             {"records": [{"enabled": True, "ad_domain": {"fqdn": "demo.fsx.local"}}]},
-            {"records": [{"discovered_servers": None}]},
+            {"records": [{}]},
+            OntapClientError("CLI passthrough refused"),
         ]
 
         status = require_ad_dc_reachability(mock_ontap_client, "svm-unknown")

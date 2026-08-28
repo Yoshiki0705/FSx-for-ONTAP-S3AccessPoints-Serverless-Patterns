@@ -26,6 +26,13 @@ import { ThemeToggle } from "./components/ThemeToggle";
 import { WelcomeModal } from "./components/WelcomeModal";
 import { useTranslation } from "./i18n";
 import { useStorageAdmin } from "./hooks/useStorageAdmin";
+import { usePortalRole } from "./hooks/usePortalRole";
+import {
+  AuditDenied,
+  DirectUploadDenied,
+  ExternalAiDenied,
+  RoleBadge,
+} from "./components/RoleNotice";
 import { dispatch } from "./lib/dispatch";
 import { portalSettings } from "./portal-settings";
 
@@ -196,6 +203,9 @@ function App() {
   // publisher exists. Defaulting it on would show an inbox that can never fill.
   const [folderWatchEnabled, setFolderWatchEnabled] = useState(false);
   const isStorageAdmin = useStorageAdmin();
+  // What the server will allow this account. Read here so the sections it decides can
+  // be hidden in one place; the controls inside the file explorer read it themselves.
+  const capabilities = usePortalRole();
   // Set when the directory or the team list hands one over, and carried into the
   // chat section. Lives here rather than in AgentChat because the two sections are
   // siblings and the handover crosses between them.
@@ -241,6 +251,24 @@ function App() {
   // same group. Hidden here for the same reason as above: without this the section
   // stays in the sidebar and every query comes back as an authorization error.
   if (isStorageAdmin !== true) hiddenSections.add("analytics");
+  // `queryAuditLog` names `auditor` and `storage-admin` once `enforceRoles` is on, and
+  // the section was in the sidebar for everyone, so a viewer opened it and got an
+  // authorization error. Left in place while the session is unresolved for the same
+  // reason as above: appearing and then vanishing is worse than appearing late.
+  if (capabilities !== null && !capabilities.canAudit) hiddenSections.add("audit");
+  // The Upload tab writes to S3 from the browser, so what governs it is the IAM role
+  // Cognito selects for the account, not the AppSync rules. `backend.ts` grants the write
+  // to `contributor` and `storage-admin` only, and gives the `external` scope no direct
+  // access at all -- so for anybody else this tab cannot even list, let alone upload.
+  if (capabilities !== null && !capabilities.canUploadDirect) hiddenSections.add("upload");
+  // The AI endpoints refuse an external caller in the handler rather than in AppSync,
+  // so nothing in the schema hid these. An external member saw the agent, the semantic
+  // search and the agent directory, and each refused with the same message.
+  if (capabilities?.canUseAi === false) {
+    hiddenSections.add("agent");
+    hiddenSections.add("search");
+    hiddenSections.add("agentDir");
+  }
 
   if (authStatus !== "authenticated") {
     return <LoadingSkeleton />;
@@ -266,6 +294,10 @@ function App() {
         <LanguageSwitcher />
         <div className="topbar-user">
           <span className="user-email">{user?.signInDetails?.loginId}</span>
+          {/* Shown only when something limits the account -- no role, or the external
+              scope. For an ordinary internal member with a role it renders nothing,
+              because a badge that is always there stops being read. */}
+          <RoleBadge />
           {/* The label is a span so the narrowest breakpoint can drop it and leave the
               icon. aria-label carries the name either way -- at 390px the topbar has
               room for the nav toggle, the theme control, the language control and one
@@ -354,7 +386,12 @@ function App() {
           />
         )}
         {activeSection === "watch" && <FolderWatch />}
-        {activeSection === "upload" && <StorageBrowserTab />}
+        {/* Guarded again here, not only in the nav: the section is reachable by URL hash,
+            and the Storage Browser's own error for a missing IAM grant is an S3
+            AccessDenied with no indication of which group would fix it. */}
+        {activeSection === "upload" && (capabilities === null ? (
+          <LoadingSkeleton />
+        ) : capabilities.canUploadDirect ? <StorageBrowserTab /> : <DirectUploadDenied external={capabilities.isExternal} />)}
         {activeSection === "process" && (
           <JobSubmitForm
             initialPrefix={selectedPrefix}
@@ -364,7 +401,14 @@ function App() {
             }}
           />
         )}
-        {activeSection === "agent" && (aiAgentEnabled ? (
+        {/* Two different refusals, and they are not interchangeable. `AgentDisabled`
+            means an administrator turned the feature off for everyone and can turn it
+            back on from the admin panel; `ExternalAiDenied` means this account is
+            external and the switch is a deploy-time setting. Showing the first to an
+            external member would send them to a panel they cannot open. */}
+        {activeSection === "agent" && (capabilities?.canUseAi === false ? (
+          <ExternalAiDenied />
+        ) : aiAgentEnabled ? (
           <AgentChat
             multimodalEnabled={aiMultimodalEnabled}
             chatHistoryEnabled={chatHistoryEnabled}
@@ -372,7 +416,9 @@ function App() {
             onClearRunTarget={() => setRunTarget(null)}
           />
         ) : <AgentDisabled />)}
-        {activeSection === "search" && (aiSearchEnabled ? (
+        {activeSection === "search" && (capabilities?.canUseAi === false ? (
+          <ExternalAiDenied />
+        ) : aiSearchEnabled ? (
           <SemanticSearch
             onNavigateToFile={(fileKey) => openInFiles(parentPrefixOf(fileKey))}
           />
@@ -392,7 +438,12 @@ function App() {
           </>
         )}
         {activeSection === "versions" && <VersionHistory mode="diff" />}
-        {activeSection === "audit" && <AuditLog />}
+        {/* Guarded again here, not only in the nav: sections are reachable by URL
+            hash, and hiding the button alone left a non-auditor on a page whose only
+            content was the query's authorization error. */}
+        {activeSection === "audit" && (capabilities === null ? (
+          <LoadingSkeleton />
+        ) : capabilities.canAudit ? <AuditLog /> : <AuditDenied />)}
         {/* Guarded again here, not only in the nav: sections are reachable by URL
             hash, and hiding the button alone left a non-admin on a blank page. */}
         {activeSection === "analytics" && (isStorageAdmin === true ? (

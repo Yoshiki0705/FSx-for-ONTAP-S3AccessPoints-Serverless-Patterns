@@ -455,7 +455,7 @@ aws ec2 describe-route-tables \
 | 症状 | 原因 | 対処 |
 |------|------|------|
 | 「ONTAP 接続が必要です」 | Lambda が VPC 内にない | `AMPLIFY_PORTAL_VPC_ID/SUBNET_IDS/SG_IDS` を設定 |
-| 「User is not authorized」 | fsxadmin のパスワード不一致 | `aws fsx update-file-system --ontap-configuration '{"FsxAdminPassword":"..."}'` でリセットし、シークレットも更新 |
+| 「User is not authorized」 | fsxadmin のパスワード不一致、**またはアカウントのロックアウト**（同一メッセージ。`lockout-duration=0` なので待っても戻らない。同じ資格情報で再試行しない） | `aws fsx update-file-system --ontap-configuration '{"FsxAdminPassword":"..."}'` でリセットし、シークレットも更新 |
 | 「Execution timed out」 | VPC エンドポイント不足または SG でブロック | Lambda の SG から 443 で到達できる Secrets Manager VPC エンドポイントを用意 |
 | 「Volume not found」 | SVM 名の誤り | `aws fsx describe-storage-virtual-machines` の結果と `ONTAP_SVM_NAME` が一致するか確認 |
 | テンプレートが 1MB 超 | リゾルバが多すぎる | 汎用ディスパッチパターンで解決済み |

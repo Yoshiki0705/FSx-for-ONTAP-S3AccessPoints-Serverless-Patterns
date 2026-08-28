@@ -63,7 +63,7 @@ AWS DevOps Agent (GA 2026/3) は、GitHub リポジトリに接続し、コー�
 Renovate PR (aws-cdk-lib bump)
     → cfn-lint (テンプレート構文)
     → cdk-nag (コンプライアンス)
-    → CDK ハーネステスト (構造アサーション 49 tests)
+    → CDK ハーネステスト (構造アサーション 112 tests)
     → IAM policy validation (Access Analyzer)
     → Unit tests (2,162+ tests)
 ```

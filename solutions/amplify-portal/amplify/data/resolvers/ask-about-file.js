@@ -16,6 +16,10 @@ export function request(ctx) {
       key: key,
       question: question,
       userId: ctx.identity.username,
+      // The boundary needs the caller's groups: they decide which access point
+      // serves the request and which prefixes the key may fall under. This endpoint
+      // sends file content to a model, so an unchecked key is a read by another route.
+      groups: ctx.identity.claims ? ctx.identity.claims["cognito:groups"] || [] : [],
     },
   };
 }

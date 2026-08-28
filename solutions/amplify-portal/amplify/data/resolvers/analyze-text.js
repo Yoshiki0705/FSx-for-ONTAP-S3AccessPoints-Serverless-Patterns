@@ -6,6 +6,9 @@ export function request(ctx) {
     payload: {
       key: ctx.arguments.key,
       analysisType: ctx.arguments.analysisType || "entities",
+      // The boundary needs the caller's groups: they decide which access point
+      // serves the request and which prefixes the key may fall under.
+      groups: ctx.identity.claims ? ctx.identity.claims["cognito:groups"] || [] : [],
       userId: ctx.identity.username,
     },
   };

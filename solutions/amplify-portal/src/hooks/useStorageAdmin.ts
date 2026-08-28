@@ -9,42 +9,22 @@
  * server refused correctly — but a menu that leads only to errors is a menu that
  * lies about what the account can do.
  *
- * The group claim is read from the ID token rather than asked of the backend: it is
- * already in the session, and a request to find out whether requests are allowed
- * would be the same round trip it is trying to avoid.
- *
  * Returns `null` while the session is still loading, so a caller can tell "not an
  * admin" from "not known yet" and avoid showing the section and then removing it.
+ *
+ * Kept as its own hook because four components ask only this question and reading a
+ * boolean is clearer there than destructuring one field. It derives from
+ * `usePortalRole` rather than reading the session a second time: two hooks parsing the
+ * same claim is the shape that drifts, and the group name now comes from
+ * `amplify/portal-groups.ts` instead of a third copy of the string.
  */
-import { useEffect, useState } from "react";
-import { fetchAuthSession } from "aws-amplify/auth";
+import { ROLE_STORAGE_ADMIN } from "../../amplify/portal-groups";
+import { usePortalRole } from "./usePortalRole";
 
 /** The group the schema requires for every admin dispatch endpoint. */
-export const STORAGE_ADMIN_GROUP = "storage-admin";
+export const STORAGE_ADMIN_GROUP = ROLE_STORAGE_ADMIN;
 
 export function useStorageAdmin(): boolean | null {
-  const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
-
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        const session = await fetchAuthSession();
-        const groups = session.tokens?.idToken?.payload["cognito:groups"];
-        // The claim is absent for a user in no group, and a single-element list is
-        // still a list, so the shape is checked rather than assumed.
-        const member = Array.isArray(groups) && groups.includes(STORAGE_ADMIN_GROUP);
-        if (!cancelled) setIsAdmin(member);
-      } catch {
-        // No readable session means no group claim to honour. Hiding the section is
-        // the safe reading: the server would refuse it anyway.
-        if (!cancelled) setIsAdmin(false);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  return isAdmin;
+  const capabilities = usePortalRole();
+  return capabilities === null ? null : capabilities.isAdmin;
 }

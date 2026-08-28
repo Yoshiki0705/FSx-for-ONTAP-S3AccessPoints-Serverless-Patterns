@@ -212,8 +212,10 @@ max `PT1H`、20 GiB）と `zz_sl_s3ap`（fsxsvm02、compliance、min `PT0S` / de
 > それを名指しして失敗します（FSx 側の attachment は 0 件）。`FAILED` になった attach でも
 > 同じ残骸ができ、1 日後も残っていました。**`GET /protocols/s3/buckets` はこの NAS バケットを
 > 返しません**——該当 SVM では 0 件、ネイティブ S3 サーバーがある SVM でも `type: s3` の 3 本
-> だけです（このエンドポイントは FSx の `fsxadmin` では 401 `User is not authorized.` を返す
-> こともあります）。
+> だけです。（以前ここに「このエンドポイントは `fsxadmin` に 401 を返すことがある」と書いて
+> いましたが**削除しました**。`6691623 "User is not authorized."` は誤ったパスワードでも
+> ロックアウト中でも同一の文言なので、401 をエンドポイント側の制限として読むことはできません。
+> 同じ誤りは `/storage/flexcache/flexcaches` について一度撤回しています。）
 >
 > **ONTAP CLI は不要でした。** 拒否から約 1 日後に `DeleteVolume` を再実行すると `zz_sl_s3ap` /
 > `zz_sl_worm` はどちらも 60〜90 秒で削除完了しました（CLI 操作は一切していません）。関連は
@@ -326,6 +328,89 @@ max `PT1H`、20 GiB）と `zz_sl_s3ap`（fsxsvm02、compliance、min `PT0S` / de
 | Vscan セットアップ案内 | 5 ステップの案内、6 ベンダー比較表、外部リンク |
 | S3 Object Lock タブ | ONTAP 非依存で描画されること |
 | 管理パネル全般（ONTAP 未接続時） | 「ONTAP 接続が必要です」の穏当な表示 |
+
+## 既存の Cognito User Pool は CloudFormation で更新できない（2026-08-27 実測）
+
+2026-08-11 に作成した sandbox に、2 軸認可（グループ 6 個の宣言、自己サインアップの既定変更）を
+デプロイしようとして判明しました。**この User Pool は作成以降に一度も更新されておらず、今回が
+初回の更新でした。そして更新は成立しませんでした。**
+
+CFN が触ったのは User Pool のみで、追加予定だったグループ 6 個には到達していません。
+
+| 送った内容 | Cognito の応答 |
+|---|---|
+| 構築物が既定で出す `Schema`（`AttributeDataType` なし） | `Invalid AttributeDataType input, consider using the provided AttributeDataType enum.` |
+| `AttributeDataType: "String"` を明示（Cognito が保持している値と同一） | `Required custom attributes are not supported currently.` |
+
+2 段で拒否される理由が違います。1 つ目は**作成時に推論される属性型が更新時には必須**であるため。
+2 つ目は、**更新時の `Schema` が「追加する属性」として解釈される**ためで、既存と同一のものを
+再送しても「必須属性を追加しようとしている」と読まれます。つまり**更新で `Schema` を送る方法が
+そもそも存在しません**。
+
+CloudFormation はこれを
+`User pool attributes cannot be changed after a user pool has been created`
+と報告します。**「変更できる項目が限られている」と読めますが、実際は要求が不正だという話**なので、
+どの属性を変えたのかを探しても原因に届きません。
+
+> **重要**: 変更した内容が意味的に no-op でも失敗します。今回 `AdminCreateUserConfig.AllowAdminCreateUserOnly`
+> を `true` にする override を入れましたが、**プールは既に `true` を保持していました**。それでも
+> テンプレート側にプロパティが増えた時点で更新が走り、Schema の再送で落ちます。
+
+**回避手段はありません。** `addPropertyOverride` で Schema を補う案は試して上記のとおり失敗したので、
+コードには残していません（効かない対策が対策の形で残るほうが害があるため）。Amplify 自身が案内する
+「`defineAuth` を外して deploy し、戻す」も sandbox の作り直しも、**プールの全ユーザーを削除します**。
+
+**新規デプロイは影響を受けません。** プール作成時にすべてが入るためで、この制約は「既存プールに後から
+変更を当てる」場合にのみ現れます。
+
+**実務上の帰結**: `defineAuth` に触る変更（グループの追加、MFA、自己サインアップ）は、既存 sandbox に
+段階的に当てられません。別 identifier の新しい sandbox（`npx ampx sandbox --identifier <name>`）で
+検証するのが、何も壊さずに確認できる唯一の経路です。
+
+## 2 軸認可を実機デプロイして確認（2026-08-27、identifier 付き sandbox）
+
+既存 sandbox の User Pool が更新できないため（前節）、`--identifier phase2auth` で別の sandbox を
+作って確認しました。**新規プールでは問題なくデプロイできます**——制約は既存プールへの後追い変更だけに
+現れます。
+
+| 確認項目 | 結果 |
+|---|---|
+| Cognito グループ 6 個（role 4 + scope 2） | 作成された（`auditor` / `contributor` / `external` / `internal` / `storage-admin` / `viewer`） |
+| `selfSignUpEnabled: false` | `AdminCreateUserConfig.AllowAdminCreateUserOnly = true` として反映 |
+| `enforceRoles: true` の AppSync 規則 | `fileMutation` と `folderMutation` に `cognito_groups: ["contributor","storage-admin"]`、`queryAuditLog` に `["auditor","storage-admin"]`（`viewer` は不在）。デプロイ済みスキーマで確認 |
+| IAM 経由の迂回 | **不可**。各フィールドに `@aws_iam` も付くが、Identity Pool の authenticated ロールに appsync 権限が無い（インライン・アタッチ済みの両方を確認） |
+| ledger テーブル | 作成、TTL（`ttl`）有効、PITR 有効 |
+| `make portal-grant-roles` | 付与・冪等な再実行・拒否（role 2 つ / scope 無し）すべて期待どおり |
+
+### 判明した制約 1: sandbox は `RemovalPolicy.RETAIN` を無効化する
+
+デプロイ済みテンプレートでは、**コードで `RETAIN` を指定している全テーブルが `DeletionPolicy: Delete`**
+になります。新規の `PortalActivityLedgerTable` だけでなく、既存の `ContainmentBlocksTable` も同じです。
+sandbox は `sandbox delete` で残骸を作らないよう一律で上書きします。
+
+**帰結**: 「監査証跡はスタック削除後も残る」という保護は **sandbox には存在しません**。branch
+デプロイで `RETAIN` が尊重されるかは**未確認**です（この sandbox でしか測っていません）。
+
+### 判明した制約 2: 2 つの sandbox は同一 VPC で共存できない
+
+同じ VPC・同じルートテーブルに 2 つ目の sandbox を作ると、DynamoDB ゲートウェイエンドポイントが
+衝突します:
+
+```
+route table rtb-... already has a route with destination-prefix-list-id pl-...
+(HandlerErrorCode: AlreadyExists)
+```
+
+ゲートウェイエンドポイントはルートテーブル単位で 1 つなので、2 つ目のスタックが自分の分を作れません。
+回避は、検証用 sandbox を VPC 無しで動かすこと（`AMPLIFY_PORTAL_VPC_ID` に空白 1 文字を渡すと
+`.trim()` で空になります。空文字は `||` に弾かれて既定値へ落ちるため効きません）。認可の確認に VPC は
+不要です。
+
+### 判明した制約 3: `JobExecutionTable` は初回作成で競合しうる
+
+`Attempt to change a resource which is still in use: Table is being created` で 1 度失敗しました。
+Amplify のテーブル管理カスタムリソースと DynamoDB の競合で、**再試行で解消します**。恒久的な問題では
+ありません。
 
 ## デプロイ時間の記録
 

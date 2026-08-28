@@ -60,7 +60,7 @@ Browser → Amplify (Cognito auth) → AppSync GraphQL
 | `AWSLambdaVPCAccessExecutionRole` | Required for ENI creation in VPC — added conditionally with VPC |
 | `Vpc.fromVpcAttributes` | NOT `fromLookup` — avoids CDK context/account requirement during synth |
 | `Code.fromAsset("functions/...")` | External files (not inline) — keeps template under 1MB |
-| cdk-nag `AwsSolutionsChecks` | Manual opt-in via `CDK_NAG=1`, not run by any workflow — registered via `Validations.of(root).addPlugins(...)`. NOT applied during synth/deploy: Amplify Gen2 resources (AppSync, Cognito, internal S3) produce findings that are not user-configurable, and a reported violation interrupts synthesis and blocks every deploy. Accepted findings are recorded with `Validations.of(dataStack).acknowledge(...)` in backend.ts. cdk-nag v3 removed `NagSuppressions` and moved off `IAspect`. |
+| cdk-nag `AwsSolutionsChecks` | Manual opt-in via `CDK_NAG=1`, not run by any workflow — registered via `Validations.of(root).addPlugins(...)`. NOT applied during synth/deploy: Amplify Gen2 resources (AppSync, Cognito, internal S3) produce findings that are not user-configurable, and a reported violation interrupts synthesis and blocks every deploy. Accepted findings are listed with `Validations.of(dataStack).acknowledge(...)` in backend.ts, but measured 2026-08-27 those entries suppress nothing: cdk-nag reports each finding under a granular name such as `AwsSolutions-IAM5[Resource::<arn>]`, and a coarse id matches none of them. Only the access-point wildcards on the auth roles are acknowledged granularly. Run `npm run nag`. cdk-nag v3 removed `NagSuppressions` and moved off `IAspect`. |
 
 ### `amplify/data/resource.ts` — Generic Dispatch Schema
 

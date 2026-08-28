@@ -18,6 +18,10 @@ exclude_dirs:
   # report at a path that disappears on the next `ampx sandbox`.
   - .amplify
   - cdk.out
+  # `npm run nag` writes a full cloud assembly here, including the Python that CDK
+  # bundles for its own custom resources. Same reasoning as the two above: not ours,
+  # and the path is replaced on every run.
+  - .cdk-nag-out
 
 skips:
   - B101

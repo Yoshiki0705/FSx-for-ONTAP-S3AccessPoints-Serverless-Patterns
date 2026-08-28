@@ -49,7 +49,7 @@ This project implements a 6-layer defense architecture for infrastructure code q
 
 ┌─────────────────────────────────────────────────────────────┐
 │ Manual run (local, needs Amplify credentials)                │
-│ CDK_NAG=1 npx ampx generate outputs                        │
+│ npm run nag   (synthesises; never deploys)                 │
 │ → synth WITH cdk-nag → NagReport CSVs                      │
 └─────────────────────────────────────────────────────────────┘
 ```
@@ -100,7 +100,7 @@ npx vitest run              # CDK harness + component tests
 npm run build               # Vite production build
 
 # cdk-nag (CI or manual validation — does NOT block deploy)
-CDK_NAG=1 npx ampx generate outputs 2>&1 | grep -i "error\|non-compliant"
+npm run nag   # 合成のみ。デプロイしない
 
 # SAM template checks
 cfn-lint solutions/industry/*/template.yaml

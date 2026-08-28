@@ -96,13 +96,23 @@ class FakeAws:
         return 0, json.dumps(entry), ""
 
 
-def healthy(auth_response: dict | None = None) -> FakeAws:
-    """Every AWS-side stage passing. Stage 6 answers with whatever is passed."""
+def healthy(auth_response: dict | None = None, file_system_id: str = "fs-0123456789abcdef0") -> FakeAws:
+    """Every AWS-side stage passing. The auth stage answers with whatever is passed.
+
+    `file_system_id` has to match what the caller passes to `run_checks`, because the
+    pairing stage compares the secret's tag against it. A helper named `healthy` that left
+    one stage unstubbed would make every test using it assert on a failure it did not
+    intend, which is what happened when the pairing stage was added.
+    """
     responses: dict[tuple[str, str], object] = {
         ("fsx", "describe-file-systems"): FS_AVAILABLE,
         ("fsx", "describe-storage-virtual-machines"): SVMS,
         ("fsx", "describe-volumes"): VOLUMES,
         ("secretsmanager", "get-secret-value"): SECRET_OK,
+        ("secretsmanager", "describe-secret"): {
+            "Name": CONFIG["ontapSecretName"],
+            "Tags": [{"Key": "FileSystemId", "Value": file_system_id}],
+        },
     }
     if auth_response is not None:
         responses[("lambda", "invoke")] = (
@@ -136,6 +146,10 @@ class TestTheCaseItWasWrittenFor:
             "SVM": Outcome.OK,
             "volume": Outcome.OK,
             "secret": Outcome.OK,
+            # The secret is for the right cluster and its password is still wrong: the
+            # pairing stage narrows what "unauthorized" can mean, it does not replace
+            # the one stage that actually tries the credentials.
+            "secret pairing": Outcome.OK,
             "ONTAP auth": Outcome.FAIL,
         }
 
@@ -269,7 +283,7 @@ class TestItDoesNotOverclaim:
         assert stage.facts["volumes"] == "1"
 
     def test_every_stage_passing_says_exactly_that(self):
-        stages = run_checks(healthy({"volumes": [{"name": "vol1"}]}), CONFIG, "fs-1", "Fn")
+        stages = run_checks(healthy({"volumes": [{"name": "vol1"}]}, file_system_id="fs-1"), CONFIG, "fs-1", "Fn")
         assert "Every stage passed" in report(stages)
 
 
@@ -376,3 +390,145 @@ class TestItReadsTheRealConfigShape:
         """Where a deployment's own config exists, stage 1 should pass on it."""
         parsed = parse_portal_config((_portal_amplify_dir() / "portal-config.ts").read_text(encoding="utf-8"))
         assert check_configuration(parsed).outcome is Outcome.OK
+
+
+class TestSecretPairing:
+    """Stage 6: is the secret for the same file system the management IP resolves to.
+
+    The gap it closes is narrow and expensive. Stage 5 proves the secret is readable and
+    well formed; it cannot prove whose password it holds. An account with two file systems
+    has two `fsxadmin` accounts with two passwords, and pairing one cluster's address with
+    the other's credentials passes stages 1 to 5 unchanged.
+
+    What makes it expensive rather than merely wrong: ONTAP answers a bad password with
+    `6691623 "User is not authorized."`, and `fsxadmin` is measured at
+    `max-failed-login-attempts=5` with `lockout-duration=0`. Five attempts take the
+    cluster's administrative credential out of service, and waiting does not restore it.
+    So the stage must reach its verdict **without authenticating** -- verifying by trying
+    would spend attempts against the same counter it exists to protect.
+    """
+
+    FS = "fs-0123456789abcdef0"
+    OTHER = "fs-0fedcba987654321f"
+
+    def described(self, *, tags=None, description=""):
+        """A `describe-secret` response."""
+        body = {"Name": "some-secret", "Description": description}
+        if tags is not None:
+            body["Tags"] = tags
+        return body
+
+    def stage(self, aws):
+        from check_ontap_connection import check_secret_belongs_to_file_system
+
+        return check_secret_belongs_to_file_system(aws, "some-secret", self.FS)
+
+    def test_a_matching_tag_passes(self):
+        aws = FakeAws(
+            {("secretsmanager", "describe-secret"): self.described(tags=[{"Key": "FileSystemId", "Value": self.FS}])}
+        )
+        result = self.stage(aws)
+        assert result.outcome is Outcome.OK
+        assert result.facts["secretClaims"] == self.FS
+
+    def test_nothing_is_authenticated(self):
+        """The whole point. Any login attempt here spends a lockout attempt."""
+        aws = FakeAws(
+            {("secretsmanager", "describe-secret"): self.described(tags=[{"Key": "FileSystemId", "Value": self.FS}])}
+        )
+        self.stage(aws)
+        for call in aws.calls:
+            assert "get-secret-value" not in call, "must not read the password"
+            assert "invoke" not in call, "must not ask a Lambda to authenticate"
+
+    def test_a_different_file_system_fails(self):
+        aws = FakeAws(
+            {
+                ("secretsmanager", "describe-secret"): self.described(
+                    tags=[{"Key": "FileSystemId", "Value": self.OTHER}]
+                ),
+                # The other file system exists, so the advice is about the pair rather
+                # than about a stale reference.
+                ("fsx", "describe-file-systems"): FS_AVAILABLE,
+            }
+        )
+        result = self.stage(aws)
+        assert result.outcome is Outcome.FAIL
+        assert self.OTHER in result.detail
+        # The reader has to be told not to retry, because retrying is what locks it out.
+        assert "lock" in result.detail.lower()
+
+    def test_a_file_system_that_no_longer_exists_fails_differently(self):
+        """A stale tag cannot be trusted to say whose password this is.
+
+        Encountered for real: the tag named a file system that had been deleted, so
+        following it led to a cluster that was gone.
+        """
+        aws = FakeAws(
+            {
+                ("secretsmanager", "describe-secret"): self.described(
+                    tags=[{"Key": "FileSystemId", "Value": self.OTHER}]
+                ),
+                ("fsx", "describe-file-systems"): (254, "", "FileSystemNotFound"),
+            }
+        )
+        result = self.stage(aws)
+        assert result.outcome is Outcome.FAIL
+        assert "stale" in result.detail.lower()
+
+    def test_the_description_is_a_fallback(self):
+        aws = FakeAws(
+            {
+                ("secretsmanager", "describe-secret"): self.described(
+                    description=f"fsxadmin credentials for {self.FS} (cluster-a)."
+                )
+            }
+        )
+        result = self.stage(aws)
+        assert result.outcome is Outcome.OK
+        assert "description" in result.detail
+
+    def test_two_file_systems_in_the_description_is_not_a_guess(self):
+        """A description mentioning a migration names both. Picking either would guess."""
+        aws = FakeAws(
+            {("secretsmanager", "describe-secret"): self.described(description=f"moved from {self.OTHER} to {self.FS}")}
+        )
+        assert self.stage(aws).outcome is Outcome.SKIP
+
+    def test_no_link_at_all_is_skip_not_pass(self):
+        """An unverifiable pair reported as verified is how the mismatch survived."""
+        aws = FakeAws({("secretsmanager", "describe-secret"): self.described(tags=[])})
+        result = self.stage(aws)
+        assert result.outcome is Outcome.SKIP
+        # And it says how to make it checkable next time.
+        assert "tag-resource" in result.detail
+
+    def test_an_undescribable_secret_fails(self):
+        aws = FakeAws({("secretsmanager", "describe-secret"): (254, "", "AccessDeniedException")})
+        assert self.stage(aws).outcome is Outcome.FAIL
+
+
+class TestConfigParsingSpansStatements:
+    """A value the formatter wrapped must not read as absent.
+
+    It did. Stage 1 then said "set ontapSecretName" about a value that was set, sending
+    the reader to add what was already there. An unparseable value and a missing one are
+    different problems and must not produce the same sentence.
+    """
+
+    def test_a_value_wrapped_across_lines_is_read(self):
+        text = '  ontapSecretName:\n    process.env.ONTAP_SECRET_NAME ||\n    "the-secret-name",\n'
+        assert parse_portal_config(text)["ontapSecretName"] == "the-secret-name"
+
+    def test_a_comment_above_the_key_does_not_become_the_value(self):
+        text = (
+            '  // Must match ontapMgmtIp; see "the pairing note" above.\n'
+            '  ontapSecretName: process.env.ONTAP_SECRET_NAME || "the-secret-name",\n'
+        )
+        assert parse_portal_config(text)["ontapSecretName"] == "the-secret-name"
+
+    def test_the_interface_declaration_still_carries_no_value(self):
+        # `ontapSecretName: string;` must be skipped rather than read as empty, or the
+        # interface would shadow the assignment below it.
+        text = "  ontapSecretName: string;\n"
+        assert "ontapSecretName" not in parse_portal_config(text)

@@ -32,6 +32,14 @@ const backendSource = readFileSync(BACKEND_PATH, "utf-8");
 const PRESIGNED_URL_HANDLER = resolve(HERE, "../../functions/presigned-url/index.py");
 const presignedUrlSource = readFileSync(PRESIGNED_URL_HANDLER, "utf-8");
 
+// The signing configuration moved out of the handler and into the shared helper, so
+// the assertion that presigned URLs use SigV4 has to read where it now lives. Left
+// asserting the handler alone, it would have failed on a correct relocation -- and
+// worse, it would pass again if the helper dropped SigV4 while the handler kept a
+// stale comment about it.
+const S3AP_HELPER = resolve(HERE, "../../../../shared/s3ap_helper.py");
+const s3ApHelperSource = readFileSync(S3AP_HELPER, "utf-8");
+
 describe("Backend Infrastructure Structure", () => {
   describe("Lambda Functions", () => {
     const expectedLambdas = [
@@ -149,7 +157,24 @@ describe("Backend Infrastructure Structure", () => {
 
   describe("Security Configuration", () => {
     it("uses SigV4 for S3 presigned URLs", () => {
-      expect(presignedUrlSource).toContain('signature_version="s3v4"');
+      expect(s3ApHelperSource).toContain('signature_version="s3v4"');
+    });
+
+    it("signs presigned URLs through the shared helper, not a bare client", () => {
+      // A module-level `boto3.client("s3")` here is how the handler came to ignore
+      // the group-to-access-point mapping: one client built at import time cannot
+      // vary per caller, and the alias it was pointed at was the deployment default.
+      expect(presignedUrlSource).toContain("S3ApHelper(ap_alias)");
+      expect(presignedUrlSource).not.toMatch(/boto3\.client\(\s*["']s3["']/);
+    });
+
+    it("chooses the presigned URL's access point from the caller's groups", () => {
+      // Measured: a URL signed against the default access point executes as that
+      // access point's ONTAP identity, which the documented runbook pins to UNIX
+      // root. Signing without consulting the groups bypasses the boundary that
+      // listing and writing both enforce.
+      expect(presignedUrlSource).toContain("resolve_ap_alias(groups");
+      expect(presignedUrlSource).toContain("reject_key(");
     });
 
     it("has CONFIDENTIAL guardrail in AskAboutFile", () => {
@@ -209,8 +234,16 @@ describe("Backend Infrastructure Structure", () => {
       expect(backendSource).toContain("authenticatedUserIamRole");
     });
 
-    it("grants s3:PutObject for uploads", () => {
-      expect(backendSource).toContain('"s3:PutObject"');
+    it("grants the upload through the group roles, not the shared one", () => {
+      // This replaced `expect(backendSource).toContain('"s3:PutObject"')`, which kept
+      // passing after the Storage Browser grant moved to `direct-s3-access.ts` -- the
+      // string is all over this file in Lambda policies. The assertion had stopped
+      // referring to the thing its name claims, in the direction that hides a removal.
+      //
+      // Who receives the write is asserted as data in
+      // `tests/infrastructure/direct-s3-access.test.ts`. Here, only the wiring.
+      expect(backendSource).toContain("DIRECT_S3_BY_GROUP");
+      expect(backendSource).toContain("grantS3(groupResources.role");
     });
   });
 });
@@ -574,5 +607,333 @@ describe("Storage Browser configuration source", () => {
     expect(settingsBody).not.toMatch(/s3ApAlias|accountId|\bregion\b/);
     expect(settingsBody).not.toMatch(/s3alias/i);
     expect(settingsBody).not.toMatch(/\b\d{12}\b/);
+  });
+});
+
+/**
+ * The two-axis authorization model: four roles at the AppSync layer, two scopes at
+ * the access point and path boundary.
+ *
+ * Asserted against source text rather than a synthesised API because the rule is
+ * chosen at synth time from `config.enforceRoles`, and both branches cannot exist in
+ * one synthesis. What can go wrong is the shape: the ternary pointing the wrong way,
+ * a role appearing in a set it does not belong to, or a group name drifting between
+ * the TypeScript declaration and the Python boundary that reads it at runtime.
+ */
+describe("Two-axis portal authorization", () => {
+  const groupsSource = readFileSync(resolve(HERE, "../../amplify/portal-groups.ts"), "utf-8");
+  const dataSchemaSource = readFileSync(resolve(HERE, "../../amplify/data/resource.ts"), "utf-8");
+  const authSource = readFileSync(resolve(HERE, "../../amplify/auth/resource.ts"), "utf-8");
+  const pathScopeSource = readFileSync(
+    resolve(HERE, "../../../../shared/portal_path_scope.py"),
+    "utf-8",
+  );
+
+  /** Reads `export const NAME = "value";` out of portal-groups.ts. */
+  const groupConstant = (name: string): string => {
+    const match = new RegExp(`export const ${name} = "([^"]+)"`).exec(groupsSource);
+    expect(match, `portal-groups.ts must declare ${name}`).not.toBeNull();
+    return match![1];
+  };
+
+  /** Reads `NAME = "value"` out of the Python boundary module. */
+  const pythonConstant = (name: string): string => {
+    const match = new RegExp(`^${name} = "([^"]+)"`, "m").exec(pathScopeSource);
+    expect(match, `portal_path_scope.py must define ${name}`).not.toBeNull();
+    return match![1];
+  };
+
+  it("declares every group in the user pool", () => {
+    // Declaring is not granting: a user holding none of them behaves as before.
+    expect(authSource).toMatch(/groups:\s*\[\.\.\.ALL_PORTAL_GROUPS\]/);
+    const declared = /export const ALL_PORTAL_GROUPS = \[([^\]]+)\]/.exec(groupsSource);
+    expect(declared).not.toBeNull();
+    for (const name of [
+      "ROLE_STORAGE_ADMIN",
+      "ROLE_VIEWER",
+      "ROLE_CONTRIBUTOR",
+      "ROLE_AUDITOR",
+      "SCOPE_INTERNAL",
+      "SCOPE_EXTERNAL",
+    ]) {
+      expect(declared![1]).toContain(name);
+    }
+  });
+
+  it("keeps the pre-existing group name unchanged", () => {
+    // Membership is already granted in deployed pools. Renaming this would revoke
+    // every administrator silently -- the rules would still be valid, matching nobody.
+    expect(groupConstant("ROLE_STORAGE_ADMIN")).toBe("storage-admin");
+  });
+
+  it("agrees with the Python boundary on the names it enforces", () => {
+    // shared/portal_path_scope.py runs on a Lambda layer and cannot import the
+    // TypeScript. A rename on one side only leaves the boundary looking configured
+    // while matching nobody, which fails open.
+    expect(pythonConstant("UNRESTRICTED_ROLE")).toBe(groupConstant("ROLE_STORAGE_ADMIN"));
+    expect(pythonConstant("CONFINED_SCOPE")).toBe(groupConstant("SCOPE_EXTERNAL"));
+  });
+
+  it("confines an administrator who also holds the external scope", () => {
+    // The condition is the absence of `external`, not the presence of `internal`.
+    // Requiring `internal` would confine every administrator predating the scope
+    // axis, so the assertion pins the direction and not merely the mention.
+    expect(pathScopeSource).toMatch(
+      /if UNRESTRICTED_ROLE in user_groups and CONFINED_SCOPE not in user_groups:/,
+    );
+  });
+
+  it("emits the role rules only when enforceRoles is set", () => {
+    // Direction matters: with the branches swapped, a deployment that had not yet
+    // granted roles would refuse every write.
+    expect(dataSchemaSource).toMatch(
+      /return config\.enforceRoles \? \[restricted\(\)\] : \[authenticated\(\)\]/,
+    );
+  });
+
+  it("routes writes and the audit trail through the switch", () => {
+    for (const [operation, roleSet] of [
+      ["fileMutation", "WRITE_ROLES"],
+      ["folderMutation", "WRITE_ROLES"],
+      ["queryAuditLog", "AUDIT_ROLES"],
+    ] as const) {
+      const body = dataSchemaSource.slice(dataSchemaSource.indexOf(`${operation}: a`));
+      const authorization = body.slice(0, body.indexOf(".handler("));
+      expect(authorization, `${operation} must use ${roleSet}`).toContain(
+        `allow.groups(${roleSet})`,
+      );
+    }
+  });
+
+  it("leaves no write dispatcher outside the switch", () => {
+    // The failure this guards against is an endpoint added later: writing
+    // `allow.authenticated()` on a new dispatcher is the natural thing to copy from
+    // its neighbours, and the result reads as authorized while enforcing nothing.
+    //
+    // Restricted to the generic dispatchers, whose `action` argument means one
+    // endpoint covers many operations. The single-purpose mutations are listed
+    // individually elsewhere and are read paths or already group-guarded.
+    const dispatchers = [...dataSchemaSource.matchAll(/^ {2}(\w*[Mm]utation): a$/gm)].map(
+      (match) => match[1],
+    );
+    // A floor, not a count: it exists so that a regex silently matching nothing
+    // cannot pass this test as "no unguarded dispatchers".
+    expect(dispatchers.length).toBeGreaterThanOrEqual(5);
+    const unguarded: string[] = [];
+    for (const name of dispatchers) {
+      const body = dataSchemaSource.slice(dataSchemaSource.indexOf(`${name}: a`));
+      const authorization = body.slice(0, body.indexOf(".handler("));
+      const guarded =
+        authorization.includes("rolesOrAuthenticated(") || authorization.includes("allow.groups(");
+      if (!guarded) unguarded.push(name);
+    }
+    expect(unguarded).toEqual([]);
+  });
+
+  it("limits writes to contributor and above", () => {
+    const writeRoles = /const WRITE_ROLES = \[([^\]]+)\]/.exec(dataSchemaSource);
+    expect(writeRoles).not.toBeNull();
+    expect(writeRoles![1]).toContain("ROLE_CONTRIBUTOR");
+    expect(writeRoles![1]).toContain("ROLE_STORAGE_ADMIN");
+    expect(writeRoles![1]).not.toContain("ROLE_VIEWER");
+    expect(writeRoles![1]).not.toContain("ROLE_AUDITOR");
+  });
+
+  it("keeps the audit trail orthogonal to the read ladder", () => {
+    // `auditor` is not a rung above `viewer`. A viewer reading files does not imply
+    // reading everybody else's activity, so `viewer` must stay out of this set.
+    const auditRoles = /const AUDIT_ROLES = \[([^\]]+)\]/.exec(dataSchemaSource);
+    expect(auditRoles).not.toBeNull();
+    expect(auditRoles![1]).toContain("ROLE_AUDITOR");
+    expect(auditRoles![1]).toContain("ROLE_STORAGE_ADMIN");
+    expect(auditRoles![1]).not.toContain("ROLE_VIEWER");
+    expect(auditRoles![1]).not.toContain("ROLE_CONTRIBUTOR");
+  });
+
+  it("prefers configured path prefixes and keeps the derivation as the fallback", () => {
+    // Dropping the derivation would take a deployment that configures only
+    // groupApMapping to `{}`, and `{}` means unrestricted -- the boundary would
+    // vanish with nothing to notice it by.
+    expect(backendSource).toMatch(/config\.groupPathPrefixes \?\?\s*\(config\.groupApMapping/);
+  });
+
+  // Asserted against the example rather than against `portal-config.ts`, which is
+  // gitignored: CI copies the example over it before running these tests, so an
+  // assertion about the real file would be an assertion about the example wearing its
+  // name -- and would fail on the values CI actually has.
+  const exampleSource = readFileSync(
+    resolve(HERE, "../../amplify/portal-config.example.ts"),
+    "utf-8",
+  );
+
+  it("ships with the restrictive defaults", () => {
+    // Registration closed, roles enforced, no AI and no share links for outside members.
+    // These were the permissive values, on a compatibility argument that no longer holds:
+    // nothing downstream depends on this repository, so the default is now the safe one.
+    expect(exampleSource).toMatch(/enforceRoles: true/);
+    expect(exampleSource).toMatch(/selfSignUpEnabled: false/);
+    // `{}` denies every role, since a role absent from the map is denied.
+    expect(exampleSource).toMatch(/shareLinksByRole: \{\}/);
+    expect(exampleSource).toMatch(/aiEnabled: false/);
+  });
+
+  it("keeps MFA at the mode that shipped, and says what it means", () => {
+    // Not raised to REQUIRED with the others. Requiring MFA changes what every user has
+    // to carry to sign in, which is an organisation's decision rather than a default --
+    // unlike the others, where the restrictive value costs a deployment nothing.
+    expect(exampleSource).toMatch(/mfa: "OPTIONAL"/);
+    // "OPTIONAL" is easy to read as a control that is in place. It is not.
+    expect(exampleSource.toLowerCase()).toMatch(/each user decides/);
+  });
+
+  it("tells the reader what the defaults cost them, not only what they are", () => {
+    // A restrictive default has a first-run consequence, and it will be met before this
+    // file is read: a user with no role browses but cannot write.
+    expect(exampleSource).toMatch(/make portal-grant-roles/);
+    expect(exampleSource.toLowerCase()).toMatch(/sign out and in again/);
+    // And the way back, for a deployment that genuinely wants it. Matched on a phrase
+    // that cannot wrap: a comment reflowed by the formatter puts ` * ` mid-sentence, so
+    // a two-word pattern would fail on a correct file.
+    expect(exampleSource.toLowerCase()).toMatch(/open registration/);
+  });
+
+  // The polarity of the environment parsing -- that both variables need the word which
+  // leaves the restrictive state, so a misspelling fails closed -- is not asserted here.
+  // It lives in `amplify/portal-config.ts`, which is gitignored and which CI replaces with
+  // the example, so a source assertion about it would pass locally and fail in CI. The
+  // consequence is asserted instead, in `config-defaults.test.ts`, by loading the
+  // configuration: unset and misspelled both resolve to the restrictive value.
+
+  it("leaves the path prefixes unset rather than empty", () => {
+    // `{}` and absent are not the same: `backend.ts` falls back to deriving the
+    // prefixes only when this is undefined, and `{}` would read as "prefixes
+    // configured, none of them restricting anything".
+    expect(exampleSource).not.toMatch(/^\s*groupPathPrefixes:/m);
+    expect(exampleSource).toMatch(/\*\s+groupPathPrefixes: \{/);
+  });
+});
+
+/**
+ * How accounts come into existence, and what signing in requires.
+ *
+ * Both were fixed values before, and both are the kind of fixed value that reads as a
+ * decision somebody made for this deployment when it was in fact a default nobody chose.
+ */
+describe("Portal sign-in configuration", () => {
+  const authSource = readFileSync(resolve(HERE, "../../amplify/auth/resource.ts"), "utf-8");
+  const exampleSource = readFileSync(
+    resolve(HERE, "../../amplify/portal-config.example.ts"),
+    "utf-8",
+  );
+
+  it("takes the MFA mode from configuration, not from a literal", () => {
+    expect(authSource).toMatch(/multifactor:[\s\S]{0,200}config\.signIn\.mfa/);
+    // The mode was written here as "OPTIONAL". A regression would put it back.
+    expect(authSource).not.toMatch(/mode:\s*"OPTIONAL"/);
+    expect(authSource).not.toMatch(/mode:\s*"REQUIRED"/);
+  });
+
+  it("keeps OFF separate, because the settings are only valid with a mode that uses them", () => {
+    // `MFA` is a union: `{mode: "OFF"}` alone, or a mode with settings. Passing `totp`
+    // alongside "OFF" does not type-check, so the branch is not cosmetic.
+    expect(authSource).toMatch(/=== "OFF" \? \{ mode: "OFF" \}/);
+  });
+
+  it("reaches the L1 for self sign-up, which defineAuth cannot express", () => {
+    // @aws-amplify/auth-construct defaults ALLOW_SELF_SIGN_UP to true and defineAuth
+    // exposes no field for it, so without this the answer is fixed at "anyone may
+    // register" no matter what the configuration says.
+    expect(backendSource).toMatch(
+      /if \(!config\.signIn\.selfSignUpEnabled\)[\s\S]{0,300}AdminCreateUserConfig\.AllowAdminCreateUserOnly/,
+    );
+  });
+
+  it("overrides the one property rather than replacing the object", () => {
+    // The construct may set an invitation message template in the same object.
+    // Assigning `adminCreateUserConfig` wholesale would drop it with no error.
+    expect(backendSource).toMatch(/addPropertyOverride\(\s*\n?\s*"AdminCreateUserConfig\./);
+    expect(backendSource).not.toMatch(/cfnUserPool\.adminCreateUserConfig\s*=/);
+  });
+
+  it("tells the reader how to invite somebody instead", () => {
+    // Turning self sign-up off without saying what replaces it leaves an administrator
+    // with a portal nobody can get into.
+    expect(exampleSource).toMatch(/admin-create-user/);
+    expect(exampleSource).toMatch(/email_verified/);
+  });
+});
+
+/**
+ * The per-user activity ledger.
+ *
+ * It existed as code and not as infrastructure: the handler wrote to a table named by an
+ * environment variable that defaulted to empty, and skips the write when the name is
+ * empty. So on every deployment that did not set the variable by hand, the trail did not
+ * exist -- and an empty trail reads as "nobody did anything".
+ */
+describe("Portal activity ledger", () => {
+  it("creates the table rather than naming one and hoping", () => {
+    expect(backendSource).toMatch(
+      /new dynamodb\.Table\(dataStack, "PortalActivityLedgerTable"/,
+    );
+  });
+
+  it("keeps the table when the stack goes away", () => {
+    // A deleted audit trail cannot be reconstructed from the thing it was recording.
+    const declaration = backendSource.slice(
+      backendSource.indexOf('"PortalActivityLedgerTable"'),
+      backendSource.indexOf('"PortalActivityLedgerTable"') + 700,
+    );
+    expect(declaration).toMatch(/removalPolicy: RemovalPolicy\.RETAIN/);
+    expect(declaration).toMatch(/timeToLiveAttribute: "ttl"/);
+    expect(declaration).toMatch(/pointInTimeRecovery: true/);
+  });
+
+  it("honours a table name a deployment already set", () => {
+    // Otherwise turning this on would split one trail across two tables, and the older
+    // half would stop receiving rows without appearing to have stopped.
+    expect(backendSource).toMatch(
+      /const activityLedgerTableName =\s*\n?\s*process\.env\.URL_AUDIT_TABLE_NAME \|\| activityLedgerTable\.tableName/,
+    );
+  });
+
+  it("grants write on the ledger and nothing wider", () => {
+    // The presigned-url role held `dynamodb:PutItem` on `["*"]`, with a comment saying to
+    // restrict it in production. It could not be restricted while the table was created
+    // by nobody.
+    expect(backendSource).not.toMatch(
+      /actions: \["dynamodb:PutItem"\],\s*\n\s*resources: \["\*"\]/,
+    );
+    const putGrants = backendSource.match(/actions: \["dynamodb:PutItem"\]/g) ?? [];
+    expect(putGrants.length).toBeGreaterThanOrEqual(2);
+  });
+
+  it("gives the audit path read access and no write access", () => {
+    // The audit path must not be able to amend the record it reports.
+    const grant = backendSource.slice(
+      backendSource.indexOf("queryAuditLogFunction.addToRolePolicy"),
+      backendSource.indexOf("QueryAuditLogLambdaDataSource"),
+    );
+    expect(grant).toMatch(/actions: \["dynamodb:Scan"\]/);
+    expect(grant).toMatch(/activityLedgerTable\.tableArn/);
+    expect(grant).not.toMatch(/PutItem|UpdateItem|DeleteItem/);
+  });
+
+  it("passes the table to every handler that records or reads it", () => {
+    // A handler without the name skips its write silently, which is the failure this
+    // whole change exists to remove.
+    for (const fn of [
+      "getPresignedUrlFunction",
+      "listFilesFunction",
+      "folderDownloadFunction",
+      "queryAuditLogFunction",
+    ]) {
+      const start = backendSource.indexOf(`const ${fn} = new lambda.Function`);
+      expect(start, `${fn} must exist`).toBeGreaterThan(-1);
+      const body = backendSource.slice(start, start + 3000);
+      expect(body, `${fn} must receive the ledger table name`).toMatch(
+        /URL_AUDIT_TABLE_NAME: activityLedgerTableName/,
+      );
+    }
   });
 });

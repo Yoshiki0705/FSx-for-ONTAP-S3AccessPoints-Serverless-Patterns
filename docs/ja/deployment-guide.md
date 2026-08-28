@@ -564,11 +564,11 @@ aws fsx create-and-attach-s3-access-point \
     "NetworkOrigin": "Internet"
   }'
 
-# 不正 — ドメインプレフィクスはデータプレーンで AccessDenied を引き起こす
+# 不正 — AD ドメインプレフィクスは全データ操作を 503 ServiceUnavailable にする
 # "WindowsUser": {"Name": "DEMO\\Admin"}  ← 使用禁止
 ```
 
-ドメインプレフィクス（`DOMAIN\username`）は CLI/API レベルではエラーなく受け入れられますが、後続のデータプレーン操作（ListObjects, GetObject, PutObject）で `AccessDenied` が返されます。これは一時的なエラーではなく、既知の動作です。
+AD ドメインプレフィクス（`DOMAIN\username`）は CLI/API レベルではエラーなく受け入れられ、Access Point も `AVAILABLE` に到達しますが、後続のすべてのデータ操作が **503 ServiceUnavailable** を返します（`HeadBucket`・ListObjects・GetObject・PutObject のいずれも）。これは一時的なエラーではなく既知の動作で、**`AccessDenied` ではありません** — 403 を探すと IAM ポリシー・AP ポリシー・ACL を調べに行きますが、どれも原因ではありません。`HeadBucket` も失敗することが、AD DC 到達不能（`HeadBucket` は成功する）との判別点です。**CIFS サーバー名**の接頭辞（`CIFSSRV\username`）は実測で正常動作します。
 
 **AD 環境のセットアップ:**
 
@@ -610,7 +610,7 @@ aws fsx create-and-attach-s3-access-point ...
 | `Secret not found` | シークレット名のタイポまたはリージョン間違い | `aws secretsmanager describe-secret --secret-id <NAME>` で確認 |
 | `ONTAP S3 server exists on SVM` | ONTAP ネイティブ S3 が FSx for ONTAP S3 AP と競合 | 別の SVM を使用するか、ONTAP S3 サーバーを削除（既知の制約事項を参照） |
 | `Bedrock InvokeModel AccessDenied` | リージョンでモデルアクセスが有効化されていない | Bedrock コンソールでモデルアクセスを有効化; クロスリージョン推論プロファイル ID を使用 |
-| WINDOWS S3 AP データ操作で `AccessDenied` | `WindowsUser.Name` にドメインプレフィクスが含まれている | ドメインプレフィクスを削除 — `"DOMAIN\\Admin"` ではなく `"Admin"` を使用 |
+| WINDOWS S3 AP のデータ操作が **503 ServiceUnavailable**（`HeadBucket` も失敗） | `WindowsUser.Name` に AD ドメインプレフィクスが含まれている | AD ドメインプレフィクスを削除 — `"DOMAIN\\Admin"` ではなく `"Admin"` を使用。実測では `AccessDenied` ではなく 503 で、`HeadBucket` も失敗する（AD DC 到達不能との判別点）|
 | S3 AP 作成失敗（WINDOWS タイプ） | SVM が AD ドメインに未参加 | 先に SVM を AD に参加: `./scripts/demo-ad-join-svm.sh` |
 | デプロイは成功するが実行時に全オブジェクトが `AccessDenied` | `S3AccessPointName` を空でデプロイした。`HasS3AccessPointName` が false になり IAM ポリシーから accesspoint 形式の ARN が外れ、bucket 形式だけが残る（S3 AP は bucket 形式では認可されない） | 空にせず AP 名を渡す。`samconfig.toml.example` は 2026-08 以降プレースホルダを入れてある |
 | `Invalid value for '--parameter-overrides': Key= is not a valid format` | コマンドラインでは空値の省略形が使えない（SAM CLI 1.162.1 で実測） | `ParameterKey=Key,ParameterValue=` を使う。`samconfig.toml` の `parameter_overrides` では `Key=` のままでよい |
