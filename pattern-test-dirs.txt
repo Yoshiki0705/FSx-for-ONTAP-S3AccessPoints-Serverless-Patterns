@@ -128,3 +128,4 @@ solutions/sap/erp-adjacent
 solutions/amplify-portal/functions/agent-chat
 solutions/amplify-portal/functions/list-files
 solutions/amplify-portal/functions/office-convert
+solutions/amplify-portal/functions/platform-discovery

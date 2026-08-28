@@ -18,6 +18,8 @@ export interface DataPlatform {
   discoveredBy: string;
   resourceType: string;
   connected: boolean;
+  account: string;
+  region: string;
 }
 
 /**
@@ -56,6 +58,14 @@ export function PlatformSelector() {
 
   const platforms = data?.platforms ?? [];
 
+  // Where a platform was found, shown only when the inventory spans more than one
+  // place. A name is unique within an account, not across them, so two teams that
+  // both call a file system after their project are indistinguishable in a single
+  // list -- and appending the origin to every entry in the common single-account
+  // case is noise that says nothing.
+  const origins = new Set(platforms.map(p => `${p.account}/${p.region}`));
+  const showOrigin = origins.size > 1;
+
   // One platform is nothing to choose between, and the SVM selector below already
   // says which SVM. Two is where the grouping starts to carry information.
   if (platforms.length < 2) return null;
@@ -78,6 +88,7 @@ export function PlatformSelector() {
             title={p.connected ? undefined : t("rmPlatformNotConnected")}
           >
             {p.name}
+            {showOrigin && p.region ? ` (${[p.account, p.region].filter(Boolean).join(" · ")})` : ""}
             {p.connected ? "" : ` — ${t("rmPlatformNotConnectedShort")}`}
           </option>
         ))}

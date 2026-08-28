@@ -80,6 +80,11 @@ class StorageSystem:
         resource_type: The platform's own name for what this container is, when it
             is not a file system or a cluster. Carried through so the UI can label
             an entry in the platform's vocabulary instead of in ONTAP's.
+        account: The AWS account the platform was found in, or "" when it was not
+            found through AWS. Carried because a name is only unique within an
+            account: two teams each name a file system after their project, and an
+            inventory that shows both as one entry is worse than no inventory.
+        region: Likewise for the region.
         connected: Whether this is the platform the deployment's ONTAP actions
             address. Exactly one entry can be, because the handlers read one
             management address from their environment. The inventory lists the
@@ -96,6 +101,8 @@ class StorageSystem:
     discovered_by: str = ""
     resource_type: str = ""
     connected: bool = False
+    account: str = ""
+    region: str = ""
 
     def as_dict(self) -> dict[str, Any]:
         """Return every field, for callers that route requests."""
@@ -109,6 +116,8 @@ class StorageSystem:
             "discoveredBy": self.discovered_by,
             "resourceType": self.resource_type,
             "connected": self.connected,
+            "account": self.account,
+            "region": self.region,
         }
 
     def as_public_dict(self) -> dict[str, Any]:
@@ -232,7 +241,9 @@ def group_svms_by_file_system(records: Sequence[dict[str, Any]]) -> dict[str, tu
     return {fs: tuple(sorted(names)) for fs, names in grouped.items()}
 
 
-def discover_fsx_ontap(fsx_client: Any) -> list[StorageSystem]:
+def discover_fsx_ontap(
+    fsx_client: Any, account: str = "", region: str = ""
+) -> list[StorageSystem]:
     """Enumerate FSx for ONTAP file systems and their SVMs from the control plane.
 
     Two calls for the whole estate, rather than one per system: the SVM listing
@@ -241,6 +252,8 @@ def discover_fsx_ontap(fsx_client: Any) -> list[StorageSystem]:
 
     Args:
         fsx_client: A boto3 FSx client.
+        account: The account this client reads, recorded on each result.
+        region: The region this client reads, recorded on each result.
 
     Returns:
         The available file systems. A file system that is not ``AVAILABLE`` is
@@ -282,9 +295,87 @@ def discover_fsx_ontap(fsx_client: Any) -> list[StorageSystem]:
                 manageable=True,
                 discovered_by="fsx-control-plane",
                 resource_type="file system",
+                account=account,
+                region=region,
             )
         )
     return sorted(systems, key=lambda s: (s.name.lower(), s.system_id))
+
+
+@dataclass(frozen=True)
+class DiscoveryScope:
+    """One account and region to enumerate.
+
+    An account with no role to assume is read with the caller's own credentials,
+    which is how the deployment's own account is scanned without special-casing it.
+    """
+
+    region: str
+    account: str = ""
+    role_name: str = ""
+
+    def label(self) -> str:
+        """A short description, for reporting a scope that could not be read."""
+        return f"{self.account or 'this account'}/{self.region}"
+
+
+def discover_fsx_ontap_across(
+    scopes: Sequence[DiscoveryScope],
+    client_factory: Callable[[DiscoveryScope], Any],
+) -> Inventory:
+    """Enumerate every scope, keeping the scopes that failed out of the way.
+
+    One unreachable account must not empty the inventory. A role that has not been
+    created yet, a region not enabled for the account, a policy missing the FSx
+    read: each of these fails one scope, and reporting the whole inventory as
+    failed would hide every platform in the scopes that answered -- including the
+    one the operator is connected to.
+
+    A failed scope is recorded in ``hidden`` with the reason, in the same shape a
+    declared platform that did not answer uses, so a reader asking "why is our
+    other account not listed" has an answer in the response rather than in a log
+    they cannot reach.
+
+    Args:
+        scopes: The accounts and regions to read. Duplicates are collapsed.
+        client_factory: Builds an FSx client for a scope. Raising is expected and
+            is reported as that scope failing.
+
+    Returns:
+        Everything found, and the scopes that could not be read.
+    """
+    inventory = Inventory()
+    seen_scopes: set[tuple[str, str]] = set()
+    seen_systems: set[str] = set()
+    for scope in scopes:
+        key = (scope.account, scope.region)
+        if key in seen_scopes:
+            continue
+        seen_scopes.add(key)
+        try:
+            client = client_factory(scope)
+            found = discover_fsx_ontap(client, account=scope.account, region=scope.region)
+        except Exception as exc:  # noqa: BLE001 - one scope, not the inventory
+            logger.warning(
+                "Discovery failed for %s: %s: %s", scope.label(), type(exc).__name__, exc
+            )
+            inventory.hidden.append(
+                {
+                    "systemId": scope.label(),
+                    "platform": PLATFORM_FSX_ONTAP,
+                    "reason": f"Could not read this account and region: {type(exc).__name__}",
+                }
+            )
+            continue
+        for system in found:
+            # A file system ID is globally unique, so a repeat means two scopes
+            # overlapped rather than two systems colliding.
+            if system.system_id in seen_systems:
+                continue
+            seen_systems.add(system.system_id)
+            inventory.systems.append(system)
+    inventory.systems.sort(key=lambda s: (s.name.lower(), s.system_id))
+    return inventory
 
 
 def probe_declared(

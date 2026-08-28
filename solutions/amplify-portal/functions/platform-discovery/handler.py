@@ -25,6 +25,14 @@ Environment:
     ONTAP_MGMT_IP: The management address this deployment's ONTAP actions use, so
         the inventory can say which platform is the working one. Read here only to
         compare; it is never returned.
+    DISCOVERY_REGIONS: Comma-separated regions to enumerate. Defaults to the
+        function's own region, which is the single-region case.
+    DISCOVERY_ACCOUNTS: Comma-separated account IDs to enumerate in addition to
+        this one. Requires DISCOVERY_ROLE_NAME.
+    DISCOVERY_ROLE_NAME: Read-only role to assume in those accounts. Without it,
+        accounts are ignored rather than attempted, because an attempt with no role
+        fails as an authorization error and reads as a permissions problem in this
+        account.
 """
 
 from __future__ import annotations
@@ -32,16 +40,16 @@ from __future__ import annotations
 import json
 import logging
 import os
+from dataclasses import replace
 
 import boto3
 
-from dataclasses import replace
-
 from shared.storage_systems import (
     Declaration,
+    DiscoveryScope,
     StorageSystem,
     build_inventory,
-    discover_fsx_ontap,
+    discover_fsx_ontap_across,
     probe_declared,
 )
 
@@ -60,6 +68,61 @@ DECLARED_PLATFORMS = os.environ.get("DECLARED_PLATFORMS", "")
 # portal rather than hidden behind whichever cluster this deployment happens to
 # point at -- and marked, so the UI does not offer them as a working scope.
 CONNECTED_MANAGEMENT_ADDRESS = os.environ.get("ONTAP_MGMT_IP", "").strip()
+
+DISCOVERY_ROLE_NAME = os.environ.get("DISCOVERY_ROLE_NAME", "").strip()
+
+
+def _id_list(raw: str) -> list[str]:
+    """Split a comma-separated setting, dropping blanks."""
+    return [part.strip() for part in raw.split(",") if part.strip()]
+
+
+def _scopes() -> list[DiscoveryScope]:
+    """The accounts and regions to enumerate.
+
+    The deployment's own account is always included, in every configured region.
+    Other accounts are added only when a role to assume is configured: attempting
+    one without a role fails as an authorization error against this account, which
+    reads as a permissions problem here rather than as missing configuration.
+    """
+    regions = _id_list(os.environ.get("DISCOVERY_REGIONS", "")) or [os.environ.get("AWS_REGION", "")]
+    regions = [region for region in regions if region]
+    accounts = _id_list(os.environ.get("DISCOVERY_ACCOUNTS", ""))
+    if accounts and not DISCOVERY_ROLE_NAME:
+        logger.warning(
+            "DISCOVERY_ACCOUNTS is set without DISCOVERY_ROLE_NAME; those accounts cannot be read and are being skipped"
+        )
+        accounts = []
+
+    scopes = [DiscoveryScope(region=region) for region in regions]
+    for account in accounts:
+        for region in regions:
+            scopes.append(DiscoveryScope(region=region, account=account, role_name=DISCOVERY_ROLE_NAME))
+    return scopes
+
+
+def _fsx_client(scope: DiscoveryScope):
+    """An FSx client for a scope, assuming into the account when one is named.
+
+    Credentials are fetched per scope rather than cached. A discovery call happens
+    once per five minutes of browser use, so the saving would be small, and a
+    cached credential that expires between two calls fails in a way that looks like
+    the account became unreachable.
+    """
+    if not (scope.account and scope.role_name):
+        return boto3.client("fsx", region_name=scope.region)
+    assumed = boto3.client("sts").assume_role(
+        RoleArn=f"arn:aws:iam::{scope.account}:role/{scope.role_name}",
+        RoleSessionName="portal-platform-discovery",
+    )["Credentials"]
+    return boto3.client(
+        "fsx",
+        region_name=scope.region,
+        aws_access_key_id=assumed["AccessKeyId"],
+        aws_secret_access_key=assumed["SecretAccessKey"],
+        aws_session_token=assumed["SessionToken"],
+    )
+
 
 # No probe is registered yet, so every declared platform is reported as
 # unconfirmed rather than offered. That is the intended behaviour of an empty
@@ -114,9 +177,12 @@ def _mark_connected(system: StorageSystem) -> StorageSystem:
 
 def _list_data_platforms() -> dict:
     """Return the inventory, or the reason it could not be read."""
+    # Per-scope failures are reported inside the inventory rather than raised, so a
+    # second account that cannot be read does not hide the one the operator is
+    # connected to. Only a failure outside any scope reaches the except below.
     try:
-        discovered = discover_fsx_ontap(boto3.client("fsx"))
-    except Exception as exc:  # noqa: BLE001 - the response says which half failed
+        discovered = discover_fsx_ontap_across(_scopes(), _fsx_client)
+    except Exception as exc:  # noqa: BLE001 - the response says what failed
         logger.error("FSx discovery failed: %s: %s", type(exc).__name__, exc)
         return {
             "platforms": [],
@@ -125,7 +191,9 @@ def _list_data_platforms() -> dict:
             "error": f"Could not read the FSx inventory: {type(exc).__name__}",
         }
 
-    inventory = build_inventory(discovered, probe_declared(_declarations(), _PROBES))
+    declared = probe_declared(_declarations(), _PROBES)
+    declared.hidden = discovered.hidden + declared.hidden
+    inventory = build_inventory(discovered.systems, declared)
     inventory.systems = [_mark_connected(system) for system in inventory.systems]
     payload = inventory.as_dict()
     payload["error"] = None

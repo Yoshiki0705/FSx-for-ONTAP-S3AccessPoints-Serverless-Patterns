@@ -1437,6 +1437,9 @@ const platformDiscoveryFunction = new lambda.Function(dataStack, "PlatformDiscov
     // one as a boolean; the address itself never leaves this function, so the
     // response stays answerable to every signed-in user.
     ONTAP_MGMT_IP: config.ontapMgmtIp,
+    DISCOVERY_REGIONS: config.discoveryRegions.join(","),
+    DISCOVERY_ACCOUNTS: config.discoveryAccounts.join(","),
+    DISCOVERY_ROLE_NAME: config.discoveryRoleName,
   },
   // Imports `shared.storage_systems`; the asset covers only this directory.
   layers: [sharedPythonLayer],
@@ -1456,6 +1459,26 @@ platformDiscoveryFunction.addToRolePolicy(
     resources: ["*"],
   })
 );
+
+// Cross-account discovery, scoped to the one role name rather than to `*`. The
+// role is named the same in every account and the ARN is built from it, so the
+// wildcard belongs in the account field and nowhere else: `role/*` would let this
+// function assume anything it can reach, for the sake of reading two listings.
+//
+// Only added when accounts are configured. Granting it unconditionally would leave
+// a permission in place that nothing uses, and would make the policy imply a
+// capability the deployment does not have.
+if (config.discoveryRoleName && config.discoveryAccounts.length > 0) {
+  platformDiscoveryFunction.addToRolePolicy(
+    new iam.PolicyStatement({
+      effect: iam.Effect.ALLOW,
+      actions: ["sts:AssumeRole"],
+      resources: config.discoveryAccounts.map(
+        account => `arn:aws:iam::${account}:role/${config.discoveryRoleName}`
+      ),
+    })
+  );
+}
 
 api.addLambdaDataSource("PlatformDiscoveryLambdaDataSource", platformDiscoveryFunction);
 

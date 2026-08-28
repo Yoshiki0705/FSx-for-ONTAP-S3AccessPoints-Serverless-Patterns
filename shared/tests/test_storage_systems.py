@@ -17,10 +17,12 @@ from shared.storage_systems import (
     PLATFORM_FSX_ONTAP,
     PLATFORM_ONTAP_CLUSTER,
     Declaration,
+    DiscoveryScope,
     Inventory,
     StorageSystem,
     build_inventory,
     discover_fsx_ontap,
+    discover_fsx_ontap_across,
     group_svms_by_file_system,
     probe_declared,
 )
@@ -316,6 +318,8 @@ class TestSerialisation:
             "discoveredBy": "fsx-control-plane",
             "resourceType": "file system",
             "connected": False,
+            "account": "",
+            "region": "",
         }
 
     def test_public_dict_omits_the_management_address(self) -> None:
@@ -346,6 +350,86 @@ class TestSerialisation:
             hidden=[{"systemId": "c1", "platform": "P", "reason": "nope"}],
         )
         assert inventory.as_dict()["count"] == 1
+
+
+class TestDiscoverAcrossScopes:
+    """One unreachable account must not empty the inventory."""
+
+    def _factory(self, clients: dict[tuple[str, str], Any]):
+        def build(scope: DiscoveryScope) -> Any:
+            key = (scope.account, scope.region)
+            if key not in clients:
+                raise PermissionError(f"cannot assume into {scope.label()}")
+            return clients[key]
+
+        return build
+
+    def test_records_the_account_and_region_on_each_result(self) -> None:
+        """A name is only unique within an account, so both travel with it."""
+        scope = DiscoveryScope(region="us-east-1", account="111122223333", role_name="Reader")
+        inventory = discover_fsx_ontap_across(
+            [scope],
+            self._factory({("111122223333", "us-east-1"): FakeFsx([fsx_record("fs-1")], [])}),
+        )
+        assert inventory.systems[0].account == "111122223333"
+        assert inventory.systems[0].region == "us-east-1"
+
+    def test_a_failed_scope_is_reported_and_the_others_still_answer(self) -> None:
+        good = DiscoveryScope(region="ap-northeast-1")
+        bad = DiscoveryScope(region="us-east-1", account="111122223333", role_name="Reader")
+        inventory = discover_fsx_ontap_across(
+            [good, bad], self._factory({("", "ap-northeast-1"): FakeFsx([fsx_record("fs-1")], [])})
+        )
+        assert [s.system_id for s in inventory.systems] == ["fs-1"]
+        assert inventory.hidden[0]["systemId"] == "111122223333/us-east-1"
+        assert "PermissionError" in inventory.hidden[0]["reason"]
+
+    def test_every_scope_failing_is_an_empty_inventory_with_reasons(self) -> None:
+        """Not an exception: the panel has to render something and say why."""
+        inventory = discover_fsx_ontap_across(
+            [DiscoveryScope(region="us-east-1"), DiscoveryScope(region="eu-west-1")],
+            self._factory({}),
+        )
+        assert inventory.systems == []
+        assert len(inventory.hidden) == 2
+
+    def test_duplicate_scopes_are_read_once(self) -> None:
+        calls: list[str] = []
+
+        def build(scope: DiscoveryScope) -> Any:
+            calls.append(scope.region)
+            return FakeFsx([fsx_record("fs-1")], [])
+
+        inventory = discover_fsx_ontap_across(
+            [DiscoveryScope(region="us-east-1"), DiscoveryScope(region="us-east-1")], build
+        )
+        assert calls == ["us-east-1"]
+        assert len(inventory.systems) == 1
+
+    def test_overlapping_scopes_do_not_duplicate_a_file_system(self) -> None:
+        """A file system ID is globally unique, so a repeat means overlap."""
+        client = FakeFsx([fsx_record("fs-1")], [])
+        inventory = discover_fsx_ontap_across(
+            [DiscoveryScope(region="us-east-1"), DiscoveryScope(region="eu-west-1")],
+            lambda _s: client,
+        )
+        assert [s.system_id for s in inventory.systems] == ["fs-1"]
+
+    def test_results_are_sorted_across_scopes(self) -> None:
+        inventory = discover_fsx_ontap_across(
+            [DiscoveryScope(region="r1"), DiscoveryScope(region="r2")],
+            self._factory(
+                {
+                    ("", "r1"): FakeFsx([fsx_record("fs-2", name="zeta")], []),
+                    ("", "r2"): FakeFsx([fsx_record("fs-1", name="alpha")], []),
+                }
+            ),
+        )
+        assert [s.name for s in inventory.systems] == ["alpha", "zeta"]
+
+    def test_scope_label_names_the_local_account_readably(self) -> None:
+        assert DiscoveryScope(region="us-east-1").label() == "this account/us-east-1"
+        assert DiscoveryScope(region="us-east-1", account="1").label() == "1/us-east-1"
 
 
 class TestPlatformConstants:

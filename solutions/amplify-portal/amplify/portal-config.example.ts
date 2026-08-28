@@ -73,6 +73,11 @@ export interface PortalConfig {
     managementAddress?: string;
     secretName?: string;
   }>;
+  // Regions and accounts to enumerate for FSx for ONTAP file systems. Empty means
+  // this region and this account only. See the assignments below.
+  discoveryRegions: string[];
+  discoveryAccounts: string[];
+  discoveryRoleName: string;
   // Escape hatch: deploy into a VPC with no block expiry, on purpose.
   allowNoBlockExpiry: boolean;
 
@@ -385,6 +390,28 @@ export const config: PortalConfig = {
    *   ]
    */
   declaredDataPlatforms: [],
+
+  /**
+   * How wide the FSx for ONTAP search is.
+   *
+   * Empty regions means the region the portal runs in; empty accounts means only
+   * its own. A file system in a region nobody listed is not reported as hidden --
+   * it is never looked for, which is the one absence the inventory cannot explain.
+   *
+   * `discoveryRoleName` is the same role name in every listed account, assumed as
+   * `arn:aws:iam::<account>:role/<name>`. It needs `fsx:DescribeFileSystems` and
+   * `fsx:DescribeStorageVirtualMachines` and must trust this deployment's
+   * discovery function. Without it, listed accounts are skipped rather than
+   * attempted, because an attempt with no role fails as an authorization error
+   * against the portal's own account and reads as a problem here.
+   *
+   *   discoveryRegions: ["ap-northeast-1", "us-east-1"],
+   *   discoveryAccounts: ["111122223333"],
+   *   discoveryRoleName: "PortalDiscoveryReader",
+   */
+  discoveryRegions: [],
+  discoveryAccounts: [],
+  discoveryRoleName: "",
   allowNoBlockExpiry: false,
 
   /**
