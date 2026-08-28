@@ -126,9 +126,21 @@ class TestScopes:
             with patch.object(module, "DISCOVERY_ROLE_NAME", env.get("DISCOVERY_ROLE_NAME", "")):
                 return module._scopes()
 
-    def test_defaults_to_this_account_in_its_own_region(self) -> None:
-        scopes = self._scopes(AWS_REGION="ap-northeast-1", DISCOVERY_REGIONS="")
-        assert [(s.account, s.region) for s in scopes] == [("", "ap-northeast-1")]
+    def test_asks_which_regions_are_enabled_when_none_are_configured(self) -> None:
+        """A hardcoded list is wrong the next time a region is added, and the gap is
+        the one absence the inventory cannot report."""
+        with patch(
+            "platform_discovery_handler._enabled_regions",
+            return_value=["ap-northeast-1", "eu-west-1"],
+        ):
+            scopes = self._scopes(DISCOVERY_REGIONS="")
+        assert [s.region for s in scopes] == ["ap-northeast-1", "eu-west-1"]
+
+    def test_a_configured_list_narrows_rather_than_widens(self) -> None:
+        with patch("platform_discovery_handler._enabled_regions") as enabled:
+            scopes = self._scopes(DISCOVERY_REGIONS="eu-west-1")
+        enabled.assert_not_called()
+        assert [s.region for s in scopes] == ["eu-west-1"]
 
     def test_reads_several_regions(self) -> None:
         scopes = self._scopes(DISCOVERY_REGIONS="ap-northeast-1, us-east-1")
@@ -153,6 +165,14 @@ class TestScopes:
         configuration."""
         scopes = self._scopes(DISCOVERY_REGIONS="us-east-1", DISCOVERY_ACCOUNTS="111122223333")
         assert [(s.account, s.region) for s in scopes] == [("", "us-east-1")]
+
+    def test_failing_to_list_regions_degrades_to_this_one(self) -> None:
+        """An empty inventory would be worse. The log says other regions were skipped."""
+        import platform_discovery_handler as module
+
+        with patch.dict("os.environ", {"AWS_REGION": "ap-northeast-1"}, clear=False):
+            with patch.object(module.boto3, "client", side_effect=RuntimeError("denied")):
+                assert module._enabled_regions() == ["ap-northeast-1"]
 
     def test_a_scope_that_could_not_be_read_reaches_the_response(self, one_platform: Inventory) -> None:
         """ "Why is our other account missing" has to be answerable from the payload."""

@@ -25,8 +25,11 @@ Environment:
     ONTAP_MGMT_IP: The management address this deployment's ONTAP actions use, so
         the inventory can say which platform is the working one. Read here only to
         compare; it is never returned.
-    DISCOVERY_REGIONS: Comma-separated regions to enumerate. Defaults to the
-        function's own region, which is the single-region case.
+    DISCOVERY_REGIONS: Comma-separated regions to enumerate. Left empty, every
+        region this account has enabled is read, asked at runtime rather than
+        listed: a hardcoded list goes stale the next time AWS adds a region, and
+        nothing would report the gap because a region nobody names is never looked
+        for. Set it to narrow the search.
     DISCOVERY_ACCOUNTS: Comma-separated account IDs to enumerate in addition to
         this one. Requires DISCOVERY_ROLE_NAME.
     DISCOVERY_ROLE_NAME: Read-only role to assume in those accounts. Without it,
@@ -43,6 +46,7 @@ import os
 from dataclasses import replace
 
 import boto3
+from botocore.config import Config as BotoConfig
 
 from shared.storage_systems import (
     Declaration,
@@ -71,21 +75,67 @@ CONNECTED_MANAGEMENT_ADDRESS = os.environ.get("ONTAP_MGMT_IP", "").strip()
 
 DISCOVERY_ROLE_NAME = os.environ.get("DISCOVERY_ROLE_NAME", "").strip()
 
+# A scope that does not answer must cost one scope, not the inventory. Measured
+# 2026-08-29 over the 25 regions this account has enabled: with botocore's defaults
+# a single region that failed to connect held a sequential walk past fifteen
+# minutes. The walk is concurrent now, but a hung scope still occupies a worker, so
+# the bound is here as well -- the request either lands quickly or the region is
+# reported as unreadable, which is the honest answer for an inventory a browser is
+# waiting on.
+# No retry. A retry doubles what an unreachable region costs, and the answer does
+# not improve: with two attempts and a 3 s connect bound, the 25-region walk still
+# took 29 s against a 30 s budget. Discovery is re-read every five minutes by the
+# browser, so a region that was briefly unavailable returns on its own -- which is a
+# better trade than an inventory that times out for everyone because one region did.
+_FSX_TIMEOUTS = BotoConfig(
+    connect_timeout=2,
+    read_timeout=5,
+    retries={"max_attempts": 1, "mode": "standard"},
+)
+
 
 def _id_list(raw: str) -> list[str]:
     """Split a comma-separated setting, dropping blanks."""
     return [part.strip() for part in raw.split(",") if part.strip()]
 
 
+def _enabled_regions() -> list[str]:
+    """Every region this account has enabled, asked rather than listed.
+
+    ``describe_regions`` without ``AllRegions`` returns the enabled ones, which is
+    exactly the set worth searching: opted-in regions are included without anyone
+    editing configuration, and a region AWS adds later appears on its own.
+
+    Falling back to the function's own region when the call fails keeps the
+    inventory useful rather than empty. The failure is logged, and the consequence
+    -- other regions not being searched -- is the one absence this inventory cannot
+    report, so it must not pass silently.
+    """
+    try:
+        client = boto3.client("ec2", region_name=os.environ.get("AWS_REGION", ""))
+        return [region["RegionName"] for region in client.describe_regions()["Regions"] if region.get("RegionName")]
+    except Exception as exc:  # noqa: BLE001 - degrade to this region, and say so
+        logger.error(
+            "Could not list enabled regions (%s: %s); searching only %s. Set "
+            "DISCOVERY_REGIONS to search a fixed list instead.",
+            type(exc).__name__,
+            exc,
+            os.environ.get("AWS_REGION", ""),
+        )
+        return [os.environ.get("AWS_REGION", "")]
+
+
 def _scopes() -> list[DiscoveryScope]:
     """The accounts and regions to enumerate.
 
-    The deployment's own account is always included, in every configured region.
+    The deployment's own account is always included, in every region searched --
+    which is every region the account has enabled unless DISCOVERY_REGIONS narrows
+    it.
     Other accounts are added only when a role to assume is configured: attempting
     one without a role fails as an authorization error against this account, which
     reads as a permissions problem here rather than as missing configuration.
     """
-    regions = _id_list(os.environ.get("DISCOVERY_REGIONS", "")) or [os.environ.get("AWS_REGION", "")]
+    regions = _id_list(os.environ.get("DISCOVERY_REGIONS", "")) or _enabled_regions()
     regions = [region for region in regions if region]
     accounts = _id_list(os.environ.get("DISCOVERY_ACCOUNTS", ""))
     if accounts and not DISCOVERY_ROLE_NAME:
@@ -110,7 +160,7 @@ def _fsx_client(scope: DiscoveryScope):
     the account became unreachable.
     """
     if not (scope.account and scope.role_name):
-        return boto3.client("fsx", region_name=scope.region)
+        return boto3.client("fsx", region_name=scope.region, config=_FSX_TIMEOUTS)
     assumed = boto3.client("sts").assume_role(
         RoleArn=f"arn:aws:iam::{scope.account}:role/{scope.role_name}",
         RoleSessionName="portal-platform-discovery",
@@ -118,6 +168,7 @@ def _fsx_client(scope: DiscoveryScope):
     return boto3.client(
         "fsx",
         region_name=scope.region,
+        config=_FSX_TIMEOUTS,
         aws_access_key_id=assumed["AccessKeyId"],
         aws_secret_access_key=assumed["SecretAccessKey"],
         aws_session_token=assumed["SessionToken"],

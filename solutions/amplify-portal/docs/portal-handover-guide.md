@@ -207,12 +207,86 @@ URL: https://<portal-url>
 | ONTAP 接続先（管理 IP / SVM / ボリューム） | `amplify/portal-config.ts` | `grep ontap amplify/portal-config.ts` |
 | `fsxadmin` の資格情報 | Secrets Manager | `aws secretsmanager get-secret-value --secret-id <secret-name>` |
 | ファイルシステム / SVM / ボリュームの実体 | FSx for ONTAP | `make ontap-preflight FS_ID=<fs-id>` |
+| 探すリージョン / アカウント | `amplify/portal-config.ts` の `discoveryRegions` / `discoveryAccounts` | `aws lambda get-function-configuration --function-name <PlatformDiscoveryFunction> --query "Environment.Variables"` |
 | 監査ログ（誰が何をしたか） | ポータルの「監査証跡」タブ | ポータル UI |
 
 > **`amplify_outputs.json` はデプロイ成果物です。** 手で書き換えても次のデプロイで戻ります。
 > 値を変えたいときは `amplify/` 側を直します。
 
 ---
+
+## データプラットフォームが一覧に出ないとき
+
+画面上部の「対象データプラットフォーム」は、FSx for ONTAP のファイルシステムを AWS の
+control plane から読んで並べます。ONTAP の資格情報も管理 LIF への到達性も使わないので、
+**ONTAP 側が不調でもこの一覧は答えます**。出ない理由は 3 つに分かれ、対処が違います。
+
+| 症状 | 原因 | 対処 |
+|------|------|------|
+| 一覧に無く、理由も出ない | そのリージョンを**探していない** | 下の「探す範囲を広げる」 |
+| 一覧に無いが理由が出る | そのアカウント・リージョンを**読めなかった** | 理由に応じてロールか権限 |
+| 一覧に無く、実物は存在する | ファイルシステムが `AVAILABLE` でない | `aws fsx describe-file-systems` で状態を確認 |
+
+1 番目だけが応答から説明できません。読めなかったものは理由付きで残りますが、**誰も指定して
+いないリージョンは探されていないだけなので、何も残らない**からです。
+
+3 番目は実際に起きます。作成中（`CREATING`）と削除中（`DELETING`）は出しません。応答しない
+ものをスコープとして提示すると、空の一覧が「空のシステム」に見えるためです。
+
+セレクター自体は**プラットフォームが 2 つ以上のときだけ**表示されます。1 つのときは選ぶもの
+が無いので出しません。
+
+### 探す範囲
+
+既定では、**このアカウントが有効化しているリージョンすべて**を探します。リージョン名を設定に
+書き並べてはいません。書くと AWS がリージョンを追加したときに古くなり、しかも上の 1 番目の
+理由で誰も気づけないからです。有効なリージョンは実行時に問い合わせます。
+
+所要は範囲に比例します。**実測（2026-08-29、Lambda 内、有効リージョン 25、うち 2 つが応答
+せず）: 初回 17.5 秒、暖機後 14.9 秒。** ブラウザは 5 分キャッシュするので、操作ごとに待つ
+わけではありませんが、画面を開いた直後は数秒かかります。
+
+### 探す範囲を絞る
+
+範囲を限定すると速くなります。資産のあるリージョンが決まっている場合はこちらを推奨します。
+
+```bash
+AMPLIFY_PORTAL_DISCOVERY_REGIONS="ap-northeast-1,ap-northeast-3" npx ampx sandbox --identifier <name>
+```
+
+指定すると、有効リージョンの問い合わせは行わず、書いたものだけを探します。**書き忘れた
+リージョンは探されません。** 資産が増えたら足す必要があります。
+
+### 別アカウントを追加する
+
+相手アカウントに読み取り専用ロールを作り、名前を揃えます。ARN は
+`arn:aws:iam::<account>:role/<name>` として組み立てられます。
+
+1. 相手アカウントで、この 3 つのアクションだけを許可するロールを作る。`fsx:DescribeFileSystems`、
+   `fsx:DescribeStorageVirtualMachines`、`ec2:DescribeRegions`
+2. そのロールの信頼ポリシーで、ポータルの発見関数のロールからの `sts:AssumeRole` を許可する
+3. ポータル側に設定して再デプロイする
+
+```bash
+AMPLIFY_PORTAL_DISCOVERY_ACCOUNTS="111122223333,444455556666" \
+AMPLIFY_PORTAL_DISCOVERY_ROLE_NAME="PortalDiscoveryReader" \
+  npx ampx sandbox --identifier <name>
+```
+
+`AMPLIFY_PORTAL_DISCOVERY_ROLE_NAME` を省くと、指定したアカウントは**試行せず飛ばします**。
+ロール無しで試すと、このアカウントに対する認可エラーとして失敗し、設定が未完成であることが
+こちら側の権限問題に見えるためです。
+
+`sts:AssumeRole` の許可は、列挙したアカウントの、指定したロール名だけに付きます。
+
+### 一覧に出ても選べないもの
+
+`— 未接続` が付いたものは選択できません。この配備の ONTAP 操作は 1 つの管理アドレスに向いて
+いるので、他のプラットフォームへリクエストを振れません。**選べるようにすると、全操作が失敗
+するスコープを提示することになります。**
+
+在庫に出す意味は別にあります。1 つの画面から資産全体が見えることで、どのファイルシステムが
+存在してどの SVM を持つかを、それぞれの管理画面を開かずに把握できます。
 
 ## 引き渡しチェックリスト
 

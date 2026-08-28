@@ -39,6 +39,7 @@ from __future__ import annotations
 
 import logging
 from collections.abc import Callable, Iterable, Sequence
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -322,6 +323,7 @@ class DiscoveryScope:
 def discover_fsx_ontap_across(
     scopes: Sequence[DiscoveryScope],
     client_factory: Callable[[DiscoveryScope], Any],
+    max_workers: int = 32,
 ) -> Inventory:
     """Enumerate every scope, keeping the scopes that failed out of the way.
 
@@ -336,38 +338,72 @@ def discover_fsx_ontap_across(
     other account not listed" has an answer in the response rather than in a log
     they cannot reach.
 
+    Scopes are read concurrently, and that is not an optimisation. Measured
+    2026-08-29 against the 25 regions this account has enabled: read one after
+    another, a single region that did not answer -- me-central-1, a connect timeout
+    under botocore's default retries -- held the walk past fifteen minutes. The
+    caller is a Lambda with a thirty second timeout and a browser waiting on it, so
+    one unreachable region has to cost one scope rather than the inventory. The
+    per-scope bound belongs in the client the factory builds; this only stops the
+    scopes from queueing behind each other.
+
     Args:
         scopes: The accounts and regions to read. Duplicates are collapsed.
         client_factory: Builds an FSx client for a scope. Raising is expected and
-            is reported as that scope failing.
+            is reported as that scope failing. It should carry short connect and
+            read timeouts: a scope that hangs still occupies a worker.
+        max_workers: How many scopes to read at once. High enough that an estate's
+            worth of regions is one wave: with two waves, a scope that times out in
+            each of them adds its bound twice, which is how a 25-region walk still
+            took 29 s against a caller with a 30 s budget.
 
     Returns:
-        Everything found, and the scopes that could not be read.
+        Everything found, and the scopes that could not be read. Ordering does not
+        depend on which scope answered first.
     """
-    inventory = Inventory()
+    unique: list[DiscoveryScope] = []
     seen_scopes: set[tuple[str, str]] = set()
-    seen_systems: set[str] = set()
     for scope in scopes:
         key = (scope.account, scope.region)
         if key in seen_scopes:
             continue
         seen_scopes.add(key)
+        unique.append(scope)
+
+    def read(scope: DiscoveryScope) -> tuple[DiscoveryScope, list[StorageSystem] | Exception]:
         try:
             client = client_factory(scope)
-            found = discover_fsx_ontap(client, account=scope.account, region=scope.region)
+            return scope, discover_fsx_ontap(client, account=scope.account, region=scope.region)
         except Exception as exc:  # noqa: BLE001 - one scope, not the inventory
+            return scope, exc
+
+    if not unique:
+        return Inventory()
+
+    with ThreadPoolExecutor(max_workers=max(1, min(max_workers, len(unique)))) as pool:
+        outcomes = list(pool.map(read, unique))
+
+    # Merged in the order the scopes were given, not the order they answered, so two
+    # runs over the same estate produce the same inventory.
+    inventory = Inventory()
+    seen_systems: set[str] = set()
+    for scope, outcome in outcomes:
+        if isinstance(outcome, Exception):
             logger.warning(
-                "Discovery failed for %s: %s: %s", scope.label(), type(exc).__name__, exc
+                "Discovery failed for %s: %s: %s",
+                scope.label(),
+                type(outcome).__name__,
+                outcome,
             )
             inventory.hidden.append(
                 {
                     "systemId": scope.label(),
                     "platform": PLATFORM_FSX_ONTAP,
-                    "reason": f"Could not read this account and region: {type(exc).__name__}",
+                    "reason": f"Could not read this account and region: {type(outcome).__name__}",
                 }
             )
             continue
-        for system in found:
+        for system in outcome:
             # A file system ID is globally unique, so a repeat means two scopes
             # overlapped rather than two systems colliding.
             if system.system_id in seen_systems:

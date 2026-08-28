@@ -1444,7 +1444,13 @@ const platformDiscoveryFunction = new lambda.Function(dataStack, "PlatformDiscov
   // Imports `shared.storage_systems`; the asset covers only this directory.
   layers: [sharedPythonLayer],
   memorySize: 256,
-  timeout: Duration.seconds(30),
+  // Wider than the other read-only functions because the work scales with the
+  // estate: every enabled region is read, and a region that does not answer costs
+  // its connect bound before it is reported as unreadable. Measured 2026-08-29 over
+  // the 25 regions this account has enabled, two of them unreachable: 13 s from a
+  // laptop. The headroom is for an account with more regions enabled, not for the
+  // common case.
+  timeout: Duration.seconds(60),
   description: "Lists the data platforms the portal can scope to (FSx control plane)",
 });
 
@@ -1455,7 +1461,14 @@ const platformDiscoveryFunction = new lambda.Function(dataStack, "PlatformDiscov
 platformDiscoveryFunction.addToRolePolicy(
   new iam.PolicyStatement({
     effect: iam.Effect.ALLOW,
-    actions: ["fsx:DescribeFileSystems", "fsx:DescribeStorageVirtualMachines"],
+    actions: [
+      "fsx:DescribeFileSystems",
+      "fsx:DescribeStorageVirtualMachines",
+      // Which regions this account has enabled, so the search follows the estate
+      // instead of a list someone has to remember to update. Read-only and takes no
+      // resource either.
+      "ec2:DescribeRegions",
+    ],
     resources: ["*"],
   })
 );
