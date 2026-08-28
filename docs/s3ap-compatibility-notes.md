@@ -17,7 +17,7 @@ FSx for ONTAP S3 Access Points provide an S3-facing access boundary for file dat
 | 低レイテンシ metadata 操作 (stat, readdir) | △ (tens of ms) | ✅ (sub-ms) |
 | 既存アプリケーション互換性 | — | ✅ |
 | AWS サービス統合 (Athena, Bedrock, Textract) | ✅ | — |
-| イベント駆動ファイル処理 | △ (EventBridge Scheduler ポーリング。**FPolicy は S3 AP 経由の操作を検知しない** — 実測 2026-08-26 / ONTAP 9.18.1P3D1) | ✅ (FPolicy + NFS/SMB) |
+| イベント駆動ファイル処理 | △ (EventBridge Scheduler ポーリング。**FPolicy は S3 AP 経由の操作を検知しない** — 実測 2026-08-26 / ONTAP 9.18.1P3D1、現行の全リリースが該当と AWS 確認。[監査とイベント可視性](#監査とイベント可視性--s3-アクセス経路)) | ✅ (FPolicy + NFS/SMB) |
 
 > **注**: S3 AP は NFS/SMB の置き換えではなく、AWS サービス統合のための補完的アクセスパスです。同じボリュームに NFS/SMB と S3 AP の両方からアクセスできます。
 
@@ -219,6 +219,24 @@ FSx for ONTAP S3 AP (READ) → Lambda 処理 → Standard S3 Bucket (WRITE + Ann
 | POLLING (default) | EventBridge Scheduler + Discovery Lambda |
 | EVENT_DRIVEN | FPolicy-based, near-real-time; not native S3 bucket notifications |
 | HYBRID | Both polling and event-driven with deduplication |
+
+---
+
+## 監査とイベント可視性 — S3 アクセス経路
+
+S3 AP 経由のアクセスは、ONTAP 側の監査とイベント通知の枠組みから外れます。実測と AWS サポートの確認を分けて記載します。
+
+| 項目 | 状態 | 根拠 |
+|---|---|---|
+| FPolicy が S3 AP 経由の操作を検知するか | しない | 実測（2026-08-26 / ONTAP 9.18.1P3D1）+ AWS 確認（2026-08-27）。**現行の全 ONTAP リリースが該当**するため、バージョンを上げても解決しません |
+| S3 に対応した FPolicy | ベンダー側で開発中。提供時期は未定 | AWS 確認（2026-08-27）。AWS からタイムラインは提示されません |
+| ONTAP 監査ログにリクエスタ identity（IAM プリンシパル）が載るか | 載らない | AWS 確認（2026-08-27） |
+| ONTAP 監査ログに送信元 IP が載るか | 載らない | AWS 確認（2026-08-27） |
+| `HEAD` に対応する監査イベント | 存在しない | AWS 確認（2026-08-27） |
+
+> **未確認 — 確定するまで「CloudTrail で取れる」と書かないでください。** AWS は identity と送信元 IP の取得手段として CloudTrail を挙げていますが、**FSx for ONTAP S3 AP に対するオブジェクト操作（`GetObject` / `PutObject` / `DeleteObject` 等）が CloudTrail のデータイベントとして記録されるか**は公式ドキュメントで確認できておらず、照会中です。記録されるなら advanced event selectors でリソースタイプを指定する必要があり、記録されず FSx のコントロールプレーン呼び出し（`CreateAndAttachS3AccessPoint` 等）だけであれば、CloudTrail は監査の問いに答えていないことになります。どちらであるかで指針が反対になります。
+
+**設計上の含意**: 監査要件のあるデータを S3 AP 経由で扱う場合、「誰がどのオブジェクトに触ったか」を ONTAP 側だけでは再構成できません。監査が要件なら、アクセス経路を NFS/SMB に寄せるか、アプリケーション側（このリポジトリのパターンでは `S3ApHelper` を経由する Lambda ハンドラ）で記録を残す設計にしてください。ボリューム側の監査設定を有効にしても、この経路は覆われません。
 
 ---
 
