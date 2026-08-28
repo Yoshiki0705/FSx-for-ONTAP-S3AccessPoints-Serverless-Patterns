@@ -45,7 +45,7 @@ credentials — nothing is deployed and no AWS call is made.
 **It is a PR gate (since 2026-08-28)**, run by ci.yml's "Stage 2b: Amplify Portal" job,
 which already has node_modules and the portal-config it needs. `npm run nag` synthesises;
 `scripts/check_cdk_nag_baseline.py` compares the result to `security/cdk-nag-baseline.txt`,
-which holds the 105 known findings one per line. A finding that is not there fails, and a
+which holds the 121 known findings one per line. A finding that is not there fails, and a
 recorded one that gets fixed fails too.
 
 **Do not verify it with `grep -rn CDK_NAG .github/workflows/`.** That produced no output

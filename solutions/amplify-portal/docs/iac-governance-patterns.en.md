@@ -46,7 +46,7 @@ Any failure → merge blocked
 
 #### Why a baseline
 
-Three of the 108 were fixed rather than recorded: point-in-time recovery on the two tables holding authored content, and a TLS-only policy on the alarm topic. The remaining 105 need either a decision that cannot be validated without deploying, or a change to a resource Amplify owns.
+Three of the 108 were fixed rather than recorded: point-in-time recovery on the two tables holding authored content, and a TLS-only policy on the alarm topic. The remaining 121 need either a decision that cannot be validated without deploying, or a change to a resource Amplify owns.
 
 **They are not all Amplify's.** 58 are Lambda roles we declare in `backend.ts` — the `AWSLambdaBasicExecutionRole` managed policy, and resource wildcards covering ARNs that only resolve at deploy time. Narrowing each needs a per-endpoint review that has not been done. The baseline is per finding, so **an unrecorded one fails and a recorded one that gets fixed also fails**; it cannot become a one-way allowlist.
 
@@ -58,7 +58,7 @@ A baselined finding is not a fixed finding. `REASONS` in `scripts/check_cdk_nag_
 |------------|-------|:---:|
 | Template syntax | cfn-lint | ✅ Integrated in CI |
 | Security rules | cfn-guard (security/) | ✅ Integrated in CI |
-| AWS best practices | cdk-nag (AwsSolutionsChecks) | ✅ Compared against the baseline in CI (105 recorded) |
+| AWS best practices | cdk-nag (AwsSolutionsChecks) | ✅ Compared against the baseline in CI (121 recorded) |
 | IAM permission validation | Access Analyzer ValidatePolicy | ✅ CI workflow added |
 | Structural regression | CDK harness tests (114 tests) | ✅ Integrated with vitest |
 | Secret leakage | gitleaks | ✅ pre-commit hook |

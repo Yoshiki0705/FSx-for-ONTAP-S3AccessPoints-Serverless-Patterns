@@ -187,3 +187,40 @@ def _no_synth(monkeypatch: pytest.MonkeyPatch) -> None:
         raise AssertionError("a test tried to run npm; the report should be crafted instead")
 
     monkeypatch.setattr(subprocess, "run", refuse)
+
+
+class TestTheSynthUsesTheSharedConfig:
+    """The script synthesises against the committed example, not a local config.
+
+    Several finding ids embed a value from `portal-config.ts` -- an IAM5 finding names the
+    ARN it objects to -- and that file is gitignored, so a developer's copy differs from the
+    example CI puts in place. A baseline recorded from a local config named a DemoMode
+    bucket CI has never heard of, and the gate failed on its first CI run with 13 findings
+    "no longer reported".
+    """
+
+    @staticmethod
+    def script() -> str:
+        return (
+            Path(__file__).resolve().parents[2] / "solutions" / "amplify-portal" / "scripts" / "cdk-nag.sh"
+        ).read_text()
+
+    def test_copies_the_example_over_the_local_config(self) -> None:
+        assert 'cp "$EXAMPLE" "$CONFIG"' in self.script()
+
+    def test_restores_the_local_config_on_any_exit(self) -> None:
+        # Including an interrupt: losing somebody's configuration to a read-only check
+        # would be a poor trade.
+        script = self.script()
+        assert "trap restore_config EXIT INT TERM" in script
+        assert 'mv -f "$STASHED" "$CONFIG"' in script
+
+    def test_offers_an_escape_for_a_local_synth(self) -> None:
+        assert "CDK_NAG_KEEP_CONFIG" in self.script()
+
+    def test_the_baseline_holds_no_value_from_a_local_config(self) -> None:
+        # The concrete symptom, asserted against the committed file: the DemoMode bucket
+        # names in the example are commented out, so no bucket ARN should appear here.
+        module = TestAgainstTheRepository.real_module()
+        for rule, _ in module.read_baseline():
+            assert "fsxn-audit-logs" not in rule, rule

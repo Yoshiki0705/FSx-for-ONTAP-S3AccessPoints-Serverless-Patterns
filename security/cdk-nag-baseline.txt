@@ -25,11 +25,6 @@ AwsSolutions-IAM5[Resource::arn:<AWS::Partition>:s3:::cdk-hnb659fds-assets-<AWS:
 # A Cognito group role, whose S3 grant `backend.ts` writes from `s3ApResourceArns` --
 # see `amplify/direct-s3-access.ts` for which group gets what. Same wildcards as the
 # authenticated role above, and the same reasons.
-AwsSolutions-IAM5[Resource::arn:aws:s3:::fsxn-audit-logs-observability-test/*]	auth/amplifyAuth/auditorGroupRole/DefaultPolicy/Resource
-AwsSolutions-IAM5[Resource::arn:aws:s3:::fsxn-audit-logs-observability-test/*]	auth/amplifyAuth/contributorGroupRole/DefaultPolicy/Resource
-AwsSolutions-IAM5[Resource::arn:aws:s3:::fsxn-audit-logs-observability-test/*]	auth/amplifyAuth/internalGroupRole/DefaultPolicy/Resource
-AwsSolutions-IAM5[Resource::arn:aws:s3:::fsxn-audit-logs-observability-test/*]	auth/amplifyAuth/storage-adminGroupRole/DefaultPolicy/Resource
-AwsSolutions-IAM5[Resource::arn:aws:s3:::fsxn-audit-logs-observability-test/*]	auth/amplifyAuth/viewerGroupRole/DefaultPolicy/Resource
 AwsSolutions-IAM5[Resource::arn:aws:s3:<AWS::Region>:<AWS::AccountId>:accesspoint/*/object/*]	auth/amplifyAuth/auditorGroupRole/DefaultPolicy/Resource
 AwsSolutions-IAM5[Resource::arn:aws:s3:<AWS::Region>:<AWS::AccountId>:accesspoint/*/object/*]	auth/amplifyAuth/contributorGroupRole/DefaultPolicy/Resource
 AwsSolutions-IAM5[Resource::arn:aws:s3:<AWS::Region>:<AWS::AccountId>:accesspoint/*/object/*]	auth/amplifyAuth/internalGroupRole/DefaultPolicy/Resource
@@ -64,9 +59,7 @@ AwsSolutions-IAM4[Policy::arn:<AWS::Partition>:iam::aws:policy/service-role/AWSL
 AwsSolutions-IAM4[Policy::arn:<AWS::Partition>:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole]	data/SearchFilesLambdaRole/Resource
 AwsSolutions-IAM4[Policy::arn:<AWS::Partition>:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole]	data/TextractLambdaRole/Resource
 AwsSolutions-IAM4[Policy::arn:<AWS::Partition>:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole]	data/ThumbnailsLambdaRole/Resource
-AwsSolutions-IAM4[Policy::arn:<AWS::Partition>:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole]	data/ArpResponseLambdaRole/Resource
 AwsSolutions-IAM4[Policy::arn:<AWS::Partition>:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole]	data/ListSnapshotsLambdaRole/Resource
-AwsSolutions-IAM4[Policy::arn:<AWS::Partition>:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole]	data/ResourceMgmtLambdaRole/Resource
 AwsSolutions-IAM5[Resource::*]	data/AgentChatLambdaRole/Resource
 AwsSolutions-IAM5[Resource::*]	data/ArpResponseLambdaRole/Resource
 AwsSolutions-IAM5[Resource::*]	data/AskAboutFileLambdaRole/Resource
@@ -86,18 +79,6 @@ AwsSolutions-IAM5[Resource::<ThumbnailCacheBucket32BC0835.Arn>/*]	data/Thumbnail
 AwsSolutions-IAM5[Resource::arn:aws:bedrock:*::foundation-model/*]	data/AskAboutFileLambdaRole/Resource
 AwsSolutions-IAM5[Resource::arn:aws:s3:::*athena-results*/*]	data/AthenaQueryLambdaRole/Resource
 AwsSolutions-IAM5[Resource::arn:aws:s3:::*athena-results*]	data/AthenaQueryLambdaRole/Resource
-AwsSolutions-IAM5[Resource::arn:aws:s3:::fsxn-audit-logs-observability-test/*]	data/AgentChatLambdaRole/Resource
-AwsSolutions-IAM5[Resource::arn:aws:s3:::fsxn-audit-logs-observability-test/*]	data/AskAboutFileLambdaRole/Resource
-AwsSolutions-IAM5[Resource::arn:aws:s3:::fsxn-audit-logs-observability-test/*]	data/AthenaQueryLambdaRole/Resource
-AwsSolutions-IAM5[Resource::arn:aws:s3:::fsxn-audit-logs-observability-test/*]	data/ComprehendLambdaRole/Resource
-AwsSolutions-IAM5[Resource::arn:aws:s3:::fsxn-audit-logs-observability-test/*]	data/DetectLabelsLambdaRole/Resource
-AwsSolutions-IAM5[Resource::arn:aws:s3:::fsxn-audit-logs-observability-test/*]	data/FolderDownloadLambdaRole/Resource
-AwsSolutions-IAM5[Resource::arn:aws:s3:::fsxn-audit-logs-observability-test/*]	data/GenerateQrCodeLambdaRole/Resource
-AwsSolutions-IAM5[Resource::arn:aws:s3:::fsxn-audit-logs-observability-test/*]	data/GetPresignedUrlLambdaRole/Resource
-AwsSolutions-IAM5[Resource::arn:aws:s3:::fsxn-audit-logs-observability-test/*]	data/ListFilesLambdaRole/Resource
-AwsSolutions-IAM5[Resource::arn:aws:s3:::fsxn-audit-logs-observability-test/*]	data/SearchFilesLambdaRole/Resource
-AwsSolutions-IAM5[Resource::arn:aws:s3:::fsxn-audit-logs-observability-test/*]	data/TextractLambdaRole/Resource
-AwsSolutions-IAM5[Resource::arn:aws:s3:::fsxn-audit-logs-observability-test/*]	data/ThumbnailsLambdaRole/Resource
 AwsSolutions-IAM5[Resource::arn:aws:s3:<AWS::Region>:<AWS::AccountId>:accesspoint/*/object/*]	data/AgentChatLambdaRole/Resource
 AwsSolutions-IAM5[Resource::arn:aws:s3:<AWS::Region>:<AWS::AccountId>:accesspoint/*/object/*]	data/AskAboutFileLambdaRole/Resource
 AwsSolutions-IAM5[Resource::arn:aws:s3:<AWS::Region>:<AWS::AccountId>:accesspoint/*/object/*]	data/AthenaQueryLambdaRole/Resource
@@ -179,6 +160,5 @@ AwsSolutions-DDB3	data/PortalSettingsTable/Resource
 # The account and region are filled in from the deployment, so what remains wildcarded
 # is the access point name and the object key. A key cannot be enumerated in advance; an
 # access-point wildcard is refused at synth once `groupApMapping` is in use.
-AwsSolutions-IAM5[Resource::arn:aws:s3:::fsxn-audit-logs-observability-test/*]	auth/amplifyAuth/authenticatedUserRole/DefaultPolicy/Resource
 AwsSolutions-IAM5[Resource::arn:aws:s3:<AWS::Region>:<AWS::AccountId>:accesspoint/*/object/*]	auth/amplifyAuth/authenticatedUserRole/DefaultPolicy/Resource
 AwsSolutions-IAM5[Resource::arn:aws:s3:<AWS::Region>:<AWS::AccountId>:accesspoint/*]	auth/amplifyAuth/authenticatedUserRole/DefaultPolicy/Resource

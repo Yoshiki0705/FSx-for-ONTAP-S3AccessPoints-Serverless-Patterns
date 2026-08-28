@@ -43,6 +43,38 @@ OUTDIR=${CDK_NAG_OUTDIR:-.cdk-nag-out}
 BACKEND_NAME=${CDK_NAG_BACKEND_NAME:-nagcheck}
 BACKEND_NAMESPACE=${CDK_NAG_BACKEND_NAMESPACE:-fsxns3apamplifyportal}
 
+# Synthesise against the committed example configuration, not the one on this machine.
+#
+# Several finding ids embed a value from `portal-config.ts` -- an IAM5 finding names the
+# resource ARN it objects to -- and that file is gitignored, so a developer's copy differs
+# from the example CI copies into place. A baseline recorded from a local config named a
+# DemoMode bucket that CI has never heard of, and the gate failed on its first run with 13
+# findings "no longer reported". The baseline has to be defined against the file everybody
+# shares.
+#
+# `CDK_NAG_KEEP_CONFIG=1` synthesises against whatever is in place instead. Useful for
+# looking at your own deployment; the baseline will not match, and that is expected.
+CONFIG=amplify/portal-config.ts
+EXAMPLE=amplify/portal-config.example.ts
+STASHED=""
+restore_config() {
+  if [ -n "$STASHED" ] && [ -f "$STASHED" ]; then
+    mv -f "$STASHED" "$CONFIG"
+  fi
+}
+# On any exit, including an interrupt: losing somebody's configuration to a check that
+# only reads things would be a poor trade.
+trap restore_config EXIT INT TERM
+
+if [ "${CDK_NAG_KEEP_CONFIG:-0}" != "1" ]; then
+  if [ -f "$CONFIG" ]; then
+    STASHED="$(mktemp "${TMPDIR:-/tmp}/portal-config.XXXXXX.ts")"
+    cp "$CONFIG" "$STASHED"
+  fi
+  cp "$EXAMPLE" "$CONFIG"
+  echo "Synthesising against $EXAMPLE (set CDK_NAG_KEEP_CONFIG=1 to use your own)."
+fi
+
 rm -rf "$OUTDIR"
 mkdir -p "$OUTDIR"
 
