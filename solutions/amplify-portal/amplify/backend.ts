@@ -272,7 +272,18 @@ if (config.maxBlockTtlHours > 0 && config.defaultBlockTtlHours > config.maxBlock
   );
 }
 
-if (vpcConfig && config.vpcRouteTableIds.length > 0) {
+// A gateway endpoint is a route, and a route table holds one route per prefix
+// list. So this resource belongs to the VPC rather than to this stack: with two
+// stacks pointed at the same route tables, the second one to deploy is refused
+// with "route table rtb-... already has a route with destination-prefix-list-id
+// pl-...", and the data stack rolls back after the rest of it created cleanly.
+// Measured 2026-08-28 bringing up a second sandbox in a VPC that already had one.
+//
+// The functions need the route, not the ownership, so reusing an existing one is
+// equivalent. `dynamoDbGatewayEndpointExists` says which stack owns it;
+// `vpcRouteTableIds` still has to be set either way, since it is also the signal
+// that the Lambda subnets can reach the ledger at all.
+if (vpcConfig && config.vpcRouteTableIds.length > 0 && !config.dynamoDbGatewayEndpointExists) {
   new ec2.CfnVPCEndpoint(dataStack, "DynamoDbGatewayEndpoint", {
     vpcId: config.vpcId,
     serviceName: `com.amazonaws.${config.region}.dynamodb`,

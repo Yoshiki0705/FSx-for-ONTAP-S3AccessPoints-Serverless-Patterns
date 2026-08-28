@@ -59,6 +59,10 @@ export interface PortalConfig {
   vpcSecurityGroupIds: string[];
   // Required whenever vpcId is set. See the assignment below for why.
   vpcRouteTableIds: string[];
+  // True when another stack already routes DynamoDB in those route tables. A
+  // route table holds one route per prefix list, so only one stack per VPC may
+  // create the gateway endpoint; the rest reuse the route it installed.
+  dynamoDbGatewayEndpointExists: boolean;
   // Escape hatch: deploy into a VPC with no block expiry, on purpose.
   allowNoBlockExpiry: boolean;
 
@@ -329,6 +333,20 @@ export const config: PortalConfig = {
    * complete while expiry does not run. Set allowNoBlockExpiry to accept that.
    */
   vpcRouteTableIds: [],
+
+  /**
+   * Set true when a DynamoDB gateway endpoint already routes the route tables
+   * above, so this stack reuses that route instead of installing its own.
+   *
+   * Check before the first deployment into a shared VPC:
+   *   aws ec2 describe-route-tables --route-table-ids <rtb-id> \
+   *     --query "RouteTables[].Routes[?DestinationPrefixListId!=null]"
+   *
+   * Leaving it false where one exists fails the data stack at create time with
+   * "already has a route with destination-prefix-list-id", and rolls the stack
+   * back after roughly two minutes of successful resource creation.
+   */
+  dynamoDbGatewayEndpointExists: false,
   allowNoBlockExpiry: false,
 
   /**

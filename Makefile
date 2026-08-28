@@ -23,7 +23,7 @@
 	build-sap deploy-uc1 deploy-sap clean build-SharedLayer build-uc12 deploy-uc12 test-ops1 \
 	test-ops4 test-ops3 test-ops2 test-ops5 test-ops6 test-ops lint-ops lint-cfn-ops \
 	build-ops1 deploy-ops1 security-report security-cfn propose-cleanup ontap-preflight \
-	discover-s3ap check-group-ap-tags portal-grant-roles
+	discover-s3ap check-group-ap-tags portal-preflight portal-grant-roles
 
 # Target Python version — must match the Lambda runtime in the SAM templates
 # (`Runtime: python3.13`). Declared once here so `install`, the interpreter
@@ -88,6 +88,7 @@ help:
 	@echo "  make propose-cleanup — Report the backlog, then what is standing and its cost (read-only)"
 	@echo "  make discover-s3ap — Inventory S3 access points from the FSx API (read-only)"
 	@echo "  make check-group-ap-tags — Report groupApMapping vs access point tags (read-only)"
+	@echo "  make portal-preflight — Check a deployed sandbox against outputs and config (read-only)"
 	@echo "  make portal-grant-roles — Grant portal roles/scopes to Cognito users (dry run unless ARGS=--apply)"
 	@echo "  make clean         — Remove build artifacts"
 	@echo ""
@@ -234,6 +235,14 @@ discover-s3ap:
 # portal-config.ts is absent (gitignored), which is not the same as agreement.
 check-group-ap-tags:
 	$(PYTHON) scripts/check_group_ap_tags.py --regions $(or $(REGIONS),ap-northeast-1) $(ARGS)
+
+# Compares the deployed sandbox against amplify_outputs.json and portal-config.ts:
+# which pool the browser will use and which sandbox owns it, whether the
+# ONTAP-facing functions are in the VPC, and whether the DynamoDB route matches
+# what the config claims. Read-only. Run before handing a URL to a reviewer --
+# reaching the page is not evidence that anyone can sign in.
+portal-preflight:
+	$(PYTHON) scripts/portal_preflight.py $(ARGS)
 
 # Grant the two-axis groups. Dry run unless ARGS includes --apply, and idempotent, so
 # it can be re-run after adding people without tracking who was done.

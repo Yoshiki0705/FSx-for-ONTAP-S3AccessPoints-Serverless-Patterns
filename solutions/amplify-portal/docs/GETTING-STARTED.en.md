@@ -449,6 +449,84 @@ inside that tab rather than on the server. In Chrome, Shift+Esc opens a per-tab 
 immediately before, your browser and version, and any errors in the DevTools Console. Console
 output can contain file names or user names, so review it before sharing.
 
+## When more than one sandbox exists in the account
+
+Each `--identifier` gets its own stack, but **three things are shared**. Every one of them
+fails by looking like it works, so read this before deploying a second sandbox.
+
+### 1. There is only one `amplify_outputs.json`
+
+The browser reads its connection settings from that single file, and every `ampx sandbox`
+run **overwrites it with the sandbox that ran last**. After deploying a different sandbox
+the page still loads and the sign-in form still renders, but it authenticates against a
+pool where the account you handed out does not exist. All the reviewer sees is "incorrect
+username or password".
+
+Check which sandbox the outputs point at before handing out credentials:
+
+```bash
+make portal-preflight
+```
+
+`pool ap-northeast-1_XXXX ... belongs to sandbox 'demo'` means the account has to be
+created **in that pool**.
+
+### 2. An existing Cognito user pool cannot be updated through CloudFormation
+
+Once created, changing any property of the pool is refused by Cognito: without an explicit
+`AttributeDataType` the update fails with `Invalid AttributeDataType input`, and adding one
+fails with `Required custom attributes are not supported currently`. On an update Cognito
+reads `Schema` as attributes to *add*, so re-sending the schema the pool already has is
+invalid by construction.
+
+This surfaces **after** an auth change lands. A sandbox that sat idle across such a change
+fails every subsequent deployment in its auth stack, and because rollback is per stack,
+**changes unrelated to auth — a Lambda's VPC configuration, for instance — do not apply
+either**.
+
+There is no workaround. Amplify's own resolution (remove `defineAuth`, deploy, add it
+back) deletes every user in the pool. **Deploying under a new identifier is the only
+path**, and a new pool is created with the current configuration from the start.
+
+### 3. A VPC holds one DynamoDB gateway endpoint
+
+A gateway endpoint is a route, and a route table holds one route per prefix list. A second
+sandbox pointed at the same route table fails like this, after two minutes of resources
+creating cleanly, and rolls the whole stack back:
+
+```
+route table rtb-xxxx already has a route with destination-prefix-list-id pl-xxxx
+```
+
+Declare that the route is to be reused when deploying into a VPC that already has one:
+
+```bash
+AMPLIFY_PORTAL_DDB_GW_ENDPOINT_EXISTS=1 npx ampx sandbox --once --identifier demo
+```
+
+The functions need the route, not ownership of it, so an existing route serves them
+identically. Read the current state with the following (`make portal-preflight` makes the
+same comparison):
+
+```bash
+aws ec2 describe-route-tables --route-table-ids <rtb-id> \
+  --query "RouteTables[].Routes[?DestinationPrefixListId!=null]"
+```
+
+### Before handing out a URL
+
+`make portal-preflight` compares three things against **deployed state** rather than
+against the configuration files:
+
+1. The pool named in the outputs file exists, and which sandbox owns it.
+2. The ONTAP-facing functions are inside the VPC. Without that, the management LIF is a
+   private address with no route to it, and the UI sits on "loading" indefinitely.
+3. The presence of the DynamoDB route matches what the configuration claims.
+
+**A page returning HTTP 200 is not evidence that anyone can sign in.** A 200 says static
+files were served; authentication is a separate exchange between the browser and Cognito.
+What to confirm before handing out access is the first item, the identity of the pool.
+
 ## Production migration checklist
 
 Items to confirm when taking this from DemoMode/sandbox to production:
