@@ -38,10 +38,17 @@ PORTAL_DIR = Path(__file__).resolve().parent.parent / "solutions" / "amplify-por
 OUTPUTS_PATH = PORTAL_DIR / "amplify_outputs.json"
 CONFIG_PATH = PORTAL_DIR / "amplify" / "portal-config.ts"
 
-# Function names in the portal that reach ONTAP over the management LIF. A
-# private address is only reachable from inside the VPC, so these are the ones
-# whose missing VpcConfig turns into a silent timeout.
-ONTAP_FUNCTION_HINTS = ("ResourceMgmt", "Protection", "ArpResponse", "AuditQuery")
+# What makes a function ONTAP-facing is that it was given a management address,
+# so that is what identifies one. Matching names instead missed
+# ListSnapshotsFunction, which held a stale address and a credential for another
+# cluster while the panel it serves reported "User is not authorized" -- measured
+# 2026-08-28, after the same defect had been fixed on the function whose name did
+# match. A hint list has to be updated when a function is added; this does not.
+ONTAP_ADDRESS_VAR = "ONTAP_MGMT_IP"
+
+# Read together, these say which file system a function addresses. All of them
+# have to name the same one, and the same one the access point is attached to.
+ONTAP_TARGET_VARS = (ONTAP_ADDRESS_VAR, "SVM_NAME", "ONTAP_SECRET_NAME")
 
 OK = "ok"
 FAIL = "fail"
@@ -240,8 +247,8 @@ def stack_family(stack: str, region: str) -> list[str]:
     return family
 
 
-def ontap_functions(stack: str, region: str) -> list[str]:
-    """Return names of ONTAP-facing Lambda functions in a stack family."""
+def stack_functions(stack: str, region: str) -> list[str]:
+    """Return every Lambda function in a stack family."""
     names: list[str] = []
     for member in stack_family(stack, region):
         raw = aws(
@@ -252,18 +259,46 @@ def ontap_functions(stack: str, region: str) -> list[str]:
             "--stack-name",
             member,
             "--query",
-            "StackResourceSummaries[?ResourceType=='AWS::Lambda::Function'].[LogicalResourceId,PhysicalResourceId]",
+            "StackResourceSummaries[?ResourceType=='AWS::Lambda::Function']"
+            ".PhysicalResourceId",
             "--output",
             "json",
         )
-        for logical, physical in json.loads(raw):
-            if any(hint.lower() in logical.lower() for hint in ONTAP_FUNCTION_HINTS):
-                names.append(physical)
+        names.extend(json.loads(raw))
     return names
 
 
+def function_config(name: str, region: str) -> dict:
+    """Return a function's VPC subnets and the file system it addresses."""
+    raw = aws(
+        "lambda",
+        "get-function-configuration",
+        "--region",
+        region,
+        "--function-name",
+        name,
+        "--query",
+        "{subnets: VpcConfig.SubnetIds, env: Environment.Variables}",
+        "--output",
+        "json",
+    )
+    parsed = json.loads(raw)
+    env = parsed.get("env") or {}
+    return {
+        "subnets": parsed.get("subnets") or [],
+        "target": tuple(env.get(var) for var in ONTAP_TARGET_VARS),
+        "ontap_facing": bool(env.get(ONTAP_ADDRESS_VAR)),
+    }
+
+
+def short_name(function_name: str) -> str:
+    """Return the readable middle segment of a generated function name."""
+    parts = function_name.split("-")
+    return parts[-2] if len(parts) >= 2 else function_name
+
+
 def check_lambda_vpc(stack: str | None, region: str, config_src: str) -> list[Result]:
-    """Confirm ONTAP-facing functions in the deployed stack are in the VPC."""
+    """Confirm every ONTAP-facing function is in the VPC and shares one target."""
     declared_vpc = config_default(config_src, "vpcId")
     if not declared_vpc:
         return [Result("VPC wiring", SKIP, "portal-config.ts declares no vpcId")]
@@ -271,54 +306,76 @@ def check_lambda_vpc(stack: str | None, region: str, config_src: str) -> list[Re
         return [Result("VPC wiring", SKIP, "owning stack unknown")]
 
     try:
-        functions = ontap_functions(stack, region)
+        candidates = stack_functions(stack, region)
+        configs = {name: function_config(name, region) for name in candidates}
     except RuntimeError as exc:
-        return [Result("VPC wiring", FAIL, f"cannot resolve functions: {exc}")]
+        return [Result("VPC wiring", FAIL, f"cannot read functions: {exc}")]
 
-    if not functions:
+    facing = {n: c for n, c in configs.items() if c["ontap_facing"]}
+    if not facing:
         return [
             Result(
                 "VPC wiring",
                 FAIL,
-                "no ONTAP-facing function found in this stack family",
+                f"no function in this stack family sets {ONTAP_ADDRESS_VAR}",
                 "The deployed stack does not match this checkout, or the "
-                "logical IDs changed and ONTAP_FUNCTION_HINTS needs updating.",
+                "variable was renamed and ONTAP_ADDRESS_VAR needs updating.",
             )
         ]
 
     results: list[Result] = []
-    for name in functions:
-        try:
-            raw = aws(
-                "lambda",
-                "get-function-configuration",
-                "--region",
-                region,
-                "--function-name",
-                name,
-                "--query",
-                "VpcConfig.SubnetIds",
-                "--output",
-                "json",
+    for name, conf in sorted(facing.items()):
+        if conf["subnets"]:
+            results.append(
+                Result(
+                    "VPC wiring",
+                    OK,
+                    f"{short_name(name)}: {len(conf['subnets'])} subnet(s)",
+                )
             )
-        except RuntimeError as exc:
-            results.append(Result("VPC wiring", FAIL, f"{name}: {exc}"))
-            continue
-        subnets = json.loads(raw or "null") or []
-        short = name.split("-")[-2] if name.count("-") >= 2 else name
-        if subnets:
-            results.append(Result("VPC wiring", OK, f"{short}: {len(subnets)} subnet(s)"))
         else:
             results.append(
                 Result(
                     "VPC wiring",
                     FAIL,
-                    f"{short}: no VpcConfig, so the ONTAP management LIF is unreachable",
+                    f"{short_name(name)}: no VpcConfig, so the ONTAP management "
+                    "LIF is unreachable",
                     "Every ONTAP call runs to the function timeout, which the "
                     "UI shows as a panel stuck on loading rather than as an "
                     "error. Redeploy the sandbox so the VPC config applies.",
                 )
             )
+
+    targets: dict[tuple, list[str]] = {}
+    for name, conf in sorted(facing.items()):
+        targets.setdefault(conf["target"], []).append(short_name(name))
+    if len(targets) == 1:
+        address, svm, secret = next(iter(targets))
+        results.append(
+            Result(
+                "ONTAP target",
+                OK,
+                f"all {len(facing)} function(s) address {address} / {svm} with "
+                f"{secret}",
+            )
+        )
+    else:
+        lines = [
+            f"{'+'.join(names)} -> {t[0]} / {t[1]} with {t[2]}"
+            for t, names in targets.items()
+        ]
+        results.append(
+            Result(
+                "ONTAP target",
+                FAIL,
+                "functions disagree on which file system to manage: "
+                + "; ".join(lines),
+                "Panels served by the odd one out fail with ONTAP's own message "
+                "while the rest work, so the portal looks partly broken rather "
+                "than misconfigured. Patching one function leaves the others "
+                "behind: deploy so they all read the same config.",
+            )
+        )
     return results
 
 

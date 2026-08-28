@@ -71,6 +71,34 @@ class TestSandboxIdentifier:
         assert preflight.sandbox_identifier("my-branch-stack") == "(not a sandbox stack)"
 
 
+class TestOntapDetection:
+    """What identifies an ONTAP-facing function, and how it is labelled."""
+
+    def test_detection_is_by_environment_not_name(self) -> None:
+        """A name list has to be updated when a function is added; this does not.
+
+        ListSnapshotsFunction was missed by the earlier name-hint list, and its
+        panel reported ONTAP's own authorization error while the rest worked.
+        """
+        assert preflight.ONTAP_ADDRESS_VAR == "ONTAP_MGMT_IP"
+        assert preflight.ONTAP_ADDRESS_VAR in preflight.ONTAP_TARGET_VARS
+
+    def test_target_covers_address_svm_and_credential(self) -> None:
+        """Any of the three can point at the wrong file system on its own."""
+        assert set(preflight.ONTAP_TARGET_VARS) == {
+            "ONTAP_MGMT_IP",
+            "SVM_NAME",
+            "ONTAP_SECRET_NAME",
+        }
+
+    def test_short_name_keeps_the_readable_segment(self) -> None:
+        name = "amplify-fsxns3apamplifypo-ListSnapshotsFunction17E-IKzBphg7QYSo"
+        assert preflight.short_name(name) == "ListSnapshotsFunction17E"
+
+    def test_short_name_passes_through_a_plain_name(self) -> None:
+        assert preflight.short_name("myfunc") == "myfunc"
+
+
 class TestResult:
     """A skipped check must not read as a passing one."""
 
