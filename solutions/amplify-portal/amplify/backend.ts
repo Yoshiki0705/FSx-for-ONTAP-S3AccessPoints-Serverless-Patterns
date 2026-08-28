@@ -1409,6 +1409,56 @@ new events.Rule(dataStack, "ContainmentBlockSweepSchedule", {
 
 // --- Lambda Data Source for Resource Management (Admin) ---
 // Uses functions/resource-management/handler.py
+// --- Data platform inventory ------------------------------------------------
+//
+// Provides: listDataPlatforms
+//
+// Outside the VPC, unlike every other ONTAP-adjacent function here, and that is
+// the point rather than an oversight. It answers the AWS control plane, and its
+// value is that it still answers when the ONTAP path does not: a mismatched
+// credential or an unreachable management LIF leaves the panels unable to say
+// what exists, which is when an operator most needs to see the inventory. Put in
+// the VPC it would need an FSx interface endpoint or a NAT gateway, and would
+// fail for network reasons while reporting an inventory problem.
+//
+// It also holds no ONTAP credential and needs none. Listing what exists is a
+// different question from being able to act on it.
+const platformDiscoveryFunction = new lambda.Function(dataStack, "PlatformDiscoveryFunction", {
+  runtime: lambda.Runtime.PYTHON_3_13,
+  architecture: lambda.Architecture.ARM_64,
+  handler: "handler.handler",
+  code: functionCode("functions/platform-discovery"),
+  environment: {
+    // Platforms that are not FSx for ONTAP, which no AWS API lists. Each appears
+    // only once a probe answers for it, so this is a claim that something exists
+    // rather than an entry in the inventory.
+    DECLARED_PLATFORMS: JSON.stringify(config.declaredDataPlatforms || []),
+    // Compared, not published. The inventory says which platform is the working
+    // one as a boolean; the address itself never leaves this function, so the
+    // response stays answerable to every signed-in user.
+    ONTAP_MGMT_IP: config.ontapMgmtIp,
+  },
+  // Imports `shared.storage_systems`; the asset covers only this directory.
+  layers: [sharedPythonLayer],
+  memorySize: 256,
+  timeout: Duration.seconds(30),
+  description: "Lists the data platforms the portal can scope to (FSx control plane)",
+});
+
+// Account-wide read on the FSx control plane. Neither call takes a resource, so
+// there is nothing narrower to scope them to: `DescribeFileSystems` and
+// `DescribeStorageVirtualMachines` enumerate, and an enumeration cannot be
+// restricted to the resources it is meant to find. Both are read-only.
+platformDiscoveryFunction.addToRolePolicy(
+  new iam.PolicyStatement({
+    effect: iam.Effect.ALLOW,
+    actions: ["fsx:DescribeFileSystems", "fsx:DescribeStorageVirtualMachines"],
+    resources: ["*"],
+  })
+);
+
+api.addLambdaDataSource("PlatformDiscoveryLambdaDataSource", platformDiscoveryFunction);
+
 // Provides: Volume CRUD, Export Policy, QoS Policy, SnapLock, Quota, Qtree,
 // CIFS share, ARP admin, snapshot policy, SMB local users/groups, name mapping,
 // FlexCache and FlexClone management, SnapMirror lifecycle (transfer, quiesce,

@@ -22,7 +22,7 @@ GitHub Actions (pr-preview.yml)
     ├── npx ampx sandbox --identifier pr-${PR_NUMBER} --once
     │     ├── Cognito User Pool (pr-123-fsxn-portal)
     │     ├── AppSync API (pr-123-fsxn-portal)
-    │     ├── Lambda x19 (pr-123-*)
+    │     ├── Lambda x20 (pr-123-*)
     │     └── DynamoDB tables (pr-123-*)
     │
     ├── npm run build (Vite → dist/)
@@ -45,7 +45,7 @@ GitHub Actions (pr-cleanup.yml)
 |---------|:---:|------|
 | Cognito User Pool | $0 | Free Tier (50,000 MAU) |
 | AppSync API | $0 | Free Tier (250,000 queries/month) |
-| Lambda x19 | $0 | Free Tier (1M requests/month) |
+| Lambda x20 | $0 | Free Tier (1M requests/month) |
 | DynamoDB x5 tables | $0 | On-demand, Free Tier 25 GB |
 | Amplify Hosting | ~$0.01/PR | Build minutes only. Estimate for the case where the Hosting deployment step is implemented |
 | **Total** | **~$0/PR (estimate)** | Assumes the Free Tier allowance is not consumed elsewhere. The Free Tier is account-wide, so concurrent PRs break that assumption (only Cognito's 50,000 MAU is always free) |

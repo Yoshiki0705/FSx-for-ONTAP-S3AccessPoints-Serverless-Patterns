@@ -63,6 +63,16 @@ export interface PortalConfig {
   // route table holds one route per prefix list, so only one stack per VPC may
   // create the gateway endpoint; the rest reuse the route it installed.
   dynamoDbGatewayEndpointExists: boolean;
+  // Data platforms that are not FSx for ONTAP. FSx file systems are discovered
+  // from the control plane and never listed here. See the assignment below.
+  declaredDataPlatforms: Array<{
+    platform: string;
+    systemId: string;
+    name?: string;
+    resourceType?: string;
+    managementAddress?: string;
+    secretName?: string;
+  }>;
   // Escape hatch: deploy into a VPC with no block expiry, on purpose.
   allowNoBlockExpiry: boolean;
 
@@ -347,6 +357,34 @@ export const config: PortalConfig = {
    * back after roughly two minutes of successful resource creation.
    */
   dynamoDbGatewayEndpointExists: false,
+
+  /**
+   * Data platforms above the SVM layer that the control plane cannot report.
+   *
+   * FSx for ONTAP file systems are discovered automatically -- two read-only FSx
+   * calls, no ONTAP credential, no route to the management LIF -- so they do not
+   * belong here. What does: an on-premises ONTAP cluster, a Cloud Volumes ONTAP
+   * instance, or a container on a platform whose management interface is not the
+   * ONTAP REST API.
+   *
+   * A declaration is a claim. The platform appears only once a probe answers for
+   * it, and a platform this build cannot probe is left out with the reason
+   * recorded, so the selector never offers a scope no action can use. Adding an
+   * entry for a platform with no probe registered is therefore a no-op in the UI
+   * by design, visible in the inventory's `hidden` list.
+   *
+   *   declaredDataPlatforms: [
+   *     {
+   *       platform: "ONTAP_CLUSTER",
+   *       systemId: "lab-cluster-1",
+   *       name: "Lab cluster",
+   *       resourceType: "cluster",
+   *       managementAddress: "192.0.2.10",
+   *       secretName: "lab/ontap-credentials",
+   *     },
+   *   ]
+   */
+  declaredDataPlatforms: [],
   allowNoBlockExpiry: false,
 
   /**

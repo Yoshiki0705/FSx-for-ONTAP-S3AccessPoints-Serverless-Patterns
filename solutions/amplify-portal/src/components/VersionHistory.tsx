@@ -15,6 +15,7 @@ import { OntapFailureNotice } from "./OntapFailureNotice";
 import { SnaplockConfirmDialog } from "./SnaplockConfirmDialog";
 import { VolumeScopeBadge } from "./VolumeScopeBadge";
 import { SvmSelector } from "./admin/SvmSelector";
+import { PlatformSelector } from "./admin/PlatformSelector";
 import { VolumeSelector } from "./admin/VolumeSelector";
 import { parseResponse } from "../utils/parseResponse";
 import type { SnaplockIntent } from "../utils/snaplockConsequences";
@@ -284,6 +285,7 @@ export function VersionHistory({ mode = "browse" }: { mode?: "browse" | "diff" }
           and a name is only unique within its SVM. */}
       {isStorageAdmin === true && (
         <div className="protection-scope">
+          <PlatformSelector />
           <SvmSelector />
           <span className="protection-scope-chain" aria-hidden="true">›</span>
           <VolumeSelector

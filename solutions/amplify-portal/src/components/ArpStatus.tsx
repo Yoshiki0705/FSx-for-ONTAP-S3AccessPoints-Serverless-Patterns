@@ -9,6 +9,7 @@ import { ArpResponseActions } from "./ArpResponseActions";
 import { OntapFailureNotice } from "./OntapFailureNotice";
 import { VolumeScopeBadge } from "./VolumeScopeBadge";
 import { SvmSelector } from "./admin/SvmSelector";
+import { PlatformSelector } from "./admin/PlatformSelector";
 import { VolumeSelector } from "./admin/VolumeSelector";
 
 interface ArpData {
@@ -161,6 +162,7 @@ export function ArpStatus() {
           {/* No leading "scope" label: the two controls are labelled already, and a
               third label above them read as a duplicate of the SVM one. The chevron
               carries the narrowing instead. */}
+          <PlatformSelector />
           <SvmSelector />
           <span className="protection-scope-chain" aria-hidden="true">›</span>
           <VolumeSelector

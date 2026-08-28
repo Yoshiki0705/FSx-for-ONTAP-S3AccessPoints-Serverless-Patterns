@@ -187,6 +187,24 @@ const schema = a.schema({
   // Actions: blockSmbUser, unblockSmbUser, blockNfsIp, unblockNfsIp,
   //   containThreat, listActiveBlocks, disconnectSessions
   // =========================================================================
+  // The inventory above the SVM layer. Read-only and available to every signed-in
+  // user, because one of the panels that needs the scope selector is not
+  // admin-only -- gating it to `storage-admin` would leave that panel unable to
+  // render a control it depends on. The response carries no management address,
+  // so what it discloses is the names of the platforms and their SVMs, which the
+  // SVM selector already showed under the same authorization.
+  platformQuery: a
+    .query()
+    .arguments({ action: a.string().required(), params: a.json() })
+    .returns(a.json())
+    .authorization((allow) => [allow.authenticated()])
+    .handler(
+      a.handler.custom({
+        dataSource: "PlatformDiscoveryLambdaDataSource",
+        entry: "./resolvers/platform-dispatch.js",
+      })
+    ),
+
   arpQuery: a
     .query()
     .arguments({ action: a.string().required(), params: a.json() })

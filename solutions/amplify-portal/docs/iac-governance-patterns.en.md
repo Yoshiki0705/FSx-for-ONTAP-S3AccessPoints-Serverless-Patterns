@@ -60,7 +60,7 @@ A baselined finding is not a fixed finding. `REASONS` in `scripts/check_cdk_nag_
 | Security rules | cfn-guard (security/) | ✅ Integrated in CI |
 | AWS best practices | cdk-nag (AwsSolutionsChecks) | ✅ Compared against the baseline in CI (121 recorded) |
 | IAM permission validation | Access Analyzer ValidatePolicy | ✅ CI workflow added |
-| Structural regression | CDK harness tests (114 tests) | ✅ Integrated with vitest |
+| Structural regression | CDK harness tests (115 tests) | ✅ Integrated with vitest |
 | Secret leakage | gitleaks | ✅ pre-commit hook |
 | GitHub Actions security | zizmor | ✅ pre-commit hook |
 | Dependency updates | Renovate | ✅ Automated PRs |

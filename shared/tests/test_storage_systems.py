@@ -315,7 +315,30 @@ class TestSerialisation:
             "manageable": True,
             "discoveredBy": "fsx-control-plane",
             "resourceType": "file system",
+            "connected": False,
         }
+
+    def test_public_dict_omits_the_management_address(self) -> None:
+        """The browser routes nothing, so it is told no endpoints."""
+        system = StorageSystem(
+            platform=PLATFORM_FSX_ONTAP,
+            system_id="fs-1",
+            name="a",
+            management_address="10.0.3.72",
+        )
+        public = system.as_public_dict()
+        assert "managementAddress" not in public
+        assert public["systemId"] == "fs-1"
+
+    def test_connected_is_false_until_something_says_otherwise(self) -> None:
+        """A wrong mark is worse than no mark: it misstates what actions apply to."""
+        assert StorageSystem(platform=PLATFORM_FSX_ONTAP, system_id="fs-1", name="a").connected is False
+
+    def test_inventory_key_is_platforms(self) -> None:
+        """The portal's term for the unit, whatever sits underneath it."""
+        inventory = Inventory(systems=[StorageSystem(platform=PLATFORM_FSX_ONTAP, system_id="fs-1", name="a")])
+        assert "platforms" in inventory.as_dict()
+        assert "systems" not in inventory.as_dict()
 
     def test_inventory_count_counts_selectable_systems_only(self) -> None:
         inventory = Inventory(

@@ -80,6 +80,11 @@ class StorageSystem:
         resource_type: The platform's own name for what this container is, when it
             is not a file system or a cluster. Carried through so the UI can label
             an entry in the platform's vocabulary instead of in ONTAP's.
+        connected: Whether this is the platform the deployment's ONTAP actions
+            address. Exactly one entry can be, because the handlers read one
+            management address from their environment. The inventory lists the
+            others so an operator can see what exists without having to reach it,
+            and this flag is what stops the UI offering them as a working scope.
     """
 
     platform: str
@@ -90,9 +95,10 @@ class StorageSystem:
     manageable: bool = False
     discovered_by: str = ""
     resource_type: str = ""
+    connected: bool = False
 
     def as_dict(self) -> dict[str, Any]:
-        """Return the shape the portal's dispatch responses use."""
+        """Return every field, for callers that route requests."""
         return {
             "platform": self.platform,
             "systemId": self.system_id,
@@ -102,7 +108,24 @@ class StorageSystem:
             "manageable": self.manageable,
             "discoveredBy": self.discovered_by,
             "resourceType": self.resource_type,
+            "connected": self.connected,
         }
+
+    def as_public_dict(self) -> dict[str, Any]:
+        """Return the fields a browser needs, without the management address.
+
+        The selector needs a name, the SVMs under it, and whether it can be acted
+        on. It has no use for the address: routing happens in the handler, which
+        reads it from configuration rather than from anything the browser sends.
+
+        Leaving it out is what keeps this response answerable to every signed-in
+        user. The alternative is deciding per group whether an inventory may
+        include management endpoints, which is a question the panels that need the
+        selector should not have to carry -- one of them is not admin-only.
+        """
+        public = self.as_dict()
+        del public["managementAddress"]
+        return public
 
 
 @dataclass(frozen=True)
@@ -168,9 +191,15 @@ class Inventory:
     hidden: list[dict[str, str]] = field(default_factory=list)
 
     def as_dict(self) -> dict[str, Any]:
-        """Return the shape the portal's dispatch responses use."""
+        """Return the inventory as the portal's dispatch response.
+
+        ``platforms`` rather than ``systems``: the portal calls this unit a data
+        platform, because it is the same choice whether the thing underneath is a
+        file system, a cluster, or a container on a platform that has neither. The
+        Python type stays ``StorageSystem`` since that is what it models.
+        """
         return {
-            "systems": [s.as_dict() for s in self.systems],
+            "platforms": [s.as_public_dict() for s in self.systems],
             "hidden": list(self.hidden),
             "count": len(self.systems),
         }

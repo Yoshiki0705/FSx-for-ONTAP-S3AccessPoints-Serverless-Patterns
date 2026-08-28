@@ -54,6 +54,7 @@ HANDLER_MAPS = {
     "list-files": "ListFilesActionParams",
     "agent-chat": "AgentChatActionParams",
     "thumbnails": "ThumbnailsActionParams",
+    "platform-discovery": "PlatformDiscoveryActionParams",
 }
 
 # Parameter name -> branded type. A branded type is a string or number that plain
