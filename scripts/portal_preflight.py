@@ -45,10 +45,19 @@ CONFIG_PATH = PORTAL_DIR / "amplify" / "portal-config.ts"
 # 2026-08-28, after the same defect had been fixed on the function whose name did
 # match. A hint list has to be updated when a function is added; this does not.
 ONTAP_ADDRESS_VAR = "ONTAP_MGMT_IP"
+ONTAP_CREDENTIAL_VAR = "ONTAP_SECRET_NAME"
 
 # Read together, these say which file system a function addresses. All of them
 # have to name the same one, and the same one the access point is attached to.
-ONTAP_TARGET_VARS = (ONTAP_ADDRESS_VAR, "SVM_NAME", "ONTAP_SECRET_NAME")
+ONTAP_TARGET_VARS = (ONTAP_ADDRESS_VAR, "SVM_NAME", ONTAP_CREDENTIAL_VAR)
+
+# Connecting to ONTAP takes both an address and a credential, so both are what
+# identify a function that connects. The address alone is not enough: the data
+# platform inventory reads it to say which platform is the working one, connects to
+# nothing, and holds no credential -- and on the address alone this check called it
+# an ONTAP function, then reported it as disagreeing with the others about a file
+# system it never contacts, and as missing the VPC config it must not have.
+ONTAP_CONNECT_VARS = (ONTAP_ADDRESS_VAR, ONTAP_CREDENTIAL_VAR)
 
 OK = "ok"
 FAIL = "fail"
@@ -259,8 +268,7 @@ def stack_functions(stack: str, region: str) -> list[str]:
             "--stack-name",
             member,
             "--query",
-            "StackResourceSummaries[?ResourceType=='AWS::Lambda::Function']"
-            ".PhysicalResourceId",
+            "StackResourceSummaries[?ResourceType=='AWS::Lambda::Function'].PhysicalResourceId",
             "--output",
             "json",
         )
@@ -287,7 +295,7 @@ def function_config(name: str, region: str) -> dict:
     return {
         "subnets": parsed.get("subnets") or [],
         "target": tuple(env.get(var) for var in ONTAP_TARGET_VARS),
-        "ontap_facing": bool(env.get(ONTAP_ADDRESS_VAR)),
+        "ontap_facing": all(env.get(var) for var in ONTAP_CONNECT_VARS),
     }
 
 
@@ -317,9 +325,9 @@ def check_lambda_vpc(stack: str | None, region: str, config_src: str) -> list[Re
             Result(
                 "VPC wiring",
                 FAIL,
-                f"no function in this stack family sets {ONTAP_ADDRESS_VAR}",
+                f"no function in this stack family sets both {ONTAP_ADDRESS_VAR} and {ONTAP_CREDENTIAL_VAR}",
                 "The deployed stack does not match this checkout, or the "
-                "variable was renamed and ONTAP_ADDRESS_VAR needs updating.",
+                "variables were renamed and ONTAP_CONNECT_VARS needs updating.",
             )
         ]
 
@@ -338,8 +346,7 @@ def check_lambda_vpc(stack: str | None, region: str, config_src: str) -> list[Re
                 Result(
                     "VPC wiring",
                     FAIL,
-                    f"{short_name(name)}: no VpcConfig, so the ONTAP management "
-                    "LIF is unreachable",
+                    f"{short_name(name)}: no VpcConfig, so the ONTAP management LIF is unreachable",
                     "Every ONTAP call runs to the function timeout, which the "
                     "UI shows as a panel stuck on loading rather than as an "
                     "error. Redeploy the sandbox so the VPC config applies.",
@@ -355,21 +362,16 @@ def check_lambda_vpc(stack: str | None, region: str, config_src: str) -> list[Re
             Result(
                 "ONTAP target",
                 OK,
-                f"all {len(facing)} function(s) address {address} / {svm} with "
-                f"{secret}",
+                f"all {len(facing)} function(s) address {address} / {svm} with {secret}",
             )
         )
     else:
-        lines = [
-            f"{'+'.join(names)} -> {t[0]} / {t[1]} with {t[2]}"
-            for t, names in targets.items()
-        ]
+        lines = [f"{'+'.join(names)} -> {t[0]} / {t[1]} with {t[2]}" for t, names in targets.items()]
         results.append(
             Result(
                 "ONTAP target",
                 FAIL,
-                "functions disagree on which file system to manage: "
-                + "; ".join(lines),
+                "functions disagree on which file system to manage: " + "; ".join(lines),
                 "Panels served by the odd one out fail with ONTAP's own message "
                 "while the rest work, so the portal looks partly broken rather "
                 "than misconfigured. Patching one function leaves the others "

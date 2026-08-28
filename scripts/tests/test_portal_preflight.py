@@ -74,6 +74,17 @@ class TestSandboxIdentifier:
 class TestOntapDetection:
     """What identifies an ONTAP-facing function, and how it is labelled."""
 
+    def test_connecting_takes_an_address_and_a_credential(self) -> None:
+        """The address alone is not enough, and treating it as enough misfired.
+
+        The data platform inventory reads the address to say which platform is the
+        working one. It connects to nothing and holds no credential, and on the
+        address alone this check reported it as disagreeing with the other functions
+        about a file system it never contacts.
+        """
+        assert preflight.ONTAP_CONNECT_VARS == ("ONTAP_MGMT_IP", "ONTAP_SECRET_NAME")
+        assert set(preflight.ONTAP_CONNECT_VARS) <= set(preflight.ONTAP_TARGET_VARS)
+
     def test_detection_is_by_environment_not_name(self) -> None:
         """A name list has to be updated when a function is added; this does not.
 
