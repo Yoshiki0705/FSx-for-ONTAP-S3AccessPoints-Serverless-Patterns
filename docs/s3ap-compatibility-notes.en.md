@@ -17,7 +17,7 @@ FSx for ONTAP S3 Access Points provide an S3-facing access boundary for file dat
 | Low-latency metadata operations (stat, readdir) | △ (tens of ms) | ✅ (sub-ms) |
 | Existing application compatibility | — | ✅ |
 | AWS service integration (Athena, Bedrock, Textract) | ✅ | — |
-| Event-driven file processing | △ (EventBridge Scheduler polling. **FPolicy does not see operations through the S3 access point** — measured 2026-08-26, ONTAP 9.18.1P3D1) | ✅ (FPolicy + NFS/SMB) |
+| Event-driven file processing | △ (EventBridge Scheduler polling. **FPolicy does not see operations through the S3 access point** — measured 2026-08-26, ONTAP 9.18.1P3D1; AWS Support confirms it applies to all current releases. See [Auditing and event visibility](#auditing-and-event-visibility--the-s3-access-path)) | ✅ (FPolicy + NFS/SMB) |
 
 > **Note**: S3 AP is not a replacement for NFS/SMB. It is a complementary access path for AWS service integration. The same volume can be accessed via NFS/SMB and S3 AP simultaneously.
 
@@ -226,6 +226,36 @@ If annotations were supported through an FSx for ONTAP S3 AP, the following woul
 | POLLING (default) | EventBridge Scheduler + Discovery Lambda |
 | EVENT_DRIVEN | FPolicy-based, near-real-time; not native S3 bucket notifications |
 | HYBRID | Both polling and event-driven with deduplication |
+
+---
+
+## Auditing and event visibility — the S3 access path
+
+Access through an S3 access point falls outside ONTAP's auditing and event notification
+frameworks. Measurements and AWS Support confirmations are listed separately below.
+
+| Item | State | Basis |
+|---|---|---|
+| Does FPolicy see operations through the S3 access point | No | Measured (2026-08-26, ONTAP 9.18.1P3D1) and confirmed by AWS Support (2026-08-27). **This applies to all currently available ONTAP releases**, so upgrading does not resolve it |
+| FPolicy support for S3 | Under development at the vendor, no availability date | AWS Support (2026-08-27). No timeline is provided through AWS |
+| Does the ONTAP audit log carry the requesting identity (IAM principal) | No | AWS Support (2026-08-27) |
+| Does the ONTAP audit log carry the source IP | No | AWS Support (2026-08-27) |
+| Audit event corresponding to `HEAD` | Does not exist | AWS Support (2026-08-27) |
+
+> **Unconfirmed — do not write "CloudTrail covers it" until this is settled.** AWS points to
+> CloudTrail as the way to obtain the identity and the source IP, but **whether object-level
+> operations against an FSx for ONTAP S3 AP (`GetObject`, `PutObject`, `DeleteObject` and so
+> on) are recorded as CloudTrail data events** could not be confirmed from the published
+> documentation and is currently under query. If they are, a trail has to name the resource
+> type through advanced event selectors; if they are not, and only the FSx control-plane
+> calls such as `CreateAndAttachS3AccessPoint` are recorded, then CloudTrail does not answer
+> the audit question at all. The guidance is opposite in the two cases.
+
+**Design implication**: for data subject to audit requirements reached through an S3 access
+point, "who touched which object" cannot be reconstructed from the ONTAP side alone. Where
+auditing is a requirement, keep the access path on NFS/SMB, or record it in the application
+layer — in this repository's patterns, the Lambda handlers that go through `S3ApHelper`.
+Enabling auditing on the volume does not cover this path.
 
 ---
 
