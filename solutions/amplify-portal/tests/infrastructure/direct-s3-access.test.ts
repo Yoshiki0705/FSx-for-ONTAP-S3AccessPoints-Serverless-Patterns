@@ -18,7 +18,7 @@ import {
   S3_READ_ACTIONS,
   S3_WRITE_ACTIONS,
   directS3Problems,
-  nagAcknowledgeableWildcards,
+  scopeS3ApArns,
 } from "../../amplify/direct-s3-access";
 import { ALL_PORTAL_GROUPS } from "../../amplify/portal-groups";
 
@@ -134,39 +134,49 @@ describe("directS3Problems", () => {
   });
 });
 
-describe("nagAcknowledgeableWildcards", () => {
-  it("keeps an access-point wildcard", () => {
-    expect(
-      nagAcknowledgeableWildcards([
-        "arn:aws:s3:*:*:accesspoint/*",
-        "arn:aws:s3:*:*:accesspoint/*/object/*",
-      ])
-    ).toHaveLength(2);
+describe("scopeS3ApArns", () => {
+  const HERE = { account: "111122223333", region: "ap-northeast-1" };
+
+  it("fills in the account and region the deployment is in", () => {
+    // The shipped default grants every access point in every account. Nothing needs that:
+    // an access point is addressed by an alias that resolves within one account.
+    expect(scopeS3ApArns(["arn:aws:s3:*:*:accesspoint/*"], HERE)).toEqual([
+      "arn:aws:s3:ap-northeast-1:111122223333:accesspoint/*",
+    ]);
   });
 
-  it("drops an ARN with no wildcard", () => {
-    // No wildcard means no IAM5 finding, so acknowledging it would suppress something that
-    // was never raised.
-    expect(nagAcknowledgeableWildcards(["arn:aws:s3:::plain-bucket"])).toEqual([]);
+  it("leaves the access point name alone", () => {
+    // The wildcard that matters for tenant isolation. Only the operator knows which
+    // access points exist, so this function must not appear to have handled it.
+    const [scoped] = scopeS3ApArns(["arn:aws:s3:*:*:accesspoint/*/object/*"], HERE);
+    expect(scoped).toBe("arn:aws:s3:ap-northeast-1:111122223333:accesspoint/*/object/*");
   });
 
-  it("drops an ARN whose own form carries a second `::`", () => {
-    // `Validations.acknowledge` splits the id on `::` to separate an optional prefix, and
-    // throws on more than one. The granular id already contains one inside `[Resource::…]`,
-    // so `arn:aws:s3:::bucket/*` makes it unacceptable and the finding stays reported.
-    // Passing it through would break synth rather than suppress anything.
-    expect(nagAcknowledgeableWildcards(["arn:aws:s3:::demo-bucket/*"])).toEqual([]);
+  it("does not touch an account or region that was named", () => {
+    const named = "arn:aws:s3:us-east-1:999988887777:accesspoint/theirs";
+    expect(scopeS3ApArns([named], HERE)).toEqual([named]);
   });
 
-  it("produces ids with exactly one `::` when the prefix is added", () => {
-    // The property the filter exists to guarantee, checked the way the API checks it.
-    for (const arn of nagAcknowledgeableWildcards([
-      "arn:aws:s3:*:*:accesspoint/*",
-      "arn:aws:s3:*:*:accesspoint/*/object/*",
-      "arn:aws:s3:::demo-bucket/*",
-    ])) {
-      expect(`AwsSolutions-IAM5[Resource::${arn}]`.split("::")).toHaveLength(2);
+  it("leaves a plain bucket ARN's empty fields empty", () => {
+    // `arn:aws:s3:::bucket` carries no region or account by design, and filling them
+    // would produce an ARN that matches nothing.
+    for (const arn of ["arn:aws:s3:::demo-bucket", "arn:aws:s3:::demo-bucket/*"]) {
+      expect(scopeS3ApArns([arn], HERE)).toEqual([arn]);
     }
+  });
+
+  it("passes through anything that is not a six-field S3 ARN", () => {
+    for (const value of ["", "*", "not-an-arn", "arn:aws:dynamodb:*:*:table/x", "arn:aws:s3"]) {
+      expect(scopeS3ApArns([value], HERE)).toEqual([value]);
+    }
+  });
+
+  it("keeps a resource that contains colons intact", () => {
+    // An object key may contain a colon, and rejoining on ':' must not lose it.
+    const arn = "arn:aws:s3:*:*:accesspoint/ap/object/a:b:c.txt";
+    expect(scopeS3ApArns([arn], HERE)).toEqual([
+      "arn:aws:s3:ap-northeast-1:111122223333:accesspoint/ap/object/a:b:c.txt",
+    ]);
   });
 });
 

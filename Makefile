@@ -285,6 +285,12 @@ drift:
 # cover it: the colliding name belongs to the application module, not the test module.
 	$(PYTHON) -m pytest scripts/tests/test_check_test_module_names.py --tb=short -q
 	$(PYTHON) scripts/check_test_module_names.py
+# The cdk-nag ratchet's own tests. The check itself is not run here: it needs a synth
+# (node_modules plus a portal-config), so it runs in the portal's CI job. These assert the
+# comparison fails in both directions -- a finding that is not recorded, and a recorded
+# finding that has been fixed -- and that every entry in the committed baseline still has a
+# reason attached, which is the part that decays as the file is edited.
+	$(PYTHON) -m pytest scripts/tests/test_check_cdk_nag_baseline.py --tb=short -q
 # `make drift` and the workflows are two lists of checks, and nothing made them
 # agree. Four checks below this line ran here and in no workflow at all, so a pull
 # request could merge past every one of them: check_en_doc_language,

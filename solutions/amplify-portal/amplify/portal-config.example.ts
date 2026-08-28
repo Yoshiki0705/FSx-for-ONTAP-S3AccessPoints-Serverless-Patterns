@@ -133,6 +133,16 @@ export const config: PortalConfig = {
    * contributor writes to any access point in the account, including one belonging to
    * another group -- the group-to-access-point routing in `groupApMapping` is applied by
    * the Lambda handlers and does not reach this path. Narrow it before production.
+   *
+   * Two things happen to what you put here, both in `amplify/direct-s3-access.ts`:
+   *
+   *   A `*` in the region or account position is replaced by the deployment's own, so the
+   *   default below grants this account rather than every account. Read the synthesised
+   *   policy if you want to see it; `scopeS3ApArns` is the function.
+   *
+   *   An access-point *name* left as `*` is refused at synth once `groupApMapping` routes
+   *   any group to its own access point, because on this path that wildcard cancels the
+   *   isolation the mapping asks for.
    */
   s3ApResourceArns: [
     "arn:aws:s3:*:*:accesspoint/*",

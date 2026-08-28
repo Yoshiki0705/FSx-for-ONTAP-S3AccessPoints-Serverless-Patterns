@@ -6,7 +6,7 @@ import {
   DIRECT_S3_BY_GROUP,
   S3_READ_ACTIONS,
   directS3Problems,
-  nagAcknowledgeableWildcards,
+  scopeS3ApArns,
 } from "./direct-s3-access";
 import { validateAuthorizationConfig } from "./validate-authorization-config";
 import * as crypto from "crypto";
@@ -17,7 +17,7 @@ import * as iam from "aws-cdk-lib/aws-iam";
 import * as lambda from "aws-cdk-lib/aws-lambda";
 import * as ec2 from "aws-cdk-lib/aws-ec2";
 import * as s3 from "aws-cdk-lib/aws-s3";
-import { AssetHashType, Duration, RemovalPolicy, Stack, Validations } from "aws-cdk-lib";
+import { AssetHashType, Aws, Duration, RemovalPolicy, Stack, Validations } from "aws-cdk-lib";
 import * as dynamodb from "aws-cdk-lib/aws-dynamodb";
 import * as cloudwatch from "aws-cdk-lib/aws-cloudwatch";
 import * as cloudwatchActions from "aws-cdk-lib/aws-cloudwatch-actions";
@@ -152,11 +152,20 @@ if (!config.signIn.selfSignUpEnabled) {
 // So the grant moves onto the group roles, which is where the selected credentials
 // actually come from. Reads stay on the authenticated role for the ungrouped case,
 // matching AppSync: listing and downloading are `allow.authenticated()`.
+// The configured ARNs, with a wildcard account or region replaced by this deployment's.
+// See `scopeS3ApArns`: the shipped default grants every access point in every account, and
+// nothing needs that. The access point *name* is left as configured -- that is the wildcard
+// that matters for tenant isolation, and only the operator knows which names exist.
+const s3ApArns = scopeS3ApArns(config.s3ApResourceArns, {
+  account: Aws.ACCOUNT_ID,
+  region: Aws.REGION,
+});
+
 const authenticatedRole = authResources.authenticatedUserIamRole;
 
 function grantS3(role: iam.IRole, sid: string, actions: string[]) {
   role.addToPrincipalPolicy(
-    new iam.PolicyStatement({ sid, actions, resources: config.s3ApResourceArns })
+    new iam.PolicyStatement({ sid, actions, resources: s3ApArns })
   );
 }
 
@@ -303,6 +312,9 @@ const chatHistoryTable = new dynamodb.Table(dataStack, "ChatHistoryTable", {
 const agentDirectoryTable = new dynamodb.Table(dataStack, "AgentDirectoryTable", {
   partitionKey: { name: "agentId", type: dynamodb.AttributeType.STRING },
   billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
+  // Holds agent definitions somebody wrote. Nothing regenerates it, so a bad write or an
+  // accidental delete is unrecoverable without this.
+  pointInTimeRecoverySpecification: { pointInTimeRecoveryEnabled: true },
 });
 
 // --- DynamoDB Table for Multi-Agent Teams ---
@@ -310,6 +322,9 @@ const agentDirectoryTable = new dynamodb.Table(dataStack, "AgentDirectoryTable",
 const agentTeamsTable = new dynamodb.Table(dataStack, "AgentTeamsTable", {
   partitionKey: { name: "teamId", type: dynamodb.AttributeType.STRING },
   billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
+  // Holds team compositions somebody assembled. Nothing regenerates it, so a bad write or an
+  // accidental delete is unrecoverable without this.
+  pointInTimeRecoverySpecification: { pointInTimeRecoveryEnabled: true },
 });
 
 // --- DynamoDB Table for Containment Blocks (expiry ledger) ---
@@ -329,7 +344,7 @@ const containmentBlocksTable = new dynamodb.Table(dataStack, "ContainmentBlocksT
   // Losing this table would leave blocks in place on the cluster with nothing
   // recording that they should ever be lifted.
   removalPolicy: RemovalPolicy.RETAIN,
-  pointInTimeRecovery: true,
+  pointInTimeRecoverySpecification: { pointInTimeRecoveryEnabled: true },
 });
 
 /**
@@ -362,7 +377,7 @@ const activityLedgerTable = new dynamodb.Table(dataStack, "PortalActivityLedgerT
   billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
   timeToLiveAttribute: "ttl",
   removalPolicy: RemovalPolicy.RETAIN,
-  pointInTimeRecovery: true,
+  pointInTimeRecoverySpecification: { pointInTimeRecoveryEnabled: true },
 });
 
 // An existing deployment may have pointed the handler at a table of its own. Honour it,
@@ -430,7 +445,7 @@ const listFilesRole = new iam.Role(dataStack, "ListFilesLambdaRole", {
             "s3:PutObjectTagging",
             "s3:DeleteObject",
           ],
-          resources: config.s3ApResourceArns,
+          resources: s3ApArns,
         }),
       ],
     }),
@@ -884,7 +899,7 @@ const folderDownloadRole = new iam.Role(dataStack, "FolderDownloadLambdaRole", {
       statements: [
         new iam.PolicyStatement({
           actions: ["s3:GetObject", "s3:ListBucket"],
-          resources: config.s3ApResourceArns,
+          resources: s3ApArns,
         }),
         new iam.PolicyStatement({
           actions: ["s3:PutObject", "s3:GetObject"],
@@ -956,7 +971,7 @@ const getPresignedUrlRole = new iam.Role(dataStack, "GetPresignedUrlLambdaRole",
       statements: [
         new iam.PolicyStatement({
           actions: ["s3:GetObject"],
-          resources: config.s3ApResourceArns,
+          resources: s3ApArns,
         }),
         // Narrowed from `["*"]`, which carried a comment saying to restrict it in
         // production. It could not be narrowed while the table was named by an
@@ -1046,7 +1061,7 @@ const thumbnailsRole = new iam.Role(dataStack, "ThumbnailsLambdaRole", {
         // no reason to be able to change one.
         new iam.PolicyStatement({
           actions: ["s3:GetObject", "s3:ListBucket"],
-          resources: config.s3ApResourceArns,
+          resources: s3ApArns,
         }),
         new iam.PolicyStatement({
           actions: ["s3:GetObject", "s3:PutObject"],
@@ -1242,6 +1257,28 @@ api.addLambdaDataSource("ArpResponseLambdaDataSource", arpResponseFunction);
 const containmentAlarmTopic = new sns.Topic(dataStack, "ContainmentAlarmTopic", {
   displayName: "FSx for ONTAP portal containment alarms",
 });
+
+// Refuse anything that did not arrive over TLS.
+//
+// A topic has no "SSL only" switch; the enforcement is a resource policy denying the
+// action when `aws:SecureTransport` is false. Nothing in this deployment publishes over
+// plain HTTP -- CloudWatch alarms and the AWS SDK both use TLS -- so this removes a
+// capability nobody is using rather than changing how the topic is reached.
+//
+// The condition tests for the string "false" rather than negating a truthy test: a
+// request that omits the key entirely must not match, and `Bool: {"...": false}` on an
+// absent key does not match either, so a Deny written that way would be silent about
+// exactly the requests it is meant to catch.
+containmentAlarmTopic.addToResourcePolicy(
+  new iam.PolicyStatement({
+    sid: "DenyPublishWithoutTls",
+    effect: iam.Effect.DENY,
+    principals: [new iam.AnyPrincipal()],
+    actions: ["sns:Publish"],
+    resources: [containmentAlarmTopic.topicArn],
+    conditions: { Bool: { "aws:SecureTransport": "false" } },
+  })
+);
 
 if (config.alarmEmail) {
   containmentAlarmTopic.addSubscription(new subscriptions.EmailSubscription(config.alarmEmail));
@@ -1450,9 +1487,15 @@ const searchFilesRole = new iam.Role(dataStack, "SearchFilesLambdaRole", {
         }),
         new iam.PolicyStatement({
           actions: ["s3:ListBucket", "s3:GetObject"],
-          resources: config.s3ApResourceArns.length > 0
-            ? config.s3ApResourceArns
-            : ["arn:aws:s3:*:*:accesspoint/*", "arn:aws:s3:*:*:accesspoint/*/object/*"],
+          // Both branches go through the same narrowing, so the fallback is not a way
+          // back to every account.
+          resources:
+            s3ApArns.length > 0
+              ? s3ApArns
+              : scopeS3ApArns(
+                  ["arn:aws:s3:*:*:accesspoint/*", "arn:aws:s3:*:*:accesspoint/*/object/*"],
+                  { account: Aws.ACCOUNT_ID, region: Aws.REGION }
+                ),
         }),
       ],
     }),
@@ -1512,9 +1555,15 @@ const agentChatRole = new iam.Role(dataStack, "AgentChatLambdaRole", {
         }),
         new iam.PolicyStatement({
           actions: ["s3:GetObject", "s3:ListBucket"],
-          resources: config.s3ApResourceArns.length > 0
-            ? config.s3ApResourceArns
-            : ["arn:aws:s3:*:*:accesspoint/*", "arn:aws:s3:*:*:accesspoint/*/object/*"],
+          // Both branches go through the same narrowing, so the fallback is not a way
+          // back to every account.
+          resources:
+            s3ApArns.length > 0
+              ? s3ApArns
+              : scopeS3ApArns(
+                  ["arn:aws:s3:*:*:accesspoint/*", "arn:aws:s3:*:*:accesspoint/*/object/*"],
+                  { account: Aws.ACCOUNT_ID, region: Aws.REGION }
+                ),
         }),
         new iam.PolicyStatement({
           actions: ["dynamodb:GetItem"],
@@ -1697,7 +1746,7 @@ const generateQrCodeRole = new iam.Role(dataStack, "GenerateQrCodeLambdaRole", {
       statements: [
         new iam.PolicyStatement({
           actions: ["s3:GetObject"],
-          resources: config.s3ApResourceArns,
+          resources: s3ApArns,
         }),
       ],
     }),
@@ -1749,7 +1798,7 @@ const askAboutFileRole = new iam.Role(dataStack, "AskAboutFileLambdaRole", {
       statements: [
         new iam.PolicyStatement({
           actions: ["s3:GetObject"],
-          resources: config.s3ApResourceArns,
+          resources: s3ApArns,
         }),
         new iam.PolicyStatement({
           actions: ["bedrock:InvokeModel", "bedrock:Converse"],
@@ -1811,7 +1860,7 @@ const detectLabelsRole = new iam.Role(dataStack, "DetectLabelsLambdaRole", {
       statements: [
         new iam.PolicyStatement({
           actions: ["s3:GetObject"],
-          resources: config.s3ApResourceArns,
+          resources: s3ApArns,
         }),
         new iam.PolicyStatement({
           actions: ["rekognition:DetectLabels"],
@@ -1884,7 +1933,7 @@ const athenaQueryRole = new iam.Role(dataStack, "AthenaQueryLambdaRole", {
         new iam.PolicyStatement({
           actions: ["s3:GetObject", "s3:PutObject", "s3:ListBucket", "s3:GetBucketLocation"],
           resources: [
-            ...config.s3ApResourceArns,
+            ...s3ApArns,
             "arn:aws:s3:::*athena-results*",
             "arn:aws:s3:::*athena-results*/*",
           ],
@@ -1928,7 +1977,7 @@ const textractRole = new iam.Role(dataStack, "TextractLambdaRole", {
       statements: [
         new iam.PolicyStatement({
           actions: ["s3:GetObject"],
-          resources: config.s3ApResourceArns,
+          resources: s3ApArns,
         }),
         new iam.PolicyStatement({
           actions: ["textract:AnalyzeDocument", "textract:DetectDocumentText"],
@@ -1981,7 +2030,7 @@ const comprehendRole = new iam.Role(dataStack, "ComprehendLambdaRole", {
       statements: [
         new iam.PolicyStatement({
           actions: ["s3:GetObject"],
-          resources: config.s3ApResourceArns,
+          resources: s3ApArns,
         }),
         new iam.PolicyStatement({
           actions: [
@@ -2152,47 +2201,21 @@ Validations.of(dataStack).acknowledge(
 
 // --- The auth stack's own IAM5 findings -------------------------------------------
 //
-// Acknowledged separately because the acknowledgments above are scoped to `dataStack` and
-// the roles are in the auth stack, so they were never covered. Measured with
-// `CDK_NAG=1`: 18 IAM5 findings, three per role across the six group roles, all of them
-// the wildcards in `s3ApResourceArns`.
+// Held in `security/cdk-nag-baseline.txt` rather than acknowledged here, because
+// `Validations.acknowledge` cannot express them. Two measured properties of that API
+// decided it, and both are worth keeping written down:
 //
-// The count is a consequence of the fix, not a new permission. The grant used to sit on
-// one role; it now sits on the six group roles, because those are where the credentials
-// the Storage Browser actually uses come from. The resource scope is unchanged.
+//   A coarse id suppresses nothing. `acknowledge({ id: "AwsSolutions-IAM5" })` left all 18
+//   findings on these roles in place, because cdk-nag reports each under a granular name
+//   like `AwsSolutions-IAM5[Resource::<arn>]` and the coarse name matches none of them.
+//   The acknowledgments listed above are coarse, which is why findings remain in the data
+//   stack despite being described there as accepted.
 //
-// Each id is derived from the configured ARN rather than written out, so narrowing
-// `s3ApResourceArns` removes the acknowledgment along with the finding instead of leaving
-// a suppression for a wildcard that is no longer there.
+//   It rejects an id containing more than one `::`, splitting on that delimiter to
+//   separate an optional prefix. A granular id already carries one inside `[Resource::…]`,
+//   and these ARNs now resolve through `Aws.REGION` and `Aws.ACCOUNT_ID`, which cdk-nag
+//   renders as `<AWS::Region>` and `<AWS::AccountId>` -- two more. Acknowledging them
+//   throws at synth.
 //
-// cdk-nag v3 has no `appliesTo`: the granular finding is acknowledged by its full id,
-// which is the form the failure message prints. Worth stating because the acknowledgments
-// above omit it and therefore do not suppress the granular findings they name -- 121
-// remain in the data stack, which is pre-existing and separate from this.
-// Two things about the acknowledgment API, both measured here and neither obvious:
-//
-//   A coarse id suppresses nothing. `acknowledge({ id: "AwsSolutions-IAM5" })` leaves all
-//   18 findings in place, because cdk-nag reports each one under a granular name and the
-//   coarse name matches none of them. The acknowledgments above are coarse, which is why
-//   121 findings remain in the data stack despite being listed as accepted.
-//
-//   `Validations.acknowledge` rejects an id containing more than one `::`, since it splits
-//   on that delimiter to separate an optional prefix. A granular id carries one inside
-//   `[Resource::...]`, so it is accepted -- unless the ARN itself contributes another, which
-//   `arn:aws:s3:::bucket/*` does. Those findings cannot be expressed through this API at
-//   all, so a DemoMode bucket wildcard stays reported. Filtered rather than left to throw
-//   at synth, which is what it does.
-const acknowledgeableWildcards = nagAcknowledgeableWildcards(config.s3ApResourceArns);
-if (acknowledgeableWildcards.length > 0) {
-  Validations.of(Stack.of(authenticatedRole)).acknowledge(
-    ...acknowledgeableWildcards.map((arn) => ({
-      id: `AwsSolutions-IAM5[Resource::${arn}]`,
-      reason:
-        `The Storage Browser's direct path to S3 is scoped by s3ApResourceArns, and "${arn}" ` +
-        "is what this deployment set. An object-key wildcard is unavoidable: keys cannot be " +
-        "enumerated in advance. An access-point wildcard is not, and " +
-        "`authorizationConfigProblems` refuses it at synth once groupApMapping routes any " +
-        "group to its own access point, which is the configuration it would cancel.",
-    }))
-  );
-}
+// So the baseline is the mechanism: `scripts/check_cdk_nag_baseline.py` fails on a finding
+// it does not know and on a recorded finding that has been fixed.
