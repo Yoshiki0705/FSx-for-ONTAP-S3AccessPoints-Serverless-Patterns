@@ -35,6 +35,29 @@ class TestAllowedPrefixes:
         """The bypass has to beat a group that does carry prefixes."""
         assert allowed_prefixes(["team-a", "storage-admin"], MAPPING) == []
 
+    def test_an_external_admin_is_confined(self):
+        """The exemption is conditional, which is what makes the two axes independent.
+
+        Without this, granting any administrative capability to somebody outside the
+        organisation would have handed them the whole volume as a side effect.
+        """
+        assert allowed_prefixes(["team-a", "storage-admin", "external"], MAPPING) == ["teams/a/"]
+
+    def test_an_internal_admin_is_still_unconfined(self):
+        assert allowed_prefixes(["team-a", "storage-admin", "internal"], MAPPING) == []
+
+    def test_an_admin_with_neither_scope_is_unchanged(self):
+        """Every administrator in a deployed pool predates the scope axis.
+
+        The condition is the absence of `external` rather than the presence of
+        `internal` precisely so that this case keeps its previous behaviour. Requiring
+        `internal` would confine every existing administrator the moment it shipped.
+        """
+        assert allowed_prefixes(["team-a", "storage-admin"], MAPPING) == []
+
+    def test_an_external_caller_with_no_admin_role_is_confined_as_before(self):
+        assert allowed_prefixes(["team-a", "external"], MAPPING) == ["teams/a/"]
+
     def test_a_group_with_no_prefixes_is_unrestricted(self):
         assert allowed_prefixes(["no-prefixes"], MAPPING) == []
 

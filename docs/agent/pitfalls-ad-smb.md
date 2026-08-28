@@ -8,9 +8,9 @@
 | Pitfall | Solution |
 |---------|----------|
 | `SsmAssociations` + `aws:domainJoin` → schema error | Use separate `AWS::SSM::Association` resource with `AWS-JoinDirectoryServiceDomain` document (see below) |
-| WINDOWS S3 AP `AccessDenied` on data-plane | `WindowsUser.Name` must be username only (`Admin`), NOT `DOMAIN\Admin` — domain prefix silently breaks data-plane |
+| WINDOWS S3 AP **503 ServiceUnavailable** on every data op, `HeadBucket` included | `WindowsUser.Name` carries a domain prefix (`DOMAIN\Admin`). Measured 2026-08-26: not `AccessDenied`, and not silent — every call returns 503. `HeadBucket` failing is what tells this apart from an unreachable AD DC, where `HeadBucket` succeeds. A **CIFS server name** prefix (`CIFSSRV\user`) works normally, so what breaks is the namespace the name is resolved in, not the backslash |
 | WINDOWS S3 AP creation fails | SVM must be AD-joined first; use `scripts/demo-ad-join-svm.sh` |
-| AD-joined SVM + S3 AP data ops → `AccessDenied`（HeadBucket は成功する） | AD DC がすべてのデータ操作（ListObjectsV2 / GetObject / PutObject）で到達可能である必要がある。CIFS が有効な SVM では ONTAP がデータ操作ごとに `unix→win` の逆引き name-mapping を行うため。HeadBucket は S3 レイヤのメタデータのみを見るので成功する = **偽陽性**。IAM・AP ポリシー・ネットワークもすべて通るため、間違ったレイヤを調べに行きやすい。事前チェック: `GET /api/protocols/cifs/domains?svm.name=<svm>&fields=discovered_servers` で `discovered_servers == []` なら AD DC に到達できていない。プログラムからは `shared/ad_health_check.py` を使う |
+| AD-joined SVM + S3 AP data ops → `AccessDenied`（HeadBucket は成功する） | **ドメインアカウントを固定している場合**、AD DC がすべてのデータ操作（ListObjectsV2 / GetObject / PutObject）で到達可能である必要がある。**ローカル SMB ユーザーに解決される identity は DC を必要としない**（2026-08-26 実測: DC 0 台の AD 参加 SVM で全操作成功）。ドメインアカウント側の DC 要否は検証環境に到達可能な DC が無く未確認。CIFS が有効な SVM では ONTAP がデータ操作ごとに `unix→win` の逆引き name-mapping を行うため。HeadBucket は S3 レイヤのメタデータのみを見るので成功する = **偽陽性**。IAM・AP ポリシー・ネットワークもすべて通るため、間違ったレイヤを調べに行きやすい。事前チェック: `GET /api/protocols/cifs/domains?svm.name=<svm>&fields=discovered_servers`。**`== []` で判定してはいけない** — DC が 0 台のとき ONTAP 9.18.1P3D1 はフィールドごと省略し `[]` を返さないため、この判定は一致せず「空でない = 到達可能」と読めてしまう。見るのは **`ms_dc` かつ `state: ok` が 1 件以上あるか**。省略されていたら `/private/cli/vserver/cifs/domain/discovered-servers?vserver=<svm>` で件数を問い直す。プログラムからは `shared/ad_health_check.py` を使う（この判別が実装されている） |
 | Existing SVM with stale AD → "SVM is already joined to a domain" | Cannot re-join via FSx API. Either unjoin via ONTAP CLI (`vserver cifs delete`) or create a new SVM with AD config |
 | Re-join to a **different** domain fails with "unable to communicate with your Active Directory" even after `vserver cifs delete` | **The SVM's ONTAP-level DNS still points at the old domain's DCs.** `update-storage-virtual-machine` does not replace it. Patch it first: `PATCH /name-services/dns/{svm.uuid}` with the new domain and DC IPs, then re-join. Measured 2026-08-19: EMS showed `_ldap._tcp.dc._msdcs.<NEW.DOMAIN>` timing out against the *old* DNS servers |
 | Restoring a recorded DNS config fails with "cannot be reached … Host is down" | ONTAP validates DNS reachability on write. To restore a recorded value whose servers are gone, use `PATCH /name-services/dns/{svm.uuid}?skip_config_validation=true` |
@@ -53,8 +53,13 @@ EC2 IAM role requires: `AmazonSSMManagedInstanceCore` + `AmazonSSMDirectoryServi
 ## WINDOWS User Type S3 Access Point — AD Requirements
 
 - SVM must be AD-joined before creating WINDOWS-type S3 AP (fails immediately if not)
-- `WindowsUser.Name` = username only (`Admin`), NEVER `DOMAIN\Admin`
-- Domain prefix is accepted at API level but causes `AccessDenied` on data-plane (ListObjects/GetObject/PutObject)
+- `WindowsUser.Name` = username only (`Admin`), or a **CIFS server name** prefix
+  (`CIFSSRV\Admin`) — measured working. Never an **AD domain** prefix (`DOMAIN\Admin`)
+- The prefix is accepted at the API level: the AP reaches `AVAILABLE` and `describe` keeps
+  the prefixed value. Creation succeeding is not evidence that it works
+- With an AD domain prefix every data op returns **503 ServiceUnavailable**, including
+  `HeadBucket`. Not `AccessDenied` — looking for a 403 sends you to the IAM policy, the AP
+  policy and the ACLs, all of which are fine
 - Infrastructure template: `infrastructure/demo-ad-environment.yaml` (3 AD modes)
 - Join script: `scripts/demo-ad-join-svm.sh` (auto-resolves from CFn stack outputs)
 - Parameter file: `params/demo-ad-environment.example.json`

@@ -591,8 +591,8 @@ This portal is protected by the following quality gates:
 | Tool | What it checks |
 |--------|------------|
 | cdk-nag (AwsSolutionsChecks) | Over-permissive IAM, encryption, log retention |
-| CDK harness tests (49 assertions) | Lambda count, runtime, environment variables |
+| CDK harness tests (112 assertions) | Lambda count, runtime, environment variables |
 | IAM Access Analyzer | SECURITY_WARNING detection in policies |
 | floci integration tests (9 tests) | S3 ListObjectsV2 + Delimiter behaviour |
 
-cdk-nag is off by default (opt-in). Run `CDK_NAG=1 npx ampx generate outputs` when you want to see it. Not integrated into CI.
+cdk-nag is off by default (opt-in). Run `npm run nag` when you want to see it. Not integrated into CI.

@@ -52,6 +52,13 @@ solutions/amplify-portal/functions/resource-management
 # pytest path by hand.
 solutions/amplify-portal/functions/snapshots
 solutions/amplify-portal/functions/thumbnails
+# The two endpoints that hand out access rather than serve a request: a presigned URL,
+# which is a bearer credential that outlives the call, and a folder ZIP, whose prefix
+# check has to refuse an *ancestor* of an allowed prefix or the archive carries every
+# sibling under it. Both boundaries are one-directional and neither is visible from the
+# response, so nothing but these tests reports a regression.
+solutions/amplify-portal/functions/folder-download
+solutions/amplify-portal/functions/presigned-url
 # The IAM policy property tests. `security/` is also a Makefile target name, which
 # is how the directory came to be treated as build furniture rather than as a place
 # holding 3 tests that assert least-privilege on generated policies.
@@ -109,12 +116,15 @@ solutions/sap/erp-adjacent
 # (functions/<name>/tests/ rather than <pattern>/tests/), which is the only reason
 # they were missed when this file replaced the two hand-maintained lists: 422 tests
 # that ran in no gate at all — not `make test`, not any CI job — and executed only
-# if someone remembered the per-directory command in AGENTS.md. They need the same
-# process isolation as the patterns, since every one of them defines `handler` or
-# `index`.
+# if someone remembered the per-directory command in AGENTS.md.
+#
+# They used to need process isolation for a second reason as well: each imported its
+# module as `handler` or `index`, names that fourteen and nine of these directories
+# answer to, so a combined run gave whichever was imported first to all of them.
+# That is fixed at the source — each conftest loads its module under a name of its
+# own and `scripts/check_test_module_names.py` refuses the pattern — so the whole
+# tree now passes in one invocation. Isolation stays for the reason at the top of
+# this file, which is about the patterns' `functions.discovery` packages.
 solutions/amplify-portal/functions/agent-chat
-solutions/amplify-portal/functions/audit-log
-solutions/amplify-portal/functions/data-protection
 solutions/amplify-portal/functions/list-files
 solutions/amplify-portal/functions/office-convert
-solutions/amplify-portal/functions/resource-management

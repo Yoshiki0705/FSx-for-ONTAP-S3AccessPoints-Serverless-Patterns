@@ -99,6 +99,104 @@ class AdDcUnreachableError(Exception):
         self.svm_name = svm_name
 
 
+def _unreachable_message(svm_label: str, ad_domain: str | None, evidence: str) -> str:
+    """DC 到達不能と判定したときのメッセージ。
+
+    Args:
+        svm_label: ログとメッセージに出す SVM の表示名。
+        ad_domain: AD ドメイン FQDN。
+        evidence: そう判定した根拠。応答の形が違っても同じ結論に至るので、
+                  どちらで判定したかを残さないと後から切り分けられない。
+
+    Returns:
+        str: 障害の内容と、次に確認すべきことを含むメッセージ。
+    """
+    return (
+        f"AD CONNECTIVITY FAILURE: SVM '{svm_label}' (domain: {ad_domain}) "
+        f"cannot reach any AD Domain Controllers. {evidence} "
+        "S3 AP data operations (ListObjectsV2/GetObject/PutObject) will fail with AccessDenied. "
+        "HeadBucket will still succeed (false positive). "
+        "Verify: SVM DNS IPs point to active AD DCs, "
+        "Security Groups allow ports 53/88/389/445/636 from SVM ENIs to DC IPs."
+    )
+
+
+def _resolve_absent_field_via_cli(
+    ontap_client: OntapClient,
+    status: AdHealthStatus,
+    svm_label: str,
+) -> AdHealthStatus:
+    """`discovered_servers` が省略されていたとき、CLI で 0 件かどうかを確定する。
+
+    REST がフィールドを省略する理由は 1 つではない。空だから省略されたのか、この
+    リリースやこの権限では取得できないのか、応答の形は同じである。private CLI の
+    `vserver cifs domain discovered-servers` は件数を `num_records` で返すため、
+    「0 件」と「読めなかった」を区別できる。
+
+    CLI 側が失敗した場合は本当に確認不可なので `dc_reachable=None` を返す。診断のために
+    足した処理が新しい障害要因になってはいけない。
+
+    Args:
+        ontap_client: ONTAP REST API クライアント。
+        status: ここまでに埋めた状態。SVM 名とドメインを保持している。
+        svm_label: ログとメッセージに出す SVM の表示名。
+
+    Returns:
+        AdHealthStatus: 0 件と確定できた場合は `dc_reachable=False`、
+        CLI が読めなかった場合は `dc_reachable=None`。
+    """
+    if svm_label.startswith("uuid="):
+        # CLI は vserver を名前で取る。UUID しか分からないまま名前として渡すと、
+        # 存在しない vserver に対する 0 件が返り、DC 不在と区別できない結果になる。
+        status.dc_reachable = None
+        status.message = (
+            f"SVM {svm_label} is AD-joined (domain: {status.ad_domain}). "
+            "The REST response omitted discovered_servers, and the CLI fallback needs "
+            "the SVM name, which was not present in the response. Cannot verify."
+        )
+        logger.warning(status.message)
+        return status
+
+    try:
+        cli = ontap_client.get(
+            "/private/cli/vserver/cifs/domain/discovered-servers",
+            params={"vserver": svm_label},
+        )
+    except OntapClientError as e:
+        status.dc_reachable = None
+        status.message = (
+            f"SVM '{svm_label}' is AD-joined (domain: {status.ad_domain}). "
+            "The REST response omitted discovered_servers, and the CLI fallback that "
+            f"would distinguish 'none discovered' from 'not readable' failed: {e}. "
+            "Cannot verify DC reachability."
+        )
+        logger.warning(status.message)
+        return status
+
+    num_records = cli.get("num_records")
+    if num_records == 0 or (num_records is None and cli.get("records") == []):
+        status.dc_reachable = False
+        status.discovered_servers = []
+        status.message = _unreachable_message(
+            svm_label,
+            status.ad_domain,
+            "The REST field was omitted and the CLI reports 0 discovered servers.",
+        )
+        logger.error(status.message)
+        return status
+
+    # CLI が件数を返したが REST は省略した。DC は検出されているので到達性の問題では
+    # ないが、REST と CLI で見えているものが違うため断定はしない。
+    status.dc_reachable = None
+    status.message = (
+        f"SVM '{svm_label}' is AD-joined (domain: {status.ad_domain}). "
+        f"The REST response omitted discovered_servers while the CLI reports "
+        f"{num_records} server(s), so the two disagree — proceeding without a verdict."
+    )
+    logger.warning(status.message)
+    return status
+
+
 def _svm_filter(svm_name: str | None, svm_uuid: str | None) -> tuple[dict[str, str], str]:
     """SVM の指定方法を ONTAP のクエリパラメータと表示名に変換する。
 
@@ -231,27 +329,32 @@ def check_ad_dc_reachability(
     discovered = domain_records[0].get("discovered_servers")
 
     if discovered is None:
-        # フィールド自体が返されない場合 — 確認不可として続行
-        status.dc_reachable = None
-        status.message = (
-            f"SVM '{svm_label}' is AD-joined (domain: {status.ad_domain}). "
-            "discovered_servers field not available — cannot verify DC reachability."
-        )
-        logger.warning(status.message)
-        return status
+        # **フィールドの不在は「確認不可」ではない。**
+        #
+        # 実測（2026-08-26 / ONTAP 9.18.1P3D1）: `/protocols/cifs/domains` は
+        # `discovered_servers` が空のときフィールドごと省略し、`[]` を返さない。
+        # `fields=**` でも現れない。フィールド名自体は有効で（存在しないフィールド名は
+        # `262197` で拒否されるのに、この名前は拒否されない）、DC が実際に 0 件だった
+        # ことは private CLI が `num_records: 0` を返すことで別途確認した。
+        #
+        # つまり下の `discovered == []` の枝はこのリリースでは到達不能で、DC が 1 台も
+        # 検出されていない SVM はすべてここに落ちていた。**このモジュールが検出する
+        # ために作られた障害を、確認不可として楽観的に通していた。**
+        #
+        # フィールドの不在だけでは「空」と「取得できなかった」を区別できないので、
+        # 区別できる問い方に切り替える。
+        return _resolve_absent_field_via_cli(ontap_client, status, svm_label)
 
     if discovered == [] or (isinstance(discovered, list) and len(discovered) == 0):
-        # 空リスト = DC 到達不能
+        # 空リスト = DC 到達不能。
+        #
+        # 9.18.1P3D1 ではフィールドが省略されるためこの枝には入らないが、残してある。
+        # 省略はリリースごとの表現の違いであって規約ではないので、`[]` を返すリリースが
+        # あればそちらが正しい入口になる。上の CLI 経路と同じ結論に至る 2 つの入口を
+        # 別々のメッセージで書くと、どちらで判定したのか後から分からなくなる。
         status.dc_reachable = False
         status.discovered_servers = []
-        status.message = (
-            f"AD CONNECTIVITY FAILURE: SVM '{svm_label}' (domain: {status.ad_domain}) "
-            "cannot reach any AD Domain Controllers. discovered_servers is empty. "
-            "S3 AP data operations (ListObjectsV2/GetObject/PutObject) will fail with AccessDenied. "
-            "HeadBucket will still succeed (false positive). "
-            "Verify: SVM DNS IPs point to active AD DCs, "
-            "Security Groups allow ports 53/88/389/445/636 from SVM ENIs to DC IPs."
-        )
+        status.message = _unreachable_message(svm_label, status.ad_domain, "discovered_servers is an empty list.")
         logger.error(status.message)
         return status
 
@@ -294,14 +397,11 @@ def check_ad_dc_reachability(
         return status
 
     status.dc_reachable = False
-    status.message = (
-        f"AD CONNECTIVITY FAILURE: SVM '{svm_label}' (domain: {status.ad_domain}) "
-        f"has {len(discovered)} discovered server(s) but none is a {DC_SERVER_TYPE} "
-        f"in state 'ok': {status.discovered_servers}. "
-        "S3 AP data operations (ListObjectsV2/GetObject/PutObject) will fail with AccessDenied. "
-        "HeadBucket will still succeed (false positive). "
-        "Verify: SVM DNS IPs point to active AD DCs, "
-        "Security Groups allow ports 53/88/389/445/636 from SVM ENIs to DC IPs."
+    status.message = _unreachable_message(
+        svm_label,
+        status.ad_domain,
+        f"{len(discovered)} server(s) discovered but none is a {DC_SERVER_TYPE} "
+        f"in state 'ok': {status.discovered_servers}.",
     )
     logger.error(status.message)
     return status

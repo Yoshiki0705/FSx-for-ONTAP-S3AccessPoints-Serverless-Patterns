@@ -15,6 +15,7 @@ Limitations:
 from __future__ import annotations
 
 import io
+import json
 import logging
 import os
 import zipfile
@@ -23,11 +24,18 @@ from datetime import datetime, timezone
 import boto3
 from botocore.config import Config
 
+from shared.portal_activity_ledger import ACTION_DOWNLOAD, record_activity
+from shared.portal_path_scope import allowed_prefixes, key_is_visible, resolve_ap_alias
+
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
 region = os.environ.get("AWS_REGION", "ap-northeast-1")
-S3_AP_ALIAS = os.environ.get("S3_AP_ALIAS", "")
+DEFAULT_AP_ALIAS = os.environ.get("S3_AP_ALIAS", "")
+GROUP_AP_MAPPING = json.loads(os.environ.get("GROUP_AP_MAPPING", "{}"))
+# Per-user activity ledger. Empty means none is configured and the write is skipped.
+ACTIVITY_LEDGER_TABLE = os.environ.get("URL_AUDIT_TABLE_NAME", "")
+GROUP_PATH_PREFIXES = json.loads(os.environ.get("GROUP_PATH_PREFIXES", "{}"))
 ZIP_BUCKET = os.environ.get("ZIP_TEMP_BUCKET", "")
 MAX_FILES = int(os.environ.get("MAX_ZIP_FILES", "500"))
 MAX_TOTAL_BYTES = int(os.environ.get("MAX_ZIP_BYTES", str(500 * 1024 * 1024)))  # 500MB
@@ -62,11 +70,28 @@ def handler(event, context):
     """
     prefix = event.get("prefix", "")
     user_id = event.get("userId", "unknown")
+    groups = event.get("groups") if isinstance(event.get("groups"), list) else []
 
     if not prefix:
         return {"success": False, "error": "prefix is required", "downloadUrl": None}
 
-    if not S3_AP_ALIAS:
+    # The resolver passed the caller's groups all along; this function read the default
+    # alias and ignored them, so a ZIP was always assembled through the deployment's
+    # default identity -- the one the runbook pins to UNIX root.
+    ap_alias = resolve_ap_alias(groups, GROUP_AP_MAPPING, DEFAULT_AP_ALIAS)
+    allowed = allowed_prefixes(groups, GROUP_PATH_PREFIXES)
+
+    # One-directional on purpose, unlike navigating a listing. Zipping an *ancestor* of
+    # an allowed prefix would package every sibling under it, so reaching a permitted
+    # subfolder is not a reason to allow the folder above it.
+    if allowed and not any(prefix.startswith(p) for p in allowed):
+        return {
+            "success": False,
+            "error": "prefix is outside the prefixes your groups may access",
+            "downloadUrl": None,
+        }
+
+    if not ap_alias:
         # DemoMode: return a mock response
         return {
             "success": True,
@@ -83,7 +108,7 @@ def handler(event, context):
 
     try:
         # Step 1: List all objects under the prefix
-        objects = _list_all_objects(prefix)
+        objects = _list_all_objects(ap_alias, prefix, allowed)
 
         if not objects:
             return {"success": False, "error": f"No files found under prefix: {prefix}", "downloadUrl": None}
@@ -119,7 +144,7 @@ def handler(event, context):
                     continue
 
                 # Get object content from S3 AP
-                response = s3.get_object(Bucket=S3_AP_ALIAS, Key=key)
+                response = s3.get_object(Bucket=ap_alias, Key=key)
                 content = response["Body"].read()
                 zf.writestr(relative_path, content)
 
@@ -147,6 +172,24 @@ def handler(event, context):
 
         logger.info(f"ZIP generated: {zip_key}, {len(objects)} files, {total_size} bytes")
 
+        # Recorded as a download rather than a share link: the files were read and
+        # assembled here, so the retrieval already happened whether or not anybody follows
+        # the URL. The file count is kept because the row names a prefix, and a prefix says
+        # nothing about how much left with it.
+        record_activity(
+            table_name=ACTIVITY_LEDGER_TABLE,
+            action=ACTION_DOWNLOAD,
+            user_id=user_id,
+            key=prefix,
+            access_point=ap_alias,
+            groups=groups,
+            detail={
+                "file_count": len(objects),
+                "total_bytes": total_size,
+                "expires_in_seconds": PRESIGN_EXPIRES,
+            },
+        )
+
         return {
             "success": True,
             "downloadUrl": download_url,
@@ -161,14 +204,19 @@ def handler(event, context):
         return {"success": False, "error": str(e), "downloadUrl": None}
 
 
-def _list_all_objects(prefix: str) -> list:
-    """List all objects under a prefix using pagination."""
+def _list_all_objects(ap_alias: str, prefix: str, allowed: list[str]) -> list:
+    """List objects under a prefix, dropping any the caller may not see.
+
+    Filtered as well as bounded. The prefix check in the handler is the boundary, and
+    this is the second line: a key that somehow sits under an allowed prefix while
+    falling outside the caller's own is not packaged into the archive.
+    """
     objects = []
     continuation_token = None
 
     while True:
         params = {
-            "Bucket": S3_AP_ALIAS,
+            "Bucket": ap_alias,
             "Prefix": prefix,
             "MaxKeys": 1000,
         }
@@ -177,7 +225,9 @@ def _list_all_objects(prefix: str) -> list:
 
         response = s3.list_objects_v2(**params)
         contents = response.get("Contents", [])
-        objects.extend([{"Key": obj["Key"], "Size": obj["Size"]} for obj in contents])
+        objects.extend(
+            {"Key": obj["Key"], "Size": obj["Size"]} for obj in contents if key_is_visible(obj["Key"], allowed)
+        )
 
         if response.get("IsTruncated"):
             continuation_token = response["NextContinuationToken"]

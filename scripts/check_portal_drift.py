@@ -862,6 +862,34 @@ COUNT_GLOBS = [
 ]
 
 
+def _group_name_constants() -> dict[str, list[str]]:
+    """Identifier to the group names it stands for, read from `portal-groups.ts`.
+
+    Both the declaration and the authorization rules name their groups through these
+    constants. A reader that only understood string literals would find none on either
+    side and conclude the two agree, which is a check that cannot fail.
+
+    Returns:
+        Scalar constants map to a single-element list, arrays to their members' values.
+        Empty when the module is absent, which leaves the caller reading literals only.
+    """
+    source_file = PORTAL / "amplify" / "portal-groups.ts"
+    if not source_file.exists():
+        return {}
+    source = source_file.read_text(encoding="utf-8")
+    names: dict[str, list[str]] = {
+        identifier: [value] for identifier, value in re.findall(r'export const ([A-Z][A-Z0-9_]*) = "([^"]+)"', source)
+    }
+    for identifier, body in re.findall(r"export const ([A-Z][A-Z0-9_]*) = \[([^\]]*)\]", source):
+        members: list[str] = []
+        for member in re.findall(r"\b([A-Z][A-Z0-9_]*)\b", body):
+            members.extend(names.get(member, []))
+        members.extend(re.findall(r'"([^"]+)"', body))
+        if members:
+            names[identifier] = members
+    return names
+
+
 def check_cognito_groups() -> list[Finding]:
     """Every group an authorization rule names must be one `defineAuth` creates.
 
@@ -882,19 +910,38 @@ def check_cognito_groups() -> list[Finding]:
     if not data.exists() or not auth.exists():
         return [Finding("cognito-group", "amplify/", "auth or data resource definition is missing")]
 
+    data_text = data.read_text(encoding="utf-8")
+    auth_text = auth.read_text(encoding="utf-8")
+    # Both sides name their groups through constants now, so a literal-only reader sees
+    # nothing on either side and reports agreement. Resolving the indirection is what
+    # keeps this check from passing vacuously.
+    names = _group_name_constants()
+
+    def literals(expression: str) -> list[str]:
+        """Group names in an array literal, a spread, or a bare identifier."""
+        found = re.findall(r'"([^"]+)"', expression)
+        for identifier in re.findall(r"\b([A-Z][A-Z0-9_]{2,})\b", expression):
+            found.extend(names.get(identifier, []))
+        return found
+
+    # Arrays declared in the schema file, so `allow.groups(WRITE_ROLES)` resolves.
+    for match in re.finditer(r"const ([A-Z][A-Z0-9_]*) = \[([^\]]*)\]", data_text):
+        resolved = literals(match.group(2))
+        if resolved:
+            names.setdefault(match.group(1), resolved)
+
     referenced: dict[str, int] = {}
-    for number, line in enumerate(data.read_text(encoding="utf-8").splitlines(), start=1):
-        for match in re.finditer(r"allow\.groups\(\[([^\]]*)\]\)", line):
-            for name in re.findall(r'"([^"]+)"', match.group(1)):
+    for number, line in enumerate(data_text.splitlines(), start=1):
+        for match in re.finditer(r"allow\.groups\(([^)]*)\)", line):
+            for name in literals(match.group(1)):
                 referenced.setdefault(name, number)
 
     # The declaration is a `groups:` array in the defineAuth call. Read as a block
     # so a list spanning several lines is seen whole.
-    auth_text = auth.read_text(encoding="utf-8")
     declared: set[str] = set()
     block = re.search(r"^\s*groups:\s*\[(.*?)\]", auth_text, re.MULTILINE | re.DOTALL)
     if block:
-        declared = set(re.findall(r'"([^"]+)"', block.group(1)))
+        declared = set(literals(block.group(1)))
 
     return [
         Finding(

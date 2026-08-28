@@ -83,7 +83,7 @@ curl -sku "$CREDS" \
 }
 ```
 
-**Failure indicator** (`usable_dc: 0`): AD DC unreachable — S3 AP data operations will fail with AccessDenied. See [Troubleshooting](#troubleshooting).
+**Failure indicator** (`usable_dc: 0`): the AD DC is unreachable. **That alone does not establish that data operations will fail.** Measured 2026-08-26: on an AD-joined SVM with zero discovered controllers, an access point fixed to a `WindowsUser` matching a local SMB user completed HeadBucket, ListObjectsV2, GetObject, PutObject and DeleteObject. The reading is that **an identity resolving locally does not need a DC**. **Whether a domain account needs one is unverified** -- the test environment had no reachable DC, so "failed because it was a domain name" and "failed because there was no DC" could not be separated. See section 4-3 of [Identity Verification Results](./portal-identity-verification-results.md). Also see [Troubleshooting](#troubleshooting).
 
 > **Do not judge on the count alone.** This section used to say that a
 > `discovered_servers` count above zero meant healthy. **That is wrong.** As the
@@ -550,7 +550,7 @@ curl -sku user:pass \
   "https://<mgmt-ip>/api/protocols/cifs/domains?svm.name=<svm>&fields=discovered_servers"
 ```
 
-If `discovered_servers` is `[]` (empty array), the AD DC is unreachable.
+**Do not decide on the presence of `discovered_servers`.** Measured on ONTAP 9.18.1P3D1: when no domain controllers are discovered, the field is **omitted from the response entirely** and `[]` is never returned (the field name is valid -- an invalid one is refused with 262197, and this one is not). A check written as `discovered_servers == []` therefore never matches, and whoever follows it concludes "not empty, so reachable" on precisely the SVM the check exists to catch. What to look at is whether **at least one entry has `ms_dc` and `state: ok`** -- not the count and not the presence, since entries persist after the controllers stop answering. When the field is absent, re-ask over `/private/cli/vserver/cifs/domain/discovered-servers?vserver=<svm>`. From code, use `shared/ad_health_check.py`, which implements this distinction.
 **A non-empty list does not mean reachable**: entries persist after the DCs
 stop answering, so check for at least one `ms_dc` entry at `state: ok`.
 

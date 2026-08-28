@@ -90,7 +90,7 @@ npx ampx sandbox --once
 ## 推奨ワークフロー
 
 1. **開発時**: `npx ampx sandbox` (watch mode) — Lambda コード変更は数秒で反映
-2. **検証**: `npx tsc --noEmit` + `npx vitest run` + `npm run build`。cdk-nag を見る場合は `CDK_NAG=1 npx ampx generate outputs` を別途実行（CI には未統合）
+2. **検証**: `npx tsc --noEmit` + `npx vitest run` + `npm run build`。cdk-nag を見る場合は `npm run nag` を別途実行（CI には未統合）
 3. **本番**: `npx ampx pipeline-deploy` (Amplify Hosting の CI/CD パイプライン)
 
 ## 関連リファレンス

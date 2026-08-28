@@ -41,6 +41,8 @@
 | [FlexGroup 容量リバランスの実測記録 (JA)](../solutions/amplify-portal/docs/flexgroup-rebalance-verification.md) | 容量リバランスの一巡。API リファレンスに無い 2 つの実行時間制約、未記載のボリューム状態、移動対象が無い実行の見え方 |
 | [Write Verification Plan (EN)](../solutions/amplify-portal/docs/write-verification-plan.en.md) | Prerequisites, impact and rollback for the writes not yet run, plus the operations that reach the shared environment |
 | [書き込み操作の検証計画 (JA)](../solutions/amplify-portal/docs/write-verification-plan.md) | 未実行の書き込み操作の前提・影響・戻し方。共有環境に影響が及ぶ操作の一覧 |
+| [Identity & Visibility Measurements (EN)](en/portal-identity-verification-results.md) | Which files a signed-in portal user reaches: identity-only controlled experiments over S3 Access Points, what a presigned URL executes as, owner and mode as NFS sees them, WINDOWS-type identity, and the documented pitfalls this corrects |
+| [identity と可視範囲の実測記録 (JA)](ja/portal-identity-verification-results.md) | サインインした利用者がどのファイルに届くか。identity だけを変えた対照実験、presigned URL が実行される identity、NFS 側から見た所有者と mode、WINDOWS タイプ、既存の罠の記述の訂正 |
 | [Portal Getting Started](../solutions/amplify-portal/docs/GETTING-STARTED.md) | First deploy of the portal |
 | [ONTAP Connection Guide](../solutions/amplify-portal/docs/ONTAP-CONNECTION-GUIDE.md) | VPC, secret and management LIF wiring — start with `make ontap-preflight` when a panel has no data |
 | [Handover & Support Guide](../solutions/amplify-portal/docs/portal-handover-guide.md) | After the deploy: the three things to send a user, where every value is managed, and a reverse index from what the user said to what to check |

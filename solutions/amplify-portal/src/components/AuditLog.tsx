@@ -40,6 +40,18 @@ export function AuditLog() {
   const [error, setError] = useState<string | null>(null);
   const [fileFilter, setFileFilter] = useState("");
   const [eventType, setEventType] = useState("ALL");
+  /**
+   * Which trail is being read.
+   *
+   * Two sources rather than one merged table, because they answer different questions and
+   * neither substitutes. CloudTrail sees every object access and attributes it to the
+   * access point's IAM role, which is the same principal for every portal user -- so it
+   * establishes that a file was read without establishing who asked. The portal ledger
+   * knows the Cognito user, and records actions that never reach S3 as a distinguishable
+   * event, such as minting a presigned URL. Merging them would produce rows whose
+   * "user" column meant something different from one line to the next.
+   */
+  const [source, setSource] = useState<"CLOUDTRAIL" | "PORTAL">("CLOUDTRAIL");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const { t } = useTranslation();
@@ -56,6 +68,7 @@ export function AuditLog() {
         endDate: endDate || undefined,
         eventType: eventType,
         maxResults: 50,
+        source,
       });
 
       if (response.data) {
@@ -99,10 +112,17 @@ export function AuditLog() {
 
   const getActionIcon = (action: string): string => {
     switch (action) {
+      // CloudTrail: the S3 API call.
       case "GetObject": return "📖";
       case "PutObject": return "📝";
       case "DeleteObject": return "🗑️";
       case "ListBucket": return "📂";
+      // Portal ledger: what the user asked the portal to do. Distinct names, because a
+      // minted URL is not a read and an upload link is not a write -- not yet.
+      case "DOWNLOAD": return "⬇️";
+      case "SHARE_LINK": return "🔗";
+      case "UPLOAD_LINK": return "⬆️";
+      case "DELETE": return "🗑️";
       default: return "❓";
     }
   };
@@ -111,6 +131,30 @@ export function AuditLog() {
     <div className="audit-log">
       <h2>{t("auditTitle")}</h2>
       <p className="audit-description">{t("auditDescription")}</p>
+
+      <div className="audit-source" role="radiogroup" aria-label={t("auditSourceLabel")}>
+        {(["CLOUDTRAIL", "PORTAL"] as const).map((option) => (
+          <button
+            key={option}
+            type="button"
+            role="radio"
+            aria-checked={source === option}
+            className={`audit-source-option ${source === option ? "active" : ""}`}
+            onClick={() => {
+              setSource(option);
+              // Cleared rather than left in place: the columns mean different things per
+              // source, so keeping the previous rows would relabel them.
+              setEvents([]);
+              setError(null);
+            }}
+          >
+            {option === "CLOUDTRAIL" ? t("auditSourceCloudTrail") : t("auditSourcePortal")}
+          </button>
+        ))}
+      </div>
+      <p className="audit-source-description">
+        {source === "CLOUDTRAIL" ? t("auditSourceCloudTrailDesc") : t("auditSourcePortalDesc")}
+      </p>
 
       <div className="audit-filters">
         <div className="filter-row">
@@ -132,8 +176,21 @@ export function AuditLog() {
               onChange={(e) => setEventType(e.target.value)}
             >
               <option value="ALL">{t("auditFilterEventTypeAll")}</option>
-              <option value="READ">{t("auditFilterEventTypeRead")}</option>
-              <option value="WRITE">{t("auditFilterEventTypeWrite")}</option>
+              {source === "CLOUDTRAIL" ? (
+                <>
+                  <option value="READ">{t("auditFilterEventTypeRead")}</option>
+                  <option value="WRITE">{t("auditFilterEventTypeWrite")}</option>
+                </>
+              ) : (
+                <>
+                  {/* The ledger's own action names. Offering READ/WRITE here would
+                      match nothing, which reads as "no activity". */}
+                  <option value="DOWNLOAD">{t("auditActionDownload")}</option>
+                  <option value="SHARE_LINK">{t("auditActionShareLink")}</option>
+                  <option value="UPLOAD_LINK">{t("auditActionUploadLink")}</option>
+                  <option value="DELETE">{t("auditActionDelete")}</option>
+                </>
+              )}
             </select>
           </div>
         </div>

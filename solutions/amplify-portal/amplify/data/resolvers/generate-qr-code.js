@@ -14,6 +14,9 @@ export function request(ctx) {
       action: "generateQrCode",
       key: ctx.arguments.key,
       expiresIn: ctx.arguments.expiresIn || 300,
+      // The boundary needs the caller's groups: they decide which access point
+      // serves the request and which prefixes the key may fall under.
+      groups: ctx.identity.claims ? ctx.identity.claims["cognito:groups"] || [] : [],
       userId: ctx.identity.username,
     },
   };

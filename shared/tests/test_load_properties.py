@@ -12,11 +12,35 @@ Property 14: Percentile Calculation Correctness
 
 from __future__ import annotations
 
+import importlib.util
+import sys
+from pathlib import Path
+
 import pytest
 from hypothesis import HealthCheck, given, settings
 from hypothesis import strategies as st
 
-from tests.load.test_high_load import calculate_percentile, calculate_ramp_rate
+# Loaded by path rather than as `tests.load.test_high_load`.
+#
+# Two directories in this repository are importable as `tests`: the one at the root, which
+# holds `load/` and `e2e/`, and `scripts/tests`. Which one the name resolves to depends on
+# what pytest put on `sys.path` for the run, so `from tests.load…` worked when this file
+# was collected on its own and raised `ModuleNotFoundError: No module named 'tests.load'`
+# when it was collected alongside `scripts/tests`. The functions under test are the same
+# either way; only the name was ambiguous.
+#
+# `tests/load/` is excluded from the runners because it needs deployed infrastructure. This
+# file exercises two of its pure helpers, so it reads the file without collecting the
+# module as tests.
+_HIGH_LOAD_PATH = Path(__file__).resolve().parents[2] / "tests" / "load" / "test_high_load.py"
+_spec = importlib.util.spec_from_file_location("load_helpers_under_test", _HIGH_LOAD_PATH)
+assert _spec is not None and _spec.loader is not None, _HIGH_LOAD_PATH
+_high_load = importlib.util.module_from_spec(_spec)
+sys.modules["load_helpers_under_test"] = _high_load
+_spec.loader.exec_module(_high_load)
+
+calculate_percentile = _high_load.calculate_percentile
+calculate_ramp_rate = _high_load.calculate_ramp_rate
 
 # --- Hypothesis Strategies ---
 

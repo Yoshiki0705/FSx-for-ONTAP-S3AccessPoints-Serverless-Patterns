@@ -22,7 +22,8 @@
     "docker:run": "docker run -p 8080:80 fsxn-portal",
     "copy-sw": "node node_modules/@aws-amplify/ui-react-storage/bin/copy-serviceworker.js public",
     "predev": "npm run copy-sw",
-    "prebuild": "npm run copy-sw"
+    "prebuild": "npm run copy-sw",
+    "nag": "./scripts/cdk-nag.sh"
   },
   "dependencies": {
     "@aws-amplify/storage": "6.16.0",

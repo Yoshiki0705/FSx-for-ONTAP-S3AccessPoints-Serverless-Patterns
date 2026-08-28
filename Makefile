@@ -23,7 +23,7 @@
 	build-sap deploy-uc1 deploy-sap clean build-SharedLayer build-uc12 deploy-uc12 test-ops1 \
 	test-ops4 test-ops3 test-ops2 test-ops5 test-ops6 test-ops lint-ops lint-cfn-ops \
 	build-ops1 deploy-ops1 security-report security-cfn propose-cleanup ontap-preflight \
-	discover-s3ap check-group-ap-tags
+	discover-s3ap check-group-ap-tags portal-grant-roles
 
 # Target Python version — must match the Lambda runtime in the SAM templates
 # (`Runtime: python3.13`). Declared once here so `install`, the interpreter
@@ -88,6 +88,7 @@ help:
 	@echo "  make propose-cleanup — Report the backlog, then what is standing and its cost (read-only)"
 	@echo "  make discover-s3ap — Inventory S3 access points from the FSx API (read-only)"
 	@echo "  make check-group-ap-tags — Report groupApMapping vs access point tags (read-only)"
+	@echo "  make portal-grant-roles — Grant portal roles/scopes to Cognito users (dry run unless ARGS=--apply)"
 	@echo "  make clean         — Remove build artifacts"
 	@echo ""
 	@echo "Python: $(PYTHON) (auto-detects .venv/bin/python; override: PYTHON=...)"
@@ -234,6 +235,19 @@ discover-s3ap:
 check-group-ap-tags:
 	$(PYTHON) scripts/check_group_ap_tags.py --regions $(or $(REGIONS),ap-northeast-1) $(ARGS)
 
+# Grant the two-axis groups. Dry run unless ARGS includes --apply, and idempotent, so
+# it can be re-run after adding people without tracking who was done.
+#
+# Order is load bearing: grant, have those users re-authenticate, then set
+# enforceRoles: true and deploy. Reversed, every write is refused until the last user
+# has signed in again, because the AppSync rules name groups and the groups travel in
+# the ID token.
+#
+#   make portal-grant-roles ARGS='--assign a@example.com=contributor,internal'
+#   make portal-grant-roles ARGS='--apply --from-file roles.txt'
+portal-grant-roles:
+	$(PYTHON) scripts/grant_portal_roles.py $(ARGS)
+
 # ============================================================
 # Drift checks
 # ============================================================
@@ -261,6 +275,16 @@ drift:
 # neither the Makefile nor CI before pattern-test-dirs.txt became the single list;
 # 53 more (thumbnails 37, snapshots 13, security 3) were still outside it after.
 	$(PYTHON) -m pytest scripts/tests/test_test_dir_coverage.py --tb=short -q
+# Listing every tests/ directory is not enough if running them together answers
+# differently from running them one at a time. Fourteen functions have an `index.py` and
+# nine a `handler.py`; each test directory imported its own as `handler` or `index`, so
+# whichever was imported first won `sys.modules` and the rest silently received that one.
+# Per-directory runs passed. The whole tree in one invocation gave 375 failures and 58
+# errors, and one test that patched the wrong module reached real AWS instead of a stub,
+# turning a 10-second directory into a 5-minute one. `--import-mode=importlib` does not
+# cover it: the colliding name belongs to the application module, not the test module.
+	$(PYTHON) -m pytest scripts/tests/test_check_test_module_names.py --tb=short -q
+	$(PYTHON) scripts/check_test_module_names.py
 # `make drift` and the workflows are two lists of checks, and nothing made them
 # agree. Four checks below this line ran here and in no workflow at all, so a pull
 # request could merge past every one of them: check_en_doc_language,
@@ -364,6 +388,24 @@ drift:
 # That needs types, and types generated from the handlers need checking against them.
 	$(PYTHON) -m pytest scripts/tests/test_portal_action_types.py --tb=short -q
 	$(PYTHON) scripts/portal_action_types.py --check
+# The two checks above are about the shape of a call. This one is about who the call is
+# allowed to name: eight endpoints took a client-supplied object key while consulting
+# neither the caller's access point nor the caller's prefixes. Two of them were already
+# handed the mapping in backend.ts and never read it, so reviewing the CDK would not
+# have found it. It also checks that the resolver forwards the groups, because a
+# boundary whose input is missing resolves to "unrestricted" rather than to an error.
+	$(PYTHON) -m pytest scripts/tests/test_portal_key_boundary.py --tb=short -q
+	$(PYTHON) scripts/check_portal_key_boundary.py
+# Two capabilities are withheld from callers outside the organisation -- the AI
+# endpoints and share links -- and both are enforced in the handler rather than in
+# AppSync, so nothing structural stops a new endpoint from omitting the check. This
+# finds the endpoints by what they do (which AWS client they build, whether the caller
+# chooses the URL lifetime) rather than by a list, so one added later is in scope
+# without anybody remembering to add it. It also checks the resolver forwards the
+# groups: with none arriving, every caller reads as internal and the restriction is
+# absent while the code that implements it is present and correct.
+	$(PYTHON) -m pytest scripts/tests/test_portal_external_policy.py --tb=short -q
+	$(PYTHON) scripts/check_portal_external_policy.py
 # Translations nobody can reach, and relative links that resolve to nothing. 27 of
 # 83 pairs had no language switcher, and 18 links in the portal docs alone were
 # dead because ../../docs/ from that directory is solutions/docs/, which does not
@@ -447,10 +489,18 @@ drift-published:
 #   make ontap-preflight FS_ID=fs-0123456789abcdef0        # adds stages 2-4
 #   make ontap-preflight FS_ID=... LAMBDA=<function-name>  # adds stage 6
 #
-# Stage 6 -- whether ONTAP accepts the credentials -- cannot be reached from a laptop:
-# the management LIF is private. LAMBDA asks the deployed function to make the call.
-# Without it the stage reports SKIP rather than passing, because a green run that never
-# tried the one thing that was wrong is worse than no run.
+# The auth stage -- whether ONTAP accepts the credentials -- cannot be reached from a
+# laptop: the management LIF is private. LAMBDA asks the deployed function to make the
+# call. Without it the stage reports SKIP rather than passing, because a green run that
+# never tried the one thing that was wrong is worse than no run.
+#
+# FS_ID also enables the pairing stage, which answers a question the auth stage cannot be
+# used to answer safely: is the secret for the same file system as the management IP. An
+# account with two file systems has two fsxadmin passwords, and pairing one cluster's
+# address with the other's credentials passes every other stage. Trying it is not a way to
+# find out -- fsxadmin locks out after 5 failures with lockout-duration=0, so five
+# attempts take the credential out of service and waiting does not restore it. The stage
+# compares the secret's FileSystemId tag instead, and authenticates nothing.
 PORTAL_CONFIG := solutions/amplify-portal/amplify/portal-config.ts
 
 ontap-preflight:

@@ -216,8 +216,11 @@ max `PT5M`, 20 GiB). A five-minute retention expires in minutes, after which the
 > leaves the same remnant, still there a day later. **`GET /protocols/s3/buckets` does
 > not report these NAS buckets** — the collection was empty on the SVM whose volume had
 > just refused, and on an SVM running a native ONTAP S3 server it returned only that
-> server's three `type: s3` buckets. (That endpoint can also answer 401
-> `User is not authorized.` to the FSx `fsxadmin` account.)
+> server's three `type: s3` buckets. (This previously read "that endpoint can also answer
+> 401 to `fsxadmin`". **Removed.** `6691623 "User is not authorized."` is worded
+> identically for a wrong password and for a locked-out account, so a 401 cannot be read
+> as a restriction on the endpoint. The same inference was already retracted once for
+> `/storage/flexcache/flexcaches`.)
 >
 > **The ONTAP CLI turned out not to be needed.** Retried about a day after the refusal,
 > `DeleteVolume` removed both `zz_sl_s3ap` and `zz_sl_worm` within 60-90 seconds, with
@@ -334,6 +337,96 @@ compared**, which is why the commands above are the only source for them.
 | Vscan setup guidance | Five-step guidance, six-vendor comparison table, external links |
 | S3 Object Lock tab | Renders without an ONTAP connection |
 | Admin panels generally (no ONTAP) | Graceful "ONTAP Connection Required" state |
+
+## An existing Cognito user pool cannot be updated through CloudFormation (measured 2026-08-27)
+
+Found while deploying the two-axis authorization work -- six declared groups and a changed
+self sign-up default -- to a sandbox created 2026-08-11. **That user pool had never been
+updated since creation. This was its first update, and it did not succeed.**
+
+CloudFormation touched only the user pool; the six groups it was going to add were never
+reached.
+
+| What was sent | What Cognito answered |
+|---|---|
+| The `Schema` the construct emits by default, with no `AttributeDataType` | `Invalid AttributeDataType input, consider using the provided AttributeDataType enum.` |
+| `AttributeDataType: "String"` stated explicitly, matching what Cognito already holds | `Required custom attributes are not supported currently.` |
+
+The two refusals have different causes. The first: the attribute type is inferred at create
+time and **required on update**. The second: on an update, `Schema` is read as **attributes to
+add**, so re-sending the schema the pool already has reads as an attempt to add a required
+attribute. **There is therefore no way to send `Schema` in an update at all.**
+
+CloudFormation reports this as
+`User pool attributes cannot be changed after a user pool has been created`.
+**That reads as a restriction on which properties may change, when the actual problem is a
+malformed request** -- so looking for the attribute that changed does not lead to the cause.
+
+> **Note**: it fails even when the change is semantically a no-op. The override added here set
+> `AdminCreateUserConfig.AllowAdminCreateUserOnly` to `true`, and **the pool already held
+> `true`**. The property appearing in the template was enough to start an update, and the
+> update fails when the schema is re-sent.
+
+**There is no workaround.** Supplying the schema through `addPropertyOverride` was tried and
+failed as above, and was removed rather than left in place -- a fix that does not fix anything
+is worse than none. Amplify's own advice, to remove `defineAuth`, deploy, and add it back,
+**deletes every user in the pool**, as does recreating the sandbox.
+
+**A new deployment is unaffected**, because the pool is created with all of it in place. The
+constraint applies only to applying a change to a pool that already exists.
+
+**What follows in practice**: a change touching `defineAuth` -- adding groups, MFA, self
+sign-up -- cannot be rolled onto an existing sandbox incrementally. Verifying it in a separate
+sandbox under another identifier (`npx ampx sandbox --identifier <name>`) is the only route
+that confirms it without destroying anything.
+
+## The two-axis authorization work, deployed and checked (2026-08-27, sandbox under an identifier)
+
+Because the existing sandbox's user pool cannot be updated (previous section), this was
+checked in a separate sandbox created with `--identifier phase2auth`. **A new pool deploys
+without trouble** -- the constraint applies only to applying a change to a pool that already
+exists.
+
+| Checked | Result |
+|---|---|
+| The six Cognito groups (four roles, two scopes) | Created (`auditor`, `contributor`, `external`, `internal`, `storage-admin`, `viewer`) |
+| `selfSignUpEnabled: false` | Applied, as `AdminCreateUserConfig.AllowAdminCreateUserOnly = true` |
+| The AppSync rules from `enforceRoles: true` | `fileMutation` and `folderMutation` carry `cognito_groups: ["contributor","storage-admin"]`, `queryAuditLog` carries `["auditor","storage-admin"]` with `viewer` absent. Read from the deployed schema |
+| Bypass through IAM | **Not possible.** Each field also carries `@aws_iam`, but the identity pool's authenticated role holds no appsync permission (checked both inline and attached policies) |
+| The activity ledger table | Created, TTL on `ttl` enabled, PITR enabled |
+| `make portal-grant-roles` | Granting, an idempotent re-run, and the refusals (two roles, no scope) all behaved as intended |
+
+### Constraint 1: a sandbox overrides `RemovalPolicy.RETAIN`
+
+In the deployed template, **every table the code marks `RETAIN` carries
+`DeletionPolicy: Delete`** -- the new `PortalActivityLedgerTable` and the pre-existing
+`ContainmentBlocksTable` alike. A sandbox overrides it so that `sandbox delete` leaves nothing
+behind.
+
+**What follows**: the protection that "the audit trail survives deleting the stack" **does not
+exist in a sandbox**. Whether a branch deployment honours `RETAIN` is **unverified** -- this was
+measured in a sandbox only.
+
+### Constraint 2: two sandboxes cannot share a VPC
+
+A second sandbox in the same VPC, on the same route table, collides over the DynamoDB gateway
+endpoint:
+
+```
+route table rtb-... already has a route with destination-prefix-list-id pl-...
+(HandlerErrorCode: AlreadyExists)
+```
+
+A gateway endpoint is one per route table, so the second stack cannot create its own. The way
+around it is to run the verification sandbox without a VPC (pass a single space as
+`AMPLIFY_PORTAL_VPC_ID`; `.trim()` empties it, whereas an empty string is rejected by `||` and
+falls back to the default). Checking authorization does not need the VPC.
+
+### Constraint 3: `JobExecutionTable` can lose a race on first creation
+
+It failed once with `Attempt to change a resource which is still in use: Table is being
+created` -- Amplify's table-manager custom resource racing DynamoDB. **A retry clears it.** Not
+a standing problem.
 
 ## Recorded deployment times
 

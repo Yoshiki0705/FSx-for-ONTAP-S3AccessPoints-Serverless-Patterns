@@ -22,7 +22,7 @@ from __future__ import annotations
 import json
 from unittest.mock import MagicMock, patch
 
-import handler
+import agent_chat_handler as handler
 import pytest
 
 

@@ -30,6 +30,7 @@ from typing import Any
 import boto3
 from botocore.config import Config
 
+from shared.portal_external_policy import ai_denial_reason
 from shared.portal_path_scope import allowed_prefixes as _shared_allowed_prefixes
 
 logger = logging.getLogger()
@@ -51,6 +52,9 @@ AGENT_TEAMS_TABLE = os.environ.get("AGENT_TEAMS_TABLE", "")
 # Smart Routing: JSON mapping of Cognito group → allowed path prefixes
 # Example: {"engineering": ["engineering/", "shared/"], "finance": ["finance/", "shared/"]}
 GROUP_PATH_PREFIXES = json.loads(os.environ.get("GROUP_PATH_PREFIXES", "{}"))
+# Whether callers from outside the organisation may run the agent. Off unless set:
+# the conversation reaches a model, and the agent's tools read file content.
+EXTERNAL_AI_ENABLED = os.environ.get("EXTERNAL_AI_ENABLED", "") == "true"
 
 # Distinguishes "the caller did not send this field" from "the caller sent an
 # empty value". `None` cannot: clearing a description is a legitimate edit.
@@ -968,6 +972,14 @@ def handler(event, context):
         image = params.get("image", None)
         mode = params.get("mode", "multi")
         user_groups = event.get("userGroups", [])
+
+        # Only the `chat` action. The session actions below store and retrieve the
+        # caller's own transcripts and reach no model, so denying those as well would
+        # break the screen without withholding anything.
+        denied = ai_denial_reason(user_groups, ai_enabled=EXTERNAL_AI_ENABLED)
+        if denied:
+            logger.info("Agent chat refused for an external caller: %s", denied)
+            return {"answer": "", "error": denied, "toolCalls": []}
 
         if not message and not image:
             return {"answer": "", "error": "Message is required", "toolCalls": []}

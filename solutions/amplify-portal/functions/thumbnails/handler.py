@@ -43,6 +43,7 @@ from botocore.config import Config
 from PIL import Image, ImageOps, UnidentifiedImageError
 
 from shared.portal_path_scope import allowed_prefixes, reject_key
+from shared.portal_path_scope import resolve_ap_alias as _shared_resolve_ap_alias
 from shared.s3ap_helper import S3ApHelper
 
 logger = logging.getLogger(__name__)
@@ -104,13 +105,9 @@ def _resolve_ap_alias(groups: list[str]) -> str:
 
     Same mapping as the listing, because a thumbnail must come from the same place
     the row did. Reading it from a different alias would show one team a picture of
-    another team's file.
+    another team's file. Bound to the shared rule so the two cannot drift.
     """
-    if GROUP_AP_MAPPING and groups:
-        for group_name, ap_alias in GROUP_AP_MAPPING.items():
-            if group_name in groups:
-                return ap_alias
-    return DEFAULT_AP_ALIAS
+    return _shared_resolve_ap_alias(groups, GROUP_AP_MAPPING, DEFAULT_AP_ALIAS)
 
 
 def _cache_key(alias: str, key: str, etag: str) -> str:

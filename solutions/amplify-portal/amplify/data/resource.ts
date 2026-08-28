@@ -1,5 +1,56 @@
 import { type ClientSchema, a, defineData } from "@aws-amplify/backend";
 
+import { config } from "../portal-config";
+import {
+  ROLE_AUDITOR,
+  ROLE_CONTRIBUTOR,
+  ROLE_STORAGE_ADMIN,
+} from "../portal-groups";
+
+/**
+ * Authorization for the endpoints whose rule depends on `config.enforceRoles`.
+ *
+ * Two requirements pull against each other here. Writes should be limited to
+ * `contributor` and above, and an existing deployment should keep working after this
+ * change. AppSync group rules are a static list baked into the resolver at synth
+ * time, and every user in a deployed pool holds no groups, so a rule naming groups
+ * would refuse all of them -- there is no rule that satisfies both requirements at
+ * once.
+ *
+ * So the choice moves to synth time. `enforceRoles` picks which rule is emitted,
+ * which keeps the decision in AppSync (rather than scattering it across handlers,
+ * where an endpoint added later would silently miss it) and makes it fixed and
+ * inspectable in the deployed API. The cost, stated plainly because it is easy to
+ * leave in place: **while `enforceRoles` is false, any signed-in user can write.**
+ *
+ * Importing `portal-config` from here adds no new failure mode; `backend.ts` already
+ * imports it, so a deployment without the file has never synthesised.
+ *
+ * Takes the two alternatives as thunks rather than as an `allow` builder, because
+ * Amplify does not export the builder's type, and because only the selected rule
+ * should be constructed. `T` is then inferred from the thunks with no `any` and no
+ * assertion.
+ */
+function rolesOrAuthenticated<A, R>(
+  authenticated: () => A,
+  restricted: () => R
+): Array<A | R> {
+  return config.enforceRoles ? [restricted()] : [authenticated()];
+}
+
+/** Writes: upload, rename, move, trash, folder creation, ZIP assembly. */
+const WRITE_ROLES = [ROLE_CONTRIBUTOR, ROLE_STORAGE_ADMIN];
+
+/**
+ * The audit trail.
+ *
+ * `viewer` is deliberately absent. `auditor` is orthogonal to the read/write ladder
+ * rather than a rung above `viewer`: it exists so somebody can see who did what
+ * without being able to change it, and a viewer having read access to files does not
+ * imply read access to everybody else's activity.
+ */
+const AUDIT_ROLES = [ROLE_AUDITOR, ROLE_STORAGE_ADMIN];
+
 /**
  * AppSync GraphQL schema for the File Portal.
  *
@@ -188,7 +239,12 @@ const schema = a.schema({
     .mutation()
     .arguments({ action: a.string().required(), params: a.json() })
     .returns(a.json())
-    .authorization((allow) => [allow.authenticated()])
+    .authorization((allow) =>
+      rolesOrAuthenticated(
+        () => allow.authenticated(),
+        () => allow.groups(WRITE_ROLES)
+      )
+    )
     .handler(a.handler.custom({ dataSource: "ListFilesLambdaDataSource", entry: "./resolvers/files-dispatch.js" })),
 
   // =========================================================================
@@ -201,7 +257,12 @@ const schema = a.schema({
     .mutation()
     .arguments({ action: a.string().required(), params: a.json() })
     .returns(a.json())
-    .authorization((allow) => [allow.authenticated()])
+    .authorization((allow) =>
+      rolesOrAuthenticated(
+        () => allow.authenticated(),
+        () => allow.groups(WRITE_ROLES)
+      )
+    )
     .handler(a.handler.custom({ dataSource: "FolderDownloadLambdaDataSource", entry: "./resolvers/files-dispatch.js" })),
 
   // =========================================================================
@@ -287,6 +348,12 @@ const schema = a.schema({
       endDate: a.string(),
       eventType: a.string(),
       maxResults: a.integer(),
+      // "CLOUDTRAIL" (default) reads S3 data events through Athena. "PORTAL" reads the
+      // per-user activity ledger this portal writes. Two sources rather than one table,
+      // because CloudTrail attributes every portal read to the access point's IAM role
+      // and so cannot say who asked, while the ledger cannot see an access that did not
+      // go through the portal.
+      source: a.string(),
     })
     .returns(
       a.customType({
@@ -295,7 +362,12 @@ const schema = a.schema({
         error: a.string(),
       })
     )
-    .authorization((allow) => [allow.authenticated()])
+    .authorization((allow) =>
+      rolesOrAuthenticated(
+        () => allow.authenticated(),
+        () => allow.groups(AUDIT_ROLES)
+      )
+    )
     .handler(
       a.handler.custom({
         dataSource: "QueryAuditLogLambdaDataSource",

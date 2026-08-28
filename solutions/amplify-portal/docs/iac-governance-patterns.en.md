@@ -31,10 +31,18 @@ Any failure → merge blocked
 > **cdk-nag is not a PR gate today.** Its application in `backend.ts` is opt-in and only takes effect with `CDK_NAG=1` (`const enableNag = process.env.CDK_NAG === "1"`), and no workflow under `.github/workflows/` sets that variable. It is therefore a manual check.
 >
 > ```bash
-> CDK_NAG=1 npx ampx generate outputs
+> npm run nag   # synthesises the backend; deploys nothing
 > ```
 >
 > The reason it is opt-in is an Amplify Gen2 constraint. Applying cdk-nag as an always-on Aspect produces `[AssemblyError]` from findings on Amplify-managed resources the consumer cannot configure (Cognito, AppSync, internal S3 buckets, DynamoDB), which stops the deployment itself. See "cdk-nag Design Decision" in AGENTS.md.
+
+#### Three things measured while getting cdk-nag to run at all (2026-08-27)
+
+**The command this section used to give never ran cdk-nag.** It was `CDK_NAG=1 npx ampx generate outputs`, which reads the outputs of an already-deployed stack and does not synthesise the backend. It reported nothing, and reported nothing whether or not there were findings. `ampx` has no synth-only command and the AWS CDK CLI is not a dependency here, so `scripts/cdk-nag.sh` executes `amplify/backend.ts` as the CDK app it is — CDK synthesises on exit when `CDK_OUTDIR` is set, and `CDK_CONTEXT_JSON` supplies the three context keys Amplify reads for its backend identity.
+
+**A coarse acknowledgment suppresses nothing.** cdk-nag reports each finding under a granular name — `AwsSolutions-IAM5[Resource::arn:aws:s3:*:*:accesspoint/*]` — and `Validations.of(stack).acknowledge({ id: "AwsSolutions-IAM5" })` matches none of them. Measured: acknowledging the coarse id left all 18 findings on the auth roles in place. The acknowledgments listed at the end of `backend.ts` are coarse, which is why findings remain in the data stack despite being described there as accepted. Acknowledging the granular ids for the access-point wildcards dropped the auth-stack count from 18 to 6.
+
+**`Validations.acknowledge` rejects an id containing more than one `::`.** It splits on that delimiter to separate an optional prefix. A granular id carries one inside `[Resource::…]`, so it is accepted — unless the ARN contributes another, which `arn:aws:s3:::bucket/*` does. Those findings cannot be expressed through this API at all; the six that remain above are a DemoMode bucket ARN in the local configuration, and the shipped example leaves those lines commented out.
 
 ### Implementation status in this project
 
@@ -44,7 +52,7 @@ Any failure → merge blocked
 | Security rules | cfn-guard (security/) | ✅ Integrated in CI |
 | AWS best practices | cdk-nag (AwsSolutionsChecks) | ⚠️ Opt-in via `CDK_NAG=1` (not in CI) |
 | IAM permission validation | Access Analyzer ValidatePolicy | ✅ CI workflow added |
-| Structural regression | CDK harness tests (49 tests) | ✅ Integrated with vitest |
+| Structural regression | CDK harness tests (112 tests) | ✅ Integrated with vitest |
 | Secret leakage | gitleaks | ✅ pre-commit hook |
 | GitHub Actions security | zizmor | ✅ pre-commit hook |
 | Dependency updates | Renovate | ✅ Automated PRs |

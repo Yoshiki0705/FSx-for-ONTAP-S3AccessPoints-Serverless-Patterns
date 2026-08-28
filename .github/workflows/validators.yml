@@ -43,6 +43,13 @@ jobs:
       # worked once. Needs no dependencies beyond the standard library.
       - name: Check portal actions receive the parameters they require
         run: python3 scripts/check_portal_action_params.py
+      # A test that imports its application module by a name another function directory
+      # also provides. Whichever is imported first wins `sys.modules` and the rest
+      # receive it, so per-directory runs pass and the whole tree in one invocation does
+      # not — 375 failures and 58 errors, plus one test that reached real AWS because it
+      # patched the wrong module. Standard library only.
+      - name: Check tests do not share an application module name
+        run: python3 scripts/check_test_module_names.py
       # The check above compares parameter *names*. The generated types below carry
       # the values — branded identifiers, instants and durations — so that a volume
       # name cannot be passed where a UUID belongs. This verifies the generated file
@@ -68,6 +75,23 @@ jobs:
         run: python3 scripts/sync_lang_switcher.py --check
       - name: Check the generated dispatch parameter types match the handlers
         run: python3 scripts/portal_action_types.py --check
+      # The two checks above describe the shape of a call. This one describes who the
+      # call may name: eight endpoints took a client-supplied object key while
+      # consulting neither the caller's access point nor the caller's prefixes, so
+      # they returned the right answer about the wrong file. Two had already been
+      # handed the group mapping and never read it, which is why reviewing the CDK
+      # would not have found it. Also checks that the resolver forwards the groups,
+      # because a boundary whose input is missing resolves to unrestricted.
+      - name: Check every endpoint taking an object key applies the path boundary
+        run: python3 scripts/check_portal_key_boundary.py
+      # The AI endpoints and share links are withheld from callers outside the
+      # organisation, and both are enforced in the handler rather than in AppSync. The
+      # endpoints are found by what they do -- which AWS client they build, whether the
+      # caller chooses the URL lifetime -- so one added later is in scope without
+      # anybody remembering. Also checks the groups are forwarded: with none arriving,
+      # every caller reads as internal and the restriction silently does not exist.
+      - name: Check restrictions on external callers are reachable
+        run: python3 scripts/check_portal_external_policy.py
       # Renovate manages pyproject.toml and requirements.txt as separate managers.
       # It raised boto3 in one and not the other, and nothing failed: the tests run
       # against requirements.txt while the package metadata claimed the other

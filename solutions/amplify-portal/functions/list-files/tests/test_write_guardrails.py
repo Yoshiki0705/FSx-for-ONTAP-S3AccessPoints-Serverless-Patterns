@@ -24,6 +24,7 @@ import importlib.util
 import json
 import os
 import sys
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 from unittest.mock import MagicMock, patch
@@ -440,3 +441,97 @@ class TestPresignedUploadUrl:
         assert host.startswith(f"{ALIAS}.s3.")
         assert host != f"{ALIAS}.s3.amazonaws.com", "the global host is the one S3 redirects"
         assert "X-Amz-Algorithm=AWS4-HMAC-SHA256" in url
+
+
+class TestListingIsFilteredNotOnlyBounded:
+    """What a listing shows, as opposed to which prefix it accepts.
+
+    The request-time check refuses a prefix outside the boundary, and that was the
+    whole of it. It cannot run at the root: with `prefix == ""` there is nothing to
+    compare against, so every top-level name came back unfiltered. A caller confined
+    to `team-a/` saw `team-b/` in the listing and was refused on opening it, which
+    reads as a cosmetic glitch rather than as the boundary not applying.
+
+    Per-identity access points do not close it either. Measured 2026-08-26 on ONTAP
+    9.18.1P3D1: an identity denied a directory's contents still saw the directory's
+    name, because listing the parent needs only traversal on the parent.
+    """
+
+    @staticmethod
+    def _listing(module: Any, folders: list[str], keys: list[str]) -> None:
+        module.s3.list_objects_v2.return_value = {
+            "CommonPrefixes": [{"Prefix": p} for p in folders],
+            "Contents": [
+                {"Key": k, "Size": 1, "LastModified": datetime(2026, 8, 26, tzinfo=timezone.utc)} for k in keys
+            ],
+            "IsTruncated": False,
+        }
+
+    def test_the_root_listing_hides_another_tenants_folder(self, portal: Any) -> None:
+        self._listing(portal, ["team-a/", "team-b/"], [])
+
+        result = call(portal, "listFiles", prefix="")
+
+        shown = [f["key"] for f in result["files"]]
+        assert "team-a/" in shown
+        assert "team-b/" not in shown
+
+    def test_the_root_listing_hides_a_file_outside_the_boundary(self, portal: Any) -> None:
+        self._listing(portal, [], ["team-a/mine.txt", "loose_at_root.txt", "team-b/theirs.txt"])
+
+        result = call(portal, "listFiles", prefix="")
+
+        shown = [f["key"] for f in result["files"]]
+        assert shown == ["team-a/mine.txt"]
+
+    def test_an_ancestor_of_an_allowed_prefix_stays_navigable(self) -> None:
+        """Otherwise a caller scoped to a subfolder could never reach it."""
+        module = load_module(
+            {
+                "S3_AP_ALIAS": ALIAS,
+                "GROUP_PATH_PREFIXES": json.dumps({"team-a": ["team-a/reports/"]}),
+                "GROUP_AP_MAPPING": "{}",
+            }
+        )
+        module.s3 = MagicMock()
+        self._listing(module, ["team-a/", "team-b/"], [])
+
+        shown = [f["key"] for f in call(module, "listFiles", prefix="")["files"]]
+
+        assert shown == ["team-a/"]
+
+    def test_an_unrestricted_caller_still_sees_everything(self, portal: Any) -> None:
+        """The boundary is opt-in, so a single-tenant deployment must be unaffected."""
+        module = load_module({"S3_AP_ALIAS": ALIAS, "GROUP_PATH_PREFIXES": "{}", "GROUP_AP_MAPPING": "{}"})
+        module.s3 = MagicMock()
+        self._listing(module, ["team-a/", "team-b/"], ["loose_at_root.txt"])
+
+        shown = [f["key"] for f in call(module, "listFiles", prefix="", groups=[])["files"]]
+
+        assert shown == ["team-a/", "team-b/", "loose_at_root.txt"]
+
+    def test_storage_admin_sees_every_folder(self, portal: Any) -> None:
+        self._listing(portal, ["team-a/", "team-b/"], [])
+
+        shown = [f["key"] for f in call(portal, "listFiles", prefix="", groups=["storage-admin"])["files"]]
+
+        assert shown == ["team-a/", "team-b/"]
+
+    def test_a_page_emptied_by_filtering_still_reports_more_to_come(self, portal: Any) -> None:
+        """The filter runs after S3 counted the page, so an empty page is not the end.
+
+        Collapsing this to "no more results" would hide a scoped caller's own files
+        behind a page belonging entirely to another tenant.
+        """
+        portal.s3.list_objects_v2.return_value = {
+            "CommonPrefixes": [{"Prefix": "team-b/"}],
+            "Contents": [],
+            "IsTruncated": True,
+            "NextContinuationToken": "carry-on",
+        }
+
+        result = call(portal, "listFiles", prefix="")
+
+        assert result["files"] == []
+        assert result["isTruncated"] is True
+        assert result["nextContinuationToken"] == "carry-on"

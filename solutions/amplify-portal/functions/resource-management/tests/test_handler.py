@@ -71,7 +71,7 @@ class MockHttp:
 @pytest.fixture
 def mock_secrets():
     """Patch Secrets Manager."""
-    with patch("handler.boto3") as mock_boto3:
+    with patch("rm_handler.boto3") as mock_boto3:
         mock_sm = MagicMock()
         mock_sm.get_secret_value.return_value = {
             "SecretString": json.dumps({"username": "fsxadmin", "password": "test"})
@@ -90,7 +90,7 @@ def snapmirror_client(pool):
     """Patch the handler's client builder onto `pool`.
 
     The SnapMirror actions go through shared/ontap_client.py rather than this
-    handler's own urllib3 pool, so `patch("handler.urllib3.PoolManager")` no longer
+    handler's own urllib3 pool, so `patch("rm_handler.urllib3.PoolManager")` no longer
     reaches them. Injecting the same MockHttp keeps these tests at the wire level,
     which is where their value is: they assert the request path, the body and the
     requested `fields`, and one of them exists because a field name real ONTAP
@@ -112,7 +112,7 @@ def snapmirror_client(pool):
     )
     client._pool = pool
     client._credentials = {"username": "fsxadmin", "password": "test"}
-    return patch("handler._shared_client", return_value=client)
+    return patch("rm_handler._shared_client", return_value=client)
 
 
 # --- Volume Tests ---
@@ -120,9 +120,9 @@ def snapmirror_client(pool):
 
 class TestListVolumes:
     def test_returns_volumes(self, mock_secrets):
-        from handler import handler
+        from rm_handler import handler
 
-        with patch("handler.urllib3.PoolManager") as mock_pool:
+        with patch("rm_handler.urllib3.PoolManager") as mock_pool:
             mock_pool.return_value = MockHttp(
                 {
                     "/storage/volumes": {
@@ -171,9 +171,9 @@ class TestVolumeCapacityBreakdown:
         """Every case in here reaches ONTAP, so the credential read is always mocked."""
 
     def _volumes(self, record):
-        from handler import handler
+        from rm_handler import handler
 
-        with patch("handler.urllib3.PoolManager") as mock_pool:
+        with patch("rm_handler.urllib3.PoolManager") as mock_pool:
             mock_pool.return_value = MockHttp(
                 {"/storage/volumes": {"status": 200, "data": {"records": [record], "num_records": 1}}}
             )
@@ -250,9 +250,9 @@ class TestVolumeCapacityBreakdown:
 
 class TestCreateVolume:
     def test_validates_name_format(self, mock_secrets):
-        from handler import handler
+        from rm_handler import handler
 
-        with patch("handler.urllib3.PoolManager") as mock_pool:
+        with patch("rm_handler.urllib3.PoolManager") as mock_pool:
             mock_pool.return_value = MockHttp()
 
             # Hyphens not allowed
@@ -261,9 +261,9 @@ class TestCreateVolume:
             assert "alphanumeric" in result["error"]
 
     def test_validates_name_required(self, mock_secrets):
-        from handler import handler
+        from rm_handler import handler
 
-        with patch("handler.urllib3.PoolManager") as mock_pool:
+        with patch("rm_handler.urllib3.PoolManager") as mock_pool:
             mock_pool.return_value = MockHttp()
 
             result = handler({"action": "createVolume", "name": "", "sizeGiB": 100}, None)
@@ -271,9 +271,9 @@ class TestCreateVolume:
             assert "required" in result["error"]
 
     def test_validates_size_positive(self, mock_secrets):
-        from handler import handler
+        from rm_handler import handler
 
-        with patch("handler.urllib3.PoolManager") as mock_pool:
+        with patch("rm_handler.urllib3.PoolManager") as mock_pool:
             mock_pool.return_value = MockHttp()
 
             result = handler({"action": "createVolume", "name": "vol1", "sizeGiB": 0}, None)
@@ -281,9 +281,9 @@ class TestCreateVolume:
             assert "Size" in result["error"]
 
     def test_success_creates_volume(self, mock_secrets):
-        from handler import handler
+        from rm_handler import handler
 
-        with patch("handler.urllib3.PoolManager") as mock_pool:
+        with patch("rm_handler.urllib3.PoolManager") as mock_pool:
             mock_pool.return_value = MockHttp(
                 {
                     "/storage/aggregates": {"data": {"records": [{"name": "aggr1"}]}},
@@ -303,7 +303,7 @@ class TestCreateVolume:
         answers 918242. On FSx for ONTAP AWS manages the aggregates, so the name is
         looked up rather than asked for. This create had never once succeeded.
         """
-        from handler import handler
+        from rm_handler import handler
 
         http = MockHttp(
             {
@@ -311,7 +311,7 @@ class TestCreateVolume:
                 "/storage/volumes": {"status": 202, "data": {}},
             }
         )
-        with patch("handler.urllib3.PoolManager") as mock_pool:
+        with patch("rm_handler.urllib3.PoolManager") as mock_pool:
             mock_pool.return_value = http
             result = handler({"action": "createVolume", "name": "test_vol", "sizeGiB": 50}, None)
 
@@ -332,7 +332,7 @@ class TestCreateVolume:
         `use_tiered_aggregate`; the volume path did not, so creating a FlexGroup here
         had never worked.
         """
-        from handler import handler
+        from rm_handler import handler
 
         http = MockHttp(
             {
@@ -340,7 +340,7 @@ class TestCreateVolume:
                 "/storage/volumes": {"status": 202, "data": {}},
             }
         )
-        with patch("handler.urllib3.PoolManager") as mock_pool:
+        with patch("rm_handler.urllib3.PoolManager") as mock_pool:
             mock_pool.return_value = http
             result = handler(
                 {"action": "createVolume", "name": "big_vol", "sizeGiB": 400, "style": "flexgroup"},
@@ -354,10 +354,10 @@ class TestCreateVolume:
 
     def test_a_named_aggregate_is_used_as_given(self, mock_secrets):
         """A caller that knows which aggregate it wants is not overridden."""
-        from handler import handler
+        from rm_handler import handler
 
         http = MockHttp({"/storage/volumes": {"status": 202, "data": {}}})
-        with patch("handler.urllib3.PoolManager") as mock_pool:
+        with patch("rm_handler.urllib3.PoolManager") as mock_pool:
             mock_pool.return_value = http
             handler(
                 {
@@ -377,9 +377,9 @@ class TestCreateVolume:
 
     def test_an_empty_aggregate_list_is_explained(self, mock_secrets):
         """ONTAP's own 918242 asks for a value the caller cannot know."""
-        from handler import handler
+        from rm_handler import handler
 
-        with patch("handler.urllib3.PoolManager") as mock_pool:
+        with patch("rm_handler.urllib3.PoolManager") as mock_pool:
             mock_pool.return_value = MockHttp()
             result = handler({"action": "createVolume", "name": "test_vol", "sizeGiB": 50}, None)
 
@@ -388,10 +388,10 @@ class TestCreateVolume:
 
     def test_a_refused_request_asks_the_cluster_nothing(self, mock_secrets):
         """Validation comes first, so a bad name costs no ONTAP round trip."""
-        from handler import handler
+        from rm_handler import handler
 
         http = MockHttp()
-        with patch("handler.urllib3.PoolManager") as mock_pool:
+        with patch("rm_handler.urllib3.PoolManager") as mock_pool:
             mock_pool.return_value = http
             result = handler({"action": "createVolume", "name": "bad-name", "sizeGiB": 50}, None)
 
@@ -401,9 +401,9 @@ class TestCreateVolume:
 
 class TestDeleteVolume:
     def test_requires_confirm(self, mock_secrets):
-        from handler import handler
+        from rm_handler import handler
 
-        with patch("handler.urllib3.PoolManager") as mock_pool:
+        with patch("rm_handler.urllib3.PoolManager") as mock_pool:
             mock_pool.return_value = MockHttp()
 
             result = handler(
@@ -420,9 +420,9 @@ class TestDeleteVolume:
         assert "confirm" in result["error"]
 
     def test_requires_uuid(self, mock_secrets):
-        from handler import handler
+        from rm_handler import handler
 
-        with patch("handler.urllib3.PoolManager") as mock_pool:
+        with patch("rm_handler.urllib3.PoolManager") as mock_pool:
             mock_pool.return_value = MockHttp()
 
             result = handler(
@@ -446,7 +446,7 @@ class TestDeleteVolume:
         former SnapMirror destination, where the delete job failed because the volume
         was still online.
         """
-        from handler import handler
+        from rm_handler import handler
 
         http = MockHttp(
             {
@@ -454,7 +454,7 @@ class TestDeleteVolume:
                 "/cluster/jobs/job-del": {"data": {"state": "failure", "message": "volume is not offline"}},
             }
         )
-        with patch("handler.urllib3.PoolManager") as mock_pool:
+        with patch("rm_handler.urllib3.PoolManager") as mock_pool:
             mock_pool.return_value = http
 
             result = handler(
@@ -476,7 +476,7 @@ class TestDeleteVolume:
         Without this the delete only ever worked on a volume with no junction path -- a
         SnapMirror destination. Every volume the portal creates is mounted.
         """
-        from handler import handler
+        from rm_handler import handler
 
         http = MockHttp(
             {
@@ -485,7 +485,7 @@ class TestDeleteVolume:
                 "/cluster/jobs/job-1": {"data": {"state": "success", "message": "done"}},
             }
         )
-        with patch("handler.urllib3.PoolManager") as mock_pool:
+        with patch("rm_handler.urllib3.PoolManager") as mock_pool:
             mock_pool.return_value = http
             result = handler({"action": "deleteVolume", "volumeUuid": "uuid-1", "confirm": True}, None)
 
@@ -497,7 +497,7 @@ class TestDeleteVolume:
 
     def test_an_unmounted_volume_is_not_patched_for_it(self, mock_secrets):
         """A volume with no junction path needs no unmount, so none is sent."""
-        from handler import handler
+        from rm_handler import handler
 
         http = MockHttp(
             {
@@ -506,7 +506,7 @@ class TestDeleteVolume:
                 "/cluster/jobs/job-1": {"data": {"state": "success", "message": "done"}},
             }
         )
-        with patch("handler.urllib3.PoolManager") as mock_pool:
+        with patch("rm_handler.urllib3.PoolManager") as mock_pool:
             mock_pool.return_value = http
             result = handler({"action": "deleteVolume", "volumeUuid": "uuid-1", "confirm": True}, None)
 
@@ -515,7 +515,7 @@ class TestDeleteVolume:
         assert patches == [{"state": "offline"}]
 
     def test_waits_for_the_offline_job_before_deleting(self, mock_secrets):
-        from handler import handler
+        from rm_handler import handler
 
         http = MockHttp(
             {
@@ -523,7 +523,7 @@ class TestDeleteVolume:
                 "/cluster/jobs/job-1": {"data": {"state": "success", "message": "done"}},
             }
         )
-        with patch("handler.urllib3.PoolManager") as mock_pool:
+        with patch("rm_handler.urllib3.PoolManager") as mock_pool:
             mock_pool.return_value = http
 
             result = handler(
@@ -552,9 +552,9 @@ class TestBringVolumeOnline:
     """
 
     def test_requires_a_uuid(self, mock_secrets):
-        from handler import handler
+        from rm_handler import handler
 
-        with patch("handler.urllib3.PoolManager") as mock_pool:
+        with patch("rm_handler.urllib3.PoolManager") as mock_pool:
             mock_pool.return_value = MockHttp()
             result = handler({"action": "bringVolumeOnline", "volumeName": "vol1"}, None)
 
@@ -562,10 +562,10 @@ class TestBringVolumeOnline:
         assert "volumeUuid" in result["error"]
 
     def test_patches_the_state_to_online(self, mock_secrets):
-        from handler import handler
+        from rm_handler import handler
 
         http = MockHttp({"/storage/volumes/uuid-1": {"data": {}}})
-        with patch("handler.urllib3.PoolManager") as mock_pool:
+        with patch("rm_handler.urllib3.PoolManager") as mock_pool:
             mock_pool.return_value = http
             result = handler(
                 {"action": "bringVolumeOnline", "volumeUuid": "uuid-1", "volumeName": "vol1"},
@@ -582,10 +582,10 @@ class TestBringVolumeOnline:
         Remounting at a path the operator has not named again would be a guess at where
         the volume belongs.
         """
-        from handler import handler
+        from rm_handler import handler
 
         http = MockHttp({"/storage/volumes/uuid-1": {"data": {}}})
-        with patch("handler.urllib3.PoolManager") as mock_pool:
+        with patch("rm_handler.urllib3.PoolManager") as mock_pool:
             mock_pool.return_value = http
             handler({"action": "bringVolumeOnline", "volumeUuid": "uuid-1"}, None)
 
@@ -608,9 +608,9 @@ class TestMountVolume:
         """Every case here reaches ONTAP."""
 
     def test_requires_a_uuid(self):
-        from handler import handler
+        from rm_handler import handler
 
-        with patch("handler.urllib3.PoolManager") as mock_pool:
+        with patch("rm_handler.urllib3.PoolManager") as mock_pool:
             mock_pool.return_value = MockHttp()
             result = handler({"action": "mountVolume", "junctionPath": "/vol1"}, None)
 
@@ -618,9 +618,9 @@ class TestMountVolume:
         assert "volumeUuid" in result["error"]
 
     def test_requires_a_path(self):
-        from handler import handler
+        from rm_handler import handler
 
-        with patch("handler.urllib3.PoolManager") as mock_pool:
+        with patch("rm_handler.urllib3.PoolManager") as mock_pool:
             mock_pool.return_value = MockHttp()
             result = handler({"action": "mountVolume", "volumeUuid": "uuid-1"}, None)
 
@@ -643,10 +643,10 @@ class TestMountVolume:
         mount was requested, and its message for "/" reports an internal error rather
         than the reason.
         """
-        from handler import handler
+        from rm_handler import handler
 
         http = MockHttp()
-        with patch("handler.urllib3.PoolManager") as mock_pool:
+        with patch("rm_handler.urllib3.PoolManager") as mock_pool:
             mock_pool.return_value = http
             result = handler({"action": "mountVolume", "volumeUuid": "uuid-1", "junctionPath": path}, None)
 
@@ -654,10 +654,10 @@ class TestMountVolume:
         assert http.calls == [], "the cluster was asked about a path that could not work"
 
     def test_mounts_an_online_unmounted_volume(self):
-        from handler import handler
+        from rm_handler import handler
 
         http = MockHttp({"/storage/volumes/uuid-1": {"data": {"name": "vol1", "state": "online", "nas": {}}}})
-        with patch("handler.urllib3.PoolManager") as mock_pool:
+        with patch("rm_handler.urllib3.PoolManager") as mock_pool:
             mock_pool.return_value = http
             result = handler(
                 {
@@ -681,10 +681,10 @@ class TestMountVolume:
         report success and the operator would be left with an unreachable path --
         the false success this handler removes elsewhere.
         """
-        from handler import handler
+        from rm_handler import handler
 
         http = MockHttp({"/storage/volumes/uuid-1": {"data": {"name": "vol1", "state": "offline", "nas": {}}}})
-        with patch("handler.urllib3.PoolManager") as mock_pool:
+        with patch("rm_handler.urllib3.PoolManager") as mock_pool:
             mock_pool.return_value = http
             result = handler(
                 {"action": "mountVolume", "volumeUuid": "uuid-1", "junctionPath": "/vol1"},
@@ -697,12 +697,12 @@ class TestMountVolume:
 
     def test_refuses_to_move_a_mounted_volume_silently(self):
         """Moving a junction disconnects clients, so it is not a side effect of mounting."""
-        from handler import handler
+        from rm_handler import handler
 
         http = MockHttp(
             {"/storage/volumes/uuid-1": {"data": {"name": "vol1", "state": "online", "nas": {"path": "/old"}}}}
         )
-        with patch("handler.urllib3.PoolManager") as mock_pool:
+        with patch("rm_handler.urllib3.PoolManager") as mock_pool:
             mock_pool.return_value = http
             result = handler(
                 {"action": "mountVolume", "volumeUuid": "uuid-1", "junctionPath": "/new"},
@@ -722,10 +722,10 @@ class TestUnmountVolume:
         """Every case here reaches ONTAP."""
 
     def test_requires_confirmation(self):
-        from handler import handler
+        from rm_handler import handler
 
         http = MockHttp()
-        with patch("handler.urllib3.PoolManager") as mock_pool:
+        with patch("rm_handler.urllib3.PoolManager") as mock_pool:
             mock_pool.return_value = http
             result = handler({"action": "unmountVolume", "volumeUuid": "uuid-1"}, None)
 
@@ -734,10 +734,10 @@ class TestUnmountVolume:
         assert http.calls == []
 
     def test_clears_the_path(self):
-        from handler import handler
+        from rm_handler import handler
 
         http = MockHttp({"/storage/volumes/uuid-1": {"data": {"nas": {"path": "/vol1"}}}})
-        with patch("handler.urllib3.PoolManager") as mock_pool:
+        with patch("rm_handler.urllib3.PoolManager") as mock_pool:
             mock_pool.return_value = http
             result = handler(
                 {"action": "unmountVolume", "volumeUuid": "uuid-1", "volumeName": "vol1", "confirm": True},
@@ -756,10 +756,10 @@ class TestUnmountVolume:
         `_unmount_if_mounted` reports only whether a delete may continue, so it treats
         this as nothing to do. Here it is the answer.
         """
-        from handler import handler
+        from rm_handler import handler
 
         http = MockHttp({"/storage/volumes/uuid-1": {"data": {"nas": {}}}})
-        with patch("handler.urllib3.PoolManager") as mock_pool:
+        with patch("rm_handler.urllib3.PoolManager") as mock_pool:
             mock_pool.return_value = http
             result = handler({"action": "unmountVolume", "volumeUuid": "uuid-1", "confirm": True}, None)
 
@@ -783,7 +783,7 @@ class TestObjectStoreBuckets:
         """Every case here reaches ONTAP."""
 
     def test_lists_buckets_for_the_svm(self):
-        from handler import handler
+        from rm_handler import handler
 
         http = MockHttp(
             {
@@ -802,7 +802,7 @@ class TestObjectStoreBuckets:
                 }
             }
         )
-        with patch("handler.urllib3.PoolManager") as mock_pool:
+        with patch("rm_handler.urllib3.PoolManager") as mock_pool:
             mock_pool.return_value = http
             result = handler({"action": "listObjectStoreBuckets", "userId": "u"}, None)
 
@@ -812,7 +812,7 @@ class TestObjectStoreBuckets:
 
     def test_narrows_to_one_volume(self):
         """The caller's question is which buckets belong to the volume that refused."""
-        from handler import handler
+        from rm_handler import handler
 
         http = MockHttp(
             {
@@ -826,16 +826,16 @@ class TestObjectStoreBuckets:
                 }
             }
         )
-        with patch("handler.urllib3.PoolManager") as mock_pool:
+        with patch("rm_handler.urllib3.PoolManager") as mock_pool:
             mock_pool.return_value = http
             result = handler({"action": "listObjectStoreBuckets", "userId": "u", "volumeName": "vol2"}, None)
 
         assert [b["name"] for b in result["buckets"]] == ["for-vol2"]
 
     def test_delete_requires_a_name(self):
-        from handler import handler
+        from rm_handler import handler
 
-        with patch("handler.urllib3.PoolManager") as mock_pool:
+        with patch("rm_handler.urllib3.PoolManager") as mock_pool:
             mock_pool.return_value = MockHttp()
             result = handler({"action": "deleteObjectStoreBucket", "userId": "u", "confirm": True}, None)
 
@@ -843,10 +843,10 @@ class TestObjectStoreBuckets:
         assert "name" in result["error"]
 
     def test_delete_requires_confirmation(self):
-        from handler import handler
+        from rm_handler import handler
 
         http = MockHttp()
-        with patch("handler.urllib3.PoolManager") as mock_pool:
+        with patch("rm_handler.urllib3.PoolManager") as mock_pool:
             mock_pool.return_value = http
             result = handler({"action": "deleteObjectStoreBucket", "userId": "u", "name": "b"}, None)
 
@@ -856,7 +856,7 @@ class TestObjectStoreBuckets:
 
     def test_delete_resolves_both_uuids_from_the_name(self):
         """The operator reads a bucket name out of a failure, not a pair of UUIDs."""
-        from handler import handler
+        from rm_handler import handler
 
         http = MockHttp(
             {
@@ -874,7 +874,7 @@ class TestObjectStoreBuckets:
                 }
             }
         )
-        with patch("handler.urllib3.PoolManager") as mock_pool:
+        with patch("rm_handler.urllib3.PoolManager") as mock_pool:
             mock_pool.return_value = http
             result = handler(
                 {
@@ -891,10 +891,10 @@ class TestObjectStoreBuckets:
         http.find("DELETE", "/protocols/s3/buckets/s-1/b-1")
 
     def test_delete_reports_a_name_that_does_not_exist(self):
-        from handler import handler
+        from rm_handler import handler
 
         http = MockHttp({"/protocols/s3/buckets": {"data": {"records": []}}})
-        with patch("handler.urllib3.PoolManager") as mock_pool:
+        with patch("rm_handler.urllib3.PoolManager") as mock_pool:
             mock_pool.return_value = http
             result = handler(
                 {"action": "deleteObjectStoreBucket", "userId": "u", "name": "missing", "confirm": True},
@@ -967,18 +967,18 @@ class TestVolumeMountInfo:
         )
 
     def test_requires_a_uuid(self):
-        from handler import handler
+        from rm_handler import handler
 
-        with patch("handler.urllib3.PoolManager") as mock_pool:
+        with patch("rm_handler.urllib3.PoolManager") as mock_pool:
             mock_pool.return_value = MockHttp()
             result = handler({"action": "getVolumeMountInfo"}, None)
 
         assert "volumeUuid" in result["error"]
 
     def test_reports_the_lif_that_serves_data_not_the_management_one(self):
-        from handler import handler
+        from rm_handler import handler
 
-        with patch("handler.urllib3.PoolManager") as mock_pool:
+        with patch("rm_handler.urllib3.PoolManager") as mock_pool:
             mock_pool.return_value = self._cluster()
             result = handler({"action": "getVolumeMountInfo", "volumeUuid": "uuid-1"}, None)
 
@@ -988,7 +988,7 @@ class TestVolumeMountInfo:
 
     def test_a_lif_that_is_down_is_listed_but_not_counted_as_ready(self):
         """Listed so the panel can name the LIF to bring up, rather than finding none."""
-        from handler import handler
+        from rm_handler import handler
 
         interfaces = [
             {
@@ -999,7 +999,7 @@ class TestVolumeMountInfo:
                 "services": ["data_nfs"],
             }
         ]
-        with patch("handler.urllib3.PoolManager") as mock_pool:
+        with patch("rm_handler.urllib3.PoolManager") as mock_pool:
             mock_pool.return_value = self._cluster(interfaces=interfaces)
             result = handler({"action": "getVolumeMountInfo", "volumeUuid": "uuid-1"}, None)
 
@@ -1008,10 +1008,10 @@ class TestVolumeMountInfo:
         assert result["nfsReady"] is False
 
     def test_an_unmounted_volume_is_not_nfs_ready_and_proposes_a_path(self):
-        from handler import handler
+        from rm_handler import handler
 
         volume = {"name": "vol1", "state": "online", "nas": {}, "svm": {"name": "svm1"}}
-        with patch("handler.urllib3.PoolManager") as mock_pool:
+        with patch("rm_handler.urllib3.PoolManager") as mock_pool:
             mock_pool.return_value = self._cluster(volume=volume)
             result = handler({"action": "getVolumeMountInfo", "volumeUuid": "uuid-1"}, None)
 
@@ -1020,9 +1020,9 @@ class TestVolumeMountInfo:
         assert result["suggestedPath"] == "/vol1"
 
     def test_nfs_disabled_is_not_ready_however_many_lifs_exist(self):
-        from handler import handler
+        from rm_handler import handler
 
-        with patch("handler.urllib3.PoolManager") as mock_pool:
+        with patch("rm_handler.urllib3.PoolManager") as mock_pool:
             mock_pool.return_value = self._cluster(nfs_enabled=False)
             result = handler({"action": "getVolumeMountInfo", "volumeUuid": "uuid-1"}, None)
 
@@ -1034,7 +1034,7 @@ class TestVolumeMountInfo:
 
         Matching the junction exactly would report no SMB path for the common case.
         """
-        from handler import handler
+        from rm_handler import handler
 
         shares = [
             {"name": "at_junction", "path": "/vol1"},
@@ -1042,7 +1042,7 @@ class TestVolumeMountInfo:
             {"name": "elsewhere", "path": "/other"},
             {"name": "prefix_trap", "path": "/vol10"},
         ]
-        with patch("handler.urllib3.PoolManager") as mock_pool:
+        with patch("rm_handler.urllib3.PoolManager") as mock_pool:
             mock_pool.return_value = self._cluster(shares=shares)
             result = handler({"action": "getVolumeMountInfo", "volumeUuid": "uuid-1"}, None)
 
@@ -1050,9 +1050,9 @@ class TestVolumeMountInfo:
 
     def test_smb_is_not_ready_without_a_share(self):
         """A CIFS server with no share for this volume has no UNC path to offer."""
-        from handler import handler
+        from rm_handler import handler
 
-        with patch("handler.urllib3.PoolManager") as mock_pool:
+        with patch("rm_handler.urllib3.PoolManager") as mock_pool:
             mock_pool.return_value = self._cluster(shares=[{"name": "elsewhere", "path": "/other"}])
             result = handler({"action": "getVolumeMountInfo", "volumeUuid": "uuid-1"}, None)
 
@@ -1061,9 +1061,9 @@ class TestVolumeMountInfo:
         assert result["smbReady"] is False
 
     def test_reports_the_cifs_server_and_domain_the_unc_host_is_built_from(self):
-        from handler import handler
+        from rm_handler import handler
 
-        with patch("handler.urllib3.PoolManager") as mock_pool:
+        with patch("rm_handler.urllib3.PoolManager") as mock_pool:
             mock_pool.return_value = self._cluster()
             result = handler({"action": "getVolumeMountInfo", "volumeUuid": "uuid-1"}, None)
 
@@ -1076,11 +1076,11 @@ class TestVolumeMountInfo:
 
         Naming the selected SVM's LIF there produces a command that cannot work.
         """
-        from handler import handler
+        from rm_handler import handler
 
         volume = {"name": "vol1", "state": "online", "nas": {"path": "/vol1"}, "svm": {"name": "other_svm"}}
         http = self._cluster(volume=volume)
-        with patch("handler.urllib3.PoolManager") as mock_pool:
+        with patch("rm_handler.urllib3.PoolManager") as mock_pool:
             mock_pool.return_value = http
             result = handler({"action": "getVolumeMountInfo", "volumeUuid": "uuid-1", "svm": "svm1"}, None)
 
@@ -1127,9 +1127,9 @@ class TestVolumeRebalance:
 
     def test_a_flexvol_is_answered_rather_than_failed(self):
         """The panel has to be able to say why the operation is not offered."""
-        from handler import handler
+        from rm_handler import handler
 
-        with patch("handler.urllib3.PoolManager") as mock_pool:
+        with patch("rm_handler.urllib3.PoolManager") as mock_pool:
             mock_pool.return_value = self._http({"name": "vol1", "style": "flexvol"})
             result = handler({"action": "getVolumeRebalance", "volumeUuid": "uuid-1"}, None)
 
@@ -1144,9 +1144,9 @@ class TestVolumeRebalance:
         Reporting only the style here would leave the panel offering the operation on
         the one FlexGroup where NetApp documents it as unavailable.
         """
-        from handler import handler
+        from rm_handler import handler
 
-        with patch("handler.urllib3.PoolManager") as mock_pool:
+        with patch("rm_handler.urllib3.PoolManager") as mock_pool:
             mock_pool.return_value = self._http(
                 {"name": "fg_oss", "style": "flexgroup", "is_object_store": True, "constituents": [{"name": "a"}]}
             )
@@ -1162,9 +1162,9 @@ class TestVolumeRebalance:
         state to "unknown" with zeroes would look like a balanced volume ONTAP had
         merely failed to inspect, and the panel would offer to start an operation.
         """
-        from handler import handler
+        from rm_handler import handler
 
-        with patch("handler.urllib3.PoolManager") as mock_pool:
+        with patch("rm_handler.urllib3.PoolManager") as mock_pool:
             mock_pool.return_value = self._http({"name": "cache1", "style": "flexgroup"})
             result = handler({"action": "getVolumeRebalance", "volumeUuid": "uuid-1"}, None)
 
@@ -1176,9 +1176,9 @@ class TestVolumeRebalance:
 
         The constituent is the one that returns ENOSPC, so both numbers travel.
         """
-        from handler import handler
+        from rm_handler import handler
 
-        with patch("handler.urllib3.PoolManager") as mock_pool:
+        with patch("rm_handler.urllib3.PoolManager") as mock_pool:
             mock_pool.return_value = self._http(self.FLEXGROUP)
             result = handler({"action": "getVolumeRebalance", "volumeUuid": "uuid-1"}, None)
 
@@ -1195,10 +1195,10 @@ class TestVolumeRebalance:
         """`rebalancing`, `is_object_store` and `constituents` are explicit-request
         fields. Without them the answer is silence, which reads as "nothing to do".
         """
-        from handler import handler
+        from rm_handler import handler
 
         http = self._http(self.FLEXGROUP)
-        with patch("handler.urllib3.PoolManager") as mock_pool:
+        with patch("rm_handler.urllib3.PoolManager") as mock_pool:
             mock_pool.return_value = http
             handler({"action": "getVolumeRebalance", "volumeUuid": "uuid-1"}, None)
 
@@ -1208,9 +1208,9 @@ class TestVolumeRebalance:
 
     def test_start_requires_the_acknowledgement(self):
         """Starting enables granular data, which cannot be switched off again."""
-        from handler import handler
+        from rm_handler import handler
 
-        with patch("handler.urllib3.PoolManager") as mock_pool:
+        with patch("rm_handler.urllib3.PoolManager") as mock_pool:
             mock_pool.return_value = self._http(self.FLEXGROUP)
             result = handler({"action": "startVolumeRebalance", "volumeUuid": "uuid-1"}, None)
 
@@ -1222,9 +1222,9 @@ class TestVolumeRebalance:
         assert "tamperproof" not in result["error"]
 
     def test_start_refuses_a_flexvol(self):
-        from handler import handler
+        from rm_handler import handler
 
-        with patch("handler.urllib3.PoolManager") as mock_pool:
+        with patch("rm_handler.urllib3.PoolManager") as mock_pool:
             mock_pool.return_value = self._http({"name": "vol1", "style": "flexvol"})
             result = handler(
                 {"action": "startVolumeRebalance", "volumeUuid": "uuid-1", "acknowledgeIrreversible": True},
@@ -1235,9 +1235,9 @@ class TestVolumeRebalance:
         assert "FlexGroup" in result["error"]
 
     def test_start_refuses_an_object_store_volume(self):
-        from handler import handler
+        from rm_handler import handler
 
-        with patch("handler.urllib3.PoolManager") as mock_pool:
+        with patch("rm_handler.urllib3.PoolManager") as mock_pool:
             mock_pool.return_value = self._http({"name": "fg_oss", "style": "flexgroup", "is_object_store": True})
             result = handler(
                 {"action": "startVolumeRebalance", "volumeUuid": "uuid-1", "acknowledgeIrreversible": True},
@@ -1258,9 +1258,9 @@ class TestVolumeRebalance:
         itself (144182216), so the cost was a wasted round trip -- but a guard that
         enumerates the states it knows keeps missing the ones it does not.
         """
-        from handler import handler
+        from rm_handler import handler
 
-        with patch("handler.urllib3.PoolManager") as mock_pool:
+        with patch("rm_handler.urllib3.PoolManager") as mock_pool:
             mock_pool.return_value = self._http(dict(self.FLEXGROUP, rebalancing={"state": state}))
             result = handler(
                 {"action": "startVolumeRebalance", "volumeUuid": "uuid-1", "acknowledgeIrreversible": True},
@@ -1274,9 +1274,9 @@ class TestVolumeRebalance:
     @pytest.mark.parametrize("state", ["not_running", "unknown"])
     def test_start_proceeds_when_no_operation_exists(self, state):
         """The other side of the rule above: neither of these blocks a start."""
-        from handler import handler
+        from rm_handler import handler
 
-        with patch("handler.urllib3.PoolManager") as mock_pool:
+        with patch("rm_handler.urllib3.PoolManager") as mock_pool:
             mock_pool.return_value = self._http(dict(self.FLEXGROUP, rebalancing={"state": state}))
             result = handler(
                 {"action": "startVolumeRebalance", "volumeUuid": "uuid-1", "acknowledgeIrreversible": True},
@@ -1291,7 +1291,7 @@ class TestVolumeRebalance:
         that reports itself running while moving nothing -- measured, that state emits
         no notice at all.
         """
-        from handler import handler
+        from rm_handler import handler
 
         volume = dict(
             self.FLEXGROUP,
@@ -1312,7 +1312,7 @@ class TestVolumeRebalance:
                 },
             ),
         )
-        with patch("handler.urllib3.PoolManager") as mock_pool:
+        with patch("rm_handler.urllib3.PoolManager") as mock_pool:
             mock_pool.return_value = self._http(volume)
             result = handler({"action": "getVolumeRebalance", "volumeUuid": "uuid-1"}, None)
 
@@ -1326,9 +1326,9 @@ class TestVolumeRebalance:
 
     def test_a_volume_without_engine_counters_reads_as_zero(self):
         """The engine sub-object is absent until an operation has run."""
-        from handler import handler
+        from rm_handler import handler
 
-        with patch("handler.urllib3.PoolManager") as mock_pool:
+        with patch("rm_handler.urllib3.PoolManager") as mock_pool:
             mock_pool.return_value = self._http(self.FLEXGROUP)
             result = handler({"action": "getVolumeRebalance", "volumeUuid": "uuid-1"}, None)
 
@@ -1337,9 +1337,9 @@ class TestVolumeRebalance:
 
     def test_start_refuses_a_runtime_that_is_not_a_period(self):
         """ONTAP rejects it too, but only after the caller has been told it started."""
-        from handler import handler
+        from rm_handler import handler
 
-        with patch("handler.urllib3.PoolManager") as mock_pool:
+        with patch("rm_handler.urllib3.PoolManager") as mock_pool:
             mock_pool.return_value = self._http(self.FLEXGROUP)
             result = handler(
                 {
@@ -1355,10 +1355,10 @@ class TestVolumeRebalance:
         assert "ISO-8601" in result["error"]
 
     def test_start_sends_the_state_and_the_options_it_was_given(self):
-        from handler import handler
+        from rm_handler import handler
 
         http = self._http(self.FLEXGROUP)
-        with patch("handler.urllib3.PoolManager") as mock_pool:
+        with patch("rm_handler.urllib3.PoolManager") as mock_pool:
             mock_pool.return_value = http
             result = handler(
                 {
@@ -1384,10 +1384,10 @@ class TestVolumeRebalance:
         """Six hours. Sending an explicit value would freeze a default that is ONTAP's
         to choose, and a run that hits the limit is not a failure.
         """
-        from handler import handler
+        from rm_handler import handler
 
         http = self._http(self.FLEXGROUP)
-        with patch("handler.urllib3.PoolManager") as mock_pool:
+        with patch("rm_handler.urllib3.PoolManager") as mock_pool:
             mock_pool.return_value = http
             handler(
                 {"action": "startVolumeRebalance", "volumeUuid": "uuid-1", "acknowledgeIrreversible": True},
@@ -1399,10 +1399,10 @@ class TestVolumeRebalance:
 
     def test_stop_sends_stopping_and_needs_no_acknowledgement(self):
         """Stopping takes nothing away that starting had not already committed."""
-        from handler import handler
+        from rm_handler import handler
 
         http = self._http({})
-        with patch("handler.urllib3.PoolManager") as mock_pool:
+        with patch("rm_handler.urllib3.PoolManager") as mock_pool:
             mock_pool.return_value = http
             result = handler(
                 {"action": "stopVolumeRebalance", "volumeUuid": "uuid-1", "volumeName": "fg1"},
@@ -1416,9 +1416,9 @@ class TestVolumeRebalance:
 
 class TestResizeVolume:
     def test_validates_inputs(self, mock_secrets):
-        from handler import handler
+        from rm_handler import handler
 
-        with patch("handler.urllib3.PoolManager") as mock_pool:
+        with patch("rm_handler.urllib3.PoolManager") as mock_pool:
             mock_pool.return_value = MockHttp()
 
             result = handler({"action": "resizeVolume", "volumeUuid": "", "newSizeGiB": 200}, None)
@@ -1433,9 +1433,9 @@ class TestResizeVolume:
 
 class TestExportPolicies:
     def test_list_policies(self, mock_secrets):
-        from handler import handler
+        from rm_handler import handler
 
-        with patch("handler.urllib3.PoolManager") as mock_pool:
+        with patch("rm_handler.urllib3.PoolManager") as mock_pool:
             mock_pool.return_value = MockHttp(
                 {
                     "/protocols/nfs/export-policies": {
@@ -1452,9 +1452,9 @@ class TestExportPolicies:
         assert result["policies"][0]["name"] == "default"
 
     def test_create_rule_requires_fields(self, mock_secrets):
-        from handler import handler
+        from rm_handler import handler
 
-        with patch("handler.urllib3.PoolManager") as mock_pool:
+        with patch("rm_handler.urllib3.PoolManager") as mock_pool:
             mock_pool.return_value = MockHttp()
 
             result = handler(
@@ -1483,9 +1483,9 @@ class TestExportPolicies:
 
 class TestQosPolicies:
     def test_list_qos(self, mock_secrets):
-        from handler import handler
+        from rm_handler import handler
 
-        with patch("handler.urllib3.PoolManager") as mock_pool:
+        with patch("rm_handler.urllib3.PoolManager") as mock_pool:
             mock_pool.return_value = MockHttp(
                 {
                     "/storage/qos/policies": {
@@ -1511,9 +1511,9 @@ class TestQosPolicies:
         assert result["policies"][0]["name"] == "gold"
 
     def test_create_fixed_requires_limits(self, mock_secrets):
-        from handler import handler
+        from rm_handler import handler
 
-        with patch("handler.urllib3.PoolManager") as mock_pool:
+        with patch("rm_handler.urllib3.PoolManager") as mock_pool:
             mock_pool.return_value = MockHttp()
 
             result = handler(
@@ -1529,9 +1529,9 @@ class TestQosPolicies:
         assert "maxIops" in result["error"] or "required" in result["error"]
 
     def test_create_adaptive_requires_iops(self, mock_secrets):
-        from handler import handler
+        from rm_handler import handler
 
-        with patch("handler.urllib3.PoolManager") as mock_pool:
+        with patch("rm_handler.urllib3.PoolManager") as mock_pool:
             mock_pool.return_value = MockHttp()
 
             result = handler(
@@ -1552,9 +1552,9 @@ class TestQosPolicies:
 
 class TestSnaplock:
     def test_get_config_requires_volume(self, mock_secrets):
-        from handler import handler
+        from rm_handler import handler
 
-        with patch("handler.urllib3.PoolManager") as mock_pool:
+        with patch("rm_handler.urllib3.PoolManager") as mock_pool:
             mock_pool.return_value = MockHttp()
 
             result = handler({"action": "getSnaplockConfig"}, None)
@@ -1563,9 +1563,9 @@ class TestSnaplock:
         assert "required" in result["error"]
 
     def test_update_retention_validates_days(self, mock_secrets):
-        from handler import handler
+        from rm_handler import handler
 
-        with patch("handler.urllib3.PoolManager") as mock_pool:
+        with patch("rm_handler.urllib3.PoolManager") as mock_pool:
             mock_pool.return_value = MockHttp()
 
             result = handler(
@@ -1586,8 +1586,8 @@ class TestSnaplock:
 
 class TestErrorHandling:
     def test_missing_ontap_config(self, mock_secrets):
-        import handler as handler_module
-        from handler import handler
+        import rm_handler as handler_module
+        from rm_handler import handler
 
         # MGMT_IP is read into a module-level constant at import time, so
         # clearing the environment variable here would not affect the handler:
@@ -1601,9 +1601,9 @@ class TestErrorHandling:
         assert "not configured" in result["error"]
 
     def test_unknown_action(self, mock_secrets):
-        from handler import handler
+        from rm_handler import handler
 
-        with patch("handler.urllib3.PoolManager") as mock_pool:
+        with patch("rm_handler.urllib3.PoolManager") as mock_pool:
             mock_pool.return_value = MockHttp()
             result = handler({"action": "unknownAction"}, None)
 
@@ -1615,9 +1615,9 @@ class TestErrorHandling:
 
 class TestLocalUsers:
     def test_list_maps_ontap_fields_and_strips_svm_prefix(self, mock_secrets):
-        from handler import handler
+        from rm_handler import handler
 
-        with patch("handler.urllib3.PoolManager") as mock_pool:
+        with patch("rm_handler.urllib3.PoolManager") as mock_pool:
             mock_pool.return_value = MockHttp(
                 {
                     "/protocols/cifs/local-users": {
@@ -1648,9 +1648,9 @@ class TestLocalUsers:
         assert user["memberOf"] == ["BUILTIN\\Users"]
 
     def test_create_requires_name_and_password(self, mock_secrets):
-        from handler import handler
+        from rm_handler import handler
 
-        with patch("handler.urllib3.PoolManager") as mock_pool:
+        with patch("rm_handler.urllib3.PoolManager") as mock_pool:
             mock_pool.return_value = MockHttp()
             result = handler({"action": "createLocalUser", "name": "bob"}, None)
 
@@ -1658,10 +1658,10 @@ class TestLocalUsers:
         assert "password" in result["error"]
 
     def test_create_posts_to_local_users(self, mock_secrets):
-        from handler import handler
+        from rm_handler import handler
 
         http = MockHttp({"/protocols/cifs/local-users": {"data": {}}})
-        with patch("handler.urllib3.PoolManager") as mock_pool:
+        with patch("rm_handler.urllib3.PoolManager") as mock_pool:
             mock_pool.return_value = http
             result = handler(
                 {
@@ -1682,9 +1682,9 @@ class TestLocalUsers:
         assert body["full_name"] == "Bob Example"
 
     def test_create_does_not_log_the_password(self, mock_secrets, caplog):
-        from handler import handler
+        from rm_handler import handler
 
-        with caplog.at_level("INFO"), patch("handler.urllib3.PoolManager") as mock_pool:
+        with caplog.at_level("INFO"), patch("rm_handler.urllib3.PoolManager") as mock_pool:
             mock_pool.return_value = MockHttp({"/protocols/cifs/local-users": {"data": {}}})
             handler(
                 {"action": "createLocalUser", "name": "bob", "password": "sup3rsecret"},
@@ -1694,9 +1694,9 @@ class TestLocalUsers:
         assert "sup3rsecret" not in caplog.text
 
     def test_delete_requires_sid(self, mock_secrets):
-        from handler import handler
+        from rm_handler import handler
 
-        with patch("handler.urllib3.PoolManager") as mock_pool:
+        with patch("rm_handler.urllib3.PoolManager") as mock_pool:
             mock_pool.return_value = MockHttp()
             result = handler({"action": "deleteLocalUser", "name": "bob"}, None)
 
@@ -1704,10 +1704,10 @@ class TestLocalUsers:
         assert "sid" in result["error"]
 
     def test_delete_resolves_svm_uuid_then_deletes(self, mock_secrets):
-        from handler import handler
+        from rm_handler import handler
 
         http = MockHttp({"/svm/svms": {"data": {"records": [{"uuid": "svm-uuid-1"}]}}})
-        with patch("handler.urllib3.PoolManager") as mock_pool:
+        with patch("rm_handler.urllib3.PoolManager") as mock_pool:
             mock_pool.return_value = http
             result = handler({"action": "deleteLocalUser", "sid": "S-1-5-21-1", "name": "bob"}, None)
 
@@ -1718,9 +1718,9 @@ class TestLocalUsers:
 
 class TestLocalGroups:
     def test_list_returns_groups(self, mock_secrets):
-        from handler import handler
+        from rm_handler import handler
 
-        with patch("handler.urllib3.PoolManager") as mock_pool:
+        with patch("rm_handler.urllib3.PoolManager") as mock_pool:
             mock_pool.return_value = MockHttp(
                 {
                     "/protocols/cifs/local-groups": {
@@ -1743,9 +1743,9 @@ class TestLocalGroups:
         assert result["groups"][0]["description"] == "Analyst team"
 
     def test_create_requires_name(self, mock_secrets):
-        from handler import handler
+        from rm_handler import handler
 
-        with patch("handler.urllib3.PoolManager") as mock_pool:
+        with patch("rm_handler.urllib3.PoolManager") as mock_pool:
             mock_pool.return_value = MockHttp()
             result = handler({"action": "createLocalGroup", "description": "x"}, None)
 
@@ -1753,10 +1753,10 @@ class TestLocalGroups:
         assert "name" in result["error"]
 
     def test_create_group_posts_body(self, mock_secrets):
-        from handler import handler
+        from rm_handler import handler
 
         http = MockHttp({"/protocols/cifs/local-groups": {"data": {}}})
-        with patch("handler.urllib3.PoolManager") as mock_pool:
+        with patch("rm_handler.urllib3.PoolManager") as mock_pool:
             mock_pool.return_value = http
             result = handler(
                 {"action": "createLocalGroup", "name": "analysts", "description": "team"},
@@ -1771,9 +1771,9 @@ class TestLocalGroups:
         assert body["description"] == "team"
 
     def test_create_group_surfaces_ontap_error(self, mock_secrets):
-        from handler import handler
+        from rm_handler import handler
 
-        with patch("handler.urllib3.PoolManager") as mock_pool:
+        with patch("rm_handler.urllib3.PoolManager") as mock_pool:
             mock_pool.return_value = MockHttp(
                 {
                     "/protocols/cifs/local-groups": {
@@ -1790,9 +1790,9 @@ class TestLocalGroups:
 
 class TestGroupMembers:
     def test_list_requires_group_sid(self, mock_secrets):
-        from handler import handler
+        from rm_handler import handler
 
-        with patch("handler.urllib3.PoolManager") as mock_pool:
+        with patch("rm_handler.urllib3.PoolManager") as mock_pool:
             mock_pool.return_value = MockHttp()
             result = handler({"action": "listGroupMembers"}, None)
 
@@ -1800,10 +1800,10 @@ class TestGroupMembers:
         assert "groupSid" in result["error"]
 
     def test_add_member_posts_name(self, mock_secrets):
-        from handler import handler
+        from rm_handler import handler
 
         http = MockHttp({"/svm/svms": {"data": {"records": [{"uuid": "svm-uuid-1"}]}}})
-        with patch("handler.urllib3.PoolManager") as mock_pool:
+        with patch("rm_handler.urllib3.PoolManager") as mock_pool:
             mock_pool.return_value = http
             result = handler(
                 {
@@ -1822,10 +1822,10 @@ class TestGroupMembers:
         assert json.loads(kwargs["body"]) == {"name": "alice"}
 
     def test_remove_member_percent_encodes_domain_name(self, mock_secrets):
-        from handler import handler
+        from rm_handler import handler
 
         http = MockHttp({"/svm/svms": {"data": {"records": [{"uuid": "svm-uuid-1"}]}}})
-        with patch("handler.urllib3.PoolManager") as mock_pool:
+        with patch("rm_handler.urllib3.PoolManager") as mock_pool:
             mock_pool.return_value = http
             result = handler(
                 {
@@ -1846,9 +1846,9 @@ class TestGroupMembers:
 
 class TestNameMappings:
     def test_list_sorts_by_direction_and_index(self, mock_secrets):
-        from handler import handler
+        from rm_handler import handler
 
-        with patch("handler.urllib3.PoolManager") as mock_pool:
+        with patch("rm_handler.urllib3.PoolManager") as mock_pool:
             mock_pool.return_value = MockHttp(
                 {
                     "/name-services/name-mappings": {
@@ -1876,9 +1876,9 @@ class TestNameMappings:
         assert [m["index"] for m in result["mappings"]] == [1, 2]
 
     def test_create_rejects_s3_unix_direction(self, mock_secrets):
-        from handler import handler
+        from rm_handler import handler
 
-        with patch("handler.urllib3.PoolManager") as mock_pool:
+        with patch("rm_handler.urllib3.PoolManager") as mock_pool:
             mock_pool.return_value = MockHttp()
             result = handler(
                 {
@@ -1895,9 +1895,9 @@ class TestNameMappings:
         assert "managed automatically" in result["error"]
 
     def test_create_requires_index(self, mock_secrets):
-        from handler import handler
+        from rm_handler import handler
 
-        with patch("handler.urllib3.PoolManager") as mock_pool:
+        with patch("rm_handler.urllib3.PoolManager") as mock_pool:
             mock_pool.return_value = MockHttp()
             result = handler(
                 {
@@ -1913,10 +1913,10 @@ class TestNameMappings:
         assert "index" in result["error"]
 
     def test_delete_uses_svm_direction_index_path(self, mock_secrets):
-        from handler import handler
+        from rm_handler import handler
 
         http = MockHttp({"/svm/svms": {"data": {"records": [{"uuid": "svm-uuid-1"}]}}})
-        with patch("handler.urllib3.PoolManager") as mock_pool:
+        with patch("rm_handler.urllib3.PoolManager") as mock_pool:
             mock_pool.return_value = http
             result = handler(
                 {"action": "deleteNameMapping", "direction": "win_unix", "index": 3},
@@ -1932,9 +1932,9 @@ class TestNameMappings:
 
 class TestFlexCache:
     def test_list_converts_size_and_flattens_origins(self, mock_secrets):
-        from handler import handler
+        from rm_handler import handler
 
-        with patch("handler.urllib3.PoolManager") as mock_pool:
+        with patch("rm_handler.urllib3.PoolManager") as mock_pool:
             mock_pool.return_value = MockHttp(
                 {
                     "/storage/flexcache/flexcaches": {
@@ -1970,9 +1970,9 @@ class TestFlexCache:
         assert cache["origins"][0]["volumeName"] == "origin-vol"
 
     def test_create_requires_origin_volume(self, mock_secrets):
-        from handler import handler
+        from rm_handler import handler
 
-        with patch("handler.urllib3.PoolManager") as mock_pool:
+        with patch("rm_handler.urllib3.PoolManager") as mock_pool:
             mock_pool.return_value = MockHttp()
             result = handler({"action": "createFlexCache", "name": "cache1", "sizeGiB": 10}, None)
 
@@ -1980,9 +1980,9 @@ class TestFlexCache:
         assert "originVolume" in result["error"]
 
     def test_create_rejects_size_below_one_gib(self, mock_secrets):
-        from handler import handler
+        from rm_handler import handler
 
-        with patch("handler.urllib3.PoolManager") as mock_pool:
+        with patch("rm_handler.urllib3.PoolManager") as mock_pool:
             mock_pool.return_value = MockHttp()
             result = handler(
                 {
@@ -1998,10 +1998,10 @@ class TestFlexCache:
         assert "at least 1" in result["error"]
 
     def test_create_converts_gib_and_returns_job_id(self, mock_secrets):
-        from handler import handler
+        from rm_handler import handler
 
         http = MockHttp({"/storage/flexcache/flexcaches": {"data": {"job": {"uuid": "job-1"}}}})
-        with patch("handler.urllib3.PoolManager") as mock_pool:
+        with patch("rm_handler.urllib3.PoolManager") as mock_pool:
             mock_pool.return_value = http
             result = handler(
                 {
@@ -2028,9 +2028,9 @@ class TestFlexCache:
         assert "constituents_per_aggregate" not in body
 
     def test_delete_requires_uuid(self, mock_secrets):
-        from handler import handler
+        from rm_handler import handler
 
-        with patch("handler.urllib3.PoolManager") as mock_pool:
+        with patch("rm_handler.urllib3.PoolManager") as mock_pool:
             mock_pool.return_value = MockHttp()
             result = handler({"action": "deleteFlexCache", "name": "cache1"}, None)
 
@@ -2039,9 +2039,9 @@ class TestFlexCache:
 
     def test_writeback_requires_an_explicit_state(self, mock_secrets):
         """Omitting `enabled` must not be read as a mode change in either direction."""
-        from handler import handler
+        from rm_handler import handler
 
-        with patch("handler.urllib3.PoolManager") as mock_pool:
+        with patch("rm_handler.urllib3.PoolManager") as mock_pool:
             mock_pool.return_value = MockHttp()
             result = handler({"action": "setFlexcacheWriteback", "uuid": "uuid-1"}, None)
 
@@ -2049,10 +2049,10 @@ class TestFlexCache:
         assert "enabled" in result["error"]
 
     def test_writeback_patches_the_nested_field(self, mock_secrets):
-        from handler import handler
+        from rm_handler import handler
 
         http = MockHttp({"/storage/flexcache/flexcaches/uuid-1": {"data": {}}})
-        with patch("handler.urllib3.PoolManager") as mock_pool:
+        with patch("rm_handler.urllib3.PoolManager") as mock_pool:
             mock_pool.return_value = http
             result = handler(
                 {"action": "setFlexcacheWriteback", "uuid": "uuid-1", "enabled": True},
@@ -2066,10 +2066,10 @@ class TestFlexCache:
 
     def test_create_omits_writeback_unless_asked(self, mock_secrets):
         """A cluster older than 9.15.1 has no such field, so false is not sent as false."""
-        from handler import handler
+        from rm_handler import handler
 
         http = MockHttp({"/storage/flexcache/flexcaches": {"data": {}}})
-        with patch("handler.urllib3.PoolManager") as mock_pool:
+        with patch("rm_handler.urllib3.PoolManager") as mock_pool:
             mock_pool.return_value = http
             handler(
                 {
@@ -2085,10 +2085,10 @@ class TestFlexCache:
         assert "writeback" not in body
 
     def test_create_sends_writeback_when_asked(self, mock_secrets):
-        from handler import handler
+        from rm_handler import handler
 
         http = MockHttp({"/storage/flexcache/flexcaches": {"data": {}}})
-        with patch("handler.urllib3.PoolManager") as mock_pool:
+        with patch("rm_handler.urllib3.PoolManager") as mock_pool:
             mock_pool.return_value = http
             handler(
                 {
@@ -2110,7 +2110,7 @@ class TestFlexCache:
         Measured on 9.18.1P3D1. ONTAP's own message names the endpoint to PATCH, so the
         hint adds only what it omits: that disabling moves data.
         """
-        from handler import handler
+        from rm_handler import handler
 
         http = MockHttp(
             {
@@ -2128,7 +2128,7 @@ class TestFlexCache:
                 },
             }
         )
-        with patch("handler.urllib3.PoolManager") as mock_pool:
+        with patch("rm_handler.urllib3.PoolManager") as mock_pool:
             mock_pool.return_value = http
             result = handler({"action": "deleteFlexCache", "uuid": "uuid-1"}, None)
 
@@ -2137,7 +2137,7 @@ class TestFlexCache:
 
     def test_delete_reports_a_failed_job(self, mock_secrets):
         """The other path: accepted with a 202, then failed inside the job."""
-        from handler import handler
+        from rm_handler import handler
 
         http = MockHttp(
             {
@@ -2145,7 +2145,7 @@ class TestFlexCache:
                 "/cluster/jobs/job-1": {"data": {"state": "failure", "message": "No suitable storage can be found"}},
             }
         )
-        with patch("handler.urllib3.PoolManager") as mock_pool:
+        with patch("rm_handler.urllib3.PoolManager") as mock_pool:
             mock_pool.return_value = http
             result = handler({"action": "deleteFlexCache", "uuid": "uuid-1"}, None)
 
@@ -2158,7 +2158,7 @@ class TestFlexCache:
 
 class TestFlexClone:
     def test_list_filters_on_is_flexclone(self, mock_secrets):
-        from handler import handler
+        from rm_handler import handler
 
         http = MockHttp(
             {
@@ -2183,7 +2183,7 @@ class TestFlexClone:
                 }
             }
         )
-        with patch("handler.urllib3.PoolManager") as mock_pool:
+        with patch("rm_handler.urllib3.PoolManager") as mock_pool:
             mock_pool.return_value = http
             result = handler({"action": "listFlexClones"}, None)
 
@@ -2195,9 +2195,9 @@ class TestFlexClone:
         assert clone["usedGiB"] == 1.0
 
     def test_create_requires_parent_volume(self, mock_secrets):
-        from handler import handler
+        from rm_handler import handler
 
-        with patch("handler.urllib3.PoolManager") as mock_pool:
+        with patch("rm_handler.urllib3.PoolManager") as mock_pool:
             mock_pool.return_value = MockHttp()
             result = handler({"action": "createFlexClone", "cloneName": "c1"}, None)
 
@@ -2205,10 +2205,10 @@ class TestFlexClone:
         assert "parentVolume" in result["error"]
 
     def test_create_sends_clone_block(self, mock_secrets):
-        from handler import handler
+        from rm_handler import handler
 
         http = MockHttp({"/storage/volumes": {"data": {}}})
-        with patch("handler.urllib3.PoolManager") as mock_pool:
+        with patch("rm_handler.urllib3.PoolManager") as mock_pool:
             mock_pool.return_value = http
             result = handler(
                 {
@@ -2237,10 +2237,10 @@ class TestFlexClone:
         assert "nas" not in body
 
     def test_create_without_snapshot_omits_parent_snapshot(self, mock_secrets):
-        from handler import handler
+        from rm_handler import handler
 
         http = MockHttp({"/storage/volumes": {"data": {}}})
-        with patch("handler.urllib3.PoolManager") as mock_pool:
+        with patch("rm_handler.urllib3.PoolManager") as mock_pool:
             mock_pool.return_value = http
             handler(
                 {
@@ -2255,10 +2255,10 @@ class TestFlexClone:
         assert "parent_snapshot" not in body["clone"]
 
     def test_split_patches_split_initiated(self, mock_secrets):
-        from handler import handler
+        from rm_handler import handler
 
         http = MockHttp({"/storage/volumes/u1": {"data": {}}})
-        with patch("handler.urllib3.PoolManager") as mock_pool:
+        with patch("rm_handler.urllib3.PoolManager") as mock_pool:
             mock_pool.return_value = http
             result = handler(
                 {"action": "splitFlexClone", "volumeUuid": "u1", "volumeName": "c1"},
@@ -2272,9 +2272,9 @@ class TestFlexClone:
         assert json.loads(kwargs["body"]) == {"clone": {"split_initiated": True}}
 
     def test_split_requires_volume_uuid(self, mock_secrets):
-        from handler import handler
+        from rm_handler import handler
 
-        with patch("handler.urllib3.PoolManager") as mock_pool:
+        with patch("rm_handler.urllib3.PoolManager") as mock_pool:
             mock_pool.return_value = MockHttp()
             result = handler({"action": "splitFlexClone", "volumeName": "c1"}, None)
 
@@ -2287,7 +2287,7 @@ class TestFlexClone:
 
 class TestSnapMirror:
     def test_list_maps_source_and_destination(self, mock_secrets):
-        from handler import handler
+        from rm_handler import handler
 
         with snapmirror_client(
             MockHttp(
@@ -2334,7 +2334,7 @@ class TestSnapMirror:
         9.17 rejects the entire request when one field is unknown, which silently
         emptied the relationship list until this was found on a live cluster.
         """
-        from handler import handler
+        from rm_handler import handler
 
         mock_http = MockHttp()
         with snapmirror_client(mock_http):
@@ -2345,7 +2345,7 @@ class TestSnapMirror:
         assert not any("last_transfer_size" in u for u in urls)
 
     def test_transfers_require_relationship_uuid(self, mock_secrets):
-        from handler import handler
+        from rm_handler import handler
 
         with snapmirror_client(MockHttp()):
             result = handler({"action": "getSnapmirrorTransfers"}, None)
@@ -2354,7 +2354,7 @@ class TestSnapMirror:
         assert "relationshipUuid" in result["error"]
 
     def test_transfers_maps_fields(self, mock_secrets):
-        from handler import handler
+        from rm_handler import handler
 
         with snapmirror_client(
             MockHttp(
@@ -2385,7 +2385,7 @@ class TestSnapMirror:
         Measured after an update: the transfer that had just run came back third of five,
         so the row a reader looks at first was not the one they had just caused.
         """
-        from handler import handler
+        from rm_handler import handler
 
         with snapmirror_client(
             MockHttp(
@@ -2412,7 +2412,7 @@ class TestSnapMirror:
 
     def test_a_running_transfer_sorts_above_finished_ones(self, mock_secrets):
         """It has no end time, and it is the one the reader is waiting on."""
-        from handler import handler
+        from rm_handler import handler
 
         with snapmirror_client(
             MockHttp(
@@ -2438,27 +2438,27 @@ class TestSnapMirror:
 
 class TestVscan:
     def test_status_false_when_no_records(self, mock_secrets):
-        from handler import handler
+        from rm_handler import handler
 
-        with patch("handler.urllib3.PoolManager") as mock_pool:
+        with patch("rm_handler.urllib3.PoolManager") as mock_pool:
             mock_pool.return_value = MockHttp()
             result = handler({"action": "getVscanStatus"}, None)
 
         assert result == {"enabled": False, "error": None}
 
     def test_status_reads_enabled(self, mock_secrets):
-        from handler import handler
+        from rm_handler import handler
 
-        with patch("handler.urllib3.PoolManager") as mock_pool:
+        with patch("rm_handler.urllib3.PoolManager") as mock_pool:
             mock_pool.return_value = MockHttp({"/protocols/vscan": {"data": {"records": [{"enabled": True}]}}})
             result = handler({"action": "getVscanStatus"}, None)
 
         assert result["enabled"] is True
 
     def test_policies_flatten_on_access_policies(self, mock_secrets):
-        from handler import handler
+        from rm_handler import handler
 
-        with patch("handler.urllib3.PoolManager") as mock_pool:
+        with patch("rm_handler.urllib3.PoolManager") as mock_pool:
             mock_pool.return_value = MockHttp(
                 {
                     "/protocols/vscan": {
@@ -2497,13 +2497,13 @@ class TestVscan:
 
 class TestFPolicy:
     def test_status_flattens_connections(self, mock_secrets):
-        from handler import handler
+        from rm_handler import handler
 
         # Server connection status lives on /protocols/fpolicy/{svm.uuid}/connections,
         # so the handler resolves the SVM UUID first and the records it reads are the
         # connections themselves. Asking /protocols/fpolicy for a `connections` field
         # made ONTAP reject the whole request.
-        with patch("handler.urllib3.PoolManager") as mock_pool:
+        with patch("rm_handler.urllib3.PoolManager") as mock_pool:
             mock_pool.return_value = MockHttp(
                 {
                     "/svm/svms": {"data": {"records": [{"uuid": "svm-uuid-1"}]}},
@@ -2529,9 +2529,9 @@ class TestFPolicy:
         assert conn["state"] == "connected"
 
     def test_policies_map_engine_and_events(self, mock_secrets):
-        from handler import handler
+        from rm_handler import handler
 
-        with patch("handler.urllib3.PoolManager") as mock_pool:
+        with patch("rm_handler.urllib3.PoolManager") as mock_pool:
             mock_pool.return_value = MockHttp(
                 {
                     "/protocols/fpolicy": {
@@ -2560,9 +2560,9 @@ class TestFPolicy:
         assert pol["events"] == ["ev1", "ev2"]
 
     def test_events_keep_only_enabled_file_operations(self, mock_secrets):
-        from handler import handler
+        from rm_handler import handler
 
-        with patch("handler.urllib3.PoolManager") as mock_pool:
+        with patch("rm_handler.urllib3.PoolManager") as mock_pool:
             mock_pool.return_value = MockHttp(
                 {
                     "/protocols/fpolicy": {
@@ -2626,9 +2626,9 @@ class TestNewActionsAreRouted:
 
     @pytest.mark.parametrize("action", ACTIONS)
     def test_action_is_not_unknown(self, action, mock_secrets):
-        from handler import handler
+        from rm_handler import handler
 
-        with patch("handler.urllib3.PoolManager") as mock_pool:
+        with patch("rm_handler.urllib3.PoolManager") as mock_pool:
             mock_pool.return_value = MockHttp()
             result = handler({"action": action}, None)
 
@@ -2639,7 +2639,7 @@ class TestSharedClientConstruction:
     """Guard the two properties of _shared_client() that tests depend on."""
 
     def test_uses_the_handler_module_boto3_session(self):
-        """A client with its own session escapes `patch("handler.boto3")`.
+        """A client with its own session escapes `patch("rm_handler.boto3")`.
 
         Every other action in this handler reads its credential through
         `handler.boto3`, so patching that module used to control all AWS access. A
@@ -2647,9 +2647,9 @@ class TestSharedClientConstruction:
         failing test: the unpatched test reaches real Secrets Manager and hangs on
         credential discovery. That happened while this was being written.
         """
-        import handler as handler_module
+        import rm_handler as handler_module
 
-        with patch("handler.boto3") as mock_boto3:
+        with patch("rm_handler.boto3") as mock_boto3:
             client = handler_module._shared_client()
 
         assert client._session is mock_boto3.Session.return_value
@@ -2662,9 +2662,9 @@ class TestSharedClientConstruction:
         verifies would fail every SnapMirror call in an environment where the rest
         of the handler works.
         """
-        import handler as handler_module
+        import rm_handler as handler_module
 
-        with patch("handler.boto3"):
+        with patch("rm_handler.boto3"):
             client = handler_module._shared_client()
 
         assert client._config.verify_ssl is False
@@ -2675,7 +2675,7 @@ class TestSharedClientConstruction:
 
 class TestSnapMirrorWrites:
     def test_update_now_posts_transfer(self, mock_secrets):
-        from handler import handler
+        from rm_handler import handler
 
         http = MockHttp(
             {
@@ -2695,7 +2695,7 @@ class TestSnapMirrorWrites:
     def test_a_failed_transfer_job_is_reported_as_a_failure(self, mock_secrets):
         """The SnapMirror actions reach ONTAP through the shared client, and that
         transport had no job confirmation at all: every one of them reported the 202."""
-        from handler import handler
+        from rm_handler import handler
 
         http = MockHttp(
             {
@@ -2711,7 +2711,7 @@ class TestSnapMirrorWrites:
         assert "applications include snapmirror" in result["error"]
 
     def test_a_failed_break_job_is_reported_as_a_failure(self, mock_secrets):
-        from handler import handler
+        from rm_handler import handler
 
         http = MockHttp(
             {
@@ -2726,7 +2726,7 @@ class TestSnapMirrorWrites:
         assert "transferring" in result["error"]
 
     def test_update_now_requires_uuid(self, mock_secrets):
-        from handler import handler
+        from rm_handler import handler
 
         with snapmirror_client(MockHttp()):
             result = handler({"action": "updateSnapmirrorNow"}, None)
@@ -2735,7 +2735,7 @@ class TestSnapMirrorWrites:
         assert "relationshipUuid" in result["error"]
 
     def test_quiesce_patches_state_paused(self, mock_secrets):
-        from handler import handler
+        from rm_handler import handler
 
         http = MockHttp({"/snapmirror/relationships/r1": {"data": {}}})
         with snapmirror_client(http):
@@ -2745,7 +2745,7 @@ class TestSnapMirrorWrites:
         assert json.loads(http.calls[0][2]["body"]) == {"state": "paused"}
 
     def test_resume_patches_state_snapmirrored(self, mock_secrets):
-        from handler import handler
+        from rm_handler import handler
 
         http = MockHttp({"/snapmirror/relationships/r1": {"data": {}}})
         with snapmirror_client(http):
@@ -2754,7 +2754,7 @@ class TestSnapMirrorWrites:
         assert result["state"] == "snapmirrored"
 
     def test_break_requires_confirm(self, mock_secrets):
-        from handler import handler
+        from rm_handler import handler
 
         with snapmirror_client(MockHttp()):
             result = handler({"action": "breakSnapmirror", "relationshipUuid": "r1"}, None)
@@ -2763,7 +2763,7 @@ class TestSnapMirrorWrites:
         assert "confirm" in result["error"]
 
     def test_break_patches_broken_off_when_confirmed(self, mock_secrets):
-        from handler import handler
+        from rm_handler import handler
 
         http = MockHttp({"/snapmirror/relationships/r1": {"data": {}}})
         with snapmirror_client(http):
@@ -2773,7 +2773,7 @@ class TestSnapMirrorWrites:
         assert json.loads(http.calls[0][2]["body"]) == {"state": "broken_off"}
 
     def test_resync_requires_confirm(self, mock_secrets):
-        from handler import handler
+        from rm_handler import handler
 
         with snapmirror_client(MockHttp()):
             result = handler({"action": "resyncSnapmirror", "relationshipUuid": "r1"}, None)
@@ -2782,7 +2782,7 @@ class TestSnapMirrorWrites:
         assert "confirm" in result["error"]
 
     def test_abort_transfer_patches_aborted(self, mock_secrets):
-        from handler import handler
+        from rm_handler import handler
 
         http = MockHttp({"/transfers/t1": {"data": {}}})
         with snapmirror_client(http):
@@ -2799,7 +2799,7 @@ class TestSnapMirrorWrites:
         assert json.loads(http.calls[0][2]["body"]) == {"state": "aborted"}
 
     def test_delete_requires_confirm(self, mock_secrets):
-        from handler import handler
+        from rm_handler import handler
 
         with snapmirror_client(MockHttp()):
             result = handler({"action": "deleteSnapmirror", "relationshipUuid": "r1"}, None)
@@ -2808,7 +2808,7 @@ class TestSnapMirrorWrites:
         assert "confirm" in result["error"]
 
     def test_write_error_is_propagated(self, mock_secrets):
-        from handler import handler
+        from rm_handler import handler
 
         with snapmirror_client(
             MockHttp(
@@ -2831,10 +2831,10 @@ class TestSnapMirrorWrites:
 
 class TestVscanWrites:
     def test_set_enabled_patches_vscan(self, mock_secrets):
-        from handler import handler
+        from rm_handler import handler
 
         http = MockHttp({"/svm/svms": {"data": {"records": [{"uuid": "svm-1"}]}}})
-        with patch("handler.urllib3.PoolManager") as mp:
+        with patch("rm_handler.urllib3.PoolManager") as mp:
             mp.return_value = http
             result = handler({"action": "setVscanEnabled", "enabled": True}, None)
 
@@ -2845,9 +2845,9 @@ class TestVscanWrites:
         assert json.loads(kwargs["body"]) == {"enabled": True}
 
     def test_set_enabled_requires_value(self, mock_secrets):
-        from handler import handler
+        from rm_handler import handler
 
-        with patch("handler.urllib3.PoolManager") as mp:
+        with patch("rm_handler.urllib3.PoolManager") as mp:
             mp.return_value = MockHttp()
             result = handler({"action": "setVscanEnabled"}, None)
 
@@ -2855,10 +2855,10 @@ class TestVscanWrites:
         assert "enabled" in result["error"]
 
     def test_create_policy_builds_scope(self, mock_secrets):
-        from handler import handler
+        from rm_handler import handler
 
         http = MockHttp({"/svm/svms": {"data": {"records": [{"uuid": "svm-1"}]}}})
-        with patch("handler.urllib3.PoolManager") as mp:
+        with patch("rm_handler.urllib3.PoolManager") as mp:
             mp.return_value = http
             result = handler(
                 {
@@ -2879,10 +2879,10 @@ class TestVscanWrites:
         assert body["scope"]["exclude_extensions"] == ["tmp"]
 
     def test_toggle_policy_encodes_name(self, mock_secrets):
-        from handler import handler
+        from rm_handler import handler
 
         http = MockHttp({"/svm/svms": {"data": {"records": [{"uuid": "svm-1"}]}}})
-        with patch("handler.urllib3.PoolManager") as mp:
+        with patch("rm_handler.urllib3.PoolManager") as mp:
             mp.return_value = http
             result = handler(
                 {"action": "setVscanPolicyEnabled", "name": "scan all", "enabled": False},
@@ -2893,9 +2893,9 @@ class TestVscanWrites:
         assert "scan%20all" in http.calls[-1][1]
 
     def test_delete_policy_requires_name(self, mock_secrets):
-        from handler import handler
+        from rm_handler import handler
 
-        with patch("handler.urllib3.PoolManager") as mp:
+        with patch("rm_handler.urllib3.PoolManager") as mp:
             mp.return_value = MockHttp()
             result = handler({"action": "deleteVscanPolicy"}, None)
 
@@ -2908,10 +2908,10 @@ class TestVscanWrites:
 
 class TestFPolicyWrites:
     def test_create_event_maps_operations_to_flags(self, mock_secrets):
-        from handler import handler
+        from rm_handler import handler
 
         http = MockHttp({"/svm/svms": {"data": {"records": [{"uuid": "svm-1"}]}}})
-        with patch("handler.urllib3.PoolManager") as mp:
+        with patch("rm_handler.urllib3.PoolManager") as mp:
             mp.return_value = http
             result = handler(
                 {
@@ -2929,9 +2929,9 @@ class TestFPolicyWrites:
         assert "/protocols/fpolicy/svm-1/events" in http.calls[-1][1]
 
     def test_create_event_requires_operations(self, mock_secrets):
-        from handler import handler
+        from rm_handler import handler
 
-        with patch("handler.urllib3.PoolManager") as mp:
+        with patch("rm_handler.urllib3.PoolManager") as mp:
             mp.return_value = MockHttp()
             result = handler({"action": "createFpolicyEvent", "name": "ev1", "protocol": "cifs"}, None)
 
@@ -2939,10 +2939,10 @@ class TestFPolicyWrites:
         assert "file operation" in result["error"]
 
     def test_create_policy_wraps_event_names(self, mock_secrets):
-        from handler import handler
+        from rm_handler import handler
 
         http = MockHttp({"/svm/svms": {"data": {"records": [{"uuid": "svm-1"}]}}})
-        with patch("handler.urllib3.PoolManager") as mp:
+        with patch("rm_handler.urllib3.PoolManager") as mp:
             mp.return_value = http
             result = handler(
                 {
@@ -2962,9 +2962,9 @@ class TestFPolicyWrites:
         assert body["priority"] == 2
 
     def test_create_policy_requires_events(self, mock_secrets):
-        from handler import handler
+        from rm_handler import handler
 
-        with patch("handler.urllib3.PoolManager") as mp:
+        with patch("rm_handler.urllib3.PoolManager") as mp:
             mp.return_value = MockHttp()
             result = handler({"action": "createFpolicyPolicy", "name": "audit"}, None)
 
@@ -2972,9 +2972,9 @@ class TestFPolicyWrites:
         assert "event" in result["error"]
 
     def test_enable_policy_requires_priority(self, mock_secrets):
-        from handler import handler
+        from rm_handler import handler
 
-        with patch("handler.urllib3.PoolManager") as mp:
+        with patch("rm_handler.urllib3.PoolManager") as mp:
             mp.return_value = MockHttp()
             result = handler({"action": "setFpolicyPolicyEnabled", "name": "audit", "enabled": True}, None)
 
@@ -2982,10 +2982,10 @@ class TestFPolicyWrites:
         assert "priority" in result["error"]
 
     def test_disable_policy_omits_priority(self, mock_secrets):
-        from handler import handler
+        from rm_handler import handler
 
         http = MockHttp({"/svm/svms": {"data": {"records": [{"uuid": "svm-1"}]}}})
-        with patch("handler.urllib3.PoolManager") as mp:
+        with patch("rm_handler.urllib3.PoolManager") as mp:
             mp.return_value = http
             result = handler({"action": "setFpolicyPolicyEnabled", "name": "audit", "enabled": False}, None)
 
@@ -2994,10 +2994,10 @@ class TestFPolicyWrites:
         assert body == {"enabled": False}
 
     def test_delete_event_uses_svm_scoped_path(self, mock_secrets):
-        from handler import handler
+        from rm_handler import handler
 
         http = MockHttp({"/svm/svms": {"data": {"records": [{"uuid": "svm-1"}]}}})
-        with patch("handler.urllib3.PoolManager") as mp:
+        with patch("rm_handler.urllib3.PoolManager") as mp:
             mp.return_value = http
             result = handler({"action": "deleteFpolicyEvent", "name": "ev1", "confirm": True}, None)
 
@@ -3011,7 +3011,7 @@ class TestFPolicyWrites:
 
 class TestInterclusterLifs:
     def test_list_filters_on_intercluster_service(self, mock_secrets):
-        from handler import handler
+        from rm_handler import handler
 
         http = MockHttp(
             {
@@ -3031,7 +3031,7 @@ class TestInterclusterLifs:
                 }
             }
         )
-        with patch("handler.urllib3.PoolManager") as mp:
+        with patch("rm_handler.urllib3.PoolManager") as mp:
             mp.return_value = http
             result = handler({"action": "listInterclusterLifs"}, None)
 
@@ -3043,9 +3043,9 @@ class TestInterclusterLifs:
 
 class TestClusterPeers:
     def test_list_maps_remote_and_auth(self, mock_secrets):
-        from handler import handler
+        from rm_handler import handler
 
-        with patch("handler.urllib3.PoolManager") as mp:
+        with patch("rm_handler.urllib3.PoolManager") as mp:
             mp.return_value = MockHttp(
                 {
                     "/cluster/peers": {
@@ -3076,9 +3076,9 @@ class TestClusterPeers:
         assert p["authState"] == "ok"
 
     def test_create_requires_remote_addresses(self, mock_secrets):
-        from handler import handler
+        from rm_handler import handler
 
-        with patch("handler.urllib3.PoolManager") as mp:
+        with patch("rm_handler.urllib3.PoolManager") as mp:
             mp.return_value = MockHttp()
             result = handler({"action": "createClusterPeer", "generatePassphrase": True}, None)
 
@@ -3086,9 +3086,9 @@ class TestClusterPeers:
         assert "remoteAddresses" in result["error"]
 
     def test_create_requires_a_passphrase_source(self, mock_secrets):
-        from handler import handler
+        from rm_handler import handler
 
-        with patch("handler.urllib3.PoolManager") as mp:
+        with patch("rm_handler.urllib3.PoolManager") as mp:
             mp.return_value = MockHttp()
             result = handler({"action": "createClusterPeer", "remoteAddresses": ["198.51.100.7"]}, None)
 
@@ -3096,10 +3096,10 @@ class TestClusterPeers:
         assert "passphrase" in result["error"]
 
     def test_create_with_generate_sets_flag(self, mock_secrets):
-        from handler import handler
+        from rm_handler import handler
 
         http = MockHttp({"/cluster/peers": {"data": {}}})
-        with patch("handler.urllib3.PoolManager") as mp:
+        with patch("rm_handler.urllib3.PoolManager") as mp:
             mp.return_value = http
             result = handler(
                 {
@@ -3117,9 +3117,9 @@ class TestClusterPeers:
         assert "authentication" not in body
 
     def test_create_returns_generated_passphrase(self, mock_secrets):
-        from handler import handler
+        from rm_handler import handler
 
-        with patch("handler.urllib3.PoolManager") as mp:
+        with patch("rm_handler.urllib3.PoolManager") as mp:
             mp.return_value = MockHttp(
                 {"/cluster/peers": {"data": {"records": [{"authentication": {"passphrase": "abc-123"}}]}}}
             )
@@ -3135,10 +3135,10 @@ class TestClusterPeers:
         assert result["passphrase"] == "abc-123"
 
     def test_create_with_explicit_passphrase_sends_authentication(self, mock_secrets):
-        from handler import handler
+        from rm_handler import handler
 
         http = MockHttp({"/cluster/peers": {"data": {}}})
-        with patch("handler.urllib3.PoolManager") as mp:
+        with patch("rm_handler.urllib3.PoolManager") as mp:
             mp.return_value = http
             handler(
                 {
@@ -3154,9 +3154,9 @@ class TestClusterPeers:
         assert "generate_passphrase" not in body
 
     def test_accept_requires_uuid_and_passphrase(self, mock_secrets):
-        from handler import handler
+        from rm_handler import handler
 
-        with patch("handler.urllib3.PoolManager") as mp:
+        with patch("rm_handler.urllib3.PoolManager") as mp:
             mp.return_value = MockHttp()
             result = handler({"action": "acceptClusterPeer", "uuid": "cp1"}, None)
 
@@ -3164,10 +3164,10 @@ class TestClusterPeers:
         assert "passphrase" in result["error"]
 
     def test_accept_patches_authentication(self, mock_secrets):
-        from handler import handler
+        from rm_handler import handler
 
         http = MockHttp({"/cluster/peers/cp1": {"data": {}}})
-        with patch("handler.urllib3.PoolManager") as mp:
+        with patch("rm_handler.urllib3.PoolManager") as mp:
             mp.return_value = http
             result = handler({"action": "acceptClusterPeer", "uuid": "cp1", "passphrase": "abc"}, None)
 
@@ -3176,9 +3176,9 @@ class TestClusterPeers:
         assert json.loads(http.calls[0][2]["body"]) == {"authentication": {"passphrase": "abc"}}
 
     def test_delete_requires_confirm(self, mock_secrets):
-        from handler import handler
+        from rm_handler import handler
 
-        with patch("handler.urllib3.PoolManager") as mp:
+        with patch("rm_handler.urllib3.PoolManager") as mp:
             mp.return_value = MockHttp()
             result = handler({"action": "deleteClusterPeer", "uuid": "cp1"}, None)
 
@@ -3188,9 +3188,9 @@ class TestClusterPeers:
 
 class TestSvmPeers:
     def test_list_maps_peer_svm_and_cluster(self, mock_secrets):
-        from handler import handler
+        from rm_handler import handler
 
-        with patch("handler.urllib3.PoolManager") as mp:
+        with patch("rm_handler.urllib3.PoolManager") as mp:
             mp.return_value = MockHttp(
                 {
                     "/svm/peers": {
@@ -3221,9 +3221,9 @@ class TestSvmPeers:
         assert p["applications"] == ["snapmirror"]
 
     def test_create_requires_peer_svm(self, mock_secrets):
-        from handler import handler
+        from rm_handler import handler
 
-        with patch("handler.urllib3.PoolManager") as mp:
+        with patch("rm_handler.urllib3.PoolManager") as mp:
             mp.return_value = MockHttp()
             result = handler({"action": "createSvmPeer"}, None)
 
@@ -3231,10 +3231,10 @@ class TestSvmPeers:
         assert "peerSvm" in result["error"]
 
     def test_create_defaults_to_snapmirror_application(self, mock_secrets):
-        from handler import handler
+        from rm_handler import handler
 
         http = MockHttp({"/svm/peers": {"data": {}}})
-        with patch("handler.urllib3.PoolManager") as mp:
+        with patch("rm_handler.urllib3.PoolManager") as mp:
             mp.return_value = http
             result = handler(
                 {"action": "createSvmPeer", "peerSvm": "svm_dr", "peerCluster": "Remote"},
@@ -3247,10 +3247,10 @@ class TestSvmPeers:
         assert body["peer"]["cluster"] == {"name": "Remote"}
 
     def test_accept_patches_state_peered(self, mock_secrets):
-        from handler import handler
+        from rm_handler import handler
 
         http = MockHttp({"/svm/peers/u1": {"data": {}}})
-        with patch("handler.urllib3.PoolManager") as mp:
+        with patch("rm_handler.urllib3.PoolManager") as mp:
             mp.return_value = http
             result = handler({"action": "acceptSvmPeer", "uuid": "u1"}, None)
 
@@ -3258,9 +3258,9 @@ class TestSvmPeers:
         assert json.loads(http.calls[0][2]["body"]) == {"state": "peered"}
 
     def test_delete_requires_confirm(self, mock_secrets):
-        from handler import handler
+        from rm_handler import handler
 
-        with patch("handler.urllib3.PoolManager") as mp:
+        with patch("rm_handler.urllib3.PoolManager") as mp:
             mp.return_value = MockHttp()
             result = handler({"action": "deleteSvmPeer", "uuid": "u1"}, None)
 
@@ -3273,9 +3273,9 @@ class TestSvmPeers:
 
 class TestClusterInventory:
     def test_cluster_info_reads_version(self, mock_secrets):
-        from handler import handler
+        from rm_handler import handler
 
-        with patch("handler.urllib3.PoolManager") as mp:
+        with patch("rm_handler.urllib3.PoolManager") as mp:
             mp.return_value = MockHttp(
                 {"/cluster?": {"data": {"name": "Cluster1", "version": {"full": "NetApp Release 9.17.1"}}}}
             )
@@ -3285,9 +3285,9 @@ class TestClusterInventory:
         assert "9.17.1" in result["version"]
 
     def test_nodes_map_ha_partners(self, mock_secrets):
-        from handler import handler
+        from rm_handler import handler
 
-        with patch("handler.urllib3.PoolManager") as mp:
+        with patch("rm_handler.urllib3.PoolManager") as mp:
             mp.return_value = MockHttp(
                 {
                     "/cluster/nodes": {
@@ -3312,9 +3312,9 @@ class TestClusterInventory:
         assert n["haPartners"] == ["node2"]
 
     def test_licenses_take_first_expiry(self, mock_secrets):
-        from handler import handler
+        from rm_handler import handler
 
-        with patch("handler.urllib3.PoolManager") as mp:
+        with patch("rm_handler.urllib3.PoolManager") as mp:
             mp.return_value = MockHttp(
                 {
                     "/cluster/licensing/licenses": {
@@ -3336,9 +3336,9 @@ class TestClusterInventory:
         assert result["licenses"][0]["expiryTime"].startswith("2027")
 
     def test_interfaces_include_services(self, mock_secrets):
-        from handler import handler
+        from rm_handler import handler
 
-        with patch("handler.urllib3.PoolManager") as mp:
+        with patch("rm_handler.urllib3.PoolManager") as mp:
             mp.return_value = MockHttp(
                 {
                     "/network/ip/interfaces": {
@@ -3368,9 +3368,9 @@ class TestClusterInventory:
         assert i["port"] == "e0e"
 
     def test_disabling_a_lif_requires_confirm(self, mock_secrets):
-        from handler import handler
+        from rm_handler import handler
 
-        with patch("handler.urllib3.PoolManager") as mp:
+        with patch("rm_handler.urllib3.PoolManager") as mp:
             mp.return_value = MockHttp()
             result = handler({"action": "setNetworkInterfaceEnabled", "uuid": "i1", "enabled": False}, None)
 
@@ -3378,10 +3378,10 @@ class TestClusterInventory:
         assert "confirm" in result["error"]
 
     def test_enabling_a_lif_needs_no_confirm(self, mock_secrets):
-        from handler import handler
+        from rm_handler import handler
 
         http = MockHttp({"/network/ip/interfaces/i1": {"data": {}}})
-        with patch("handler.urllib3.PoolManager") as mp:
+        with patch("rm_handler.urllib3.PoolManager") as mp:
             mp.return_value = http
             result = handler({"action": "setNetworkInterfaceEnabled", "uuid": "i1", "enabled": True}, None)
 
@@ -3389,9 +3389,9 @@ class TestClusterInventory:
         assert json.loads(http.calls[0][2]["body"]) == {"enabled": True}
 
     def test_dns_config_read(self, mock_secrets):
-        from handler import handler
+        from rm_handler import handler
 
-        with patch("handler.urllib3.PoolManager") as mp:
+        with patch("rm_handler.urllib3.PoolManager") as mp:
             mp.return_value = MockHttp(
                 {
                     "/name-services/dns": {
@@ -3413,9 +3413,9 @@ class TestClusterInventory:
         assert result["dynamicDns"] is True
 
     def test_dns_update_requires_both_fields(self, mock_secrets):
-        from handler import handler
+        from rm_handler import handler
 
-        with patch("handler.urllib3.PoolManager") as mp:
+        with patch("rm_handler.urllib3.PoolManager") as mp:
             mp.return_value = MockHttp()
             result = handler({"action": "updateDnsConfig", "domains": ["a"]}, None)
 
@@ -3423,9 +3423,9 @@ class TestClusterInventory:
         assert "servers" in result["error"]
 
     def test_protocol_services_reports_three_protocols(self, mock_secrets):
-        from handler import handler
+        from rm_handler import handler
 
-        with patch("handler.urllib3.PoolManager") as mp:
+        with patch("rm_handler.urllib3.PoolManager") as mp:
             mp.return_value = MockHttp(
                 {
                     "/protocols/nfs/services": {"data": {"records": [{"enabled": True, "state": "online"}]}},
@@ -3443,9 +3443,9 @@ class TestClusterInventory:
         assert by_proto["s3"]["detail"] == "svm1_s3"
 
     def test_protocol_toggle_validates_protocol(self, mock_secrets):
-        from handler import handler
+        from rm_handler import handler
 
-        with patch("handler.urllib3.PoolManager") as mp:
+        with patch("rm_handler.urllib3.PoolManager") as mp:
             mp.return_value = MockHttp()
             result = handler({"action": "setProtocolServiceEnabled", "protocol": "smb", "enabled": True}, None)
 
@@ -3453,9 +3453,9 @@ class TestClusterInventory:
         assert "nfs, cifs or s3" in result["error"]
 
     def test_disabling_a_protocol_requires_confirm(self, mock_secrets):
-        from handler import handler
+        from rm_handler import handler
 
-        with patch("handler.urllib3.PoolManager") as mp:
+        with patch("rm_handler.urllib3.PoolManager") as mp:
             mp.return_value = MockHttp()
             result = handler(
                 {"action": "setProtocolServiceEnabled", "protocol": "nfs", "enabled": False},
@@ -3466,10 +3466,10 @@ class TestClusterInventory:
         assert "confirm" in result["error"]
 
     def test_enabling_a_protocol_patches_service(self, mock_secrets):
-        from handler import handler
+        from rm_handler import handler
 
         http = MockHttp({"/svm/svms": {"data": {"records": [{"uuid": "svm-1"}]}}})
-        with patch("handler.urllib3.PoolManager") as mp:
+        with patch("rm_handler.urllib3.PoolManager") as mp:
             mp.return_value = http
             result = handler(
                 {"action": "setProtocolServiceEnabled", "protocol": "cifs", "enabled": True},
@@ -3480,9 +3480,9 @@ class TestClusterInventory:
         assert "/protocols/cifs/services/svm-1" in http.calls[-1][1]
 
     def test_jobs_list_maps_state_and_message(self, mock_secrets):
-        from handler import handler
+        from rm_handler import handler
 
-        with patch("handler.urllib3.PoolManager") as mp:
+        with patch("rm_handler.urllib3.PoolManager") as mp:
             mp.return_value = MockHttp(
                 {
                     "/cluster/jobs": {
@@ -3506,9 +3506,9 @@ class TestClusterInventory:
         assert result["jobs"][0]["description"] == "FlexCache create"
 
     def test_get_job_requires_id(self, mock_secrets):
-        from handler import handler
+        from rm_handler import handler
 
-        with patch("handler.urllib3.PoolManager") as mp:
+        with patch("rm_handler.urllib3.PoolManager") as mp:
             mp.return_value = MockHttp()
             result = handler({"action": "getJob"}, None)
 
@@ -3559,9 +3559,9 @@ class TestPeeringAndClusterActionsAreRouted:
 
     @pytest.mark.parametrize("action", ACTIONS)
     def test_action_is_not_unknown(self, action, mock_secrets):
-        from handler import handler
+        from rm_handler import handler
 
-        with patch("handler.urllib3.PoolManager") as mp:
+        with patch("rm_handler.urllib3.PoolManager") as mp:
             mp.return_value = MockHttp()
             result = handler({"action": action}, None)
 
@@ -3591,13 +3591,13 @@ class TestConfirmGatedDeletesMatchUiPayloads:
 
     @pytest.mark.parametrize("action,params,_path", UI_DELETE_PAYLOADS)
     def test_refuses_without_confirm(self, action, params, _path, mock_secrets):
-        from handler import handler
+        from rm_handler import handler
 
         without_confirm = {k: v for k, v in params.items() if k != "confirm"}
         pool = MockHttp({"/svm/svms": {"data": {"records": [{"uuid": "u1"}]}}})
         # Three of these actions go through the shared client and five through
         # this handler's own pool, so both are faked for every row.
-        with patch("handler.urllib3.PoolManager", return_value=pool), snapmirror_client(pool):
+        with patch("rm_handler.urllib3.PoolManager", return_value=pool), snapmirror_client(pool):
             result = handler({"action": action, **without_confirm}, None)
 
         assert result.get("success") is False, f"{action} should refuse without confirm"
@@ -3605,10 +3605,10 @@ class TestConfirmGatedDeletesMatchUiPayloads:
 
     @pytest.mark.parametrize("action,params,_path", UI_DELETE_PAYLOADS)
     def test_succeeds_with_ui_payload(self, action, params, _path, mock_secrets):
-        from handler import handler
+        from rm_handler import handler
 
         pool = MockHttp({"/svm/svms": {"data": {"records": [{"uuid": "u1"}]}}})
-        with patch("handler.urllib3.PoolManager", return_value=pool), snapmirror_client(pool):
+        with patch("rm_handler.urllib3.PoolManager", return_value=pool), snapmirror_client(pool):
             result = handler({"action": action, **params}, None)
 
         assert result.get("success") is True, f"{action} failed with the UI payload: {result}"
@@ -3616,10 +3616,10 @@ class TestConfirmGatedDeletesMatchUiPayloads:
 
     def test_delete_vscan_policy_targets_the_named_policy(self, mock_secrets):
         """The policy name must appear in the request path, not the body."""
-        from handler import handler
+        from rm_handler import handler
 
         http = MockHttp({"/svm/svms": {"data": {"records": [{"uuid": "svm-1"}]}}})
-        with patch("handler.urllib3.PoolManager") as mp:
+        with patch("rm_handler.urllib3.PoolManager") as mp:
             mp.return_value = http
             result = handler(
                 {"action": "deleteVscanPolicy", "name": "scan_all_cifs", "confirm": True},
@@ -3645,33 +3645,33 @@ class TestRequestPathSafety:
     """
 
     def test_traversal_segment_is_refused(self):
-        from handler import _is_unsafe_path
+        from rm_handler import _is_unsafe_path
 
         assert _is_unsafe_path("/protocols/cifs/shares/uuid/../../cluster/nodes")
         assert _is_unsafe_path("/storage/volumes/..")
 
     def test_dots_inside_a_name_are_allowed(self):
         """`..` within a segment is a legal character sequence in a name."""
-        from handler import _is_unsafe_path
+        from rm_handler import _is_unsafe_path
 
         assert not _is_unsafe_path("/protocols/cifs/shares/uuid/my..share")
         assert not _is_unsafe_path("/storage/volumes?name=vol.1.2")
 
     def test_control_characters_and_backslash_are_refused(self):
-        from handler import _is_unsafe_path
+        from rm_handler import _is_unsafe_path
 
         assert _is_unsafe_path("/storage/volumes/a\nb")
         assert _is_unsafe_path("/storage/volumes/a\x00b")
         assert _is_unsafe_path("/storage/volumes/a\\b")
 
     def test_ordinary_paths_pass(self):
-        from handler import _is_unsafe_path
+        from rm_handler import _is_unsafe_path
 
         assert not _is_unsafe_path("/storage/volumes?svm.name=svm1&fields=uuid")
         assert not _is_unsafe_path("/protocols/cifs/shares/1234-5678/data")
 
     def test_unsafe_path_never_reaches_the_network(self, mock_secrets):
-        from handler import _ontap_request
+        from rm_handler import _ontap_request
 
         mock_http = MockHttp()
         result = _ontap_request(mock_http, {}, "DELETE", "/protocols/cifs/shares/u/../../cluster")
@@ -3681,10 +3681,10 @@ class TestRequestPathSafety:
         assert mock_http.calls == []
 
     def test_share_name_is_percent_encoded(self, mock_secrets):
-        from handler import handler
+        from rm_handler import handler
 
         mock_http = MockHttp()
-        with patch("handler.urllib3.PoolManager") as mock_pool:
+        with patch("rm_handler.urllib3.PoolManager") as mock_pool:
             mock_pool.return_value = mock_http
             handler(
                 {
@@ -3701,10 +3701,10 @@ class TestRequestPathSafety:
 
     def test_svm_query_value_is_encoded(self, mock_secrets):
         """An `&` in a name would otherwise append query parameters."""
-        from handler import handler
+        from rm_handler import handler
 
         mock_http = MockHttp()
-        with patch("handler.urllib3.PoolManager") as mock_pool:
+        with patch("rm_handler.urllib3.PoolManager") as mock_pool:
             mock_pool.return_value = mock_http
             handler({"action": "listVolumes", "svm": "svm1&fields=uuid"}, None)
 
@@ -3726,7 +3726,7 @@ class TestRequestPathSafety:
 
 class TestIrreversibleAcknowledgement:
     def test_snaplock_volume_refused_without_ack(self, mock_secrets):
-        from handler import handler
+        from rm_handler import handler
 
         mock_http = MockHttp(
             {
@@ -3734,7 +3734,7 @@ class TestIrreversibleAcknowledgement:
                 "/storage/volumes": {"status": 202, "data": {}},
             }
         )
-        with patch("handler.urllib3.PoolManager") as mock_pool:
+        with patch("rm_handler.urllib3.PoolManager") as mock_pool:
             mock_pool.return_value = mock_http
 
             result = handler(
@@ -3757,9 +3757,9 @@ class TestIrreversibleAcknowledgement:
         assert not any(method == "POST" for method, _url, _kwargs in mock_http.calls)
 
     def test_snaplock_volume_created_with_ack(self, mock_secrets):
-        from handler import handler
+        from rm_handler import handler
 
-        with patch("handler.urllib3.PoolManager") as mock_pool:
+        with patch("rm_handler.urllib3.PoolManager") as mock_pool:
             mock_pool.return_value = MockHttp(
                 {
                     "/storage/aggregates": {"data": {"records": [{"name": "aggr1"}]}},
@@ -3783,9 +3783,9 @@ class TestIrreversibleAcknowledgement:
 
     def test_plain_volume_needs_no_ack(self, mock_secrets):
         """The guard is scoped to SnapLock, so ordinary volume work is unchanged."""
-        from handler import handler
+        from rm_handler import handler
 
-        with patch("handler.urllib3.PoolManager") as mock_pool:
+        with patch("rm_handler.urllib3.PoolManager") as mock_pool:
             mock_pool.return_value = MockHttp(
                 {
                     "/storage/aggregates": {"data": {"records": [{"name": "aggr1"}]}},
@@ -3802,9 +3802,9 @@ class TestIrreversibleAcknowledgement:
 
     def test_ack_must_be_true_not_truthy(self, mock_secrets):
         """A string body would make `if event.get(...)` pass; the check is `is True`."""
-        from handler import handler
+        from rm_handler import handler
 
-        with patch("handler.urllib3.PoolManager") as mock_pool:
+        with patch("rm_handler.urllib3.PoolManager") as mock_pool:
             mock_pool.return_value = MockHttp(
                 {
                     "/storage/aggregates": {"data": {"records": [{"name": "aggr1"}]}},
@@ -3827,10 +3827,10 @@ class TestIrreversibleAcknowledgement:
         assert "acknowledgeIrreversible" in result["error"]
 
     def test_retention_update_refused_without_ack(self, mock_secrets):
-        from handler import handler
+        from rm_handler import handler
 
         mock_http = MockHttp()
-        with patch("handler.urllib3.PoolManager") as mock_pool:
+        with patch("rm_handler.urllib3.PoolManager") as mock_pool:
             mock_pool.return_value = mock_http
 
             result = handler(
@@ -3844,10 +3844,10 @@ class TestIrreversibleAcknowledgement:
         assert not any(method == "PATCH" for method, _url, _kwargs in mock_http.calls)
 
     def test_retention_update_applied_with_ack(self, mock_secrets):
-        from handler import handler
+        from rm_handler import handler
 
         mock_http = MockHttp()
-        with patch("handler.urllib3.PoolManager") as mock_pool:
+        with patch("rm_handler.urllib3.PoolManager") as mock_pool:
             mock_pool.return_value = mock_http
 
             result = handler(
@@ -3864,10 +3864,10 @@ class TestIrreversibleAcknowledgement:
         assert any(method == "PATCH" for method, _url, _kwargs in mock_http.calls)
 
     def test_enable_snapshot_locking_refused_without_ack(self, mock_secrets):
-        from handler import handler
+        from rm_handler import handler
 
         mock_http = MockHttp()
-        with patch("handler.urllib3.PoolManager") as mock_pool:
+        with patch("rm_handler.urllib3.PoolManager") as mock_pool:
             mock_pool.return_value = mock_http
 
             result = handler(
@@ -3880,9 +3880,9 @@ class TestIrreversibleAcknowledgement:
         assert not any(method == "PATCH" for method, _url, _kwargs in mock_http.calls)
 
     def test_enable_snapshot_locking_allowed_with_ack(self, mock_secrets):
-        from handler import handler
+        from rm_handler import handler
 
-        with patch("handler.urllib3.PoolManager") as mock_pool:
+        with patch("rm_handler.urllib3.PoolManager") as mock_pool:
             mock_pool.return_value = MockHttp()
 
             result = handler(
@@ -3899,9 +3899,9 @@ class TestIrreversibleAcknowledgement:
 
     def test_disabling_snapshot_locking_needs_no_ack(self, mock_secrets):
         """Only enabling creates the one-way state; disabling creates no lock."""
-        from handler import handler
+        from rm_handler import handler
 
-        with patch("handler.urllib3.PoolManager") as mock_pool:
+        with patch("rm_handler.urllib3.PoolManager") as mock_pool:
             mock_pool.return_value = MockHttp()
 
             result = handler(
@@ -3914,10 +3914,10 @@ class TestIrreversibleAcknowledgement:
         assert "acknowledgeIrreversible" not in str(result.get("error") or "")
 
     def test_lock_snapshot_refused_without_ack(self, mock_secrets):
-        from handler import handler
+        from rm_handler import handler
 
         mock_http = MockHttp()
-        with patch("handler.urllib3.PoolManager") as mock_pool:
+        with patch("rm_handler.urllib3.PoolManager") as mock_pool:
             mock_pool.return_value = mock_http
 
             result = handler(
@@ -3936,9 +3936,9 @@ class TestIrreversibleAcknowledgement:
         assert not any(method == "PATCH" for method, _url, _kwargs in mock_http.calls)
 
     def test_lock_snapshot_allowed_with_ack(self, mock_secrets):
-        from handler import handler
+        from rm_handler import handler
 
-        with patch("handler.urllib3.PoolManager") as mock_pool:
+        with patch("rm_handler.urllib3.PoolManager") as mock_pool:
             mock_pool.return_value = MockHttp()
 
             result = handler(
@@ -3960,9 +3960,9 @@ class TestIrreversibleAcknowledgement:
         Otherwise adding the acknowledgement would mask every input error behind
         it, and the operator would set the flag to find out what was wrong.
         """
-        from handler import handler
+        from rm_handler import handler
 
-        with patch("handler.urllib3.PoolManager") as mock_pool:
+        with patch("rm_handler.urllib3.PoolManager") as mock_pool:
             mock_pool.return_value = MockHttp()
 
             result = handler(
@@ -3976,9 +3976,9 @@ class TestIrreversibleAcknowledgement:
 
     def test_s3_object_lock_compliance_names_its_own_effect(self, mock_secrets):
         """COMPLIANCE and GOVERNANCE differ in what the operator is agreeing to."""
-        from handler import handler
+        from rm_handler import handler
 
-        with patch("handler.boto3") as mock_boto3:
+        with patch("rm_handler.boto3") as mock_boto3:
             mock_sm = MagicMock()
             mock_sm.get_secret_value.return_value = {
                 "SecretString": json.dumps({"username": "fsxadmin", "password": "test"})
@@ -4016,10 +4016,10 @@ class TestIrreversibleAcknowledgement:
         about: the form field was free text, so a mistyped period would have kept
         producing locks on a schedule with nobody watching.
         """
-        from handler import handler
+        from rm_handler import handler
 
         mock_http = MockHttp({"/storage/snapshot-policies": {"status": 201, "data": {}}})
-        with patch("handler.urllib3.PoolManager") as mock_pool:
+        with patch("rm_handler.urllib3.PoolManager") as mock_pool:
             mock_pool.return_value = mock_http
 
             result = handler(
@@ -4039,9 +4039,9 @@ class TestIrreversibleAcknowledgement:
         assert not any(method == "POST" for method, _url, _kwargs in mock_http.calls)
 
     def test_snapshot_policy_with_retention_created_with_ack(self, mock_secrets):
-        from handler import handler
+        from rm_handler import handler
 
-        with patch("handler.urllib3.PoolManager") as mock_pool:
+        with patch("rm_handler.urllib3.PoolManager") as mock_pool:
             mock_pool.return_value = MockHttp({"/storage/snapshot-policies": {"status": 201, "data": {}}})
 
             result = handler(
@@ -4058,9 +4058,9 @@ class TestIrreversibleAcknowledgement:
 
     def test_snapshot_policy_without_retention_needs_no_ack(self, mock_secrets):
         """Policies that only rotate snapshots are reversible and stay unguarded."""
-        from handler import handler
+        from rm_handler import handler
 
-        with patch("handler.urllib3.PoolManager") as mock_pool:
+        with patch("rm_handler.urllib3.PoolManager") as mock_pool:
             mock_pool.return_value = MockHttp({"/storage/snapshot-policies": {"status": 201, "data": {}}})
 
             result = handler(
@@ -4075,9 +4075,9 @@ class TestIrreversibleAcknowledgement:
         assert result["success"] is True
 
     def test_snapshot_policy_guard_runs_after_validation(self, mock_secrets):
-        from handler import handler
+        from rm_handler import handler
 
-        with patch("handler.urllib3.PoolManager") as mock_pool:
+        with patch("rm_handler.urllib3.PoolManager") as mock_pool:
             mock_pool.return_value = MockHttp()
 
             result = handler(
@@ -4094,9 +4094,9 @@ class TestIrreversibleAcknowledgement:
         assert "acknowledgeIrreversible" not in result["error"]
 
     def test_delete_snapshot_policy_requires_confirm(self, mock_secrets):
-        from handler import handler
+        from rm_handler import handler
 
-        with patch("handler.urllib3.PoolManager") as mock_pool:
+        with patch("rm_handler.urllib3.PoolManager") as mock_pool:
             mock_pool.return_value = MockHttp()
 
             result = handler(
@@ -4109,7 +4109,7 @@ class TestIrreversibleAcknowledgement:
 
     def test_delete_snapshot_policy_reports_a_failed_job(self, mock_secrets):
         """ONTAP refuses the delete while a volume still references the policy."""
-        from handler import handler
+        from rm_handler import handler
 
         http = MockHttp(
             {
@@ -4117,7 +4117,7 @@ class TestIrreversibleAcknowledgement:
                 "/cluster/jobs/job-1": {"data": {"state": "failure", "message": "policy is in use by a volume"}},
             }
         )
-        with patch("handler.urllib3.PoolManager") as mock_pool:
+        with patch("rm_handler.urllib3.PoolManager") as mock_pool:
             mock_pool.return_value = http
 
             result = handler(
@@ -4131,7 +4131,7 @@ class TestIrreversibleAcknowledgement:
 
     def test_assigning_a_locking_policy_refused_without_ack(self, mock_secrets):
         """Attaching a policy that locks starts the same recurrence on that volume."""
-        from handler import handler
+        from rm_handler import handler
 
         mock_http = MockHttp(
             {
@@ -4144,7 +4144,7 @@ class TestIrreversibleAcknowledgement:
                 },
             }
         )
-        with patch("handler.urllib3.PoolManager") as mock_pool:
+        with patch("rm_handler.urllib3.PoolManager") as mock_pool:
             mock_pool.return_value = mock_http
 
             result = handler(
@@ -4163,9 +4163,9 @@ class TestIrreversibleAcknowledgement:
 
     def test_assigning_a_plain_policy_needs_no_ack(self, mock_secrets):
         """Whether to ask depends on the policy, so a harmless one is not blocked."""
-        from handler import handler
+        from rm_handler import handler
 
-        with patch("handler.urllib3.PoolManager") as mock_pool:
+        with patch("rm_handler.urllib3.PoolManager") as mock_pool:
             mock_pool.return_value = MockHttp(
                 {
                     "/storage/snapshot-policies": {
@@ -4189,10 +4189,10 @@ class TestIrreversibleAcknowledgement:
 
     def test_unreadable_policy_still_asks(self, mock_secrets):
         """Fails closed: an unknown policy must not be assumed to be harmless."""
-        from handler import handler
+        from rm_handler import handler
 
         mock_http = MockHttp({"/storage/snapshot-policies": {"status": 500, "data": {"error": {"message": "boom"}}}})
-        with patch("handler.urllib3.PoolManager") as mock_pool:
+        with patch("rm_handler.urllib3.PoolManager") as mock_pool:
             mock_pool.return_value = mock_http
 
             result = handler(
@@ -4220,12 +4220,12 @@ class TestFailureClassification:
 
     def test_rejected_credentials_are_reported_as_such(self, mock_secrets):
         """A 401 is the secret's contents, not the network."""
-        from handler import handler
+        from rm_handler import handler
 
         mock_http = MockHttp(
             {"/storage/volumes": {"status": 401, "data": {"error": {"message": "User is not authorized."}}}}
         )
-        with patch("handler.urllib3.PoolManager") as mock_pool:
+        with patch("rm_handler.urllib3.PoolManager") as mock_pool:
             mock_pool.return_value = mock_http
             result = handler({"action": "listVolumes"}, None)
 
@@ -4236,10 +4236,10 @@ class TestFailureClassification:
 
     def test_a_403_lands_in_the_same_class_as_a_401(self, mock_secrets):
         """Which one arrived is worth recording, but both send the reader to the secret."""
-        from handler import handler
+        from rm_handler import handler
 
         mock_http = MockHttp({"/storage/volumes": {"status": 403, "data": {"error": {"message": "not authorized"}}}})
-        with patch("handler.urllib3.PoolManager") as mock_pool:
+        with patch("rm_handler.urllib3.PoolManager") as mock_pool:
             mock_pool.return_value = mock_http
             result = handler({"action": "listVolumes"}, None)
 
@@ -4248,7 +4248,7 @@ class TestFailureClassification:
 
     def test_other_ontap_errors_carry_the_status_and_code(self, mock_secrets):
         """The code is the first thing a support case asks for."""
-        from handler import handler
+        from rm_handler import handler
 
         mock_http = MockHttp(
             {
@@ -4258,7 +4258,7 @@ class TestFailureClassification:
                 }
             }
         )
-        with patch("handler.urllib3.PoolManager") as mock_pool:
+        with patch("rm_handler.urllib3.PoolManager") as mock_pool:
             mock_pool.return_value = mock_http
             result = handler({"action": "listVolumes"}, None)
 
@@ -4273,12 +4273,12 @@ class TestFailureClassification:
         different reason. Attaching the read's class here would tell the reader to go and
         check a password over a missing acknowledgement.
         """
-        from handler import handler
+        from rm_handler import handler
 
         mock_http = MockHttp(
             {"/storage/snapshot-policies": {"status": 401, "data": {"error": {"message": "User is not authorized."}}}}
         )
-        with patch("handler.urllib3.PoolManager") as mock_pool:
+        with patch("rm_handler.urllib3.PoolManager") as mock_pool:
             mock_pool.return_value = mock_http
             result = handler(
                 {
@@ -4295,17 +4295,17 @@ class TestFailureClassification:
 
     def test_the_class_does_not_survive_into_the_next_invocation(self, mock_secrets):
         """The slot is per-request. A warm container must not report a stale cause."""
-        from handler import handler
+        from rm_handler import handler
 
         failing = MockHttp(
             {"/storage/volumes": {"status": 401, "data": {"error": {"message": "User is not authorized."}}}}
         )
-        with patch("handler.urllib3.PoolManager") as mock_pool:
+        with patch("rm_handler.urllib3.PoolManager") as mock_pool:
             mock_pool.return_value = failing
             assert handler({"action": "listVolumes"}, None)["errorClass"] == "CREDENTIALS_REJECTED"
 
         # Same container, an action that fails for a reason ONTAP never saw.
-        with patch("handler.urllib3.PoolManager") as mock_pool:
+        with patch("rm_handler.urllib3.PoolManager") as mock_pool:
             mock_pool.return_value = MockHttp()
             result = handler({"action": "nonsense"}, None)
 
@@ -4314,7 +4314,7 @@ class TestFailureClassification:
 
     def test_an_unconfigured_deployment_names_what_is_missing(self, mock_secrets):
         """ "ONTAP connection not configured" did not say which variable was blank."""
-        import handler as handler_module
+        import rm_handler as handler_module
 
         with patch.object(handler_module, "MGMT_IP", ""):
             result = handler_module.handler({"action": "listVolumes"}, None)
@@ -4324,14 +4324,14 @@ class TestFailureClassification:
 
     def test_nothing_answering_is_not_reported_as_a_missing_volume(self, mock_secrets):
         """The only class where inspecting the VPC is the right next step."""
-        import handler as handler_module
+        import rm_handler as handler_module
         import urllib3
 
         class RefusingHttp:
             def request(self, *_args, **_kwargs):
                 raise urllib3.exceptions.NewConnectionError(None, "connection refused")
 
-        with patch("handler.urllib3.PoolManager") as mock_pool:
+        with patch("rm_handler.urllib3.PoolManager") as mock_pool:
             mock_pool.return_value = RefusingHttp()
             result = handler_module.handler({"action": "listVolumes"}, None)
 
@@ -4348,10 +4348,10 @@ class TestInPlaceUpdates:
     """
 
     def test_quota_rule_update_patches_limits_only(self, mock_secrets):
-        from handler import handler
+        from rm_handler import handler
 
         http = MockHttp({"/storage/quota/rules/r1": {"data": {}}})
-        with patch("handler.urllib3.PoolManager") as mock_pool:
+        with patch("rm_handler.urllib3.PoolManager") as mock_pool:
             mock_pool.return_value = http
             result = handler(
                 {
@@ -4372,10 +4372,10 @@ class TestInPlaceUpdates:
 
     def test_quota_rule_update_maps_zero_to_no_limit(self, mock_secrets):
         """0 in the form means "no limit", which ONTAP spells -1."""
-        from handler import handler
+        from rm_handler import handler
 
         http = MockHttp({"/storage/quota/rules/r1": {"data": {}}})
-        with patch("handler.urllib3.PoolManager") as mock_pool:
+        with patch("rm_handler.urllib3.PoolManager") as mock_pool:
             mock_pool.return_value = http
             handler({"action": "updateQuotaRule", "ruleUuid": "r1", "spaceHardLimitGiB": 0}, None)
 
@@ -4383,9 +4383,9 @@ class TestInPlaceUpdates:
         assert body["space"]["hard_limit"] == -1
 
     def test_quota_rule_update_refuses_an_empty_change(self, mock_secrets):
-        from handler import handler
+        from rm_handler import handler
 
-        with patch("handler.urllib3.PoolManager") as mock_pool:
+        with patch("rm_handler.urllib3.PoolManager") as mock_pool:
             mock_pool.return_value = MockHttp()
             result = handler({"action": "updateQuotaRule", "ruleUuid": "r1"}, None)
 
@@ -4393,7 +4393,7 @@ class TestInPlaceUpdates:
         assert "at least one of" in result["error"]
 
     def test_qtree_update_resolves_the_volume_uuid(self, mock_secrets):
-        from handler import handler
+        from rm_handler import handler
 
         http = MockHttp(
             {
@@ -4401,7 +4401,7 @@ class TestInPlaceUpdates:
                 "/storage/qtrees/v1/3": {"data": {}},
             }
         )
-        with patch("handler.urllib3.PoolManager") as mock_pool:
+        with patch("rm_handler.urllib3.PoolManager") as mock_pool:
             mock_pool.return_value = http
             result = handler(
                 {
@@ -4418,9 +4418,9 @@ class TestInPlaceUpdates:
         assert body == {"security_style": "ntfs"}
 
     def test_qtree_update_rejects_an_unknown_security_style(self, mock_secrets):
-        from handler import handler
+        from rm_handler import handler
 
-        with patch("handler.urllib3.PoolManager") as mock_pool:
+        with patch("rm_handler.urllib3.PoolManager") as mock_pool:
             mock_pool.return_value = MockHttp()
             result = handler(
                 {
@@ -4436,7 +4436,7 @@ class TestInPlaceUpdates:
         assert "securityStyle" in result["error"]
 
     def test_local_user_update_sends_the_password_without_logging_it(self, mock_secrets, caplog):
-        from handler import handler
+        from rm_handler import handler
 
         http = MockHttp(
             {
@@ -4444,7 +4444,7 @@ class TestInPlaceUpdates:
                 "/protocols/cifs/local-users/svm-1/S-1-5-21-1": {"data": {}},
             }
         )
-        with patch("handler.urllib3.PoolManager") as mock_pool:
+        with patch("rm_handler.urllib3.PoolManager") as mock_pool:
             mock_pool.return_value = http
             with caplog.at_level("INFO"):
                 result = handler(
@@ -4464,9 +4464,9 @@ class TestInPlaceUpdates:
         assert "s3cret-passphrase" not in caplog.text
 
     def test_local_user_update_refuses_an_empty_change(self, mock_secrets):
-        from handler import handler
+        from rm_handler import handler
 
-        with patch("handler.urllib3.PoolManager") as mock_pool:
+        with patch("rm_handler.urllib3.PoolManager") as mock_pool:
             mock_pool.return_value = MockHttp()
             result = handler({"action": "updateLocalUser", "sid": "S-1-5-21-1"}, None)
 
@@ -4474,7 +4474,7 @@ class TestInPlaceUpdates:
         assert "at least one of" in result["error"]
 
     def test_name_mapping_update_patches_the_indexed_rule(self, mock_secrets):
-        from handler import handler
+        from rm_handler import handler
 
         http = MockHttp(
             {
@@ -4482,7 +4482,7 @@ class TestInPlaceUpdates:
                 "/name-services/name-mappings/svm-1/win_unix/2": {"data": {}},
             }
         )
-        with patch("handler.urllib3.PoolManager") as mock_pool:
+        with patch("rm_handler.urllib3.PoolManager") as mock_pool:
             mock_pool.return_value = http
             result = handler(
                 {
@@ -4500,9 +4500,9 @@ class TestInPlaceUpdates:
 
     def test_name_mapping_update_refuses_s3_unix(self, mock_secrets):
         """FSx for ONTAP owns those entries; it creates and removes them itself."""
-        from handler import handler
+        from rm_handler import handler
 
-        with patch("handler.urllib3.PoolManager") as mock_pool:
+        with patch("rm_handler.urllib3.PoolManager") as mock_pool:
             mock_pool.return_value = MockHttp()
             result = handler(
                 {
@@ -4528,10 +4528,10 @@ class TestMovesAndEnforcement:
 
     def test_qtree_rename_requires_confirmation(self, mock_secrets):
         """Without it, the rename is one click from the settings edit beside it."""
-        from handler import handler
+        from rm_handler import handler
 
         http = MockHttp({"/storage/volumes?name=": {"data": {"records": [{"uuid": "v1"}]}}})
-        with patch("handler.urllib3.PoolManager") as mock_pool:
+        with patch("rm_handler.urllib3.PoolManager") as mock_pool:
             mock_pool.return_value = http
             result = handler(
                 {
@@ -4548,7 +4548,7 @@ class TestMovesAndEnforcement:
         assert http.calls == []
 
     def test_qtree_rename_patches_the_name(self, mock_secrets):
-        from handler import handler
+        from rm_handler import handler
 
         http = MockHttp(
             {
@@ -4556,7 +4556,7 @@ class TestMovesAndEnforcement:
                 "/storage/qtrees/v1/2": {"data": {}},
             }
         )
-        with patch("handler.urllib3.PoolManager") as mock_pool:
+        with patch("rm_handler.urllib3.PoolManager") as mock_pool:
             mock_pool.return_value = http
             result = handler(
                 {
@@ -4576,9 +4576,9 @@ class TestMovesAndEnforcement:
 
     def test_qtree_rename_rejects_a_path_separator_in_the_name(self, mock_secrets):
         """A qtree name is a path component, so a separator would move it elsewhere."""
-        from handler import handler
+        from rm_handler import handler
 
-        with patch("handler.urllib3.PoolManager") as mock_pool:
+        with patch("rm_handler.urllib3.PoolManager") as mock_pool:
             mock_pool.return_value = MockHttp()
             result = handler(
                 {
@@ -4594,7 +4594,7 @@ class TestMovesAndEnforcement:
         assert "newName" in result["error"]
 
     def test_name_mapping_move_sends_new_index(self, mock_secrets):
-        from handler import handler
+        from rm_handler import handler
 
         http = MockHttp(
             {
@@ -4602,7 +4602,7 @@ class TestMovesAndEnforcement:
                 "/name-services/name-mappings/svm-1/win_unix/2": {"data": {}},
             }
         )
-        with patch("handler.urllib3.PoolManager") as mock_pool:
+        with patch("rm_handler.urllib3.PoolManager") as mock_pool:
             mock_pool.return_value = http
             result = handler(
                 {"action": "moveNameMapping", "direction": "win_unix", "index": 2, "newIndex": 1},
@@ -4615,9 +4615,9 @@ class TestMovesAndEnforcement:
 
     def test_name_mapping_move_refuses_the_position_it_holds(self, mock_secrets):
         """ONTAP rejects it too, but the reason it gives does not say which field."""
-        from handler import handler
+        from rm_handler import handler
 
-        with patch("handler.urllib3.PoolManager") as mock_pool:
+        with patch("rm_handler.urllib3.PoolManager") as mock_pool:
             mock_pool.return_value = MockHttp()
             result = handler(
                 {"action": "moveNameMapping", "direction": "win_unix", "index": 2, "newIndex": 2},
@@ -4627,9 +4627,9 @@ class TestMovesAndEnforcement:
         assert "already holds" in result["error"]
 
     def test_name_mapping_move_refuses_s3_unix(self, mock_secrets):
-        from handler import handler
+        from rm_handler import handler
 
-        with patch("handler.urllib3.PoolManager") as mock_pool:
+        with patch("rm_handler.urllib3.PoolManager") as mock_pool:
             mock_pool.return_value = MockHttp()
             result = handler(
                 {"action": "moveNameMapping", "direction": "s3_unix", "index": 1, "newIndex": 2},
@@ -4646,10 +4646,10 @@ class TestMovesAndEnforcement:
         false, so echoing the request back would tell the caller the opposite of the
         truth for as long as ONTAP is still scanning.
         """
-        from handler import handler
+        from rm_handler import handler
 
         http = MockHttp({"/storage/volumes/v1": {"data": {"quota": {"state": "initializing"}}}})
-        with patch("handler.urllib3.PoolManager") as mock_pool:
+        with patch("rm_handler.urllib3.PoolManager") as mock_pool:
             mock_pool.return_value = http
             result = handler(
                 {"action": "setVolumeQuotaEnabled", "volumeUuid": "v1", "enabled": True},
@@ -4662,19 +4662,19 @@ class TestMovesAndEnforcement:
 
     def test_volume_quota_enabled_requires_the_flag(self, mock_secrets):
         """Absent is not false: it would silently turn enforcement off."""
-        from handler import handler
+        from rm_handler import handler
 
-        with patch("handler.urllib3.PoolManager") as mock_pool:
+        with patch("rm_handler.urllib3.PoolManager") as mock_pool:
             mock_pool.return_value = MockHttp()
             result = handler({"action": "setVolumeQuotaEnabled", "volumeUuid": "v1"}, None)
         assert result["success"] is False
         assert "enabled is required" in result["error"]
 
     def test_volume_quota_disable_sends_false(self, mock_secrets):
-        from handler import handler
+        from rm_handler import handler
 
         http = MockHttp({"/storage/volumes/v1": {"data": {"quota": {"state": "off"}}}})
-        with patch("handler.urllib3.PoolManager") as mock_pool:
+        with patch("rm_handler.urllib3.PoolManager") as mock_pool:
             mock_pool.return_value = http
             result = handler(
                 {"action": "setVolumeQuotaEnabled", "volumeUuid": "v1", "enabled": False},
@@ -4691,7 +4691,7 @@ class TestMovesAndEnforcement:
         shares its UUID -- so a 202 reported as success would leave the panel showing a
         size the cache never reached.
         """
-        from handler import handler
+        from rm_handler import handler
 
         http = MockHttp(
             {
@@ -4704,7 +4704,7 @@ class TestMovesAndEnforcement:
                 },
             }
         )
-        with patch("handler.urllib3.PoolManager") as mock_pool:
+        with patch("rm_handler.urllib3.PoolManager") as mock_pool:
             mock_pool.return_value = http
             result = handler({"action": "resizeVolume", "volumeUuid": "c1", "newSizeGiB": 20}, None)
         assert result["success"] is False
@@ -4720,18 +4720,18 @@ class TestMovesAndEnforcement:
         it replaced, in the other direction -- the size had changed and the panel said it
         had not.
         """
-        from handler import handler
+        from rm_handler import handler
 
         # Collapse the wait rather than sleeping through it.
-        monkeypatch.setattr("handler._JOB_WAIT_SECONDS", 0.2)
-        monkeypatch.setattr("handler._JOB_POLL_INTERVAL", 0.05)
+        monkeypatch.setattr("rm_handler._JOB_WAIT_SECONDS", 0.2)
+        monkeypatch.setattr("rm_handler._JOB_POLL_INTERVAL", 0.05)
         http = MockHttp(
             {
                 "/storage/volumes/c1": {"data": {"job": {"uuid": "j1"}}},
                 "/cluster/jobs/j1": {"data": {"state": "running", "message": "shrinking"}},
             }
         )
-        with patch("handler.urllib3.PoolManager") as mock_pool:
+        with patch("rm_handler.urllib3.PoolManager") as mock_pool:
             mock_pool.return_value = http
             result = handler({"action": "resizeVolume", "volumeUuid": "c1", "newSizeGiB": 20}, None)
         assert result["success"] is True
@@ -4748,10 +4748,10 @@ class TestQosAssignment:
     """
 
     def test_assign_sends_the_policy_name(self, mock_secrets):
-        from handler import handler
+        from rm_handler import handler
 
         http = MockHttp({"/storage/volumes/v1": {"data": {}}})
-        with patch("handler.urllib3.PoolManager") as mock_pool:
+        with patch("rm_handler.urllib3.PoolManager") as mock_pool:
             mock_pool.return_value = http
             result = handler(
                 {"action": "assignQosToVolume", "volumeUuid": "v1", "policyName": "zz_qos"},
@@ -4765,10 +4765,10 @@ class TestQosAssignment:
 
     def test_none_removes_the_assignment(self, mock_secrets):
         """`none` is ONTAP's reserved keyword, not a portal placeholder."""
-        from handler import handler
+        from rm_handler import handler
 
         http = MockHttp({"/storage/volumes/v1": {"data": {}}})
-        with patch("handler.urllib3.PoolManager") as mock_pool:
+        with patch("rm_handler.urllib3.PoolManager") as mock_pool:
             mock_pool.return_value = http
             result = handler(
                 {"action": "assignQosToVolume", "volumeUuid": "v1", "policyName": "none"},
@@ -4781,10 +4781,10 @@ class TestQosAssignment:
 
     def test_an_empty_policy_name_is_refused_and_names_the_keyword(self, mock_secrets):
         """Sending "" would reach ONTAP as a validation error that does not name the field."""
-        from handler import handler
+        from rm_handler import handler
 
         http = MockHttp()
-        with patch("handler.urllib3.PoolManager") as mock_pool:
+        with patch("rm_handler.urllib3.PoolManager") as mock_pool:
             mock_pool.return_value = http
             result = handler({"action": "assignQosToVolume", "volumeUuid": "v1"}, None)
         assert result["success"] is False
@@ -4793,17 +4793,17 @@ class TestQosAssignment:
 
     def test_assign_waits_for_the_job(self, mock_secrets, monkeypatch):
         """The PATCH can answer 202, and the assignment is not in effect until it ends."""
-        from handler import handler
+        from rm_handler import handler
 
-        monkeypatch.setattr("handler._JOB_WAIT_SECONDS", 0.2)
-        monkeypatch.setattr("handler._JOB_POLL_INTERVAL", 0.05)
+        monkeypatch.setattr("rm_handler._JOB_WAIT_SECONDS", 0.2)
+        monkeypatch.setattr("rm_handler._JOB_POLL_INTERVAL", 0.05)
         http = MockHttp(
             {
                 "/storage/volumes/v1": {"data": {"job": {"uuid": "j1"}}},
                 "/cluster/jobs/j1": {"data": {"state": "failure", "message": "policy not found"}},
             }
         )
-        with patch("handler.urllib3.PoolManager") as mock_pool:
+        with patch("rm_handler.urllib3.PoolManager") as mock_pool:
             mock_pool.return_value = http
             result = handler(
                 {"action": "assignQosToVolume", "volumeUuid": "v1", "policyName": "zz_qos"},
@@ -4814,7 +4814,7 @@ class TestQosAssignment:
 
     def test_volume_listing_reports_the_assigned_policy(self, mock_secrets):
         """Without this the panel offers a delete for a policy it cannot see is in use."""
-        from handler import handler
+        from rm_handler import handler
 
         http = MockHttp(
             {
@@ -4834,7 +4834,7 @@ class TestQosAssignment:
                 }
             }
         )
-        with patch("handler.urllib3.PoolManager") as mock_pool:
+        with patch("rm_handler.urllib3.PoolManager") as mock_pool:
             mock_pool.return_value = http
             result = handler({"action": "listVolumes"}, None)
         by_name = {v["name"]: v for v in result["volumes"]}
@@ -4854,7 +4854,7 @@ class TestArpStateReadBack:
     """
 
     def test_the_state_is_read_back_not_echoed(self, mock_secrets):
-        from handler import handler
+        from rm_handler import handler
 
         http = MockHttp(
             {
@@ -4863,7 +4863,7 @@ class TestArpStateReadBack:
                 "/storage/volumes/v1": {"data": {"anti_ransomware": {"state": "enabled"}}},
             }
         )
-        with patch("handler.urllib3.PoolManager") as mock_pool:
+        with patch("rm_handler.urllib3.PoolManager") as mock_pool:
             mock_pool.return_value = http
             result = handler(
                 {"action": "updateArpStateAdmin", "volumeUuid": "v1", "state": "dry_run"},
@@ -4882,10 +4882,10 @@ class TestArpStateReadBack:
         That is the requested transition under way, not ONTAP settling somewhere else, so
         it must not be flagged as a divergence -- an operator would read that as a refusal.
         """
-        from handler import handler
+        from rm_handler import handler
 
         http = MockHttp({"/storage/volumes/v1": {"data": {"anti_ransomware": {"state": "disable_in_progress"}}}})
-        with patch("handler.urllib3.PoolManager") as mock_pool:
+        with patch("rm_handler.urllib3.PoolManager") as mock_pool:
             mock_pool.return_value = http
             result = handler(
                 {"action": "updateArpStateAdmin", "volumeUuid": "v1", "state": "disabled"},
@@ -4895,10 +4895,10 @@ class TestArpStateReadBack:
         assert result["differs"] is False
 
     def test_a_matching_state_is_not_flagged(self, mock_secrets):
-        from handler import handler
+        from rm_handler import handler
 
         http = MockHttp({"/storage/volumes/v1": {"data": {"anti_ransomware": {"state": "enabled"}}}})
-        with patch("handler.urllib3.PoolManager") as mock_pool:
+        with patch("rm_handler.urllib3.PoolManager") as mock_pool:
             mock_pool.return_value = http
             result = handler(
                 {"action": "updateArpStateAdmin", "volumeUuid": "v1", "state": "enabled"},
@@ -4910,7 +4910,7 @@ class TestArpStateReadBack:
 
     def test_a_failed_read_back_does_not_turn_a_success_into_a_divergence(self, mock_secrets):
         """An unreadable state is unknown, and unknown is not disagreement."""
-        from handler import handler
+        from rm_handler import handler
 
         http = MockHttp(
             {
@@ -4921,7 +4921,7 @@ class TestArpStateReadBack:
                 "/storage/volumes/v1": {"data": {}},
             }
         )
-        with patch("handler.urllib3.PoolManager") as mock_pool:
+        with patch("rm_handler.urllib3.PoolManager") as mock_pool:
             mock_pool.return_value = http
             result = handler(
                 {"action": "updateArpStateAdmin", "volumeUuid": "v1", "state": "enabled"},
@@ -4942,7 +4942,7 @@ class TestVolumeListingScale:
     """
 
     def test_a_further_page_is_reported(self, mock_secrets):
-        from handler import handler
+        from rm_handler import handler
 
         http = MockHttp(
             {
@@ -4954,14 +4954,14 @@ class TestVolumeListingScale:
                 }
             }
         )
-        with patch("handler.urllib3.PoolManager") as mock_pool:
+        with patch("rm_handler.urllib3.PoolManager") as mock_pool:
             mock_pool.return_value = http
             result = handler({"action": "listVolumes"}, None)
         assert result["truncated"] is True
 
     def test_a_complete_listing_is_not_reported_as_truncated(self, mock_secrets):
         """Otherwise every list would carry a warning and the warning would mean nothing."""
-        from handler import handler
+        from rm_handler import handler
 
         http = MockHttp(
             {
@@ -4973,7 +4973,7 @@ class TestVolumeListingScale:
                 }
             }
         )
-        with patch("handler.urllib3.PoolManager") as mock_pool:
+        with patch("rm_handler.urllib3.PoolManager") as mock_pool:
             mock_pool.return_value = http
             result = handler({"action": "listVolumes"}, None)
         assert result["truncated"] is False
