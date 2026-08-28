@@ -119,7 +119,7 @@ ONTAP object storage server on SVM <svm-id>. Please delete the existing
 s3 server and retry.
 ```
 
-**ONTAP のネイティブ S3 サーバー（オブジェクトストアサーバー）が構成されている SVM には、FSx の S3 Access Point を作れません。** これは Access Point を設計する前に確認すべき前提条件です。既存の S3 サーバーを消す判断は、その SVM を使っている側にしかできません。
+**ONTAP のネイティブ S3 サーバー（オブジェクトストアサーバー）が構成されている SVM には、FSx for ONTAP S3 AP を作れません。** これは Access Point を設計する前に確認すべき前提条件です。既存の S3 サーバーを消す判断は、その SVM を使っている側にしかできません。
 
 ### 4-2. ドメイン接頭辞を付けると壊れる — ただし症状が想定と違う
 

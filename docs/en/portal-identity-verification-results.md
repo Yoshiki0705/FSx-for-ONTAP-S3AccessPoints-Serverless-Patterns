@@ -119,7 +119,7 @@ ONTAP object storage server on SVM <svm-id>. Please delete the existing
 s3 server and retry.
 ```
 
-**An SVM that already has ONTAP's native S3 server (object store server) configured cannot host FSx S3 Access Points.** This is a prerequisite to check before designing access points. Deleting an existing S3 server is a decision only the SVM's users can make.
+**An SVM that already has ONTAP's native S3 server (object store server) configured cannot host FSx for ONTAP S3 APs.** This is a prerequisite to check before designing access points. Deleting an existing S3 server is a decision only the SVM's users can make.
 
 ### 4-2. A domain prefix breaks it — but the symptom differs from expectation
 
