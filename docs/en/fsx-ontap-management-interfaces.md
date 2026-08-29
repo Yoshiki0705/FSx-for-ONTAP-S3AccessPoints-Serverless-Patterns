@@ -86,6 +86,55 @@ This is **not a judgement about which product is better; it follows from a const
 
 ---
 
+## What the ONTAP CLI can run
+
+**There is no published list of the commands available** (AWS Support, 2026-08-29). There is
+a way to enumerate them:
+
+```
+security login role show -role fsxadmin -access !none
+```
+
+This returns the commands permitted to `fsxadmin`, so whether a command is in scope can be
+settled before relying on it. More reliable than searching documentation for it.
+
+### Privilege levels differ per command
+
+(AWS Support, 2026-08-29.)
+
+| Command | Privilege required |
+|---|---|
+| Show and close SMB sessions | Admin |
+| `vserver locks show` | Admin |
+| `vserver locks break` | **Advanced** |
+
+> **Not confirmed**: `fsxadmin` on FSx for ONTAP is a restricted role, and **whether it can
+> enter `set -privilege advanced` to run `vserver locks break` has not been established**. If
+> it cannot, a lock-release procedure has to be designed some other way. The question is open
+> with AWS.
+
+### Quotas
+
+| Item | Value | Standing |
+|---|---|---|
+| Quota rules per volume | 4,995 | **Observed by AWS in their own environment** (2026-08-29). Whether this is a product limit or environment-dependent is an open question, and it should be settled before the number is used as a capacity-planning input |
+| Quotas during reinitialization | Not enforced; data availability is unaffected | AWS Support (2026-08-29) |
+| Reinitialization duration | No guidance; depends on rule count and load | AWS Support (2026-08-29) |
+
+> **An AWS blog post is wrong about this** (AWS Support, 2026-08-29). For group-scoped quotas
+> the actual behaviour is: `-type group -target DOMAIN\Group` **fails**, and
+> `-type user -target <group SID>` **is created successfully but does not act as a group
+> limit**. Following the blog produces a configuration that raises no error and enforces
+> nothing. A correction has been requested; until it is published, do not trust the syntax in
+> that post.
+
+### Throughput changes and CIFS options
+
+CIFS options survive a throughput capacity change (verified by AWS in their own environment,
+2026-08-29). No documentation suggesting the options revert was found.
+
+---
+
 ## Common misconceptions
 
 ### 1. "Connect to System Manager over a VPN and you can manage FSx for ONTAP" <!-- drift-exempt: quotes the misconception in order to correct it -->
