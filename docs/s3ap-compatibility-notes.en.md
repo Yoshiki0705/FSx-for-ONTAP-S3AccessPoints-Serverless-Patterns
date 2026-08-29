@@ -237,25 +237,55 @@ frameworks. Measurements and AWS Support confirmations are listed separately bel
 | Item | State | Basis |
 |---|---|---|
 | Does FPolicy see operations through the S3 access point | No | Measured (2026-08-26, ONTAP 9.18.1P3D1) and confirmed by AWS Support (2026-08-27). **This applies to all currently available ONTAP releases**, so upgrading does not resolve it |
-| FPolicy support for S3 | Under development at the vendor, no availability date | AWS Support (2026-08-27). No timeline is provided through AWS |
+| FPolicy support for S3 | Under development at the vendor, no availability date | AWS Support (2026-08-27, restated 2026-08-29). No timeline is provided through AWS |
+| Is the gap documented | **No.** AWS has raised a documentation request (2026-08-29) | AWS Support. Until it is published, a reader has no way to discover this |
 | Does the ONTAP audit log carry the requesting identity (IAM principal) | No | AWS Support (2026-08-27) |
 | Does the ONTAP audit log carry the source IP | No | AWS Support (2026-08-27) |
 | Audit event corresponding to `HEAD` | Does not exist | AWS Support (2026-08-27) |
 
-> **Unconfirmed — do not write "CloudTrail covers it" until this is settled.** AWS points to
-> CloudTrail as the way to obtain the identity and the source IP, but **whether object-level
-> operations against an FSx for ONTAP S3 AP (`GetObject`, `PutObject`, `DeleteObject` and so
-> on) are recorded as CloudTrail data events** could not be confirmed from the published
-> documentation and is currently under query. If they are, a trail has to name the resource
-> type through advanced event selectors; if they are not, and only the FSx control-plane
-> calls such as `CreateAndAttachS3AccessPoint` are recorded, then CloudTrail does not answer
-> the audit question at all. The guidance is opposite in the two cases.
+### The audit path is CloudTrail data events (measured 2026-08-29)
 
-**Design implication**: for data subject to audit requirements reached through an S3 access
-point, "who touched which object" cannot be reconstructed from the ONTAP side alone. Where
-auditing is a requirement, keep the access path on NFS/SMB, or record it in the application
-layer — in this repository's patterns, the Lambda handlers that go through `S3ApHelper`.
-Enabling auditing on the volume does not cover this path.
+**The identity and source IP that ONTAP does not record are available as CloudTrail data
+events.** AWS Support stated this on 2026-08-29 and it was then measured: `PutObject`,
+`GetObject` and `DeleteObject` were issued against an Internet-origin S3 access point and
+the delivered log files were inspected.
+
+| Field | Measured |
+|---|---|
+| `eventCategory` | `Data`, so a trail must have data events configured; management events do not include these |
+| `eventSource` | `s3.amazonaws.com`, not `fsx.amazonaws.com` |
+| `eventName` | one record each for `PutObject`, `GetObject`, `DeleteObject` |
+| `userIdentity` | `type`, `arn` and `principalId` present (`IAMUser` in this test) |
+| `sourceIPAddress` | present |
+| `resources[]` | **three entries**: `AWS::S3::Object`, `AWS::S3::AccessPoint`, and `AWS::FSx::Volume` (`arn:aws:fsx:<region>:<account>:volume/<fs-id>/<fsvol-id>`) |
+| `additionalEventData` | `SignatureVersion`, `AuthenticationMethod`, `CipherSuite`, `bytesTransferredIn`, `bytesTransferredOut` and others |
+
+**Trail configuration — the part the answer did not cover.** To capture object operations,
+the advanced event selectors need `eventCategory = Data` and
+`resources.type = AWS::S3::Object`. A selector naming only `AWS::S3::AccessPoint` limits
+the trail to access-point-level events. The same selector as an ordinary S3 bucket works,
+so **no FSx-specific resource type is involved**.
+
+**Design implication**: the audit requirement can be met, but through a different system
+from ONTAP auditing. Because `resources[]` carries `AWS::FSx::Volume`, the volume behind an
+object can be identified from CloudTrail alone. Data events are off by default, however, so
+**an environment without a configured trail keeps no record at all**. Where auditing is a
+requirement, put the data-event configuration in the same procedure that creates the access
+point.
+
+> **Not measured**: one configuration only — Internet-origin access point, `IAMUser`
+> credentials, `ap-northeast-1`. VPC-origin access points, assumed roles and other Regions
+> were not tested, and delivery latency was not measured (the records were present when
+> checked after ten minutes, which is one observation).
+
+**Design implication**: "who touched which object" **cannot be reconstructed from the ONTAP
+side alone**, and enabling auditing on the volume does not cover this path. The audit
+requirement itself can be met through CloudTrail data events, described below, but that is a
+separate system from ONTAP auditing and it is off by default. Where the requirement is
+**real-time detection** — triggering work on file creation, spotting ransomware behaviour —
+CloudTrail is not a substitute, because delivery is not immediate. For that, keep the access
+path on NFS/SMB, or record it in the application layer: in this repository's patterns, the
+Lambda handlers that go through `S3ApHelper`.
 
 ---
 
