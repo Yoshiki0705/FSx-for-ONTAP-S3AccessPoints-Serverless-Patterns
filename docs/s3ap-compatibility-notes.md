@@ -229,14 +229,33 @@ S3 AP 経由のアクセスは、ONTAP 側の監査とイベント通知の枠�
 | 項目 | 状態 | 根拠 |
 |---|---|---|
 | FPolicy が S3 AP 経由の操作を検知するか | しない | 実測（2026-08-26 / ONTAP 9.18.1P3D1）+ AWS 確認（2026-08-27）。**現行の全 ONTAP リリースが該当**するため、バージョンを上げても解決しません |
-| S3 に対応した FPolicy | ベンダー側で開発中。提供時期は未定 | AWS 確認（2026-08-27）。AWS からタイムラインは提示されません |
+| S3 に対応した FPolicy | ベンダー側で開発中。提供時期は未定 | AWS 確認（2026-08-27、2026-08-29 に再確認）。AWS からタイムラインは提示されません |
+| この欠落がドキュメント化されているか | **されていない**。AWS がドキュメント要求を作成済み（2026-08-29） | AWS 確認。公開されるまでは、読者が気づく手段がありません |
 | ONTAP 監査ログにリクエスタ identity（IAM プリンシパル）が載るか | 載らない | AWS 確認（2026-08-27） |
 | ONTAP 監査ログに送信元 IP が載るか | 載らない | AWS 確認（2026-08-27） |
 | `HEAD` に対応する監査イベント | 存在しない | AWS 確認（2026-08-27） |
 
-> **未確認 — 確定するまで「CloudTrail で取れる」と書かないでください。** AWS は identity と送信元 IP の取得手段として CloudTrail を挙げていますが、**FSx for ONTAP S3 AP に対するオブジェクト操作（`GetObject` / `PutObject` / `DeleteObject` 等）が CloudTrail のデータイベントとして記録されるか**は公式ドキュメントで確認できておらず、照会中です。記録されるなら advanced event selectors でリソースタイプを指定する必要があり、記録されず FSx のコントロールプレーン呼び出し（`CreateAndAttachS3AccessPoint` 等）だけであれば、CloudTrail は監査の問いに答えていないことになります。どちらであるかで指針が反対になります。
+### 監査経路は CloudTrail のデータイベント（実測 2026-08-29）
 
-**設計上の含意**: 監査要件のあるデータを S3 AP 経由で扱う場合、「誰がどのオブジェクトに触ったか」を ONTAP 側だけでは再構成できません。監査が要件なら、アクセス経路を NFS/SMB に寄せるか、アプリケーション側（このリポジトリのパターンでは `S3ApHelper` を経由する Lambda ハンドラ）で記録を残す設計にしてください。ボリューム側の監査設定を有効にしても、この経路は覆われません。
+**ONTAP 側で取れない identity と送信元 IP は、CloudTrail のデータイベントで取れます。** AWS サポートの回答（2026-08-29）を実測で確認しました。Internet origin の S3 AP に対して `PutObject` / `GetObject` / `DeleteObject` を実行し、配信されたログを検査した結果です。
+
+| 記録される項目 | 実測値 |
+|---|---|
+| `eventCategory` | `Data`（管理イベントではないので、trail のデータイベント設定が必須） |
+| `eventSource` | `s3.amazonaws.com`（`fsx.amazonaws.com` ではありません） |
+| `eventName` | `PutObject` / `GetObject` / `DeleteObject` がそれぞれ 1 件 |
+| `userIdentity` | `type` / `arn` / `principalId` を記録（本検証では `IAMUser`） |
+| `sourceIPAddress` | 記録あり |
+| `resources[]` | **3 つ**: `AWS::S3::Object`、`AWS::S3::AccessPoint`、そして `AWS::FSx::Volume`（`arn:aws:fsx:<region>:<account>:volume/<fs-id>/<fsvol-id>`） |
+| `additionalEventData` | `SignatureVersion` / `AuthenticationMethod` / `CipherSuite` / `bytesTransferredIn` / `bytesTransferredOut` など |
+
+**trail の設定（回答には含まれていなかった部分）**: オブジェクト操作を拾うには advanced event selectors で `eventCategory = Data` と `resources.type = AWS::S3::Object` を指定します。`AWS::S3::AccessPoint` のみの選択条件では、アクセスポイント単位のイベントに限られます。S3 の通常バケットと同じ選択条件で拾えるため、**FSx 専用のリソースタイプは必要ありません**。
+
+**設計上の含意**: 監査要件は CloudTrail で満たせますが、ONTAP の監査ログとは別系統です。`resources[]` に `AWS::FSx::Volume` が入るので、CloudTrail 側だけでどのボリュームのオブジェクトかを特定できます。ただしデータイベントは既定で無効なので、**trail を設定していない環境では記録が残りません**。監査要件があるなら、S3 AP を作る作業と trail のデータイベント設定を同じ手順に含めてください。
+
+> **未確認**: 本検証は Internet origin の S3 AP・`IAMUser` 認証・`ap-northeast-1` の 1 パターンです。VPC origin、ロール引き受け、他リージョンでの挙動は測っていません。また配信までの所要時間は測定していません（10 分待って確認できた、という 1 点のみ）。
+
+**設計上の含意**: 「誰がどのオブジェクトに触ったか」を **ONTAP 側だけでは再構成できません**。ボリューム側の監査設定を有効にしても、この経路は覆われません。監査要件は下記の CloudTrail データイベントで満たせますが、それは ONTAP の監査ログとは別系統で、既定では無効です。**リアルタイムの検知**（ファイル作成をトリガーに処理を起動する、ランサムウェアの兆候を検知する等）が要件なら、CloudTrail は配信に時間がかかるため代わりになりません。その場合はアクセス経路を NFS/SMB に寄せるか、アプリケーション側（このリポジトリのパターンでは `S3ApHelper` を経由する Lambda ハンドラ）で記録を残す設計にしてください。
 
 ---
 
