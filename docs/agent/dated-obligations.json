@@ -1,0 +1,22 @@
+{
+  "$comment": [
+    "Obligations that come due on a date rather than on a code change.",
+    "scripts/check_dated_obligations.py fails once `due` minus `lead_days` has passed,",
+    "so the deadline arrives as a failing gate rather than as a note somebody has to reread.",
+    "",
+    "Publishable fields only. A support case number, an account ID or a file system ID",
+    "belongs in the file named by `private_ref`, which is gitignored -- not here.",
+    "This repository is public and its git history is permanent."
+  ],
+  "obligations": [
+    {
+      "id": "snaplock-audit-log-volume-deletion",
+      "due": "2027-02-06",
+      "lead_days": 14,
+      "what": "Delete the SnapLock audit log volume, then open a fresh AWS Support case for the billing conversation, attaching the earlier case ID from the private note.",
+      "why": "The volume carries a 6-month minimum retention that blocks deletion of the volume, its SVM and the file system. AWS confirmed there is no route to early deletion, and that a case cannot be held open for half a year, so the follow-up has to be re-opened at expiry rather than continued.",
+      "where": "docs/ja/snaplock-audit-log-console-guardrails.md",
+      "private_ref": ".private/support-case-refs.md"
+    }
+  ]
+}
