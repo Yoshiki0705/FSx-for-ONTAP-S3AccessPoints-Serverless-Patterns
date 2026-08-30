@@ -152,6 +152,14 @@ jobs:
       # the hook-wiring assertion skips here and runs locally.
       - name: Check the irreversible-operations guard blocks, asks and allows correctly
         run: python3 scripts/guard_irreversible_ops.py --selftest
+      # Obligations that come due on a date rather than on a code change. A SnapLock
+      # audit log volume carries a 6-month minimum retention that blocks deletion of
+      # the volume, its SVM and the file system, and AWS confirmed there is no
+      # early-deletion route. That was recorded in a document, and a paragraph does
+      # not fire on 2027-02-06. This does, with a lead time, so the deadline arrives
+      # while there is still time to act on it.
+      - name: Check no dated obligation has come due
+        run: python3 scripts/check_dated_obligations.py
 
   handler-name-check:
     name: "Handler undefined-name sweep"
