@@ -83,7 +83,7 @@ curl -sku "$CREDS" \
 }
 ```
 
-**異常時** (`usable_dc: 0`): AD DC 到達不能 — S3 AP データ操作は AccessDenied で失敗する。[トラブルシューティング](#トラブルシューティング)を参照。
+**異常時** (`usable_dc: 0`): AD DC に到達できていません。**ただしこれだけでデータ操作が失敗すると断定はできません。** 実測（2026-08-26）では、DC が 0 台の AD 参加 SVM 上で `WindowsUser` にローカル SMB ユーザーと同名の identity を固定した Access Point が、`HeadBucket` / `ListObjectsV2` / `GetObject` / `PutObject` / `DeleteObject` すべて成功しました。**ローカルに解決される identity は DC を必要としない**という読みです。**ドメインアカウントを固定した場合の DC 要否は未確認です** — 検証環境に到達可能な DC が無く、「ドメイン名だから失敗した」と「DC が無いから失敗した」を分離できませんでした。詳細は [Identity 実測結果](./portal-identity-verification-results.md) の 4-3 にあります。[トラブルシューティング](#トラブルシューティング)も参照。
 
 > **件数だけで判定しないこと**: 以前この節は「`discovered_servers` の件数 > 0 なら正常」と書いていました。**これは誤りです。** 上の実機出力が示すとおり、正常な SVM でも `ms_ldap` のエントリは `state: undetermined` のままで、到達性を示しているのは `ms_dc` かつ `state: ok` のエントリだけです。DC が落ちてもエントリ自体は残り得るため、件数だけを見ると、このチェックが検出するために存在する障害をそのまま見逃します。
 >
@@ -495,7 +495,7 @@ curl -sku user:pass \
   "https://<mgmt-ip>/api/protocols/cifs/domains?svm.name=<svm>&fields=discovered_servers"
 ```
 
-`discovered_servers` が `[]`（空配列）なら到達不能です。**ただし空でなくても到達不能なことがあります** — `ms_dc` かつ `state: ok` のエントリが 1 件も無い場合です（DC が落ちてもエントリは残り得る）。
+**`discovered_servers` の有無で判定しないこと。** ONTAP 9.18.1P3D1 の実測では、DC が 1 台も検出されていないとき **フィールドごとレスポンスから省略され、`[]` は返りません**（フィールド名自体は有効。存在しない名前なら 262197 で拒否されるが、この名前は拒否されない）。したがって `discovered_servers == []` という判定は一致せず、読んだ人は「空でない = 到達可能」と結論します——このチェックが検出するために存在する SVM でちょうどそうなります。見るべきは **`ms_dc` かつ `state: ok` のエントリが 1 件以上あるか**です。件数でも存在でもありません（DC が落ちてもエントリは残り得ます）。フィールドが省略されていたときは `/private/cli/vserver/cifs/domain/discovered-servers?vserver=<svm>` で件数を問い直します。プログラムからは `shared/ad_health_check.py` を使ってください——この判別が実装されています。
 
 **解決策**:
 1. SVM DNS IP がアクティブな AD DC アドレスを指しているか確認

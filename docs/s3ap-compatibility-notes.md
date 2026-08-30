@@ -17,7 +17,7 @@ FSx for ONTAP S3 Access Points provide an S3-facing access boundary for file dat
 | 低レイテンシ metadata 操作 (stat, readdir) | △ (tens of ms) | ✅ (sub-ms) |
 | 既存アプリケーション互換性 | — | ✅ |
 | AWS サービス統合 (Athena, Bedrock, Textract) | ✅ | — |
-| イベント駆動ファイル処理 | ✅ (FPolicy + S3 AP) | △ (FPolicy + NFS mount) |
+| イベント駆動ファイル処理 | △ (EventBridge Scheduler ポーリング。**FPolicy は S3 AP 経由の操作を検知しない** — 実測 2026-08-26 / ONTAP 9.18.1P3D1、現行の全リリースが該当と AWS 確認。[監査とイベント可視性](#監査とイベント可視性--s3-アクセス経路)) | ✅ (FPolicy + NFS/SMB) |
 
 > **注**: S3 AP は NFS/SMB の置き換えではなく、AWS サービス統合のための補完的アクセスパスです。同じボリュームに NFS/SMB と S3 AP の両方からアクセスできます。
 
@@ -219,6 +219,43 @@ FSx for ONTAP S3 AP (READ) → Lambda 処理 → Standard S3 Bucket (WRITE + Ann
 | POLLING (default) | EventBridge Scheduler + Discovery Lambda |
 | EVENT_DRIVEN | FPolicy-based, near-real-time; not native S3 bucket notifications |
 | HYBRID | Both polling and event-driven with deduplication |
+
+---
+
+## 監査とイベント可視性 — S3 アクセス経路
+
+S3 AP 経由のアクセスは、ONTAP 側の監査とイベント通知の枠組みから外れます。実測と AWS サポートの確認を分けて記載します。
+
+| 項目 | 状態 | 根拠 |
+|---|---|---|
+| FPolicy が S3 AP 経由の操作を検知するか | しない | 実測（2026-08-26 / ONTAP 9.18.1P3D1）+ AWS 確認（2026-08-27）。**現行の全 ONTAP リリースが該当**するため、バージョンを上げても解決しません |
+| S3 に対応した FPolicy | ベンダー側で開発中。提供時期は未定 | AWS 確認（2026-08-27、2026-08-29 に再確認）。AWS からタイムラインは提示されません |
+| この欠落がドキュメント化されているか | **されていない**。AWS がドキュメント要求を作成済み（2026-08-29） | AWS 確認。公開されるまでは、読者が気づく手段がありません |
+| ONTAP 監査ログにリクエスタ identity（IAM プリンシパル）が載るか | 載らない | AWS 確認（2026-08-27） |
+| ONTAP 監査ログに送信元 IP が載るか | 載らない | AWS 確認（2026-08-27） |
+| `HEAD` に対応する監査イベント | 存在しない | AWS 確認（2026-08-27） |
+
+### 監査経路は CloudTrail のデータイベント（実測 2026-08-29）
+
+**ONTAP 側で取れない identity と送信元 IP は、CloudTrail のデータイベントで取れます。** AWS サポートの回答（2026-08-29）を実測で確認しました。Internet origin の S3 AP に対して `PutObject` / `GetObject` / `DeleteObject` を実行し、配信されたログを検査した結果です。
+
+| 記録される項目 | 実測値 |
+|---|---|
+| `eventCategory` | `Data`（管理イベントではないので、trail のデータイベント設定が必須） |
+| `eventSource` | `s3.amazonaws.com`（`fsx.amazonaws.com` ではありません） |
+| `eventName` | `PutObject` / `GetObject` / `DeleteObject` がそれぞれ 1 件 |
+| `userIdentity` | `type` / `arn` / `principalId` を記録（本検証では `IAMUser`） |
+| `sourceIPAddress` | 記録あり |
+| `resources[]` | **3 つ**: `AWS::S3::Object`、`AWS::S3::AccessPoint`、そして `AWS::FSx::Volume`（`arn:aws:fsx:<region>:<account>:volume/<fs-id>/<fsvol-id>`） |
+| `additionalEventData` | `SignatureVersion` / `AuthenticationMethod` / `CipherSuite` / `bytesTransferredIn` / `bytesTransferredOut` など |
+
+**trail の設定（回答には含まれていなかった部分）**: オブジェクト操作を拾うには advanced event selectors で `eventCategory = Data` と `resources.type = AWS::S3::Object` を指定します。`AWS::S3::AccessPoint` のみの選択条件では、アクセスポイント単位のイベントに限られます。S3 の通常バケットと同じ選択条件で拾えるため、**FSx 専用のリソースタイプは必要ありません**。
+
+**設計上の含意**: 監査要件は CloudTrail で満たせますが、ONTAP の監査ログとは別系統です。`resources[]` に `AWS::FSx::Volume` が入るので、CloudTrail 側だけでどのボリュームのオブジェクトかを特定できます。ただしデータイベントは既定で無効なので、**trail を設定していない環境では記録が残りません**。監査要件があるなら、S3 AP を作る作業と trail のデータイベント設定を同じ手順に含めてください。
+
+> **未確認**: 本検証は Internet origin の S3 AP・`IAMUser` 認証・`ap-northeast-1` の 1 パターンです。VPC origin、ロール引き受け、他リージョンでの挙動は測っていません。また配信までの所要時間は測定していません（10 分待って確認できた、という 1 点のみ）。
+
+**設計上の含意**: 「誰がどのオブジェクトに触ったか」を **ONTAP 側だけでは再構成できません**。ボリューム側の監査設定を有効にしても、この経路は覆われません。監査要件は下記の CloudTrail データイベントで満たせますが、それは ONTAP の監査ログとは別系統で、既定では無効です。**リアルタイムの検知**（ファイル作成をトリガーに処理を起動する、ランサムウェアの兆候を検知する等）が要件なら、CloudTrail は配信に時間がかかるため代わりになりません。その場合はアクセス経路を NFS/SMB に寄せるか、アプリケーション側（このリポジトリのパターンでは `S3ApHelper` を経由する Lambda ハンドラ）で記録を残す設計にしてください。
 
 ---
 

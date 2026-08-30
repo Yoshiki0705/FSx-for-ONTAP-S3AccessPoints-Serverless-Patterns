@@ -33,7 +33,7 @@ INJECTION_ATTEMPTS = [
 
 
 def _build(**event):
-    from index import _build_query
+    from audit_log_index import _build_query
 
     return _build_query(event)
 
@@ -41,7 +41,7 @@ def _build(**event):
 class TestKeyPrefixIsNotInjectable:
     @pytest.mark.parametrize("payload", INJECTION_ATTEMPTS)
     def test_rejected_or_neutralised(self, payload):
-        from index import AuditQueryError, _build_query
+        from audit_log_index import AuditQueryError, _build_query
 
         try:
             sql, _ = _build_query({"fileKeyPrefix": payload})
@@ -56,17 +56,17 @@ class TestKeyPrefixIsNotInjectable:
 
     def test_quote_is_doubled_not_dropped(self):
         """A legitimate value containing a quote must survive as data."""
-        from index import _sql_literal
+        from audit_log_index import _sql_literal
 
         assert _sql_literal("O'Brien") == "'O''Brien'"
 
     def test_wildcards_are_escaped_so_a_prefix_is_literal(self):
-        from index import _like_operand
+        from audit_log_index import _like_operand
 
         assert _like_operand("100%_raw") == "100\\%\\_raw"
 
     def test_backslash_is_escaped(self):
-        from index import _like_operand
+        from audit_log_index import _like_operand
 
         assert _like_operand("a\\b") == "a\\\\b"
 
@@ -91,13 +91,13 @@ class TestTimestampValidation:
         ["2026-08-01' OR '1'='1", "yesterday", "'; DROP TABLE t; --", "2026/08/01", 20260801],
     )
     def test_rejects_anything_else(self, value):
-        from index import AuditQueryError
+        from audit_log_index import AuditQueryError
 
         with pytest.raises(AuditQueryError):
             _build(startDate=value)
 
     def test_end_date_is_validated_too(self):
-        from index import AuditQueryError
+        from audit_log_index import AuditQueryError
 
         with pytest.raises(AuditQueryError):
             _build(endDate="' OR 1=1 --")
@@ -113,7 +113,7 @@ class TestEventType:
 
     def test_unknown_type_is_refused(self):
         """Previously an unknown type produced a query with an empty WHERE."""
-        from index import AuditQueryError
+        from audit_log_index import AuditQueryError
 
         with pytest.raises(AuditQueryError):
             _build(eventType="EVERYTHING")
@@ -141,7 +141,7 @@ class TestMaxResults:
     @pytest.mark.parametrize("value", ["abc", None, True, [], {}])
     def test_non_numeric_is_refused_or_defaulted(self, value):
         """A string used to raise an unhandled TypeError from min()."""
-        from index import AuditQueryError
+        from audit_log_index import AuditQueryError
 
         if value is None:
             _, max_results = _build(maxResults=value)
@@ -153,7 +153,7 @@ class TestMaxResults:
     @pytest.mark.parametrize("value", [0, -1, -200])
     def test_non_positive_is_refused(self, value):
         """A negative value used to produce `LIMIT -1`."""
-        from index import AuditQueryError
+        from audit_log_index import AuditQueryError
 
         with pytest.raises(AuditQueryError):
             _build(maxResults=value)
@@ -166,27 +166,27 @@ class TestMaxResults:
 
 class TestIdentifierValidation:
     def test_bad_table_name_is_refused(self):
-        from index import AuditQueryError
+        from audit_log_index import AuditQueryError
 
-        with patch("index.ATHENA_TABLE", 'events" UNION SELECT 1 --'):
+        with patch("audit_log_index.ATHENA_TABLE", 'events" UNION SELECT 1 --'):
             with pytest.raises(AuditQueryError):
                 _build()
 
 
 class TestHandlerContract:
     def test_not_configured_returns_a_clear_error(self):
-        from index import handler
+        from audit_log_index import handler
 
-        with patch("index.ATHENA_OUTPUT", ""):
+        with patch("audit_log_index.ATHENA_OUTPUT", ""):
             result = handler({}, None)
 
         assert result["events"] == []
         assert "not configured" in result["error"]
 
     def test_invalid_input_does_not_reach_athena(self):
-        from index import handler
+        from audit_log_index import handler
 
-        with patch("index.boto3") as mock_boto3:
+        with patch("audit_log_index.boto3") as mock_boto3:
             result = handler({"startDate": "' OR 1=1 --"}, None)
 
         assert mock_boto3.client.call_count == 0
@@ -194,7 +194,7 @@ class TestHandlerContract:
         assert "startDate" in result["error"]
 
     def test_successful_query_maps_rows(self):
-        from index import handler
+        from audit_log_index import handler
 
         athena = MagicMock()
         athena.start_query_execution.return_value = {"QueryExecutionId": "q-1"}
@@ -222,7 +222,7 @@ class TestHandlerContract:
             }
         }
 
-        with patch("index.boto3") as mock_boto3:
+        with patch("audit_log_index.boto3") as mock_boto3:
             mock_boto3.client.return_value = athena
             result = handler({"eventType": "READ", "fileKeyPrefix": "finance/"}, None)
 
@@ -232,7 +232,7 @@ class TestHandlerContract:
         assert result["events"][0]["fileKey"] == "finance/report.xlsx"
 
     def test_failed_query_reports_the_reason(self):
-        from index import handler
+        from audit_log_index import handler
 
         athena = MagicMock()
         athena.start_query_execution.return_value = {"QueryExecutionId": "q-2"}
@@ -240,7 +240,7 @@ class TestHandlerContract:
             "QueryExecution": {"Status": {"State": "FAILED", "StateChangeReason": "TABLE_NOT_FOUND"}}
         }
 
-        with patch("index.boto3") as mock_boto3:
+        with patch("audit_log_index.boto3") as mock_boto3:
             mock_boto3.client.return_value = athena
             result = handler({}, None)
 
@@ -249,14 +249,14 @@ class TestHandlerContract:
 
     def test_the_query_sent_to_athena_is_the_validated_one(self):
         """Guard against a future refactor that rebuilds the SQL inline."""
-        from index import handler
+        from audit_log_index import handler
 
         athena = MagicMock()
         athena.start_query_execution.return_value = {"QueryExecutionId": "q-3"}
         athena.get_query_execution.return_value = {"QueryExecution": {"Status": {"State": "SUCCEEDED"}}}
         athena.get_query_results.return_value = {"ResultSet": {"Rows": []}}
 
-        with patch("index.boto3") as mock_boto3:
+        with patch("audit_log_index.boto3") as mock_boto3:
             mock_boto3.client.return_value = athena
             handler({"fileKeyPrefix": "hr/", "maxResults": 10}, None)
 

@@ -6,7 +6,7 @@
 
 This document sets out the case for native event notifications on FSx for ONTAP S3 Access Points, based on evidence gathered from implementing and operating an FPolicy-based alternative.
 
-> **Framing**: Our FPolicy-based event-driven pattern is a *proven, working workaround*. But it carries operational costs that a native capability would eliminate. The purpose here is to quantify those costs so they can be used as feedback to the AWS service team.
+> **Framing**: our FPolicy-based event-driven pattern is proven for writes arriving over NFS or SMB, but **it does not apply to data written through an S3 access point** (measured 2026-08-26, ONTAP 9.18.1P3D1 — see "Issue 0" below). For writes on that path there is therefore no workaround today. This document quantifies that gap, and the operational costs that remain even where FPolicy is usable, so both can be used as feedback to the AWS service team.
 
 ## Customer Problem (Working Backwards)
 
@@ -18,12 +18,32 @@ This document sets out the case for native event notifications on FSx for ONTAP 
 
 Enterprise customers want to build change-detection-to-automatic-processing pipelines over file data stored on FSx for ONTAP. Because S3 Access Points do not support `GetBucketNotificationConfiguration`, only two options exist today:
 
-1. **Polling**: periodic scans via EventBridge Scheduler + `ListObjectsV2` (no real-time behaviour)
-2. **FPolicy**: operate an ONTAP-native FPolicy External Server yourself (high operational complexity)
+1. **Polling**: periodic scans via EventBridge Scheduler + `ListObjectsV2` (detection waits for the next scan)
+2. **FPolicy**: operate an ONTAP-native FPolicy External Server yourself (high operational complexity). **Where writes arrive through an S3 access point, however, this option does not hold** (Issue 0)
 
-Neither resembles the native S3 experience of "just configure EventBridge on the bucket".
+For a workload whose writes arrive through the access point there is effectively one option, polling. Neither resembles the native S3 experience of "just configure EventBridge on the bucket".
 
 ## Operational Issues Revealed by Our FPolicy Implementation
+
+### Issue 0: FPolicy does not see operations through an S3 access point (the heaviest constraint)
+
+| Measurement | Result |
+|---|---|
+| 90 seconds of no activity (control) | 0 notifications |
+| 9 S3 access point data-plane calls (PUT 3 / GET 3 / HEAD 1 / LIST 1 / DELETE 1) | **0 notifications** |
+| NFSv3 create + read + delete on the same volume (control) | 3 notifications |
+| Synchronous `mandatory` policy with a responding engine | Operations through the access point are **not blocked** |
+| UNIX identity + NFS, and WINDOWS identity + SMB | Same result for both |
+
+Structural reason: on ONTAP 9.18.1P3D1 an FPolicy event accepts only three values for `protocol` —
+`cifs`, `nfsv3` and `nfsv4`. `s3`, `object` and `http` are each rejected with HTTP 400 (12 candidates
+were POSTed individually to enumerate this). That the access point writes do reach the volume was
+confirmed by mounting the same volume over NFS.
+
+Conditions: 2026-08-26, ap-northeast-1, ONTAP 9.18.1P3D1, SINGLE_AZ_1 / 128 MBps.
+
+**With native notifications**: detection would not depend on the write path. This is not a reduction
+in operational cost; it is **a capability that does not exist today**.
 
 ### Issue 1: Operating a long-running TCP listener
 

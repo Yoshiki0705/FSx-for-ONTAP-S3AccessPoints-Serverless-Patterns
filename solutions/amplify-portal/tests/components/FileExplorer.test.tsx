@@ -26,6 +26,18 @@ vi.mock("../../src/components/AiMetadataBadges", () => ({
   AiMetadataBadges: () => null,
   useAiMetadata: () => ({ data: new Map() }),
 }));
+// Which controls exist now depends on what the account may do, and the real hook reads
+// a Cognito session this environment has none of. Set per test through `capabilities`:
+// the default is an account that can write, which is what every case below other than
+// the read-only ones was written against.
+//
+// Mocked rather than driven through `fetchAuthSession`, because the hook resolves
+// asynchronously and every one of these tests would then need to await a state it does
+// not care about. `tests/hooks/usePortalRole.test.ts` covers the derivation itself.
+let capabilities: { canWrite: boolean; canShareLinks: boolean; hasNoRole: boolean } | null;
+vi.mock("../../src/hooks/usePortalRole", () => ({
+  usePortalRole: () => capabilities,
+}));
 
 import { FileExplorer } from "../../src/components/FileExplorer";
 import { I18nProvider } from "../../src/i18n";
@@ -77,6 +89,7 @@ const rowNames = (container: HTMLElement): string[] =>
 beforeEach(() => {
   fileQuery.mockReset();
   fileMutate.mockReset();
+  capabilities = { canWrite: true, canShareLinks: true, hasNoRole: false };
   truncated = false;
   listing = {
     "": [
@@ -742,5 +755,73 @@ describe("keyboard access", () => {
     const up = await waitFor(() => screen.getByRole("button", { name: /Go to parent folder/i }));
     fireEvent.click(up);
     expect(onNavigate).toHaveBeenCalledWith("");
+  });
+});
+
+describe("a role that cannot write", () => {
+  /**
+   * The controls the server refuses are not rendered, and the listing says why.
+   *
+   * Both halves matter. Leaving the buttons produced an authorization error per click;
+   * removing them without the banner produced a file browser that looked like it had
+   * never had an upload button, with no message to search for and no setting named.
+   */
+  beforeEach(() => {
+    capabilities = { canWrite: false, canShareLinks: true, hasNoRole: false };
+  });
+
+  it("says the account is read-only", async () => {
+    renderExplorer();
+    await waitFor(() => expect(screen.getByText("alpha.txt")).toBeInTheDocument());
+    expect(screen.getByText("Read-only access")).toBeInTheDocument();
+    // Names the role that would lift it, so the reader knows what to ask for.
+    expect(screen.getByText(/contributor or storage-admin/)).toBeInTheDocument();
+  });
+
+  it("distinguishes an account that has no role at all", async () => {
+    capabilities = { canWrite: false, canShareLinks: true, hasNoRole: true };
+    renderExplorer();
+    await waitFor(() => expect(screen.getByText("alpha.txt")).toBeInTheDocument());
+    expect(screen.getByText(/in no role group/)).toBeInTheDocument();
+  });
+
+  it("drops the folder-creation control", async () => {
+    renderExplorer();
+    await waitFor(() => expect(screen.getByText("alpha.txt")).toBeInTheDocument());
+    expect(screen.queryByRole("button", { name: /New folder/i })).toBeNull();
+  });
+
+  it("drops the row selection, which only drives the bulk writes", async () => {
+    renderExplorer();
+    await waitFor(() => expect(screen.getByText("alpha.txt")).toBeInTheDocument());
+    expect(screen.queryByLabelText("Select alpha.txt")).toBeNull();
+  });
+
+  it("drops rename and trash from the overflow menu", async () => {
+    renderExplorer();
+    await waitFor(() => expect(screen.getByText("alpha.txt")).toBeInTheDocument());
+    fireEvent.click(
+      screen.getByRole("button", { name: /More actions for alpha\.txt/ })
+    );
+    expect(screen.queryByLabelText("Rename")).toBeNull();
+    expect(screen.queryByLabelText("Move to trash")).toBeNull();
+  });
+
+  it("keeps reading available", async () => {
+    // Read-only has to stay usable, or hiding the writes has cost the account the
+    // thing it was invited to do.
+    const { container } = renderExplorer();
+    await waitFor(() => expect(rowNames(container)).toHaveLength(5));
+    expect(screen.getByText("alpha.txt")).toBeInTheDocument();
+  });
+
+  it("shows the write controls while the session is still unresolved", async () => {
+    // `null` is "not known yet". The banner must not flash in and out, so nothing is
+    // claimed until the answer arrives -- and the controls are not claimed either.
+    capabilities = null;
+    renderExplorer();
+    await waitFor(() => expect(screen.getByText("alpha.txt")).toBeInTheDocument());
+    expect(screen.queryByText("Read-only access")).toBeNull();
+    expect(screen.queryByRole("button", { name: /New folder/i })).toBeNull();
   });
 });

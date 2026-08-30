@@ -102,9 +102,11 @@ aws fsx create-and-attach-s3-access-point --region ap-northeast-1 \
 ```
 > コマンド名は `create-and-attach-s3-access-point`（`create-s3-access-point-attachment` ではない）。
 >
-> **重要: `WindowsUser.Name` はユーザー名のみを指定する**（例: `Admin`）。`DOMAIN\Admin` のような
-> ドメインプレフィクスを付けてはいけない。プレフィクス付きは API バリデーションを通過することがあるが、
-> データプレーン操作（ListObjectsV2 / GetObject / PutObject）が `AccessDenied` で無言のうちに失敗する。
+> **重要: `WindowsUser.Name` に AD ドメインプレフィクスを付けない**（`Admin` は可、`DOMAIN\Admin` は不可。
+> `CIFSSRV\Admin` のような **CIFS サーバー名**の接頭辞は実測で正常動作する）。プレフィクス付きは API を
+> 通過して Access Point が `AVAILABLE` になるが、`HeadBucket` を含むすべてのデータ操作が
+> **503 ServiceUnavailable** を返す（2026-08-26 実測）。`AccessDenied` ではないので、403 を探すと
+> IAM・AP ポリシー・ACL という原因ではない層を調べることになる。
 > ドメインは SVM の AD 参加設定から解決されるため、`Name` に含める必要はない。
 > Windows identity にすることで、S3 AP 経由アクセスが NTFS ACL に基づき認可される。
 > Amazon Quick の S3 ナレッジベースも Windows identity の S3 AP で正常動作する（[AWS Storage Blog 参照](https://aws.amazon.com/blogs/storage/enabling-ai-powered-analytics-on-enterprise-file-data-configuring-s3-access-points-for-amazon-fsx-for-netapp-ontap-with-active-directory/)）。

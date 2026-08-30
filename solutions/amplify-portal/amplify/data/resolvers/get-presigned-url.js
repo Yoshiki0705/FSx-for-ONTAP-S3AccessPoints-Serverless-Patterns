@@ -12,6 +12,13 @@ import { util } from "@aws-appsync/utils";
 export function request(ctx) {
   var key = ctx.arguments.key;
   var expiresIn = ctx.arguments.expiresIn || 300;
+  // The groups decide which access point signs the URL and which prefixes the key
+  // may fall under. Without them the function has no way to tell one caller from
+  // another, and every URL was signed against the deployment's default access
+  // point -- which is the permissive one in the documented default configuration.
+  var groups = ctx.identity.claims
+    ? ctx.identity.claims["cognito:groups"] || []
+    : [];
 
   return {
     operation: "Invoke",
@@ -19,6 +26,7 @@ export function request(ctx) {
       key: key,
       expiresIn: expiresIn,
       userId: ctx.identity.username,
+      groups: groups,
     },
   };
 }

@@ -247,7 +247,7 @@ AWS's [Troubleshooting access points](https://docs.aws.amazon.com/fsx/latest/ONT
 
 > **Design note**: it is not the case that LDAP or AD must be in place before S3 access points can be used. On the other hand, **local users are per-SVM.** Reusing the same identity across several SVMs, or an identity inventory requirement, is a separate reason to move to a directory service.
 
-Do **not** put a domain prefix in `WindowsUser.Name` (`Admin` is correct, `DOMAIN\Admin` is not). With a prefix, the access point is created but data operations fail silently. See [AD-joined SVM S3 AP prerequisites](en/ad-joined-svm-s3ap-prerequisites.md).
+Do **not** put an AD domain prefix in `WindowsUser.Name` (`Admin` is correct, `DOMAIN\Admin` is not; a **CIFS server name** prefix such as `CIFSSRV\Admin` was measured working). With an AD domain prefix the access point is created and reaches `AVAILABLE`, but every data operation returns **503 ServiceUnavailable**, `HeadBucket` included — not `AccessDenied`. See [AD-joined SVM S3 AP prerequisites](en/ad-joined-svm-s3ap-prerequisites.md).
 
 ### Security Style Mapping
 

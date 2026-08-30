@@ -455,7 +455,7 @@ aws ec2 describe-route-tables \
 | Symptom | Cause | Fix |
 |---------|-------|-----|
 | "ONTAP Connection Required" | Lambda not in VPC | Set `AMPLIFY_PORTAL_VPC_ID/SUBNET_IDS/SG_IDS` |
-| "User is not authorized" | fsxadmin password mismatch | Reset via `aws fsx update-file-system --ontap-configuration '{"FsxAdminPassword":"..."}' ` then update Secret |
+| "User is not authorized" | fsxadmin password mismatch, **or the account is locked out** (same message; `lockout-duration=0`, so waiting does not clear it — do not retry with the same credential) | Reset via `aws fsx update-file-system --ontap-configuration '{"FsxAdminPassword":"..."}' ` then update Secret |
 | "Execution timed out" | VPC Endpoint missing or SG blocking | Ensure Secrets Manager VPC Endpoint exists with port 443 from Lambda SG |
 | "Volume not found" | Wrong SVM name | Verify `ONTAP_SVM_NAME` matches `aws fsx describe-storage-virtual-machines` |
 | Template > 1MB | Too many resolvers | Already solved via generic dispatch pattern |

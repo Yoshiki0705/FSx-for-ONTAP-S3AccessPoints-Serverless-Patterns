@@ -72,12 +72,18 @@ FENCE = re.compile(r"^\s*```")
 #   document with no twin, which the twin-based inference could not see. The manifest
 #   now declares its locale and the finding is gone, correctly.
 #
-# structure = 271: dominated by the six non-English locales, which were produced in
+# structure = 269: dominated by the six non-English locales, which were produced in
 #   one batch and never re-run as the Japanese sources grew. The largest are the root
 #   README (delta -7 in six locales) and the industry demo guides, where Japanese
 #   gained a whole FlexClone scenario the translations never received.
+#
+#   Ratcheted down twice while the portal authorization work was under way: 271 -> 270
+#   when the Japanese authorization model gained the "Related Documents" section its
+#   English twin already had, and 270 -> 269 when GETTING-STARTED.md's duplicated and
+#   truncated "next steps" sections were merged into the one the English has. The number
+#   only ratchets down: raising it admits a new mismatch, which is what this stops.
 DEFAULT_MAX_MISSING = 0
-DEFAULT_MAX_STRUCTURE = 271
+DEFAULT_MAX_STRUCTURE = 269
 
 
 def tracked() -> set[str]:

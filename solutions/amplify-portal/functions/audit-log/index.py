@@ -19,17 +19,28 @@ against whichever workgroup the deployment already has. If you know your
 workgroup is v3, switching is a strict improvement.
 """
 
+import logging
 import os
 import re
 import time
+from typing import Any
 
 import boto3
+from botocore.exceptions import BotoCoreError, ClientError
 
 ATHENA_DATABASE = os.environ.get("ATHENA_DATABASE", "cloudtrail_logs")
 ATHENA_TABLE = os.environ.get("ATHENA_TABLE", "cloudtrail_s3_events")
 ATHENA_OUTPUT = os.environ.get("ATHENA_OUTPUT_LOCATION", "")
+# The per-user portal activity ledger. A different source answering a different
+# question, which is why it is a separate section rather than more rows in the same
+# table: CloudTrail attributes every portal read to the access point's IAM role, so it
+# says a file was read without saying who asked.
+ACTIVITY_LEDGER_TABLE = os.environ.get("URL_AUDIT_TABLE_NAME", "")
 S3AP_ALIAS = os.environ.get("S3_AP_ALIAS", "")
 REGION = os.environ.get("AWS_REGION", "ap-northeast-1")
+
+logger = logging.getLogger()
+logger.setLevel(logging.INFO)
 
 # Athena identifiers come from the deployment, not from a caller, but validating
 # them keeps a misconfiguration from turning into malformed SQL.
@@ -181,18 +192,120 @@ def _build_query(event) -> tuple[str, int]:
     return sql, max_results
 
 
+def _query_activity_ledger(event: dict[str, Any]) -> dict[str, Any]:
+    """Read the per-user portal activity ledger.
+
+    A scan with a filter rather than a query: the table is keyed by an opaque row id
+    because rows are appended by several handlers that share no natural key, and the
+    volume is one row per portal action rather than one per object access. If it outgrows
+    that, the fix is an index on the actor and not a different filter here.
+
+    Args:
+        event: `fileKeyPrefix`, `startDate`, `endDate`, `eventType`, `maxResults`. The
+            same argument names the CloudTrail path uses, so the audit tab's filters
+            apply to both sections without the caller translating them.
+
+    Returns:
+        `events` in the shape the audit tab renders, with `queryExecutionId` empty --
+        there is no query execution to name -- or `error`.
+    """
+    if not ACTIVITY_LEDGER_TABLE:
+        return {
+            "events": [],
+            "queryExecutionId": "",
+            "error": (
+                "Portal activity ledger is not configured. Deploy the stack so "
+                "PortalActivityLedgerTable exists, or set URL_AUDIT_TABLE_NAME."
+            ),
+        }
+
+    try:
+        max_results = _validated_max_results(event.get("maxResults"))
+    except AuditQueryError as e:
+        return {"events": [], "queryExecutionId": "", "error": str(e)}
+
+    prefix = event.get("fileKeyPrefix") or ""
+    start_date = event.get("startDate") or ""
+    end_date = event.get("endDate") or ""
+    action_filter = (event.get("eventType") or "ALL").upper()
+
+    try:
+        table = boto3.resource("dynamodb", region_name=REGION).Table(ACTIVITY_LEDGER_TABLE)
+        rows: list[dict[str, Any]] = []
+        scan_args: dict[str, Any] = {}
+        while True:
+            page = table.scan(**scan_args)
+            rows.extend(page.get("Items", []))
+            token = page.get("LastEvaluatedKey")
+            # Stopped once enough rows are in hand to fill the page after filtering. The
+            # bound is on rows read, not rows returned, so a filter that matches nothing
+            # cannot walk the whole table.
+            if not token or len(rows) >= max_results * 20:
+                break
+            scan_args["ExclusiveStartKey"] = token
+    except (BotoCoreError, ClientError) as e:
+        logger.warning("Activity ledger read failed", exc_info=True)
+        return {"events": [], "queryExecutionId": "", "error": str(e)}
+
+    events = []
+    for row in rows:
+        key = str(row.get("file_key", ""))
+        when = str(row.get("generated_at", ""))
+        action = str(row.get("action", ""))
+        if prefix and not key.startswith(prefix):
+            continue
+        if action_filter != "ALL" and action != action_filter:
+            continue
+        # Lexicographic comparison on ISO 8601 in UTC, which orders correctly. The dates
+        # arrive as YYYY-MM-DD, so the end date is compared against the date part only --
+        # otherwise an end date would exclude everything that happened on it.
+        if start_date and when[:10] < start_date:
+            continue
+        if end_date and when[:10] > end_date:
+            continue
+        events.append(
+            {
+                "timestamp": when,
+                "action": action,
+                # The Cognito user, which is what this source adds over CloudTrail.
+                "userArn": str(row.get("generated_by", "")),
+                "principalId": ",".join(row.get("groups") or []),
+                # A portal request has no source IP here: the call reached AppSync, and
+                # the address it came from is CloudTrail's to report, not this table's.
+                "sourceIp": "",
+                "fileKey": key,
+                "bucketName": str(row.get("access_point", "")),
+                "errorCode": "",
+                "errorMessage": "",
+            }
+        )
+
+    events.sort(key=lambda row: row["timestamp"], reverse=True)
+    return {"events": events[:max_results], "queryExecutionId": "", "error": None}
+
+
 def handler(event, context):
-    """Query CloudTrail S3 data events for the file access audit trail.
+    """Query the file access audit trail.
 
-    Retrieves file access events (GetObject, PutObject, DeleteObject and the
-    object-lock operations) filtered by file path prefix, date range and event
-    type.
+    Two sources, selected by `source`:
 
-    Pre-requisites:
+    `CLOUDTRAIL` (the default) reads S3 data events through Athena. `PORTAL` reads the
+    per-user activity ledger this portal writes. Neither substitutes for the other --
+    CloudTrail sees every object access and attributes it to the access point's IAM
+    role; the ledger knows the Cognito user and records actions that never reach S3 as a
+    distinguishable event, such as minting a presigned URL.
+
+    Defaulting to `CLOUDTRAIL` keeps a caller that does not pass `source` on the path it
+    was already using.
+
+    Pre-requisites for `CLOUDTRAIL`:
     - CloudTrail trail with S3 data events enabled for the S3 Access Point ARN
     - Athena table over the CloudTrail S3 logs (CREATE TABLE or a Glue crawler)
     - Athena output S3 bucket configured
     """
+    if (event.get("source") or "CLOUDTRAIL").upper() == "PORTAL":
+        return _query_activity_ledger(event)
+
     if not ATHENA_OUTPUT:
         return {
             "events": [],

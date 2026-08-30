@@ -16,7 +16,6 @@ Es erkennt sofort Dateierstellungs-, Schreib-, Lösch- und Umbenennungsoperation
 - Sie möchten NFS/SMB-Dateiänderungen als AWS-Ereignisse behandeln
 - Sie möchten von einer einzelnen Ereignisquelle an mehrere Anwendungsfälle routen
 - Sie möchten Dateioperationen asynchron verarbeiten, ohne sie zu blockieren (asynchroner Modus)
-- Sie möchten eine ereignisgesteuerte Architektur in Umgebungen realisieren, in denen S3-Ereignisbenachrichtigungen nicht verfügbar sind
 
 ### Nicht geeignete Anwendungsfälle
 
@@ -24,6 +23,7 @@ Es erkennt sofort Dateierstellungs-, Schreib-, Lösch- und Umbenennungsoperation
 - Periodisches Batch-Scanning ist ausreichend (S3 AP Polling-Muster empfohlen)
 - Ihre Umgebung verwendet ausschließlich das NFSv4.2-Protokoll (von FPolicy nicht unterstützt)
 - Die Netzwerkerreichbarkeit zur ONTAP REST API kann nicht sichergestellt werden
+- Sie möchten Daten erkennen, die über einen S3 Access Point geschrieben wurden (Operationen auf diesem Pfad lösen keine FPolicy-Benachrichtigung aus und werden auch von einer synchronen `mandatory`-Richtlinie nicht blockiert; gemessen 2026-08-26, ONTAP 9.18.1P3D1 — verwenden Sie EventBridge Scheduler-Polling oder das native ONTAP-Auditprotokoll)
 
 ### Hauptfunktionen
 

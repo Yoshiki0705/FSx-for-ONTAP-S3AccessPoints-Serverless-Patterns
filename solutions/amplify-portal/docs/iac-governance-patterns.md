@@ -28,13 +28,29 @@ PR ゲートがすべて通過 → マージ可能
 いずれか失敗 → マージをブロック
 ```
 
-> **cdk-nag は現時点で PR ゲートではありません。** `backend.ts` の適用は `CDK_NAG=1` のときだけ有効になる opt-in で（`backend.ts` の `const enableNag = process.env.CDK_NAG === "1"`）、`.github/workflows/` のどのワークフローもこの変数を設定していません。したがって実行は手動です。
+> **cdk-nag は PR ゲートです（2026-08-28 から）。** CI の Stage 2b が合成して `security/cdk-nag-baseline.txt` と比較し、記録に無い finding があれば落ちます。デプロイ経路では依然として無効です（下記の理由）。以前の記述は「ゲートではない」でした。 `backend.ts` の適用は `CDK_NAG=1` のときだけ有効になる opt-in で（`backend.ts` の `const enableNag = process.env.CDK_NAG === "1"`）、`.github/workflows/` のどのワークフローもこの変数を設定していません。したがって実行は手動です。
 >
 > ```bash
-> CDK_NAG=1 npx ampx generate outputs
+> npm run nag   # backend を合成する。デプロイはしない
 > ```
 >
 > opt-in にしている理由は Amplify Gen2 の制約です。cdk-nag を Aspect として常時適用すると、利用者が設定できない Amplify 管理リソース（Cognito / AppSync / 内部 S3 バケット / DynamoDB）の findings で `[AssemblyError]` になり、デプロイ自体が止まります。詳細は AGENTS.md の「cdk-nag Design Decision」を参照してください。
+
+#### cdk-nag を走らせるまでに実測した 3 点（2026-08-27）
+
+**この節が以前示していたコマンドは cdk-nag を走らせていませんでした。** `CDK_NAG=1 npx ampx generate outputs` はデプロイ済みスタックの出力を読むだけで、backend を合成しません。findings が有るか無いかに関わらず何も報告しません。`ampx` に合成のみのコマンドは無く、AWS CDK CLI もこのプロジェクトの依存ではないため、`scripts/cdk-nag.sh` は `amplify/backend.ts` を CDK アプリとして直接実行します。`CDK_OUTDIR` が設定されていれば CDK は終了時に合成し、Amplify が backend の識別に読む 3 つの context キーは `CDK_CONTEXT_JSON` で渡せます。
+
+**粒度なしの acknowledge は 1 件も抑制しません。** cdk-nag は各 finding を `AwsSolutions-IAM5[Resource::arn:aws:s3:*:*:accesspoint/*]` のような粒度付きの名前で報告し、`Validations.of(stack).acknowledge({ id: "AwsSolutions-IAM5" })` はそのどれにも一致しません。実測: 粒度なしで acknowledge しても auth ロールの 18 件はすべて残りました。`backend.ts` 末尾に並ぶ acknowledge は粒度なしなので、data スタックの findings は「受容済み」と書かれていながら残っています。アクセスポイントのワイルドカードを粒度付きで acknowledge すると auth スタックは 18 件から 6 件になりました。
+
+**`Validations.acknowledge` は `::` を 2 つ以上含む id を拒否します。** 前置きと規則名を分ける区切りとして `::` で split するためです。粒度付き id は `[Resource::…]` の中に 1 つ持つので通りますが、ARN 側がもう 1 つ持ち込むと通りません（`arn:aws:s3:::bucket/*` が該当）。この形の findings はこの API では表現できません。上に残る 6 件はローカル設定にある DemoMode バケットの ARN で、配布している example ではその行はコメントアウトされています。
+
+#### ベースラインにしている理由
+
+108 件のうち 3 件は記録ではなく修正しました（利用者が書いたコンテンツを持つ 2 テーブルの point-in-time recovery、アラームトピックの TLS 限定ポリシー）。残る 121 件は、デプロイしないと検証できない判断か、Amplify が所有するリソースへの変更を要します。
+
+**内訳は「Amplify のもの」だけではありません。** 58 件は私たちが `backend.ts` で宣言した Lambda ロール（`AWSLambdaBasicExecutionRole` と、デプロイ時にしか解決しない ARN のワイルドカード）です。エンドポイントごとの見直しが必要で、まだ行っていません。ベースラインは finding 単位なので、**記録に無いものは落ち、記録したものが直れば落ちます**（片方向の許可リストにはなりません）。
+
+ベースラインに載っている finding は、直った finding ではありません。`scripts/check_cdk_nag_baseline.py` の `REASONS` がカテゴリごとの理由を持ちます。
 
 ### このプロジェクトでの実装状況
 
@@ -42,9 +58,9 @@ PR ゲートがすべて通過 → マージ可能
 |------------|-------|:---:|
 | テンプレート構文 | cfn-lint | ✅ CI 統合済み |
 | セキュリティルール | cfn-guard (security/) | ✅ CI 統合済み |
-| AWS ベストプラクティス | cdk-nag (AwsSolutionsChecks) | ⚠️ `CDK_NAG=1` で opt-in（CI 未統合） |
+| AWS ベストプラクティス | cdk-nag (AwsSolutionsChecks) | ✅ CI でベースラインと比較（121 件を記録済み） |
 | IAM 権限検証 | Access Analyzer ValidatePolicy | ✅ CI workflow 追加済み |
-| 構造リグレッション | CDK ハーネステスト (49 tests) | ✅ vitest 統合済み |
+| 構造リグレッション | CDK ハーネステスト (114 tests) | ✅ vitest 統合済み |
 | シークレットリーク | gitleaks | ✅ pre-commit hook |
 | GitHub Actions セキュリティ | zizmor | ✅ pre-commit hook |
 | 依存関係更新 | Renovate | ✅ 自動 PR |

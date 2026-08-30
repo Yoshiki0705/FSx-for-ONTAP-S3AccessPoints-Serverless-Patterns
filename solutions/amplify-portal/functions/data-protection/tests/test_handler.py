@@ -21,7 +21,7 @@ import pytest
 @pytest.fixture
 def mock_secrets():
     """Patch Secrets Manager so the handler can build its ONTAP headers."""
-    with patch("handler.boto3") as mock_boto3:
+    with patch("dp_handler.boto3") as mock_boto3:
         mock_sm = MagicMock()
         mock_sm.get_secret_value.return_value = {
             "SecretString": json.dumps({"username": "fsxadmin", "password": "test"})
@@ -33,7 +33,7 @@ def mock_secrets():
 @pytest.fixture
 def mock_arp():
     """Patch the ArpResponseActions factory and hand back the stub."""
-    with patch("handler._get_arp_response_client") as factory:
+    with patch("dp_handler._get_arp_response_client") as factory:
         actions = MagicMock()
         actions.block_smb_user.return_value = {"action": "block_smb_user", "status": "blocked"}
         actions.block_nfs_ip.return_value = {"action": "block_nfs_ip", "status": "blocked"}
@@ -69,7 +69,7 @@ UI_PAYLOADS: dict[str, dict] = {
 class TestContainmentConfirmGate:
     @pytest.mark.parametrize("action", sorted(UI_PAYLOADS))
     def test_refuses_without_confirm(self, action, mock_secrets, mock_arp):
-        from handler import handler
+        from dp_handler import handler
 
         result = handler({"action": action, **UI_PAYLOADS[action]}, None)
 
@@ -79,7 +79,7 @@ class TestContainmentConfirmGate:
     @pytest.mark.parametrize("action", sorted(UI_PAYLOADS))
     def test_no_ontap_call_when_unconfirmed(self, action, mock_secrets, mock_arp):
         """The gate must sit in front of the ONTAP call, not after it."""
-        from handler import handler
+        from dp_handler import handler
 
         handler({"action": action, **UI_PAYLOADS[action]}, None)
 
@@ -90,7 +90,7 @@ class TestContainmentConfirmGate:
 
     @pytest.mark.parametrize("action", sorted(UI_PAYLOADS))
     def test_succeeds_with_ui_payload_plus_confirm(self, action, mock_secrets, mock_arp):
-        from handler import handler
+        from dp_handler import handler
 
         result = handler({"action": action, **UI_PAYLOADS[action], "confirm": True}, None)
 
@@ -98,7 +98,7 @@ class TestContainmentConfirmGate:
 
     def test_validation_error_precedes_confirm_gate(self, mock_secrets, mock_arp):
         """A missing target is reported as such, not as a missing confirmation."""
-        from handler import handler
+        from dp_handler import handler
 
         result = handler({"action": "blockSmbUser", "domain": "CORP", "confirm": True}, None)
 
@@ -110,7 +110,7 @@ class TestUnblockIsNotGated:
     """Unblocking restores access; a confirmation step there only delays recovery."""
 
     def test_unblock_smb_user_without_confirm(self, mock_secrets, mock_arp):
-        from handler import handler
+        from dp_handler import handler
 
         result = handler({"action": "unblockSmbUser", "domain": "CORP", "username": "jdoe"}, None)
 
@@ -118,7 +118,7 @@ class TestUnblockIsNotGated:
         assert mock_arp.unblock_smb_user.call_count == 1
 
     def test_unblock_nfs_ip_without_confirm(self, mock_secrets, mock_arp):
-        from handler import handler
+        from dp_handler import handler
 
         result = handler({"action": "unblockNfsIp", "clientIp": "10.0.5.99"}, None)
 
@@ -138,9 +138,9 @@ class TestClientFailureIsReadable:
     """
 
     def test_exception_type_is_reported_not_guessed(self, mock_secrets):
-        from handler import handler
+        from dp_handler import handler
 
-        with patch("handler._get_arp_response_client", side_effect=IndexError(4)):
+        with patch("dp_handler._get_arp_response_client", side_effect=IndexError(4)):
             result = handler(
                 {"action": "blockSmbUser", "domain": "CORP", "username": "jdoe", "confirm": True},
                 None,
@@ -153,9 +153,9 @@ class TestClientFailureIsReadable:
         assert "CIFS" not in result["error"]
 
     def test_import_error_points_at_the_layer(self, mock_secrets):
-        from handler import handler
+        from dp_handler import handler
 
-        with patch("handler._get_arp_response_client", side_effect=ImportError("no module")):
+        with patch("dp_handler._get_arp_response_client", side_effect=ImportError("no module")):
             result = handler({"action": "blockNfsIp", "clientIp": "10.0.5.99", "confirm": True}, None)
 
         assert result["success"] is False
@@ -167,9 +167,9 @@ class TestClientFailureIsReadable:
         This listing is the only route to finding and lifting a mistaken block,
         so reporting success with zero rows when the call failed is misleading.
         """
-        from handler import handler
+        from dp_handler import handler
 
-        with patch("handler._get_arp_response_client", side_effect=ImportError("no module")):
+        with patch("dp_handler._get_arp_response_client", side_effect=ImportError("no module")):
             result = handler({"action": "listActiveBlocks"}, None)
 
         assert result["success"] is False
@@ -178,9 +178,9 @@ class TestClientFailureIsReadable:
 
     def test_client_is_not_built_before_the_gate(self, mock_secrets):
         """An unconfirmed call must not even try to construct the client."""
-        from handler import handler
+        from dp_handler import handler
 
-        with patch("handler._get_arp_response_client") as factory:
+        with patch("dp_handler._get_arp_response_client") as factory:
             result = handler({"action": "blockSmbUser", "domain": "CORP", "username": "jdoe"}, None)
 
         assert factory.call_count == 0
@@ -189,7 +189,7 @@ class TestClientFailureIsReadable:
 
 class TestUnknownAction:
     def test_unknown_action_is_reported(self, mock_secrets):
-        from handler import handler
+        from dp_handler import handler
 
         result = handler({"action": "definitelyNotAnAction"}, None)
 
@@ -200,23 +200,23 @@ class TestRequestPathSafety:
     """A caller-supplied snapshot id must not redirect the request."""
 
     def test_traversal_segment_is_refused(self):
-        from handler import _is_unsafe_path
+        from dp_handler import _is_unsafe_path
 
         assert _is_unsafe_path("/storage/volumes/uuid/snapshots/../../cluster/nodes")
 
     def test_dots_inside_a_segment_are_allowed(self):
-        from handler import _is_unsafe_path
+        from dp_handler import _is_unsafe_path
 
         assert not _is_unsafe_path("/storage/volumes/uuid/snapshots/daily..2026")
 
     def test_control_characters_are_refused(self):
-        from handler import _is_unsafe_path
+        from dp_handler import _is_unsafe_path
 
         assert _is_unsafe_path("/storage/volumes/a\nb")
         assert _is_unsafe_path("/storage/volumes/a\\b")
 
     def test_snapshot_id_is_percent_encoded(self, mock_secrets):
-        from handler import handler
+        from dp_handler import handler
 
         captured = []
 
@@ -230,7 +230,7 @@ class TestRequestPathSafety:
 
                 return R()
 
-        with patch("handler.urllib3.PoolManager") as mock_pool:
+        with patch("dp_handler.urllib3.PoolManager") as mock_pool:
             mock_pool.return_value = RecordingHttp()
             handler(
                 {"action": "deleteSnapshot", "snapshotId": "../../cluster/nodes"},
@@ -253,7 +253,7 @@ class TestActiveBlocksResponseShape:
     """
 
     def test_snake_case_from_shared_is_mapped_to_camel_case(self, mock_secrets, mock_arp):
-        from handler import handler
+        from dp_handler import handler
 
         mock_arp.list_active_blocks.return_value = {
             "action": "list_active_blocks",
@@ -278,7 +278,7 @@ class TestActiveBlocksResponseShape:
 
     def test_success_and_error_shapes_agree(self, mock_secrets, mock_arp):
         """Both branches must expose the same keys, or the UI breaks on one."""
-        from handler import handler
+        from dp_handler import handler
 
         mock_arp.list_active_blocks.return_value = {
             "action": "list_active_blocks",
@@ -289,7 +289,7 @@ class TestActiveBlocksResponseShape:
         }
         ok = handler({"action": "listActiveBlocks"}, None)
 
-        with patch("handler._get_arp_response_client", side_effect=ImportError("no module")):
+        with patch("dp_handler._get_arp_response_client", side_effect=ImportError("no module")):
             failed = handler({"action": "listActiveBlocks"}, None)
 
         for key in ("success", "smbBlocks", "nfsBlocks", "total", "error"):
@@ -329,13 +329,13 @@ def ledger():
     table.update_item.side_effect = update_item
     table.scan.side_effect = scan
 
-    with patch("handler._blocks_table", return_value=table):
+    with patch("dp_handler._blocks_table", return_value=table):
         yield rows
 
 
 class TestBlockExpiryRecording:
     def test_block_gets_a_default_expiry(self, mock_secrets, mock_arp, ledger):
-        from handler import handler
+        from dp_handler import handler
 
         result = handler({"action": "blockSmbUser", "domain": "CORP", "username": "jdoe", "confirm": True}, None)
 
@@ -350,7 +350,7 @@ class TestBlockExpiryRecording:
         assert row["ttl"] > expires.timestamp()
 
     def test_zero_ttl_is_recorded_as_indefinite_not_silently_defaulted(self, mock_secrets, mock_arp, ledger):
-        from handler import handler
+        from dp_handler import handler
 
         result = handler(
             {
@@ -372,7 +372,7 @@ class TestBlockExpiryRecording:
         "bad", [-1, 24 * 91, "abc", True, [], {"h": 1}], ids=["negative", "over-max", "text", "bool", "list", "dict"]
     )
     def test_rejects_unusable_ttl(self, bad, mock_secrets, mock_arp, ledger):
-        from handler import handler
+        from dp_handler import handler
 
         result = handler(
             {
@@ -398,9 +398,9 @@ class TestBlockExpiryRecording:
         A deployment with no table must still be able to block, but it must not
         look like the block will expire on its own.
         """
-        from handler import handler
+        from dp_handler import handler
 
-        with patch("handler._blocks_table", return_value=None):
+        with patch("dp_handler._blocks_table", return_value=None):
             result = handler(
                 {"action": "blockSmbUser", "domain": "CORP", "username": "jdoe", "confirm": True},
                 None,
@@ -411,11 +411,11 @@ class TestBlockExpiryRecording:
         assert result["expiresAt"] is None
 
     def test_ledger_write_failure_does_not_report_a_failed_block(self, mock_secrets, mock_arp):
-        from handler import handler
+        from dp_handler import handler
 
         table = MagicMock()
         table.put_item.side_effect = RuntimeError("throttled")
-        with patch("handler._blocks_table", return_value=table):
+        with patch("dp_handler._blocks_table", return_value=table):
             result = handler(
                 {"action": "blockSmbUser", "domain": "CORP", "username": "jdoe", "confirm": True},
                 None,
@@ -429,7 +429,7 @@ class TestBlockExpiryRecording:
 
     def test_contain_threat_records_both_blocks_it_places(self, mock_secrets, mock_arp, ledger):
         """The most urgent route must not be the one that never expires."""
-        from handler import handler
+        from dp_handler import handler
 
         result = handler(
             {
@@ -448,7 +448,7 @@ class TestBlockExpiryRecording:
         assert all(r.get("viaContainThreat") for r in ledger.values())
 
     def test_manual_unblock_closes_the_row(self, mock_secrets, mock_arp, ledger):
-        from handler import handler
+        from dp_handler import handler
 
         handler({"action": "blockSmbUser", "domain": "CORP", "username": "jdoe", "confirm": True}, None)
         handler({"action": "unblockSmbUser", "domain": "CORP", "username": "jdoe"}, None)
@@ -473,7 +473,7 @@ class TestExpirySweep:
         return base
 
     def test_lifts_only_blocks_that_are_due(self, mock_secrets, mock_arp, ledger):
-        from handler import handler
+        from dp_handler import handler
 
         future = (datetime.now(timezone.utc) + timedelta(hours=5)).isoformat().replace("+00:00", "Z")
         ledger["due"] = self._row("due")
@@ -496,7 +496,7 @@ class TestExpirySweep:
         The portal cannot know the intent behind it, and lifting it would be a
         silent loss of containment.
         """
-        from handler import handler
+        from dp_handler import handler
 
         result = handler({"action": "sweepExpiredBlocks"}, None)
 
@@ -506,7 +506,7 @@ class TestExpirySweep:
         mock_arp.unblock_nfs_ip.assert_not_called()
 
     def test_failed_unblock_leaves_the_row_active_for_the_next_run(self, mock_secrets, mock_arp, ledger):
-        from handler import handler
+        from dp_handler import handler
 
         ledger["due"] = self._row("due")
         mock_arp.unblock_smb_user.side_effect = RuntimeError("ONTAP unreachable")
@@ -520,7 +520,7 @@ class TestExpirySweep:
         assert ledger["due"]["status"] == "active"
 
     def test_nfs_rows_use_the_export_policy_unblock(self, mock_secrets, mock_arp, ledger):
-        from handler import handler
+        from dp_handler import handler
 
         ledger["due"] = self._row("due", blockType="nfs", policyName="default", clientIp="203.0.113.99")
 
@@ -531,7 +531,7 @@ class TestExpirySweep:
         assert mock_arp.unblock_nfs_ip.call_args.kwargs["client_ip"] == "203.0.113.99"
 
     def test_unparseable_expiry_is_counted_not_ignored(self, mock_secrets, mock_arp, ledger):
-        from handler import handler
+        from dp_handler import handler
 
         ledger["broken"] = self._row("broken", expiresAt="whenever")
 
@@ -545,7 +545,7 @@ class TestExpirySweep:
 class TestExpiryInListing:
     def test_marks_blocks_without_a_ledger_row_as_unmanaged(self, mock_secrets, mock_arp, ledger):
         """The honest answer for a block placed outside the portal."""
-        from handler import handler
+        from dp_handler import handler
 
         mock_arp.list_active_blocks.return_value = {
             "action": "list_active_blocks",
@@ -561,7 +561,7 @@ class TestExpiryInListing:
         assert result["smbBlocks"][0]["expiresAt"] is None
 
     def test_shows_expiry_for_a_portal_block(self, mock_secrets, mock_arp, ledger):
-        from handler import handler
+        from dp_handler import handler
 
         handler({"action": "blockSmbUser", "domain": "CORP", "username": "jdoe", "confirm": True}, None)
         mock_arp.list_active_blocks.return_value = {
@@ -589,7 +589,7 @@ class TestExpiryInListing:
 @pytest.fixture
 def mock_http():
     """Patch the ONTAP GET helper used for SVM discovery."""
-    with patch("handler._ontap_get") as get:
+    with patch("dp_handler._ontap_get") as get:
         get.return_value = {
             "records": [
                 {"name": "svm1", "state": "running"},
@@ -603,7 +603,7 @@ def mock_http():
 class TestFanOutTargeting:
     def test_no_fan_out_without_being_asked(self, mock_secrets, mock_arp, ledger):
         """An operator who names one SVM gets one SVM."""
-        from handler import handler
+        from dp_handler import handler
 
         result = handler({"action": "blockSmbUser", "domain": "CORP", "username": "jdoe", "confirm": True}, None)
 
@@ -611,7 +611,7 @@ class TestFanOutTargeting:
         assert mock_arp.block_smb_user.call_count == 1
 
     def test_explicit_svm_list_hits_each_one(self, mock_secrets, mock_arp, ledger):
-        from handler import handler
+        from dp_handler import handler
 
         result = handler(
             {
@@ -633,7 +633,7 @@ class TestFanOutTargeting:
 
     def test_duplicate_names_are_collapsed(self, mock_secrets, mock_arp, ledger):
         """Otherwise the repeat comes back as 'already blocked' and reads as a fault."""
-        from handler import handler
+        from dp_handler import handler
 
         result = handler(
             {
@@ -651,7 +651,7 @@ class TestFanOutTargeting:
 
     def test_all_svms_asks_the_cluster_and_skips_stopped_ones(self, mock_secrets, mock_arp, ledger, mock_http):
         """A block on a stopped SVM would report containment that protects nothing."""
-        from handler import handler
+        from dp_handler import handler
 
         result = handler(
             {
@@ -669,7 +669,7 @@ class TestFanOutTargeting:
 
     @pytest.mark.parametrize("bad", [[], "svm1", {}, [""], [None]], ids=["empty", "string", "dict", "blank", "none"])
     def test_rejects_an_unusable_svm_list(self, bad, mock_secrets, mock_arp, ledger):
-        from handler import handler
+        from dp_handler import handler
 
         result = handler(
             {
@@ -688,7 +688,7 @@ class TestFanOutTargeting:
 
     def test_confirmation_is_checked_once_not_per_svm(self, mock_secrets, mock_arp, ledger):
         """A missing confirmation should explain itself, not return N refusals."""
-        from handler import handler
+        from dp_handler import handler
 
         result = handler(
             {
@@ -713,7 +713,7 @@ class TestFanOutPartialResults:
         Either reading sends the operator to the wrong next action, so both the
         SVMs that worked and the ones that did not are named.
         """
-        from handler import handler
+        from dp_handler import handler
 
         def block(svm_name, domain, username):
             if svm_name == "svmB":
@@ -741,7 +741,7 @@ class TestFanOutPartialResults:
         assert len(ledger) == 2
 
     def test_one_svm_raising_does_not_abandon_the_rest(self, mock_secrets, mock_arp, ledger):
-        from handler import handler
+        from dp_handler import handler
 
         calls = []
 
@@ -770,7 +770,7 @@ class TestFanOutPartialResults:
 
 class TestListSvms:
     def test_reports_state_so_stopped_svms_are_visible(self, mock_secrets, mock_arp, mock_http):
-        from handler import handler
+        from dp_handler import handler
 
         result = handler({"action": "listSvms"}, None)
 
@@ -779,9 +779,9 @@ class TestListSvms:
         assert {s["name"] for s in result["svms"]} == {"svm1", "svm2", "svm_stopped"}
 
     def test_reports_failure_rather_than_an_empty_cluster(self, mock_secrets, mock_arp):
-        from handler import handler
+        from dp_handler import handler
 
-        with patch("handler._ontap_get", side_effect=RuntimeError("timeout")):
+        with patch("dp_handler._ontap_get", side_effect=RuntimeError("timeout")):
             result = handler({"action": "listSvms"}, None)
 
         assert result["success"] is False
@@ -792,7 +792,7 @@ class TestListSvms:
 class TestListBlocksAcrossSvms:
     def test_each_entry_carries_its_svm(self, mock_secrets, mock_arp, ledger):
         """The unblock call needs to know where the block actually is."""
-        from handler import handler
+        from dp_handler import handler
 
         mock_arp.list_active_blocks.side_effect = lambda svm_name: {
             "action": "list_active_blocks",
@@ -810,7 +810,7 @@ class TestListBlocksAcrossSvms:
 
     def test_a_skipped_svm_is_a_failure_not_a_shorter_list(self, mock_secrets, mock_arp, ledger):
         """A block hiding on an unreadable SVM cannot be lifted from the portal."""
-        from handler import handler
+        from dp_handler import handler
 
         def listing(svm_name):
             if svm_name == "svmB":
@@ -840,7 +840,7 @@ class TestListBlocksAcrossSvms:
 
 class TestAuditAttribution:
     def test_records_the_appsync_identity(self, mock_secrets, mock_arp, ledger):
-        from handler import handler
+        from dp_handler import handler
 
         handler(
             {
@@ -864,7 +864,7 @@ class TestAuditAttribution:
         The resolver sets both together. Accepting a userId on its own would let
         anyone with lambda:InvokeFunction attribute a block to a colleague.
         """
-        from handler import handler
+        from dp_handler import handler
 
         handler(
             {
@@ -883,7 +883,7 @@ class TestAuditAttribution:
 
     def test_the_removed_actor_fallback_is_not_honoured(self, mock_secrets, mock_arp, ledger):
         """`actor` used to be trusted, and no resolver ever cleared it."""
-        from handler import handler
+        from dp_handler import handler
 
         handler(
             {
@@ -901,7 +901,7 @@ class TestAuditAttribution:
         assert "someone-else" not in row.values()
 
     def test_an_unattributed_action_is_distinguishable_from_a_failed_lookup(self, mock_secrets, mock_arp, ledger):
-        from handler import handler
+        from dp_handler import handler
 
         handler(
             {"action": "blockSmbUser", "domain": "CORP", "username": "jdoe", "confirm": True},
@@ -944,7 +944,7 @@ class TestUnattributedActionIsReported:
         return [d for d in self._metrics(capsys) if name in d]
 
     def test_a_direct_invocation_is_counted(self, mock_secrets, mock_arp, ledger, capsys):
-        from handler import handler
+        from dp_handler import handler
 
         handler(
             {"action": "blockSmbUser", "domain": "CORP", "username": "jdoe", "confirm": True},
@@ -959,7 +959,7 @@ class TestUnattributedActionIsReported:
         assert docs[0]["action"] == "blockSmbUser"
 
     def test_an_appsync_call_is_counted_as_attributed(self, mock_secrets, mock_arp, ledger, capsys):
-        from handler import handler
+        from dp_handler import handler
 
         handler(
             {
@@ -983,7 +983,7 @@ class TestUnattributedActionIsReported:
         Counting it would put the alarm in breach every sweep interval, which
         trains people to ignore it — the failure mode the alarm exists to avoid.
         """
-        from handler import _note_attribution
+        from dp_handler import _note_attribution
 
         _note_attribution("sweepExpiredBlocks", {})
 
@@ -999,7 +999,7 @@ class TestUnattributedActionIsReported:
         Called directly rather than through `handler`, because these actions
         reach ONTAP over HTTPS and the suite does not stub the transport.
         """
-        from handler import _note_attribution
+        from dp_handler import _note_attribution
 
         _note_attribution(action, {})
 
@@ -1022,7 +1022,7 @@ class TestUnattributedActionIsReported:
     )
     def test_every_state_changing_action_is_counted(self, action, capsys):
         """Including the unblocks: ending containment early is also an incident."""
-        from handler import _note_attribution
+        from dp_handler import _note_attribution
 
         _note_attribution(action, {})
 
@@ -1038,7 +1038,7 @@ class TestUnattributedActionIsReported:
         through `handler` because the ordering is the point: the emit has to come
         before the configuration check that returns early.
         """
-        import handler as handler_module
+        import dp_handler as handler_module
 
         monkeypatch.setattr(handler_module, "MGMT_IP", "")
         result = handler_module.handler(
@@ -1056,7 +1056,7 @@ class TestUnattributedActionIsReported:
         Serialisation is broken rather than stdout: patching `print` would take
         out pytest's own capture along with the code under test.
         """
-        import handler as handler_module
+        import dp_handler as handler_module
 
         def explode(*_args, **_kwargs):
             raise RuntimeError("cannot serialise")
@@ -1078,26 +1078,26 @@ class TestSettingsSurviveABadValue:
     """
 
     def test_a_non_numeric_value_falls_back_instead_of_raising(self, monkeypatch):
-        from handler import _env_int
+        from dp_handler import _env_int
 
         monkeypatch.setenv("SOME_SETTING", "undefined")
         assert _env_int("SOME_SETTING", 24) == 24
 
     @pytest.mark.parametrize("value", ["", "  ", "1.5.2", "twenty", "None"])
     def test_other_malformed_values_also_fall_back(self, monkeypatch, value):
-        from handler import _env_int
+        from dp_handler import _env_int
 
         monkeypatch.setenv("SOME_SETTING", value)
         assert _env_int("SOME_SETTING", 7) == 7
 
     def test_an_absent_value_uses_the_default(self, monkeypatch):
-        from handler import _env_int
+        from dp_handler import _env_int
 
         monkeypatch.delenv("SOME_SETTING", raising=False)
         assert _env_int("SOME_SETTING", 24) == 24
 
     def test_a_valid_value_is_honoured(self, monkeypatch):
-        from handler import _env_int
+        from dp_handler import _env_int
 
         monkeypatch.setenv("SOME_SETTING", "72")
         assert _env_int("SOME_SETTING", 24) == 72
@@ -1128,7 +1128,7 @@ class TestSettingsSurviveABadValue:
 
 class TestTtlCeiling:
     def test_refuses_above_the_ceiling_and_says_what_to_do(self, monkeypatch):
-        import handler as handler_module
+        import dp_handler as handler_module
 
         monkeypatch.setattr(handler_module, "MAX_BLOCK_TTL_HOURS", 24 * 30)
         hours, error = handler_module._validated_ttl_hours({"ttlHours": 24 * 365})
@@ -1141,7 +1141,7 @@ class TestTtlCeiling:
         assert "maxBlockTtlHours" in error["error"]
 
     def test_the_ceiling_is_configurable(self, monkeypatch):
-        import handler as handler_module
+        import dp_handler as handler_module
 
         monkeypatch.setattr(handler_module, "MAX_BLOCK_TTL_HOURS", 24 * 90)
         hours, error = handler_module._validated_ttl_hours({"ttlHours": 24 * 60})
@@ -1151,7 +1151,7 @@ class TestTtlCeiling:
 
     def test_zero_removes_the_ceiling(self, monkeypatch):
         """A deployment may decide the bound belongs somewhere else."""
-        import handler as handler_module
+        import dp_handler as handler_module
 
         monkeypatch.setattr(handler_module, "MAX_BLOCK_TTL_HOURS", 0)
         hours, error = handler_module._validated_ttl_hours({"ttlHours": 24 * 3650})
@@ -1161,7 +1161,7 @@ class TestTtlCeiling:
 
     def test_an_indefinite_block_is_still_allowed_under_a_ceiling(self, monkeypatch):
         """ttlHours=0 is 'no expiry', not 'zero hours', so a ceiling cannot bar it."""
-        import handler as handler_module
+        import dp_handler as handler_module
 
         monkeypatch.setattr(handler_module, "MAX_BLOCK_TTL_HOURS", 24 * 30)
         hours, error = handler_module._validated_ttl_hours({"ttlHours": 0})
@@ -1170,7 +1170,7 @@ class TestTtlCeiling:
         assert hours == 0
 
     def test_the_boundary_itself_is_accepted(self, monkeypatch):
-        import handler as handler_module
+        import dp_handler as handler_module
 
         monkeypatch.setattr(handler_module, "MAX_BLOCK_TTL_HOURS", 720)
         hours, error = handler_module._validated_ttl_hours({"ttlHours": 720})
@@ -1199,7 +1199,7 @@ class TestRetentionPolicyGuard:
             raise AssertionError("a refused operation must not reach ONTAP")
 
     def test_snaplock_retention_refused_without_ack(self):
-        from handler import _update_retention_policy
+        from dp_handler import _update_retention_policy
 
         http = self._RecordingHttp()
         result = _update_retention_policy(http, {}, {"target": "snaplock", "days": 180})
@@ -1220,7 +1220,7 @@ class TestRetentionPolicyGuard:
         fail — and it failed as "OUTPUT_BUCKET not configured", which reads as a
         missing setting rather than a request sent to the wrong place.
         """
-        from handler import _update_retention_policy
+        from dp_handler import _update_retention_policy
 
         http = self._RecordingHttp()
         result = _update_retention_policy(http, {}, {"target": "s3_object_lock", "mode": "COMPLIANCE", "days": 30})
@@ -1235,7 +1235,7 @@ class TestRetentionPolicyGuard:
 
     def test_ack_must_be_true_not_truthy(self):
         """A JSON body carrying the string "true" must not satisfy the guard."""
-        from handler import _update_retention_policy
+        from dp_handler import _update_retention_policy
 
         result = _update_retention_policy(
             self._RecordingHttp(),
@@ -1263,7 +1263,7 @@ class TestRetentionPolicyGuard:
         operator sets the flag in order to find out what they got wrong — which is
         the opposite of what the flag is for.
         """
-        from handler import _update_retention_policy
+        from dp_handler import _update_retention_policy
 
         result = _update_retention_policy(self._RecordingHttp(), {}, event)
 
@@ -1273,9 +1273,9 @@ class TestRetentionPolicyGuard:
 
     def test_ack_lets_the_operation_proceed(self):
         """With the flag the guard steps aside and the real call is attempted."""
-        from handler import _update_retention_policy
+        from dp_handler import _update_retention_policy
 
-        with patch("handler._get_volume_uuid", return_value="uuid-1"):
+        with patch("dp_handler._get_volume_uuid", return_value="uuid-1"):
             http = MagicMock()
             http.request.return_value = MagicMock(status=200)
             result = _update_retention_policy(
@@ -1302,7 +1302,7 @@ class TestSnapshotLockIsReported:
 
     def _listing(self, record: dict) -> dict:
         """Run getSnapshotsWithLockStatus against one fabricated ONTAP record."""
-        from handler import handler
+        from dp_handler import handler
 
         captured: list[str] = []
 
@@ -1319,7 +1319,7 @@ class TestSnapshotLockIsReported:
 
                 return R()
 
-        with patch("handler.urllib3.PoolManager") as mock_pool:
+        with patch("dp_handler.urllib3.PoolManager") as mock_pool:
             mock_pool.return_value = RecordingHttp()
             result = handler({"action": "getSnapshotsWithLockStatus", "volumeName": "vol1"}, None)
         result["_urls"] = captured

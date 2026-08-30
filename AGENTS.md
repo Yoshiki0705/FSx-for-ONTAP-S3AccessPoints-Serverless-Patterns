@@ -12,7 +12,7 @@ CloudFormation/SAM template sharing the Python modules in `shared/`.
 **Two pillars**: `solutions/` (S3 AP data processing) + `operations/` (file system operational
 optimization).
 
-**Test coverage**: ~4,540 Python tests across 266 files + ~365 vitest tests across 29 files.
+**Test coverage**: ~4,706 Python tests across 277 files + ~470 vitest tests across 33 files.
 
 > ファイル数は `make drift` がツリーと照合するので、古くなれば fail する。テスト総数は
 > `make test` / ポータルハンドラの個別実行 / vitest の 3 系統の合計なので概数。誰も保守
@@ -231,7 +231,7 @@ python3 -m pytest solutions/sap/erp-adjacent/tests/ -v
 |---------|----------|
 | Hypothesis + moto DynamoDB slow | Use `deadline=None` in `@given()` settings |
 | Test file name collision across patterns | Use unique test file names or run per-directory |
-| `from functions.xxx import` collision in batch test runs | Run patterns with `handler` module imports in separate pytest invocations (Makefile splits these) |
+| アプリ側モジュール名の衝突（`handler` / `index`） | conftest で固有名にして `sys.modules` に登録する。`scripts/check_test_module_names.py` が強制 |
 
 ## Self-Review (4-Axis Check)
 

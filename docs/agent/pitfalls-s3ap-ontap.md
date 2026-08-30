@@ -17,13 +17,14 @@
 | Volume name `quick-test-data` → BadRequest | Volume names allow only alphanumeric + underscore. Use `quick_test_data` (no hyphens) |
 | `aws fsx create-and-attach-s3-access-point` positional args fail | Use `--cli-input-json file://create-ap.json`. Positional `--ontap-configuration` parsing is fragile |
 | Delete volume while S3 AP attached → BadRequest | Delete S3 AP first (`detach-and-delete-s3-access-point`), wait for deletion, then delete volume |
-| `DeleteVolume` names an "object store NAS bucket" after the S3 AP is gone | Attach creates an ONTAP-side `amazon-fsx-<volume-id>` bucket outliving the access point (a `FAILED` attach too). **Wait and retry — it clears asynchronously**: refused 2026-08-17, deleted in 60-90 s on 2026-08-18, no CLI needed. `GET /protocols/s3/buckets` never lists it and can 401 to `fsxadmin`, so an empty list is not "already gone". Interval measured once |
+| `DeleteVolume` names an "object store NAS bucket" after the S3 AP is gone | Attach creates an ONTAP-side `amazon-fsx-<volume-id>` bucket outliving the access point (a `FAILED` attach too). **Wait and retry — it clears asynchronously**: refused 2026-08-17, deleted in 60-90 s on 2026-08-18, no CLI needed. `GET /protocols/s3/buckets` never lists it, so an empty list is not "already gone". Interval measured once |
 | Presigned URL `SignatureDoesNotMatch` from Lambda | boto3 defaults to SigV2 for presign, and ONTAP S3 only supports v2 presigned URLs from 9.16.1. Use `Config(signature_version="s3v4")` explicitly (v4 supported from ONTAP 9.11.1; NetApp recommends v4) |
 | Presigned PUT answers `301 PermanentRedirect` | v4 signing alone is not enough: under the default `addressing_style` botocore presigns `<alias>.s3.amazonaws.com` even with a region set, and the redirect cannot be followed because the signature covers `host`. Two shapes work (measured 2026-08-15): path-style with an explicit regional `endpoint_url`, or `Config(signature_version="s3v4", s3={"addressing_style": "virtual"})`. Only leaving both to the default fails, and `make drift` rejects that combination in any handler that presigns |
 | Rename, move, copy, trash and restore stop at 5 GiB | All five are one `CopyObject`, whose single-operation ceiling is 5 GB. `UploadPartCopy` is the documented way past it and answers `NoSuchKey` here, so there is no route past the limit through the S3 AP at all — check the size and refuse with the reason rather than surfacing an S3 error mid-operation |
 | Presigned URL `HEAD` returns 403 but `GET` works | Some S3 AP configurations don't support HEAD on presigned URLs. Use GET for verification |
 | ONTAP REST の `fields=` に存在しないフィールドを混ぜる → 一覧が空になる | ONTAP はリクエスト全体を 400 で拒否し（例: `The value "last_transfer_size" is invalid for field "fields"`）、ハンドラ側は空リスト + error で返す。モック ONTAP は `fields` を無視してレコードを返すため、レスポンス整形のアサートだけでは検出できない。**送信 URL の `fields` 自体をテストで固定する**（`MockHttp.calls` を検査） |
 | `/cluster/nodes` と `/cluster/licensing/licenses` が 0 件 | エラーではない。FSx for ONTAP ではクラスター管理を AWS が担うため 0 件で返ることがある（ONTAP 9.17.1P7D1 で実測）。UI 側に「エラーではない」旨の注記を出す |
+| ONTAP 管理が `6691623 "User is not authorized."` | **誤パスワードとロックアウトが同一メッセージ**。「権限不足」と誤診しやすい。`lockout-duration=0` で**待っても戻らない**ので**同じ資格情報で再試行しない**。復旧はパスワードリセット + Secrets Manager 更新 → [実測](../ja/portal-identity-verification-results.md) |
 
 ## S3 Access Point Critical Knowledge
 
@@ -137,8 +138,7 @@ paths, DNS restore and audit-subject behaviour: [pitfalls-ad-smb](pitfalls-ad-sm
 `501 NotImplemented`（`A header you provided implies functionality that is not implemented`）
 が返る。S3 の conditional write に相当する機能をこの Access Point が実装していない。
 
-実測（2026-08、`eda-demo-s3ap-...-ext-s3alias`、ONTAP 9.18.1P3D1、Cognito Identity Pool の
-authenticated ロール）:
+実測（2026-08、ONTAP 9.18.1P3D1、Cognito Identity Pool の authenticated ロール）:
 
 | リクエスト | 結果 |
 |---|---|
@@ -147,14 +147,12 @@ authenticated ロール）:
 | `PUT` + `x-amz-checksum-crc32`（`if-none-match` なし） | **200 OK** |
 | `GET` / `ListObjectsV2` | 200（どちらのヘッダーも送らないため影響なし） |
 
-つまり CRC32 のフレキシブルチェックサムは通る。落ちるのは `if-none-match` だけ。
-
-Storage Browser は `preventOverwrite`（"Overwrite existing files" チェックボックス）を
-このヘッダーに変換し、upload と createFolder の両ハンドラーが送る。読み取りは無関係なので
+CRC32 チェックサムは通る。落ちるのは `if-none-match` だけ。Storage Browser は
+`preventOverwrite` をこのヘッダーに変換し upload と createFolder の両方が送るので、
 「一覧は見えるのに書き込みだけ全件失敗する」形になる。ヘッダーは `SignedHeaders` に入るため
 署名後に除去できず、差し替えられるのはハンドラーだけ（`createStorageBrowser({ actions })`）。
-上書き防止は書き込み前の `list` で代替する。原子性はないので同時書き込みは両方が不在と判定
-しうる。実装と経緯は `solutions/amplify-portal/src/lib/storageBrowserWriteHandlers.ts`。
+上書き防止は書き込み前の `list` で代替するが原子性はない。実装は
+`solutions/amplify-portal/src/lib/storageBrowserWriteHandlers.ts`。
 
 **代替実装で踏んだ罠**: 存在確認と書き込みを並行に走らせると、小さいファイルでは PUT が先に
 完了し、直後の一覧が**自分が書いたオブジェクト**を見つけて `OVERWRITE_PREVENTED` を返す。

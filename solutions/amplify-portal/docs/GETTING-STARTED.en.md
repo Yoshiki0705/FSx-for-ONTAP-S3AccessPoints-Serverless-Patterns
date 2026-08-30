@@ -299,20 +299,44 @@ npm start
 The first run takes 3-5 minutes because the CloudFormation stack is created.
 It is done once `Deployment completed` and `http://localhost:5173` are shown.
 
-### Step 6: Grant administrative rights
+### Step 6: Create your account and grant it a role
 
-The administrative sections (Resources, Analytics) are authorised on the Cognito group `storage-admin`. **The group itself is created by `amplify/auth/resource.ts`**, so nothing is needed by hand there, but **membership is deliberately left manual**: who holds administrative rights is not a decision for infrastructure code.
+Two things are deliberately closed by default, and both are needed before the portal is
+usable. Neither is a decision for infrastructure code to make on a deployment's behalf.
+
+**Self sign-up is off** (`signIn.selfSignUpEnabled: false`). The sign-in page is public, so
+leaving registration open means anybody who reaches it can create an account. Create yours:
 
 ```bash
 POOL=$(python3 -c "import json;print(json.load(open('amplify_outputs.json'))['auth']['user_pool_id'])")
-
-aws cognito-idp admin-add-user-to-group \
-  --user-pool-id "$POOL" --username <your-email> --group-name storage-admin
+aws cognito-idp admin-create-user \
+  --user-pool-id "$POOL" --username <your-email> \
+  --user-attributes Name=email,Value=<your-email> Name=email_verified,Value=true
 ```
 
-**Sign out and back in** afterwards. Group membership is carried in the ID token, so an existing token does not reflect it.
+**Roles are enforced** (`enforceRoles: true`). A user holding no role can read, preview,
+download and search, and cannot upload or delete. Grant yourself one:
 
-> Without it, the Resources and Analytics sections do not appear in the sidebar. That is deliberate: a menu that only returns authorisation errors is worse than an absent one.
+```bash
+make portal-grant-roles ARGS='--apply --assign <your-email>=storage-admin,internal'
+```
+
+That grants a role (`storage-admin`) and a scope (`internal`) together, which is what the
+script requires — it refuses an assignment naming no scope, because the absence of one
+means "internal" and that is the wrong answer to reach by omission. Run it without
+`--apply` first to see what it would do.
+
+**Sign out and back in** afterwards. Group membership is carried in the ID token, so a
+session opened before the grant does not reflect it. Nearly every report of "I granted the
+role and nothing changed" is this.
+
+> Without a role the Resources and Analytics sections do not appear in the sidebar, and
+> uploads fail. The absence is deliberate: a menu that only returns authorisation errors is
+> worse than an absent one. What is *not* obvious from the screen is that writes are
+> refused for the same reason, which is why this step comes before Verify.
+>
+> For a demo where nobody is going to be granted roles, set `enforceRoles: false` — then
+> any signed-in user may write and delete.
 
 ### Step 7: Verify
 

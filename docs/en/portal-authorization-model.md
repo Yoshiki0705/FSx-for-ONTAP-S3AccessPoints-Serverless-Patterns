@@ -32,6 +32,281 @@ The portal uses **Amazon Cognito User Pool Groups** to implement role-based acce
 | | Manage quotas/policies | |
 | **Enforcement** | AppSync: `allow.authenticated()` | AppSync: `allow.groups(["storage-admin"])` |
 
+## Two Axes: Role and Scope
+
+The table above describes the state with `enforceRoles` set to **`false`**. The default is
+**`true`**, so the write dispatchers `fileMutation` and `folderMutation` require
+`contributor` or above. This section covers the two axes.
+
+**A user holding no role can read, preview, download and search, and cannot write.** That
+is the intended state, and it is the state five administrative endpoints have always been
+in -- they require `storage-admin` regardless of this setting -- so the portal has never
+been fully usable until somebody granted a group. The order for a new deployment is under
+"The first user" below.
+
+The groups are split along two axes because **they are enforced in different places**. A
+single combined axis would have to be enforced in both.
+
+| Axis | Decides | Enforced at |
+|---|---|---|
+| **role** | Which operations a caller may invoke | AppSync authorization (`allow.groups`) |
+| **scope** | Which data a caller reaches | S3 Access Point + path boundary (Lambda) |
+
+A caller holds one role and one scope. The six product groups are not created because
+`cognito:groups` is an array, so holding one of each is the natural encoding.
+
+### Roles (four)
+
+| Role | Capability |
+|---|---|
+| `viewer` | Read and download only |
+| `contributor` | Adds writes: upload, rename, move, trash, folder creation |
+| `storage-admin` | Adds ONTAP configuration and the analytics console (pre-existing; the name is unchanged) |
+| `auditor` | Reads the audit trail |
+
+`auditor` is **orthogonal** to the read/write ladder rather than a rung above `viewer`. It
+exists so somebody can see who did what without being able to change it. That is why
+`queryAuditLog` names `auditor` and `storage-admin` and does not name `viewer`.
+
+### Scopes (two)
+
+| Scope | Meaning |
+|---|---|
+| `internal` | Inside the organisation; holds a Windows or UNIX account on the file system |
+| `external` | Outside the organisation; no ONTAP identity, identified only by an email address |
+
+### Where `external` takes effect
+
+| Target | Behaviour | How to change |
+|---|---|---|
+| Path boundary | Confined to `groupPathPrefixes`; the `storage-admin` bypass no longer applies | `groupPathPrefixes` |
+| The six AI endpoints | Denied by default (file content reaches a model, and calls are billed per token) | `externalDefaults.aiEnabled` |
+| Share links | Allowed per role; every role denied by default | `externalDefaults.shareLinksByRole` |
+
+**The `storage-admin` bypass is revoked by the *absence* of `external`**, not by the
+presence of `internal`. Every administrator in a deployed pool predates the scope axis and
+holds neither scope, so requiring `internal` would confine all of them the moment it
+shipped — a change that arrives as an outage. The condition falls on the default side.
+
+### Share links are capped, not refused
+
+One AppSync query, `getPresignedUrl`, backs the preview, the download button and the share
+dialog. The request does not distinguish them: the share dialog's shortest TTL of 300
+seconds is the preview's value. A `purpose` flag would not help either, since the caller
+chooses what to send.
+
+So the **lifetime** is capped instead. An external caller whose role does not allow share
+links keeps preview (300s) and download (60s), and any longer TTL is clamped to 300
+seconds.
+
+> **Security note**: this **shortens the exposure window**; it does not prevent
+> forwarding. A presigned URL is redeemable by anyone holding it, without AWS
+> credentials, until it expires. What changes is for how long.
+
+Endpoints that exist **only** to hand a link to somebody else are refused rather than
+capped: the QR code (`generateQrCode`) and the upload link for an unauthenticated party
+(`createUploadLink`, a write credential valid for up to 24 hours). There is no in-session
+use to preserve by clamping them.
+
+### The Upload tab does not go through AppSync
+
+**This is the one place AppSync does not decide.** The Upload tab
+(`@aws-amplify/ui-react-storage`) calls S3 from the browser with the identity pool's
+credentials, so neither `enforceRoles` nor the path prefixes apply — both are enforced in
+the Lambda handlers. **Whatever the selected IAM role grants is the whole of what that tab
+can do.**
+
+Amplify Gen2 creates an IAM role for every group declared in `defineAuth`, sets it as the
+group's `RoleArn`, and attaches the identity pool with `Type: Token`. Cognito then returns
+`cognito:preferred_role`: **the role of the member group with the lowest precedence value**
+([CreateGroup: Precedence](https://docs.aws.amazon.com/cognito-user-identity-pools/latest/APIReference/API_CreateGroup.html)).
+
+Measured on a deployed pool (2026-08-27, ap-northeast-1):
+
+| Account | Role assumed | S3 result |
+|---|---|---|
+| `contributor` + `external` | the contributor **group** role | `AccessDenied` on ListBucket |
+| in no group | the authenticated role | PutObject **succeeded** into a prefix no prefix setting grants |
+
+So before this: **an account that had been given a role could not use the Upload tab, and
+only an account with no role could write — anywhere.** Neither was the intent.
+
+The grant now sits on the group roles, with precedence stated explicitly:
+
+| Group | Precedence | Direct S3 |
+|---|---|---|
+| `external` | 0 | **none** |
+| `storage-admin` | 1 | read + write |
+| `contributor` | 2 | read + write |
+| `viewer` | 3 | read only |
+| `auditor` | 4 | read only |
+| `internal` | 5 | read only |
+| (no group) | — | read only, via the authenticated role |
+
+**The region and account in these ARNs are filled in from the deployment.** The shipped `arn:aws:s3:*:*:accesspoint/*` grants every access point in every account, and nothing needs that: an access point is addressed by an alias that resolves within one account (`scopeS3ApArns`). **The access-point name stays wildcarded** — that is the wildcard that matters for tenant isolation, and only the operator knows which access points exist, so it is refused at synth only once `groupApMapping` is in use.
+
+**Putting `external` first is the load-bearing choice.** Exactly one role is selected, so a
+single ordering can honour only one of the two axes, and for an external member the scope
+has to win: their reach is defined by path prefixes, and **a policy on a role shared by
+every external member cannot express them** (there is no `cognito:groups` condition key for
+identity pool sessions). Granting that role nothing closes the direct path and leaves the
+AppSync path, where the prefixes are enforced, as the only way in. `internal` is last for
+the mirror-image reason: if it out-ranked a role, every internal member would be selected
+onto the same role and the role axis would stop deciding anything.
+
+Precedence cannot be left to Amplify's default — the index in `ALL_PORTAL_GROUPS` — because
+that order puts `viewer` ahead of `contributor`. An account holding both would fall to
+read-only, the opposite of the AppSync rule, where **holding several roles grants the most
+permissive**.
+
+> **Security note**: if two groups share a precedence, `cognito:preferred_role` is **not
+> set**, and the identity pool falls back to `AmbiguousRoleResolution` — the authenticated
+> role. Every member of both groups would silently get the read-only default instead of
+> their own grant. `directS3Problems()` stops this at synth.
+
+The way for an external member to send you a file is the **upload link**
+(`createUploadLink`), not the Upload tab. That one goes through AppSync, so the prefixes
+apply.
+
+### How accounts are created, and MFA
+
+Both were fixed values before. **A fixed value reads as a decision somebody made for this
+deployment, when in fact it was a default nobody chose.**
+
+| Setting | Default | Meaning |
+|---|---|---|
+| `signIn.selfSignUpEnabled` | `false` | Accounts are created by an administrator; `admin-create-user` is the only way in |
+| `signIn.mfa` | `"OPTIONAL"` | Each user decides whether to use MFA |
+
+These two were `true` and `false`, which together meant **anyone who could reach the
+sign-in page could register, and a registered user could upload and delete**. That was for
+backward compatibility, and nobody had forked this repository -- so there was no
+compatibility to keep. Both defaults are now the restrictive ones.
+
+> **Security note**: the environment variables only lift a restriction when the word that
+> lifts it is spelled correctly (`AMPLIFY_PORTAL_SELF_SIGN_UP=true`,
+> `AMPLIFY_PORTAL_ENFORCE_ROLES=false`). Previously a typo such as `ENFORCE_ROLES=treu`
+> read as "not true" and **silently removed the authorization rules**. The polarity was
+> reversed so that a misspelling lands on the restrictive side.
+
+`"OPTIONAL"` needs reading precisely. It means **each user decides**, so it is `"OFF"` for
+everyone who does not go looking for it. Use `"REQUIRED"` when MFA has to be true of every
+session.
+
+Self sign-up is off by default, so an invitation is already the only way in. Raise MFA as
+well if it has to hold for every session — the default, `"OPTIONAL"`, leaves it to each user.
+
+```ts
+// portal-config.ts — selfSignUpEnabled is the default here; only MFA differs from it
+signIn: {
+  selfSignUpEnabled: false,
+  mfa: "REQUIRED",
+},
+```
+
+```bash
+# Create the account by invitation
+aws cognito-idp admin-create-user --user-pool-id <pool> \
+  --username partner@example.net \
+  --user-attributes Name=email,Value=partner@example.net Name=email_verified,Value=true
+```
+
+An invitation then becomes the only way in, which also changes what the audit trail is
+worth: **every account traces back to whoever issued it.**
+
+> **Implementation note**: `defineAuth` has no field for self sign-up, and
+> `@aws-amplify/auth-construct` defaults `ALLOW_SELF_SIGN_UP` to `true`. So `backend.ts`
+> overrides the L1 property `AdminCreateUserConfig.AllowAdminCreateUserOnly` with
+> `addPropertyOverride`. It does not assign the object wholesale, because the construct
+> may set an invitation message template in the same object and replacing it would drop
+> that with no error.
+
+### The first user, and everybody after
+
+`enforceRoles` is on by default, so **granting a role is the first thing to do after
+deploying**. Self sign-up is closed by default too, which means the person creating the
+account and the person granting the role are the same operator.
+
+```bash
+# 1. Create your account (self sign-up is closed)
+aws cognito-idp admin-create-user --user-pool-id <pool> \
+  --username you@example.com \
+  --user-attributes Name=email,Value=you@example.com Name=email_verified,Value=true
+
+# 2. Grant a role and a scope (idempotent; dry run unless --apply)
+make portal-grant-roles ARGS='--apply --assign you@example.com=storage-admin,internal'
+
+# 3. Sign in
+```
+
+The order is the same for everybody after. **A user who is already signed in has to sign
+out and in again**: groups travel in the ID token, so a token issued before the grant does
+not carry it. Nearly every report of "I granted the role and nothing changed" is this.
+
+`make portal-grant-roles` reports three outcomes per assignment: granted, already held,
+refused.
+
+`make portal-grant-roles` reports three outcomes per assignment: granted, already held,
+refused. Refusals cover naming two roles, naming both scopes, naming no scope, and a group
+the pool does not yet have. **It does not create groups** — a group outside `defineAuth`'s
+ownership would remain, and the next deployment's drift check would find it with no record
+of why it exists.
+
+### Settings that are present but inert fail at synth
+
+A prefix in `groupPathPrefixes` with no trailing `/` (`teams/a` also matches `teams/ab/`);
+a `shareLinksByRole` key that is not a role (`{"external": true}` reads as "external users
+may share" but is matched against roles, so it grants nobody); a blank alias in
+`groupApMapping`; an empty prefix list (reads as "restricted to nothing" and means
+"unrestricted"). Each deploys successfully and raises no runtime error. `backend.ts` stops
+them at synth.
+
+## Two audit sources
+
+The audit tab reads two sources, as **separate sections**. Neither substitutes for the
+other.
+
+| Source | Records | Who acted | What an empty result means |
+|---|---|---|---|
+| CloudTrail (S3 data events) | Everything that reached S3 | **Not available** — the caller is the access point's IAM role, the same principal for every portal user | No object access in that period |
+| Portal activity | Requests to the portal | The Cognito user | **No portal action** — access that did not go through the portal is not here |
+
+They are not merged into one table because the `user` column would mean something
+different from one row to the next.
+
+### What the portal activity ledger records
+
+| action | Written when |
+|---|---|
+| `SHARE_LINK` | `getPresignedUrl` mints a URL. The preview, the download button and the share dialog all use that one query, so they **cannot be told apart** |
+| `DOWNLOAD` | A folder was retrieved as a ZIP. The files were read at that point whether or not anybody follows the URL |
+| `UPLOAD_LINK` | `createUploadLink` mints an upload URL |
+| `DELETE` | Moved to trash (`reversible: true`) and deleted permanently (`reversible: false`) |
+
+Each row also records the **groups held at the time**. Membership changes, so a row naming
+only the user cannot later show what they held when they acted.
+
+Rows are kept for 90 days (`ttl`). The table is marked `RETAIN` in code, but **that has no effect in a sandbox** (measured 2026-08-27: a sandbox overrides removal policies to `Delete`). Whether a branch deployment honours it is unverified.
+
+> **What this used to be**: the ledger took its table name from the `URL_AUDIT_TABLE_NAME`
+> environment variable, which **defaulted to an empty string**. The handler skips the write
+> when the name is empty, so **on every deployment that did not set that variable by hand,
+> the ledger did not exist and nothing said so.** The stack now creates the table, and the
+> IAM grant was narrowed from `*` to that table's ARN.
+
+> **On retention**: the previous inline writer deleted each row **a day after the URL
+> expired**, so the record of who was given access disappeared a few days after the access
+> did. A record shorter-lived than its subject cannot answer a question asked later — and
+> audit questions are asked later.
+
+### Authorization
+
+`queryAuditLog` is limited to `auditor` and `storage-admin`. `enforceRoles` is on by
+default; setting it to false opens the audit trail to every signed-in user as well.
+`viewer` is deliberately absent: being able to read files does not imply being able to read
+**everybody else's activity**. The read grant is `dynamodb:Scan` only, with no write
+permission — the audit path must not be able to amend the record it reports.
+
 ## Feature-Level Authorization Matrix
 
 ### Browse Section (All authenticated users)
@@ -40,7 +315,7 @@ The portal uses **Amazon Cognito User Pool Groups** to implement role-based acce
 |---------|-----------|-------------------|
 | File listing | authenticated | `listFiles` query |
 | File download (Presigned URL) | authenticated | `getPresignedUrl` query |
-| File upload (Storage Browser) | authenticated | Cognito Identity Pool S3 policy |
+| File upload (Storage Browser) | `contributor` / `storage-admin`, and not `external` | IAM policy on the group role ([not AppSync](#the-upload-tab-does-not-go-through-appsync)) |
 | Image/PDF/DOCX preview | authenticated | `getPresignedUrl` query |
 | Sharing link generation | authenticated | `getPresignedUrl` mutation |
 | Recent files | authenticated (owner-scoped) | `RecentFile` model (owner auth) |
@@ -204,3 +479,4 @@ The `ArpResponseActions` component in Data Protection always renders its contain
 - [Accessibility Statement](./portal-accessibility.md) — How ARIA roles interact with authorization states
 - [Implementation Guide](../../solutions/amplify-portal/docs/IMPLEMENTATION.en.md) — Generic Dispatch authorization schema
 - [Compliance Guide](./portal-compliance-guide.md) — Auditor procedures for verifying access controls
+- [Identity Verification Results](./portal-identity-verification-results.md) — Measured Layer 2 strength, the identity a presigned URL executes as, and the permissions created through an S3 Access Point

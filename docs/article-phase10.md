@@ -8,11 +8,19 @@ cover_image: null
 series: "FSx for ONTAP S3 Access Points"
 ---
 
+> **訂正（2026-08-26）**: 本記事は FPolicy イベント駆動パイプラインを「FR-2（S3AP ネイティブ通知）の
+> 代替パス」として説明していますが、これは **書き込みが NFS / SMB 経由で届く場合にのみ成り立ちます**。
+> 実機測定の結果、S3 Access Point 経由の操作は FPolicy 通知を発火せず、`mandatory` 指定の同期ポリシーでも
+> 遮断されませんでした（2026-08-26、ap-northeast-1、ONTAP 9.18.1P3D1。S3 AP データプレーン 9 回で通知 0 件、
+> 同一ボリュームの NFSv3 対照は 3 件）。したがって S3 AP 経由で書き込まれるデータについては、FPolicy は
+> FR-2 の代替になりません。詳細は
+> [FPolicy と S3 Access Point のカバレッジ実測](https://github.com/Yoshiki0705/FSx-for-ONTAP-Observability-integrations/blob/main/docs/ja/s3ap-monitoring-coverage-implications.md)。
+
 ## TL;DR
 
 **Phase 10** は FSx for ONTAP S3 Access Points サーバーレスパターンライブラリの成熟フェーズ。[Phase 9](https://dev.to/yoshikifujiwara/production-rollout-vpc-endpoint-auto-detection-and-the-cdk-no-go-fsx-for-ontap-s3-access-587h) で確立した全 17 UC の運用基盤を土台に、以下を実装:
 
-- **FPolicy イベント駆動統合**: ONTAP FPolicy → SQS → EventBridge → Step Functions のイベント駆動パイプライン。FR-2（S3AP ネイティブ通知）の代替パス
+- **FPolicy イベント駆動統合**: ONTAP FPolicy → SQS → EventBridge → Step Functions のイベント駆動パイプライン。**書き込みが NFS / SMB 経由で届く場合に限り** FR-2（S3AP ネイティブ通知）の代替になる（上記訂正を参照）
 - **マルチアカウント StackSets**: 全 17 UC テンプレートの StackSets 互換性達成 + 新規バリデータ
 - **UC 別アラームプロファイル**: BATCH / REALTIME / HIGH_VOLUME の 3 プロファイルで閾値を自動設定
 - **コスト最適化**: 営業時間ベースのスケジュール動的変更 + 動的 MaxConcurrency 制御
@@ -27,9 +35,9 @@ series: "FSx for ONTAP S3 Access Points"
 
 Phase 9 で確認した通り、FSx for ONTAP S3 AP の `GetBucketNotificationConfiguration` は依然 "Not supported"（FR-2 未解決）。全 17 UC がポーリングモデル（EventBridge Scheduler → Discovery Lambda → ListObjectsV2）で動作している。
 
-ONTAP FPolicy は NFS/SMB のファイル操作を検知・通知するフレームワーク。外部サーバーモードで AWS サービスと連携することで、S3AP ネイティブ通知の代替パスを実現できる。
+ONTAP FPolicy は NFS/SMB のファイル操作を検知・通知するフレームワーク。外部サーバーモードで AWS サービスと連携することで、書き込みが NFS / SMB 経由で届くボリュームについてはイベント駆動の経路を用意できる。**S3 AP 経由で届く書き込みは FPolicy が通知しないため、その経路の代替にはならない**（実測 2026-08-26 / ONTAP 9.18.1P3D1、冒頭の訂正を参照）。
 
-本実装は NetApp 同僚 Shengyu Fang 氏の検証実装（[ontap-fpolicy-aws-integration](https://github.com/YhunerFSY/ontap-fpolicy-aws-integration)）を参考に、本プロジェクトの 17 UC パターンに適合させたものである。
+本実装は NetApp の同僚による検証実装（[ontap-fpolicy-aws-integration](https://github.com/YhunerFSY/ontap-fpolicy-aws-integration)）を参考に、本プロジェクトの 17 UC パターンに適合させたものである。
 
 ### アーキテクチャ
 

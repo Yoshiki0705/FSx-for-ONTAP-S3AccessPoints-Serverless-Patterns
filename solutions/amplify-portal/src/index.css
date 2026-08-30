@@ -2962,6 +2962,44 @@ button[type="submit"]:disabled {
   margin-bottom: 1rem;
 }
 
+/* Which audit trail is being read. Follows .ttl-option, which is the same shape of
+   control elsewhere in the portal, so the two do not look like different mechanisms. */
+.audit-source {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 0.5rem;
+}
+
+.audit-source-option {
+  padding: 6px 14px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-surface);
+  color: var(--color-text);
+  cursor: pointer;
+  font-size: 0.85rem;
+  transition: all 0.15s;
+}
+
+.audit-source-option:hover {
+  border-color: var(--color-primary);
+}
+
+.audit-source-option.active {
+  background: var(--color-primary);
+  color: var(--color-on-primary);
+  border-color: var(--color-primary);
+}
+
+/* The two sources answer different questions, and the difference decides whether an
+   empty result means "nothing happened". Stated next to the control rather than in the
+   guide. */
+.audit-source-description {
+  font-size: 0.8rem;
+  color: var(--color-text-secondary);
+  margin: 0 0 1rem;
+}
+
 .audit-filters {
   background: var(--color-surface);
   border: 1px solid var(--color-border);
@@ -5441,6 +5479,61 @@ button[type="submit"]:disabled {
 .agent-disabled-icon { font-size: 3rem; margin-bottom: 1rem; opacity: 0.6; }
 .agent-disabled h3 { margin: 0 0 0.5rem; color: var(--color-text-secondary); }
 .agent-disabled p { max-width: 360px; line-height: 1.5; font-size: 0.9rem; }
+
+/* --- Role and scope indicators ---
+   Says what the account may do. The banner is a status message rather than an error:
+   read-only is a correct state for a viewer, not a fault to be fixed. */
+.role-badge-group {
+  display: inline-flex;
+  gap: 0.25rem;
+  align-items: center;
+}
+.role-badge {
+  padding: 0.1rem 0.4rem;
+  border: 1px solid var(--color-border-strong);
+  border-radius: 10px;
+  background: var(--color-surface-subtle);
+  color: var(--color-text-secondary);
+  font-size: 0.7rem;
+  white-space: nowrap;
+  /* The value is a Cognito group name, so it is not translated and must not be
+     line-broken into something that reads like a different name. */
+  font-family: var(--font-mono);
+}
+.role-badge-warn {
+  border-color: var(--color-warning);
+  background: var(--color-warning-bg);
+  color: var(--color-warning-text);
+  font-family: inherit;
+}
+.role-badge-external {
+  border-color: var(--color-accent-alt);
+  background: var(--color-accent-alt-bg);
+  color: var(--color-accent-alt-text);
+  font-family: inherit;
+}
+.role-readonly-banner {
+  display: flex;
+  gap: 0.6rem;
+  align-items: flex-start;
+  margin: 0.5rem 0;
+  padding: 0.6rem 0.8rem;
+  border: 1px solid var(--color-border-strong);
+  border-radius: 6px;
+  background: var(--color-surface-subtle);
+  color: var(--color-text-secondary);
+  font-size: 0.85rem;
+}
+.role-readonly-icon { font-size: 1.1rem; line-height: 1.3; }
+.role-readonly-banner strong { color: var(--color-text); }
+.role-readonly-banner p { margin: 0.2rem 0 0; line-height: 1.5; }
+
+/* At the narrowest breakpoint the topbar has room for the nav toggle, the theme
+   control, the language control and sign-out. The badge is the one thing there whose
+   information is also on the read-only banner, so it is the one that goes. */
+@media (max-width: 480px) {
+  .role-badge-group { display: none; }
+}
 
 /* ─── AI Settings: Feature Sections & Setup Guide ─────────────────────────── */
 

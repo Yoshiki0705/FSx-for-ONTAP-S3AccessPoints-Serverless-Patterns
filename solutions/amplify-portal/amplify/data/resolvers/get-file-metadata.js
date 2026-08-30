@@ -13,6 +13,9 @@ export function request(ctx) {
     payload: {
       action: "getFileMetadata",
       fileKeys: ctx.arguments.fileKeys,
+      // The boundary needs the caller's groups: they decide which access point
+      // serves the request and which prefixes the key may fall under.
+      groups: ctx.identity.claims ? ctx.identity.claims["cognito:groups"] || [] : [],
       userId: ctx.identity.username,
     },
   };

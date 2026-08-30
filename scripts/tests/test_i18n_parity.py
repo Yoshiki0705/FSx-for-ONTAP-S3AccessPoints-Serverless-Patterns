@@ -231,7 +231,7 @@ def test_baselines_match_the_current_tree() -> None:
 
 
 def test_by_source_collapses_findings_into_work_items(capsys: pytest.CaptureFixture[str]) -> None:
-    """271 findings is not 271 problems, and a bare count is not actionable.
+    """269 findings is not 269 problems, and a bare count is not actionable.
 
     They come from 51 source documents, most contributing exactly 7 — one per
     locale, because the six non-English translations were produced in one batch and

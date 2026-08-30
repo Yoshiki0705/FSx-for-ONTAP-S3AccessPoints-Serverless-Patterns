@@ -194,7 +194,7 @@ aws cloudformation describe-stacks \
 | sandbox 失敗 "Cannot find module" | portal-config.ts がない | `cp portal-config.example.ts portal-config.ts` |
 | AppSync resolver "Data source not found" | Data source が別の CDK スタックにある | Data source は API と同一スタックに置く |
 | **sandbox デプロイが 2 分以上** | **IAM ポリシーや環境変数の変更（hot-swap 非対象）** | **想定動作。Lambda コードのみの変更は ~7 秒** |
-| **cdk-nag でデプロイがブロック** | cdk-nag を常時適用にした場合のみ発生（既定は無効なので通常は起きない） | `CDK_NAG=1` を付けずにデプロイする。nag の確認は `CDK_NAG=1 npx ampx generate outputs` を別途実行 |
+| **cdk-nag でデプロイがブロック** | cdk-nag を常時適用にした場合のみ発生（既定は無効なので通常は起きない） | `CDK_NAG=1` を付けずにデプロイする。nag の確認は `npm run nag` を別途実行 |
 
 > **DemoMode の IAM に関する注意**: S3 AP ARN (`arn:aws:s3:*:*:accesspoint/*`) と通常の S3 バケット ARN (`arn:aws:s3:::bucket-name`) は**異なるフォーマット**です。DemoMode で通常 S3 バケットを使う場合、`portal-config.ts` の `s3ApResourceArns` にバケット ARN とオブジェクトレベル ARN の両方を追加する必要があります。
 

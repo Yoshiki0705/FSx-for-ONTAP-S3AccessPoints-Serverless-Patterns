@@ -280,7 +280,7 @@ echo "  event log show -messagename *fpolicy* -time >30m"
 
 ### fsxadmin が "User is not authorized" を返す
 
-**原因**: SVM 管理 IP に接続している。fsxadmin はファイルシステム管理 IP でのみ認証可能。
+**原因**: SVM 管理 IP に接続している。fsxadmin はファイルシステム管理 IP でのみ認証可能。**同じメッセージはパスワード不一致とアカウントのロックアウトでも返ります**（`lockout-duration=0` なので待っても戻らない）。切り分けは[トラブルシューティングガイド](../guides/troubleshooting-guide.md) の 9 節。
 
 ```bash
 # 正しい管理 IP を確認

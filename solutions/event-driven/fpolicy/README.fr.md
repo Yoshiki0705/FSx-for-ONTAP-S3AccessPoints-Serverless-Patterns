@@ -16,7 +16,6 @@ Il détecte instantanément les opérations de création, écriture, suppression
 - Vous souhaitez traiter les modifications de fichiers NFS/SMB comme des événements AWS
 - Vous souhaitez router depuis une source d'événements unique vers plusieurs cas d'utilisation
 - Vous souhaitez traiter les opérations fichiers de manière asynchrone sans les bloquer (mode asynchrone)
-- Vous souhaitez réaliser une architecture événementielle dans des environnements où les notifications d'événements S3 ne sont pas disponibles
 
 ### Cas d'utilisation non adaptés
 
@@ -24,6 +23,7 @@ Il détecte instantanément les opérations de création, écriture, suppression
 - Un scan batch périodique est suffisant (modèle de polling S3 AP recommandé)
 - Votre environnement utilise uniquement le protocole NFSv4.2 (non supporté par FPolicy)
 - L'accessibilité réseau vers l'API REST ONTAP ne peut être garantie
+- Vous souhaitez détecter les données écrites via un access point S3 (les opérations sur ce chemin ne déclenchent aucune notification FPolicy et ne sont pas bloquées, même par une politique synchrone `mandatory` ; mesuré le 2026-08-26, ONTAP 9.18.1P3D1 — utilisez le polling EventBridge Scheduler ou le journal d'audit natif ONTAP)
 
 ### Fonctionnalités principales
 

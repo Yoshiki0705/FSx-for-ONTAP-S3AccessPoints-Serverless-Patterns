@@ -266,12 +266,97 @@ DynamoDB ゲートウェイエンドポイントを作成するための設定�
 
 Lambda の ENI にはパブリック IP が付かないため、デフォルトルートが Internet Gateway 向きのサブネットでは外向き通信ができません。Secrets Manager はインターフェイスエンドポイントで到達できますが、DynamoDB には経路がありません。ゲートウェイエンドポイントは時間課金・データ処理課金がありません。
 
-**未設定のまま `vpcId` を設定した場合、synth が失敗します。** ドキュメントに書くだけでは不十分だからです。エンドポイントがないと、デプロイは成功したように見える一方で**ブロックの有効期限### Step 6: 動作確認
+**未設定のまま `vpcId` を設定した場合、synth が失敗します。** ドキュメントに書くだけでは不十分だからです。エンドポイントがないと、デプロイは成功したように見える一方で**ブロックの有効期限処理がまったく動きません**。ブロックはクラスターに適用されるものの台帳への書き込みが失敗し、定期スイープはそのブロックを見つけられません。レスポンスは `expiryTracked: false` を返すので無言では壊れませんが、気づくのは個々の操作のレスポンスを読んだ人だけで、「ブロックは自動で解除される」と思っている運用者には届きません。
+
+有効期限なしで運用すると決めている場合は `allowNoBlockExpiry: true` を設定してください。
+
+サブネットに関連付けられているルートテーブルを確認する:
+
+```bash
+aws ec2 describe-route-tables \
+  --filters "Name=association.subnet-id,Values=<subnet-id>" \
+  --query "RouteTables[].RouteTableId" --output text
+```
+
+明示的な関連付けがないサブネットは、VPC のメインルートテーブルを使います:
+
+```bash
+aws ec2 describe-route-tables \
+  --filters "Name=vpc-id,Values=<vpc-id>" "Name=association.main,Values=true" \
+  --query "RouteTables[].RouteTableId" --output text
+```
+
+### Step 5: 起動
+
+```bash
+npm start
+```
+
+初回は CloudFormation スタックを作成するため 3〜5 分かかります。`Deployment completed` と
+`http://localhost:5173` が表示されたら完了です。
+
+### Step 6: アカウントを作り、ロールを付与する
+
+既定で閉じているものが 2 つあり、どちらもポータルを使う前に必要です。いずれも
+「誰に何を許すか」の判断なので、インフラのコードが代わりに決めるべきものではありません。
+
+**自己サインアップは無効**（`signIn.selfSignUpEnabled: false`）。サインイン画面は公開されて
+いるため、登録を開けておくと到達できる人は誰でもアカウントを作れます。自分の分を作ります:
+
+```bash
+POOL=$(python3 -c "import json;print(json.load(open('amplify_outputs.json'))['auth']['user_pool_id'])")
+aws cognito-idp admin-create-user \
+  --user-pool-id "$POOL" --username <your-email> \
+  --user-attributes Name=email,Value=<your-email> Name=email_verified,Value=true
+```
+
+**ロールは強制されます**（`enforceRoles: true`）。ロールを持たない利用者は閲覧・プレビュー・
+ダウンロード・検索はできて、アップロードと削除ができません。自分に付与します:
+
+```bash
+make portal-grant-roles ARGS='--apply --assign <your-email>=storage-admin,internal'
+```
+
+ロール（`storage-admin`）と scope（`internal`）を同時に付与しています。スクリプトは
+**scope を指定しない付与を拒否します**——scope の不在は「internal」を意味するので、
+省略によってそこに到達すべきではないからです。`--apply` を付けずに実行すると dry run です。
+
+付与後は**サインアウトとサインイン**が必要です。グループは ID トークンに載るので、付与前に
+開いたセッションには反映されません。「付与したのに変わらない」という報告のほとんどがこれです。
+
+> ロールが無いと、サイドバーに「リソース管理」「分析」が出ず、アップロードも失敗します。
+> 非表示は意図したものです（認可エラーしか返さないメニューは、無いメニューより悪い）。
+> **画面から分かりにくいのは書き込みが同じ理由で拒否されること**で、だからこの Step は
+> 動作確認より前にあります。
+>
+> ロールを誰にも付与しないデモ用途では `enforceRoles: false` にします。その場合は
+> サインイン済みの利用者全員が書き込みと削除をできます。
+
+### Step 7: 動作確認
+
+**まずコマンドラインから確認してください。** ONTAP のパネルにデータが出るまでに 6 段の前提が揃う必要があり、どれが欠けているかは画面から判別できません（理由は下記）。
+
+```bash
+# リポジトリルートから
+make ontap-preflight FS_ID=<fs-id> LAMBDA=<ResourceMgmtFunction の名前>
+```
+
+すべての段を通過したら UI を開きます。
 
 1. **ファイルブラウズ**: Browse > All Files にフォルダが表示される
 2. **SMB 共有**: Admin > Resources > SMB 共有 に共有一覧が表示される
 3. **Lock パネル**: Data Protection > Lock でタブが表示される
 4. **ARP/AI**: Data Protection > ARP/AI でボリュームの保護状態が表示される
+
+`LAMBDA=` を省くと、6 段目——ONTAP が資格情報を受け付けるか——は合格ではなく **SKIP** になります。管理 LIF はプライベートなので手元のマシンからは到達できず、デプロイ済みの関数に呼ばせる必要があります。関数名の取得:
+
+```bash
+aws lambda list-functions \
+  --query "Functions[?contains(FunctionName, 'ResourceMgmtFunction')].FunctionName" \
+  --output text
+```
+
+> **画面から逆算しないほうがよい理由**: 6 段目だけが失敗している状態——Secrets Manager のパスワードと ONTAP 側のパスワードが食い違っていた——で、ポータルは「ONTAP 接続が必要です」と VPC とセキュリティグループについての案内を表示しました。ボリュームは存在し、リクエストはクラスターに届いていました。現在はパネルが原因を 5 分類しますが、**デプロイ直後は UI を開くより preflight を走らせるほうが速いです**。詳細は [ONTAP 接続ガイド](ONTAP-CONNECTION-GUIDE.md#まず-make-ontap-preflight-を実行する)。
 ## 手作業のままにしている設定と、その理由
 
 再現性のため、原則としてすべて IaC 側に置いています。以下は**意図的に外に出している**ものです。
@@ -395,6 +480,11 @@ aws s3 rb s3://fsxn-portal-objectlock-demo --force
 
 ## 次のステップ
 
+**動いたら、次は利用者に渡す作業です。** 渡すもの（URL / アカウント / 操作ガイド）と、
+利用者から質問が来たときにどこを見るかは、[引き渡しと問い合わせ対応ガイド](portal-handover-guide.md)
+にまとめてあります。この文書（Getting Started）は**利用者に渡さないでください**。読者が違います。
+
+- **[引き渡しと問い合わせ対応ガイド](portal-handover-guide.md)** — 渡す 3 点、管理場所の一覧、利用者の言葉 → 確認するものの逆引き、定型返信
 - [PoC → 本番移行ガイド](../../../docs/ja/portal-poc-to-production.md) — DemoMode から本番接続への移行チェックリスト
 - [スケーリングガイド](../../../docs/ja/portal-scaling-guide.md) — キャパシティプランニングとスループット管理
 - [アクセシビリティ](../../../docs/en/portal-accessibility.md) — キーボードナビゲーション、ARIA、スクリーンリーダー対応
@@ -404,11 +494,3 @@ aws s3 rb s3://fsxn-portal-objectlock-demo --force
 - [セクション構成ガイド](./portal-tabs-guide.md) — サイドバー 17 セクションの機能一覧、テーマ、モバイル対応
 - [IMPLEMENTATION.md](./IMPLEMENTATION.md) — 設計意図と変更履歴
 - [認可モデル](../../../docs/ja/portal-authorization-model.md) — Cognito グループによるアクセス制御
-## 次のステップ
-
-**動いたら、次は利用者に渡す作業です。** 渡すもの（URL / アカウント / 操作ガイド）と、
-利用者から質問が来たときにどこを見るかは、[引き渡しと問い合わせ対応ガイド](portal-handover-guide.md) にまとめてあります。
-この文書（Getting Started）は**利用者に渡さないでください**。読者が違います。
-
-- **[引き渡しと問い合わせ対応ガイド](portal-handover-guide.md)** — 渡す 3 点、管理場所の一覧、利用者の言葉 → 確認するものの逆引き、定型返信
-- [PoC → 本番移行ガイド](../../../docs/ja/portal-poc-to-production.md) — DemoMode から本番接続への移行チェックリスト  

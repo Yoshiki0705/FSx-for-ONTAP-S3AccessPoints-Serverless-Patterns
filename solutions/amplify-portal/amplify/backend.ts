@@ -2,6 +2,13 @@ import { defineBackend } from "@aws-amplify/backend";
 import { auth } from "./auth/resource";
 import { data } from "./data/resource";
 import { config } from "./portal-config";
+import {
+  DIRECT_S3_BY_GROUP,
+  S3_READ_ACTIONS,
+  directS3Problems,
+  scopeS3ApArns,
+} from "./direct-s3-access";
+import { validateAuthorizationConfig } from "./validate-authorization-config";
 import * as crypto from "crypto";
 import * as fs from "fs";
 import * as path from "path";
@@ -10,7 +17,7 @@ import * as iam from "aws-cdk-lib/aws-iam";
 import * as lambda from "aws-cdk-lib/aws-lambda";
 import * as ec2 from "aws-cdk-lib/aws-ec2";
 import * as s3 from "aws-cdk-lib/aws-s3";
-import { AssetHashType, Duration, RemovalPolicy, Stack, Validations } from "aws-cdk-lib";
+import { AssetHashType, Aws, Duration, RemovalPolicy, Stack, Validations } from "aws-cdk-lib";
 import * as dynamodb from "aws-cdk-lib/aws-dynamodb";
 import * as cloudwatch from "aws-cdk-lib/aws-cloudwatch";
 import * as cloudwatchActions from "aws-cdk-lib/aws-cloudwatch-actions";
@@ -60,6 +67,19 @@ backend.addOutput({
   custom: {
     s3ApAlias: config.s3ApAlias,
     region: config.region,
+
+    // The authorization policy, published so the browser can describe what the account
+    // may do rather than infer it. Without this the UI would have to hardcode a guess at
+    // the server's rules, and a guess that drifts is worse than no gating: it hides
+    // controls that work, or offers controls that cannot.
+    //
+    // None of it is a secret and none of it is a control. The server decides -- AppSync
+    // group rules for the roles, the handlers for the external scope. This only lets the
+    // UI say why something is unavailable instead of failing when it is used.
+    enforceRoles: String(config.enforceRoles),
+    externalAiEnabled: String(config.externalDefaults.aiEnabled),
+    // Serialised, because custom outputs are a flat map of strings.
+    externalShareLinksByRole: JSON.stringify(config.externalDefaults.shareLinksByRole),
   },
 });
 
@@ -68,23 +88,107 @@ backend.addOutput({
 // directly from the browser without manual IAM configuration.
 const authResources = backend.auth.resources;
 
-// Get the authenticated role created by Amplify Auth
+// --- Who may create an account ---
+//
+// `defineAuth` has no field for this, and the construct's own default is to allow it
+// (`ALLOW_SELF_SIGN_UP: true` in @aws-amplify/auth-construct), so reaching the L1 is the
+// only way to express the other answer. Left alone, anybody who can reach the sign-in
+// page can register with a verified email address, and while `enforceRoles` is false a
+// registered user can upload and delete.
+//
+// A property override rather than assigning `adminCreateUserConfig` wholesale: the
+// construct may set an invitation message template in the same object, and replacing it
+// would drop that without any error.
+// A note for anybody who meets a failed user pool update here.
+//
+// Measured 2026-08-27 against a pool created 2026-08-11: **an existing Amplify user pool
+// cannot be updated through CloudFormation at all.** Any property change triggers an update
+// that Cognito refuses in two stages:
+//
+//   Without `AttributeDataType` on the `Schema` entries -- which is how the construct emits
+//   them, since Cognito infers it at create time -- the update fails with "Invalid
+//   AttributeDataType input". CloudFormation surfaces this as "User pool attributes cannot
+//   be changed after a user pool has been created", which reads as a restriction on what may
+//   change rather than as a malformed request.
+//
+//   Adding `AttributeDataType` explicitly gets past that and fails with "Required custom
+//   attributes are not supported currently", because on an update Cognito reads `Schema` as
+//   attributes to *add*, and a required attribute cannot be added. Re-sending the schema the
+//   pool already has is therefore invalid by construction.
+//
+// So there is no override that makes an existing pool updatable, and one was tried and
+// removed rather than left here looking like a fix. Amplify's own resolution -- remove
+// `defineAuth`, deploy, add it back -- deletes every user in the pool, as does recreating the
+// sandbox. A new deployment is unaffected: the pool is created with all of this in place.
+
+if (!config.signIn.selfSignUpEnabled) {
+  authResources.cfnResources.cfnUserPool.addPropertyOverride(
+    "AdminCreateUserConfig.AllowAdminCreateUserOnly",
+    true
+  );
+}
+
+// --- The Storage Browser's direct path to S3 -------------------------------------
+//
+// The Upload tab does not go through AppSync. `@aws-amplify/ui-react-storage` calls S3
+// from the browser with the identity pool's credentials, so `enforceRoles` and the path
+// prefixes -- both enforced in the Lambda handlers -- do not apply to it. Whatever this
+// role grants is what that tab can do.
+//
+// It used to be one statement, GetObject/PutObject/DeleteObject/ListBucket, on the
+// default authenticated role. Measured on a deployed pool (2026-08-27), that produced
+// two outcomes and neither was the intended one:
+//
+//   A user in no group assumed the authenticated role and wrote successfully to a
+//   prefix no `groupPathPrefixes` entry grants. `viewer` would have done the same.
+//
+//   A user in any group did not assume that role at all. Amplify gives every group its
+//   own IAM role, sets it as the group's `RoleArn`, and attaches the identity pool with
+//   `Type: Token`, so Cognito hands out `cognito:preferred_role` -- the role of the
+//   member group with the lowest precedence. Those group roles are created empty, so
+//   `contributor` + `external` got AccessDenied on ListBucket. The Upload tab was
+//   already broken for everybody who had been given a role.
+//
+// So the grant moves onto the group roles, which is where the selected credentials
+// actually come from. Reads stay on the authenticated role for the ungrouped case,
+// matching AppSync: listing and downloading are `allow.authenticated()`.
+// The configured ARNs, with a wildcard account or region replaced by this deployment's.
+// See `scopeS3ApArns`: the shipped default grants every access point in every account, and
+// nothing needs that. The access point *name* is left as configured -- that is the wildcard
+// that matters for tenant isolation, and only the operator knows which names exist.
+const s3ApArns = scopeS3ApArns(config.s3ApResourceArns, {
+  account: Aws.ACCOUNT_ID,
+  region: Aws.REGION,
+});
+
 const authenticatedRole = authResources.authenticatedUserIamRole;
 
-// Add S3 AP permissions for Storage Browser (Upload tab)
-authenticatedRole.addToPrincipalPolicy(
-  new iam.PolicyStatement({
-    sid: "StorageBrowserS3APAccess",
-    actions: [
-      "s3:GetObject",
-      "s3:PutObject",
-      "s3:DeleteObject",
-      "s3:ListBucket",
-      "s3:GetBucketLocation",
-    ],
-    resources: config.s3ApResourceArns,
-  })
-);
+function grantS3(role: iam.IRole, sid: string, actions: string[]) {
+  role.addToPrincipalPolicy(
+    new iam.PolicyStatement({ sid, actions, resources: s3ApArns })
+  );
+}
+
+// The ungrouped case. Read-only, because a user nobody has placed in a group is not a
+// contributor -- and because this is the role `AmbiguousRoleResolution` falls back to.
+grantS3(authenticatedRole, "StorageBrowserS3APAccess", S3_READ_ACTIONS);
+
+// Both directions of the drift between this mapping and the declared groups, plus a
+// shared precedence, which would silently send both groups' members to the read-only
+// fallback. Synth is the only cheap place to notice any of them: the deployed result is a
+// role that grants nothing, and nothing says so.
+const directS3Issues = directS3Problems(Object.keys(authResources.groups));
+if (directS3Issues.length > 0) {
+  throw new Error(`Direct S3 access configuration: ${directS3Issues.join("; ")}`);
+}
+
+for (const { group, precedence, actions } of DIRECT_S3_BY_GROUP) {
+  const groupResources = authResources.groups[group];
+  groupResources.cfnUserGroup.precedence = precedence;
+  if (actions.length > 0) {
+    grantS3(groupResources.role, "StorageBrowserS3APAccess", actions);
+  }
+}
 
 // Access the data stack (same stack where AppSync API lives)
 const dataResources = backend.data.resources;
@@ -180,12 +284,17 @@ if (vpcConfig && config.vpcRouteTableIds.length > 0) {
 // --- DynamoDB Table for Portal Settings (admin-controlled feature gates) ---
 // Stores runtime settings like AI Agent enablement.
 // Key: settingKey (string), Value: settingValue (string/JSON)
+//
+// No `removalPolicy`. There was a conditional here that returned `undefined` on both
+// branches, under a comment saying the sandbox default is RETAIN -- so it decided nothing,
+// and the thing it claimed is not true either: measured 2026-08-27, a sandbox overrides
+// removal policies to `Delete` regardless of what the code asks for.
+//
+// Leaving it unset is the right answer for this table anyway. It holds feature gates, so
+// losing it resets them to their defaults, which an administrator can set again.
 const portalSettingsTable = new dynamodb.Table(dataStack, "PortalSettingsTable", {
   partitionKey: { name: "settingKey", type: dynamodb.AttributeType.STRING },
   billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
-  removalPolicy: Stack.of(dataStack).stackName.includes("sandbox")
-    ? undefined // default RETAIN for sandbox
-    : undefined,
 });
 
 // --- DynamoDB Table for Chat History (per-user conversation persistence) ---
@@ -203,6 +312,9 @@ const chatHistoryTable = new dynamodb.Table(dataStack, "ChatHistoryTable", {
 const agentDirectoryTable = new dynamodb.Table(dataStack, "AgentDirectoryTable", {
   partitionKey: { name: "agentId", type: dynamodb.AttributeType.STRING },
   billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
+  // Holds agent definitions somebody wrote. Nothing regenerates it, so a bad write or an
+  // accidental delete is unrecoverable without this.
+  pointInTimeRecoverySpecification: { pointInTimeRecoveryEnabled: true },
 });
 
 // --- DynamoDB Table for Multi-Agent Teams ---
@@ -210,6 +322,9 @@ const agentDirectoryTable = new dynamodb.Table(dataStack, "AgentDirectoryTable",
 const agentTeamsTable = new dynamodb.Table(dataStack, "AgentTeamsTable", {
   partitionKey: { name: "teamId", type: dynamodb.AttributeType.STRING },
   billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
+  // Holds team compositions somebody assembled. Nothing regenerates it, so a bad write or an
+  // accidental delete is unrecoverable without this.
+  pointInTimeRecoverySpecification: { pointInTimeRecoveryEnabled: true },
 });
 
 // --- DynamoDB Table for Containment Blocks (expiry ledger) ---
@@ -229,8 +344,46 @@ const containmentBlocksTable = new dynamodb.Table(dataStack, "ContainmentBlocksT
   // Losing this table would leave blocks in place on the cluster with nothing
   // recording that they should ever be lifted.
   removalPolicy: RemovalPolicy.RETAIN,
-  pointInTimeRecovery: true,
+  pointInTimeRecoverySpecification: { pointInTimeRecoveryEnabled: true },
 });
+
+/**
+ * Per-user record of what the portal did: downloads, share links, upload links, deletes.
+ *
+ * Created here because it was not created anywhere. The presigned-url handler has always
+ * written to a table named by `URL_AUDIT_TABLE_NAME`, which defaulted to an empty string,
+ * and the handler skips the write when the name is empty -- so on every deployment that
+ * did not set the variable by hand, the per-user trail did not exist and nothing said so.
+ *
+ * Distinct from the CloudTrail trail the audit tab queries, and not a substitute for it.
+ * CloudTrail attributes each object access to the access point's IAM role, which is the
+ * same principal for every portal user, so it establishes that a file was read without
+ * establishing who asked. This table knows the Cognito user, and it records the things
+ * that never reach S3 as a distinguishable event: minting a presigned URL touches no
+ * object, and the download that follows is attributed to whoever redeemed the URL.
+ *
+ * `RETAIN`, because a deleted audit trail cannot be reconstructed from the thing it was
+ * recording.
+ *
+ * **In a sandbox that has no effect.** Measured 2026-08-27: the deployed template carries
+ * `DeletionPolicy: Delete` for every table this file marks `RETAIN`, this one and
+ * `ContainmentBlocksTable` alike -- a sandbox overrides removal policies so that
+ * `sandbox delete` leaves nothing behind. Whether a branch deployment honours it is
+ * unverified. So do not read the line below as "the trail survives"; read it as the intent
+ * that a non-sandbox deployment is expected to carry out.
+ */
+const activityLedgerTable = new dynamodb.Table(dataStack, "PortalActivityLedgerTable", {
+  partitionKey: { name: "id", type: dynamodb.AttributeType.STRING },
+  billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
+  timeToLiveAttribute: "ttl",
+  removalPolicy: RemovalPolicy.RETAIN,
+  pointInTimeRecoverySpecification: { pointInTimeRecoveryEnabled: true },
+});
+
+// An existing deployment may have pointed the handler at a table of its own. Honour it,
+// so turning this on does not silently split one trail across two tables.
+const activityLedgerTableName =
+  process.env.URL_AUDIT_TABLE_NAME || activityLedgerTable.tableName;
 
 // --- HTTP Data Source for Step Functions ---
 const sfnEndpoint = `https://states.${config.region}.amazonaws.com`;
@@ -292,7 +445,7 @@ const listFilesRole = new iam.Role(dataStack, "ListFilesLambdaRole", {
             "s3:PutObjectTagging",
             "s3:DeleteObject",
           ],
-          resources: config.s3ApResourceArns,
+          resources: s3ApArns,
         }),
       ],
     }),
@@ -565,18 +718,32 @@ const pillowLayer = new lambda.LayerVersion(dataStack, `PillowLayer${pillowPin.r
   }),
 });
 
-// Cognito group -> path prefixes that group may see. Derived from the group/AP
-// mapping by convention: a group reaches its own folder plus the shared one.
+// Cognito group -> path prefixes that group may see.
 //
-// Named once because two functions now enforce it — the agent for file access and
-// list-files for the notification inbox. Inlining the derivation a second time
-// would let the two boundaries drift apart, and the failure would be silent in
-// the direction that matters (one function showing paths the other hides).
-const groupPathPrefixes: Record<string, string[]> = config.groupApMapping
-  ? Object.fromEntries(
-      Object.keys(config.groupApMapping).map((group) => [group, [`${group}/`, "shared/"]])
-    )
-  : {};
+// Named once because eleven functions now enforce it. Inlining the derivation a
+// second time would let the boundaries drift apart, and the failure would be silent
+// in the direction that matters (one function showing paths the other hides).
+//
+// `config.groupPathPrefixes` wins when set. Otherwise the prefixes are derived from
+// the group/AP mapping by the original convention: a group reaches its own folder
+// plus the shared one. The derivation stays as the fallback rather than being
+// deleted, because a deployment that configures only `groupApMapping` would
+// otherwise drop to `{}`, and `{}` means unrestricted here -- the boundary would
+// disappear without any error to notice it by.
+// Raised here rather than at the point each value is used, so a deployment learns
+// about every inert setting at once instead of one per attempt. The checks live in
+// their own module because they can then be run against a crafted configuration in a
+// test; inside this file they could only be asserted by reading the source, which
+// confirms the code exists without establishing that it fires.
+validateAuthorizationConfig(config);
+
+const groupPathPrefixes: Record<string, string[]> =
+  config.groupPathPrefixes ??
+  (config.groupApMapping
+    ? Object.fromEntries(
+        Object.keys(config.groupApMapping).map((group) => [group, [`${group}/`, "shared/"]])
+      )
+    : {});
 
 const listFilesFunction = new lambda.Function(dataStack, "ListFilesFunction", {
   runtime: lambda.Runtime.PYTHON_3_13,
@@ -591,6 +758,10 @@ const listFilesFunction = new lambda.Function(dataStack, "ListFilesFunction", {
     // notification table and the same path-prefix boundary the agent applies.
     NOTIFICATION_TABLE_NAME: dataResources.tables["FileNotification"].tableName,
     GROUP_PATH_PREFIXES: JSON.stringify(groupPathPrefixes),
+        URL_AUDIT_TABLE_NAME: activityLedgerTableName,
+        EXTERNAL_SHARE_LINKS_BY_ROLE: JSON.stringify(
+          config.externalDefaults.shareLinksByRole
+        ),
   },
   // `index.py` imports `shared.portal_path_scope`, the path-prefix boundary. The
   // asset covers only this directory, so without the layer the function fails at
@@ -728,7 +899,7 @@ const folderDownloadRole = new iam.Role(dataStack, "FolderDownloadLambdaRole", {
       statements: [
         new iam.PolicyStatement({
           actions: ["s3:GetObject", "s3:ListBucket"],
-          resources: config.s3ApResourceArns,
+          resources: s3ApArns,
         }),
         new iam.PolicyStatement({
           actions: ["s3:PutObject", "s3:GetObject"],
@@ -750,16 +921,40 @@ const folderDownloadFunction = new lambda.Function(
     role: folderDownloadRole,
     environment: {
       S3_AP_ALIAS: config.s3ApAlias,
+      // The mapping was already passed here and the handler ignored it, so every ZIP
+      // was assembled through the default access point regardless of the caller. The
+      // prefixes are new: a ZIP is the contents of a prefix, so the boundary has to
+      // decide which prefix may be packaged, not only which alias serves it.
       GROUP_AP_MAPPING: JSON.stringify(config.groupApMapping || {}),
+      GROUP_PATH_PREFIXES: JSON.stringify(groupPathPrefixes),
+        URL_AUDIT_TABLE_NAME: activityLedgerTableName,
       ZIP_TEMP_BUCKET: zipTempBucket.bucketName,
     },
     // ZIP assembly is memory and time bound; see the caps in the handler.
+    // Imports `shared.portal_path_scope`; without the layer the import fails.
+    layers: [sharedPythonLayer],
     memorySize: 1024,
     timeout: Duration.minutes(5),
     description:
       "Builds a ZIP of an S3 Access Point prefix and returns a presigned download URL",
   }
 );
+
+// The per-user activity ledger. `list-files` records deletes and upload links,
+// `folder-download` records the retrieval it performed. `PutItem` only: a handler able to
+// amend or remove a row could rewrite the record of what it did.
+//
+// Granted here rather than beside each function because `folderDownloadFunction` is
+// declared after `listFilesFunction`, and a loop placed earlier reads it before its
+// declaration.
+for (const ledgerWriter of [listFilesFunction, folderDownloadFunction]) {
+  ledgerWriter.addToRolePolicy(
+    new iam.PolicyStatement({
+      actions: ["dynamodb:PutItem"],
+      resources: [activityLedgerTable.tableArn],
+    })
+  );
+}
 
 api.addLambdaDataSource("FolderDownloadLambdaDataSource", folderDownloadFunction);
 
@@ -776,11 +971,15 @@ const getPresignedUrlRole = new iam.Role(dataStack, "GetPresignedUrlLambdaRole",
       statements: [
         new iam.PolicyStatement({
           actions: ["s3:GetObject"],
-          resources: config.s3ApResourceArns,
+          resources: s3ApArns,
         }),
+        // Narrowed from `["*"]`, which carried a comment saying to restrict it in
+        // production. It could not be narrowed while the table was named by an
+        // environment variable and created by nobody; now that the stack owns it, the
+        // ARN is available here.
         new iam.PolicyStatement({
           actions: ["dynamodb:PutItem"],
-          resources: ["*"], // Restrict to URL_AUDIT_TABLE ARN in production
+          resources: [activityLedgerTable.tableArn],
         }),
       ],
     }),
@@ -798,8 +997,21 @@ const getPresignedUrlFunction = new lambda.Function(
     role: getPresignedUrlRole,
     environment: {
       S3_AP_ALIAS: config.s3ApAlias,
-      URL_AUDIT_TABLE_NAME: process.env.URL_AUDIT_TABLE_NAME || "",
+      URL_AUDIT_TABLE_NAME: activityLedgerTableName,
+      // A presigned URL executes as the identity of the access point it was signed
+      // against, so this function needs both halves of the boundary. It had
+      // neither: every URL was signed against the default access point, which
+      // measurement showed lets a caller mapped to a read-only access point read
+      // and write through the permissive one.
+      GROUP_AP_MAPPING: JSON.stringify(config.groupApMapping || {}),
+      GROUP_PATH_PREFIXES: JSON.stringify(groupPathPrefixes),
+        EXTERNAL_SHARE_LINKS_BY_ROLE: JSON.stringify(
+          config.externalDefaults.shareLinksByRole
+        ),
     },
+    // `index.py` imports `shared.portal_path_scope`. Without the layer the function
+    // fails at import and every preview and download with it.
+    layers: [sharedPythonLayer],
     memorySize: 128,
     timeout: Duration.seconds(10),
     description: "Generates presigned URLs for FSx for ONTAP S3 AP file preview/download",
@@ -849,7 +1061,7 @@ const thumbnailsRole = new iam.Role(dataStack, "ThumbnailsLambdaRole", {
         // no reason to be able to change one.
         new iam.PolicyStatement({
           actions: ["s3:GetObject", "s3:ListBucket"],
-          resources: config.s3ApResourceArns,
+          resources: s3ApArns,
         }),
         new iam.PolicyStatement({
           actions: ["s3:GetObject", "s3:PutObject"],
@@ -1045,6 +1257,28 @@ api.addLambdaDataSource("ArpResponseLambdaDataSource", arpResponseFunction);
 const containmentAlarmTopic = new sns.Topic(dataStack, "ContainmentAlarmTopic", {
   displayName: "FSx for ONTAP portal containment alarms",
 });
+
+// Refuse anything that did not arrive over TLS.
+//
+// A topic has no "SSL only" switch; the enforcement is a resource policy denying the
+// action when `aws:SecureTransport` is false. Nothing in this deployment publishes over
+// plain HTTP -- CloudWatch alarms and the AWS SDK both use TLS -- so this removes a
+// capability nobody is using rather than changing how the topic is reached.
+//
+// The condition tests for the string "false" rather than negating a truthy test: a
+// request that omits the key entirely must not match, and `Bool: {"...": false}` on an
+// absent key does not match either, so a Deny written that way would be silent about
+// exactly the requests it is meant to catch.
+containmentAlarmTopic.addToResourcePolicy(
+  new iam.PolicyStatement({
+    sid: "DenyPublishWithoutTls",
+    effect: iam.Effect.DENY,
+    principals: [new iam.AnyPrincipal()],
+    actions: ["sns:Publish"],
+    resources: [containmentAlarmTopic.topicArn],
+    conditions: { Bool: { "aws:SecureTransport": "false" } },
+  })
+);
 
 if (config.alarmEmail) {
   containmentAlarmTopic.addSubscription(new subscriptions.EmailSubscription(config.alarmEmail));
@@ -1253,9 +1487,15 @@ const searchFilesRole = new iam.Role(dataStack, "SearchFilesLambdaRole", {
         }),
         new iam.PolicyStatement({
           actions: ["s3:ListBucket", "s3:GetObject"],
-          resources: config.s3ApResourceArns.length > 0
-            ? config.s3ApResourceArns
-            : ["arn:aws:s3:*:*:accesspoint/*", "arn:aws:s3:*:*:accesspoint/*/object/*"],
+          // Both branches go through the same narrowing, so the fallback is not a way
+          // back to every account.
+          resources:
+            s3ApArns.length > 0
+              ? s3ApArns
+              : scopeS3ApArns(
+                  ["arn:aws:s3:*:*:accesspoint/*", "arn:aws:s3:*:*:accesspoint/*/object/*"],
+                  { account: Aws.ACCOUNT_ID, region: Aws.REGION }
+                ),
         }),
       ],
     }),
@@ -1274,7 +1514,16 @@ const searchFilesFunction = new lambda.Function(
     environment: {
       BEDROCK_KB_ID: config.bedrockKbId || "",
       S3_AP_ALIAS: config.s3ApAlias,
+      // Search results are object keys, so an unfiltered search is a listing by
+      // another name. The knowledge base indexes whatever it was pointed at and has
+      // no notion of the portal's groups, so the semantic mode needs the boundary as
+      // much as the keyword one.
+      GROUP_AP_MAPPING: JSON.stringify(config.groupApMapping || {}),
+      GROUP_PATH_PREFIXES: JSON.stringify(groupPathPrefixes),
+        EXTERNAL_AI_ENABLED: String(config.externalDefaults.aiEnabled),
     },
+    // Imports `shared.portal_path_scope`; without the layer the import fails.
+    layers: [sharedPythonLayer],
     memorySize: 256,
     timeout: Duration.seconds(30),
     description: "Semantic file search via Bedrock Knowledge Base (S3 AP data source)",
@@ -1306,9 +1555,15 @@ const agentChatRole = new iam.Role(dataStack, "AgentChatLambdaRole", {
         }),
         new iam.PolicyStatement({
           actions: ["s3:GetObject", "s3:ListBucket"],
-          resources: config.s3ApResourceArns.length > 0
-            ? config.s3ApResourceArns
-            : ["arn:aws:s3:*:*:accesspoint/*", "arn:aws:s3:*:*:accesspoint/*/object/*"],
+          // Both branches go through the same narrowing, so the fallback is not a way
+          // back to every account.
+          resources:
+            s3ApArns.length > 0
+              ? s3ApArns
+              : scopeS3ApArns(
+                  ["arn:aws:s3:*:*:accesspoint/*", "arn:aws:s3:*:*:accesspoint/*/object/*"],
+                  { account: Aws.ACCOUNT_ID, region: Aws.REGION }
+                ),
         }),
         new iam.PolicyStatement({
           actions: ["dynamodb:GetItem"],
@@ -1348,6 +1603,7 @@ const agentChatFunction = new lambda.Function(
       AGENT_DIRECTORY_TABLE: agentDirectoryTable.tableName,
       AGENT_TEAMS_TABLE: agentTeamsTable.tableName,
       GROUP_PATH_PREFIXES: JSON.stringify(groupPathPrefixes),
+        EXTERNAL_AI_ENABLED: String(config.externalDefaults.aiEnabled),
     },
     // `handler.py` imports `shared.portal_path_scope` for the path-prefix boundary.
     layers: [sharedPythonLayer],
@@ -1406,12 +1662,23 @@ const queryAuditLogFunction = new lambda.Function(
       ATHENA_TABLE: process.env.ATHENA_AUDIT_TABLE || "cloudtrail_s3_events",
       ATHENA_OUTPUT_LOCATION:
         process.env.ATHENA_AUDIT_OUTPUT || "",
+      // The second source. `source: "PORTAL"` reads this instead of Athena.
+      URL_AUDIT_TABLE_NAME: activityLedgerTableName,
     },
     memorySize: 256,
     timeout: Duration.seconds(60),
     description:
-      "Queries CloudTrail S3 data events via Athena for file access audit trail",
+      "Queries the file access audit trail: CloudTrail S3 data events via Athena, or the per-user portal activity ledger",
   }
+);
+
+// Read-only on the ledger, and only the ledger. The audit path must not be able to
+// amend the record it reports.
+queryAuditLogFunction.addToRolePolicy(
+  new iam.PolicyStatement({
+    actions: ["dynamodb:Scan"],
+    resources: [activityLedgerTable.tableArn],
+  })
 );
 
 api.addLambdaDataSource(
@@ -1449,8 +1716,15 @@ const getFileMetadataFunction = new lambda.Function(
     code: functionCode("functions/file-metadata"),
     role: getFileMetadataRole,
     environment: {
+      // Both halves of the path boundary. This endpoint takes an object key from
+      // the client, and took neither: the access point decides which ONTAP identity
+      // reads the file, the prefixes decide whether this caller may name that key.
+      GROUP_PATH_PREFIXES: JSON.stringify(groupPathPrefixes),
       AI_METADATA_TABLE_NAME: process.env.AI_METADATA_TABLE_NAME || "",
     },
+    // Imports `shared.portal_path_scope` and `shared.s3ap_helper`. Without the
+    // layer the function fails at import.
+    layers: [sharedPythonLayer],
     memorySize: 256,
     timeout: Duration.seconds(15),
     description: "Fetches AI processing metadata for file inline display",
@@ -1472,7 +1746,7 @@ const generateQrCodeRole = new iam.Role(dataStack, "GenerateQrCodeLambdaRole", {
       statements: [
         new iam.PolicyStatement({
           actions: ["s3:GetObject"],
-          resources: config.s3ApResourceArns,
+          resources: s3ApArns,
         }),
       ],
     }),
@@ -1489,9 +1763,20 @@ const generateQrCodeFunction = new lambda.Function(
     code: functionCode("functions/generate-qr"),
     role: generateQrCodeRole,
     environment: {
+      // Both halves of the path boundary. This endpoint takes an object key from
+      // the client, and took neither: the access point decides which ONTAP identity
+      // reads the file, the prefixes decide whether this caller may name that key.
+      GROUP_AP_MAPPING: JSON.stringify(config.groupApMapping || {}),
+      GROUP_PATH_PREFIXES: JSON.stringify(groupPathPrefixes),
+        EXTERNAL_SHARE_LINKS_BY_ROLE: JSON.stringify(
+          config.externalDefaults.shareLinksByRole
+        ),
       S3_AP_ALIAS: config.s3ApAlias,
       MAX_QR_EXPIRY_SECONDS: "300",
     },
+    // Imports `shared.portal_path_scope` and `shared.s3ap_helper`. Without the
+    // layer the function fails at import.
+    layers: [sharedPythonLayer],
     memorySize: 256,
     timeout: Duration.seconds(15),
     description: "Generates Presigned URL + QR code PNG for OT/manufacturing file access",
@@ -1513,7 +1798,7 @@ const askAboutFileRole = new iam.Role(dataStack, "AskAboutFileLambdaRole", {
       statements: [
         new iam.PolicyStatement({
           actions: ["s3:GetObject"],
-          resources: config.s3ApResourceArns,
+          resources: s3ApArns,
         }),
         new iam.PolicyStatement({
           actions: ["bedrock:InvokeModel", "bedrock:Converse"],
@@ -1538,6 +1823,12 @@ const askAboutFileFunction = new lambda.Function(
     code: functionCode("functions/ask-about-file"),
     role: askAboutFileRole,
     environment: {
+      // Both halves of the path boundary. This endpoint takes an object key from
+      // the client, and took neither: the access point decides which ONTAP identity
+      // reads the file, the prefixes decide whether this caller may name that key.
+      GROUP_AP_MAPPING: JSON.stringify(config.groupApMapping || {}),
+      GROUP_PATH_PREFIXES: JSON.stringify(groupPathPrefixes),
+        EXTERNAL_AI_ENABLED: String(config.externalDefaults.aiEnabled),
       S3_AP_ALIAS: config.s3ApAlias,
       BEDROCK_MODEL_ID: "amazon.nova-lite-v1:0",
       CLASSIFICATION_TABLE_NAME:
@@ -1545,6 +1836,9 @@ const askAboutFileFunction = new lambda.Function(
       AI_BLOCKED_LEVELS:
         process.env.AI_BLOCKED_LEVELS || "CONFIDENTIAL,CUI,HIGHLY_RESTRICTED,RESTRICTED",
     },
+    // Imports `shared.portal_path_scope` and `shared.s3ap_helper`. Without the
+    // layer the function fails at import.
+    layers: [sharedPythonLayer],
     memorySize: 512,
     timeout: Duration.seconds(60),
     description: "Asks Bedrock about file content with CONFIDENTIAL guardrail (F-2)",
@@ -1566,7 +1860,7 @@ const detectLabelsRole = new iam.Role(dataStack, "DetectLabelsLambdaRole", {
       statements: [
         new iam.PolicyStatement({
           actions: ["s3:GetObject"],
-          resources: config.s3ApResourceArns,
+          resources: s3ApArns,
         }),
         new iam.PolicyStatement({
           actions: ["rekognition:DetectLabels"],
@@ -1587,8 +1881,17 @@ const detectLabelsFunction = new lambda.Function(
     code: functionCode("functions/detect-labels"),
     role: detectLabelsRole,
     environment: {
+      // Both halves of the path boundary. This endpoint takes an object key from
+      // the client, and took neither: the access point decides which ONTAP identity
+      // reads the file, the prefixes decide whether this caller may name that key.
+      GROUP_AP_MAPPING: JSON.stringify(config.groupApMapping || {}),
+      GROUP_PATH_PREFIXES: JSON.stringify(groupPathPrefixes),
+        EXTERNAL_AI_ENABLED: String(config.externalDefaults.aiEnabled),
       S3_AP_ALIAS: config.s3ApAlias,
     },
+    // Imports `shared.portal_path_scope` and `shared.s3ap_helper`. Without the
+    // layer the function fails at import.
+    layers: [sharedPythonLayer],
     memorySize: 512,
     timeout: Duration.seconds(30),
     description: "Detects labels/objects in images from FSx for ONTAP S3 AP via Rekognition",
@@ -1630,7 +1933,7 @@ const athenaQueryRole = new iam.Role(dataStack, "AthenaQueryLambdaRole", {
         new iam.PolicyStatement({
           actions: ["s3:GetObject", "s3:PutObject", "s3:ListBucket", "s3:GetBucketLocation"],
           resources: [
-            ...config.s3ApResourceArns,
+            ...s3ApArns,
             "arn:aws:s3:::*athena-results*",
             "arn:aws:s3:::*athena-results*/*",
           ],
@@ -1674,7 +1977,7 @@ const textractRole = new iam.Role(dataStack, "TextractLambdaRole", {
       statements: [
         new iam.PolicyStatement({
           actions: ["s3:GetObject"],
-          resources: config.s3ApResourceArns,
+          resources: s3ApArns,
         }),
         new iam.PolicyStatement({
           actions: ["textract:AnalyzeDocument", "textract:DetectDocumentText"],
@@ -1695,8 +1998,17 @@ const textractFunction = new lambda.Function(
     code: functionCode("functions/textract"),
     role: textractRole,
     environment: {
+      // Both halves of the path boundary. This endpoint takes an object key from
+      // the client, and took neither: the access point decides which ONTAP identity
+      // reads the file, the prefixes decide whether this caller may name that key.
+      GROUP_AP_MAPPING: JSON.stringify(config.groupApMapping || {}),
+      GROUP_PATH_PREFIXES: JSON.stringify(groupPathPrefixes),
+        EXTERNAL_AI_ENABLED: String(config.externalDefaults.aiEnabled),
       S3_AP_ALIAS: config.s3ApAlias,
     },
+    // Imports `shared.portal_path_scope` and `shared.s3ap_helper`. Without the
+    // layer the function fails at import.
+    layers: [sharedPythonLayer],
     memorySize: 512,
     timeout: Duration.seconds(60),
     description: "Extracts text from documents on FSx for ONTAP S3 AP via Textract",
@@ -1718,7 +2030,7 @@ const comprehendRole = new iam.Role(dataStack, "ComprehendLambdaRole", {
       statements: [
         new iam.PolicyStatement({
           actions: ["s3:GetObject"],
-          resources: config.s3ApResourceArns,
+          resources: s3ApArns,
         }),
         new iam.PolicyStatement({
           actions: [
@@ -1743,8 +2055,17 @@ const comprehendFunction = new lambda.Function(
     code: functionCode("functions/comprehend-analysis"),
     role: comprehendRole,
     environment: {
+      // Both halves of the path boundary. This endpoint takes an object key from
+      // the client, and took neither: the access point decides which ONTAP identity
+      // reads the file, the prefixes decide whether this caller may name that key.
+      GROUP_AP_MAPPING: JSON.stringify(config.groupApMapping || {}),
+      GROUP_PATH_PREFIXES: JSON.stringify(groupPathPrefixes),
+        EXTERNAL_AI_ENABLED: String(config.externalDefaults.aiEnabled),
       S3_AP_ALIAS: config.s3ApAlias,
     },
+    // Imports `shared.portal_path_scope` and `shared.s3ap_helper`. Without the
+    // layer the function fails at import.
+    layers: [sharedPythonLayer],
     memorySize: 256,
     timeout: Duration.seconds(30),
     description: "Analyzes text from FSx for ONTAP S3 AP via Comprehend",
@@ -1877,3 +2198,24 @@ Validations.of(dataStack).acknowledge(
       "buckets not directly accessed by users.",
   },
 );
+
+// --- The auth stack's own IAM5 findings -------------------------------------------
+//
+// Held in `security/cdk-nag-baseline.txt` rather than acknowledged here, because
+// `Validations.acknowledge` cannot express them. Two measured properties of that API
+// decided it, and both are worth keeping written down:
+//
+//   A coarse id suppresses nothing. `acknowledge({ id: "AwsSolutions-IAM5" })` left all 18
+//   findings on these roles in place, because cdk-nag reports each under a granular name
+//   like `AwsSolutions-IAM5[Resource::<arn>]` and the coarse name matches none of them.
+//   The acknowledgments listed above are coarse, which is why findings remain in the data
+//   stack despite being described there as accepted.
+//
+//   It rejects an id containing more than one `::`, splitting on that delimiter to
+//   separate an optional prefix. A granular id already carries one inside `[Resource::…]`,
+//   and these ARNs now resolve through `Aws.REGION` and `Aws.ACCOUNT_ID`, which cdk-nag
+//   renders as `<AWS::Region>` and `<AWS::AccountId>` -- two more. Acknowledging them
+//   throws at synth.
+//
+// So the baseline is the mechanism: `scripts/check_cdk_nag_baseline.py` fails on a finding
+// it does not know and on a recorded finding that has been fixed.

@@ -246,7 +246,7 @@ AWS の [Troubleshooting access points](https://docs.aws.amazon.com/fsx/latest/O
 
 > **設計に関する補足**: 「LDAP や AD を用意しないと S3 AP は使えない」ことはありません。一方で**ローカルユーザーは SVM ごとに独立します。** 複数 SVM で同じ ID を使い回す運用や、ID の棚卸しが要件になる場合は、ディレクトリサービスに寄せる判断が別に必要です。
 
-`WindowsUser.Name` に**ドメイン接頭辞を付けないでください**（`Admin` は可、`DOMAIN\Admin` は不可）。付けると AP の作成は通るのにデータ操作が無言で失敗します。詳細は [AD 参加 SVM の S3 AP 前提条件](ja/ad-joined-svm-s3ap-prerequisites.md) にあります。
+`WindowsUser.Name` に **AD ドメイン接頭辞を付けないでください**（`Admin` は可、`DOMAIN\Admin` は不可。`CIFSSRV\Admin` のような **CIFS サーバー名**の接頭辞は実測で正常動作）。付けると AP の作成は通り `AVAILABLE` になりますが、`HeadBucket` を含むすべてのデータ操作が **503 ServiceUnavailable** を返します（`AccessDenied` ではありません）。詳細は [AD 参加 SVM の S3 AP 前提条件](ja/ad-joined-svm-s3ap-prerequisites.md) にあります。
 
 ### セキュリティスタイルとの対応
 

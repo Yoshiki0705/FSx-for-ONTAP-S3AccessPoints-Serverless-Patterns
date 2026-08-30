@@ -22,6 +22,8 @@ import {
   TRASH_PREFIX,
 } from "./FileLifecycle";
 import { useTranslation } from "../i18n";
+import { usePortalRole } from "../hooks/usePortalRole";
+import { ReadOnlyBanner } from "./RoleNotice";
 import { useToast } from "../lib/toast";
 import { isRegulatedPath } from "../utils/regulatedPath";
 import { formatAbsoluteTime, formatRelativeTime } from "../utils/formatTime";
@@ -227,6 +229,15 @@ export function FileExplorer({
   // folder rather than a separate listing. Inside it, rename and trash make no
   // sense and restore does.
   const inTrash = currentPrefix.startsWith(TRASH_PREFIX);
+
+  // What the server will allow. Read once here and passed down as a condition, rather
+  // than each button asking for itself: the row controls are rendered per file, and a
+  // hook per row would ask the same question as many times as the listing is long.
+  //
+  // `canWrite` while unresolved is treated as false, so the buttons appear once the
+  // answer is known instead of appearing and being withdrawn.
+  const capabilities = usePortalRole();
+  const canWrite = capabilities?.canWrite === true;
 
   /** Discard the accumulated pages so a rename, trash or restore is reflected. */
   const reloadListing = () => void refetch();
@@ -451,12 +462,19 @@ export function FileExplorer({
         </button>
         {/* Not offered inside the trash: a folder created there would be a place to
             put things that the restore path has no meaning for. */}
-        {!inTrash && (
+        {!inTrash && canWrite && (
           <CreateFolderButton currentPrefix={currentPrefix} onChanged={reloadListing} />
         )}
-        <FolderDownload currentPrefix={currentPrefix} />
+        {/* ZIP assembly goes through `folderMutation`, which carries the same rule as
+            the other writes even though the user is downloading. Nothing in the name
+            says so, which is why it is grouped here rather than with the read paths. */}
+        {canWrite && <FolderDownload currentPrefix={currentPrefix} />}
         <RestoreFromSnapshot currentPrefix={currentPrefix} />
-        <UploadLink destinationPrefix={currentPrefix} />
+        {/* An upload link is a presigned PUT: it writes on the holder's behalf, so the
+            share rule and the write rule both apply. */}
+        {canWrite && capabilities?.canShareLinks !== false && (
+          <UploadLink destinationPrefix={currentPrefix} />
+        )}
         <button
           className={`trash-btn ${inTrash ? "active" : ""}`}
           onClick={() => navigateToFolder(inTrash ? "" : TRASH_PREFIX)}
@@ -503,6 +521,12 @@ export function FileExplorer({
       )}
 
       {error && <div className="error-message">{error}</div>}
+
+      {/* Says why the write controls are absent. Without this the listing looks like a
+          product with no upload button, and there is no message to search for. */}
+      {capabilities !== null && !capabilities.canWrite && (
+        <ReadOnlyBanner capabilities={capabilities} />
+      )}
 
       {selectedKeys.size > 0 && (
         <div className="file-bulk-bar">
@@ -669,6 +693,10 @@ export function FileExplorer({
             <div key={file.key} className={`file-row ${selected ? "selected" : ""}`}>
               <div className="file-item">
                 <span className="file-item-actions">
+                  {/* Selection exists only to drive the bulk trash and bulk restore,
+                      both writes. A checkbox that selects rows nothing can act on is a
+                      control with no outcome. */}
+                  {canWrite && (
                   <input
                     type="checkbox"
                     className="file-select"
@@ -687,6 +715,7 @@ export function FileExplorer({
                     disabled={bulk.busy}
                     aria-label={t("filesSelectRow").replace("{name}", fileName)}
                   />
+                  )}
                   <FavoriteButton fileKey={file.key} fileName={fileName} />
                   {/* Preview stays in the row: it is how a file is opened, which is
                       what most rows are clicked for. The rest move behind the
@@ -699,7 +728,11 @@ export function FileExplorer({
                     thumbnailUrl={thumbnailFor(file.key)}
                   />
                   <RowMenu fileName={fileName}>
-                    <ShareLink fileKey={file.key} fileName={fileName} />
+                    <ShareLink
+                      fileKey={file.key}
+                      fileName={fileName}
+                      canShareLinks={capabilities?.canShareLinks !== false}
+                    />
                     <button
                       className={`tag-toggle ${tagsOpen ? "active" : ""}`}
                       onClick={() => setTagEditorFor(tagsOpen ? null : file.key)}
@@ -709,7 +742,10 @@ export function FileExplorer({
                     >
                       🏷️
                     </button>
-                    {inTrash ? (
+                    {/* Every control below writes through `fileMutation`. The banner
+                        above the listing carries the explanation, so the row menu
+                        keeps only what this account can actually use. */}
+                    {canWrite && (inTrash ? (
                       <>
                         <RestoreFromTrashButton trashKey={file.key} onChanged={reloadListing} />
                         {/* Only offered inside the trash, which is also the only
@@ -735,7 +771,7 @@ export function FileExplorer({
                           onChanged={reloadListing}
                         />
                       </>
-                    )}
+                    ))}
                   </RowMenu>
                 </span>
                 <span className="name">

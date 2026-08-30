@@ -354,7 +354,7 @@ curl -s https://nextcloud.example.com/status.php | jq .
 | **Presigned URL（ドキュメント上 Not supported だが動作する）** | Nextcloud が S3 AP への直接ダウンロードリンクを Presigned URL で生成可能（GetObject の署名付きリクエストとして動作）。ただし AWS は本番依存を非推奨 | 選択肢 A: Presigned URL を利用しダイレクトダウンロード（サーバー負荷軽減）。選択肢 B: サーバープロセス経由プロキシ（ガバナンス重視）。 |
 | **オブジェクト上限 50 GB（単一 PUT は 5 GB）** | 50 GB 超のファイルはアップロード不可 | Nextcloud はマルチパートアップロードを使用するため 5〜50 GB は対応可。ONTAP バージョン（9.15.1+）での S3 AP マルチパートサポートを確認。 |
 | **ListObjectsV2 最大 1000/リクエスト** | 大規模ディレクトリにページネーションが必要 | Nextcloud の S3 バックエンドライブラリが自動処理。 |
-| **S3 イベント通知なし** | S3 AP アップロードイベントでトリガーできない | Nextcloud Flow/Workflow の webhook、FPolicy（ONTAP ネイティブイベント）、またはスケジュールスキャンを使用。 |
+| **S3 イベント通知なし** | S3 AP アップロードイベントでトリガーできない | Nextcloud Flow/Workflow の webhook、またはスケジュールスキャンを使用。**FPolicy は使えない**: S3 AP 経由のアップロードは FPolicy 通知を発火しない（実測 2026-08-26 / ONTAP 9.18.1P3D1）。 |
 | **AD-joined SVM: DC 到達性必須** | AD DC がダウンすると全 S3 AP 操作が失敗（AccessDenied） | AD DC の健全性を監視。[AD-Joined SVM S3 AP 前提条件](./en/ad-joined-svm-s3ap-prerequisites.md)を参照。 |
 | **Nextcloud ファイルロック** | Nextcloud のファイルロックは NFS/SMB クライアントに及ばない | Nextcloud + NFS からの同時編集は競合の可能性あり。ONTAP の oplock/バイトレンジロックで調整。 |
 | **サムネイル/プレビュー生成** | プレビューごとに S3 AP GetObject が発生しレイテンシ増加 | 選択肢 A: レイテンシを許容。選択肢 B: NFS マウントでプレビュー生成（同一 VPC のみ）。 |

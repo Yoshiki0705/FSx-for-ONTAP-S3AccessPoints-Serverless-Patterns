@@ -15,6 +15,15 @@ const TTL_OPTIONS = [
 interface ShareLinkProps {
   fileKey: string;
   fileName: string;
+  /**
+   * Whether this account may mint a link meant to be handed to somebody else.
+   *
+   * Passed in rather than read from `usePortalRole` here, because this component is
+   * rendered once per row: a hook inside it would ask the same question as many times
+   * as the listing is long. Required, not defaulted, so a new call site has to say
+   * which answer it means instead of inheriting the permissive one.
+   */
+  canShareLinks: boolean;
 }
 
 /**
@@ -28,7 +37,7 @@ interface ShareLinkProps {
  * - CONFIDENTIAL files should not have share links generated (caller's responsibility)
  * - URLs are logged via CloudTrail (S3 AP GetObject data events)
  */
-export function ShareLink({ fileKey, fileName }: ShareLinkProps) {
+export function ShareLink({ fileKey, fileName, canShareLinks }: ShareLinkProps) {
   const { t } = useTranslation();
   const [showPanel, setShowPanel] = useState(false);
   const [selectedTtl, setSelectedTtl] = useState(300);
@@ -190,11 +199,25 @@ export function ShareLink({ fileKey, fileName }: ShareLinkProps) {
             </div>
           )}
 
-          {generatedUrl && !qrCode && (
+          {/* The QR code is refused outright for an external caller whose role does not
+              allow share links -- there is no in-session use of a QR code to preserve,
+              so `generateQrCode` returns a reason rather than a shortened link. The URL
+              above is a different case: it is the same query the preview and the
+              download button use, so the server shortens its lifetime instead. */}
+          {generatedUrl && !qrCode && (canShareLinks ? (
             <button className="share-link-generate" onClick={generateQr} disabled={qrLoading}>
               {qrLoading ? t("slQrGenerating") : `📱 ${t("slQrGenerate")}`}
             </button>
-          )}
+          ) : (
+            <p className="form-note" title={t("roleExternalShareDeniedTitle")}>
+              🔒 {t("roleExternalShareDenied")}
+            </p>
+          ))}
+
+          {/* Named before the link is generated, not after: the expiry buttons above
+              offer lifetimes this account will not get, and finding that out from a URL
+              that stopped working is the worse way to learn it. */}
+          {!canShareLinks && <div className="share-link-note">{t("roleShareClampNote")}</div>}
 
           {qrCode && (
             <div className="share-link-qr">

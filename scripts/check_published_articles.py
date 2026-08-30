@@ -43,6 +43,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from check_portal_drift import (  # noqa: E402
     COUNT_CLAIMS,
+    MEASURED_FALSE,
     active_contradictions,
     scan_text,
 )
@@ -51,10 +52,17 @@ USER_AGENT = "fsxn-s3ap-serverless-patterns-doc-check (+https://github.com/Yoshi
 TIMEOUT_SECONDS = 20
 ATTEMPTS = 3
 
-# Every published article in the file-portal series, in both languages. The set is
-# listed explicitly rather than discovered: a feed or sitemap would silently stop
-# covering a post that gets re-slugged, and silence is the failure mode this whole
-# script exists to remove.
+# Every published article carrying a claim these rules cover, in both languages. The
+# set is listed explicitly rather than discovered: a feed or sitemap would silently
+# stop covering a post that gets re-slugged, and silence is the failure mode this
+# whole script exists to remove.
+#
+# The list held only the file-portal series until 2026-08-26, and reported PASS while
+# the S3 AP serverless posts carried a claim measurement had just disproved -- FPolicy
+# offered as the answer to the absent S3 event notifications. The rule table was
+# correct; the corpus did not include the articles the claim was in. Adding a rule
+# without checking what the corpus covers proves nothing, which is why the list now
+# names every series a rule can apply to rather than the one it started with.
 ARTICLES = [
     {
         "label": "Part 1 (JA, Hatena)",
@@ -93,6 +101,37 @@ ARTICLES = [
         "url": (
             "https://dev.to/aws-builders/embedding-ai-agents-into-a-file-portal"
             "-from-agentcore-mcp-to-multi-agent-teams-part-3-19m1"
+        ),
+    },
+    # The S3 AP serverless series. Part 4 and Part 5 are the two that offered FPolicy
+    # as the alternative to native S3 event notifications, and both need the
+    # correction in docs/errata-fpolicy-s3ap-coverage.md appended. Until that is
+    # posted this check reports them, which is the intended state: the repository is
+    # corrected and the published copies are not.
+    {
+        "label": "S3 AP Part 4 / Phase 10 (JA, Hatena)",
+        "kind": "hatena",
+        "url": "https://hakobiya.hatenablog.com/entry/fsxn-s3ap-serverless-part4-event-driven-fpolicy",
+    },
+    {
+        "label": "S3 AP Phase 10 (EN, dev.to)",
+        "kind": "devto",
+        "url": (
+            "https://dev.to/aws-builders/fpolicy-event-driven-pipeline-multi-account"
+            "-stacksets-and-cost-optimization-fsx-for-ontap-s3-5bd6"
+        ),
+    },
+    {
+        "label": "S3 AP Part 5 / Phase 13 (JA, Hatena)",
+        "kind": "hatena",
+        "url": "https://hakobiya.hatenablog.com/entry/fsxn-s3ap-serverless-part5-field-ready-28-patterns",
+    },
+    {
+        "label": "S3 AP Phase 13 (EN, dev.to)",
+        "kind": "devto",
+        "url": (
+            "https://dev.to/aws-builders/from-serverless-patterns-to-field-ready"
+            "-reference-architecture-fsx-for-ontap-s3-access-points-dhj"
         ),
     },
 ]
@@ -265,7 +304,12 @@ def main() -> int:
     )
     args = parser.parse_args()
 
-    rules = active_contradictions()
+    # MEASURED_FALSE is appended unconditionally: unlike a CONTRADICTIONS rule it has
+    # no code marker to retire it, and a published article is where this class of
+    # claim is hardest to correct. Two posts in this series offered FPolicy as the
+    # answer to the absent S3 event notifications, which the 2026-08-26 measurement
+    # disproved for the access point path.
+    rules = active_contradictions() + MEASURED_FALSE
     if not rules and not COUNT_CLAIMS:
         print("PUBLISHED ARTICLES: no active claim rules; nothing to check")
         return 0

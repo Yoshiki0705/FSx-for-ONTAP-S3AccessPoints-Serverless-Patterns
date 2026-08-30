@@ -209,3 +209,7 @@ bandit-report.json
 # Copied out of @aws-amplify/ui-react-storage by `npm run copy-sw`, so it tracks the
 # installed package version instead of a committed copy that can drift from it.
 solutions/amplify-portal/public/amplify-storage-download/
+
+# cdk-nag synth output from `npm run nag` in solutions/amplify-portal. A full cloud
+# assembly plus the validation report, regenerated on every run.
+.cdk-nag-out/

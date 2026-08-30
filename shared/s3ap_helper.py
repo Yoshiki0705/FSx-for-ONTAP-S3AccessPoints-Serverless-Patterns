@@ -18,6 +18,7 @@ import logging
 from typing import Iterator
 
 import boto3
+from botocore.config import Config as BotoConfig
 from botocore.exceptions import ClientError
 
 from shared.exceptions import S3ApHelperError
@@ -406,6 +407,52 @@ class S3ApHelper:
                 ) from e
             raise S3ApHelperError(
                 f"Failed to head object '{key}' from S3 Access Point '{self._access_point}': {e}",
+                error_code=error_code,
+            ) from e
+
+    def generate_presigned_get_url(self, key: str, expires_in: int = 300) -> str:
+        """GetObject の presigned URL を生成する
+
+        **この URL は Access Point に固定された ONTAP identity として実行される。**
+        受け取った側は AWS の資格情報を持たないが、Layer 2 の権限はこの identity に
+        対して評価される。実測（2026-08-26 / ONTAP 9.18.1P3D1）では、UNIX root を
+        固定した AP で署名した URL が mode 0700・他 uid 所有のディレクトリの中身を
+        返し、読み取り専用 identity の AP で署名した同じキーは 403 だった。
+        **どの AP で署名するかが認可の実体なので、呼び出し側は AP を利用者の
+        グループから決めること。**
+
+        `self._s3_client` を使わず専用のクライアントを作る。presigned URL は
+        リージョンのエンドポイントと SigV4 を明示した構成で生成する必要があり、
+        既定のクライアントはその構成を持たない。共有すると、既定クライアントの
+        構成変更が署名の成否に波及する。
+
+        Args:
+            key: オブジェクトキー
+            expires_in: 有効期限（秒）
+
+        Returns:
+            str: presigned URL
+
+        Raises:
+            S3ApHelperError: URL 生成に失敗した場合
+        """
+        try:
+            region = self._session.region_name or "ap-northeast-1"
+            signer = self._session.client(
+                "s3",
+                region_name=region,
+                endpoint_url=f"https://s3.{region}.amazonaws.com",
+                config=BotoConfig(signature_version="s3v4"),
+            )
+            return signer.generate_presigned_url(
+                "get_object",
+                Params={"Bucket": self.bucket_param, "Key": key},
+                ExpiresIn=expires_in,
+            )
+        except ClientError as e:
+            error_code = e.response.get("Error", {}).get("Code", "Unknown")
+            raise S3ApHelperError(
+                f"Failed to presign GetObject for '{key}' on S3 Access Point '{self._access_point}': {e}",
                 error_code=error_code,
             ) from e
 

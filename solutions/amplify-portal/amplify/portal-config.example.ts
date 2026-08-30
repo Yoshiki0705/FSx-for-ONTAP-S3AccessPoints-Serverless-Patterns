@@ -25,6 +25,28 @@ export interface PortalConfig {
   stateMachineResourceScope: string;
   s3ApResourceArns: string[];
   groupApMapping: Record<string, string>;
+
+  // Path prefixes per Cognito group. Omit to derive them from `groupApMapping`
+  // (each group gets `<group>/` and `shared/`), which is what happened before this
+  // became configurable. See `portal-config.ts` for why it stayed optional.
+  groupPathPrefixes?: Record<string, string[]>;
+
+  // How accounts come into existence, and what signing in requires.
+  signIn: {
+    selfSignUpEnabled: boolean;
+    mfa: "OFF" | "OPTIONAL" | "REQUIRED";
+  };
+
+  // Emit role-based AppSync rules instead of `allow.authenticated()`.
+  // While false, any signed-in user can write and delete.
+  enforceRoles: boolean;
+
+  // What a caller holding the `external` scope may do, regardless of role.
+  externalDefaults: {
+    aiEnabled: boolean;
+    shareLinksByRole: Record<string, boolean>;
+  };
+
   bedrockKbId: string;
 
   // Bedrock Guardrails (PII detection/masking + content filtering)
@@ -104,6 +126,23 @@ export const config: PortalConfig = {
    * Add bucket ARNs explicitly:
    *   "arn:aws:s3:::your-bucket-name",
    *   "arn:aws:s3:::your-bucket-name/*",
+   *
+   * These ARNs are the resource scope of the Storage Browser's direct path to S3, which
+   * `amplify/direct-s3-access.ts` grants per Cognito group. **Who** may write is the role
+   * (`contributor`, `storage-admin`); **where** is this list. Left as the wildcard, a
+   * contributor writes to any access point in the account, including one belonging to
+   * another group -- the group-to-access-point routing in `groupApMapping` is applied by
+   * the Lambda handlers and does not reach this path. Narrow it before production.
+   *
+   * Two things happen to what you put here, both in `amplify/direct-s3-access.ts`:
+   *
+   *   A `*` in the region or account position is replaced by the deployment's own, so the
+   *   default below grants this account rather than every account. Read the synthesised
+   *   policy if you want to see it; `scopeS3ApArns` is the function.
+   *
+   *   An access-point *name* left as `*` is refused at synth once `groupApMapping` routes
+   *   any group to its own access point, because on this path that wildcard cancels the
+   *   isolation the mapping asks for.
    */
   s3ApResourceArns: [
     "arn:aws:s3:*:*:accesspoint/*",
@@ -120,6 +159,123 @@ export const config: PortalConfig = {
    * Empty = disabled (all users share the default s3ApAlias).
    */
   groupApMapping: {},
+
+  /**
+   * Path prefixes per Cognito group, independent of the access point routing.
+   *
+   * Commented out on purpose: while it is absent, the prefixes are derived from
+   * `groupApMapping` exactly as before. Uncomment when the two need to differ --
+   * separate access points sharing one prefix, or one access point with the
+   * prefixes doing the separating.
+   *
+   * A group absent from this map is unrestricted, so list every group you intend
+   * to confine. `storage-admin` is exempt regardless, unless it also holds
+   * `external`.
+   *
+   *   groupPathPrefixes: {
+   *     "team-a": ["teams/a/", "shared/"],
+   *     "partner-acme": ["exchange/acme/"],
+   *   },
+   */
+
+  /**
+   * How accounts are created, and what signing in requires.
+   */
+  signIn: {
+    /**
+     * Whether anybody may register themselves with a verified email address.
+     *
+     * **False.** The sign-in page is public, so leaving this open means anybody who
+     * reaches it can create an account. Accounts exist because somebody created them,
+     * which is what makes the audit trail worth reading — every account traces back to
+     * whoever issued it.
+     *
+     * Create accounts, including for outside members, deliberately:
+     *
+     *   aws cognito-idp admin-create-user --user-pool-id <pool> \
+     *     --username partner@example.net \
+     *     --user-attributes Name=email,Value=partner@example.net Name=email_verified,Value=true
+     *
+     * Set it to true only for a deployment that wants open registration — a public
+     * demo being the case that does.
+     */
+    selfSignUpEnabled: false,
+
+    /**
+     * Multi-factor authentication: "OFF", "OPTIONAL" or "REQUIRED".
+     *
+     * "OPTIONAL" is what shipped, and it means each user decides — so it is "OFF"
+     * for everyone who does not go looking for it. Use "REQUIRED" when MFA needs to
+     * be true of every session rather than available.
+     */
+    mfa: "OPTIONAL",
+  },
+
+  /**
+   * Emit the role-based AppSync authorization rules.
+   *
+   * **True.** Writes require `contributor` or `storage-admin`; the audit trail requires
+   * `auditor` or `storage-admin`. Reading, previewing, downloading and searching stay
+   * open to any signed-in user.
+   *
+   * The rules name Cognito groups, and a user holding none matches none of them — so a
+   * user who has not been granted a role can browse but not write. That is the intended
+   * state, and it is the state five administrative endpoints have always been in: they
+   * require `storage-admin` regardless of this setting, so a deployment has never been
+   * fully usable until somebody granted a group.
+   *
+   * On a new deployment, grant yourself a role before signing in:
+   *
+   *   make portal-grant-roles ARGS='--apply --assign you@example.com=storage-admin,internal'
+   *
+   * Then sign out and in again. Groups travel in the ID token, so a session opened
+   * before the grant does not carry it — this is also why granting a role to somebody
+   * already signed in does not take effect until they re-authenticate.
+   *
+   * Setting it to false makes `fileMutation` and `folderMutation` accept any signed-in
+   * user, which means any of them can delete anything. Only useful for a demo where
+   * nobody is going to be granted roles at all.
+   */
+  enforceRoles: true,
+
+  /**
+   * Limits applied to a caller holding the `external` scope, whatever their role.
+   *
+   * `external` means a member with no Windows or UNIX account on the file system,
+   * identified only by an email address. Both settings below are about where data
+   * goes rather than who may call what, which is why they are here and not in the
+   * AppSync rules.
+   */
+  externalDefaults: {
+    /**
+     * Whether outside members may use the AI endpoints (summarise, extract text,
+     * ask about a file, detect labels, analyse text, semantic search).
+     *
+     * False sends nothing from their files to a model. Turn it on only when the
+     * data an outside member can reach is cleared for that, and note the calls are
+     * billed per token.
+     */
+    aiEnabled: false,
+
+    /**
+     * Whether outside members may mint share links (presigned URLs and QR codes),
+     * decided per role.
+     *
+     * There is no universal answer, so this is left to the organisation. A share
+     * link is a bearer credential: it works without AWS credentials until it
+     * expires, so whoever the recipient forwards it to has the same access.
+     *
+     * A role absent from this map is denied. `{}` therefore denies everyone, which
+     * is the shipped default.
+     *
+     *   shareLinksByRole: {
+     *     viewer: false,        // may read, may not redistribute
+     *     contributor: true,    // exchanging files with your side is the point
+     *     "storage-admin": true,
+     *   },
+     */
+    shareLinksByRole: {},
+  },
 
   /**
    * Bedrock Knowledge Base ID.
@@ -241,6 +397,23 @@ export const config: PortalConfig = {
   /**
    * Secrets Manager secret containing ONTAP credentials.
    * Secret must have: {"username": "fsxadmin", "password": "..."}
+   *
+   * **Must be the secret for the same file system as `ontapMgmtIp` above.** An account
+   * with two file systems has two `fsxadmin` accounts with two passwords, and pairing one
+   * cluster's address with the other's credentials is not a configuration that merely
+   * fails to connect: ONTAP answers `6691623 "User is not authorized."`, and `fsxadmin`
+   * is measured at `max-failed-login-attempts=5` with `lockout-duration=0` — five
+   * attempts take the cluster's administrative credential out of service, and waiting
+   * does not restore it.
+   *
+   * Tag the secret so the pair can be checked without anybody logging in:
+   *
+   *   aws secretsmanager tag-resource --secret-id <secret> \
+   *     --tags Key=FileSystemId,Value=fs-0123456789abcdef0
+   *
+   * Then `make ontap-preflight FS_ID=fs-0123456789abcdef0` verifies it. Without the tag
+   * that stage reports SKIP rather than passing, because a pair that authenticates
+   * against the wrong cluster is indistinguishable from a correct one until it is tried.
    */
   ontapSecretName: "",
 
