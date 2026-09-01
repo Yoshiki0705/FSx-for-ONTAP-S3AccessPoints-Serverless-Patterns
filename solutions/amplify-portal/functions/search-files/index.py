@@ -125,6 +125,19 @@ def _search_semantic(query: str, max_results: int, allowed: list[str]) -> dict:
                 parts = s3_uri.replace("s3://", "").split("/", 1)
                 file_key = parts[1] if len(parts) > 1 else ""
 
+            # The knowledge base indexes whatever it was pointed at and knows nothing
+            # about the portal's groups, so this is the only place the boundary can be
+            # applied to a semantic result. `allowed` was passed in here and never
+            # used: the handler's docstring claimed both modes were confined while
+            # this one returned keys -- and 500 characters of file content with them --
+            # from outside the caller's prefixes.
+            #
+            # A result whose URI yielded no key is dropped for a confined caller too.
+            # `key_is_visible("", [...])` is False, which is the answer that holds:
+            # nothing here proves the object is inside the boundary.
+            if not key_is_visible(file_key, allowed):
+                continue
+
             results.append(
                 {
                     "fileKey": file_key,
@@ -155,7 +168,7 @@ def _search_semantic(query: str, max_results: int, allowed: list[str]) -> dict:
 def _search_keyword(query: str, max_results: int, ap_alias: str, allowed: list[str]) -> dict:
     """Pattern match search via S3 AP ListObjectsV2."""
     if not ap_alias:
-        return _mock_keyword_search(query, max_results)
+        return _mock_keyword_search(query, max_results, allowed)
 
     try:
         pattern = query.lower()
@@ -202,8 +215,13 @@ def _search_keyword(query: str, max_results: int, ap_alias: str, allowed: list[s
 # --- DemoMode Mock ---
 
 
-def _mock_keyword_search(query: str, max_results: int) -> dict:
-    """Mock keyword search for DemoMode."""
+def _mock_keyword_search(query: str, max_results: int, allowed: list[str]) -> dict:
+    """Mock keyword search for DemoMode.
+
+    Confined the same way as the real path. The data is invented, so nothing leaks
+    either way -- but a demo where the boundary visibly does not apply is a demo of the
+    wrong behaviour, and a test written against it would assert the wrong thing.
+    """
     all_files = [
         "engineering/thermal-spec-v3.pdf",
         "engineering/requirements.md",
@@ -223,9 +241,11 @@ def _mock_keyword_search(query: str, max_results: int) -> dict:
     ]
 
     pattern = query.lower()
-    matches = [{"fileKey": f, "snippet": "", "score": 0, "s3Uri": ""} for f in all_files if pattern in f.lower()][
-        :max_results
-    ]
+    matches = [
+        {"fileKey": f, "snippet": "", "score": 0, "s3Uri": ""}
+        for f in all_files
+        if pattern in f.lower() and key_is_visible(f, allowed)
+    ][:max_results]
 
     return {
         "results": matches,

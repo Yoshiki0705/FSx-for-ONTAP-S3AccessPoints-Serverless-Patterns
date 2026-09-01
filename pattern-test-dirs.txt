@@ -59,6 +59,18 @@ solutions/amplify-portal/functions/thumbnails
 # response, so nothing but these tests reports a regression.
 solutions/amplify-portal/functions/folder-download
 solutions/amplify-portal/functions/presigned-url
+
+# The other four endpoints that take an object key from the client. `shared/` tests
+# cover `portal_path_scope` itself, and covered it while these four call sites went
+# unasserted -- which is a different question, and the answer was not uniformly yes:
+# search's semantic mode accepted the caller's allowed prefixes as a parameter and
+# never referenced them, returning keys and 500 characters of file content from
+# outside the boundary while the handler's docstring said both modes were confined.
+# A primitive with tests and a call site without them looks like coverage.
+solutions/amplify-portal/functions/ask-about-file
+solutions/amplify-portal/functions/file-metadata
+solutions/amplify-portal/functions/generate-qr
+solutions/amplify-portal/functions/search-files
 # The IAM policy property tests. `security/` is also a Makefile target name, which
 # is how the directory came to be treated as build furniture rather than as a place
 # holding 3 tests that assert least-privilege on generated policies.
