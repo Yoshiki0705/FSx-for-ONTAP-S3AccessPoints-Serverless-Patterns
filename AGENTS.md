@@ -12,7 +12,7 @@ CloudFormation/SAM template sharing the Python modules in `shared/`.
 **Two pillars**: `solutions/` (S3 AP data processing) + `operations/` (file system operational
 optimization).
 
-**Test coverage**: ~4,805 Python tests across 281 files + ~470 vitest tests across 33 files.
+**Test coverage**: ~4,805 Python tests across 281 files + ~495 vitest tests across 34 files.
 
 > ファイル数は `make drift` がツリーと照合するので、古くなれば fail する。テスト総数は
 > `make test` / ポータルハンドラの個別実行 / vitest の 3 系統の合計なので概数。誰も保守

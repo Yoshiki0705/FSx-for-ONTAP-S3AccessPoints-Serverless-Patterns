@@ -10,6 +10,12 @@
 # A recorded finding is not a fixed one. The reason above each group is the whole
 # of what is claimed about it; see scripts/check_cdk_nag_baseline.py.
 
+# A Bedrock knowledge-base ARN, for the same reason as `AgentChatLambdaRole`. The S3
+# read beside it goes through the same path scoping as the keyword search.
+AwsSolutions-IAM5[Resource::*]	data/SearchFilesLambdaRole/Resource
+AwsSolutions-IAM5[Resource::arn:aws:s3:<AWS::Region>:<AWS::AccountId>:accesspoint/*/object/*]	data/SearchFilesLambdaRole/Resource
+AwsSolutions-IAM5[Resource::arn:aws:s3:<AWS::Region>:<AWS::AccountId>:accesspoint/*]	data/SearchFilesLambdaRole/Resource
+
 # A CDK-internal custom resource (bucket deployment, log retention). Its role is written
 # by the construct library.
 AwsSolutions-IAM4[Policy::arn:<AWS::Partition>:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole]	data/Custom::CDKBucketDeployment8693BB64968944B69AAFB0CC9EB8756C1536MiB/ServiceRole/Resource
@@ -36,10 +42,45 @@ AwsSolutions-IAM5[Resource::arn:aws:s3:<AWS::Region>:<AWS::AccountId>:accesspoin
 AwsSolutions-IAM5[Resource::arn:aws:s3:<AWS::Region>:<AWS::AccountId>:accesspoint/*]	auth/amplifyAuth/storage-adminGroupRole/DefaultPolicy/Resource
 AwsSolutions-IAM5[Resource::arn:aws:s3:<AWS::Region>:<AWS::AccountId>:accesspoint/*]	auth/amplifyAuth/viewerGroupRole/DefaultPolicy/Resource
 
-# A Lambda role we declare. `AWSLambdaBasicExecutionRole` is the AWS-recommended
-# execution policy; the resource wildcards cover ARNs resolved at deploy time (tables,
-# secrets, Bedrock models) and object keys that cannot be listed in advance. Narrowing
-# each needs a per-endpoint review that has not been done.
+# A resource wildcard on a Lambda role we declare. What remains is object keys, which
+# cannot be listed in advance, and names that arrive as configuration -- see
+# `amplify/least-privilege-arns.ts` for the ARNs that replaced the rest, and for which
+# actions were checked against the service authorization reference to establish that
+# they can carry no resource at all.
+AwsSolutions-IAM5[Resource::*]	data/ListFilesLambdaRole/DefaultPolicy/Resource
+AwsSolutions-IAM5[Resource::<FolderZipTempBucketC40AC626.Arn>/*]	data/FolderDownloadLambdaRole/Resource
+AwsSolutions-IAM5[Resource::<ThumbnailCacheBucket32BC0835.Arn>/*]	data/ThumbnailsLambdaRole/Resource
+AwsSolutions-IAM5[Resource::arn:<AWS::Partition>:glue:<AWS::Region>:<AWS::AccountId>:database/*]	data/AthenaQueryLambdaRole/Resource
+AwsSolutions-IAM5[Resource::arn:<AWS::Partition>:glue:<AWS::Region>:<AWS::AccountId>:database/*]	data/GlueCatalogLambdaRole/Resource
+AwsSolutions-IAM5[Resource::arn:<AWS::Partition>:glue:<AWS::Region>:<AWS::AccountId>:table/*/*]	data/AthenaQueryLambdaRole/Resource
+AwsSolutions-IAM5[Resource::arn:<AWS::Partition>:glue:<AWS::Region>:<AWS::AccountId>:table/*/*]	data/GlueCatalogLambdaRole/Resource
+AwsSolutions-IAM5[Resource::arn:<AWS::Partition>:secretsmanager:<AWS::Region>:<AWS::AccountId>:secret:*]	data/ArpResponseLambdaRole/Resource
+AwsSolutions-IAM5[Resource::arn:<AWS::Partition>:secretsmanager:<AWS::Region>:<AWS::AccountId>:secret:*]	data/ListSnapshotsLambdaRole/Resource
+AwsSolutions-IAM5[Resource::arn:aws:bedrock:*::foundation-model/*]	data/AskAboutFileLambdaRole/Resource
+AwsSolutions-IAM5[Resource::arn:aws:s3:::*athena-results*/*]	data/AthenaQueryLambdaRole/Resource
+AwsSolutions-IAM5[Resource::arn:aws:s3:::*athena-results*]	data/AthenaQueryLambdaRole/Resource
+AwsSolutions-IAM5[Resource::arn:aws:s3:<AWS::Region>:<AWS::AccountId>:accesspoint/*/object/*]	data/AskAboutFileLambdaRole/Resource
+AwsSolutions-IAM5[Resource::arn:aws:s3:<AWS::Region>:<AWS::AccountId>:accesspoint/*/object/*]	data/AthenaQueryLambdaRole/Resource
+AwsSolutions-IAM5[Resource::arn:aws:s3:<AWS::Region>:<AWS::AccountId>:accesspoint/*/object/*]	data/FolderDownloadLambdaRole/Resource
+AwsSolutions-IAM5[Resource::arn:aws:s3:<AWS::Region>:<AWS::AccountId>:accesspoint/*/object/*]	data/GenerateQrCodeLambdaRole/Resource
+AwsSolutions-IAM5[Resource::arn:aws:s3:<AWS::Region>:<AWS::AccountId>:accesspoint/*/object/*]	data/GetPresignedUrlLambdaRole/Resource
+AwsSolutions-IAM5[Resource::arn:aws:s3:<AWS::Region>:<AWS::AccountId>:accesspoint/*/object/*]	data/ListFilesLambdaRole/Resource
+AwsSolutions-IAM5[Resource::arn:aws:s3:<AWS::Region>:<AWS::AccountId>:accesspoint/*/object/*]	data/ThumbnailsLambdaRole/Resource
+AwsSolutions-IAM5[Resource::arn:aws:s3:<AWS::Region>:<AWS::AccountId>:accesspoint/*]	data/AskAboutFileLambdaRole/Resource
+AwsSolutions-IAM5[Resource::arn:aws:s3:<AWS::Region>:<AWS::AccountId>:accesspoint/*]	data/AthenaQueryLambdaRole/Resource
+AwsSolutions-IAM5[Resource::arn:aws:s3:<AWS::Region>:<AWS::AccountId>:accesspoint/*]	data/FolderDownloadLambdaRole/Resource
+AwsSolutions-IAM5[Resource::arn:aws:s3:<AWS::Region>:<AWS::AccountId>:accesspoint/*]	data/GenerateQrCodeLambdaRole/Resource
+AwsSolutions-IAM5[Resource::arn:aws:s3:<AWS::Region>:<AWS::AccountId>:accesspoint/*]	data/GetPresignedUrlLambdaRole/Resource
+AwsSolutions-IAM5[Resource::arn:aws:s3:<AWS::Region>:<AWS::AccountId>:accesspoint/*]	data/ListFilesLambdaRole/Resource
+AwsSolutions-IAM5[Resource::arn:aws:s3:<AWS::Region>:<AWS::AccountId>:accesspoint/*]	data/ThumbnailsLambdaRole/Resource
+
+# An AWS managed execution policy on a Lambda role we declare:
+# `AWSLambdaBasicExecutionRole` for CloudWatch Logs, and
+# `AWSLambdaVPCAccessExecutionRole` on the one function that reaches the ONTAP
+# management LIF. Both are the AWS-recommended policy for what they grant. Replacing the
+# logs one with an inline policy needs the log group name, which derives from the
+# function name CDK generates -- so the wildcard moves from the policy to the resource
+# rather than going away.
 AwsSolutions-IAM4[Policy::arn:<AWS::Partition>:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole]	data/AgentChatLambdaRole/Resource
 AwsSolutions-IAM4[Policy::arn:<AWS::Partition>:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole]	data/ArpResponseLambdaRole/Resource
 AwsSolutions-IAM4[Policy::arn:<AWS::Partition>:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole]	data/AskAboutFileLambdaRole/Resource
@@ -54,55 +95,13 @@ AwsSolutions-IAM4[Policy::arn:<AWS::Partition>:iam::aws:policy/service-role/AWSL
 AwsSolutions-IAM4[Policy::arn:<AWS::Partition>:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole]	data/ListFilesLambdaRole/Resource
 AwsSolutions-IAM4[Policy::arn:<AWS::Partition>:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole]	data/ListSnapshotsLambdaRole/Resource
 AwsSolutions-IAM4[Policy::arn:<AWS::Partition>:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole]	data/NotificationBridgeLambdaRole/Resource
+AwsSolutions-IAM4[Policy::arn:<AWS::Partition>:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole]	data/PlatformDiscoveryFunction/ServiceRole/Resource
 AwsSolutions-IAM4[Policy::arn:<AWS::Partition>:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole]	data/QueryAuditLogLambdaRole/Resource
 AwsSolutions-IAM4[Policy::arn:<AWS::Partition>:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole]	data/ResourceMgmtLambdaRole/Resource
 AwsSolutions-IAM4[Policy::arn:<AWS::Partition>:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole]	data/SearchFilesLambdaRole/Resource
 AwsSolutions-IAM4[Policy::arn:<AWS::Partition>:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole]	data/TextractLambdaRole/Resource
 AwsSolutions-IAM4[Policy::arn:<AWS::Partition>:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole]	data/ThumbnailsLambdaRole/Resource
 AwsSolutions-IAM4[Policy::arn:<AWS::Partition>:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole]	data/ListSnapshotsLambdaRole/Resource
-AwsSolutions-IAM5[Resource::*]	data/AgentChatLambdaRole/Resource
-AwsSolutions-IAM5[Resource::*]	data/ArpResponseLambdaRole/Resource
-AwsSolutions-IAM5[Resource::*]	data/AskAboutFileLambdaRole/Resource
-AwsSolutions-IAM5[Resource::*]	data/AthenaQueryLambdaRole/Resource
-AwsSolutions-IAM5[Resource::*]	data/ComprehendLambdaRole/Resource
-AwsSolutions-IAM5[Resource::*]	data/DetectLabelsLambdaRole/Resource
-AwsSolutions-IAM5[Resource::*]	data/GetFileMetadataLambdaRole/Resource
-AwsSolutions-IAM5[Resource::*]	data/GlueCatalogLambdaRole/Resource
-AwsSolutions-IAM5[Resource::*]	data/ListFilesLambdaRole/DefaultPolicy/Resource
-AwsSolutions-IAM5[Resource::*]	data/ListSnapshotsLambdaRole/Resource
-AwsSolutions-IAM5[Resource::*]	data/QueryAuditLogLambdaRole/Resource
-AwsSolutions-IAM5[Resource::*]	data/ResourceMgmtLambdaRole/Resource
-AwsSolutions-IAM5[Resource::*]	data/SearchFilesLambdaRole/Resource
-AwsSolutions-IAM5[Resource::*]	data/TextractLambdaRole/Resource
-AwsSolutions-IAM5[Resource::<FolderZipTempBucketC40AC626.Arn>/*]	data/FolderDownloadLambdaRole/Resource
-AwsSolutions-IAM5[Resource::<ThumbnailCacheBucket32BC0835.Arn>/*]	data/ThumbnailsLambdaRole/Resource
-AwsSolutions-IAM5[Resource::arn:aws:bedrock:*::foundation-model/*]	data/AskAboutFileLambdaRole/Resource
-AwsSolutions-IAM5[Resource::arn:aws:s3:::*athena-results*/*]	data/AthenaQueryLambdaRole/Resource
-AwsSolutions-IAM5[Resource::arn:aws:s3:::*athena-results*]	data/AthenaQueryLambdaRole/Resource
-AwsSolutions-IAM5[Resource::arn:aws:s3:<AWS::Region>:<AWS::AccountId>:accesspoint/*/object/*]	data/AgentChatLambdaRole/Resource
-AwsSolutions-IAM5[Resource::arn:aws:s3:<AWS::Region>:<AWS::AccountId>:accesspoint/*/object/*]	data/AskAboutFileLambdaRole/Resource
-AwsSolutions-IAM5[Resource::arn:aws:s3:<AWS::Region>:<AWS::AccountId>:accesspoint/*/object/*]	data/AthenaQueryLambdaRole/Resource
-AwsSolutions-IAM5[Resource::arn:aws:s3:<AWS::Region>:<AWS::AccountId>:accesspoint/*/object/*]	data/ComprehendLambdaRole/Resource
-AwsSolutions-IAM5[Resource::arn:aws:s3:<AWS::Region>:<AWS::AccountId>:accesspoint/*/object/*]	data/DetectLabelsLambdaRole/Resource
-AwsSolutions-IAM5[Resource::arn:aws:s3:<AWS::Region>:<AWS::AccountId>:accesspoint/*/object/*]	data/FolderDownloadLambdaRole/Resource
-AwsSolutions-IAM5[Resource::arn:aws:s3:<AWS::Region>:<AWS::AccountId>:accesspoint/*/object/*]	data/GenerateQrCodeLambdaRole/Resource
-AwsSolutions-IAM5[Resource::arn:aws:s3:<AWS::Region>:<AWS::AccountId>:accesspoint/*/object/*]	data/GetPresignedUrlLambdaRole/Resource
-AwsSolutions-IAM5[Resource::arn:aws:s3:<AWS::Region>:<AWS::AccountId>:accesspoint/*/object/*]	data/ListFilesLambdaRole/Resource
-AwsSolutions-IAM5[Resource::arn:aws:s3:<AWS::Region>:<AWS::AccountId>:accesspoint/*/object/*]	data/SearchFilesLambdaRole/Resource
-AwsSolutions-IAM5[Resource::arn:aws:s3:<AWS::Region>:<AWS::AccountId>:accesspoint/*/object/*]	data/TextractLambdaRole/Resource
-AwsSolutions-IAM5[Resource::arn:aws:s3:<AWS::Region>:<AWS::AccountId>:accesspoint/*/object/*]	data/ThumbnailsLambdaRole/Resource
-AwsSolutions-IAM5[Resource::arn:aws:s3:<AWS::Region>:<AWS::AccountId>:accesspoint/*]	data/AgentChatLambdaRole/Resource
-AwsSolutions-IAM5[Resource::arn:aws:s3:<AWS::Region>:<AWS::AccountId>:accesspoint/*]	data/AskAboutFileLambdaRole/Resource
-AwsSolutions-IAM5[Resource::arn:aws:s3:<AWS::Region>:<AWS::AccountId>:accesspoint/*]	data/AthenaQueryLambdaRole/Resource
-AwsSolutions-IAM5[Resource::arn:aws:s3:<AWS::Region>:<AWS::AccountId>:accesspoint/*]	data/ComprehendLambdaRole/Resource
-AwsSolutions-IAM5[Resource::arn:aws:s3:<AWS::Region>:<AWS::AccountId>:accesspoint/*]	data/DetectLabelsLambdaRole/Resource
-AwsSolutions-IAM5[Resource::arn:aws:s3:<AWS::Region>:<AWS::AccountId>:accesspoint/*]	data/FolderDownloadLambdaRole/Resource
-AwsSolutions-IAM5[Resource::arn:aws:s3:<AWS::Region>:<AWS::AccountId>:accesspoint/*]	data/GenerateQrCodeLambdaRole/Resource
-AwsSolutions-IAM5[Resource::arn:aws:s3:<AWS::Region>:<AWS::AccountId>:accesspoint/*]	data/GetPresignedUrlLambdaRole/Resource
-AwsSolutions-IAM5[Resource::arn:aws:s3:<AWS::Region>:<AWS::AccountId>:accesspoint/*]	data/ListFilesLambdaRole/Resource
-AwsSolutions-IAM5[Resource::arn:aws:s3:<AWS::Region>:<AWS::AccountId>:accesspoint/*]	data/SearchFilesLambdaRole/Resource
-AwsSolutions-IAM5[Resource::arn:aws:s3:<AWS::Region>:<AWS::AccountId>:accesspoint/*]	data/TextractLambdaRole/Resource
-AwsSolutions-IAM5[Resource::arn:aws:s3:<AWS::Region>:<AWS::AccountId>:accesspoint/*]	data/ThumbnailsLambdaRole/Resource
 
 # AppSync and its table manager are generated by Amplify `defineData`. The wildcards are
 # in roles Amplify writes, scoped to resources whose names are only known at deploy
@@ -123,6 +122,7 @@ AwsSolutions-IAM5[Resource::<GetPresignedUrlFunction9444582E.Arn>:*]	data/amplif
 AwsSolutions-IAM5[Resource::<GlueCatalogFunction1332991A.Arn>:*]	data/amplifyData/L2GraphqlApi/GlueCatalogLambdaDataSource/ServiceRole/DefaultPolicy/Resource
 AwsSolutions-IAM5[Resource::<ListFilesFunction1C81569A.Arn>:*]	data/amplifyData/L2GraphqlApi/ListFilesLambdaDataSource/ServiceRole/DefaultPolicy/Resource
 AwsSolutions-IAM5[Resource::<ListSnapshotsFunction17EE7098.Arn>:*]	data/amplifyData/L2GraphqlApi/ListSnapshotsLambdaDataSource/ServiceRole/DefaultPolicy/Resource
+AwsSolutions-IAM5[Resource::<PlatformDiscoveryFunction75A219A3.Arn>:*]	data/amplifyData/L2GraphqlApi/PlatformDiscoveryLambdaDataSource/ServiceRole/DefaultPolicy/Resource
 AwsSolutions-IAM5[Resource::<QueryAuditLogFunction1B934D98.Arn>:*]	data/amplifyData/L2GraphqlApi/QueryAuditLogLambdaDataSource/ServiceRole/DefaultPolicy/Resource
 AwsSolutions-IAM5[Resource::<ResourceMgmtFunction962E93B1.Arn>:*]	data/amplifyData/L2GraphqlApi/ResourceMgmtLambdaDataSource/ServiceRole/DefaultPolicy/Resource
 AwsSolutions-IAM5[Resource::<SearchFilesFunction8BB2D99D.Arn>:*]	data/amplifyData/L2GraphqlApi/SearchFilesLambdaDataSource/ServiceRole/DefaultPolicy/Resource
@@ -140,6 +140,14 @@ AwsSolutions-IAM5[Resource::["arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AW
 AwsSolutions-IAM5[Resource::["arn:${AWS::Partition}:lambda:${AWS::Region}:${AWS::AccountId}:function:*TableManager*",{}]]	data/amplifyData/AmplifyTableManager/AmplifyManagedTableIsCompleteRole/Resource
 AwsSolutions-IAM5[Resource::["arn:${AWS::Partition}:lambda:${AWS::Region}:${AWS::AccountId}:function:*TableManager*",{}]]	data/amplifyData/AmplifyTableManager/AmplifyManagedTableOnEventRole/Resource
 
+# Bedrock model and knowledge-base ARNs, left wildcarded deliberately: the usable form
+# depends on whether the deployment calls a foundation model, an inference profile or a
+# cross-region profile, and a narrowing that guesses wrong disables the AI features
+# silently rather than failing at deploy. See `docs/bedrock-inference-profiles.md`.
+AwsSolutions-IAM5[Resource::*]	data/AgentChatLambdaRole/Resource
+AwsSolutions-IAM5[Resource::arn:aws:s3:<AWS::Region>:<AWS::AccountId>:accesspoint/*/object/*]	data/AgentChatLambdaRole/Resource
+AwsSolutions-IAM5[Resource::arn:aws:s3:<AWS::Region>:<AWS::AccountId>:accesspoint/*]	data/AgentChatLambdaRole/Resource
+
 # Cognito configured by Amplify `defineAuth`. MFA is a deployment choice exposed as
 # `signIn.mfa`; the advanced-security and password-policy rules cover settings Amplify
 # does not surface.
@@ -156,9 +164,56 @@ AwsSolutions-DDB3	data/ChatHistoryTable/Resource
 # resets them to their defaults and an administrator sets them again.
 AwsSolutions-DDB3	data/PortalSettingsTable/Resource
 
+# Reading the CloudTrail objects the query scans: Athena reads them with this role's
+# credentials, and the bucket holding them is not portal configuration -- it is wherever
+# the Glue table's `Location` points, set up outside this stack. The Athena workgroup,
+# database and table beside it are named exactly, and the output location is named once
+# `ATHENA_AUDIT_OUTPUT` is set.
+AwsSolutions-IAM5[Resource::*]	data/QueryAuditLogLambdaRole/Resource
+
+# The AI metadata table, which the portal does not create -- an operator names an
+# existing one, and it is unset in `portal-config.example.ts`. Named once set; `*` while
+# unset, because an ARN built from an empty name addresses no table and would deny every
+# read as though the grant were broken.
+AwsSolutions-IAM5[Resource::*]	data/GetFileMetadataLambdaRole/Resource
+
 # The Storage Browser's S3 scope, which is `s3ApResourceArns` from `portal-config.ts`.
 # The account and region are filled in from the deployment, so what remains wildcarded
 # is the access point name and the object key. A key cannot be enumerated in advance; an
 # access-point wildcard is refused at synth once `groupApMapping` is in use.
 AwsSolutions-IAM5[Resource::arn:aws:s3:<AWS::Region>:<AWS::AccountId>:accesspoint/*/object/*]	auth/amplifyAuth/authenticatedUserRole/DefaultPolicy/Resource
 AwsSolutions-IAM5[Resource::arn:aws:s3:<AWS::Region>:<AWS::AccountId>:accesspoint/*]	auth/amplifyAuth/authenticatedUserRole/DefaultPolicy/Resource
+
+# `comprehend:DetectSentiment` and `DetectKeyPhrases` define no resource type, and
+# `DetectEntities` defines only an optional custom `entity-recognizer-endpoint` this
+# portal does not create. There is nothing to name.
+AwsSolutions-IAM5[Resource::*]	data/ComprehendLambdaRole/Resource
+AwsSolutions-IAM5[Resource::arn:aws:s3:<AWS::Region>:<AWS::AccountId>:accesspoint/*/object/*]	data/ComprehendLambdaRole/Resource
+AwsSolutions-IAM5[Resource::arn:aws:s3:<AWS::Region>:<AWS::AccountId>:accesspoint/*]	data/ComprehendLambdaRole/Resource
+
+# `fsx:DescribeFileSystems`, `fsx:DescribeStorageVirtualMachines` and
+# `ec2:DescribeRegions` define no resource type -- they enumerate, and an enumeration
+# cannot be restricted to the resources it is meant to find. The cross-account
+# `sts:AssumeRole` beside them names `discoveryAccounts` exactly.
+AwsSolutions-IAM5[Resource::*]	data/PlatformDiscoveryFunction/ServiceRole/DefaultPolicy/Resource
+
+# `rekognition:DetectLabels` takes image bytes or an S3 reference rather than a
+# resource; AWS's own identity-based policy example for it grants `*`. The S3 read
+# beside it is scoped to `s3ApResourceArns`.
+AwsSolutions-IAM5[Resource::*]	data/DetectLabelsLambdaRole/Resource
+AwsSolutions-IAM5[Resource::arn:aws:s3:<AWS::Region>:<AWS::AccountId>:accesspoint/*/object/*]	data/DetectLabelsLambdaRole/Resource
+AwsSolutions-IAM5[Resource::arn:aws:s3:<AWS::Region>:<AWS::AccountId>:accesspoint/*]	data/DetectLabelsLambdaRole/Resource
+
+# `s3:ListAllMyBuckets` is account-level and defines no resource type; it sits in a
+# statement of its own so that the bucket-level actions beside it are not held open with
+# it. Those name `s3ObjectLockBucket` once it is configured, and it is unset in
+# `portal-config.example.ts`, which is what this baseline is measured against.
+AwsSolutions-IAM5[Resource::*]	data/ResourceMgmtLambdaRole/Resource
+AwsSolutions-IAM5[Resource::arn:<AWS::Partition>:secretsmanager:<AWS::Region>:<AWS::AccountId>:secret:*]	data/ResourceMgmtLambdaRole/Resource
+
+# `textract:DetectDocumentText` and `AnalyzeDocument` define only `adapter` and
+# `adapterversion`, neither of which this portal creates. The S3 read beside it is
+# scoped to `s3ApResourceArns`.
+AwsSolutions-IAM5[Resource::*]	data/TextractLambdaRole/Resource
+AwsSolutions-IAM5[Resource::arn:aws:s3:<AWS::Region>:<AWS::AccountId>:accesspoint/*/object/*]	data/TextractLambdaRole/Resource
+AwsSolutions-IAM5[Resource::arn:aws:s3:<AWS::Region>:<AWS::AccountId>:accesspoint/*]	data/TextractLambdaRole/Resource

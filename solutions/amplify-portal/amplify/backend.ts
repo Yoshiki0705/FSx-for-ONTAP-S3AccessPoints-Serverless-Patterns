@@ -3,6 +3,15 @@ import { auth } from "./auth/resource";
 import { data } from "./data/resource";
 import { config } from "./portal-config";
 import {
+  athenaWorkGroupArn,
+  bucketAndObjects,
+  dynamoTableArn,
+  glueAnyDatabaseArns,
+  glueReadArns,
+  ontapSecretArn,
+  s3UriBucketArns,
+} from "./least-privilege-arns";
+import {
   DIRECT_S3_BY_GROUP,
   S3_READ_ACTIONS,
   directS3Problems,
@@ -156,6 +165,33 @@ if (!config.signIn.selfSignUpEnabled) {
 // See `scopeS3ApArns`: the shipped default grants every access point in every account, and
 // nothing needs that. The access point *name* is left as configured -- that is the wildcard
 // that matters for tenant isolation, and only the operator knows which names exist.
+
+// Athena and Glue names, read once so that the IAM policy and the handler's environment
+// come from the same value. While the policies were `*` the two could not disagree; now
+// that the audit grant names a workgroup, a database and a table -- the three the audit
+// handler reads from its environment -- a separate literal in each place would be two
+// truths about one query, and the one that drifts would surface as an access denial.
+const AUDIT_ATHENA_WORKGROUP = process.env.ATHENA_AUDIT_WORKGROUP || "primary";
+const AUDIT_ATHENA_DATABASE = process.env.ATHENA_AUDIT_DATABASE || "cloudtrail_logs";
+const AUDIT_ATHENA_TABLE = process.env.ATHENA_AUDIT_TABLE || "cloudtrail_s3_events";
+const ANALYTICS_ATHENA_WORKGROUP = process.env.ATHENA_WORKGROUP || "primary";
+
+// Passed to `least-privilege-arns` rather than read there, so those functions stay pure and
+// their output is assertable. These resolve per stack at deploy time.
+const DEPLOYMENT = {
+  partition: Aws.PARTITION,
+  region: Aws.REGION,
+  account: Aws.ACCOUNT_ID,
+};
+
+// Resources the portal does not create: the operator points it at existing ones. Each is read
+// once so the IAM policy and the handler's environment cannot name different things, and each
+// may be unset -- see the call sites for what an unset value grants.
+const AI_METADATA_TABLE_NAME = process.env.AI_METADATA_TABLE_NAME || "";
+const AI_METADATA_TABLE_ARN = dynamoTableArn(AI_METADATA_TABLE_NAME, DEPLOYMENT);
+const AUDIT_ATHENA_OUTPUT = process.env.ATHENA_AUDIT_OUTPUT || "";
+const AUDIT_ATHENA_OUTPUT_ARNS = s3UriBucketArns(AUDIT_ATHENA_OUTPUT, DEPLOYMENT);
+
 const s3ApArns = scopeS3ApArns(config.s3ApResourceArns, {
   account: Aws.ACCOUNT_ID,
   region: Aws.REGION,
@@ -1123,7 +1159,9 @@ const listSnapshotsRole = new iam.Role(dataStack, "ListSnapshotsLambdaRole", {
       statements: [
         new iam.PolicyStatement({
           actions: ["secretsmanager:GetSecretValue"],
-          resources: ["*"], // Restrict to specific secret ARN in production
+          // The one secret this deployment reads. The trailing wildcard is the six
+          // characters Secrets Manager appends to a name, not a second secret.
+          resources: [ontapSecretArn(config.ontapSecretName, DEPLOYMENT)],
         }),
       ],
     }),
@@ -1187,7 +1225,9 @@ const arpResponseRole = new iam.Role(dataStack, "ArpResponseLambdaRole", {
       statements: [
         new iam.PolicyStatement({
           actions: ["secretsmanager:GetSecretValue"],
-          resources: ["*"], // Restrict to ONTAP_SECRET_NAME ARN in production
+          // The one secret this deployment reads. The trailing wildcard is the six
+          // characters Secrets Manager appends to a name, not a second secret.
+          resources: [ontapSecretArn(config.ontapSecretName, DEPLOYMENT)],
         }),
         new iam.PolicyStatement({
           // Scan is needed by the expiry sweep, which has to find due rows
@@ -1517,11 +1557,28 @@ const resourceMgmtRole = new iam.Role(dataStack, "ResourceMgmtLambdaRole", {
       statements: [
         new iam.PolicyStatement({
           actions: ["secretsmanager:GetSecretValue"],
-          resources: ["*"], // Restrict to ONTAP_SECRET_NAME ARN in production
+          // The one secret this deployment reads. The trailing wildcard is the six
+          // characters Secrets Manager appends to a name, not a second secret.
+          resources: [ontapSecretArn(config.ontapSecretName, DEPLOYMENT)],
         }),
         new iam.PolicyStatement({
-          actions: ["s3:GetBucketObjectLockConfiguration", "s3:GetBucketVersioning", "s3:ListAllMyBuckets", "s3:PutBucketObjectLockConfiguration"],
-          resources: ["*"], // Restrict to S3_OBJECT_LOCK_BUCKET ARN in production
+          // Split from the bucket-level actions below: `ListAllMyBuckets` is an
+          // account-level operation and defines no resource type, so it cannot be
+          // narrowed. Left in one statement, it held the other three at `*` as well.
+          actions: ["s3:ListAllMyBuckets"],
+          resources: ["*"],
+        }),
+        new iam.PolicyStatement({
+          actions: [
+            "s3:GetBucketObjectLockConfiguration",
+            "s3:GetBucketVersioning",
+            "s3:PutBucketObjectLockConfiguration",
+          ],
+          // Named once the operator configures the bucket. `*` while unset, because the
+          // bucket they mean is not known and a policy naming none refuses every call.
+          resources: config.s3ObjectLockBucket
+            ? bucketAndObjects(`arn:${Aws.PARTITION}:s3:::${config.s3ObjectLockBucket}`)
+            : ["*"],
         }),
         new iam.PolicyStatement({
           actions: ["dynamodb:GetItem", "dynamodb:PutItem", "dynamodb:Scan"],
@@ -1729,15 +1786,31 @@ const queryAuditLogRole = new iam.Role(dataStack, "QueryAuditLogLambdaRole", {
             "athena:GetQueryExecution",
             "athena:GetQueryResults",
           ],
-          resources: ["*"], // Restrict to specific Athena WorkGroup ARN in production
+          // The workgroup the handler names in ATHENA_WORKGROUP below.
+          resources: [athenaWorkGroupArn(AUDIT_ATHENA_WORKGROUP, DEPLOYMENT)],
         }),
         new iam.PolicyStatement({
+          // Where Athena writes the result set. Named once configured; `*` while unset,
+          // because the handler refuses to query at all without an output location and a
+          // grant naming no bucket would deny the write.
           actions: ["s3:GetObject", "s3:ListBucket", "s3:PutObject"],
-          resources: ["*"], // Restrict to CloudTrail + Athena output buckets in production
+          resources: AUDIT_ATHENA_OUTPUT_ARNS ?? ["*"],
+        }),
+        new iam.PolicyStatement({
+          // Reading the CloudTrail objects the query scans. Athena reads them with this
+          // role's credentials, and the bucket holding them is not portal configuration --
+          // it is wherever the Glue table's `Location` points, which the operator set up
+          // outside this stack. Split from the statement above so that narrowing the output
+          // location does not have to wait on knowing the source bucket.
+          actions: ["s3:GetObject"],
+          resources: ["*"],
         }),
         new iam.PolicyStatement({
           actions: ["glue:GetTable", "glue:GetDatabase", "glue:GetPartitions"],
-          resources: ["*"], // Restrict to specific Glue database/tables in production
+          // Catalog, database and table: Glue authorizes a table read against all three.
+          // Named exactly, because this handler reads `ATHENA_DATABASE`.`ATHENA_TABLE` from
+          // its environment and takes neither from the request.
+          resources: glueReadArns(AUDIT_ATHENA_DATABASE, DEPLOYMENT, AUDIT_ATHENA_TABLE),
         }),
       ],
     }),
@@ -1755,10 +1828,10 @@ const queryAuditLogFunction = new lambda.Function(
     role: queryAuditLogRole,
     environment: {
       S3_AP_ALIAS: config.s3ApAlias,
-      ATHENA_DATABASE: process.env.ATHENA_AUDIT_DATABASE || "cloudtrail_logs",
-      ATHENA_TABLE: process.env.ATHENA_AUDIT_TABLE || "cloudtrail_s3_events",
-      ATHENA_OUTPUT_LOCATION:
-        process.env.ATHENA_AUDIT_OUTPUT || "",
+      ATHENA_WORKGROUP: AUDIT_ATHENA_WORKGROUP,
+      ATHENA_DATABASE: AUDIT_ATHENA_DATABASE,
+      ATHENA_TABLE: AUDIT_ATHENA_TABLE,
+      ATHENA_OUTPUT_LOCATION: AUDIT_ATHENA_OUTPUT,
       // The second source. `source: "PORTAL"` reads this instead of Athena.
       URL_AUDIT_TABLE_NAME: activityLedgerTableName,
     },
@@ -1796,7 +1869,10 @@ const getFileMetadataRole = new iam.Role(dataStack, "GetFileMetadataLambdaRole",
       statements: [
         new iam.PolicyStatement({
           actions: ["dynamodb:BatchGetItem", "dynamodb:GetItem"],
-          resources: ["*"],
+          // The AI metadata table, which the portal does not create -- the operator names an
+          // existing one. `*` while unset, because a name-less ARN addresses no table and
+          // would deny every read for a reason that reads as a broken grant.
+          resources: AI_METADATA_TABLE_ARN ? [AI_METADATA_TABLE_ARN] : ["*"],
         }),
       ],
     }),
@@ -1817,7 +1893,7 @@ const getFileMetadataFunction = new lambda.Function(
       // the client, and took neither: the access point decides which ONTAP identity
       // reads the file, the prefixes decide whether this caller may name that key.
       GROUP_PATH_PREFIXES: JSON.stringify(groupPathPrefixes),
-      AI_METADATA_TABLE_NAME: process.env.AI_METADATA_TABLE_NAME || "",
+      AI_METADATA_TABLE_NAME,
     },
     // Imports `shared.portal_path_scope` and `shared.s3ap_helper`. Without the
     // layer the function fails at import.
@@ -1903,7 +1979,8 @@ const askAboutFileRole = new iam.Role(dataStack, "AskAboutFileLambdaRole", {
         }),
         new iam.PolicyStatement({
           actions: ["dynamodb:GetItem"],
-          resources: ["*"], // Restrict to specific classification table ARN in production
+          // The table the handler reads its classification rules from.
+          resources: [portalSettingsTable.tableArn],
         }),
       ],
     }),
@@ -2015,7 +2092,8 @@ const athenaQueryRole = new iam.Role(dataStack, "AthenaQueryLambdaRole", {
             "athena:GetQueryResults",
             "athena:StopQueryExecution",
           ],
-          resources: ["*"],
+          // The workgroup the handler names in ATHENA_WORKGROUP below.
+          resources: [athenaWorkGroupArn(ANALYTICS_ATHENA_WORKGROUP, DEPLOYMENT)],
         }),
         new iam.PolicyStatement({
           actions: [
@@ -2025,7 +2103,10 @@ const athenaQueryRole = new iam.Role(dataStack, "AthenaQueryLambdaRole", {
             "glue:GetDatabases",
             "glue:GetPartitions",
           ],
-          resources: ["*"],
+          // Every database, because the handler queries `event["database"]`. See
+          // `glueAnyDatabaseArns`: still bound to this account and Region, and still
+          // grants nothing on crawlers, jobs or connections.
+          resources: glueAnyDatabaseArns(DEPLOYMENT),
         }),
         new iam.PolicyStatement({
           actions: ["s3:GetObject", "s3:PutObject", "s3:ListBucket", "s3:GetBucketLocation"],
@@ -2050,7 +2131,7 @@ const athenaQueryFunction = new lambda.Function(
     code: functionCode("functions/athena-query"),
     role: athenaQueryRole,
     environment: {
-      ATHENA_WORKGROUP: "primary",
+      ATHENA_WORKGROUP: ANALYTICS_ATHENA_WORKGROUP,
       ATHENA_OUTPUT_LOCATION: "",
     },
     memorySize: 256,
@@ -2190,7 +2271,9 @@ const glueCatalogRole = new iam.Role(dataStack, "GlueCatalogLambdaRole", {
             "glue:GetTable",
             "glue:GetPartitions",
           ],
-          resources: ["*"],
+          // Every database, because this is the catalog browser: it lists what the account
+          // holds and opens whichever the user picks. See `glueAnyDatabaseArns`.
+          resources: glueAnyDatabaseArns(DEPLOYMENT),
         }),
       ],
     }),
