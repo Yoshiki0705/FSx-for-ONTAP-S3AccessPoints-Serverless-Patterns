@@ -40,9 +40,15 @@ export default defineConfig({
     globals: true,
     environment: "jsdom",
     setupFiles: ["./tests/setup.ts"],
-    // tests/e2e holds Playwright specs, which import @playwright/test. That is
-    // intentionally not a package.json dependency (the e2e workflow provisions
-    // it via npx), so Vitest must not try to collect those files.
+    // tests/e2e holds Playwright specs, which drive a real browser against a deployed
+    // portal. Vitest must not collect them: jsdom has no layout engine, and the specs
+    // expect a session.
+    //
+    // `@playwright/test` used to be left out of package.json on the grounds that "the
+    // e2e workflow provisions it via npx". It does not -- `npx playwright install`
+    // fetches browsers, and the runner is a separate package -- so the workflow failed
+    // while loading its config and the specs had never run. It is a devDependency now,
+    // pinned exactly, because the runner and the browser build have to match.
     exclude: ["node_modules/**", "dist/**", "tests/e2e/**"],
   },
 });

@@ -1,3 +1,16 @@
+# Portal E2E: a browser against a deployed portal.
+#
+# Dispatch-only, deliberately. There was a weekly schedule, and it could not have
+# worked: with no `portal_url` input the run fell back to `http://localhost:5173`,
+# `playwright.config.ts` disables its `webServer` whenever `CI` is set, and so nothing
+# served the app. It also never installed the test runner -- `@playwright/test` was not
+# a dependency and `npx playwright install` provisions browsers, not the runner -- so
+# every Sunday for weeks the job failed while loading the config, before reaching a
+# single assertion.
+#
+# A schedule could return once there is a long-lived deployment to point at and
+# credentials for it. Until then it would either fail for want of a target or pass with
+# everything skipped, and a green run that checked nothing is the worse of the two.
 name: Portal E2E Tests
 
 on:
@@ -7,8 +20,6 @@ on:
         description: "Deployed portal URL (e.g., https://main.d1234.amplifyapp.com)"
         required: true
         type: string
-  schedule:
-    - cron: "0 9 * * 0"  # Weekly Sunday 09:00 UTC
 
 permissions:
   contents: read
@@ -32,12 +43,20 @@ jobs:
 
       - run: npm ci
 
+      # The browsers. `@playwright/test` itself comes from `npm ci` above, pinned to an
+      # exact version so the runner and the browser build cannot disagree.
       - run: npx playwright install --with-deps chromium
 
-      - name: Run E2E smoke tests
+      # Both specs sign in and skip when PORTAL_USER / PORTAL_PASSWORD are absent, so a
+      # run without the secrets reports "not checked" rather than failing on a login
+      # screen it was never given a way past. Read the skip count: all-skipped means
+      # this job proved nothing.
+      - name: Run E2E tests
         run: npx playwright test
         env:
-          PORTAL_URL: ${{ inputs.portal_url || 'http://localhost:5173' }}
+          PORTAL_URL: ${{ inputs.portal_url }}
+          PORTAL_USER: ${{ secrets.PORTAL_USER }}
+          PORTAL_PASSWORD: ${{ secrets.PORTAL_PASSWORD }}
 
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         if: failure()

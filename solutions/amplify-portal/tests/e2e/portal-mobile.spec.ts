@@ -24,12 +24,19 @@
  *
  *     PORTAL_USER=... PORTAL_PASSWORD=... npx playwright test tests/e2e/portal-mobile.spec.ts
  *
- * NOT YET EXECUTED. `@playwright/test` is deliberately not a dependency of this
- * package (see the note in vite.config.ts), so this has never been run and has never
- * been seen to fail on the defects it describes. Treat it as unproven until someone
- * installs Playwright and does that: revert the `@media (max-width: 768px)` block for
- * `.row-menu-panel` in src/index.css, and the row-menu test must fail. A gate nobody
+ * STILL UNPROVEN, though for a narrower reason than before. `@playwright/test` is a
+ * dependency now, so the runner loads and the suite enumerates and skips cleanly; what
+ * has not happened is a run that reached these assertions, because every one of them is
+ * behind a sign-in and no session was available. The skip path was checked -- supplying
+ * a wrong password makes the tests run and fail at the login rather than skip, so the
+ * suite is not merely skipping unconditionally.
+ *
+ * What is still owed: revert the `@media (max-width: 768px)` block for `.row-menu-panel`
+ * in src/index.css with credentials set, and the row-menu test must fail. A gate nobody
  * has watched reject bad input is indistinguishable from a clean tree.
+ *
+ * The paths below are the author's environment (`#files/jaws90/logs`, `compile_*.log`),
+ * so a different deployment needs them changed before any of this can run at all.
  *
  * The two defects above were found and the fixes verified by measuring bounding boxes
  * in a browser at 390x844 by hand: the row menu ran to 400px against a 390px
