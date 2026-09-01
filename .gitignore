@@ -175,6 +175,11 @@ docs/screenshots/raw/
 # two in step. Verified to contain no account ID, no file system ID and no S3 AP alias.
 !solutions/amplify-portal/docs/verification-results.md
 .playwright-mcp/
+# Playwright's own output. Nothing wrote these until the E2E runner became a real
+# dependency (#357); a failing run leaves screenshots and page snapshots of a signed-in
+# portal in test-results/, which is exactly what should not be committed.
+test-results/
+playwright-report/
 
 # Local rebuild manifests contain real S3 AP aliases / environment specifics
 scripts/*.local.env
