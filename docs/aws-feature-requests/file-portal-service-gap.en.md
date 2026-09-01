@@ -14,7 +14,11 @@
 
 Fifteen services across enterprise file portals (Box, Google Drive, SharePoint, Egnyte, Citrix ShareFile), consumer/SMB (Dropbox, OneDrive, iCloud), OSS (Nextcloud, ownCloud, Seafile), security-focused (Tresorit), and cost-optimized (Wasabi) each provide file management experiences with their own strengths. In 2025-2026, AI agent capabilities such as Box Agent, SharePoint Copilot, Google Gemini, and Dropbox Dash have rapidly proliferated, shifting the value of file storage from "store and share" to "AI-powered utilization and automation."
 
-Our File Portal UI (`solutions/amplify-portal/`) currently provides: file listing, folder navigation, file preview (Presigned URL), upload/download (Storage Browser), AI/ML job submission (Bedrock/Rekognition/Comprehend), natural language file operations (Quick MCP), real-time results, job history, FlexClone restore, and breadcrumb navigation. With Presigned URL verification and Storage Browser integration, the basic file management UX gap has narrowed significantly. Remaining gaps (version history, comments, sync client) can be supplemented by Nextcloud coexistence.
+Our File Portal UI (`solutions/amplify-portal/`) currently provides: file listing, folder navigation, file preview (Presigned URL), upload/download (Storage Browser), AI/ML job submission (Bedrock/Rekognition/Comprehend), natural language file operations (Quick MCP), real-time results, job history, FlexClone restore, and breadcrumb navigation.
+
+On the data protection and audit side it provides: snapshot listing and locking, retention through SnapLock / S3 Object Lock / Tamperproof Snapshot, ransomware detection and response via ARP/AI, an audit trail UI switchable between CloudTrail data events and the portal activity ledger, and resource management (volumes, SMB shares, export policies, SnapMirror).
+
+With Presigned URL verification and Storage Browser integration, the basic file management UX gap has narrowed significantly. Remaining gaps (per-file version history, comments, sync client) can be supplemented by Nextcloud coexistence.
 
 This document identifies the remaining gaps, maps them to AWS service limitations, and proposes feature requests that would enable AWS-native file portals to further close the gap — without requiring data movement from FSx for ONTAP.
 
@@ -49,6 +53,18 @@ Compared current Amplify Gen2 File Portal capabilities against 15 representative
 **Excluded**: NAS vendor-provided solutions (Synology Drive, QNAP, TrueNAS, etc.). Direct comparison between NAS vendors in an article about FSx for ONTAP would appear as position-taking.
 
 
+### How the symbols are assigned
+
+The three symbols used in the matrices below. Without a stated rule the marks are a judgement only their author can reconstruct, and once the implementation moves on nobody can tell an intentional ❌ from one that was never updated.
+
+| Symbol | Meaning |
+|:---:|---|
+| ✅ | A feature serving the same purpose, at comparable granularity, exists |
+| △ | Part of the purpose is served: the mechanism differs, the granularity is coarser, or one element named in the feature is missing |
+| ❌ | No such feature exists |
+
+**The Our Portal column is assigned by reading the implementation** (as of the referencing commit). The other columns come from vendor documentation and were not judged for granularity, so a ✅ there and a ✅ in our column do not carry the same strength of verification.
+
 ### Gap Matrix — Basic File Management
 
 > **Data freshness**: Based on official documentation and release notes from 2025-07 through 2026-07. Service capabilities change rapidly — refer to each vendor's official site for the latest status.
@@ -62,14 +78,14 @@ Enterprise SaaS (Box / SharePoint / Google Drive / Citrix ShareFile / Egnyte) al
 | File preview (images/PDF/video/Office) | ✅ | ✅ | ✅ | ✅ (Presigned URL) | — (resolved) |
 | File download | ✅ | ✅ | ✅ | ✅ (Presigned URL) | — (resolved) |
 | File upload (drag & drop) | ✅ | ✅ | ✅ | ✅ (Storage Browser) | — (resolved) |
-| Sharing links (time-limited, password) | ✅ | ✅ | ✅ | ✅ (Presigned URL) | — (resolved) |
-| Version history | ✅ | ✅ | ✅ (Nextcloud/ownCloud) | ❌ | Medium |
+| Sharing links (time-limited, password) | ✅ | ✅ | ✅ | △ (Presigned URL: time-limited only, no password protection) | Low |
+| Version history | ✅ | ✅ | ✅ (Nextcloud/ownCloud) | ❌ (no per-file versions; point-in-time recovery of the volume via Snapshot + FlexClone) | Medium |
 | Comments / annotations | ✅ | △ (limited) | ✅ (Nextcloud) | ❌ | Low |
-| Full-text search | ✅ | ✅ | ✅ (Nextcloud/Seafile) | ❌ | Medium |
-| Retention policies (compliance) | ✅ | △ (Vault only) | ✅ (Nextcloud Governance) | ❌ | Medium |
+| Full-text search | ✅ | ✅ | ✅ (Nextcloud/Seafile) | △ (keyword search matches key names only; content search via Bedrock KB semantic retrieval, no literal full-text match) | Medium |
+| Retention policies (compliance) | ✅ | △ (Vault only) | ✅ (Nextcloud Governance) | △ (SnapLock / S3 Object Lock retention can be set and expired items listed; no classification-driven application or disposition) | Medium |
 | Desktop sync client | ✅ | ✅ | ✅ | ❌ | Low |
 | Collaborative real-time editing | ✅ | ✅ | ✅ (Nextcloud Office) | ❌ | Low |
-| Audit trail (who accessed what) | ✅ | ✅ | ✅ | △ (CloudTrail raw) | Medium |
+| Audit trail (who accessed what) | ✅ | ✅ | ✅ | ✅ (two sources switchable in the UI: CloudTrail data events and the portal activity ledger, which carries the Cognito user) | — (resolved) |
 | Mobile responsive UI | ✅ | ✅ | ✅ | △ | Low |
 
 ### Gap Matrix — AI / Intelligence Features (2025-2026 New Wave)
@@ -85,9 +101,9 @@ Comparison with AI features that SaaS vendors have rapidly shipped in 2025-2026.
 | AI document summarization / Q&A | ✅ | ✅ | ✅ | ✅ | ❌ | ✅ Bedrock |
 | AI auto-classification / metadata | ✅ AI Studio | ✅ Copilot | ✅ Gemini | △ | ✅ | ✅ Comprehend |
 | AI workflow automation | ✅ | ✅ Power Automate | ✅ AppSheet | △ | ❌ | ✅ Step Functions |
-| Image/video AI analysis | △ | △ | ✅ | ✅ Multimodal | ❌ | ✅ Rekognition |
+| Image/video AI analysis | △ | △ | ✅ | ✅ Multimodal | ❌ | △ (still images only, via Rekognition DetectLabels; no video analysis) |
 | RAG / Knowledge Base integration | ✅ | ✅ | ✅ NotebookLM | ❌ | ❌ | ✅ Bedrock KB |
-| Data classification / DLP | ✅ Shield | ✅ Purview | ✅ DLP | ❌ | ✅ | ✅ (labels) |
+| Data classification / DLP | ✅ Shield | ✅ Purview | ✅ DLP | ❌ | ✅ | △ (classification labels plus refusal to send to AI; no blocking of download or sharing) |
 | E2E encryption (zero-knowledge) | ✅ KeySafe | ❌ | ✅ CSE | ❌ | ❌ | ❌ |
 
 
@@ -213,20 +229,20 @@ Authentication mechanisms differ per protocol, but ONTAP's multi-protocol identi
 
 ---
 
-## Root Cause Analysis: Why Gaps Exist
+## Root Cause Analysis: AWS Limitations, and Where the Portal Stands
 
-| Gap | Root cause (AWS service limitation) |
-|-----|--------------------------------------|
-| No real file preview | FSx for ONTAP S3 AP does not support Presigned URLs (FR-4, previously submitted) |
-| No file download | Same — Presigned URL needed for browser-initiated download |
-| No sharing links | Same — time-limited Presigned URLs are the standard mechanism |
-| No file upload | S3 AP PutObject works, but Amplify Storage component only supports standard S3 buckets |
-| No full-text search | No native search/indexing service for S3 AP content; OpenSearch requires data copy |
-| No version history | S3 AP does not support Object Versioning |
-| No audit trail UI | CloudTrail logs S3 AP data events, but no managed UI component to surface them |
-| No retention policies | S3 AP does not support Lifecycle Configuration |
+This table records **limitations on the AWS side**. Some of them still hold while the portal has worked around them, so the two are stated separately. The left column used to read only "No X", which contradicted the matrix above marking the same items as resolved in the same document.
 
-**Conclusion**: 5 of 8 high/medium gaps trace back to the Presigned URL limitation (FR-4) or the lack of Amplify/Storage Browser support for S3 Access Points.
+| AWS-side limitation | What the limitation is | Where the portal stands |
+|---|---|---|
+| Presigned URLs on S3 AP are not officially supported | AWS's compatibility table still reads `Presign — Not supported`. AWS Support confirmed support at the ONTAP layer (v4 from 9.11.1, v2 from 9.16.1) and submitted a documentation fix, which is **not yet published** (FR-7) | Preview, download and sharing links are implemented with presigned URLs. Until the public documentation is updated, production workloads need an alternative designed in ([compatibility notes](../s3ap-compatibility-notes.en.md)) |
+| Amplify Storage does not support S3 AP | The component supports standard S3 buckets only (FR-6, Open) | Upload is implemented with Storage Browser for S3 |
+| No native search or indexing for S3 AP content | OpenSearch requires a data copy | Semantic search implemented with Bedrock KB. No literal full-text match |
+| S3 AP does not support Object Versioning | — | No per-file version history. Point-in-time recovery of the volume via Snapshot + FlexClone |
+| No managed UI for CloudTrail data events | No standard component aimed at a compliance reader (FR-8, Open) | Athena queries and the portal activity ledger, surfaced as two sources in our own UI |
+| S3 AP does not support Lifecycle Configuration | — | Retention set through SnapLock / S3 Object Lock. No classification-driven disposition |
+
+**Conclusion**: four of the six AWS-side limitations were worked around in the portal, though the workaround depends in one case — presigned URLs — on an area where the published documentation and the observed behaviour disagree. The remaining two (object versioning, lifecycle) are answered by ONTAP features rather than by S3 API semantics.
 
 ---
 
@@ -242,7 +258,7 @@ Authentication mechanisms differ per protocol, but ONTAP's multi-protocol identi
 
 **Request**: Officially support S3 AP alias in Storage Browser's `createManagedAuthAdapter` and document FSx for ONTAP S3 AP usage examples.
 
-**Impact**: Official support would immediately enable: file preview (images, video, text), file download, file upload (50 GB limit per FSx for ONTAP S3 AP constraint; multipart above 5 GB), copy and delete operations, folder creation. This single FR would close 4 of the 8 gaps.
+**Impact**: Official support would immediately enable: file preview (images, video, text), file download, file upload (50 GB limit per FSx for ONTAP S3 AP constraint; multipart above 5 GB), copy and delete operations, folder creation. This single FR would let a standard component serve the four areas the portal filled with its own implementation (preview, download, upload, sharing links).
 
 ---
 

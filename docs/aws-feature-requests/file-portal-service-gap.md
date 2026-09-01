@@ -14,7 +14,11 @@
 
 エンタープライズ向け (Box, Google Drive, SharePoint, Egnyte, Citrix ShareFile)、Consumer/SMB (Dropbox, OneDrive, iCloud)、OSS (Nextcloud, ownCloud, Seafile)、セキュリティ特化 (Tresorit)、コスト最適 (Wasabi) を含む 15 サービスが、それぞれの強みでファイル管理体験を提供しています。2025-2026 年には Box Agent、SharePoint Copilot、Google Gemini、Dropbox Dash など AI エージェント機能が急速に普及し、ファイルストレージの価値は「保管・共有」から「AI による活用・自動化」へシフトしています。
 
-当ファイルポータル UI (`solutions/amplify-portal/`) は現在、ファイル一覧、フォルダナビゲーション、ファイルプレビュー（Presigned URL）、アップロード/ダウンロード（Storage Browser）、AI/ML ジョブ投入（Bedrock/Rekognition/Comprehend）、自然言語ファイル操作（Quick MCP）、リアルタイム結果表示、ジョブ履歴、FlexClone 復元、ブレッドクラムナビゲーションを提供しています。Presigned URL の動作確認と Storage Browser 統合により基本ファイル管理 UX のギャップは大幅に縮小しました。残るギャップ（バージョン履歴・コメント・同期クライアント）は Nextcloud 併用で補完可能です。
+当ファイルポータル UI (`solutions/amplify-portal/`) は現在、ファイル一覧、フォルダナビゲーション、ファイルプレビュー（Presigned URL）、アップロード/ダウンロード（Storage Browser）、AI/ML ジョブ投入（Bedrock/Rekognition/Comprehend）、自然言語ファイル操作（Quick MCP）、リアルタイム結果表示、ジョブ履歴、FlexClone 復元、ブレッドクラムナビゲーションを提供しています。
+
+データ保護と監査の領域では、Snapshot 一覧とロック、SnapLock / S3 Object Lock / Tamperproof Snapshot の保持期間設定、ARP/AI によるランサムウェア検知と対応、CloudTrail データイベントと portal 活動台帳の 2 系統を切り替えられる監査証跡 UI、リソース管理（ボリューム・SMB 共有・エクスポートポリシー・SnapMirror）を提供しています。
+
+Presigned URL の動作確認と Storage Browser 統合により基本ファイル管理 UX のギャップは大幅に縮小しました。残るギャップ（ファイル単位のバージョン履歴・コメント・同期クライアント）は Nextcloud 併用で補完可能です。
 
 本ドキュメントでは残存ギャップを特定し、AWS サービス制約にマッピングした上で、データ移動なしに FSx for ONTAP 上で AWS ネイティブなファイルポータルを実現するための機能要望を提案します。
 
@@ -48,6 +52,18 @@
 
 **除外**: NAS ベンダー提供ソリューション（Synology Drive, QNAP, TrueNAS 等）。FSx for ONTAP を扱う記事で NAS ベンダー同士の比較を行うとポジショントークに見えるため。
 
+### 記号の判定基準
+
+以下のマトリクスで使う 3 記号の定義です。基準が書かれていないと、記号は書いた人しか復元できない判断になり、実装が進んだあとで「この ❌ は意図的か、更新漏れか」を誰も判定できません。
+
+| 記号 | 意味 |
+|:---:|---|
+| ✅ | 同じ目的を、同等の粒度で満たす機能が存在する |
+| △ | 目的の一部を満たす。方式が異なる、粒度が粗い、または機能名に含まれる要素の一部が欠けている |
+| ❌ | 該当する機能が存在しない |
+
+**当ポータルの列は実装を読んで判定しています**（該当コミット時点）。他社列は公式ドキュメントに基づく記載で、粒度の判定までは行っていません。したがって他社の ✅ と当ポータルの ✅ は厳密には同じ検証強度ではありません。
+
 ### Gap Matrix — 基本ファイル管理機能
 
 > **データ鮮度**: 2025-07 〜 2026-07 の公式ドキュメント・リリースノートに基づく。各サービスの機能は急速に変化するため、最新状況は各社公式サイトを参照してください。
@@ -61,14 +77,14 @@ Enterprise SaaS (Box / SharePoint / Google Drive / Citrix ShareFile / Egnyte) �
 | File preview (images/PDF/video/Office) | ✅ | ✅ | ✅ | ✅ (Presigned URL) | — (解決済) |
 | File download | ✅ | ✅ | ✅ | ✅ (Presigned URL) | — (解決済) |
 | File upload (drag & drop) | ✅ | ✅ | ✅ | ✅ (Storage Browser) | — (解決済) |
-| Sharing links (time-limited, password) | ✅ | ✅ | ✅ | ✅ (Presigned URL) | — (解決済) |
-| Version history | ✅ | ✅ | ✅ (Nextcloud/ownCloud) | ❌ | Medium |
+| Sharing links (time-limited, password) | ✅ | ✅ | ✅ | △ (Presigned URL: 時限のみ、パスワード保護なし) | Low |
+| Version history | ✅ | ✅ | ✅ (Nextcloud/ownCloud) | ❌ (ファイル単位のバージョンは無い。ボリューム単位の point-in-time 復旧は Snapshot + FlexClone で可能) | Medium |
 | Comments / annotations | ✅ | △ (limited) | ✅ (Nextcloud) | ❌ | Low |
-| Full-text search | ✅ | ✅ | ✅ (Nextcloud/Seafile) | ❌ | Medium |
-| Retention policies (compliance) | ✅ | △ (Vault only) | ✅ (Nextcloud Governance) | ❌ | Medium |
+| Full-text search | ✅ | ✅ | ✅ (Nextcloud/Seafile) | △ (キーワード検索はキー名のみ。コンテンツ検索は Bedrock KB のセマンティック検索で成立、全文一致検索は無い) | Medium |
+| Retention policies (compliance) | ✅ | △ (Vault only) | ✅ (Nextcloud Governance) | △ (SnapLock / S3 Object Lock の保持期間設定・期限切れ一覧はある。分類に応じた自動適用・自動廃棄は無い) | Medium |
 | Desktop sync client | ✅ | ✅ | ✅ | ❌ | Low |
 | Collaborative real-time editing | ✅ | ✅ | ✅ (Nextcloud Office) | ❌ | Low |
-| Audit trail (who accessed what) | ✅ | ✅ | ✅ | △ (CloudTrail raw) | Medium |
+| Audit trail (who accessed what) | ✅ | ✅ | ✅ | ✅ (CloudTrail data events と portal 活動台帳の 2 系統を UI で切替。台帳は Cognito ユーザーを持つ) | — (解決済) |
 | Mobile responsive UI | ✅ | ✅ | ✅ | △ | Low |
 
 ### Gap Matrix — AI・インテリジェンス機能（2025-2026 新潮流）
@@ -84,9 +100,9 @@ SaaS 各社が 2025-2026 年に急速に投入している AI 機能との比較
 | AI ドキュメント要約・Q&A | ✅ | ✅ | ✅ | ✅ | ❌ | ✅ Bedrock |
 | AI ファイル自動分類・メタデータ付与 | ✅ AI Studio | ✅ Copilot | ✅ Gemini | △ | ✅ | ✅ Comprehend |
 | AI ワークフロー自動化 | ✅ | ✅ Power Automate | ✅ AppSheet | △ | ❌ | ✅ Step Functions |
-| 画像/動画 AI 分析 | △ | △ | ✅ | ✅ Multimodal | ❌ | ✅ Rekognition |
+| 画像/動画 AI 分析 | △ | △ | ✅ | ✅ Multimodal | ❌ | △ (Rekognition DetectLabels による静止画のみ。動画解析は未実装) |
 | RAG / Knowledge Base 統合 | ✅ | ✅ | ✅ NotebookLM | ❌ | ❌ | ✅ Bedrock KB |
-| データ分類・DLP | ✅ Shield | ✅ Purview | ✅ DLP | ❌ | ✅ | ✅ (labels) |
+| データ分類・DLP | ✅ Shield | ✅ Purview | ✅ DLP | ❌ | ✅ | △ (分類ラベル + AI 送信の遮断。ダウンロード/共有の遮断は無い) |
 | E2E 暗号化（ゼロ知識） | ✅ KeySafe | ❌ | ✅ CSE | ❌ | ❌ | ❌ |
 
 ### Gap Matrix — セキュリティ・ガバナンス特化
@@ -210,20 +226,20 @@ SaaS 各社が 2025-2026 年に急速に投入している AI 機能との比較
 
 ---
 
-## 根本原因分析: ギャップが存在する理由
+## 根本原因分析: AWS 側の制約と、当ポータルでの現状
 
-| ギャップ | 根本原因（AWS サービス制約） |
-|---------|--------------------------|
-| ファイルプレビューなし | FSx for ONTAP S3 AP が Presigned URL を公式サポートしていない（FR-4、提出済み） |
-| ファイルダウンロードなし | 同上 — ブラウザからのダウンロードには Presigned URL が必要 |
-| 共有リンクなし | 同上 — 時限付き Presigned URL が標準メカニズム |
-| ファイルアップロードなし | S3 AP の PutObject は動作するが、Amplify Storage コンポーネントが標準 S3 バケットのみサポート |
-| 全文検索なし | S3 AP コンテンツ向けネイティブ検索/インデックスサービスなし。OpenSearch はデータコピーが必要 |
-| バージョン履歴なし | S3 AP がオブジェクトバージョニングをサポートしていない |
-| 監査証跡 UI なし | CloudTrail は S3 AP データイベントを記録するが、コンプライアンス担当者向けのマネージド UI がない |
-| リテンションポリシーなし | S3 AP がライフサイクル設定をサポートしていない |
+この表は **AWS サービス側の制約**を記録するものです。制約が残っていても当ポータルが自前で回避できた項目があるため、両者を分けて書きます。以前は左列が「〜なし」だけで、上のマトリクスが解決済としている項目を同じ文書内で「なし」と書いていました。
 
-**結論**: 8 つの High/Medium ギャップのうち 5 つが Presigned URL 制約（FR-4）または Amplify/Storage Browser の S3 Access Points 非対応に起因しています。
+| AWS 側の制約 | 制約の内容 | 当ポータルの現状 |
+|---|---|---|
+| S3 AP の Presigned URL が公式には未サポート | AWS の互換性テーブルは現時点でも `Presign — Not supported`。AWS サポートは ONTAP レイヤーでのサポート（9.11.1 以降で v4、9.16.1 以降で v2）を確認しドキュメント修正を提出済みだが、**未公開**（FR-7） | プレビュー・ダウンロード・共有リンクは presigned URL で実装済み。公開ドキュメントが更新されるまで本番では代替手段の設計が必要（[互換性ノート](../s3ap-compatibility-notes.md)） |
+| Amplify Storage が S3 AP 非対応 | コンポーネントが標準 S3 バケットのみサポート（FR-6、Open） | アップロードは Storage Browser for S3 で実装済み |
+| S3 AP コンテンツ向けのネイティブ検索/インデックスが無い | OpenSearch はデータコピーを要する | セマンティック検索を Bedrock KB で実装。全文一致検索は無い |
+| S3 AP がオブジェクトバージョニング非対応 | — | ファイル単位のバージョン履歴は無い。ボリューム単位の point-in-time 復旧は Snapshot + FlexClone |
+| CloudTrail データイベントのマネージド可視化 UI が無い | コンプライアンス担当者向けの標準コンポーネントが提供されていない（FR-8、Open） | Athena クエリと portal 活動台帳の 2 系統を自前 UI で提供 |
+| S3 AP がライフサイクル設定非対応 | — | SnapLock / S3 Object Lock で保持期間を設定。分類駆動の自動廃棄は無い |
+
+**結論**: 6 つの AWS 側制約のうち 4 つは自前実装で回避できましたが、回避には presigned URL のように公開ドキュメントと実挙動が食い違う領域への依存が含まれます。残る 2 つ（オブジェクトバージョニング、ライフサイクル）は回避手段が ONTAP 側の機能であり、S3 API の意味論としては満たされていません。
 
 ---
 
@@ -253,9 +269,9 @@ SaaS 各社が 2025-2026 年に急速に投入している AI 機能との比較
 - コピー・削除操作
 - フォルダ作成
 
-この単一の FR で 8 つのギャップのうち 4 つ（プレビュー、ダウンロード、アップロード、部分的な共有）が解消され、カスタムファイル管理コンポーネントが不要になる。
+この単一の FR で、当ポータルが自前実装で埋めた 4 領域（プレビュー、ダウンロード、アップロード、共有リンク）が標準コンポーネントで満たされ、カスタムファイル管理コンポーネントが不要になる。
 
-**ワークアラウンド**: カスタム React コンポーネント（FileExplorer, FilePreview）が Lambda プロキシ経由で AP に対して S3 API を呼び出し。Presigned URL サポートなしでは実際のプレビューは提供できない。
+**ワークアラウンド**: カスタム React コンポーネント（FileExplorer, FilePreview）が Lambda プロキシ経由で AP に対して S3 API を呼び出し。プレビューは presigned URL で動作していますが、公開されている互換性テーブルは現時点でも `Presign — Not supported` のままです。
 
 ---
 
