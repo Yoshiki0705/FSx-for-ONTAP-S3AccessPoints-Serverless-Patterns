@@ -4,7 +4,7 @@
 
 > CDK Conference Japan 2026 セッション「Amplify Gen2 で backend.ts に CDK を定義する/しないことによる CDK の挙動の違いとユースケース」の知見を反映。
 
-## 判断基準: backend.ts 内に定義するか、外部スタックにするか
+## 判断基準: backend.ts 内の定義と外部スタックの選択
 
 Amplify Gen2 では `defineBackend()` の戻り値から CDK スタックにアクセスし、追加リソースを配置できます。しかし、**すべてを backend.ts に詰め込む**のと**外部スタックに分離する**のでは、デプロイ挙動・依存関係・テスト容易性が異なります。
 

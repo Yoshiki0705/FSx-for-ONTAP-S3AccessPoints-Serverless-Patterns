@@ -228,7 +228,7 @@ aws stepfunctions start-execution \
 
 ## トラブルシューティング
 
-### Discovery Lambda がタイムアウトする
+### Discovery Lambda のタイムアウト
 
 **原因**: VPC 内の Lambda が AWS サービス（Secrets Manager, S3, CloudWatch）に到達できない。
 

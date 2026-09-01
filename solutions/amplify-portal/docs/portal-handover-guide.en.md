@@ -208,12 +208,97 @@ The step-by-step version with screenshots is here: <mobile-guide-url>
 | ONTAP target (management IP, SVM, volume) | `amplify/portal-config.ts` | `grep ontap amplify/portal-config.ts` |
 | The `fsxadmin` credentials | Secrets Manager | `aws secretsmanager get-secret-value --secret-id <secret-name>` |
 | The file system, SVM and volume themselves | FSx for ONTAP | `make ontap-preflight FS_ID=<fs-id>` |
+| Regions and accounts searched | `discoveryRegions` / `discoveryAccounts` in `amplify/portal-config.ts` | `aws lambda get-function-configuration --function-name <PlatformDiscoveryFunction> --query "Environment.Variables"` |
 | Who did what | The portal's "Audit trail" tab | The portal UI |
 
 > **`amplify_outputs.json` is a build artifact.** Editing it by hand is undone by the next deployment.
 > Change `amplify/` instead.
 
 ---
+
+## When a data platform is not in the list
+
+The "Data platform scope" control at the top of the admin panels lists FSx for ONTAP
+file systems read from the AWS control plane. It uses no ONTAP credential and needs
+no route to the management LIF, so **this list answers even when ONTAP does not**.
+There are three reasons something is absent, and they are fixed in different places.
+
+| Symptom | Cause | What to do |
+|---------|-------|-----------|
+| Absent, with no reason given | That region **was not searched** | See "widening the search" below |
+| Absent, with a reason given | That account and region **could not be read** | The role or the permission named in the reason |
+| Absent although it exists | The file system is not `AVAILABLE` | Check the state with `aws fsx describe-file-systems` |
+
+Only the first cannot be explained from the response. Something that could not be
+read is reported with its reason, but **a region nobody named is simply never looked
+for**, so there is nothing to report.
+
+The third happens in practice. A file system that is `CREATING` or `DELETING` is left
+out: offering something that is not answering as a scope produces an empty list,
+which reads as an empty system rather than as a transition.
+
+The control itself renders **only when there are two or more platforms**. With one
+there is nothing to choose, so it stays out of the way.
+
+### What gets searched
+
+By default, **every region this account has enabled**. The region names are not
+written into the configuration: a list goes stale the next time AWS adds a region,
+and by the first reason above nobody would notice. The enabled regions are asked for
+at runtime instead.
+
+The time it takes scales with the search. **Measured 2026-08-29 from the Lambda, 25
+enabled regions with two of them not answering: 17.5 s cold, 14.9 s warm.** The
+browser caches the answer for five minutes, so this is not paid per action, but the
+first paint after opening the page takes a few seconds.
+
+### Narrowing the search
+
+Limiting the search makes it faster, and is the better choice when it is known which
+regions hold anything.
+
+```bash
+AMPLIFY_PORTAL_DISCOVERY_REGIONS="ap-northeast-1,ap-northeast-3" npx ampx sandbox --identifier <name>
+```
+
+With this set, the enabled regions are not asked for and only the listed ones are
+searched. **A region left off the list is not searched**, so it has to be extended as
+the estate grows.
+
+### Adding another account
+
+Create a read-only role in the other account under a name shared by all of them; the
+ARN is built as `arn:aws:iam::<account>:role/<name>`.
+
+1. In the other account, create a role allowing only these three actions:
+   `fsx:DescribeFileSystems`, `fsx:DescribeStorageVirtualMachines`,
+   `ec2:DescribeRegions`
+2. In that role's trust policy, allow `sts:AssumeRole` from the portal's discovery
+   function role
+3. Configure the portal and redeploy
+
+```bash
+AMPLIFY_PORTAL_DISCOVERY_ACCOUNTS="111122223333,444455556666" \
+AMPLIFY_PORTAL_DISCOVERY_ROLE_NAME="PortalDiscoveryReader" \
+  npx ampx sandbox --identifier <name>
+```
+
+Without `AMPLIFY_PORTAL_DISCOVERY_ROLE_NAME` the listed accounts are **skipped rather
+than attempted**. An attempt with no role fails as an authorization error against
+this account, which makes unfinished configuration look like a permissions problem
+here.
+
+The `sts:AssumeRole` grant covers only that role name in the accounts listed.
+
+### Listed but not selectable
+
+An entry marked `not connected` cannot be selected. This deployment's ONTAP actions
+address one management address, so no request can be routed to another platform.
+**Making it selectable would offer a scope that every action then fails against.**
+
+Listing it is still worth doing for a different reason: one screen shows the whole
+estate, so which file systems exist and which SVMs they hold can be seen without
+opening each one's own console.
 
 ## Handover checklist
 

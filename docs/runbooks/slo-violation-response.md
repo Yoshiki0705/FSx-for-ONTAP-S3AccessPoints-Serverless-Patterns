@@ -278,7 +278,7 @@ echo "  event log show -messagename *fpolicy* -time >30m"
 
 ## Common Pitfalls (Phase 13 で発見)
 
-### fsxadmin が "User is not authorized" を返す
+### fsxadmin の "User is not authorized" 応答
 
 **原因**: SVM 管理 IP に接続している。fsxadmin はファイルシステム管理 IP でのみ認証可能。**同じメッセージはパスワード不一致とアカウントのロックアウトでも返ります**（`lockout-duration=0` なので待っても戻らない）。切り分けは[トラブルシューティングガイド](../guides/troubleshooting-guide.md) の 9 節。
 
@@ -288,7 +288,7 @@ aws fsx describe-file-systems --file-system-ids $FSX_FILE_SYSTEM_ID \
   --query 'FileSystems[0].OntapConfiguration.Endpoints.Management.IpAddresses[0]' --output text
 ```
 
-### S3AP が ConnectionClosedError を返す
+### S3AP の ConnectionClosedError 応答
 
 **原因**: S3AP リソースポリシー未設定、または ONTAP データプレーン応答なし。
 

@@ -506,7 +506,7 @@ curl -sku user:pass \
 3. AWS Managed AD の場合、ディレクトリのステータスが `Active` か確認
 4. AD を再作成した場合、SVM は CIFS force-delete + re-join が必要（新しい NetBIOS 名が必要 — 手順は steering ファイル参照）
 
-### 症状: WINDOWS タイプの S3 AP 作成が失敗する
+### 症状: WINDOWS タイプ S3 AP 作成の失敗
 
 **原因**: SVM がまだ AD に参加していない。
 
@@ -569,7 +569,7 @@ logger.info("AD DC pre-flight: %s", status.message)
 4. ✅ ファイルシステム ID に対象パスへのパーミッションがある
 5. ✅ ボリュームがマウント済み（ジャンクションパスあり）でオンライン
 
-### 症状: ONTAP が `RESULT_ERROR_SECD_IN_DISCOVERY` を報告する
+### 症状: ONTAP による `RESULT_ERROR_SECD_IN_DISCOVERY` の報告
 
 **原因**: SVM が DNS 経由で AD ドメインコントローラーを検出できない。
 

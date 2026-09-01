@@ -3,6 +3,8 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "../../i18n";
 import { arpQuery } from "../../lib/dispatch";
 import { getActiveSvm, setActiveSvm, subscribeActiveSvm } from "../../lib/activeSvm";
+import { getActivePlatform, subscribeActivePlatform } from "../../lib/activePlatform";
+import { usePlatformSvms } from "../../hooks/usePlatformSvms";
 
 interface Svm {
   name: string;
@@ -28,6 +30,13 @@ export function SvmSelector() {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
   const active = useSyncExternalStore(subscribeActiveSvm, getActiveSvm);
+  // The platform chosen above, used to narrow this list rather than to route the
+  // request: the handlers reach one cluster, so every SVM this call can return
+  // belongs to it. What the narrowing removes is the SVMs of *other* file systems
+  // in the same account, which are the ones an operator cannot act on from here
+  // and which make the list noise as an estate grows.
+  const platformId = useSyncExternalStore(subscribeActivePlatform, getActivePlatform);
+  const platformSvms = usePlatformSvms(platformId);
 
   const { data: svms = [] } = useQuery({
     queryKey: ["admin", "svmList"],
@@ -43,9 +52,14 @@ export function SvmSelector() {
     },
   });
 
+  // Narrowed only when the inventory could say which SVMs belong to the chosen
+  // platform. An empty answer there means the inventory has not arrived or does not
+  // cover it, and filtering against nothing would empty a list that is correct.
+  const shown = platformSvms ? svms.filter(s => platformSvms.has(s.name)) : svms;
+
   // One SVM is the common case and there is nothing to choose, so the control stays
   // out of the way rather than presenting a decision that does not exist.
-  if (svms.length < 2) return null;
+  if (shown.length < 2) return null;
 
   return (
     <label className="rm-svm-selector">
@@ -66,7 +80,7 @@ export function SvmSelector() {
         {/* "" is the backend's own default, which is what every call sent before this
             selector existed. Naming it keeps that reachable. */}
         <option value="">{t("rmSvmDefault")}</option>
-        {svms.map(s => (
+        {shown.map(s => (
           <option key={s.name} value={s.name}>
             {s.name}
           </option>

@@ -469,7 +469,7 @@ CloudTrail S3 データイベントを Athena で検索。フィルター: フ�
 「システム」でキーを保存せず削除しているのは、キーが無い状態と「システムに追従」が
 同じ状態であり、両方を持つと食い違う余地が生まれるためである。
 
-### 実装: 値ではなく役割で対応付ける
+### 実装: 値ではなく役割での対応付け
 
 配色は 32 個のトークンとして `:root` と `[data-theme="dark"]` に定義し、各ルールは
 トークンを参照する。**値ではなく役割で対応付ける**のが要点で、`white` は `color` なら
@@ -580,7 +580,7 @@ CloudTrail S3 データイベントを Athena で検索。フィルター: フ�
 | ツール | チェック内容 |
 |--------|------------|
 | cdk-nag (AwsSolutionsChecks) | IAM 過剰権限、暗号化、ログ保持 |
-| CDK ハーネステスト (114 assertions) | Lambda 数、ランタイム、環境変数 |
+| CDK ハーネステスト (134 assertions) | Lambda 数、ランタイム、環境変数 |
 | IAM Access Analyzer | ポリシーの SECURITY_WARNING 検知 |
 | floci 統合テスト (9 tests) | S3 ListObjectsV2 + Delimiter 動作 |
 

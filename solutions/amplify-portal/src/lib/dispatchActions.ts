@@ -1012,6 +1012,12 @@ export interface ThumbnailsActionParams {
   };
 }
 
+/** Actions of functions/platform-discovery, reached by `platformQuery`. */
+export interface PlatformDiscoveryActionParams {
+  /** No parameters. */
+  listDataPlatforms: Record<string, never>;
+}
+
 /**
  * Which action map each endpoint uses.
  *
@@ -1027,6 +1033,7 @@ export type DispatchParams = {
   arpQuery: DataProtectionActionParams;
   fileMutation: ListFilesActionParams;
   fileQuery: ListFilesActionParams;
+  platformQuery: PlatformDiscoveryActionParams;
   protectionMutation: SnapshotsActionParams;
   protectionQuery: SnapshotsActionParams;
   thumbnailQuery: ThumbnailsActionParams;

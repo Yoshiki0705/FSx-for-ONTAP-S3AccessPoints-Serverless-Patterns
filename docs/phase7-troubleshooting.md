@@ -197,7 +197,7 @@ IAM Policy の `Resource` リスト変更などは CloudFormation が「機能�
 
 ## 8. Local Development / Testing
 
-### 8.1 cfn-lint が数十分フリーズする
+### 8.1 cfn-lint の数十分のフリーズ
 
 **症状**: `python3 -c "from cfnlint import api; api.lint_all(...)"` でプロセスが応答しない。
 
@@ -338,7 +338,7 @@ img.save('sample.jpg', 'JPEG', quality=85)
 2026-05-11 の UC15/16/17 Pattern B 実検証で発見・確認した、`OutputDestination=FSXN_S3AP`
 モード固有の事象。UC11/14 (2026-05-10) の検証時には表面化しなかった項目も含む。
 
-### 10.1 Lambda INFO ログが出ないのに put_object は成功する
+### 10.1 Lambda INFO ログの不在と put_object の成功
 
 **症状**: `OutputDestination=FSXN_S3AP` モードで実行した UC15 Tiling Lambda の
 CloudWatch Logs を見ても `"UC15 Tiling started:"` や `"Output written:"` のような
@@ -366,7 +366,7 @@ INFO ログが 1 行も見えない。それでも Step Functions は SUCCEEDED 
 出力される（これは `emf.flush()` が stdout に JSON を書くため）。EMF だけが見えて
 INFO ログが見えない状態は正常動作のシグナル。
 
-### 10.2 S3 AP alias 経由と S3 AP ARN 経由で `aws s3 ls` の挙動が異なる
+### 10.2 S3 AP alias 経由と ARN 経由での `aws s3 ls` 挙動の差
 
 **症状**: 2026-05-11 の検証中、以下 2 コマンドで異なる結果が返った:
 
@@ -392,7 +392,7 @@ aws s3api list-objects-v2 --bucket "<alias>-ext-s3alias" --prefix "ai-outputs/uc
   は alias + `--recursive --human-readable` で取得済み（再現コマンドは
   `docs/verification-evidence/README.md` 参照）
 
-### 10.3 UC16 チェーン構造で `ocr-results/*.txt` が 0 bytes でも後段 Lambda は成功する
+### 10.3 UC16 チェーンでの 0 bytes `ocr-results/*.txt` と後段 Lambda の成功
 
 **観察**: 2026-05-11 の UC16 実検証で、最小サンプル PDF (298 bytes、本文ゼロ) を入力に
 使ったところ、OCR Lambda は `ocr-results/foia-001.pdf.txt` を **0 バイト** で書き出した

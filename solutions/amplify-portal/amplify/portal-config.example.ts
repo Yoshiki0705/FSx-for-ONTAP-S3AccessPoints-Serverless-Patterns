@@ -59,6 +59,25 @@ export interface PortalConfig {
   vpcSecurityGroupIds: string[];
   // Required whenever vpcId is set. See the assignment below for why.
   vpcRouteTableIds: string[];
+  // True when another stack already routes DynamoDB in those route tables. A
+  // route table holds one route per prefix list, so only one stack per VPC may
+  // create the gateway endpoint; the rest reuse the route it installed.
+  dynamoDbGatewayEndpointExists: boolean;
+  // Data platforms that are not FSx for ONTAP. FSx file systems are discovered
+  // from the control plane and never listed here. See the assignment below.
+  declaredDataPlatforms: Array<{
+    platform: string;
+    systemId: string;
+    name?: string;
+    resourceType?: string;
+    managementAddress?: string;
+    secretName?: string;
+  }>;
+  // Regions and accounts to enumerate for FSx for ONTAP file systems. Empty means
+  // this region and this account only. See the assignments below.
+  discoveryRegions: string[];
+  discoveryAccounts: string[];
+  discoveryRoleName: string;
   // Escape hatch: deploy into a VPC with no block expiry, on purpose.
   allowNoBlockExpiry: boolean;
 
@@ -329,6 +348,70 @@ export const config: PortalConfig = {
    * complete while expiry does not run. Set allowNoBlockExpiry to accept that.
    */
   vpcRouteTableIds: [],
+
+  /**
+   * Set true when a DynamoDB gateway endpoint already routes the route tables
+   * above, so this stack reuses that route instead of installing its own.
+   *
+   * Check before the first deployment into a shared VPC:
+   *   aws ec2 describe-route-tables --route-table-ids <rtb-id> \
+   *     --query "RouteTables[].Routes[?DestinationPrefixListId!=null]"
+   *
+   * Leaving it false where one exists fails the data stack at create time with
+   * "already has a route with destination-prefix-list-id", and rolls the stack
+   * back after roughly two minutes of successful resource creation.
+   */
+  dynamoDbGatewayEndpointExists: false,
+
+  /**
+   * Data platforms above the SVM layer that the control plane cannot report.
+   *
+   * FSx for ONTAP file systems are discovered automatically -- two read-only FSx
+   * calls, no ONTAP credential, no route to the management LIF -- so they do not
+   * belong here. What does: an on-premises ONTAP cluster, a Cloud Volumes ONTAP
+   * instance, or a container on a platform whose management interface is not the
+   * ONTAP REST API.
+   *
+   * A declaration is a claim. The platform appears only once a probe answers for
+   * it, and a platform this build cannot probe is left out with the reason
+   * recorded, so the selector never offers a scope no action can use. Adding an
+   * entry for a platform with no probe registered is therefore a no-op in the UI
+   * by design, visible in the inventory's `hidden` list.
+   *
+   *   declaredDataPlatforms: [
+   *     {
+   *       platform: "ONTAP_CLUSTER",
+   *       systemId: "lab-cluster-1",
+   *       name: "Lab cluster",
+   *       resourceType: "cluster",
+   *       managementAddress: "192.0.2.10",
+   *       secretName: "lab/ontap-credentials",
+   *     },
+   *   ]
+   */
+  declaredDataPlatforms: [],
+
+  /**
+   * How wide the FSx for ONTAP search is.
+   *
+   * Empty regions means the region the portal runs in; empty accounts means only
+   * its own. A file system in a region nobody listed is not reported as hidden --
+   * it is never looked for, which is the one absence the inventory cannot explain.
+   *
+   * `discoveryRoleName` is the same role name in every listed account, assumed as
+   * `arn:aws:iam::<account>:role/<name>`. It needs `fsx:DescribeFileSystems` and
+   * `fsx:DescribeStorageVirtualMachines` and must trust this deployment's
+   * discovery function. Without it, listed accounts are skipped rather than
+   * attempted, because an attempt with no role fails as an authorization error
+   * against the portal's own account and reads as a problem here.
+   *
+   *   discoveryRegions: ["ap-northeast-1", "us-east-1"],
+   *   discoveryAccounts: ["111122223333"],
+   *   discoveryRoleName: "PortalDiscoveryReader",
+   */
+  discoveryRegions: [],
+  discoveryAccounts: [],
+  discoveryRoleName: "",
   allowNoBlockExpiry: false,
 
   /**

@@ -59,6 +59,7 @@ def portal(drift: ModuleType, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -
         referenced_groups: list[str],
         reads: str = "",
         env: str = "",
+        preamble: str = "",
     ) -> Path:
         (tmp_path / "amplify" / "auth").mkdir(parents=True)
         (tmp_path / "amplify" / "data").mkdir(parents=True)
@@ -77,7 +78,8 @@ def portal(drift: ModuleType, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -
         # has to be present for the read to be examined at all.
         (tmp_path / "amplify" / "backend.ts").write_text(
             'const code = functionCode("functions/list-files");\n'
-            "const fn = new lambda.Function(stack, 'X', {\n"
+            + preamble
+            + "const fn = new lambda.Function(stack, 'X', {\n"
             "  environment: {\n" + env + "  },\n});\n",
             encoding="utf-8",
         )
@@ -137,6 +139,41 @@ class TestOrphanEnvReads:
             env="      OUTPUT_BUCKET: someBucket.bucketName,\n",
         )
         assert drift.check_orphan_env_reads() == []
+
+    def test_a_shorthand_property_counts_as_set(self, drift: ModuleType, portal: Callable[..., Path]) -> None:
+        """`{ NAME }` sets the variable as much as `{ NAME: value }` does.
+
+        Reading only the colon form reported `AI_METADATA_TABLE_NAME` as provided by
+        nothing while `backend.ts` passed it, which points the reader at a missing
+        setting when the setting is there.
+        """
+        portal(
+            declared_groups=["storage-admin"],
+            referenced_groups=[],
+            reads='OUT = os.environ.get("OUTPUT_BUCKET", "")\n',
+            env="      OUTPUT_BUCKET,\n",
+            preamble='const OUTPUT_BUCKET = process.env.OUTPUT_BUCKET || "";\n',
+        )
+        assert drift.check_orphan_env_reads() == []
+
+    def test_a_bare_uppercase_line_the_file_never_declares_is_not_set(
+        self, drift: ModuleType, portal: Callable[..., Path]
+    ) -> None:
+        """An array element looks like a shorthand property and is not one.
+
+        Accepting it would suppress the finding rather than raise a false one, so the
+        shorthand form counts only for names the file declares as a constant.
+        """
+        portal(
+            declared_groups=["storage-admin"],
+            referenced_groups=[],
+            reads='OUT = os.environ.get("OUTPUT_BUCKET", "")\n',
+            env="      SOMETHING_ELSE: 1,\n",
+            preamble="const ARRAY = [\n      OUTPUT_BUCKET,\n];\n",
+        )
+        findings = drift.check_orphan_env_reads()
+        assert len(findings) == 1
+        assert "OUTPUT_BUCKET" in findings[0].detail
 
     @pytest.mark.parametrize(
         "read",

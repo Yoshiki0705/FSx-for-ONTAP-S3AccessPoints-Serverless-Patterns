@@ -222,7 +222,7 @@ aws cloudformation describe-stacks \
 | `s3ApAlias` | portal-config.ts | Lambda のファイルアクセスと、`amplify_outputs.json` 経由の Upload タブ |
 | `region` | portal-config.ts | FSx for ONTAP リージョンと一致させる |
 
-### エイリアスは API から引く
+### エイリアスの API からの取得
 
 `s3ApAlias` を手で書き写すと、削除済みや `MISCONFIGURED` の Access Point でも設定ファイル上は
 正しく見えます。インベントリは FSx API から derive してください。
@@ -243,7 +243,7 @@ make discover-s3ap ARGS="--accounts 111111111111 222222222222 --role-name <role>
 `fsx:DescribeS3AccessPointAttachments` が拒否された場合は `lifecycle: UNKNOWN` として
 そのまま返す（読み取り権限の不足でブラウズ不能にしない）。
 
-### グループと AP の対応がずれていないか調べる
+### グループと AP の対応のずれの確認
 
 `groupApMapping` は手書きで、これまで**ずれても誰も知らせませんでした**（AP を作り替えると
 古い alias が残り、そのグループは存在しないものを指す）。対応表そのものは設定ファイルに残し、

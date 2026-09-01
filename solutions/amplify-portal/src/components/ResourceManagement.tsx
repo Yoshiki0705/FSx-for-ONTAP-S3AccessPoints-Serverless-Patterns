@@ -13,6 +13,7 @@ import { SnapshotAdminManager } from "./admin/SnapshotAdminManager";
 import { StorageDashboard } from "./admin/StorageDashboard";
 import { AiSettingsManager } from "./admin/AiSettingsManager";
 import { SvmSelector } from "./admin/SvmSelector";
+import { PlatformSelector } from "./admin/PlatformSelector";
 import { FlexCacheManager } from "./admin/FlexCacheManager";
 import { FlexCloneManager } from "./admin/FlexCloneManager";
 import { SnapMirrorStatus } from "./admin/SnapMirrorStatus";
@@ -141,6 +142,7 @@ export function ResourceManagement({ aiSettings, onAiSettingsChange }: ResourceM
             ← {t("rmBackToOverview")}
           </button>
           <h2>{current?.icon} {current?.label}</h2>
+          <PlatformSelector />
           <SvmSelector />
         </div>
         <div className="rm-detail-content">
@@ -175,7 +177,8 @@ export function ResourceManagement({ aiSettings, onAiSettingsChange }: ResourceM
       <div className="rm-overview-header">
         <h2>🔧 {t("rmTitle")}</h2>
         <span className="rm-badge">{t("rmAdminOnly")}</span>
-        <SvmSelector />
+        <PlatformSelector />
+          <SvmSelector />
       </div>
 
       <StorageDashboard onNavigate={(panel) => setActivePanel(panel as AdminPanel)} />

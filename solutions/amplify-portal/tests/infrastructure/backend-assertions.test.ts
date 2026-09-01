@@ -62,6 +62,9 @@ describe("Backend Infrastructure Structure", () => {
       "ResourceMgmtFunction",
       "NotificationBridgeFunction",
       "ThumbnailsFunction",
+      // Outside the VPC on purpose: it answers the AWS control plane, and its
+      // value is that it still answers when the ONTAP path does not.
+      "PlatformDiscoveryFunction",
     ];
 
     it("defines all expected Lambda functions", () => {
@@ -80,6 +83,23 @@ describe("Backend Infrastructure Structure", () => {
       const armMatches = (backendSource.match(/architecture: lambda\.Architecture\.ARM_64/g) || []).length;
       expect(pythonMatches).toBe(expectedLambdas.length);
       expect(armMatches).toBe(expectedLambdas.length);
+    });
+
+    it("keeps the data platform inventory outside the VPC", () => {
+      // It reads the FSx control plane, and the reason it is the entry point for
+      // narrowing is that it still answers when the ONTAP path does not. In the
+      // VPC it would need an FSx interface endpoint or a NAT gateway and would
+      // fail for network reasons while reporting an inventory problem -- the same
+      // shape of failure this layer was added to remove.
+      const declaration = backendSource.slice(
+        backendSource.indexOf('new lambda.Function(dataStack, "PlatformDiscoveryFunction"')
+      );
+      const body = declaration.slice(0, declaration.indexOf("});"));
+      expect(body).not.toContain("vpcConfig");
+      expect(body).toContain('handler: "handler.handler"');
+      // Read-only, and both calls enumerate, so neither takes a resource to scope.
+      expect(backendSource).toContain("fsx:DescribeFileSystems");
+      expect(backendSource).toContain("fsx:DescribeStorageVirtualMachines");
     });
 
     it("all Lambda functions have explicit timeout", () => {

@@ -24,7 +24,7 @@
 Recording End 検証・permission-aware な取り込み境界・マニフェスト検証・Human Review 判定・データ分類の
 動作を確認できます（FSx for ONTAP 不要）。
 
-## なぜこのパターンか
+## このパターンを選ぶ理由
 
 - Amazon IVS が **ライブのインタラクティブ体験**（低遅延配信）を実現する。
 - Amazon IVS は **標準 S3 バケット**（正式サポートされた録画ランディングゾーン）に Auto-Record する。

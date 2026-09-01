@@ -46,7 +46,7 @@ admin/data-protection 機能は「ONTAP 接続が必要」と表示されます�
 > **この文書自体は渡さないでください。** 渡すもの一式と問い合わせ対応は
 > [引き渡しと問い合わせ対応ガイド](portal-handover-guide.md) にあります。
 
-### スマートフォン実機で確認する
+### スマートフォン実機での確認
 
 **`npm run dev -- --host` で LAN の IP を開く方法では、サインインできない。** ポータルは
 Amplify の SRP 認証で `crypto.subtle` を、共有リンクとアップロードリンクのコピーで
@@ -356,7 +356,7 @@ aws lambda list-functions \
   --output text
 ```
 
-> **画面から逆算しないほうがよい理由**: 6 段目だけが失敗している状態——Secrets Manager のパスワードと ONTAP 側のパスワードが食い違っていた——で、ポータルは「ONTAP 接続が必要です」と VPC とセキュリティグループについての案内を表示しました。ボリュームは存在し、リクエストはクラスターに届いていました。現在はパネルが原因を 5 分類しますが、**デプロイ直後は UI を開くより preflight を走らせるほうが速いです**。詳細は [ONTAP 接続ガイド](ONTAP-CONNECTION-GUIDE.md#まず-make-ontap-preflight-を実行する)。
+> **画面から逆算しないほうがよい理由**: 6 段目だけが失敗している状態——Secrets Manager のパスワードと ONTAP 側のパスワードが食い違っていた——で、ポータルは「ONTAP 接続が必要です」と VPC とセキュリティグループについての案内を表示しました。ボリュームは存在し、リクエストはクラスターに届いていました。現在はパネルが原因を 5 分類しますが、**デプロイ直後は UI を開くより preflight を走らせるほうが速いです**。詳細は [ONTAP 接続ガイド](ONTAP-CONNECTION-GUIDE.md#最初に実行する-make-ontap-preflight)。
 ## 手作業のままにしている設定と、その理由
 
 再現性のため、原則としてすべて IaC 側に置いています。以下は**意図的に外に出している**ものです。
@@ -391,7 +391,7 @@ NAS のみの環境では単独利用、SaaS 併用環境では追加レイヤ�
 - **法務**: 契約書 PDF の AI 分類 + 期限管理可視化
 - **研究**: ゲノム/シミュレーション結果のブラウザ検索
 
-### NFS/SMB ファイルサーバーに Web 体験を追加する
+### NFS/SMB ファイルサーバーへの Web 体験の追加
 
 NFS/SMB ファイルサーバーの高スループット・低レイテンシ・マルチプロトコル対応はそのまま活かしつつ、以下のような Web 体験を**データ移動なし**で追加します:
 
@@ -415,6 +415,8 @@ NFS/SMB ファイルサーバーの高スループット・低レイテンシ・
 | `Execution timed out` (admin 操作) | Secrets Manager VPC Endpoint がない | VPC に `com.amazonaws.<region>.secretsmanager` Interface Endpoint を追加 |
 | `Unknown action: xxx` | Lambda コードが古い | sandbox を Ctrl+C → `npm start` で再起動 |
 | S3 Object Lock 「未設定」 | S3 Gateway Endpoint のルートテーブルに Lambda サブネットが含まれていない | `aws ec2 modify-vpc-endpoint --add-route-table-ids <rtb-id>` |
+| リソース管理とデータ保護が「読み込み中」のまま。ファイル操作は動く | デプロイ済み Lambda に VPC 設定が入っておらず、ONTAP 管理 LIF に到達できない。関数のタイムアウトまで待つので、エラーではなく無限の読み込みに見える | `make portal-preflight` で確認。`no VpcConfig` と出たら sandbox を再デプロイする。デプロイが auth スタックで失敗している場合は「同じアカウントに sandbox が複数あるとき」を参照 |
+| サインインが「ユーザー名またはパスワードが違います」で通らない | 出力ファイルが別の sandbox のプールを指している | `make portal-preflight` でプールの所属を確認し、そのプールにアカウントを作り直す |
 | `CDK Assembly Error` | cdk-nag が走っている（通常は CI-only） | `.amplify/artifacts` を削除して再起動 |
 | 画面が固まる / ファンが回り続ける | 下記「画面が固まったときの切り分け」を参照 | まずタブを閉じる。閉じれば原因はブラウザ側 |
 
@@ -443,6 +445,82 @@ NFS/SMB ファイルサーバーの高スループット・低レイテンシ・
 ブラウザとバージョン、開発者ツールの Console に出ているエラー。これがあると原因の切り分けが
 できます。Console の内容にファイル名やユーザー名が含まれることがあるため、共有前に確認して
 ください。
+
+## 同じアカウントに sandbox が複数あるとき
+
+sandbox は `--identifier` ごとに独立したスタックになりますが、**共有しているものが 3 つ**
+あります。いずれも失敗が「エラー」ではなく「動いているように見えて動かない」形で出るため、
+先に把握してください。
+
+### 1. `amplify_outputs.json` は 1 つしかない
+
+ブラウザが読む接続情報はこのファイル 1 つで、`ampx sandbox` を実行するたびに**最後に走った
+sandbox の内容で上書き**されます。別の sandbox をデプロイした直後は、画面は普通に開き、
+サインイン画面も出ますが、**払い出したアカウントが存在しないプールに対して認証**しようと
+します。表示されるのは「ユーザー名またはパスワードが違います」だけです。
+
+払い出す前に、いま出力がどの sandbox を指しているか確認します。
+
+```bash
+make portal-preflight
+```
+
+`pool ap-northeast-1_XXXX ... belongs to sandbox 'demo'` と出た場合、アカウントは**その
+プールに**作る必要があります。
+
+### 2. 既存の Cognito User Pool は CloudFormation から更新できない
+
+一度作られた User Pool は、プロパティを 1 つ変えるだけでも Cognito が更新を拒否します
+（`Invalid AttributeDataType input` → `AttributeDataType` を明示すると
+`Required custom attributes are not supported currently`）。更新時に Cognito は `Schema` を
+「追加する属性」として読むため、既存と同じスキーマを送ることが構造的に無効になります。
+
+影響は認証まわりの変更が入った**あと**に出ます。しばらく触っていなかった sandbox は、
+以降どのデプロイも auth スタックで失敗し、スタック単位でロールバックされるので**認証と無関係
+な変更（Lambda の VPC 設定など）も適用されません**。
+
+回避策はありません。Amplify 公式の手順（`defineAuth` を外してデプロイし戻す）はプール内の
+全ユーザーを削除します。**新しい identifier で作り直すのが唯一の道**で、新規作成なら最初から
+現在の構成で作られるため問題は起きません。
+
+### 3. DynamoDB ゲートウェイエンドポイントは VPC に 1 つだけ
+
+ゲートウェイエンドポイントの実体はルートテーブルのルートで、ルートテーブルは 1 つの
+プレフィックスリストにつき 1 ルートしか持てません。同じルートテーブルを指した 2 つ目の
+sandbox は、他のリソースが 2 分ほど正常に作られたあとで次のように失敗し、スタックごと
+ロールバックします。
+
+```
+route table rtb-xxxx already has a route with destination-prefix-list-id pl-xxxx
+```
+
+既にルートがある VPC にデプロイする場合は、そのルートを再利用すると宣言します。
+
+```bash
+AMPLIFY_PORTAL_DDB_GW_ENDPOINT_EXISTS=1 npx ampx sandbox --once --identifier demo
+```
+
+関数が必要とするのはルートであって所有権ではないので、既存のルートで同じように動きます。
+現状は次で確認できます（`make portal-preflight` も同じ判定をします）。
+
+```bash
+aws ec2 describe-route-tables --route-table-ids <rtb-id> \
+  --query "RouteTables[].Routes[?DestinationPrefixListId!=null]"
+```
+
+### URL を渡す前の確認
+
+`make portal-preflight` は次の 3 つを、設定ファイルではなく**デプロイ済みの実物**を読んで
+突き合わせます。
+
+1. 出力ファイルが指すプールが存在し、どの sandbox のものか
+2. ONTAP を呼ぶ関数が VPC の中にあるか（無い場合、管理 LIF は private アドレスなので到達
+   できず、UI は「読み込み中」で止まったままになります）
+3. DynamoDB のルートの有無が設定の宣言と一致しているか
+
+**ページが HTTP 200 を返すことは、誰かがサインインできる証明にはなりません。** 200 が示すの
+は静的ファイルが配信されたことだけで、認証はブラウザから Cognito への別の通信です。渡す前に
+確認するのは上の 1 番、つまりプールの同一性です。
 
 ## 本番移行チェックリスト
 

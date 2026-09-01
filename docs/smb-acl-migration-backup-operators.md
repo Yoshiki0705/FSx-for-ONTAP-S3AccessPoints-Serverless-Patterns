@@ -27,7 +27,7 @@ ACL を保持したまま移行する必要がある場合、単純に robocopy 
 | コピー先（FSx for ONTAP） | `BUILTIN\Backup Operators` + `SeRestorePrivilege` | 差分コピー時に ACL 上書き込み権限がなくても、ACL を含む上書き（リストア）が可能 |
 | AWS DataSync | 上記両方への所属 | ソース側 Backup Operators と FSx for ONTAP SVM 側 `BUILTIN\Backup Operators` の双方に所属していれば、初期・差分とも同様に動作する |
 
-### なぜ機能するのか
+### 機能する理由
 
 `SeBackupPrivilege` と `SeRestorePrivilege` は、NTFS ACL の評価を**バイパス**する Windows の特権です。
 バックアップソフトウェアがすべてのファイルを読み書きできるようにするために存在します。

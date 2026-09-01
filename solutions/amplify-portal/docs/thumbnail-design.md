@@ -44,7 +44,7 @@ FileExplorer（1 ページ分のキーをまとめる）
 | キャッシュ | `ThumbnailCacheBucket`、30 日で失効 |
 | フロント | `src/hooks/useThumbnails.ts` → `FilePreview` の `thumbnailUrl` |
 
-### なぜ一覧の Lambda に action を足さなかったか
+### 一覧の Lambda に action を足さなかった理由
 
 `fileQuery` と `fileMutation` はどちらも一覧の Lambda（`ListFilesLambdaDataSource`）に束ねられている。ここに action を足すと**生成が一覧用 Lambda の中で走る**。6MB のレイヤーとメモリ増が、サムネイルと関係のない全ての一覧のコールドスタートに乗る。ZIP 生成が別 Lambda になっているのと同じ理由で分けた。
 

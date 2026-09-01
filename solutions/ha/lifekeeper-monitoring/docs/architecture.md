@@ -167,7 +167,7 @@ LifeKeeper V10.0.1 以降、Amazon FSx for NetApp ONTAP を共有ディスクと
 
 ## FSx for ONTAP + LifeKeeper の組み合わせの価値
 
-### なぜこの組み合わせか
+### この組み合わせを選ぶ理由
 
 | レイヤー | 提供する HA | 担当 |
 |---------|-----------|------|

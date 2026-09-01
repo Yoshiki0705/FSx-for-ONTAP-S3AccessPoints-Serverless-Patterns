@@ -10,6 +10,7 @@ import { OntapFailureNotice } from "./OntapFailureNotice";
 import { SnaplockConfirmDialog } from "./SnaplockConfirmDialog";
 import { VolumeScopeBadge } from "./VolumeScopeBadge";
 import { SvmSelector } from "./admin/SvmSelector";
+import { PlatformSelector } from "./admin/PlatformSelector";
 import { VolumeSelector } from "./admin/VolumeSelector";
 import type { SnaplockIntent } from "../utils/snaplockConsequences";
 
@@ -369,6 +370,7 @@ export function SnaplockStatus() {
           {/* No leading "scope" label: the two controls are labelled already, and a
               third label above them read as a duplicate of the SVM one. The chevron
               carries the narrowing instead. */}
+          <PlatformSelector />
           <SvmSelector />
           <span className="protection-scope-chain" aria-hidden="true">›</span>
           <VolumeSelector

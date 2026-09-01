@@ -359,7 +359,7 @@ curl -s https://nextcloud.example.com/status.php | jq .
 | **Nextcloud ファイルロック** | Nextcloud のファイルロックは NFS/SMB クライアントに及ばない | Nextcloud + NFS からの同時編集は競合の可能性あり。ONTAP の oplock/バイトレンジロックで調整。 |
 | **サムネイル/プレビュー生成** | プレビューごとに S3 AP GetObject が発生しレイテンシ増加 | 選択肢 A: レイテンシを許容。選択肢 B: NFS マウントでプレビュー生成（同一 VPC のみ）。 |
 
-### S3 AP vs NFS マウント: Nextcloud でどちらを使うか
+### S3 AP vs NFS マウント: Nextcloud での選び分け
 
 | ユースケース | 推奨バックエンド | 理由 |
 |---|---|---|

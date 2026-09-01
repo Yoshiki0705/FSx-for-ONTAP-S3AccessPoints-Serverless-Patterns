@@ -152,7 +152,7 @@ Amazon FSx for NetApp ONTAP の S3 Access Point は **二段階認可モデル**
 
 **`aws:SecureTransport` を「平文通信を止めている根拠」として書かないでください。** 署名なし / 署名付きの HTTP リクエストはいずれも HTTP 307 で HTTPS にリダイレクトされ、**認可の評価に到達する前に経路が変わります。** AWS のドキュメントもアクセスポイントは HTTPS のみを受け付け、HTTP にはリダイレクトを返すと明記しています。多層防御として書く分には無害ですが、`false` になる経路がこの AP には存在しません。
 
-### ポリシーサイズの上限は正規化後で判定される
+### 正規化後で判定されるポリシーサイズの上限
 
 | 適用したポリシー（整形なし JSON） | 結果 |
 |---|---|
@@ -202,7 +202,7 @@ S3 Access Points for FSx for ONTAP では、通常の S3 バケット ARN とは
 
 > **注意**: S3 AP エイリアス（`xxx-ext-s3alias`）を `arn:aws:s3:::` 形式で使用すると IAM では認識されません。必ず `arn:aws:s3:{region}:{account}:accesspoint/{name}` 形式を使用してください。AWS の [Troubleshooting access points](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/troubleshooting-access-points-for-fsxn.html) も、バケット ARN 形式が使われている場合は AP の ARN に修正するよう記述しています。
 
-### クロスアカウントのデータアクセスは成立する
+### クロスアカウントデータアクセスの成立
 
 **「同一アカウント所有が必須」は AP を作る側の制約で、AP を使う側の制約ではありません。**
 
@@ -233,7 +233,7 @@ S3 Access Point 作成時に指定するファイルシステム ID が、すべ
 
 **Layer 2 由来の `AccessDenied` は、エラー本文が素の `Access Denied` になります。** Layer 1 の明示的な拒否に当たった場合は `with an explicit deny in a resource-based policy` が付くので、本文で層を弁別できます。
 
-### AP に固定する ID は、SVM が名前解決できる必要がある
+### AP に固定する ID に必要な SVM 名前解決
 
 **AWS 側に作るものではありません。** ONTAP の SVM が名前解決できるユーザーである必要があります。
 
@@ -300,7 +300,7 @@ AWS の [Troubleshooting access points](https://docs.aws.amazon.com/fsx/latest/O
 - root (UID 0) の使用を避ける（全ファイルへのアクセスが許可されるため）
 - NTFS 環境では、必要最小限のグループメンバーシップを持つサービスアカウントを使用
 
-## 監査ログには誰が記録されるか
+## 監査ログに記録される主体
 
 **S3 AP 経由のアクセスは ONTAP のファイルアクセス監査に記録されますが、記録される主体は AP に固定した ID であり、呼び出し元の IAM プリンシパルではありません。** Layer 1 と Layer 2 で主体が分離していることが、そのまま監査の限界になります。
 
@@ -336,7 +336,7 @@ AWS の [Troubleshooting access points](https://docs.aws.amazon.com/fsx/latest/O
 
 > **ガバナンスに関する補足**: **AP を用途別ではなく共用で 1 つ作る設計は、AP ポリシーで呼び出し元を分けられても、ファイルアクセス監査では全員が同じ主体として記録されます。** ファイル単位の操作を主体別に追跡する要件がある場合は、**AP の分割が監査の粒度を決めます。** 本リポジトリのポータルがチーム単位で AP を分けているのはこの理由です。
 
-### UNIX ボリュームへの SLAG は unix→win マッピングを必須にする
+### UNIX ボリュームへの SLAG における unix→win マッピングの必須化
 
 UNIX ボリュームに監査 ACE を付ける経路として SLAG（storage-level access guard）がありますが、**付けた直後にアクセスが拒否されます。** 5 つの状態で測りました（プローブは NFSv3。同一の拒否は S3 AP 経路でも観測しています）。
 
@@ -358,7 +358,7 @@ UNIX ボリュームに監査 ACE を付ける経路として SLAG（storage-lev
 
 **マッピングを与えれば SLAG を残したまま復帰します**（D）。ただし複数 SVM でこれを維持する運用コストと、ID の対応付けを設計に持ち込む判断が別に発生します。**ファイル単位の監査が要件なら、ボリュームのセキュリティスタイルを設計段階で決めるほうが単純です。**
 
-> **測定範囲**: 復帰（D）は **NFS で確認**しました。拒否側は S3 AP と NFS の両方で観測していますが、S3 AP 経路での復帰は未測定です（対照に使った SVM に ONTAP ネイティブ S3 サーバーがあり、[AP を作成できない](#副産物-ontap-ネイティブ-s3-サーバーは-ap-の作成をブロックする)ため）。
+> **測定範囲**: 復帰（D）は **NFS で確認**しました。拒否側は S3 AP と NFS の両方で観測していますが、S3 AP 経路での復帰は未測定です（対照に使った SVM に ONTAP ネイティブ S3 サーバーがあり、[AP を作成できない](#副産物-ontap-ネイティブ-s3-サーバーによる-ap-作成のブロック)ため）。
 
 ## 本プロジェクトでの適用
 
@@ -471,7 +471,7 @@ aws ec2 describe-vpc-endpoints \
 | Layer 1 の評価はボリュームのセキュリティスタイルで変わる | 変わりません。UNIX / NTFS の両方で同じ結果でした |
 | ONTAP ネイティブ S3 を使っている SVM にも AP を作れる | 作れません。`FAILED` になります |
 
-## 副産物: ONTAP ネイティブ S3 サーバーは AP の作成をブロックする
+## 副産物: ONTAP ネイティブ S3 サーバーによる AP 作成のブロック
 
 **SVM に ONTAP ネイティブの S3 サービスがあると、その SVM のボリュームに S3 AP を作成できません。** AP の `Lifecycle` が `FAILED` になり、理由が明示されます。
 

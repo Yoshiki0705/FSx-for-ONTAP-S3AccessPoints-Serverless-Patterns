@@ -50,7 +50,7 @@ Renovate は「そのパッケージの最新メジャー」を提案するだ�
 
 ミドルウェアのメジャーを上げるときは、それを載せているアプリ側の対応表を先に読む。
 
-### GitHub Actions のメジャーは Node ランタイムの期限で決まる
+### GitHub Actions のメジャーと Node ランタイム期限の連動
 
 2026 年のメジャー更新はほぼすべて Node 20 → Node 24 への移行です。期限があります。
 
@@ -77,7 +77,7 @@ Node 24 の Action はランナー **v2.327.1 以上**を要求します（こ�
 | `actions/upload-artifact` v7 | ESM 化 + `archive: false` の追加 | 影響なし |
 | `gitleaks/gitleaks-action` v3 | 入力・出力・挙動の変更なし（Node 24 のみ） | 影響なし |
 
-### SHA を張り替えたら、SHA とタグの対応を機械で照合する
+### SHA 張り替え後に必要な SHA とタグの対応照合
 
 コミットメッセージの `# vX.Y.Z` は人が書くので、SHA と一致している保証がありません。
 張り替え後に照合します。
@@ -118,7 +118,7 @@ npm view typescript version                          # 現行の 7.x
 
 上限が `<8.0.0` 相当に広がったら再度試す。それまで `typescript` は 6 系に留める。
 
-### `npm install` が lockfile を壊し、`npm ci` だけが壊れる
+### `npm install` による lockfile 破壊と `npm ci` の失敗
 
 `solutions/amplify-portal` では**プレーンな `npm install` を実行すると `npm ci` が失敗する
 状態に戻ります**。`@opentelemetry/resources@2.0.0` と `sdk-trace-base@2.0.0` が

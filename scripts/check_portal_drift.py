@@ -979,9 +979,10 @@ def check_orphan_env_reads() -> list[Finding]:
     `secure-viewer` are checked in but not deployed, and their variables are
     correctly absent.
 
-    Set anywhere in `backend.ts` counts as set. Associating a variable with the
-    one function that receives it would need the TypeScript parsed rather than
-    scanned, and the failure this catches is a name nothing provides at all.
+    Set anywhere in `backend.ts` counts as set, whether written as `NAME: value` or
+    as the shorthand `NAME`. Associating a variable with the one function that
+    receives it would need the TypeScript parsed rather than scanned, and the
+    failure this catches is a name nothing provides at all.
     """
     backend = PORTAL / "amplify" / "backend.ts"
     if not backend.exists():
@@ -989,6 +990,16 @@ def check_orphan_env_reads() -> list[Finding]:
     backend_text = backend.read_text(encoding="utf-8")
 
     provided = set(re.findall(r"^\s+([A-Z][A-Z_0-9]*):", backend_text, re.MULTILINE))
+    # Shorthand properties -- `{ AI_METADATA_TABLE_NAME }` rather than
+    # `{ AI_METADATA_TABLE_NAME: AI_METADATA_TABLE_NAME }` -- set the variable just as well,
+    # and reading only the colon form reported one as unset while `backend.ts` provided it.
+    #
+    # Accepted only for names the file also declares as a constant. An uppercase identifier
+    # alone on a line is otherwise ambiguous: an element of an array literal looks the same,
+    # and counting one as provided would silence a real finding rather than raise a false one.
+    declared = set(re.findall(r"^const ([A-Z][A-Z_0-9]*)\s*=", backend_text, re.MULTILINE))
+    shorthand = set(re.findall(r"^\s+([A-Z][A-Z_0-9]*),\s*$", backend_text, re.MULTILINE))
+    provided |= shorthand & declared
     # Lambda provides these to every function; no template mentions them.
     runtime_supplied = {"AWS_REGION", "AWS_LAMBDA_FUNCTION_NAME", "AWS_EXECUTION_ENV"}
 

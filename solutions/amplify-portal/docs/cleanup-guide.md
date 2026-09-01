@@ -149,7 +149,7 @@ make dev      # ローカル開発サーバー起動
 
 ## トラブルシューティング
 
-### `npx ampx sandbox delete` がタイムアウトする
+### `npx ampx sandbox delete` のタイムアウト
 
 CDK のスタック削除は裏で進行しています。以下で確認：
 
@@ -158,7 +158,7 @@ aws cloudformation list-stacks --stack-status-filter DELETE_IN_PROGRESS \
   --query 'StackSummaries[*].[StackName,StackStatus]' --output table --region ap-northeast-1
 ```
 
-### DELETE_FAILED で止まる
+### DELETE_FAILED での停止
 
 ブロッカーリソース（非空 S3 バケット、Athena WorkGroup、ECR リポジトリ）を先に削除：
 
@@ -166,7 +166,7 @@ aws cloudformation list-stacks --stack-status-filter DELETE_IN_PROGRESS \
 ./scripts/cleanup_stacks.sh <stack-name>
 ```
 
-### スタック削除後も Lambda が残る
+### スタック削除後に残る Lambda
 
 CloudFormation 管理外で作成された Lambda は手動削除が必要：
 

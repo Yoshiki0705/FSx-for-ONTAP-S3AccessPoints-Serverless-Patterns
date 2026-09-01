@@ -105,18 +105,112 @@ REASONS: list[tuple[str, str]] = [
         "No point-in-time recovery, deliberately: the table holds feature gates, so "
         "losing it resets them to their defaults and an administrator sets them again.",
     ),
+    # The roles below hold a wildcard for a reason specific to the actions in them, so they
+    # come before the `data/` catch-all. Each names the action that forces it, checked
+    # against the service authorization reference on 2026-08-28 rather than assumed: an
+    # action that defines no resource type cannot be scoped, and a policy that tries reads
+    # as least privilege while denying every call.
+    (
+        "data/ComprehendLambdaRole",
+        "`comprehend:DetectSentiment` and `DetectKeyPhrases` define no resource type, and "
+        "`DetectEntities` defines only an optional custom `entity-recognizer-endpoint` this "
+        "portal does not create. There is nothing to name.",
+    ),
+    (
+        "data/DetectLabelsLambdaRole",
+        "`rekognition:DetectLabels` takes image bytes or an S3 reference rather than a "
+        "resource; AWS's own identity-based policy example for it grants `*`. The S3 read "
+        "beside it is scoped to `s3ApResourceArns`.",
+    ),
+    (
+        "data/TextractLambdaRole",
+        "`textract:DetectDocumentText` and `AnalyzeDocument` define only `adapter` and "
+        "`adapterversion`, neither of which this portal creates. The S3 read beside it is "
+        "scoped to `s3ApResourceArns`.",
+    ),
+    (
+        "data/PlatformDiscoveryFunction",
+        "`fsx:DescribeFileSystems`, `fsx:DescribeStorageVirtualMachines` and "
+        "`ec2:DescribeRegions` define no resource type -- they enumerate, and an "
+        "enumeration cannot be restricted to the resources it is meant to find. The "
+        "cross-account `sts:AssumeRole` beside them names `discoveryAccounts` exactly.",
+    ),
+    (
+        "data/AgentChatLambdaRole",
+        "Bedrock model and knowledge-base ARNs, left wildcarded deliberately: the usable "
+        "form depends on whether the deployment calls a foundation model, an inference "
+        "profile or a cross-region profile, and a narrowing that guesses wrong disables the "
+        "AI features silently rather than failing at deploy. See "
+        "`docs/bedrock-inference-profiles.md`.",
+    ),
+    (
+        "data/SearchFilesLambdaRole",
+        "A Bedrock knowledge-base ARN, for the same reason as `AgentChatLambdaRole`. The S3 "
+        "read beside it goes through the same path scoping as the keyword search.",
+    ),
+    (
+        "data/ResourceMgmtLambdaRole",
+        "`s3:ListAllMyBuckets` is account-level and defines no resource type; it sits in a "
+        "statement of its own so that the bucket-level actions beside it are not held open "
+        "with it. Those name `s3ObjectLockBucket` once it is configured, and it is unset in "
+        "`portal-config.example.ts`, which is what this baseline is measured against.",
+    ),
+    (
+        "data/QueryAuditLogLambdaRole",
+        "Reading the CloudTrail objects the query scans: Athena reads them with this role's "
+        "credentials, and the bucket holding them is not portal configuration -- it is "
+        "wherever the Glue table's `Location` points, set up outside this stack. The Athena "
+        "workgroup, database and table beside it are named exactly, and the output location "
+        "is named once `ATHENA_AUDIT_OUTPUT` is set.",
+    ),
+    (
+        "data/GetFileMetadataLambdaRole",
+        "The AI metadata table, which the portal does not create -- an operator names an "
+        "existing one, and it is unset in `portal-config.example.ts`. Named once set; `*` "
+        "while unset, because an ARN built from an empty name addresses no table and would "
+        "deny every read as though the grant were broken.",
+    ),
     (
         "data/",
-        "A Lambda role we declare. `AWSLambdaBasicExecutionRole` is the AWS-recommended "
-        "execution policy; the resource wildcards cover ARNs resolved at deploy time "
-        "(tables, secrets, Bedrock models) and object keys that cannot be listed in "
-        "advance. Narrowing each needs a per-endpoint review that has not been done.",
+        "A resource wildcard on a Lambda role we declare. What remains is object keys, "
+        "which cannot be listed in advance, and names that arrive as configuration -- see "
+        "`amplify/least-privilege-arns.ts` for the ARNs that replaced the rest, and for "
+        "which actions were checked against the service authorization reference to "
+        "establish that they can carry no resource at all.",
     ),
 ]
 
 
-def reason_for(path: str) -> str:
-    """The recorded reason for a finding on `path`."""
+# Why an IAM4 finding is recorded on a role we declare. It is one cause -- the role carries
+# an AWS managed execution policy -- and the per-role entries in `REASONS` explain resource
+# wildcards, which is a different question. Reading a role's IAM5 reason onto its IAM4
+# finding would claim the managed policy was chosen for reasons about ARNs.
+MANAGED_POLICY_REASON = (
+    "An AWS managed execution policy on a Lambda role we declare: "
+    "`AWSLambdaBasicExecutionRole` for CloudWatch Logs, and "
+    "`AWSLambdaVPCAccessExecutionRole` on the one function that reaches the ONTAP "
+    "management LIF. Both are the AWS-recommended policy for what they grant. Replacing "
+    "the logs one with an inline policy needs the log group name, which derives from the "
+    "function name CDK generates -- so the wildcard moves from the policy to the resource "
+    "rather than going away."
+)
+
+# Paths whose findings belong to whoever generated the construct, IAM4 included. Checked
+# before the rule, because `MANAGED_POLICY_REASON` says "a role we declare" and these are
+# roles Amplify and the CDK construct library declare.
+GENERATED_ELSEWHERE = ("auth/", "data/amplifyData", "data/Custom::CDK", "data/LogRetention")
+
+
+def reason_for(path: str, rule: str = "") -> str:
+    """The recorded reason for a finding.
+
+    `rule` participates because one construct produces findings with unrelated causes: a
+    role's resource wildcard and the managed policy attached to it are both reported
+    against the role, and only the first is about what the role may reach.
+    """
+    generated = any(path.startswith(p) or p in path for p in GENERATED_ELSEWHERE)
+    if rule.startswith("AwsSolutions-IAM4") and not generated:
+        return MANAGED_POLICY_REASON
     for prefix, reason in REASONS:
         if path.startswith(prefix) or prefix in path:
             return reason
@@ -174,7 +268,7 @@ def write_baseline(findings: set[tuple[str, str]]) -> None:
     """Rewrite the baseline, grouped by reason so the diff is readable."""
     by_reason: dict[str, list[tuple[str, str]]] = {}
     for rule, path in findings:
-        by_reason.setdefault(reason_for(path), []).append((rule, path))
+        by_reason.setdefault(reason_for(path, rule), []).append((rule, path))
     lines = [
         "# cdk-nag findings recorded as known, one per line: <rule id>\\t<construct path>.",
         "#",

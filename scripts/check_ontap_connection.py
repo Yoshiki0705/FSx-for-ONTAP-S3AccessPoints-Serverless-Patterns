@@ -657,6 +657,86 @@ def check_ontap_auth(aws: Aws, function_name: str) -> Stage:
     )
 
 
+def derive_file_system_from_outputs(aws: Aws) -> tuple[str, str]:
+    """Resolve the file system the portal actually serves files from.
+
+    The management IP is not a file system ID, so this check used to skip its
+    three decisive stages unless the operator passed ``--file-system-id`` -- which
+    asks them to already know the answer. Nothing then compared the management
+    target against the storage the portal shows, and a portal whose file browser
+    read one file system while its management panels addressed another passed
+    every stage. Measured 2026-08-28.
+
+    The chain is derivable without ONTAP credentials: the S3 access point alias in
+    ``amplify_outputs.json`` names an attachment, the attachment names a volume,
+    and the volume names its file system and SVM.
+
+    Returns:
+        The file system ID and a description of how it was found, or an empty ID
+        and the reason the chain could not be followed.
+    """
+    outputs = Path(__file__).resolve().parent.parent / "solutions" / "amplify-portal" / "amplify_outputs.json"
+    if not outputs.exists():
+        return "", f"{outputs.name} not present"
+    try:
+        alias = (json.loads(outputs.read_text(encoding="utf-8")).get("custom") or {}).get("s3ApAlias")
+    except (json.JSONDecodeError, OSError) as exc:
+        return "", f"{outputs.name} unreadable: {exc}"
+    if not alias:
+        return "", "custom.s3ApAlias absent from the outputs"
+
+    code, out, err = aws.run(
+        "fsx",
+        "describe-s3-access-point-attachments",
+        "--query",
+        f"S3AccessPointAttachments[?S3AccessPoint.Alias=='{alias}'].OntapConfiguration.VolumeId",
+        "--output",
+        "text",
+    )
+    volume_id = out.strip().split("\n")[0] if code == 0 else ""
+    if not volume_id or volume_id == "None":
+        return "", f"no ONTAP attachment matches alias {alias}: {err.strip()[:120]}"
+
+    code, out, err = aws.run(
+        "fsx",
+        "describe-volumes",
+        "--volume-ids",
+        volume_id,
+        "--query",
+        "Volumes[0].[FileSystemId,Name,OntapConfiguration.StorageVirtualMachineId]",
+        "--output",
+        "text",
+    )
+    if code != 0 or not out.strip():
+        return "", f"volume {volume_id} not described: {err.strip()[:120]}"
+    parts = out.split()
+    file_system_id, volume_name = parts[0], parts[1]
+    svm_id = parts[2] if len(parts) > 2 else ""
+
+    svm_name = ""
+    if svm_id:
+        code, out, _ = aws.run(
+            "fsx",
+            "describe-storage-virtual-machines",
+            "--storage-virtual-machine-ids",
+            svm_id,
+            "--query",
+            "StorageVirtualMachines[0].Name",
+            "--output",
+            "text",
+        )
+        if code == 0:
+            svm_name = out.strip()
+
+    return file_system_id, (
+        f"The file browser reads {alias}, attached to volume {volume_name} on "
+        f"{file_system_id}"
+        + (f" under SVM {svm_name}. " if svm_name else ". ")
+        + "Derived from the outputs, so the stages below compare the management "
+        "target against the storage the portal shows."
+    )
+
+
 def run_checks(
     aws: Aws,
     config: dict[str, str],
@@ -670,6 +750,10 @@ def run_checks(
         # bury the one that matters.
         return stages
 
+    derived_note = ""
+    if not file_system_id:
+        file_system_id, derived_note = derive_file_system_from_outputs(aws)
+
     if not file_system_id:
         stages.append(
             Stage(
@@ -677,11 +761,20 @@ def run_checks(
                 outcome=Outcome.SKIP,
                 detail=(
                     "Pass --file-system-id to check stages 2 to 4. The portal's config "
-                    "holds a management IP, not a file system ID."
+                    "holds a management IP, not a file system ID, and it could not be "
+                    f"derived: {derived_note}"
                 ),
             )
         )
     else:
+        if derived_note:
+            stages.append(
+                Stage(
+                    name="file system under the portal",
+                    outcome=Outcome.OK,
+                    detail=derived_note,
+                )
+            )
         fs_stage, _ = check_file_system(aws, file_system_id, config["ontapMgmtIp"])
         stages.append(fs_stage)
         if fs_stage.outcome is Outcome.OK:
