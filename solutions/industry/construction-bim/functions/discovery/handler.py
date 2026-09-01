@@ -24,6 +24,7 @@ import logging
 import os
 from datetime import datetime, timezone
 
+from shared.ad_health_check import preflight_ad_dc_reachability
 from shared.exceptions import lambda_error_handler
 from shared.observability import EmfMetrics, trace_lambda_handler, xray_subsegment
 from shared.ontap_client import OntapClient, OntapClientConfig
@@ -76,6 +77,28 @@ def handler(event, context):
     """
     s3ap = S3ApHelper(os.environ["S3_ACCESS_POINT"])
     s3ap_output = S3ApHelper(os.environ.get("S3_ACCESS_POINT_OUTPUT", os.environ["S3_ACCESS_POINT"]))
+
+    # ONTAP クライアント。AD DC pre-flight が最初の S3 AP 操作より前に必要なので、
+    # ここで構築する（メタデータ収集は下で同じクライアントを使う）
+    verify_ssl = os.environ.get("VERIFY_SSL", "true").lower() != "false"
+    ontap_config = OntapClientConfig(
+        management_ip=os.environ["ONTAP_MANAGEMENT_IP"],
+        secret_name=os.environ["ONTAP_SECRET_NAME"],
+        verify_ssl=verify_ssl,
+    )
+    ontap_client = OntapClient(ontap_config)
+    svm_uuid = os.environ["SVM_UUID"]
+
+    # AD 参加 SVM で AD DC に到達できないとき、S3 AP のデータ操作はすべて
+    # AccessDenied になる（HeadBucket だけは成功するので紛らわしい）。ONTAP
+    # クライアントの構築をここまで繰り上げたのはそのためで、最初の S3 AP データ
+    # 操作より前に置かないとチェックの意味が無い — list_objects が先に
+    # AccessDenied になり、原因が AD だと特定する機会が失われる。
+    #
+    # AD 未参加 SVM では何もしない。チェック自体が失敗した場合も止めない
+    # （preflight_ad_dc_reachability の契約）。
+    ad_status = preflight_ad_dc_reachability(ontap_client, svm_uuid=svm_uuid)
+    logger.info("AD DC pre-flight: %s", ad_status.message)
     prefix = os.environ.get("PREFIX_FILTER", "")
     suffix_env = os.environ.get("SUFFIX_FILTER", "")
 
@@ -114,15 +137,6 @@ def handler(event, context):
     bim_objects = [obj for obj in unique_objects if obj["Key"].lower().endswith((".ifc", ".rvt"))]
     pdf_objects = [obj for obj in unique_objects if obj["Key"].lower().endswith(".pdf")]
 
-    # ONTAP メタデータ収集
-    verify_ssl = os.environ.get("VERIFY_SSL", "true").lower() != "false"
-    ontap_config = OntapClientConfig(
-        management_ip=os.environ["ONTAP_MANAGEMENT_IP"],
-        secret_name=os.environ["ONTAP_SECRET_NAME"],
-        verify_ssl=verify_ssl,
-    )
-    ontap_client = OntapClient(ontap_config)
-    svm_uuid = os.environ["SVM_UUID"]
     metadata = _collect_ontap_metadata(ontap_client, svm_uuid)
 
     # Manifest 生成
