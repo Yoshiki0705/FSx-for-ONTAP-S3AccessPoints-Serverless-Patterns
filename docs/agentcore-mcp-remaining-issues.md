@@ -102,7 +102,7 @@
 | 項目 | 内容 |
 |------|------|
 | **ステータス** | ✅ Verified — ap-northeast-1 で動作確認完了 (2026-07-22) |
-| **ケース番号** | 178449261200987 |
+| **ケース** | Feature Request として起票（番号は `.private/` で追跡。公開リポジトリには記載しない）|
 | **起票日** | 2026-07（Feature Request） |
 | **AWS 回答日** | 2026-07-22 |
 
@@ -114,10 +114,11 @@
 - テスト結果を共有すればさらにサポート可能
 
 **次のアクション**:
-- [ ] `scripts/deploy-agentcore-mcp.sh` を ap-northeast-1 向けに実行
-- [ ] Gateway + Lambda targets が ap-northeast-1 で正常動作するか確認
-- [ ] Quick Desktop から ap-northeast-1 Gateway に接続テスト
-- [ ] 結果をサポートケースに返信
+- [x] ~~`scripts/deploy-agentcore-mcp.sh` を ap-northeast-1 向けに実行~~
+- [x] ~~Gateway + Lambda targets が ap-northeast-1 で正常動作するか確認~~
+- [x] ~~Quick Desktop から ap-northeast-1 Gateway に接続テスト~~
+- [x] ~~結果をサポートケースに返信~~ → 上のステータス行のとおり 2026-07-22 に動作確認済み。
+  ケースも解決済み（Support API で確認、2026-09-02 時点）
 
 **影響（成功した場合）**:
 - クロスリージョンデータ転送（us-east-1 → ap-northeast-1）が不要になる
@@ -260,7 +261,7 @@ curl -X POST "https://<gateway-id>.gateway.bedrock-agentcore.<region>.amazonaws.
 ## 次のアクション
 
 - [x] ~~CUSTOM_JWT Gateway + Policy の設定を調査・検証~~ → **解決済み (2026-07-20)**
-- [ ] AWS サポートからの回答を待機（2 件のケース: Web UI バグ, Desktop 永続化）
+- [x] ~~AWS サポートからの回答を待機（2 件のケース: Web UI バグ, Desktop 永続化）~~ → **両ケースとも解決済み**（Support API で確認、2026-09-02 時点）
 - [ ] Quick Desktop の次バージョンで MCP 永続化バグが修正されるか確認
 - [ ] Web コンソール UI 修正後に Agent リンクの E2E テスト実施
 - [ ] 本番認証パターンの Cedar ポリシーを scope/claim ベースに強化

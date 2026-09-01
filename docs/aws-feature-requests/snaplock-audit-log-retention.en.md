@@ -6,7 +6,7 @@
 **Date**: 2026-08-06
 **Project**: [FSx-for-ONTAP-S3AccessPoints-Serverless-Patterns](https://github.com/Yoshiki0705/FSx-for-ONTAP-S3AccessPoints-Serverless-Patterns)
 **Context**: Improvement requests arising from creating a SnapLock audit log volume in a verification environment, which left the whole file system undeletable for a minimum of six months
-**Status**: 📋 Filed, awaiting response (partial response received)
+**Status**: ✅ Filed 2026-08-06, **case closed** (confirmed through the Support API, 2026-09-02). The answer was that neither early deletion nor releasing the deletion lock is possible, and that no route exists short of closing the account -- not that SL-1 to SL-3 were implemented. Re-filing at expiry is tracked in `docs/agent/dated-obligations.json` with a due date of 2027-02-06
 **Related**: [Tamperproof Snapshot Design Guide](../tamperproof-snapshot-design.md) / [FR-1 to FR-4 (already submitted)](./fsxn-s3ap-improvements.md)
 
 > **On request numbering**: this document uses `SL-1` to `SL-3` because its scope is SnapLock. The numbers `FR-5` to `FR-10` are already in use by two documents covering different scopes.

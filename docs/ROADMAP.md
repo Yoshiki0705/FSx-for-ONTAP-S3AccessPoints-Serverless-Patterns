@@ -98,7 +98,11 @@ FR-7 について: Presigned URL は互換性表では "Not supported" だが実
 
 **Next actions**:
 
-- FR-5/6/7 を re:Post とサポートケースで提出
+- ~~FR-5/6/7 を re:Post とサポートケースで提出~~ → 2026-08-02 に提出済み（サービス単位で 2 ケース:
+  Lambda / HealthOmics）。**いずれもクローズ済み**（Support API で確認、2026-09-02 時点）。要望が実装
+  されたわけではなく、サービスチームへ渡った時点でケースが閉じるため、機能側は別に追う必要があります
+- Presigned URL のドキュメント修正ケース（2026-07-19 起票）は **現在も open**。公開互換性テーブルは
+  `Presign — Not supported` のままなので、本番前提での依存は引き続き避ける
 - `aws-amplify/amplify-ui`（Storage Browser + S3 AP）と `aws-amplify/amplify-backend`（Storage category + S3 AP）に issue 起票
 
 ---

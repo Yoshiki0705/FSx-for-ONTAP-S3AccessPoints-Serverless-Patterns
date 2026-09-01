@@ -365,7 +365,7 @@ AWS Support has escalated documentation improvements to the FSx for ONTAP servic
 2. Clarification distinguishing "Not supported + hard-blocked" (returns error) from "Not supported + may incidentally work" (no guarantee)
 3. Reflecting presigned URL support by ONTAP release (v4 from 9.11.1, v2 from 9.16.1)
 
-**Current status**: AWS Support has submitted the documentation correction to the internal documentation team and work is in progress. However, **the correction has not yet been reflected in the published documentation**. Update this section once the published table changes.
+**Current status**: AWS Support has submitted the documentation correction to the internal documentation team and work is in progress. However, **the correction has not yet been reflected in the published documentation**. The case tracking that correction, filed 2026-07-19, is **still open as of 2026-09-02** (confirmed through the Support API). Update this section once the published table changes.
 
 > **Content was rephrased for compliance with licensing restrictions. Sources: AWS Support correspondence (May–July 2026) and the NetApp KB articles linked below.**
 
