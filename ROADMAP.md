@@ -97,7 +97,28 @@ graph TD
 - ✅ `scripts/demo-ad-join-svm.sh` に post-join 検証追加
 - ✅ `infrastructure/demo-ad-environment.yaml` に検証ガイダンス出力追加
 - ✅ `docs/en/` + `docs/ja/` ドキュメント作成（8ペルソナレビュー済み）
-- 📋 Step Functions ワークフロー先頭に `require_ad_dc_reachability()` を統合 — 対象: WINDOWS identity type の S3 AP を使う全パターン
+- ✅ discovery ハンドラ先頭に `preflight_ad_dc_reachability()` を統合 — 10 パターン
+
+  対象の選び方を「WINDOWS identity type を使うパターン」から変えています。identity
+  type は S3 AP 側の設定でテンプレートには現れないため、その集合は列挙できません。
+  代わりに構造で選びました: ONTAP クライアントと S3 AP の両方を持つ discovery
+  ハンドラは AD 参加 SVM に向けられうるので、全 10 本が対象です。
+
+  `require_ad_dc_reachability()` ではなく `preflight_` 版を使っています。前者は
+  `OntapClientError` をそのまま通すため、ONTAP API の一時的な失敗でワークフロー
+  全体が止まります。診断のために足した処理が新しい障害要因になるのは、防ごうと
+  している問題より害が大きい。
+
+  9 本では ONTAP クライアントの構築が最初の S3 AP 読み取りより後にありました。
+  pre-flight は読み取りより前でなければ意味がない（`list_objects` が先に
+  AccessDenied になり、原因が AD だと特定する機会が失われる）ので、構築を繰り上げ
+  ています。`OntapClient.__init__` は config 保持のみで I/O を行わないため、繰り上げ
+  自体に副作用はありません。
+
+  検証は `shared/tests/test_discovery_ad_preflight_contract.py`。パターンごとに
+  テストを複製せず、ツリーを走査する 1 本のパラメトライズドテストにしてあるので、
+  新しいパターンは自動で対象に入ります（31 件）。3 種の変異——呼び出しの削除、SVM 名
+  での呼び出し、読み取りより後ろへの移動——をすべて検出することを確認済みです。
 
 ### SnapMirror API Methods for OntapClient
 
