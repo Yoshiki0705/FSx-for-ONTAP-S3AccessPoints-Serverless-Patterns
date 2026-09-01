@@ -216,7 +216,7 @@ response["Body"].close()
 | `AccessDenied` (IAM 正しいのに) | **Layer 2**（AP に固定した ID のファイル権限）。同一アカウントでは AP ポリシー未設定は原因にならない | `HeadBucket` で層を切り分ける。成功してデータ操作が失敗するなら Layer 2（[認可モデル](../s3ap-authorization-model.md)） |
 | `AccessDenied`（本文に `explicit deny in a resource-based policy`） | AP ポリシーの明示的な `Deny` に当たった | `Deny` 文の `Condition` を確認 |
 | `AccessDenied` on PutObject | file system identity に書き込み権限なし | ONTAP ボリュームの UNIX/NTFS 権限を確認 |
-| `AccessDenied`（SLAG を付けた直後から全操作） | UNIX ボリュームの SLAG が unix→win マッピングを必須にした | SLAG を外すか、unix→win の name-mapping を設定（[認可モデル](../s3ap-authorization-model.md#unix-ボリュームへの-slag-は-unixwin-マッピングを必須にする)） |
+| `AccessDenied`（SLAG を付けた直後から全操作） | UNIX ボリュームの SLAG が unix→win マッピングを必須にした | SLAG を外すか、unix→win の name-mapping を設定（[認可モデル](../s3ap-authorization-model.md#unix-ボリュームへの-slag-における-unixwin-マッピングの必須化)） |
 | `ServiceUnavailable` | VPC 内からの Internet Origin AP アクセス | VPC 外実行 or NAT Gateway 経由 |
 | `Connection timed out` (120s) | Internet Origin AP に S3 Gateway EP 経由でアクセス | Lambda の VPC 設定を外す or NAT Gateway 追加 |
 | `MalformedPolicy: invalid action` | リソースポリシーに `s3:GetBucketLocation` / `s3:ListBucketMultipartUploads` を使用 | これらを identity policy 側へ移す |

@@ -442,7 +442,7 @@ Step Functions ステートマシン ARN は**2 箇所**に設定する必要が
 
 ## 既知の注意点 — 追加の学び（2026-07-20）
 
-### 8. Upload タブのエイリアスは生成された outputs から来る
+### 8. Upload タブのエイリアスの出所 — 生成された outputs
 
 Storage Browser はクライアントサイドで動作し S3 を直接呼ぶため、エイリアスをブラウザ側で必要とします。以前は `src/portal-settings.ts` から読んでいましたが、このファイルはコミット対象なのでプレースホルダーのエイリアスが入っており、そのプレースホルダーで動作して存在しない Access Point に対するアップロードが全件失敗しました。現在は `amplify/backend.ts` が `backend.addOutput({ custom: ... })` で `amplify_outputs.json` に書き出し、`src/lib/portalOutputs.ts` が読みます。設定する場所は `amplify/portal-config.ts` だけです。
 

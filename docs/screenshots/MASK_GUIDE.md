@@ -194,7 +194,7 @@ deep scan を推奨。
 - tesseract / tesseract-lang が未インストール
 - `brew install tesseract tesseract-lang` で解消
 
-### 9-2. Leak が残る
+### 9-2. Leak の残存
 - 対象文字列が `_sensitive_strings.py` にない → 追加
 - OCR が当該単語を認識できていない → PSM モード変更 (`_deep_scan.py` 相当) で再試行
 - それでも駄目な場合 → 手動マスク (macOS Preview で黒矩形)

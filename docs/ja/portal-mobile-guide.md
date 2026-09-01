@@ -42,7 +42,7 @@
 > **`https://` である必要があります。** ポータルはパスワードの取り扱いとコピー機能でブラウザの
 > セキュア領域の機能を使うため、`http://` の URL（例: 開発機の LAN アドレス）ではサインインできません。
 > **`http://` の URL を受け取った場合は、担当者に `https://` の URL を依頼してください**（利用者側では直せません）。
-> 管理者向けの詳細は [Getting Started の「スマートフォン実機で確認する」](../../solutions/amplify-portal/docs/GETTING-STARTED.md#スマートフォン実機で確認する)。
+> 管理者向けの詳細は [Getting Started の「スマートフォン実機での確認」](../../solutions/amplify-portal/docs/GETTING-STARTED.md#スマートフォン実機での確認)。
 
 ---
 

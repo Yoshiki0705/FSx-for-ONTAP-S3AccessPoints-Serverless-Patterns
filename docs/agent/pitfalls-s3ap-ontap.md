@@ -132,7 +132,7 @@ paths, DNS restore and audit-subject behaviour: [pitfalls-ad-smb](pitfalls-ad-sm
 
 ---
 
-## 条件付き書き込み（`If-None-Match`）は 501 になる
+## 条件付き書き込み（`If-None-Match`）の 501 応答
 
 ブラウザから S3 AP に書くとき、`PutObject` に `if-none-match: *` を付けると
 `501 NotImplemented`（`A header you provided implies functionality that is not implemented`）

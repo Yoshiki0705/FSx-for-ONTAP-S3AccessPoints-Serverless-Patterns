@@ -108,7 +108,7 @@ RESULT=CLIENT_ERROR elapsed=2.7s
 
 ---
 
-## 検証 3: `UploadPartCopy` はドキュメント上 Supported だが実際には失敗する
+## 検証 3: ドキュメント上 Supported な `UploadPartCopy` の失敗
 
 [Access point compatibility](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/access-points-for-fsxn-object-api-support.html) は `UploadPartCopy`（same-Region、同一アクセスポイント内）を Supported と記載していますが、実測では**すべての `CopySource` 表記で `NoSuchKey`** となりました。同一キーに対する `HeadObject` は成功し、`CopyObject` も成功するため、キーの存在やアクセス権の問題ではありません。
 

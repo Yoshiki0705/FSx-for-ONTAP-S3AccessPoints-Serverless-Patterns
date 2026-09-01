@@ -219,7 +219,7 @@ aws ec2 deregister-image --image-id ami-0xxx... --region ap-northeast-1
 
 ---
 
-## 既存ツールとの比較: いつ KNFSD を選ぶか
+## 既存ツールとの比較: KNFSD を選ぶ場面
 
 以下のようなワークロードを持つ方に特に適しています:
 

@@ -38,7 +38,7 @@
 | File Explorer 一覧 | S3 Access Point から 29 ディレクトリを表示 | 同デモガイド 検証結果表 |
 | SMB 共有の暗号化トグル | ON / OFF の切り替えと状態反映 | 同デモガイド シナリオ 6 |
 | エクスポートポリシー作成 / 削除 | ポリシー作成、ルール追加、削除 | 同デモガイド シナリオ 7 |
-| ONTAP 障害の原因分類 | 認証情報が拒否された実環境で `CREDENTIALS_REJECTED` / HTTP 401 / エラーコードが UI に表示されることを確認。パスワードを揃えた後、同じパネルがスナップショット 13 件を表示することも確認（両方の状態をスクリーンショットで記録） | [ONTAP 接続ガイド](ONTAP-CONNECTION-GUIDE.md#画面はこう表示される) |
+| ONTAP 障害の原因分類 | 認証情報が拒否された実環境で `CREDENTIALS_REJECTED` / HTTP 401 / エラーコードが UI に表示されることを確認。パスワードを揃えた後、同じパネルがスナップショット 13 件を表示することも確認（両方の状態をスクリーンショットで記録） | [ONTAP 接続ガイド](ONTAP-CONNECTION-GUIDE.md#実際の画面表示) |
 | `make ontap-preflight` | 実環境で 6 段すべてを実行。修復前は段 1〜5 PASS / 段 6 FAIL、修復後は全段 PASS。**段 6 だけが失敗する状態**という、この機能が対象とする事象そのもので確認した | 同ガイド |
 
 ### 2026-08-14 に追加（書き込み系、ONTAP 9.18.1P3D1）
@@ -382,7 +382,7 @@ CloudFormation はこれを
 | ledger テーブル | 作成、TTL（`ttl`）有効、PITR 有効 |
 | `make portal-grant-roles` | 付与・冪等な再実行・拒否（role 2 つ / scope 無し）すべて期待どおり |
 
-### 判明した制約 1: sandbox は `RemovalPolicy.RETAIN` を無効化する
+### 判明した制約 1: sandbox による `RemovalPolicy.RETAIN` の無効化
 
 デプロイ済みテンプレートでは、**コードで `RETAIN` を指定している全テーブルが `DeletionPolicy: Delete`**
 になります。新規の `PortalActivityLedgerTable` だけでなく、既存の `ContainmentBlocksTable` も同じです。
@@ -406,7 +406,7 @@ route table rtb-... already has a route with destination-prefix-list-id pl-...
 `.trim()` で空になります。空文字は `||` に弾かれて既定値へ落ちるため効きません）。認可の確認に VPC は
 不要です。
 
-### 判明した制約 3: `JobExecutionTable` は初回作成で競合しうる
+### 判明した制約 3: `JobExecutionTable` の初回作成での競合
 
 `Attempt to change a resource which is still in use: Table is being created` で 1 度失敗しました。
 Amplify のテーブル管理カスタムリソースと DynamoDB の競合で、**再試行で解消します**。恒久的な問題では

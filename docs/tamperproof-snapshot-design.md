@@ -157,7 +157,7 @@ Tamperproof を有効化した後でも、**新規ロックを停止**できま�
 | 削除をブロックする範囲 | その Snapshot のみ | ボリューム → **SVM → ファイルシステム**まで連鎖 |
 | ONTAP フィールド | `snapshot_locking_enabled` / `expiry_time` | `snaplock.type` / `snaplock.retention` |
 
-### 削除ロックは親リソースまで連鎖する
+### 親リソースまで連鎖する削除ロック
 
 未満了の WORM ファイル（または未満了の監査ログ）が 1 つでも残っていると、次のすべてが削除できません。
 

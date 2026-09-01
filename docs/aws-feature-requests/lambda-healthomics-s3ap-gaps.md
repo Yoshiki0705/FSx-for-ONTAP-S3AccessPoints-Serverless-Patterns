@@ -76,7 +76,7 @@
 
 ---
 
-## FR-5: Lambda セルフマネージドコードストレージで FSx for ONTAP S3 AP を参照可能にする
+## FR-5: Lambda セルフマネージドコードストレージでの FSx for ONTAP S3 AP 参照対応
 
 ### 現状
 
@@ -129,7 +129,7 @@ Lambda セルフマネージドコードストレージは S3 バージョニン
 
 ---
 
-## FR-6: AWS HealthOmics の入出力に FSx for ONTAP S3 AP を指定可能にする
+## FR-6: AWS HealthOmics の入出力への FSx for ONTAP S3 AP 指定対応
 
 ### 現状
 
@@ -200,7 +200,7 @@ Step Functions で以下を構成します（未実装、新パターン候補�
 
 ---
 
-## FR-7: AWS SAM で `S3ObjectStorageMode` を指定可能にする
+## FR-7: AWS SAM での `S3ObjectStorageMode` 指定対応
 
 ### 現状
 

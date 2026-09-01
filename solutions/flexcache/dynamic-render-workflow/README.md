@@ -6,7 +6,7 @@
 
 レンダリング/EDA/シミュレーションジョブの投入時に ONTAP REST API で FlexCache ボリュームを動的に作成し、ジョブ完了後に自動削除するワークフロー。NVIDIA 型のジョブ単位キャッシュ管理パターンを AWS Step Functions で実装する。
 
-## なぜジョブ単位に FlexCache を作るのか
+## ジョブ単位に FlexCache を作る理由
 
 | 理由 | 説明 |
 |------|------|

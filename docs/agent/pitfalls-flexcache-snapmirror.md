@@ -52,7 +52,7 @@ FlexGroup のメンバーボリューム数（`constituents_per_aggregate`）を
 出典: [POST /storage/flexcache/flexcaches](https://docs.netapp.com/us-en/ontap-restapi-9161/post-storage-flexcache-flexcaches.html)
 （ライセンス条件に合わせて要約）
 
-### 同一 SVM 内の FlexCache は作れる
+### 同一 SVM 内での FlexCache 作成の成立
 
 オリジンと同じ SVM に FlexCache を作る構成は動く（実測: `fsxsvm01:vol1` をオリジンに
 `fsxsvm01:flexcache_eda_tokyo` を作成、online）。別クラスタを用意しなくても検証できる。

@@ -244,7 +244,7 @@ make portal-grant-roles ARGS='--apply --assign you@example.com=storage-admin,int
 作りません**——`defineAuth` の管理外のグループが残り、次のデプロイで drift 検査が
 見つけて理由が分からなくなるためです。
 
-### 設定が「入っているのに効かない」形を synth で止める
+### 「入っているのに効かない」設定の synth での停止
 
 `groupPathPrefixes` の prefix に末尾の `/` が無い（`teams/a` は `teams/ab/` にも一致する）、
 `shareLinksByRole` のキーに role でない名前を書いた（`{"external": true}` は「外部利用者に

@@ -31,7 +31,7 @@ series: "FSx for ONTAP S3 Access Points"
 
 ## 1. FPolicy イベント駆動アーキテクチャ
 
-### 背景: なぜ FPolicy か
+### 背景: FPolicy を選ぶ理由
 
 Phase 9 で確認した通り、FSx for ONTAP S3 AP の `GetBucketNotificationConfiguration` は依然 "Not supported"（FR-2 未解決）。全 17 UC がポーリングモデル（EventBridge Scheduler → Discovery Lambda → ListObjectsV2）で動作している。
 

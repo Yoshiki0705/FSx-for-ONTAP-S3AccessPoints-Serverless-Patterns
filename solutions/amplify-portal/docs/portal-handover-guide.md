@@ -28,7 +28,7 @@
 > **AI 処理タブを渡す前に**: リゾルバーの Step Functions ARN はプレースホルダーのままです。
 > 未設定で渡すと、利用者は失敗するボタンを押せてしまいます。設定するか、
 > `src/portal-settings.ts` の `processingEnabled` を `false` にしてタブを隠してください。
-> 手順は [ポータル UI を拡張する](CONTRIBUTING-UI.md#ai-処理ジョブを自分の組織向けに入れ替える) にあります。
+> 手順は [ポータル UI を拡張する](CONTRIBUTING-UI.md#ai-処理ジョブの自組織向けの入れ替え) にあります。
 
 
 これだけで利用者は使い始められます。**これ以上渡すと、インフラの事情を利用者に持ち込むことになります。**
@@ -62,7 +62,7 @@
 共有リンクのコピーで `navigator.clipboard` を使い、どちらもブラウザが secure context に
 限定している API です。`http://localhost` は例外扱いですが、`http://192.168.x.x` のような
 LAN アドレスは該当しません。**`npm run dev -- --host` で LAN の IP を配る方法ではサインインできません。**
-詳細は [Getting Started の「スマートフォン実機で確認する」](GETTING-STARTED.md#スマートフォン実機で確認する)。
+詳細は [Getting Started の「スマートフォン実機での確認」](GETTING-STARTED.md#スマートフォン実機での確認)。
 
 ### アカウントの作り方
 
@@ -144,7 +144,7 @@ iOS Safari / Android Chrome の最新版。特別な設定は要りません。
 |----------------|-----------------|------------|
 | サインインできない（押しても進まない） | URL が `https://` か | `http://` の LAN アドレスを配っている → [URL の実体](#url-の実体) |
 | サインインできない（パスワードが違うと出る） | `aws cognito-idp admin-get-user --user-pool-id "$POOL" --username <user>` の `UserStatus` | `FORCE_CHANGE_PASSWORD` のまま → `--permanent` 付きで再設定 |
-| 「ONTAP 接続が必要」「ONTAP が認証情報を拒否しました」等 | `make ontap-preflight FS_ID=<fs-id> LAMBDA=<関数名>` | 6 段のどれか。→ [ONTAP 接続ガイド](ONTAP-CONNECTION-GUIDE.md#まず-make-ontap-preflight-を実行する) |
+| 「ONTAP 接続が必要」「ONTAP が認証情報を拒否しました」等 | `make ontap-preflight FS_ID=<fs-id> LAMBDA=<関数名>` | 6 段のどれか。→ [ONTAP 接続ガイド](ONTAP-CONNECTION-GUIDE.md#最初に実行する-make-ontap-preflight) |
 | 画面が横に切れてボタンに届かない | 画面名とボタン名を聞く | **不具合。** スマホ幅で横スクロールは起きない設計 → [検証手順](../../../docs/ja/portal-mobile-guide.md#このガイドの検証状況) |
 | ファイルが見えない / 一部しか見えない | 権限か、S3 Access Point の対象範囲 | [認可モデル](../../../docs/ja/portal-authorization-model.md) |
 
@@ -246,7 +246,7 @@ control plane から読んで並べます。ONTAP の資格情報も管理 LIF �
 せず）: 初回 17.5 秒、暖機後 14.9 秒。** ブラウザは 5 分キャッシュするので、操作ごとに待つ
 わけではありませんが、画面を開いた直後は数秒かかります。
 
-### 探す範囲を絞る
+### 探す範囲の絞り込み
 
 範囲を限定すると速くなります。資産のあるリージョンが決まっている場合はこちらを推奨します。
 
@@ -257,7 +257,7 @@ AMPLIFY_PORTAL_DISCOVERY_REGIONS="ap-northeast-1,ap-northeast-3" npx ampx sandbo
 指定すると、有効リージョンの問い合わせは行わず、書いたものだけを探します。**書き忘れた
 リージョンは探されません。** 資産が増えたら足す必要があります。
 
-### 別アカウントを追加する
+### 別アカウントの追加
 
 相手アカウントに読み取り専用ロールを作り、名前を揃えます。ARN は
 `arn:aws:iam::<account>:role/<name>` として組み立てられます。

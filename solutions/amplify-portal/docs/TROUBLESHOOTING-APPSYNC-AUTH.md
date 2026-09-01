@@ -35,7 +35,7 @@ const client = generateClient<Schema>();
 const client = generateClient<Schema>({ authMode: "userPool" });
 ```
 
-### なぜ一覧は通り、作成は失敗したのか
+### 一覧が通り作成が失敗した理由
 
 一覧の操作（`action: "listFlexCaches"` を伴う `adminQuery`）は GraphQL の **Query** 型です。AppSync は手元の資格情報のまま Query 型を通す既定・キャッシュ挙動を取ることがあります。一方 **Mutation** 型（`action: "createFlexCache"` を伴う `adminMutation`）はより厳しい認可チェックを受け、Cognito トークンの明示が必要になります。
 
