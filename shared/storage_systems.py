@@ -242,9 +242,7 @@ def group_svms_by_file_system(records: Sequence[dict[str, Any]]) -> dict[str, tu
     return {fs: tuple(sorted(names)) for fs, names in grouped.items()}
 
 
-def discover_fsx_ontap(
-    fsx_client: Any, account: str = "", region: str = ""
-) -> list[StorageSystem]:
+def discover_fsx_ontap(fsx_client: Any, account: str = "", region: str = "") -> list[StorageSystem]:
     """Enumerate FSx for ONTAP file systems and their SVMs from the control plane.
 
     Two calls for the whole estate, rather than one per system: the SVM listing
