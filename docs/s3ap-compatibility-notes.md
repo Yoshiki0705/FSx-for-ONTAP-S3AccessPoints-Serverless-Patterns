@@ -335,7 +335,7 @@ AWS サポートは FSx for ONTAP サービスチームにドキュメント改�
 2. "Not supported + hard-blocked"（エラーを返す）と "Not supported + may incidentally work"（保証なし）の区別を明確化
 3. ONTAP バージョン別の presigned URL サポート状況（9.11.1 以降で v4、9.16.1 以降で v2）の反映
 
-**現在のステータス**: AWS サポートはドキュメント修正を社内ドキュメントチームに提出済みで、対応が進行中です。ただし**公開ドキュメントへの反映はまだ完了していません**。公開テーブルが更新された時点で本セクションを更新してください。
+**現在のステータス**: AWS サポートはドキュメント修正を社内ドキュメントチームに提出済みで、対応が進行中です。ただし**公開ドキュメントへの反映はまだ完了していません**。ドキュメント修正を追うケース（2026-07-19 起票）は **2026-09-02 時点で open**（Support API で確認）。公開テーブルが更新された時点で本セクションを更新してください。
 
 > **Content was rephrased for compliance with licensing restrictions. Sources: AWS Support correspondence (May–July 2026) and NetApp KB articles linked below.**
 

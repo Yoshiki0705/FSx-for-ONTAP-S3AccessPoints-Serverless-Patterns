@@ -102,7 +102,7 @@
 | Item | Details |
 |------|---------|
 | **Status** | ✅ Verified — confirmed working in ap-northeast-1 (2026-07-22) |
-| **Case ID** | 178449261200987 |
+| **Case** | Filed as a feature request (the number is tracked in `.private/`, not committed to a public repository) |
 | **Filed** | 2026-07 (Feature Request) |
 | **AWS Response** | 2026-07-22 |
 
@@ -117,7 +117,7 @@
 - [ ] Run `scripts/deploy-agentcore-mcp.sh` targeting ap-northeast-1
 - [ ] Verify Gateway + Lambda targets work correctly in ap-northeast-1
 - [ ] Test Quick Desktop connection to ap-northeast-1 Gateway
-- [ ] Reply to Support case with findings
+- [x] ~~Reply to Support case with findings~~ -> the Tokyo-region case is resolved (confirmed through the Support API, 2026-09-02)
 
 **Impact (if successful)**:
 - Eliminates cross-region data transfer (us-east-1 → ap-northeast-1)
@@ -227,8 +227,8 @@ The following must be resolved before Quick + AgentCore MCP integration moves be
 
 ## Next Actions
 
-- [ ] Await AWS Support response (2 open cases)
-- [ ] Investigate and test CUSTOM_JWT Gateway + Policy configuration
+- [x] ~~Await AWS Support response (2 open cases)~~ -> **both cases resolved** (confirmed through the Support API, 2026-09-02)
+- [x] ~~Investigate and test CUSTOM_JWT Gateway + Policy configuration~~ -> **resolved (2026-07-20)**, see ISSUE-3 above
 - [ ] Verify if MCP persistence bug is fixed in next Quick Desktop version
 - [ ] After Web console UI fix, run E2E test of Agent tool linking
 - [ ] Design production auth pattern document (VPC + CUSTOM_JWT + Policy)

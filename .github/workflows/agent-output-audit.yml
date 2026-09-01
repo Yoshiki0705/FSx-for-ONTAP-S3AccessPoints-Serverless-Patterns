@@ -191,6 +191,44 @@ jobs:
           fi
           echo "✅ Leak check passed"
 
+      # A real support case number reached this repository and stayed: a table row
+      # reading `| **ケース番号** | <15 digits> |`. The local commit hook looks for
+      # `case` next to digits, and that row labels it in Japanese with a bare number,
+      # so the pattern had nothing to match. CI checked for case numbers not at all.
+      #
+      # Two shapes are refused. A case-number label carrying a long run of digits,
+      # and the API's own case-id format unless its account field is the documented
+      # placeholder. The deferral this repository already uses -- "ケース番号は本
+      # リポジトリには記載しません" -- carries no digits and passes.
+      - name: "Check: Support case numbers (changed text files)"
+        if: steps.changes.outputs.text_count > 0
+        run: |
+          FAIL=0
+          LABELLED='(ケース番号|ケース *ID|[Cc]ase *(number|ID|id))[^0-9]{0,40}[0-9]{10,}'
+          APIFORM='case-[0-9]{12}-(mu|mj|mc|s0)[a-zA-Z]{2}-[0-9]{4}-[A-Za-z0-9]+'
+          while IFS= read -r file; do
+            [ -z "$file" ] && continue
+            [ ! -f "$file" ] && continue
+            # The documented placeholder account is filtered from both, not just the
+            # API-format check: `Case ID: case-123456789012-...` satisfies the labelled
+            # pattern too, and refusing the repository's own example would make this
+            # check something people route around.
+            HITS=$(grep -nEo "$LABELLED" "$file" | grep -v '123456789012' || true)
+            API_HITS=$(grep -nEo "$APIFORM" "$file" | grep -v 'case-123456789012-' || true)
+            if [ -n "$HITS" ] || [ -n "$API_HITS" ]; then
+              # file:line only. Echoing the match would put the number in the log.
+              echo "::error file=$file::Support case number in a public file"
+              { [ -n "$HITS" ] && echo "$HITS"; [ -n "$API_HITS" ] && echo "$API_HITS"; } | cut -d: -f1
+              FAIL=1
+            fi
+          done < /tmp/changed_text.txt
+          if [ "$FAIL" -eq 1 ]; then
+            echo "❌ A support case number must not be committed. Track it in .private/ and"
+            echo "   reference the case by topic here."
+            exit 1
+          fi
+          echo "✅ No support case numbers in the changed files"
+
       - name: "Check: JA/EN parity (warning only)"
         if: steps.changes.outputs.md_count > 0
         run: |

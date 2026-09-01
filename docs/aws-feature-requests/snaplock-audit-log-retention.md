@@ -6,7 +6,7 @@
 **日付**: 2026-08-06
 **プロジェクト**: [FSx-for-ONTAP-S3AccessPoints-Serverless-Patterns](https://github.com/Yoshiki0705/FSx-for-ONTAP-S3AccessPoints-Serverless-Patterns)
 **コンテキスト**: 検証環境で SnapLock 監査ログボリュームを作成した結果、ファイルシステム全体が最短 6 か月削除できなくなった事象からの改善要望
-**ステータス**: 📋 起票済み・回答待ち（一部回答受領）
+**ステータス**: ✅ ケースは 2026-08-06 起票・**クローズ済み**（Support API で確認、2026-09-02 時点）。回答は「保持期間満了前の削除・削除ロック解除はいずれも不可、アカウント閉鎖以外の経路なし」で、要望自体（SL-1〜SL-3）が実装されたわけではありません。満了時の再起票は `docs/agent/dated-obligations.json` が 2027-02-06 で追跡しています
 **関連**: [Tamperproof Snapshot 設計ガイド](../tamperproof-snapshot-design.md) / [FR-1〜FR-4（既提出）](./fsxn-s3ap-improvements.md)
 
 > **要望番号について**: 本ドキュメントは SnapLock スコープのため `SL-1`〜`SL-3` を用います。`FR-5`〜`FR-10` の番号は別スコープの 2 ドキュメントで先に使われています。
