@@ -480,6 +480,17 @@ drift:
 # see any of this: the template is valid and the example is not a template.
 	$(PYTHON) -m pytest scripts/tests/test_samconfig_contract.py --tb=short -q
 	$(PYTHON) scripts/check_samconfig_contract.py
+# Obligations that come due on a date rather than on a code change. A SnapLock audit
+# log volume carries a 6-month minimum retention that blocks deletion of the volume,
+# its SVM and the file system; AWS confirmed there is no early-deletion route and that
+# a case cannot be held open that long, so the billing follow-up has to be re-opened at
+# expiry. All of that was recorded in a document, and a paragraph does not fire on
+# 2027-02-06 -- nothing in the repository would have said anything on that date while
+# the resource kept billing and kept the file system undeletable. The ledger holds the
+# action and the date; the case number and resource IDs stay in a gitignored note,
+# which the check verifies is actually ignored.
+	$(PYTHON) -m pytest scripts/tests/test_check_dated_obligations.py --tb=short -q
+	$(PYTHON) scripts/check_dated_obligations.py
 
 # Fetches the published posts from Hatena and dev.to, so it needs network and is
 # not part of `make lint`. Run it after shipping a feature that makes an article's
