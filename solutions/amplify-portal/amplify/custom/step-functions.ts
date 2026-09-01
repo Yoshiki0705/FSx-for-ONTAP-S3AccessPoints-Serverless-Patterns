@@ -111,8 +111,12 @@ export function stepFunctionsStack(stack: Stack, _backend: unknown) {
     handler: "handler.handler",
     code: lambda.Code.fromInline(`
 import json
+import logging
 import os
 import boto3
+
+logger = logging.getLogger()
+logger.setLevel(logging.INFO)
 
 s3 = boto3.client("s3")
 
@@ -166,9 +170,16 @@ def handler(event, context):
             "isTruncated": response.get("IsTruncated", False),
             "nextContinuationToken": response.get("NextContinuationToken"),
         }
-    except Exception as e:
-        # TODO: Replace with structured logging (shared/observability.py pattern)
-        print(f"Error listing files: {e}")
+    except Exception:
+        # An empty listing is what the caller sees either way, so the traceback is the
+        # only record that the prefix failed rather than being empty. \`print\` reached
+        # CloudWatch but carried no level and no stack, so a failure here was
+        # indistinguishable from routine output when reading the log.
+        #
+        # \`shared/observability.py\` is not reachable from inline code: the layer that
+        # carries \`shared/\` is mounted at /opt/python for the functions bundled from
+        # disk, and this one has no layer attached.
+        logger.exception("Failed to list files under prefix %r", prefix)
         return {"files": [], "isTruncated": False, "nextContinuationToken": None}
 `),
     role: listFilesRole,
