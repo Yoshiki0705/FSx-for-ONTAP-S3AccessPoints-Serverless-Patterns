@@ -140,9 +140,7 @@ class TestOrphanEnvReads:
         )
         assert drift.check_orphan_env_reads() == []
 
-    def test_a_shorthand_property_counts_as_set(
-        self, drift: ModuleType, portal: Callable[..., Path]
-    ) -> None:
+    def test_a_shorthand_property_counts_as_set(self, drift: ModuleType, portal: Callable[..., Path]) -> None:
         """`{ NAME }` sets the variable as much as `{ NAME: value }` does.
 
         Reading only the colon form reported `AI_METADATA_TABLE_NAME` as provided by
