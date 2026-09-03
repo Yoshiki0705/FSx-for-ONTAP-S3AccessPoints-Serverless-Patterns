@@ -57,8 +57,11 @@ Serve it over HTTPS instead.
 
 | Approach | Command | When |
 |----------|---------|------|
-| Deploy to Amplify Hosting | connect the branch ([Hosting guide](../../../docs/en/amplify-hosting-production-guide.md)) | to check something close to production |
+| Deploy to Amplify Hosting | `make portal-hosting` from the repository root; to connect a branch instead see the [Hosting guide](../../../docs/en/amplify-hosting-production-guide.md) | **to hand it to another machine.** The URL is fixed |
 | Tunnel the local server | `npm run phone` | to see a local change on a device straight away; the URL is temporary |
+
+Provisioning the URL and an account for a demo on someone else's machine is covered in the
+[handover guide](portal-handover-guide.en.md#what-the-url-actually-is).
 
 > Cognito does not pin a hostname, so sign-in works either way (confirmed through a tunnel).
 > A tunnel URL changes on every run, so keep it to your own device rather than sharing it.
@@ -68,7 +71,7 @@ Serve it over HTTPS instead.
 | What | Command | Why it is needed |
 |---|---|---|
 | `cloudflared` | `brew install cloudflared` (macOS) / [other platforms](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/downloads/) | opens the HTTPS tunnel; no account required |
-| `amplify_outputs.json` | run `npx ampx sandbox` once | `src/main.tsx` imports it statically, so the dev server cannot start without it. The sandbox generates it and it is gitignored (one per environment) |
+| `amplify_outputs.json` | run `make sandbox` once | `src/main.tsx` imports it statically, so the dev server cannot start without it. The sandbox generates it and it is gitignored (one per environment) |
 | `amplify/portal-config.ts` | automatic (copied from the example if absent) | in DemoMode the values can stay empty |
 
 Needing `amplify_outputs.json` is the main reason a fresh clone still shows a blank page on the
@@ -133,7 +136,7 @@ the triage is automated.
 
 | Detected state | Message | What to do |
 |---|---|---|
-| `amplify_outputs.json` absent | `amplify_outputs.json is missing` | run `npx ampx sandbox` once |
+| `amplify_outputs.json` absent | `amplify_outputs.json is missing` | run `make sandbox` once |
 | Vite rejected the tunnel hostname | `Vite refused the tunnel hostname` plus the hostname | add the domain to `server.allowedHosts` in `vite.config.ts` (below) |
 | tunnel is up but cannot reach the origin | `could not reach http://localhost:5173 (HTTP 502)` | the dev server died, or is on another port |
 | only this machine cannot resolve it | `this machine cannot resolve …, but public DNS can` | the tunnel is fine; the handset uses another resolver and will load it. To fix this machine, flush the DNS cache |

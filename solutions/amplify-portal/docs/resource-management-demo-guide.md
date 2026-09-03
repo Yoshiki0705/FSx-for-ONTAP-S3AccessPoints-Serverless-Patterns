@@ -565,7 +565,7 @@ ONTAP が開始を拒否し、その旨のメッセージが出ます。開始�
 
 | 症状 | 原因と対処 |
 |------|----------|
-| `Unknown action: <名前>` | バックエンドが未デプロイ。`npx ampx sandbox` でデプロイする |
+| `Unknown action: <名前>` | バックエンドが未デプロイ。`make sandbox` でデプロイする（`npx ampx sandbox` を素で実行すると別 sandbox を作りに行く） |
 | `ONTAP connection not configured` | `ONTAP_MGMT_IP` / `ONTAP_SECRET_NAME` が未設定 |
 | パネルが `接続中...` のまま | 管理エンドポイントに到達できない。Lambda の VPC 構成とセキュリティグループを確認 |
 | SMB 系パネルが空 | SVM で CIFS が無効。AD 参加が前提 |

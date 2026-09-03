@@ -30,6 +30,7 @@
 | Find the right pattern for my workload | [Pattern Selection Guide](docs/pattern-selection-guide.md) | 15 min |
 | Estimate costs | [Cost Calculator](docs/cost-calculator.md) | 5 min |
 | Build a hands-on lab environment | [Hands-on Lab IaC](infrastructure/handson-lab/) | 60 min |
+| Demo the portal from another machine (provision a URL and an account) | [Handover & Support Guide](solutions/amplify-portal/docs/portal-handover-guide.en.md) | 15 min |
 
 ---
 

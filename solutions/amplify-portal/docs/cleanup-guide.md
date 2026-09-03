@@ -28,8 +28,11 @@
 ```bash
 # === Amplify Sandbox 削除（推奨: 最初にこれ） ===
 cd solutions/amplify-portal
-npx ampx sandbox delete --yes
+./scripts/sandbox.sh delete --yes
 # → 約 5-10 分。Cognito, AppSync, DynamoDB, Lambda, S3 すべて削除される
+# 素の `npx ampx sandbox delete` は identifier を省略すると OS のユーザー名から決めるので、
+# amplify_outputs.json が指している sandbox とは別のものを消しうる。ラッパー経由なら
+# デプロイ済みの実物から identifier を解決して明示的に渡す
 
 # === プロジェクト関連 CloudFormation スタックの一括削除 ===
 ./scripts/cleanup_stacks.sh --all-project
