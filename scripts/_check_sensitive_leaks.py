@@ -25,6 +25,37 @@ import sys
 from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
+
+# The options this script knows. Declared here, and checked before the sensitive-string
+# inventory is imported, because rejecting a typo needs no inventory: on a machine
+# without `_sensitive_strings.py` -- which includes CI, where it arrives from a secret
+# -- the import guard below would otherwise answer a misspelled flag with "the
+# inventory is missing", sending the caller to fix the wrong thing.
+KNOWN_OPTIONS = {"--images", "--text"}
+
+
+def reject_unknown_options(args: list[str]) -> None:
+    """Exit 2 when an argument looks like an option this script does not know.
+
+    Rejected rather than ignored. `--text-only` selected neither half, so the run
+    printed "No leaks detected" and exited 0 having scanned nothing -- and it was used
+    to check a real leak, which it duly failed to see.
+
+    Args:
+        args: The command-line arguments, without the program name.
+    """
+    unknown = [a for a in args if a.startswith("-") and a not in KNOWN_OPTIONS]
+    if unknown:
+        print(
+            f"unknown option(s): {' '.join(unknown)}. "
+            f"Known: {' '.join(sorted(KNOWN_OPTIONS))}, or no option to scan both.",
+            file=sys.stderr,
+        )
+        sys.exit(2)
+
+
+reject_unknown_options(sys.argv[1:])
+
 sys.path.insert(0, str(PROJECT_ROOT / "scripts"))
 try:
     from _sensitive_strings import SENSITIVE_STRINGS  # type: ignore
@@ -223,18 +254,9 @@ def main() -> None:
         print(f"Scanned {len(explicit)} path(s); files with leaks: {found}")
         sys.exit(1 if found else 0)
 
-    # Rejected rather than ignored. `--text-only` selected neither half, so the run
-    # printed "No leaks detected" and exited 0 having scanned nothing -- and it was
-    # used to check a real leak, which it duly failed to see. A flag this script does
-    # not know is the one case where reporting success is worse than refusing.
-    known = {"--images", "--text"}
-    unknown = [a for a in args if a.startswith("-") and a not in known]
-    if unknown:
-        print(
-            f"unknown option(s): {' '.join(unknown)}. Known: {' '.join(sorted(known))}, or no option to scan both.",
-            file=sys.stderr,
-        )
-        sys.exit(2)
+    # Already rejected at import time, before the inventory is loaded. Repeated here so
+    # main() is correct when called directly rather than through __main__.
+    reject_unknown_options(args)
 
     scan_img = "--images" in args or not args
     scan_txt = "--text" in args or not args

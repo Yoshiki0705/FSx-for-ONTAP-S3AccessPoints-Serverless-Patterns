@@ -60,9 +60,23 @@ class TestUnknownOptions:
         assert "Total files with leaks" not in result.stdout
 
 
+INVENTORY = SCRIPT.parent / "_sensitive_strings.py"
+
+# The inventory holds real identifiers, so it is gitignored and reaches CI from a
+# secret. Where it is absent the scanner exits 2 by design rather than reporting a
+# clean scan it could not perform, so the scanning modes have nothing to assert.
+# Skipped rather than asserted-around: a test that passes because the thing under test
+# refused to run is not evidence about the thing under test.
+needs_inventory = pytest.mark.skipif(
+    not INVENTORY.exists(),
+    reason="scripts/_sensitive_strings.py absent, so the scan cannot run (exit 2 by design)",
+)
+
+
 class TestTextMode:
     """`--text` runs the text half and says how much it looked at."""
 
+    @needs_inventory
     def test_reports_what_it_scanned(self) -> None:
         result = run("--text")
         assert result.returncode == 0, result.stdout
@@ -72,6 +86,7 @@ class TestTextMode:
         scanned = int(next(line for line in result.stdout.splitlines() if line.startswith("Scanned:")).split()[1])
         assert scanned > 100
 
+    @needs_inventory
     def test_does_not_run_the_ocr_half(self) -> None:
         # The point of the mode: the image scan takes minutes and is why the whole
         # check could not go into `make drift`.
