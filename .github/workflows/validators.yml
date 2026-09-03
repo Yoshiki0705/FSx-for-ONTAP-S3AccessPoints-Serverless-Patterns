@@ -98,6 +98,16 @@ jobs:
       # version.
       - name: Check runtime pins agree between pyproject.toml and requirements.txt
         run: python3 scripts/check_runtime_pins_agree.py
+      # Not the check above, despite the name: that one compares dependency pins.
+      # This one is the Lambda runtime version, which `PY_VERSION` in the Makefile
+      # claimed to be the single source of while it was repeated in 350 tracked
+      # places -- 325 template lines, 24 CDK tokens, one CDK assertion test -- with
+      # nothing comparing them. Bumping PY_VERSION alone changes the test
+      # interpreter and nothing deployed; bumping part of the tree deploys two
+      # runtimes, and the templates are independent stacks that nothing puts side by
+      # side.
+      - name: Check every Lambda runtime declaration agrees with PY_VERSION
+        run: python3 scripts/check_lambda_runtime_agrees.py
       # AGENTS.md is loaded on every agent turn and cannot be made conditional, so
       # it had grown to 78 KB carrying notes relevant only to one kind of work.
       # Those notes now live in docs/agent/, and this keeps AGENTS.md from absorbing
