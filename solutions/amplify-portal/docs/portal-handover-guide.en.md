@@ -55,7 +55,7 @@ affects** — the answers to "what is this?".
 
 | How it is served | Shape of the URL | How to obtain it | Permanence |
 |------------------|------------------|------------------|-----------|
-| Amplify Hosting | `https://<branch>.<app-id>.amplifyapp.com`, or a custom domain | `aws amplify list-apps`, then `aws amplify list-branches --app-id <app-id>` | **Permanent. This is the one to hand over** |
+| Amplify Hosting | `https://demo.<app-id>.amplifyapp.com`, or a custom domain | `make portal-hosting` to create it, `make portal-hosting-url` to read it back | **Fixed. This is the one to hand over** |
 | Local plus a tunnel | `https://<random>.trycloudflare.com` and similar | The output of `npm run phone` ([steps](GETTING-STARTED.en.md)) | **Changes every run. Do not hand it over** — it is for checking on your own handset |
 | Local | `http://localhost:5173` | The output of `npm start` | Your machine only. **Not reachable from anyone else's** |
 
@@ -65,9 +65,42 @@ address such as `http://192.168.x.x` is not. **Serving the LAN IP with `npm run 
 complete sign-in.** See
 [Getting Started, "Checking it on a real phone"](GETTING-STARTED.en.md#checking-it-on-a-real-phone).
 
+Run `make portal-hosting` from the repository root. It uploads the bundle built locally as a zip,
+so it needs no git connection and consumes no build minutes.
+
+**The URL is only as fixed as the backend behind it.** `main.tsx` imports `amplify_outputs.json`
+statically, so **the user pool and the GraphQL endpoint are compiled into the bundle**. Delete and
+recreate the sandbox and the page still loads, still renders the sign-in form, and **rejects every
+credential**. `make portal-hosting-url` reports what the published bundle was built against
+(sandbox name and pool ID) and warns when that disagrees with the current `amplify_outputs.json`.
+The repair is to run `make portal-hosting` again.
+
 ### Creating an account
 
 Accounts live in the **Cognito user pool**. Its ID is in `amplify_outputs.json`.
+
+Normally one command from the repository root does it: creation, a password that satisfies the
+pool's policy, and the role and scope grant. It states what the role unlocks before granting it.
+
+```bash
+make portal-demo-user ARGS='--username demo@example.com \
+  --groups storage-admin,internal --expected-sandbox demo'
+```
+
+The password is shown once and never written to disk.
+
+Authorization has two axes, and one value of each is required. The **role** decides which
+operations AppSync accepts: `viewer` reads, `contributor` adds file and folder writes,
+`storage-admin` covers everything group-gated, and `auditor` reads the audit trail without being
+able to write. The **scope** decides which data is reachable: `external` confines a caller even
+when the role is `storage-admin`, and denies the AI endpoints, so a full-access demo account wants
+`internal`. What `storage-admin` unlocks that cannot be undone is set out below.
+
+**Pass `--expected-sandbox`.** It stops before creating anything when the outputs file points at a
+different sandbox's pool. Creating an account in the wrong pool is not an error at creation time —
+it surfaces later as a portal that renders correctly and refuses every sign-in.
+
+The rest of this section is the manual route, doing what the script does.
 
 ```bash
 cd solutions/amplify-portal
@@ -103,7 +136,9 @@ python3 -c "import secrets,string;a=string.ascii_letters+string.digits;print(''.
 somewhere else has to hold it. Without a credential manager, put it in a gitignored directory
 (`.private/` in this repository) and hand over the file path rather than the value.
 
-**Only if they need the administration sections** (resource management, analytics), add them to the group.
+**Only if they need the administration sections** (resource management, analytics), add them to the
+group. For an account that already exists, `make portal-grant-roles` does this and is a dry run
+until `--apply`. The raw CLI is:
 
 ```bash
 aws cognito-idp admin-add-user-to-group --user-pool-id "$POOL" \
@@ -114,6 +149,21 @@ aws cognito-idp admin-add-user-to-group --user-pool-id "$POOL" \
 > existing token does not carry it. That is the answer to "I was given access but the menu is not there".
 >
 > The group itself is created by `amplify/auth/resource.ts`; only the membership is manual.
+
+> **`storage-admin` reaches operations that cannot be undone**: creating a SnapLock volume,
+> enabling snapshot locking, and extending a retention period are all reachable from the
+> administration screens. The handler-side `acknowledgeIrreversible` flag **does not gate a person
+> clicking** — the frontend sends it as a literal.
+>
+> The membership is removable, so remove it once the demo is over.
+>
+> ```bash
+> aws cognito-idp admin-remove-user-from-group --user-pool-id "$POOL" \
+>   --username <user@example.com> --group-name storage-admin
+> ```
+>
+> When the administration screens are not part of the demo, `contributor` instead of
+> `storage-admin` still covers browsing, upload, rename and move.
 
 ### The browser
 

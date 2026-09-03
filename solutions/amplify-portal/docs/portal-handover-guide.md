@@ -54,9 +54,18 @@
 
 | 配信方法 | URL の形 | 取得方法 | 恒久性 |
 |---------|---------|---------|-------|
-| Amplify Hosting | `https://<branch>.<app-id>.amplifyapp.com`（またはカスタムドメイン） | `aws amplify list-apps` → `aws amplify list-branches --app-id <app-id>` | **恒久。利用者に渡すのはこれ** |
+| Amplify Hosting | `https://demo.<app-id>.amplifyapp.com`（またはカスタムドメイン） | `make portal-hosting` で作成、`make portal-hosting-url` で取得 | **固定。利用者に渡すのはこれ** |
 | ローカル + トンネル | `https://<ランダム>.trycloudflare.com` 等 | `npm run phone` の出力（[手順](GETTING-STARTED.md)） | **実行ごとに変わる。渡さない**（自分の実機確認用） |
 | ローカル | `http://localhost:5173` | `npm start` の出力 | 自分の端末のみ。**他人の端末からは開けない** |
+
+`make portal-hosting` はリポジトリのルートから実行します。手元でビルドした成果物を zip で
+アップロードする方式なので、git 接続を作らず、build minutes も消費しません。
+
+**URL の固定性には条件があります。** `main.tsx` は `amplify_outputs.json` を静的に import する
+ため、**User Pool と GraphQL エンドポイントはバンドルにコンパイルされます**。背後の sandbox を
+削除して作り直すと、ページは開き、サインイン画面も出て、**あらゆる資格情報が拒否されます**。
+`make portal-hosting-url` は公開時の束縛先（sandbox 名とプール ID）を出力し、現在の
+`amplify_outputs.json` と食い違えば警告します。その場合の復旧は `make portal-hosting` の再実行です。
 
 **`https://` である必要があります。** ポータルはサインイン（SRP 認証）で `crypto.subtle`、
 共有リンクのコピーで `navigator.clipboard` を使い、どちらもブラウザが secure context に
@@ -67,6 +76,30 @@ LAN アドレスは該当しません。**`npm run dev -- --host` で LAN の IP
 ### アカウントの作り方
 
 管理場所は **Cognito ユーザープール**です。プール ID は `amplify_outputs.json` にあります。
+
+通常はリポジトリのルートから 1 コマンドで払い出します。作成・ポリシーを満たすパスワードの生成・
+ロールとスコープの付与までを行い、付与するロールが何を開けるかを実行前に表示します。
+
+```bash
+make portal-demo-user ARGS='--username demo@example.com \
+  --groups storage-admin,internal --expected-sandbox demo'
+```
+
+パスワードは実行時に一度だけ表示され、ディスクには書きません。
+
+認可は 2 軸で、それぞれ 1 つずつ必要です。**ロール**は AppSync が受け付ける操作を決め、
+`viewer` が閲覧、`contributor` がファイルとフォルダの書き込みを追加、`storage-admin` が
+グループで守られた全操作、`auditor` が書き込み不可のまま監査証跡を読みます。**スコープ**は
+到達できるデータを決め、`external` はロールが `storage-admin` でも閲覧範囲を絞って AI
+エンドポイントを拒否するため、全権限のデモアカウントには `internal` を使います。
+`storage-admin` で到達できる取り消せない操作は後述します。詳細は
+[デモ環境の払い出し](../../../docs/agent/portal-demo-environment.md#アカウントの権限) にあります。
+
+**`--expected-sandbox` は付けてください。** 出力ファイルが別 sandbox のプールを指していると、
+アカウントを作る前に止まります。間違ったプールに作っても作成時にはエラーにならず、後で
+「画面は正常でサインインだけ失敗する」形で出るため、機械判定に任せる価値があります。
+
+以降は手動で作る場合の手順です。スクリプトが行っているのと同じことをしています。
 
 ```bash
 cd solutions/amplify-portal
@@ -101,12 +134,29 @@ python3 -c "import secrets,string;a=string.ascii_letters+string.digits;print(''.
 置き場所が必要という意味です。資格情報管理ツールが無ければ、gitignore されたディレクトリ
 （このリポジトリなら `.private/`）にファイルとして置き、相手にはファイルのパスを伝えます。
 
-**管理系セクション（リソース管理・分析）を使わせる場合のみ**、グループに入れます。
+**管理系セクション（リソース管理・分析）を使わせる場合のみ**、グループに入れます。既存の
+アカウントに後から付与するなら `make portal-grant-roles`（`--apply` を付けるまで dry run）、
+生の CLI なら次のとおりです。
 
 ```bash
 aws cognito-idp admin-add-user-to-group --user-pool-id "$POOL" \
   --username <user@example.com> --group-name storage-admin
 ```
+
+> **`storage-admin` は取り消せない操作に到達します。** SnapLock ボリュームの作成、Snapshot
+> ロックの有効化、保持期間の延長の 3 つが管理画面から押せます。ハンドラ側の
+> `acknowledgeIrreversible` はフロントエンドがリテラルで送るため、**画面を操作する人に対する
+> 防御にはなっていません**。
+>
+> グループ所属自体は外せます。デモが終わったら外す運用にしてください。
+>
+> ```bash
+> aws cognito-idp admin-remove-user-from-group --user-pool-id "$POOL" \
+>   --username <user@example.com> --group-name storage-admin
+> ```
+>
+> 管理操作を見せる必要がなければ、`storage-admin` ではなく `contributor` で払い出せば
+> ファイルの閲覧・アップロード・リネーム・移動まで使えます。
 
 > **付与後はサインアウトして再サインインが必要です。** グループは ID トークンに入るため、
 > 既存のトークンには反映されません。「権限をもらったのにメニューが出ない」の答えはこれです。

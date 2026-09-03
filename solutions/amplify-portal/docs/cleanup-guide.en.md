@@ -28,8 +28,11 @@ None of the following can be recovered.
 ```bash
 # === Delete the Amplify sandbox (do this first) ===
 cd solutions/amplify-portal
-npx ampx sandbox delete --yes
+./scripts/sandbox.sh delete --yes
 # → 5-10 minutes. Cognito, AppSync, DynamoDB, Lambda and S3 all go
+# `npx ampx sandbox delete` bare takes the identifier from the OS username, so it can
+# delete a different sandbox than the one amplify_outputs.json names. The wrapper
+# resolves the identifier from deployed state and passes it explicitly.
 
 # === Delete the project's CloudFormation stacks together ===
 ./scripts/cleanup_stacks.sh --all-project

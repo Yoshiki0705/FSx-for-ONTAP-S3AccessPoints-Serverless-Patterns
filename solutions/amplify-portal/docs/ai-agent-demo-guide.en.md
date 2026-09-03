@@ -6,8 +6,11 @@
 
 ## Prerequisites
 
-- Amplify sandbox deployed (`npx ampx sandbox --once`)
-- Cognito user in `storage-admin` group (required for AI Settings toggle)
+- Amplify sandbox deployed (`make sandbox`. Do not run `npx ampx sandbox` bare: the identifier then
+  comes from the OS username and it goes off to create a different sandbox)
+- Cognito user in `storage-admin` group (required for AI Settings toggle). Provision with
+  `make portal-demo-user`; steps in the
+  [handover guide](portal-handover-guide.en.md#creating-an-account)
 - (For semantic search) Bedrock Knowledge Base created, KB ID set in `portal-config.ts`
 
 ## Demo Scenarios
@@ -97,7 +100,7 @@
 
 | Symptom | Cause | Fix |
 |---------|-------|-----|
-| AI Settings toggle error | Lambda not deployed | Re-run `npx ampx sandbox --once` |
+| AI Settings toggle error | Lambda not deployed | Re-run `make sandbox` |
 | AI Agent not in nav | Not enabled or non-admin | Confirm storage-admin group → enable in AI Settings |
 | KB search "not configured" | bedrockKbId empty | Set KB ID in portal-config.ts → redeploy |
 | Image upload error | >5MB or unsupported format | Use jpeg/png/gif/webp under 5MB |

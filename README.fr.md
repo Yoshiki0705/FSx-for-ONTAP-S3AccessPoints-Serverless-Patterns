@@ -28,6 +28,7 @@
 | Trouver le pattern adapté à ma charge | [Pattern Selection Guide](docs/pattern-selection-guide.md) | 15 min |
 | Estimer les coûts | [Cost Calculator](docs/cost-calculator.md) | 5 min |
 | Construire un environnement de lab | [Hands-on Lab IaC](infrastructure/handson-lab/) | 60 min |
+| Démontrer le portail depuis une autre machine (URL et compte) | [Guide de transfert et de support](solutions/amplify-portal/docs/portal-handover-guide.en.md) | 15 min |
 
 ---
 

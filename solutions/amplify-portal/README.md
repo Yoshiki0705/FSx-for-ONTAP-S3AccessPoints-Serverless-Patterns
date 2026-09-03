@@ -221,6 +221,8 @@ sequenceDiagram
 
 > **Multi-developer**: Each developer gets a separate sandbox (identified by OS username). Multiple team members can work on the same AWS account without conflicts. Use `npx ampx sandbox --identifier <name>` to customize.
 
+> **Demoing on someone else's machine**: `make portal-hosting` (from the repository root) publishes to Amplify Hosting for a fixed https URL, and `make portal-demo-user` creates an account with a role and a scope. Sign-in requires https, so a LAN address cannot complete it. The steps, and what `storage-admin` unlocks that cannot be undone, are in the [Handover & Support Guide](docs/portal-handover-guide.en.md).
+
 ```bash
 # 1. Install dependencies
 make install

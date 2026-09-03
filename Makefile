@@ -23,11 +23,17 @@
 	build-sap deploy-uc1 deploy-sap clean build-SharedLayer build-uc12 deploy-uc12 test-ops1 \
 	test-ops4 test-ops3 test-ops2 test-ops5 test-ops6 test-ops lint-ops lint-cfn-ops \
 	build-ops1 deploy-ops1 security-report security-cfn propose-cleanup ontap-preflight \
-	discover-s3ap check-group-ap-tags portal-preflight portal-grant-roles
+	discover-s3ap check-group-ap-tags portal-preflight portal-grant-roles \
+	portal-demo-user portal-hosting portal-hosting-url
 
 # Target Python version — must match the Lambda runtime in the SAM templates
 # (`Runtime: python3.13`). Declared once here so `install`, the interpreter
 # fallback, and the venv freshness check cannot drift apart.
+# `scripts/check_lambda_runtime_agrees.py` enforces the "must match" against all
+# 350 declaration sites. Until it existed this comment was the only thing asking.
+# Deprecation of python3.13 is projected for 2029-06-30. python3.14 carries the
+# same date, so a bump buys no support runway — check the current table before
+# treating either as a deadline.
 PY_VERSION := 3.13
 
 # Python interpreter — auto-detect .venv if available (override with: make test PYTHON=python3.12)
@@ -90,6 +96,9 @@ help:
 	@echo "  make check-group-ap-tags — Report groupApMapping vs access point tags (read-only)"
 	@echo "  make portal-preflight — Check a deployed sandbox against outputs and config (read-only)"
 	@echo "  make portal-grant-roles — Grant portal roles/scopes to Cognito users (dry run unless ARGS=--apply)"
+	@echo "  make portal-demo-user — Create a demo account and grant it a role and scope (calls AWS)"
+	@echo "  make portal-hosting  — Publish the frontend to Amplify Hosting for an https URL (calls AWS)"
+	@echo "  make portal-hosting-url — Report the hosted URL and which sandbox it is bound to"
 	@echo "  make clean         — Remove build artifacts"
 	@echo ""
 	@echo "Python: $(PYTHON) (auto-detects .venv/bin/python; override: PYTHON=...)"
@@ -257,6 +266,36 @@ portal-preflight:
 portal-grant-roles:
 	$(PYTHON) scripts/grant_portal_roles.py $(ARGS)
 
+# Create a demo account and grant it a role and a scope. Delegates the grant to
+# grant_portal_roles.py, so the group semantics live in exactly one place; this adds
+# the account, a password the pool's policy accepts, and a statement of what the role
+# unlocks before it is granted.
+#
+# Pass --expected-sandbox whenever a second sandbox exists. An account created in the
+# wrong pool is not an error at creation time: the portal loads, the form renders, and
+# the credential is rejected with nothing else said.
+#
+#   make portal-demo-user ARGS='--username demo@example.com --groups storage-admin,internal --expected-sandbox demo'
+portal-demo-user:
+	$(PYTHON) scripts/portal_provision_demo_user.py $(ARGS)
+
+# Publish the built frontend to Amplify Hosting, which is the AWS-internal way to give
+# another machine an https origin. https is required rather than preferred: sign-in
+# uses crypto.subtle, which browsers restrict to secure contexts, so a LAN address
+# cannot stand in.
+#
+# The bundle compiles amplify_outputs.json into itself, so the hosted URL is only as
+# permanent as the backend behind it. `portal-hosting-url` reports which sandbox and
+# pool the published bundle was built against.
+#
+#   make portal-hosting                      # build, publish, report the URL
+#   make portal-hosting ARGS=--skip-build    # publish the existing dist/
+portal-hosting:
+	$(PYTHON) scripts/portal_deploy_hosting.py $(ARGS)
+
+portal-hosting-url:
+	$(PYTHON) scripts/portal_deploy_hosting.py --show
+
 # ============================================================
 # Drift checks
 # ============================================================
@@ -392,6 +431,18 @@ drift:
 # against one file and the package metadata claims the other.
 	$(PYTHON) -m pytest scripts/tests/test_check_runtime_pins_agree.py --tb=short -q
 	$(PYTHON) scripts/check_runtime_pins_agree.py
+# The Lambda runtime version, which the check above does NOT cover despite the
+# similar name — that one compares dependency pins. `PY_VERSION` carried a comment
+# saying it "must match the Lambda runtime in the SAM templates" and nothing
+# verified it, while the version was repeated in 350 tracked places: 325
+# `Runtime: python3.13` lines, 24 CDK tokens and one CDK assertion test. Raising
+# PY_VERSION alone changes which interpreter runs the tests and nothing that gets
+# deployed; raising some templates and not others deploys two runtimes from one
+# repository, and they are independent stacks, so nothing else ever puts two side
+# by side. This also caught the CI matrix gating the build on 3.11 while
+# requires-python declared >=3.12.
+	$(PYTHON) -m pytest scripts/tests/test_check_lambda_runtime_agrees.py --tb=short -q
+	$(PYTHON) scripts/check_lambda_runtime_agrees.py
 # The generic dispatch endpoints take an untyped `params` blob, so nothing checks
 # that a component sends what its action requires. A lock button shipped that had
 # never worked once: it sent a name and a duration where the action reads a UUID

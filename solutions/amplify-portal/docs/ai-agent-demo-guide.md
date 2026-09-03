@@ -6,8 +6,10 @@
 
 ## 前提条件
 
-- Amplify sandbox がデプロイ済み (`npx ampx sandbox --once`)
-- Cognito ユーザーが `storage-admin` グループに所属（AI 設定のトグル操作に必要）
+- Amplify sandbox がデプロイ済み（`make sandbox`。`npx ampx sandbox` を素で実行すると identifier が
+  OS のユーザー名から決まり、別 sandbox を作りに行くので使わない）
+- Cognito ユーザーが `storage-admin` グループに所属（AI 設定のトグル操作に必要）。払い出しは
+  `make portal-demo-user`、手順は [ポータル引き渡しガイド](portal-handover-guide.md#アカウントの作り方)
 - (セマンティック検索を使う場合) Bedrock Knowledge Base が作成済み、`portal-config.ts` に KB ID が設定済み
 
 ## デモシナリオ
@@ -97,7 +99,7 @@
 
 | 症状 | 原因 | 対処 |
 |------|------|------|
-| AI 設定トグルでエラー | Lambda 未デプロイ | `npx ampx sandbox --once` 再実行 |
+| AI 設定トグルでエラー | Lambda 未デプロイ | `make sandbox` 再実行 |
 | ナビに AI エージェントが出ない | 設定未有効化 or 非admin | storage-admin グループ確認 → AI 設定で ON |
 | KB 検索で "not configured" | bedrockKbId 未設定 | portal-config.ts に KB ID を設定 → 再デプロイ |
 | 画像アップロードでエラー | 5MB 超 or 非対応形式 | jpeg/png/gif/webp、5MB 以下で再試行 |

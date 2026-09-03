@@ -582,7 +582,7 @@ finishes. `↻` re-reads the state.
 
 | Symptom | Cause and action |
 |---------|-----------------|
-| `Unknown action: <name>` | The backend is not deployed. Deploy with `npx ampx sandbox` |
+| `Unknown action: <name>` | The backend is not deployed. Deploy with `make sandbox` (running `npx ampx sandbox` bare goes off to create a different sandbox) |
 | `ONTAP connection not configured` | `ONTAP_MGMT_IP` / `ONTAP_SECRET_NAME` is unset |
 | A panel stays on `Connecting...` | The management endpoint is unreachable. Check the Lambda VPC configuration and security group |
 | SMB panels are empty | CIFS is disabled on the SVM. An AD join is a prerequisite |

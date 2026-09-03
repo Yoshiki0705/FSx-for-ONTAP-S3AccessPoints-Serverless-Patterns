@@ -21,6 +21,10 @@
 | **`s3:CopyObject` を IAM ポリシーに書いても何も許可されない** | そんなアクションは存在しない。`copy_object` が要求するのは source の `s3:GetObject` と **`s3:GetObjectTagging`**、destination の `s3:PutObject` と `s3:PutObjectTagging`。実例: ポータルの list-files ロールに `s3:CopyObject` が書かれていて `GetObjectTagging` が無く、**名前の変更とごみ箱からの復元が AccessDenied で常に失敗していた**。同じロールでの**ごみ箱への移動は成功していた**（同一 source・同一バケットでも要求されないケースがある）ため、最初に試した操作が通ってしまい欠陥が残った。copy を含む経路は**往復の両方向**を実際に叩いて確認する |
 | 例外メッセージからエラー原因を推測する実装 | `str(IndexError(4))` は `"4"` で HTTP 404 に見える。実際に `Path(__file__).parents[4]`（Lambda では親が 3 つ）の IndexError を「CIFS 未設定」と誤報告していた。`type(e).__name__` を含めて報告し、文字列パターンで原因を決めない |
 
+sandbox が同一 VPC に複数ある状態と、不要な sandbox を消す作業の罠は
+[portal-sandbox-lifecycle](portal-sandbox-lifecycle.md) にある。DynamoDB Gateway
+エンドポイントの所有権、`list-exports` に現れない依存、log group の retention。
+
 ## CDK / IaC Quality Gates
 
 This project implements a 6-layer defense architecture for infrastructure code quality:

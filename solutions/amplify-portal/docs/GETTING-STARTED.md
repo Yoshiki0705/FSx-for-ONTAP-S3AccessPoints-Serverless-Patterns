@@ -57,8 +57,11 @@ HTTPS で配信する方法を選ぶ。
 
 | 方法 | コマンド | 向き |
 |------|---------|------|
-| Amplify Hosting にデプロイ | ブランチを接続（[Hosting ガイド](../../../docs/ja/amplify-hosting-production-guide.md)） | 本番に近い形で確認したいとき |
+| Amplify Hosting にデプロイ | `make portal-hosting`（リポジトリのルートから）。ブランチ接続を使う場合は [Hosting ガイド](../../../docs/ja/amplify-hosting-production-guide.md) | **他端末に渡すとき。** URL が固定される |
 | ローカルをトンネル経由で公開 | `npm run phone` | 手元の変更をすぐ実機で見たいとき。URL は一時的 |
+
+他端末でデモする場合の URL とアカウントの払い出しは
+[ポータル引き渡しガイド](portal-handover-guide.md#url-の実体) にまとまっている。
 
 > Cognito はホスト名を固定していないため、どちらでもサインインできる（トンネル経由で実際に確認済み）。
 > トンネルの URL は実行ごとに変わるので、共有せず自分の端末からの確認にとどめる。
@@ -68,7 +71,7 @@ HTTPS で配信する方法を選ぶ。
 | 用意するもの | コマンド | なぜ必要か |
 |---|---|---|
 | `cloudflared` | `brew install cloudflared`（macOS）／[その他 OS](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/downloads/) | HTTPS のトンネルを張る。アカウント登録は不要 |
-| `amplify_outputs.json` | `npx ampx sandbox` を一度実行 | `src/main.tsx` が静的 import しているので、無いと開発サーバがそもそも起動しない。sandbox が生成し、gitignore されている（環境ごとに 1 つ） |
+| `amplify_outputs.json` | `make sandbox` を一度実行 | `src/main.tsx` が静的 import しているので、無いと開発サーバがそもそも起動しない。sandbox が生成し、gitignore されている（環境ごとに 1 つ） |
 | `amplify/portal-config.ts` | 自動（無ければ example から複製される） | DemoMode なら値は空のままでよい |
 
 `amplify_outputs.json` が要る点が、クローン直後に手順どおり進めても実機で真っ白になる主因である。
@@ -131,7 +134,7 @@ npm run phone -- --help
 
 | 検出する状態 | 出るメッセージ | 対処 |
 |---|---|---|
-| `amplify_outputs.json` が無い | `amplify_outputs.json is missing` | `npx ampx sandbox` を一度実行する |
+| `amplify_outputs.json` が無い | `amplify_outputs.json is missing` | `make sandbox` を一度実行する |
 | Vite がトンネルのホスト名を拒否 | `Vite refused the tunnel hostname` + 該当ホスト名 | `vite.config.ts` の `server.allowedHosts` に追加（下記） |
 | トンネルは生きているが配信元に届かない | `could not reach http://localhost:5173 (HTTP 502)` | 開発サーバが落ちているか、別のポートで動いている |
 | この PC だけ名前解決できない | `this machine cannot resolve …, but public DNS can` | トンネル自体は正常。実機は別のリゾルバなので開ける。PC を直すなら DNS キャッシュを消す |
@@ -452,6 +455,19 @@ sandbox は `--identifier` ごとに独立したスタックになりますが�
 あります。いずれも失敗が「エラー」ではなく「動いているように見えて動かない」形で出るため、
 先に把握してください。
 
+> **前提**: `npx ampx sandbox` を `--identifier` なしで実行すると、identifier は
+> **OS のユーザー名から決まります**。これは `amplify_outputs.json` が指している sandbox とは
+> 別物になりうるため、素の `npx ampx sandbox` は「既存環境の起動」ではなく「新しい sandbox の
+> 作成」になることがあります。リポジトリのコマンド（`npm start` / `make sandbox` /
+> `make sandbox-watch` / `make sandbox-delete`）は `scripts/sandbox.sh` を経由して
+> **デプロイ済みの実物から identifier を解決して明示的に渡す**ので、この取り違えは起きません。
+> 素の `npx ampx sandbox` を直接実行するときだけ `--identifier` を自分で指定してください。
+> いまどの sandbox が対象になるかは次で確認できます。
+>
+> ```bash
+> python3 ../../scripts/portal_preflight.py --print-sandbox-identifier
+> ```
+
 ### 1. `amplify_outputs.json` は 1 つしかない
 
 ブラウザが読む接続情報はこのファイル 1 つで、`ampx sandbox` を実行するたびに**最後に走った
@@ -487,20 +503,34 @@ make portal-preflight
 
 ゲートウェイエンドポイントの実体はルートテーブルのルートで、ルートテーブルは 1 つの
 プレフィックスリストにつき 1 ルートしか持てません。同じルートテーブルを指した 2 つ目の
-sandbox は、他のリソースが 2 分ほど正常に作られたあとで次のように失敗し、スタックごと
-ロールバックします。
+sandbox は、他のリソースが 2 分ほど正常に作られたあとで次のように失敗します。
 
 ```
 route table rtb-xxxx already has a route with destination-prefix-list-id pl-xxxx
 ```
 
-既にルートがある VPC にデプロイする場合は、そのルートを再利用すると宣言します。
+**失敗しても sandbox はロールバックしません。** 実測 2026-09-03: `CREATE_FAILED` で停止し、
+先に作られた Lambda 約 25 個と Cognito User Pool がそのまま残りました。後始末は
+`aws cloudformation delete-stack` を明示的に呼ぶ必要があり、削除自体も別途かかります
+（この事例では VPC Lambda が ENI を確保する前に失敗していたため数分でしたが、
+関数まで作られていた場合は ENI 解放待ちで 30 分前後になります）。
+
+既にルートがある VPC に**2 つ目を**デプロイする場合は、そのルートを再利用すると宣言します。
+`<second>` は既存と異なる identifier です。
 
 ```bash
-AMPLIFY_PORTAL_DDB_GW_ENDPOINT_EXISTS=1 npx ampx sandbox --once --identifier demo
+AMPLIFY_PORTAL_DDB_GW_ENDPOINT_EXISTS=1 \
+  AMPLIFY_PORTAL_SANDBOX_IDENTIFIER=<second> make sandbox
 ```
 
 関数が必要とするのはルートであって所有権ではないので、既存のルートで同じように動きます。
+
+**逆に、ルートを所有している側にこの変数を渡してはいけません。** 所有者が
+`dynamoDbGatewayEndpointExists: true` を宣言すると、次のデプロイで自分の関数が通っている
+エンドポイントを削除します。既定値（未設定）が「このスタックが所有する」なので、
+1 つ目には何も渡さないのが正しい状態です。`make portal-preflight` はこの食い違いを
+`FAIL` として検出します。
+
 現状は次で確認できます（`make portal-preflight` も同じ判定をします）。
 
 ```bash

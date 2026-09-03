@@ -196,6 +196,8 @@ sequenceDiagram
 
 > **多开发者**：每位开发者获得独立的沙盒（通过 OS 用户名标识）。多个团队成员可在同一 AWS 账户上无冲突地工作。使用 `npx ampx sandbox --identifier <name>` 自定义。
 
+> **在其他终端上演示时**：`make portal-hosting`（从仓库根目录执行）发布到 Amplify Hosting 并生成固定的 https URL，`make portal-demo-user` 创建带角色和作用域的账户。登录必须使用 https，LAN 地址无法完成登录。操作步骤以及 `storage-admin` 可触及的不可撤销操作，请参阅[交接与支持指南](docs/portal-handover-guide.en.md)。
+
 ```bash
 # 1. 安装依赖
 make install

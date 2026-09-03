@@ -29,6 +29,7 @@
 | 自分のワークロードに合うパターンを探す | [Pattern Selection Guide](docs/pattern-selection-guide.md) | 15 分 |
 | コストを見積もる | [Cost Calculator](docs/cost-calculator.md) | 5 分 |
 | ハンズオン Lab 環境を構築 | [Hands-on Lab IaC](infrastructure/handson-lab/) | 60 分 |
+| 他端末でポータルのデモをする（URL とアカウントの払い出し） | [ポータル引き渡しガイド](solutions/amplify-portal/docs/portal-handover-guide.md) | 15 分 |
 
 ### ファイルポータル — 役割ごとの入口
 

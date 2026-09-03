@@ -28,6 +28,7 @@
 | Das richtige Muster für meine Workload finden | [Pattern Selection Guide](docs/pattern-selection-guide.md) | 15 Min. |
 | Kosten schätzen | [Cost Calculator](docs/cost-calculator.md) | 5 Min. |
 | Eine Hands-on-Lab-Umgebung aufbauen | [Hands-on Lab IaC](infrastructure/handson-lab/) | 60 Min. |
+| Das Portal von einem anderen Rechner vorführen (URL und Konto) | [Handover- und Support-Leitfaden](solutions/amplify-portal/docs/portal-handover-guide.en.md) | 15 Min. |
 
 ---
 

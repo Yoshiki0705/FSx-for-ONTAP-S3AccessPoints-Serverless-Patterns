@@ -22,6 +22,17 @@ asserting that a command exited zero. Run before handing a URL to anyone:
     make portal-preflight
 
 Exit codes: 0 all checks pass, 1 at least one check failed, 2 could not run.
+
+``--print-sandbox-identifier`` reports which sandbox the outputs file points at,
+so the wrappers that run ``ampx sandbox`` can name it explicitly instead of
+letting the CLI default to one named after the OS user. Without that, running
+``npm start`` in a checkout whose outputs belong to another sandbox deploys a
+second one; on 2026-09-03 that reached ~25 Lambdas and a Cognito pool before
+failing on the gateway-endpoint route, and Amplify does not roll a sandbox back.
+Exit codes for that mode: 0 identifier printed, 3 no outputs file (nothing is
+deployed yet, so the caller's default is correct), 1 outputs exist but the
+identifier could not be resolved -- which must stop the caller rather than fall
+back to the default.
 """
 
 from __future__ import annotations
@@ -381,8 +392,32 @@ def check_lambda_vpc(stack: str | None, region: str, config_src: str) -> list[Re
     return results
 
 
-def check_gateway_endpoint(region: str, config_src: str) -> Result:
-    """Compare the gateway-endpoint claim in config against the route tables."""
+def sandbox_root(stack_name: str) -> str:
+    """The root sandbox stack name, given any of its nested stack names.
+
+    Nested stacks carry the root name as a prefix (`...-demo-sandbox-753443151c-auth…`,
+    `…-data…`), so two resources can be compared for "same sandbox" without knowing
+    which nested stack each of them lives in.
+    """
+    match = re.match(r"^(.*?-[^-]+-sandbox-[0-9a-z]+)", stack_name or "")
+    return match.group(1) if match else (stack_name or "")
+
+
+def check_gateway_endpoint(region: str, config_src: str, stack: str | None = None) -> Result:
+    """Compare the gateway-endpoint claim in config against who owns the route.
+
+    Presence of a route is not the question. This check previously asked whether the
+    configured route table carried any prefix-list route, which the S3 gateway
+    endpoint satisfies on its own, so the answer was always yes and the verdict was
+    always "matching". It passed on 2026-09-02 while the DynamoDB endpoint had in fact
+    been deleted with a leftover sandbox and the VPC Lambdas were timing out against
+    DynamoDB.
+
+    Presence alone is also not enough once it is fixed: "a DynamoDB route exists"
+    means something different when this sandbox owns it than when another stack does.
+    Owning it and declaring `dynamoDbGatewayEndpointExists: true` would make the next
+    deploy remove the endpoint this stack's own functions depend on.
+    """
     claims_exists = config_bool(config_src, "dynamoDbGatewayEndpointExists")
     if claims_exists is None:
         return Result(
@@ -398,54 +433,133 @@ def check_gateway_endpoint(region: str, config_src: str) -> Result:
     if not rtb or not rtb.startswith("rtb-"):
         return Result("DynamoDB route", SKIP, "no route table configured")
 
+    vpc_id = config_default(config_src, "vpcId")
+    if not vpc_id or not vpc_id.startswith("vpc-"):
+        return Result("DynamoDB route", SKIP, "no VPC configured")
+
+    # Asked of the DynamoDB service specifically, so an S3 gateway endpoint on the
+    # same route table cannot answer for it, and the reply carries the owning stack
+    # rather than only "something is routed".
+    #
+    # `route-table-id` is not a DescribeVpcEndpoints filter -- passing it returns
+    # `InvalidFilter` -- so the route tables are matched here instead.
     try:
         raw = aws(
             "ec2",
-            "describe-route-tables",
+            "describe-vpc-endpoints",
             "--region",
             region,
-            "--route-table-ids",
-            rtb,
+            "--filters",
+            f"Name=vpc-id,Values={vpc_id}",
+            f"Name=service-name,Values=com.amazonaws.{region}.dynamodb",
             "--query",
-            "RouteTables[0].Routes[?DestinationPrefixListId!=null].DestinationPrefixListId",
+            "VpcEndpoints[].[VpcEndpointId,RouteTableIds,Tags[?Key=='aws:cloudformation:stack-name']|[0].Value]",
             "--output",
             "json",
         )
     except RuntimeError as exc:
-        return Result("DynamoDB route", FAIL, f"cannot read {rtb}: {exc}")
+        return Result("DynamoDB route", FAIL, f"cannot read the DynamoDB endpoints in {vpc_id}: {exc}")
 
-    present = bool(json.loads(raw or "[]"))
-    if present == claims_exists:
-        state = "already routed" if present else "not routed yet"
-        return Result(
-            "DynamoDB route",
-            OK,
-            f"{rtb} {state}, matching dynamoDbGatewayEndpointExists={str(claims_exists).lower()}",
-        )
-    if present:
-        return Result(
-            "DynamoDB route",
-            FAIL,
-            f"{rtb} already carries a prefix-list route, but dynamoDbGatewayEndpointExists is false",
-            "The data stack will fail to create its gateway endpoint and roll "
-            "back after the rest of it succeeds. Set "
-            "AMPLIFY_PORTAL_DDB_GW_ENDPOINT_EXISTS=1 or the config default.",
-        )
+    found = next((e for e in json.loads(raw or "[]") if rtb in (e[1] or [])), None)
+    endpoint = found[0] if found else None
+    owner = (found[2] if found else None) or ""
+
+    if not endpoint:
+        if claims_exists:
+            return Result(
+                "DynamoDB route",
+                FAIL,
+                f"{rtb} has no DynamoDB gateway endpoint, but dynamoDbGatewayEndpointExists is true",
+                "Nothing will create the route, so the VPC functions have no path to "
+                "the block ledger and expiry silently does not run. Set "
+                "AMPLIFY_PORTAL_DDB_GW_ENDPOINT_EXISTS=0.",
+            )
+        return Result("DynamoDB route", OK, f"{rtb} not routed yet; this stack will create the endpoint")
+
+    ours = bool(stack) and sandbox_root(owner) == sandbox_root(stack or "")
+    where = f"{endpoint} on {rtb}"
+    if ours:
+        if claims_exists:
+            return Result(
+                "DynamoDB route",
+                FAIL,
+                f"{where} belongs to this sandbox, but dynamoDbGatewayEndpointExists is true",
+                "The next deploy would drop the endpoint this stack's own functions "
+                "route through, and expiry would silently stop. Unset "
+                "AMPLIFY_PORTAL_DDB_GW_ENDPOINT_EXISTS.",
+            )
+        return Result("DynamoDB route", OK, f"{where} owned by this sandbox, matching the config")
+
+    held_by = owner or "no CloudFormation stack (created by hand)"
+    if claims_exists:
+        return Result("DynamoDB route", OK, f"{where} held by {held_by}; this stack reuses the route")
     return Result(
         "DynamoDB route",
         FAIL,
-        f"{rtb} has no prefix-list route, but dynamoDbGatewayEndpointExists is true",
-        "Nothing will create the route, so the VPC functions have no path to "
-        "the block ledger and expiry silently does not run. Set "
-        "AMPLIFY_PORTAL_DDB_GW_ENDPOINT_EXISTS=0.",
+        f"{where} is held by {held_by}, but dynamoDbGatewayEndpointExists is false",
+        "A route table takes one route per prefix list, so the data stack will fail "
+        "to create its endpoint and roll back after the rest of it succeeds. Set "
+        "AMPLIFY_PORTAL_DDB_GW_ENDPOINT_EXISTS=1, or delete that endpoint first if "
+        "this stack should own it.",
     )
+
+
+def print_sandbox_identifier(region_hint: str) -> int:
+    """Print the identifier of the sandbox the outputs file points at.
+
+    Resolution goes through the deployed pool rather than the file name or a
+    config literal, because the identifier is not written anywhere on disk --
+    the outputs file names a pool, and CloudFormation is what says which stack,
+    and therefore which sandbox, owns it.
+    """
+    if not OUTPUTS_PATH.exists():
+        print(
+            f"{OUTPUTS_PATH.name} not found: no sandbox is deployed from this checkout.",
+            file=sys.stderr,
+        )
+        return 3
+
+    try:
+        outputs = load_outputs()
+    except (RuntimeError, json.JSONDecodeError) as exc:
+        print(f"cannot read {OUTPUTS_PATH.name}: {exc}", file=sys.stderr)
+        return 1
+
+    auth = outputs.get("auth") or {}
+    pool_id = auth.get("user_pool_id")
+    region = auth.get("aws_region") or region_hint
+    if not pool_id:
+        print(f"{OUTPUTS_PATH.name} has no auth.user_pool_id", file=sys.stderr)
+        return 1
+
+    try:
+        stack = owning_stack(pool_id, region)
+    except RuntimeError as exc:
+        print(f"cannot resolve the stack owning {pool_id}: {exc}", file=sys.stderr)
+        return 1
+
+    identifier = sandbox_identifier(stack)
+    if identifier.startswith("("):
+        print(f"{stack} is not a sandbox stack", file=sys.stderr)
+        return 1
+
+    print(identifier)
+    return 0
 
 
 def main() -> int:
     """Run every check and report. Returns the process exit code."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--region", default="ap-northeast-1")
+    parser.add_argument(
+        "--print-sandbox-identifier",
+        action="store_true",
+        help="print the sandbox identifier the outputs file points at, and exit",
+    )
     args = parser.parse_args()
+
+    if args.print_sandbox_identifier:
+        return print_sandbox_identifier(args.region)
 
     config_src = read_config_text()
     if not config_src:
@@ -455,7 +569,7 @@ def main() -> int:
     outputs_result, stack = check_outputs_pool(args.region)
     results = [outputs_result]
     results.extend(check_lambda_vpc(stack, args.region, config_src))
-    results.append(check_gateway_endpoint(args.region, config_src))
+    results.append(check_gateway_endpoint(args.region, config_src, stack))
 
     marks = {OK: "ok  ", FAIL: "FAIL", SKIP: "skip"}
     for result in results:
