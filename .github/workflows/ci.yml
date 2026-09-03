@@ -105,7 +105,12 @@ jobs:
     if: always()
     strategy:
       matrix:
-        python-version: ["3.11", "3.12", "3.13"]
+        # Lowest entry equals `requires-python` in pyproject.toml; highest equals
+        # `PY_VERSION` in the Makefile, which is the deployed Lambda runtime.
+        # 3.11 was here while the project declared `>=3.12`, so the build was gated
+        # on a version it does not support. scripts/check_lambda_runtime_agrees.py
+        # keeps the three in agreement.
+        python-version: ["3.12", "3.13"]
     env:
       AWS_DEFAULT_REGION: ap-northeast-1
       AWS_ACCESS_KEY_ID: testing
