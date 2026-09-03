@@ -159,12 +159,12 @@ class TestGatewayEndpointRoute:
     would have the next deploy remove the endpoint its own functions route through.
     """
 
-    RTB = "rtb-0dc6848a7c1ef7ca3"
+    RTB = "rtb-0123456789abcdef0"
     OURS = "amplify-fsxns3apamplifyportal-demo-sandbox-753443151c-auth179371D7-1X5N7VRRW3H34"
     OUR_DATA = "amplify-fsxns3apamplifyportal-demo-sandbox-753443151c-data7552DF31-Z4LHLM0GG5EN"
     THEIR_DATA = "amplify-fsxns3apamplifyportal-phase2auth-sandbox-863ba19ead-data7552DF31-1SUL4UIYCRNZ3"
 
-    VPC = "vpc-05192d06e1e91d756"
+    VPC = "vpc-0123456789abcdef0"
 
     def _config(self, claim: str, rtb: str | None = None) -> str:
         return (
@@ -216,7 +216,7 @@ class TestGatewayEndpointRoute:
 
     def test_our_own_endpoint_matches_a_false_claim(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """After ownership moves to this stack, the route existing is expected."""
-        self._stub(monkeypatch, [["vpce-084356979cea4cdda", [self.RTB], self.OUR_DATA]])
+        self._stub(monkeypatch, [["vpce-0123456789abcdef0", [self.RTB], self.OUR_DATA]])
 
         result = preflight.check_gateway_endpoint("ap-northeast-1", self._config("false"), self.OURS)
 
@@ -226,7 +226,7 @@ class TestGatewayEndpointRoute:
     def test_our_own_endpoint_with_a_true_claim_is_a_pending_self_inflicted_outage(
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        self._stub(monkeypatch, [["vpce-084356979cea4cdda", [self.RTB], self.OUR_DATA]])
+        self._stub(monkeypatch, [["vpce-0123456789abcdef0", [self.RTB], self.OUR_DATA]])
 
         result = preflight.check_gateway_endpoint("ap-northeast-1", self._config("true"), self.OURS)
 
@@ -252,7 +252,7 @@ class TestGatewayEndpointRoute:
 
     def test_a_hand_made_endpoint_is_named_as_unmanaged(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """An endpoint with no stack tag is the state a manual restore leaves behind."""
-        self._stub(monkeypatch, [["vpce-05473e2c6181c36aa", [self.RTB], None]])
+        self._stub(monkeypatch, [["vpce-0fedcba9876543210", [self.RTB], None]])
 
         result = preflight.check_gateway_endpoint("ap-northeast-1", self._config("false"), self.OURS)
 
