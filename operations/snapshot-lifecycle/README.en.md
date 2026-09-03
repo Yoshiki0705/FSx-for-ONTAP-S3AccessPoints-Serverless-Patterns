@@ -105,6 +105,15 @@ sam build && sam deploy --parameter-overrides \
 | `PolicyDriftVolumeCount` | Count | Volumes with detected policy drift |
 | `RetentionCompliancePercent` | Percent | Compliance rate (100% = all within retention) |
 
+### S3 Audit Reports
+
+```
+s3://{stack-name}-reports-{account-id}/
+  reports/2026/07/13/{fs-id}/
+    ├── snapshot-audit.json
+    └── snapshot-audit.html
+```
+
 ---
 
 ## Success Metrics

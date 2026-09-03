@@ -24,7 +24,8 @@
 	test-ops4 test-ops3 test-ops2 test-ops5 test-ops6 test-ops lint-ops lint-cfn-ops \
 	build-ops1 deploy-ops1 security-report security-cfn propose-cleanup ontap-preflight \
 	discover-s3ap check-group-ap-tags portal-preflight portal-grant-roles \
-	portal-demo-user portal-hosting portal-hosting-url
+	portal-demo-user portal-hosting portal-hosting-url \
+	portal-basic-auth portal-basic-auth-off
 
 # Target Python version — must match the Lambda runtime in the SAM templates
 # (`Runtime: python3.13`). Declared once here so `install`, the interpreter
@@ -98,7 +99,8 @@ help:
 	@echo "  make portal-grant-roles — Grant portal roles/scopes to Cognito users (dry run unless ARGS=--apply)"
 	@echo "  make portal-demo-user — Create a demo account and grant it a role and scope (calls AWS)"
 	@echo "  make portal-hosting  — Publish the frontend to Amplify Hosting for an https URL (calls AWS)"
-	@echo "  make portal-hosting-url — Report the hosted URL and which sandbox it is bound to"
+	@echo "  make portal-hosting-url — Report the hosted URL, its backend binding and its gates"
+	@echo "  make portal-basic-auth — Put the hosted branch behind basic auth (opt-in, calls AWS)"
 	@echo "  make clean         — Remove build artifacts"
 	@echo ""
 	@echo "Python: $(PYTHON) (auto-detects .venv/bin/python; override: PYTHON=...)"
@@ -295,6 +297,20 @@ portal-hosting:
 
 portal-hosting-url:
 	$(PYTHON) scripts/portal_deploy_hosting.py --show
+
+# Basic auth is opt-in, not the default: Cognito sign-in is already a real gate, so
+# requiring a second credential for every demo adds a secret to hand over without
+# changing who can sign in. What it adds is keeping a published URL out of casual
+# reach, which matters once the URL has travelled further than the accounts have.
+# `portal-hosting-url` reports which gates are in front of the page.
+#
+#   make portal-basic-auth        # generate a password and enable it
+#   make portal-basic-auth-off    # remove it
+portal-basic-auth:
+	$(PYTHON) scripts/portal_deploy_hosting.py --basic-auth
+
+portal-basic-auth-off:
+	$(PYTHON) scripts/portal_deploy_hosting.py --no-basic-auth
 
 # ============================================================
 # Drift checks
@@ -542,6 +558,13 @@ drift:
 # which the check verifies is actually ignored.
 	$(PYTHON) -m pytest scripts/tests/test_check_dated_obligations.py --tb=short -q
 	$(PYTHON) scripts/check_dated_obligations.py
+# Text half only. The OCR half reads 463 tracked images and takes ~8 minutes, which
+# does not belong in a check run before every commit, but the text half takes seconds
+# and is the half that catches an identifier pasted into a source file or a fixture.
+# CI runs both. Added because a real VPC id reached a test fixture and only CI saw
+# it: `make drift` had no sensitive-string check at all, so the leak survived every
+# local gate and was caught after the pull request was opened.
+	$(PYTHON) scripts/_check_sensitive_leaks.py --text
 
 # Fetches the published posts from Hatena and dev.to, so it needs network and is
 # not part of `make lint`. Run it after shipping a feature that makes an article's

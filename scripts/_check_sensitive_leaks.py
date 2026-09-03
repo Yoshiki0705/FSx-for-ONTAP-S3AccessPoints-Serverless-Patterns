@@ -223,6 +223,19 @@ def main() -> None:
         print(f"Scanned {len(explicit)} path(s); files with leaks: {found}")
         sys.exit(1 if found else 0)
 
+    # Rejected rather than ignored. `--text-only` selected neither half, so the run
+    # printed "No leaks detected" and exited 0 having scanned nothing -- and it was
+    # used to check a real leak, which it duly failed to see. A flag this script does
+    # not know is the one case where reporting success is worse than refusing.
+    known = {"--images", "--text"}
+    unknown = [a for a in args if a.startswith("-") and a not in known]
+    if unknown:
+        print(
+            f"unknown option(s): {' '.join(unknown)}. Known: {' '.join(sorted(known))}, or no option to scan both.",
+            file=sys.stderr,
+        )
+        sys.exit(2)
+
     scan_img = "--images" in args or not args
     scan_txt = "--text" in args or not args
 

@@ -112,10 +112,49 @@ publish したときに 1 つ目のバンドルを別プールを指すバンド
 | Snapshot ロックの有効化 | 同上 | compliance ボリュームでは無効化不可 |
 | Snapshot のロック / 保持期間の延長 | `snapshots/index.py`、`SnaplockManager.tsx` | 延長のみ。短縮・解除不可 |
 
-**`acknowledgeIrreversible` は画面操作に対する防御ではない。** ハンドラはこのフィールドを
-要求するが、フロントエンドがリテラルで送っている（`SnaplockManager.tsx`、
-`VolumeManager.tsx`、`SnapshotAdminManager.tsx` など）。このゲートが止めるのはスクリプトや
-エージェントからの呼び出しで、ボタンを押す人は素通りする。
+**ゲートは 2 段ある。** `acknowledgeIrreversible` はハンドラ側の要求で、フロントエンドは
+リテラルで送る。これは意図的で、止める相手は**スクリプトやエージェントからの直接呼び出し**である。
+画面を操作する人に対しては `SnaplockConfirmDialog` が前段に立ち、**キーワードの入力または
+チェックボックス**を要求する（`SNAPLOCK_CONFIRM_KEYWORD`）。
+
+上の 3 経路はいずれもこのダイアログの `onConfirm` からしか実行に入らない
+（`VolumeManager.handleCreateClick` → `handleCreate`、
+`SnapshotAdminManager.handleEnableLockingClick` → `handleEnableLocking`、
+`SnaplockManager.handleUpdateRetentionClick` → `handleUpdateRetention`）。ダイアログを
+迂回するのは、保持期間が空またはゼロで**不可逆な要素が無いとき**だけである。
+ごみ箱からの完全削除と容量リバランスは `window.confirm` を使う。
+
+**残るリスクは、確認できる人が確認して進められること。** ダイアログは不可逆であることを
+提示するが、`storage-admin` を渡した相手が納得して進める判断まで止めるものではない。
+デモで管理操作を見せる必要がなければ `contributor` で払い出す。
+
+## ページの前段のゲート
+
+公開したページは URL を知る全員が到達でき、既定では Cognito サインインが唯一のゲートである。
+`make portal-hosting-url` がこれを毎回報告する。
+
+```
+gate     Cognito sign-in only -- anyone with the URL reaches the form
+```
+
+URL がアカウントより広く共有されてしまった場合は Basic 認証を足す。パスワードは実行時に一度
+だけ表示され、ディスクには書かない。
+
+```bash
+make portal-basic-auth        # 有効化（ユーザー名は demo 固定、パスワードを生成）
+make portal-basic-auth-off    # 解除
+```
+
+**既定を opt-in にしている理由**: Cognito サインインは実在のゲートなので、常時 2 つ目の
+資格情報を要求しても「誰がサインインできるか」は変わらず、渡す秘密が 1 つ増えるだけである。
+Basic 認証が足すのは、公開 URL を偶然の到達から遠ざけることで、これは URL がアカウントより
+先に広まったときに意味を持つ。
+
+反映には数十秒かかる。有効化直後に確認するなら、資格情報なしで 401 が返ることを見る。
+
+```bash
+curl -s -o /dev/null -w '%{http_code}\n' https://demo.<app-id>.amplifyapp.com/
+```
 
 デモで管理操作を見せる必要がないなら `contributor,internal` で払い出す。見せる必要があるなら
 `storage-admin,internal` で払い出し、**終わったあとにグループを外す**。

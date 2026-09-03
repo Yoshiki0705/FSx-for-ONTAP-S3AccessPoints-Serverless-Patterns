@@ -568,7 +568,13 @@ class TestExpirySweep:
         """
         from dp_handler import handler
 
-        handler({"action": "listSvms"}, None)
+        # The pool is patched because this asserts on the credential path, not on
+        # ONTAP. Without it the request goes to ONTAP_MGMT_IP, which is 10.0.0.1 in
+        # the test environment and blackholes, so urllib3 retried until it gave up --
+        # measured at 300s for this one test, against 0.005s for the other seven in
+        # this class.
+        with patch("dp_handler.urllib3.PoolManager"):
+            handler({"action": "listSvms"}, None)
 
         mock_secrets.get_secret_value.assert_called_once()
 

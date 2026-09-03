@@ -121,6 +121,26 @@ npx ampx sandbox delete --yes
 
 ---
 
+## アーキテクチャ（AI 機能全体）
+
+```
+ブラウザ UI
+  → AppSync GraphQL の mutation / query
+    → Lambda（VPC 外、ARM64、Python 3.13）
+      → S3 AP GetObject（ファイル本文の読み取り）
+      → AWS の AI サービス（Bedrock / Rekognition / Textract / Comprehend）
+    → 結果をブラウザへ返す
+```
+
+いずれの Lambda も次の条件で動きます。
+
+- **VPC 不要**（Internet-origin の S3 AP と公開 AI エンドポイントを使うため）
+- **ARM64**（Graviton2）でコスト効率を上げる
+- **Python 3.13** と boto3（SigV4 + リージョナルエンドポイント）
+- **IAM**: 関数ごとの最小権限（`s3:GetObject` と、その機能が使う AI アクションのみ）
+
+---
+
 ## 関連ドキュメント
 
 - [本番デプロイガイド](./amplify-hosting-production-guide.md)

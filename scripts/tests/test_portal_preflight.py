@@ -356,3 +356,76 @@ class TestPrintSandboxIdentifier:
         monkeypatch.setattr(preflight, "OUTPUTS_PATH", path)
         monkeypatch.setattr(preflight, "owning_stack", explode)
         assert preflight.print_sandbox_identifier("ap-northeast-1") == 1
+
+
+class TestHostedBinding:
+    """Comparing the published bundle against the backend deployed now.
+
+    The failure this catches has no signature in the browser: the page loads, the
+    sign-in form renders, and every credential is rejected, which is also what an
+    account in the wrong pool looks like. So it has to be caught before the URL is
+    handed out rather than diagnosed afterwards.
+
+    `aws` is stubbed rather than the whole function, because the mapping from
+    Amplify's answer to a verdict is the part worth pinning.
+    """
+
+    STACK = "amplify-fsxns3apamplifyportal-demo-sandbox-753443151c-auth179371D7-AAA"
+    POOL = "ap-northeast-1_current"
+
+    def _apps(self, monkeypatch: pytest.MonkeyPatch, apps: list[dict]) -> None:
+        monkeypatch.setattr(preflight, "aws", lambda *a, **k: json.dumps(apps))
+
+    def _app(self, tags: dict | None) -> dict:
+        return {
+            "name": "fsxn-portal-demo",
+            "appId": "d0123456789abc",
+            "defaultDomain": "d0123456789abc.amplifyapp.com",
+            "tags": tags,
+        }
+
+    def test_matching_pool_passes_and_names_the_url(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        self._apps(monkeypatch, [self._app({"portal:user-pool-id": self.POOL})])
+        result = preflight.check_hosted_binding("ap-northeast-1", self.POOL, self.STACK)
+        assert result.status == preflight.OK
+        assert "https://demo.d0123456789abc.amplifyapp.com" in result.detail
+
+    def test_a_different_pool_fails_and_names_both(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        self._apps(monkeypatch, [self._app({"portal:user-pool-id": "ap-northeast-1_stale"})])
+        result = preflight.check_hosted_binding("ap-northeast-1", self.POOL, self.STACK)
+        assert result.status == preflight.FAIL
+        assert "ap-northeast-1_stale" in result.detail
+        assert self.POOL in result.detail
+        assert "make portal-hosting" in result.remedy
+
+    def test_an_untagged_app_fails_rather_than_assuming_it_is_fine(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        # Published before the tags existed, or by hand. Absence of evidence is not
+        # evidence that the binding holds, and this URL still gets handed out.
+        self._apps(monkeypatch, [self._app(None)])
+        result = preflight.check_hosted_binding("ap-northeast-1", self.POOL, self.STACK)
+        assert result.status == preflight.FAIL
+
+    def test_no_app_skips_because_publishing_is_optional(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        # The tunnel and localhost are legitimate, so "nothing published" must not be
+        # a failure -- a check that fails on every unpublished checkout gets removed.
+        self._apps(monkeypatch, [])
+        assert preflight.check_hosted_binding("ap-northeast-1", self.POOL, self.STACK).status == preflight.SKIP
+
+    def test_another_sandboxs_app_is_not_mistaken_for_this_one(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        # Publishing from a second sandbox creates fsxn-portal-<other>; reading its
+        # tag here would compare this pool against an unrelated bundle.
+        other = {**self._app({"portal:user-pool-id": "ap-northeast-1_other"}), "name": "fsxn-portal-other"}
+        self._apps(monkeypatch, [other])
+        assert preflight.check_hosted_binding("ap-northeast-1", self.POOL, self.STACK).status == preflight.SKIP
+
+    def test_unknown_sandbox_skips(self) -> None:
+        assert preflight.check_hosted_binding("ap-northeast-1", self.POOL, None).status == preflight.SKIP
+
+    def test_an_aws_failure_skips_rather_than_failing_the_run(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        # Missing amplify:ListApps permission is not a broken binding, and reporting
+        # it as one would send somebody to republish a bundle that is fine.
+        def explode(*a: object, **k: object) -> str:
+            raise RuntimeError("AccessDenied")
+
+        monkeypatch.setattr(preflight, "aws", explode)
+        assert preflight.check_hosted_binding("ap-northeast-1", self.POOL, self.STACK).status == preflight.SKIP

@@ -504,6 +504,72 @@ def check_gateway_endpoint(region: str, config_src: str, stack: str | None = Non
     )
 
 
+def check_hosted_binding(region: str, pool_id: str, stack: str | None) -> Result:
+    """Compare what the published bundle was built against with what is deployed now.
+
+    `main.tsx` imports `amplify_outputs.json` statically, so the user pool and the
+    GraphQL endpoint are compiled into the hosted bundle. Recreating the sandbox
+    therefore leaves a page that loads, renders the sign-in form, and rejects every
+    credential -- the same symptom as an account created in the wrong pool, and with
+    nothing in the browser to distinguish it.
+
+    `portal_deploy_hosting.py` records the binding as tags at publish time; this reads
+    them back. The app name and the tag keys are imported rather than repeated, so a
+    change to the naming convention cannot leave this check looking for an app that is
+    no longer called that and reporting "nothing published".
+    """
+    if not stack:
+        return Result("hosted bundle", SKIP, "owning sandbox unknown")
+
+    import portal_deploy_hosting as hosting
+
+    sandbox = sandbox_identifier(stack)
+    name = hosting.app_name(sandbox)
+
+    try:
+        raw = aws(
+            "amplify",
+            "list-apps",
+            "--region",
+            region,
+            "--query",
+            "apps[].{name:name,appId:appId,defaultDomain:defaultDomain,tags:tags}",
+            "--output",
+            "json",
+        )
+    except RuntimeError as exc:
+        return Result("hosted bundle", SKIP, f"cannot list hosting apps: {exc}")
+
+    app = next((a for a in json.loads(raw or "[]") if a.get("name") == name), None)
+    if not app:
+        # Not a failure: the tunnel and localhost are legitimate ways to run the
+        # portal, and most checkouts never publish one.
+        return Result("hosted bundle", SKIP, f"no hosting app named {name}")
+
+    url = f"https://{hosting.BRANCH_NAME}.{app['defaultDomain']}"
+    bound_pool = (app.get("tags") or {}).get(hosting.BOUND_POOL_TAG)
+
+    if not bound_pool:
+        return Result(
+            "hosted bundle",
+            FAIL,
+            f"{url} carries no {hosting.BOUND_POOL_TAG} tag, so what it was built against is unknown",
+            "Republish with `make portal-hosting` so the binding is recorded, or the "
+            "next person to hand out this URL cannot tell whether it still works.",
+        )
+
+    if bound_pool != pool_id:
+        return Result(
+            "hosted bundle",
+            FAIL,
+            f"{url} was built against pool {bound_pool}, but the outputs file now names {pool_id}",
+            "The page will load, render the sign-in form and reject every credential. "
+            "Rebuild and republish with `make portal-hosting`.",
+        )
+
+    return Result("hosted bundle", OK, f"{url} was built against this pool")
+
+
 def print_sandbox_identifier(region_hint: str) -> int:
     """Print the identifier of the sandbox the outputs file points at.
 
@@ -570,6 +636,16 @@ def main() -> int:
     results = [outputs_result]
     results.extend(check_lambda_vpc(stack, args.region, config_src))
     results.append(check_gateway_endpoint(args.region, config_src, stack))
+
+    # Last, because it is about the copy a reviewer opens rather than the backend the
+    # checks above cover. Reached even when the outputs file could not be read, in
+    # which case there is no pool to compare and the check skips.
+    try:
+        pool_for_binding = (load_outputs().get("auth") or {}).get("user_pool_id") or ""
+    except (RuntimeError, json.JSONDecodeError):
+        pool_for_binding = ""
+    if pool_for_binding:
+        results.append(check_hosted_binding(args.region, pool_for_binding, stack))
 
     marks = {OK: "ok  ", FAIL: "FAIL", SKIP: "skip"}
     for result in results:

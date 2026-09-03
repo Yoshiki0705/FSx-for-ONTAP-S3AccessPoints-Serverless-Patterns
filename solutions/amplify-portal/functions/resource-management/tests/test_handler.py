@@ -2000,7 +2000,17 @@ class TestFlexCache:
     def test_create_converts_gib_and_returns_job_id(self, mock_secrets):
         from rm_handler import handler
 
-        http = MockHttp({"/storage/flexcache/flexcaches": {"data": {"job": {"uuid": "job-1"}}}})
+        # The job lookup is answered, so the handler takes the path this test is about.
+        # Without it `_await_job` polled an unanswered `/cluster/jobs/` until the 10s
+        # deadline and returned success only through `pending_ok` -- the assertions
+        # below still passed, so the test looked fine while spending 10s of the
+        # portal suite's 13s exercising the timeout branch instead of the happy one.
+        http = MockHttp(
+            {
+                "/storage/flexcache/flexcaches": {"data": {"job": {"uuid": "job-1"}}},
+                "/cluster/jobs/job-1": {"data": {"state": "success", "message": "done"}},
+            }
+        )
         with patch("rm_handler.urllib3.PoolManager") as mock_pool:
             mock_pool.return_value = http
             result = handler(
