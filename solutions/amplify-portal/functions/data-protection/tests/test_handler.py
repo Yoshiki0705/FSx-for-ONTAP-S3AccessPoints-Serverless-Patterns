@@ -541,6 +541,37 @@ class TestExpirySweep:
         assert result["success"] is False
         mock_arp.unblock_smb_user.assert_not_called()
 
+    def test_sweep_does_not_read_the_ontap_secret(self, mock_secrets, mock_arp, ledger):
+        """The scheduled sweep must not pull a credential it has no use for.
+
+        The dispatch used to fetch the secret for every action before looking at
+        which one had arrived, so a sweep over an empty ledger produced a
+        `GetSecretValue` every quarter of an hour against a function that then
+        made no ONTAP call. Measured in CloudTrail on 2026-09-02, where those
+        entries sat alongside the ones worth noticing.
+
+        `mock_arp` stands in for the client the sweep builds for itself, so the
+        credential path this asserts against is the dispatch's, not the client's.
+        """
+        from dp_handler import handler
+
+        result = handler({"action": "sweepExpiredBlocks"}, None)
+
+        assert result["success"] is True
+        mock_secrets.get_secret_value.assert_not_called()
+
+    def test_a_credentialed_action_still_reads_the_secret(self, mock_secrets, mock_arp, ledger):
+        """The counterpart, so the assertion above cannot pass by breaking everything.
+
+        Moving the sweep ahead of the fetch is only correct if the fetch still
+        happens for the actions that need it.
+        """
+        from dp_handler import handler
+
+        handler({"action": "listSvms"}, None)
+
+        mock_secrets.get_secret_value.assert_called_once()
+
 
 class TestExpiryInListing:
     def test_marks_blocks_without_a_ledger_row_as_unmanaged(self, mock_secrets, mock_arp, ledger):
