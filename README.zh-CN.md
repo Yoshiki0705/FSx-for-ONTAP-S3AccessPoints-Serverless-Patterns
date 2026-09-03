@@ -28,6 +28,7 @@
 | 为我的工作负载选择合适的模式 | [Pattern Selection Guide](docs/pattern-selection-guide.md) | 15 分钟 |
 | 估算成本 | [Cost Calculator](docs/cost-calculator.md) | 5 分钟 |
 | 构建动手实验室环境 | [Hands-on Lab IaC](infrastructure/handson-lab/) | 60 分钟 |
+| 在其他终端上演示门户（发放 URL 与账户） | [交接与支持指南](solutions/amplify-portal/docs/portal-handover-guide.en.md) | 15 分钟 |
 
 ---
 

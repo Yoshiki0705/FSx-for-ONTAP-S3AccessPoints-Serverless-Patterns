@@ -12,7 +12,7 @@ CloudFormation/SAM template sharing the Python modules in `shared/`.
 **Two pillars**: `solutions/` (S3 AP data processing) + `operations/` (file system operational
 optimization).
 
-**Test coverage**: ~4,900 Python tests across 287 files + ~495 vitest tests across 34 files.
+**Test coverage**: ~4,900 Python tests across 289 files + ~495 vitest tests across 34 files.
 
 > ファイル数は `make drift` がツリーと照合するので、古くなれば fail する。テスト総数は
 > `make test` / ポータルハンドラの個別実行 / vitest の 3 系統の合計なので概数。誰も保守
@@ -36,7 +36,9 @@ optimization).
 | SnapLock / WORM / Snapshot ロック | [pitfalls-snaplock](docs/agent/pitfalls-snaplock.md) |
 | ARP/AI の状態遷移 / EMS イベント | [pitfalls-arp-ems](docs/agent/pitfalls-arp-ems.md) |
 | ポータルの CDK / cdk-nag | [portal-cdk-quality-gates](docs/agent/portal-cdk-quality-gates.md) |
+| ポータル sandbox の削除 / 同一 VPC への 2 台目 | [portal-sandbox-lifecycle](docs/agent/portal-sandbox-lifecycle.md) |
 | ポータル UI の文字列 / 翻訳 | [portal-i18n](docs/agent/portal-i18n.md) |
+| 他端末に渡すデモ環境（URL / アカウント） | [portal-demo-environment](docs/agent/portal-demo-environment.md) |
 | コスト見積り / リソース停止 | [cost-awareness](docs/agent/cost-awareness.md) |
 | 依存追加 / Renovate | [dependency-updates](docs/agent/dependency-updates.md) |
 | 構成図の作成・再生成・エクスポート | [diagram-regeneration](docs/agent/diagram-regeneration.md) |
@@ -98,14 +100,16 @@ make drift-published                                               # 公開記�
 ポータル（`solutions/amplify-portal/`）を動かす:
 
 ```bash
-npx ampx sandbox   # 一度だけ。amplify_outputs.json を生成する（gitignore、これが無いと起動しない）
-npm start          # sandbox + vite（http://localhost:5173）
-npm run phone      # ↑ + HTTPS トンネル。実機で開ける URL を出す前に到達性を検証する
+npm run dev    # vite のみ。frontend 確認（AWS を変更しない）
+npm start      # ↑ + sandbox watch。未コミットの amplify/ が AWS に入る
+npm run phone  # ↑ + トンネル。使い捨て URL。渡さない
 ```
 
-`http://<LAN-IP>` では実機でサインインできない（`crypto.subtle` / `navigator.clipboard` が
-secure context 限定）。トンネルの前提と失敗パターンは
-[GETTING-STARTED](solutions/amplify-portal/docs/GETTING-STARTED.md) にある。
+**`npx ampx sandbox` を素で実行しない。** identifier を省略すると OS のユーザー名から決まり、
+別 sandbox を新規作成して失敗し、しかもロールバックしない。`scripts/sandbox.sh` 経由で使う。
+
+**URL を渡す前に `make portal-preflight`。** ページが開くことはサインインできる証拠ではない。
+`http://<LAN-IP>` も不可（secure context 限定）。
 
 KNFSD（Terraform、`infrastructure/knfsd-file-cache/`）は `scripts/{deploy,validate-cache,cleanup}.sh`。
 ## Project Layout
@@ -143,10 +147,10 @@ KNFSD（Terraform、`infrastructure/knfsd-file-cache/`）は `scripts/{deploy,va
 - **Trigger**: EventBridge Scheduler (polling) OR FPolicy EventBridge Rule (event-driven)
 - **Orchestration**: Step Functions state machine per UC
 - **Compute**: Lambda functions (Python 3.13, 256-1024MB)。**アーキテクチャは統一されていない**:
-  `Architectures: [arm64]` を書いているのは 52 パターン中 14 のみ（operations 6 本と
-  logistics-ocr / sap / edge / ha 等）。残る 38 本は宣言が無いため Lambda 既定の x86_64 で
-  デプロイされる（industry 27・flexcache 8・genai 2・event-driven 1）。純 Python なので
-  動作に影響は無いが、GB 秒あたりの単価は arm64 の方が安い。新規パターンは arm64 を明示する
+  `Architectures: [arm64]` を宣言しているのは一部（operations 全体と一部の solutions）で、
+  残りは宣言が無いため Lambda 既定の x86_64 になる。純 Python なので動作は変わらないが
+  GB 秒あたりの単価は arm64 が安い。**新規パターンは arm64 を明示する**。内訳は数えれば
+  分かるので焼き込まない（`grep -rl "arm64" solutions/*/*/template.yaml operations/*/template.yaml`）
 - **Storage access**: FSx for ONTAP S3 Access Points (read/write via S3ApHelper)
 - **AI/ML**: Bedrock (Nova/Claude), Textract, Comprehend, Rekognition, SageMaker
 - **Analytics**: Athena + Glue Data Catalog
@@ -254,7 +258,8 @@ python3 -m pytest solutions/sap/erp-adjacent/tests/ -v
    バージョンが実際に走るか、`make drift` の各チェックが CI からも走るか）、テストディレクトリ
    の網羅、action インベントリと action-parameter 契約、i18n（manifest が要求する翻訳の存在・
    全 8 言語の構造 parity・生成されたスイッチャ）、陳腐化ルール、テーマトークン、画像とリンクの
-   解決、samconfig 例、env var 契約
+   解決、samconfig 例、env var 契約、Lambda ランタイム版の一致（`PY_VERSION` と全テンプレート
+   / CDK / requires-python / CI マトリクス）
 5. `make security-cfn` — テンプレートを触ったとき。cfn-guard は暗号化・公開アクセス・
    最小権限・SageMaker 分離を見る（cfn-lint はテンプレートの妥当性しか見ない）
 
@@ -405,11 +410,15 @@ decision = evaluate_confidence(confidence=0.72)
 
 ### FSx for ONTAP の管理インターフェース（プロジェクト全体の前提）
 
-**ONTAP System Manager は FSx for ONTAP の到達可能な管理インターフェースではない。** 詳細と出典は [管理インターフェースの整理（JA）](docs/ja/fsx-ontap-management-interfaces.md) / [(EN)](docs/en/fsx-ontap-management-interfaces.md)。要点のみ:
+**ONTAP System Manager は FSx for ONTAP の到達可能な管理インターフェースではない。** 到達できるのは
+AWS マネジメントコンソール / FSx API、ONTAP CLI（SSH）、ONTAP REST API の 3 つで、後ろ 2 つは
+VPC 内（または TGW ピア経由）からのみ。System Manager 対応はベンダー SaaS 経由でのみ提供され、
+その SaaS は FSx for ONTAP を SaaS 接続前提のモードでしか扱わない。管理経路にサードパーティ
+SaaS を置けない体制では選択肢が存在しない。これはレジデンシー制約からの帰結で、製品の優劣
+判断ではない。
 
-- 到達できるのは 3 つ: AWS マネジメントコンソール / FSx API、ONTAP CLI（SSH）、ONTAP REST API。CLI と REST は VPC 内（または TGW ピア経由）からのみ。
-- FSx for ONTAP における System Manager 対応はベンダー SaaS 経由でのみ提供される（AWS 公式アナウンス 2023-12-20）。
-- そのベンダー SaaS は FSx for ONTAP を **standard（SaaS 接続必須）モードでしか扱わない**。restricted / private モードの対応表はいずれも「No」（ベンダー公式ドキュメント）。つまり SaaS 依存を切ると FSx for ONTAP が対象外になる。
-- したがって管理経路にサードパーティ SaaS を置けない体制では System Manager を使う選択肢が存在しない。これはレジデンシー制約からの帰結で、製品の優劣判断ではない。
-
-**書くときの禁止事項**は表にしてあります: [管理インターフェースの整理（JA）](docs/ja/fsx-ontap-management-interfaces.md#書くときの禁止事項) / [(EN)](docs/en/fsx-ontap-management-interfaces.md#what-not-to-write)。到達可能性の主張を書く前に読むこと。System Manager を **UI デザインの参照元**として挙げるのは可（「カード型ナビゲーションを踏襲」等）。
+出典・モード対応表・**書くときの禁止事項**は
+[管理インターフェースの整理（JA）](docs/ja/fsx-ontap-management-interfaces.md#書くときの禁止事項) /
+[(EN)](docs/en/fsx-ontap-management-interfaces.md#what-not-to-write) にある。到達可能性の主張を
+書く前に読むこと。System Manager を **UI デザインの参照元**として挙げるのは可
+（「カード型ナビゲーションを踏襲」等）。

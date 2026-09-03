@@ -28,6 +28,7 @@
 | 워크로드에 맞는 패턴 찾기 | [Pattern Selection Guide](docs/pattern-selection-guide.md) | 15분 |
 | 비용 견적 | [Cost Calculator](docs/cost-calculator.md) | 5분 |
 | 핸즈온 랩 환경 구축 | [Hands-on Lab IaC](infrastructure/handson-lab/) | 60분 |
+| 다른 단말에서 포털 데모 (URL과 계정 발급) | [인계 및 지원 가이드](solutions/amplify-portal/docs/portal-handover-guide.en.md) | 15분 |
 
 ---
 

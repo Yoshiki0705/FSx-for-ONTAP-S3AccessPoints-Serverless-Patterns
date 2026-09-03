@@ -18,6 +18,8 @@
 | SnapLock / WORM / Snapshot ロック | [pitfalls-snaplock](agent/pitfalls-snaplock.md) |
 | ポータルの CDK / cdk-nag | [portal-cdk-quality-gates](agent/portal-cdk-quality-gates.md) |
 | ポータル UI の文字列 / 8 言語 | [portal-i18n](agent/portal-i18n.md) |
+| ポータル sandbox の削除 / 同一 VPC への 2 台目 | [portal-sandbox-lifecycle](agent/portal-sandbox-lifecycle.md) |
+| 他端末に渡すデモ環境（URL / アカウント） | [portal-demo-environment](agent/portal-demo-environment.md) |
 | コスト見積り / リソース停止 | [cost-awareness](agent/cost-awareness.md) |
 | 依存追加 / Renovate | [dependency-updates](agent/dependency-updates.md) |
 | 構成図の作成・再生成・エクスポート | [diagram-regeneration](agent/diagram-regeneration.md) |

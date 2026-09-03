@@ -31,14 +31,20 @@ install: ## Install npm dependencies
 dev: ## Start Vite dev server (frontend only, no backend)
 	npm run dev
 
-sandbox: ## Deploy/update Amplify backend (personal sandbox, ~30s incremental)
-	npx ampx sandbox --once
+# All three go through scripts/sandbox.sh, which names the sandbox identifier
+# explicitly instead of letting ampx default to one derived from the OS user.
+# The default silently targets a different sandbox than amplify_outputs.json
+# points at: deploying creates a second one that fails on the DynamoDB gateway
+# endpoint route without rolling back, and deleting would delete the wrong one.
+
+sandbox: ## Deploy/update Amplify backend (sandbox named by amplify_outputs.json, ~30s incremental)
+	./scripts/sandbox.sh --once
 
 sandbox-watch: ## Start Amplify sandbox in watch mode (auto-redeploy on file changes)
-	npx ampx sandbox
+	./scripts/sandbox.sh
 
 sandbox-delete: ## Delete all Amplify sandbox resources (Cognito, AppSync, Lambda)
-	npx ampx sandbox delete
+	./scripts/sandbox.sh delete
 
 sandbox-status: ## Show CloudFormation stack status for current sandbox
 	@STACK=$$(aws cloudformation list-stacks --region $(REGION) \

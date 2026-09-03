@@ -7,7 +7,7 @@ set -e
 cd "$(dirname "$0")/.."
 
 echo "🚀 Starting Amplify Sandbox + Vite Dev Server..."
-echo "   Backend: npx ampx sandbox"
+echo "   Backend: ./scripts/sandbox.sh (targets the sandbox amplify_outputs.json names)"
 echo "   Frontend: http://localhost:5173"
 echo ""
 echo "   Press Ctrl+C to stop both."
@@ -34,5 +34,7 @@ VITE_PID=$!
 echo "✔ Vite dev server started (PID: $VITE_PID)"
 
 # Start sandbox in foreground (blocks until Ctrl+C)
-# This keeps the script alive and shows sandbox output in terminal
-npx ampx sandbox
+# This keeps the script alive and shows sandbox output in terminal.
+# Goes through the wrapper so the sandbox identifier is named explicitly rather
+# than defaulting to one derived from the OS user -- see scripts/sandbox.sh.
+./scripts/sandbox.sh

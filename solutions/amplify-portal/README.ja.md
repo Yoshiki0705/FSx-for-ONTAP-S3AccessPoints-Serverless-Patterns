@@ -199,6 +199,8 @@ sequenceDiagram
 
 > **マルチ開発者**: 各開発者は OS ユーザー名で識別される個別のサンドボックスを取得します。同じ AWS アカウントで複数のチームメンバーが衝突なく作業できます。`npx ampx sandbox --identifier <name>` でカスタマイズ可能です。
 
+> **他端末でデモする場合**: `make portal-hosting`（リポジトリのルートから）が Amplify Hosting に公開して固定の https URL を作り、`make portal-demo-user` がロールとスコープ付きのアカウントを払い出します。サインインは https が必須で、LAN アドレスでは完了しません。手順と、`storage-admin` で到達できる取り消せない操作は [ポータル引き渡しガイド](docs/portal-handover-guide.md) にあります。
+
 ```bash
 # 1. 依存関係のインストール
 make install
