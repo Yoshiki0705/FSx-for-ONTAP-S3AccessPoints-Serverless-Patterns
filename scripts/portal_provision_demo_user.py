@@ -59,9 +59,14 @@ ROLE_EFFECT = {
 }
 
 # Reachable from the browser once a caller holds storage-admin. Each is on the
-# repository's irreversible-operations list. The handler-side `acknowledgeIrreversible`
-# flag does not gate a person clicking: the frontend sends it as a literal
-# (SnaplockManager.tsx, VolumeManager.tsx, SnapshotAdminManager.tsx).
+# repository's irreversible-operations list.
+#
+# Two gates stand in front, covering different callers: `SnaplockConfirmDialog` asks
+# the person for a typed keyword or a ticked checkbox, and the handler requires
+# `acknowledgeIrreversible`, which the frontend sends as a literal so that a script or
+# an agent calling the endpoint directly is refused. Neither stops somebody who reads
+# the confirmation and proceeds, which is why the effect is stated here before the
+# role is granted.
 STORAGE_ADMIN_IRREVERSIBLE = (
     "create a SnapLock volume (compliance/enterprise) -- while it holds an unexpired "
     "WORM file the volume, its SVM and the file system cannot be deleted",
@@ -219,6 +224,10 @@ def main(argv: list[str] | None = None) -> int:
         print("This role reaches irreversible operations from the browser:")
         for effect in STORAGE_ADMIN_IRREVERSIBLE:
             print(f"  - {effect}")
+        print(
+            "  Each sits behind a confirmation asking for a typed keyword or a ticked "
+            "checkbox, so none is a single misclick."
+        )
         print("  Group membership is reversible (admin-remove-user-from-group); what it unlocks is not.")
     print()
 

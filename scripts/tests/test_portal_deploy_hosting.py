@@ -12,6 +12,7 @@ failure appears at the far end of a deployment that reported success.
 
 from __future__ import annotations
 
+import base64
 import importlib.util
 import io
 import sys
@@ -112,3 +113,62 @@ class TestBranchUrl:
 
     def test_scheme_is_https_because_sign_in_requires_a_secure_context(self) -> None:
         assert hosting.branch_url({"defaultDomain": "x.amplifyapp.com"}).startswith("https://")
+
+
+class TestBasicAuthState:
+    """Reading whether the branch is gated.
+
+    Reported next to the URL because "who can reach this page" is part of handing it
+    over and cannot be told from the URL. An unreadable state is reported as unknown
+    rather than as ungated: guessing "ungated" would understate the gate, and guessing
+    "gated" would overstate it.
+    """
+
+    def test_true_when_amplify_says_true(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setattr(hosting, "aws", lambda *a, **k: "True")
+        assert hosting.basic_auth_state("app", "ap-northeast-1") is True
+
+    def test_false_when_amplify_says_false(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setattr(hosting, "aws", lambda *a, **k: "False")
+        assert hosting.basic_auth_state("app", "ap-northeast-1") is False
+
+    def test_none_when_the_branch_cannot_be_read(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        def explode(*a: object, **k: object) -> str:
+            raise RuntimeError("AccessDenied")
+
+        monkeypatch.setattr(hosting, "aws", explode)
+        assert hosting.basic_auth_state("app", "ap-northeast-1") is None
+
+
+class TestSetBasicAuth:
+    """Turning the gate on and off."""
+
+    def test_enabling_sends_base64_of_user_colon_password(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        captured: list[tuple] = []
+        monkeypatch.setattr(hosting, "aws", lambda *a, **k: captured.append(a) or "")
+        password = hosting.set_basic_auth("app", "ap-northeast-1", enable=True)
+        assert password
+        args = captured[0]
+        assert "--enable-basic-auth" in args
+        credentials = args[args.index("--basic-auth-credentials") + 1]
+        user, _, sent = base64.b64decode(credentials).decode().partition(":")
+        assert user == hosting.BASIC_AUTH_USER
+        # The password reaching Amplify has to be the one returned to the operator;
+        # returning a different string would print a credential that does not work.
+        assert sent == password
+
+    def test_the_password_satisfies_the_generator_it_borrows(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setattr(hosting, "aws", lambda *a, **k: "")
+        # Run repeatedly: the colon exclusion is a regeneration loop, so a single call
+        # passing proves nothing about the case it exists for.
+        for _ in range(50):
+            password = hosting.set_basic_auth("app", "ap-northeast-1", enable=True)
+            assert password and len(password) >= 16
+            for hostile in ("'", '"', "\\", "`", "$", " ", ":"):
+                assert hostile not in password
+
+    def test_disabling_sends_the_negative_flag_and_returns_no_password(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        captured: list[tuple] = []
+        monkeypatch.setattr(hosting, "aws", lambda *a, **k: captured.append(a) or "")
+        assert hosting.set_basic_auth("app", "ap-northeast-1", enable=False) is None
+        assert "--no-enable-basic-auth" in captured[0]

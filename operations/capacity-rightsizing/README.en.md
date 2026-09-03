@@ -111,6 +111,14 @@ s3://{stack-name}-reports-{account-id}/
     └── capacity-report.html
 ```
 
+### Recommendation Types
+
+| Type | Trigger | Action |
+|------|---------|--------|
+| `upsize` | volume used ≥ ThresholdPercent | enable autosize, or grow the volume |
+| `downsize` | volume used ≤ LowUtilizationThresholdPercent and autosize disabled | shrink the volume, or autosize(grow_shrink) |
+| `tier_upgrade` | throughput utilisation ≥ ThresholdPercent | move to the next throughput tier |
+
 ---
 
 ## Relationship with Related Solutions

@@ -141,7 +141,7 @@ npx ampx sandbox delete --yes
 ```
 Browser UI
   → AppSync GraphQL mutation/query
-    → Lambda (VPC-external, ARM64, Python 3.12)
+    → Lambda (VPC-external, ARM64, Python 3.13)
       → S3 AP GetObject (read file content)
       → AWS AI Service (Bedrock/Rekognition/Textract/Comprehend)
     → Result returned to browser
@@ -150,7 +150,7 @@ Browser UI
 All Lambda functions:
 - **No VPC** required (Internet-origin S3 AP + public AI endpoints)
 - **ARM64** (Graviton2) for cost efficiency
-- **Python 3.12** with boto3 (SigV4 + regional endpoint)
+- **Python 3.13** with boto3 (SigV4 + regional endpoint)
 - **IAM**: least-privilege per function (s3:GetObject + specific AI action)
 
 ---

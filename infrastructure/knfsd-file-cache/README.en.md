@@ -57,6 +57,32 @@ NFS re-export requires consistent file handle (FSID) management. Choose based on
 
 Details: [FSID Backend Selection Guide](docs/fsid-backend-options.en.md)
 
+## Directory Layout
+
+```
+infrastructure/knfsd-file-cache/
+├── README.md / README.en.md          # overview + quick start
+├── terraform/
+│   ├── main.tf                       # EC2 + IAM + SG + SSM (37 params)
+│   ├── rds.tf                        # Option A/B: RDS or Aurora (created conditionally)
+│   ├── variables.tf                  # every variable, with the AWS CLI command to check it
+│   ├── outputs.tf                    # IP, mount commands, FSID mode
+│   ├── versions.tf                   # provider constraints
+│   └── terraform.tfvars.example      # commented example covering every Option
+├── scripts/
+│   ├── deploy.sh                     # one command (AMI build + terraform apply)
+│   ├── validate.sh                   # 5-check post-deploy validation
+│   ├── benchmark-throughput.sh       # cache miss/hit measurement
+│   └── test-dual-path.sh            # KNFSD + S3 AP simultaneous access
+├── docs/
+│   ├── demo-guide.md / .en.md       # 7-step guide, verified against a real environment
+│   ├── troubleshooting.md / .en.md  # problems actually encountered, and their fixes
+│   ├── fsid-backend-options.md / .en.md  # A/B/D comparison + a selection flowchart
+│   └── verification-results.md      # test-result template
+├── tests/                            # pytest integration tests
+└── dashboards/                       # CloudWatch dashboard JSON
+```
+
 ## Cost
 
 | Phase | Resource | Cost |

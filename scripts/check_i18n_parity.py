@@ -83,7 +83,7 @@ FENCE = re.compile(r"^\s*```")
 #   truncated "next steps" sections were merged into the one the English has. The number
 #   only ratchets down: raising it admits a new mismatch, which is what this stops.
 DEFAULT_MAX_MISSING = 0
-DEFAULT_MAX_STRUCTURE = 269
+DEFAULT_MAX_STRUCTURE = 264
 
 
 def tracked() -> set[str]:

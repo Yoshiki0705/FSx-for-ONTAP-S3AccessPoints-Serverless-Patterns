@@ -152,8 +152,11 @@ aws cognito-idp admin-add-user-to-group --user-pool-id "$POOL" \
 
 > **`storage-admin` reaches operations that cannot be undone**: creating a SnapLock volume,
 > enabling snapshot locking, and extending a retention period are all reachable from the
-> administration screens. The handler-side `acknowledgeIrreversible` flag **does not gate a person
-> clicking** — the frontend sends it as a literal.
+> administration screens. From the UI these sit behind `SnaplockConfirmDialog`, which requires a
+> typed keyword or a ticked checkbox. The handler-side `acknowledgeIrreversible` flag is sent by the
+> frontend as a literal on purpose: it stops a script or an agent calling the endpoint directly, so
+> the two gates cover different callers. **What neither stops is a person who reads the confirmation
+> and decides to proceed.**
 >
 > The membership is removable, so remove it once the demo is over.
 >

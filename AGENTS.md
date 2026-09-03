@@ -12,7 +12,7 @@ CloudFormation/SAM template sharing the Python modules in `shared/`.
 **Two pillars**: `solutions/` (S3 AP data processing) + `operations/` (file system operational
 optimization).
 
-**Test coverage**: ~4,900 Python tests across 289 files + ~495 vitest tests across 34 files.
+**Test coverage**: ~4,900 Python tests across 290 files + ~495 vitest tests across 34 files.
 
 > ファイル数は `make drift` がツリーと照合するので、古くなれば fail する。テスト総数は
 > `make test` / ポータルハンドラの個別実行 / vitest の 3 系統の合計なので概数。誰も保守
@@ -39,6 +39,7 @@ optimization).
 | ポータル sandbox の削除 / 同一 VPC への 2 台目 | [portal-sandbox-lifecycle](docs/agent/portal-sandbox-lifecycle.md) |
 | ポータル UI の文字列 / 翻訳 | [portal-i18n](docs/agent/portal-i18n.md) |
 | 他端末に渡すデモ環境（URL / アカウント） | [portal-demo-environment](docs/agent/portal-demo-environment.md) |
+| 作業を PR に切り分けて main に載せる | [landing-work](docs/agent/landing-work.md) |
 | コスト見積り / リソース停止 | [cost-awareness](docs/agent/cost-awareness.md) |
 | 依存追加 / Renovate | [dependency-updates](docs/agent/dependency-updates.md) |
 | 構成図の作成・再生成・エクスポート | [diagram-regeneration](docs/agent/diagram-regeneration.md) |
@@ -105,11 +106,10 @@ npm start      # ↑ + sandbox watch。未コミットの amplify/ が AWS に�
 npm run phone  # ↑ + トンネル。使い捨て URL。渡さない
 ```
 
-**`npx ampx sandbox` を素で実行しない。** identifier を省略すると OS のユーザー名から決まり、
-別 sandbox を新規作成して失敗し、しかもロールバックしない。`scripts/sandbox.sh` 経由で使う。
+**`npx ampx sandbox` を素で実行しない。** identifier を省略すると別 sandbox を新規作成して
+失敗し、ロールバックもしない。`scripts/sandbox.sh` 経由で使う。
 
-**URL を渡す前に `make portal-preflight`。** ページが開くことはサインインできる証拠ではない。
-`http://<LAN-IP>` も不可（secure context 限定）。
+**URL を渡す前に `make portal-preflight`。** 開けることはサインインできる証拠ではない。
 
 KNFSD（Terraform、`infrastructure/knfsd-file-cache/`）は `scripts/{deploy,validate-cache,cleanup}.sh`。
 ## Project Layout

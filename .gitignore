@@ -218,3 +218,9 @@ solutions/amplify-portal/public/amplify-storage-download/
 # cdk-nag synth output from `npm run nag` in solutions/amplify-portal. A full cloud
 # assembly plus the validation report, regenerated on every run.
 .cdk-nag-out/
+
+# Scratch space for work in progress: screenshots taken while drafting, article
+# bodies pulled down to diff against a published version. Ignored rather than
+# tracked because nothing reads it and its contents are whatever the last session
+# left behind. Anything worth keeping belongs in drafts/ under its own name.
+tmp/

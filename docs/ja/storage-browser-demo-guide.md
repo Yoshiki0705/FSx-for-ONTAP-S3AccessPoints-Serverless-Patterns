@@ -263,6 +263,52 @@ npm run dev
 | API Gateway + Lambda | バックエンドが STS AssumeRole で一時資格情報を返す |
 | Amplify Auth | FR-6 解決後、Amplify Storage の直接フロー |
 
+### S3 AP リソースポリシー
+
+本番ではリソースポリシーでアクセスを絞ります。**絞っているのは `Deny` 文で、`Allow` だけでは
+絞れません。** 同一アカウント内ではアクセスポイントのポリシーが ID ベースのポリシーと結合される
+ため、`Allow` をどれだけ狭く書いても、IAM 側で既に許可されているプリンシパルは通ります
+（[認可モデル](../s3ap-authorization-model.md)）。
+
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "AllowStorageBrowserRole",
+      "Effect": "Allow",
+      "Principal": {
+        "AWS": "arn:aws:iam::123456789012:role/StorageBrowserUserRole"
+      },
+      "Action": ["s3:ListBucket", "s3:GetObject", "s3:PutObject", "s3:DeleteObject"],
+      "Resource": [
+        "arn:aws:s3:ap-northeast-1:123456789012:accesspoint/your-ap-name",
+        "arn:aws:s3:ap-northeast-1:123456789012:accesspoint/your-ap-name/object/*"
+      ]
+    },
+    {
+      "Sid": "DenyEveryOtherPrincipal",
+      "Effect": "Deny",
+      "Principal": "*",
+      "Action": ["s3:ListBucket", "s3:GetObject", "s3:PutObject", "s3:DeleteObject"],
+      "Resource": [
+        "arn:aws:s3:ap-northeast-1:123456789012:accesspoint/your-ap-name",
+        "arn:aws:s3:ap-northeast-1:123456789012:accesspoint/your-ap-name/object/*"
+      ],
+      "Condition": {
+        "StringNotEquals": {
+          "aws:PrincipalArn": "arn:aws:iam::123456789012:role/StorageBrowserUserRole"
+        }
+      }
+    }
+  ]
+}
+```
+
+> `NotPrincipal` ではなく `Condition` の `aws:PrincipalArn` を使ってください。`NotPrincipal` は
+> アカウントの ARN と、ロールの場合は assumed-role のセッション ARN も併記する必要があり、
+> ワイルドカードを受け付けないため「このロールの任意のセッション」を表現できません。
+
 ### FileSystemIdentity の選択
 
 | ID タイプ | ユースケース | 備考 |

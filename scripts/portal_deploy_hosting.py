@@ -30,6 +30,7 @@ Exit codes: 0 published, 1 refused or failed, 2 could not run.
 from __future__ import annotations
 
 import argparse
+import base64
 import io
 import json
 import re
@@ -47,6 +48,10 @@ OUTPUTS_PATH = PORTAL_DIR / "amplify_outputs.json"
 DIST_DIR = PORTAL_DIR / "dist"
 
 BRANCH_NAME = "demo"
+
+# The username half of the basic-auth credential. Fixed so that only the password has
+# to be communicated, and it is not a secret in any case.
+BASIC_AUTH_USER = "demo"
 
 # A single-page app serves every route from index.html. Without this an Amplify
 # branch answers 403/404 for anything but "/", which shows up only after a reload on
@@ -306,6 +311,84 @@ def branch_url(app: dict) -> str:
     return f"https://{BRANCH_NAME}.{app['defaultDomain']}"
 
 
+def basic_auth_state(app_id: str, region: str) -> bool | None:
+    """Whether the branch is behind basic auth, or None when it cannot be read.
+
+    Reported alongside the URL because "who can reach this page" is part of handing
+    it over, and the answer is not visible from the URL itself.
+    """
+    try:
+        raw = aws(
+            "amplify",
+            "get-branch",
+            "--region",
+            region,
+            "--app-id",
+            app_id,
+            "--branch-name",
+            BRANCH_NAME,
+            "--query",
+            "branch.enableBasicAuth",
+            "--output",
+            "text",
+        )
+    except RuntimeError:
+        return None
+    return raw.strip().lower() == "true"
+
+
+def set_basic_auth(app_id: str, region: str, enable: bool) -> str | None:
+    """Turn basic auth on or off. Returns the generated password when enabling.
+
+    Opt-in rather than the default. Cognito sign-in is already a real gate, so
+    requiring a second credential for every demo adds a secret to hand over without
+    changing who can sign in. What it does add is keeping a published URL out of
+    casual reach, which matters when the URL has been shared more widely than the
+    accounts have.
+    """
+    if not enable:
+        aws(
+            "amplify",
+            "update-branch",
+            "--region",
+            region,
+            "--app-id",
+            app_id,
+            "--branch-name",
+            BRANCH_NAME,
+            "--no-enable-basic-auth",
+        )
+        return None
+
+    # Generated here rather than taken as an argument, so the credential never sits in
+    # a shell history or a Makefile invocation.
+    import portal_provision_demo_user as provision
+
+    # A colon is legal in the password half -- RFC 7617 splits on the first one -- but
+    # the credential is decoded by Amplify, by CloudFront and by whatever client the
+    # reviewer uses, and there is no reason to depend on all three splitting the same
+    # way. Regenerating is cheaper than reasoning about it.
+    password = provision.generate_password({})
+    while ":" in password:
+        password = provision.generate_password({})
+
+    credentials = base64.b64encode(f"{BASIC_AUTH_USER}:{password}".encode()).decode()
+    aws(
+        "amplify",
+        "update-branch",
+        "--region",
+        region,
+        "--app-id",
+        app_id,
+        "--branch-name",
+        BRANCH_NAME,
+        "--enable-basic-auth",
+        "--basic-auth-credentials",
+        credentials,
+    )
+    return password
+
+
 def report_binding(app: dict, sandbox: str, pool_id: str) -> None:
     """Print the app's recorded backend binding, and whether it still matches."""
     tags = app.get("tags") or {}
@@ -320,12 +403,31 @@ def report_binding(app: dict, sandbox: str, pool_id: str) -> None:
         )
 
 
+def report_gate(app_id: str, region: str) -> None:
+    """Print what stands between the URL and the data."""
+    gated = basic_auth_state(app_id, region)
+    if gated is None:
+        print("  gate     could not read the branch; basic-auth state unknown")
+    elif gated:
+        print("  gate     basic auth, then Cognito sign-in")
+    else:
+        print("  gate     Cognito sign-in only -- anyone with the URL reaches the form")
+        print("           add a second one with --basic-auth")
+
+
 def main() -> int:
     """Publish and report. Returns the process exit code."""
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--region", default="ap-northeast-1")
     parser.add_argument("--skip-build", action="store_true", help="publish the existing dist/ unchanged")
     parser.add_argument("--show", action="store_true", help="report the current URL and binding, change nothing")
+    gate = parser.add_mutually_exclusive_group()
+    gate.add_argument(
+        "--basic-auth",
+        action="store_true",
+        help="put the branch behind basic auth, generating and printing the password once",
+    )
+    gate.add_argument("--no-basic-auth", action="store_true", help="remove basic auth from the branch")
     args = parser.parse_args()
 
     try:
@@ -359,6 +461,23 @@ def main() -> int:
             print(f"app  {app['appId']} ({name})")
             print(f"url  {branch_url(app)}")
             report_binding(app, sandbox, pool_id)
+            report_gate(app["appId"], region)
+            return 0
+
+        # Before publishing, so `--basic-auth` on its own is a way to gate an app that
+        # is already live without rebuilding it.
+        if args.basic_auth or args.no_basic_auth:
+            if not app:
+                print(f"no hosting app named {name}; publish first", file=sys.stderr)
+                return 1
+            password = set_basic_auth(app["appId"], region, enable=args.basic_auth)
+            if password:
+                print("basic auth enabled")
+                print(f"  username  {BASIC_AUTH_USER}")
+                print(f"  password  {password}")
+                print("Shown once and not written to disk.")
+            else:
+                print("basic auth removed; Cognito sign-in is again the only gate")
             return 0
 
         if app:
@@ -397,13 +516,7 @@ def main() -> int:
     print("─" * 68)
     report_binding(published, sandbox, pool_id)
     print()
-    print("The page is reachable by anyone with the URL; Cognito sign-in is the only")
-    print("gate. Add an extra one with:")
-    print(
-        f"  aws amplify update-branch --region {region} --app-id {published['appId']} "
-        f"--branch-name {BRANCH_NAME} --enable-basic-auth "
-        "--basic-auth-credentials $(printf 'user:pass' | base64)"
-    )
+    report_gate(published["appId"], region)
     return 0
 
 
