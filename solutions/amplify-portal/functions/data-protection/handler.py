@@ -254,6 +254,19 @@ def handler(event, context):
         return {"error": "ONTAP connection not configured (set ONTAP_MGMT_IP, ONTAP_SECRET_NAME)"}
 
     try:
+        # Dispatched before the credentials are fetched, because the sweep does not
+        # use them. It builds its own client through `_arp_client_or_error()`, and
+        # `OntapClient` only reads the secret when a request is actually made — so a
+        # run over an empty ledger makes no ONTAP call and needs no password.
+        #
+        # The fetch below used to run for every action including this one, so every
+        # scheduled sweep pulled a credential it then discarded. That is a
+        # `GetSecretValue` every quarter of an hour attributed to a function that
+        # was doing nothing, which is exactly the noise that makes a real
+        # credential access hard to spot in CloudTrail.
+        if action == "sweepExpiredBlocks":
+            return _sweep_expired_blocks(event)
+
         username, password = _get_credentials()
         http = urllib3.PoolManager(cert_reqs="CERT_NONE")
         headers = urllib3.make_headers(basic_auth=f"{username}:{password}")
@@ -303,8 +316,6 @@ def handler(event, context):
             return _list_svms(http, headers, event)
         elif action == "listActiveBlocks":
             return _list_active_blocks_across(event, http, headers)
-        elif action == "sweepExpiredBlocks":
-            return _sweep_expired_blocks(event)
         elif action == "disconnectSessions":
             return _fan_out(event, _arp_disconnect_sessions, http, headers, gated=True)
         else:
