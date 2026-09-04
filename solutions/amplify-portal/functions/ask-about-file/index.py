@@ -22,6 +22,7 @@ import boto3
 from shared.exceptions import S3ApHelperError
 from shared.portal_external_policy import ai_denial_reason
 from shared.portal_path_scope import scope_for_caller
+from shared.portal_regulated_path import regulated_path_denial_reason
 from shared.s3ap_helper import S3ApHelper
 
 logger = logging.getLogger()
@@ -122,6 +123,16 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
     )
     if refused:
         return {"answer": "", **refused}
+
+    # Ahead of the classification check because the two answer different questions and this
+    # one always answers. The classification lookup is inert until `CLASSIFICATION_TABLE` is
+    # set and fails open on a lookup error, so on a default deployment it is not a guard at
+    # all; the folder convention is. The browser hides the AI panel for these paths, and
+    # without this, calling AppSync directly did not.
+    denied = regulated_path_denial_reason(key)
+    if denied:
+        logger.info("AI endpoint refused for a regulated path: %s", key)
+        return {"answer": "", "model": MODEL_ID, "error": denied, "blocked": True}
 
     # F-2: CONFIDENTIAL guardrail — check classification before AI processing
     allowed, classification = check_classification(key)

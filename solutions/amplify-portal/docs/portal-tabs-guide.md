@@ -290,6 +290,17 @@ knowledge-analyst は紫、safety-controller は赤）。配色はトークン�
 
 Bedrock Knowledge Base の Retrieve を使い、ファイル名ではなく内容で検索します。結果からファイルを選ぶと All Files の該当箇所に移動します。
 
+**制約: 書いたファイルがいつ検索に載るかは、このポータルが決めていません。** Knowledge Base はポータルの外で用意する前提のリソースで（`bedrockKbId` を設定）、ポータルは `retrieve` を呼ぶだけです。`StartIngestionJob` を呼ぶ経路はポータルに存在しません（`scripts/create_bedrock_kb.py` などの単発スクリプトにあるだけです）。したがって:
+
+| 問い | 答え |
+|---|---|
+| 新しく書いたファイルは検索できるか | 取り込みジョブが走るまで検索できません |
+| ポータルが取り込みを起動するか | しません。EventBridge ルールもスケジュールもありません |
+| 反映までの時間 | **未測定。** ポータル側に起動の仕組みがないため、時間は KB の運用側で決まります |
+| `bedrockKbId` 未設定の場合 | 「Semantic search not configured」を返します |
+
+書き込み直後の検索が要件なら、S3 イベントか EventBridge で `StartIngestionJob` を呼ぶ経路を別に用意してください。キーワード検索（既定のモード）は KB を経由しないため、この制約はかかりません。
+
 ---
 
 ### Job History（実行履歴）

@@ -18,6 +18,7 @@ import boto3
 from shared.exceptions import S3ApHelperError
 from shared.portal_external_policy import ai_denial_reason
 from shared.portal_path_scope import scope_for_caller
+from shared.portal_regulated_path import regulated_path_denial_reason
 from shared.s3ap_helper import S3ApHelper
 
 logger = logging.getLogger()
@@ -66,6 +67,16 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
     )
     if refused:
         return {"labels": [], **refused}
+
+    # After the scope answer, so a key the caller cannot reach is refused for that reason
+    # rather than told which folders are regulated. This is the endpoint the `dicom/` root in
+    # the convention was written for: a study is an image, and labels describe it. The
+    # browser hides the button for these paths; without this, calling AppSync directly
+    # sent the image to Rekognition.
+    denied = regulated_path_denial_reason(key)
+    if denied:
+        logger.info("AI endpoint refused for a regulated path: %s", key)
+        return {"labels": [], "error": denied, "blocked": True}
 
     try:
         image_bytes = S3ApHelper(alias).get_object_bytes(key)

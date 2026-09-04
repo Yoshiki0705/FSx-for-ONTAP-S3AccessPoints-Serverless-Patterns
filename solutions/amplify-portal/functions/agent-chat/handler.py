@@ -32,6 +32,7 @@ from botocore.config import Config
 
 from shared.portal_external_policy import ai_denial_reason
 from shared.portal_path_scope import allowed_prefixes as _shared_allowed_prefixes
+from shared.portal_regulated_path import is_regulated_path
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
@@ -70,13 +71,10 @@ bedrock = boto3.client("bedrock-runtime", region_name=REGION)
 bedrock_agent_runtime = boto3.client("bedrock-agent-runtime", region_name=REGION) if BEDROCK_KB_ID else None
 
 # --- PHI Guardrail ---
-PHI_PATTERN = re.compile(r"/(dicom|phi|pii|hipaa|protected-health)[/\-]", re.IGNORECASE)
-
-
-def is_phi_path(path: str) -> bool:
-    """Check if path is PHI-protected (same logic as frontend isPhiPath)."""
-    lower = path.lower()
-    return bool(PHI_PATTERN.search(f"/{lower}")) or any(lower.startswith(p) for p in ("dicom/", "phi/", "pii/"))
+# The predicate used to be a second copy of the browser's, written separately and able to
+# drift from it. It now comes from `shared.portal_regulated_path`, which the other AI
+# endpoints import as well, so the boundary has one definition per language.
+is_phi_path = is_regulated_path
 
 
 # --- Tool Definitions (Bedrock Converse format) ---

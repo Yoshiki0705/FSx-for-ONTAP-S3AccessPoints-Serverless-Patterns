@@ -291,6 +291,17 @@ token references, so they follow the theme.
 
 Uses Retrieve on a Bedrock Knowledge Base to search by content rather than by file name. Choosing a file from the results moves to that location in All Files.
 
+**Limitation: this portal does not decide when a newly written file becomes searchable.** The Knowledge Base is a bring-your-own resource configured through `bedrockKbId`, and the portal only calls `retrieve`. Nothing in the portal calls `StartIngestionJob` — that appears only in one-shot scripts such as `scripts/create_bedrock_kb.py`. So:
+
+| Question | Answer |
+|---|---|
+| Is a file searchable right after it is written | Not until an ingestion job has run |
+| Does the portal start ingestion | No. There is no EventBridge rule and no schedule |
+| How long until it appears | **Unmeasured.** The portal has no trigger, so the timing belongs to whoever operates the KB |
+| With `bedrockKbId` unset | It returns "Semantic search not configured" |
+
+If searching straight after a write is a requirement, add a path of your own that calls `StartIngestionJob` from an S3 event or EventBridge. Keyword search, the default mode, does not go through the KB and is not subject to this.
+
 ---
 
 ### Job History

@@ -202,3 +202,54 @@ class TestRefusalOrder:
         assert result["answer"] == ""
         assert result["error"]
         assert nothing_was_read(module)
+
+
+class TestTheRegulatedFolderGuard:
+    """The folder convention, enforced here and not only in the browser.
+
+    `shared/tests/test_portal_regulated_path.py` covers the predicate. What is asserted
+    here is that this handler consults it, that nothing is read when it refuses, and where
+    it sits relative to the other two refusals -- which is the part a caller can observe.
+    """
+
+    def test_a_regulated_key_is_refused(self) -> None:
+        module = load_module()
+        result = call(module, "phi/patient-1.txt")
+        assert result["answer"] == ""
+        assert result["blocked"] is True
+        assert "regulated folder" in result["error"]
+
+    def test_nothing_is_read_when_the_key_is_regulated(self) -> None:
+        # The contents must not reach the process, let alone the model. A handler that
+        # fetched first would have the file in memory and a GetObject in the access log.
+        module = load_module()
+        call(module, "phi/patient-1.txt")
+        assert nothing_was_read(module)
+
+    def test_the_model_is_not_called_for_a_regulated_key(self) -> None:
+        module = load_module()
+        call(module, "dicom/study/image.dcm")
+        assert not module.bedrock.converse.called
+
+    def test_refused_even_with_no_classification_table(self) -> None:
+        # The default deployment. `CLASSIFICATION_TABLE_NAME` is empty, so the
+        # classification check allows everything; the folder convention is the only guard
+        # left, which is why it cannot be the one that is configurable.
+        module = load_module({"CLASSIFICATION_TABLE_NAME": ""})
+        result = call(module, "pii/export.csv")
+        assert result["blocked"] is True
+
+    def test_a_key_outside_the_boundary_is_refused_on_scope_first(self) -> None:
+        # Both refusals apply to this key. Scope has to win, or the message would tell a
+        # caller outside the boundary which folders are regulated in a prefix they cannot
+        # reach.
+        module = load_module()
+        result = call(module, "team-b/phi/patient-1.txt", groups=["team-a"])
+        assert "outside the prefixes" in result["error"]
+        assert "regulated folder" not in result["error"]
+
+    def test_a_permitted_key_still_answers(self) -> None:
+        module = load_module()
+        result = call(module, INSIDE, groups=["team-a"])
+        assert result["answer"] == "the answer"
+        assert read_alias(module) == TEAM_A_ALIAS

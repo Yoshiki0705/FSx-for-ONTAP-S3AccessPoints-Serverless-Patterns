@@ -401,8 +401,10 @@ npx ampx sandbox      # enum を変えたら再デプロイが必要
 | React → Lambda | AppSync のエンドポイントは `action`（文字列）と `params`（JSON 文字列）を取る汎用ディスパッチ。TypeScript は向こう側を見られない | `src/lib/dispatch.ts` 経由の呼び出し + ハンドラから生成した `dispatchActions.ts` + `scripts/check_portal_action_params.py` |
 | UI 文字列 → 8 言語 | ハードコードした文字列はコンパイルも lint も通り、日本語話者しか気づかない | `ja.ts` を型の源にした `t()` + `make drift` の i18n 網羅チェック |
 
-汎用ディスパッチになっている理由は、73 個の操作を個別の AppSync フィールドにすると
+汎用ディスパッチになっている理由は、操作を個別の AppSync フィールドにすると
 CloudFormation テンプレートが 1 MB 制限を超えたためです（8 エンドポイントに集約）。
+操作の数は増え続けるので、ここには書きません。現在の数は
+`python3 scripts/portal_action_types.py --check` が出力します。
 この設計は変えられませんが、**境界の手前で型を回復させる**ことはできます。それが
 `dispatch.ts` と生成物の役割です。
 

@@ -18,6 +18,7 @@ import boto3
 from shared.exceptions import S3ApHelperError
 from shared.portal_external_policy import ai_denial_reason
 from shared.portal_path_scope import scope_for_caller
+from shared.portal_regulated_path import regulated_path_denial_reason
 from shared.s3ap_helper import S3ApHelper
 
 logger = logging.getLogger()
@@ -67,6 +68,16 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
     )
     if refused:
         return {"results": [], **refused}
+
+    # After the scope answer, so a key the caller cannot reach is refused for that reason
+    # rather than told which folders are regulated. Detected entities are a summary of the
+    # contents, so this endpoint sends regulated data to Comprehend exactly as a read would.
+    # The browser hides the buttons for these paths; without this, calling AppSync directly
+    # did not.
+    denied = regulated_path_denial_reason(key)
+    if denied:
+        logger.info("AI endpoint refused for a regulated path: %s", key)
+        return {"results": [], "error": denied, "blocked": True}
 
     try:
         text = S3ApHelper(alias).get_object_bytes(key, max_bytes=MAX_TEXT_SIZE).decode("utf-8", errors="replace")
