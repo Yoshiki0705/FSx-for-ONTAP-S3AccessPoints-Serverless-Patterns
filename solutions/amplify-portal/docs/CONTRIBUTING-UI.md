@@ -402,9 +402,10 @@ npx ampx sandbox      # enum を変えたら再デプロイが必要
 | UI 文字列 → 8 言語 | ハードコードした文字列はコンパイルも lint も通り、日本語話者しか気づかない | `ja.ts` を型の源にした `t()` + `make drift` の i18n 網羅チェック |
 
 汎用ディスパッチになっている理由は、操作を個別の AppSync フィールドにすると
-CloudFormation テンプレートが 1 MB 制限を超えたためです（8 エンドポイントに集約）。
-操作の数は増え続けるので、ここには書きません。現在の数は
-`python3 scripts/portal_action_types.py --check` が出力します。
+CloudFormation テンプレートが 1 MB 制限を超えたためです（少数のエンドポイントに集約）。
+操作もエンドポイントも数は増えるので、ここには書きません。現在の数は
+`python3 scripts/portal_action_types.py --check` が出力します。この数を本文に書くと
+古くなります。実際に 8 → 10 → 12 と動いていて、そのたびに公開済みの記述が取り残されました。
 この設計は変えられませんが、**境界の手前で型を回復させる**ことはできます。それが
 `dispatch.ts` と生成物の役割です。
 
@@ -415,7 +416,7 @@ CloudFormation テンプレートが 1 MB 制限を超えたためです（8 エ
 ```
 React コンポーネント
   └─ src/lib/dispatch.ts          … action 名と params を型で照合、activeSvm を自動付与
-       └─ AppSync (amplify/data/resource.ts)   … 8 エンドポイント × query/mutation
+       └─ AppSync (amplify/data/resource.ts)   … ディスパッチ用エンドポイント × query/mutation
             └─ amplify/data/resolvers/*-dispatch.js
                  └─ Lambda (functions/<name>/handler.py)
                       └─ ONTAP REST API / S3 AP / Bedrock / Athena
