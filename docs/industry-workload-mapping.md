@@ -33,7 +33,7 @@
 | 建設 / BIM | 図面管理・安全コンプライアンス | 現場間 BIM データ共有 | 図面 OCR・分析 | Lambda + Textract + Bedrock | UC10 |
 | 防衛 / 宇宙 | 衛星画像解析 | 解析拠点間データ共有 | 画像データ読み取り | Lambda + Rekognition + SageMaker | UC15 |
 
-## FlexCache の価値提案
+## FlexCache が効く条件
 
 ### 1. 読み取り性能の改善
 
@@ -67,7 +67,7 @@ graph LR
 | VFX render (4K, 1000 frames) | 12 時間 | 5 時間 | 58% |
 | CAE solver (large mesh) | 4 時間 | 2 時間 | 50% |
 
-## S3 Access Points の価値提案
+## S3 Access Points が効く条件
 
 ### FlexCache + S3 AP の組み合わせ
 
