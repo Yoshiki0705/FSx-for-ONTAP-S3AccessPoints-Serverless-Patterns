@@ -170,6 +170,26 @@ jobs:
       # while there is still time to act on it.
       - name: Check no dated obligation has come due
         run: python3 scripts/check_dated_obligations.py
+      # A claim that a vendor cannot do something, used as a design premise, with
+      # nobody having asked the vendor. It has to run here and not only locally: the
+      # failure being closed ends with the claim published to a public repository,
+      # and the local pre-commit hook lives in `.kiro/`, which is gitignored and so
+      # protects one machine. Its own tests run first, because a checker that reports
+      # success without evaluating its rules is the same shape as the problem.
+      # The self-test is the standard-library one the script carries, not pytest: this
+      # job installs no dev dependencies by design, as the note at the top of it says.
+      # The pytest suites for both scripts run in the unit-test job, which does.
+      - name: Check evidence for claims of vendor absence
+        run: |
+          python3 scripts/check_evidence_claims.py --self-test
+          python3 scripts/check_evidence_claims.py
+      # A diagram label is displayed at the size it has after the image is scaled
+      # into the reader's column, so a wide canvas makes a compliant-looking
+      # fontSize unreadable. The selftest runs first for the same reason as above.
+      - name: Check diagram label size
+        run: |
+          python3 scripts/check_diagram_fonts.py --selftest
+          python3 scripts/check_diagram_fonts.py
 
   handler-name-check:
     name: "Handler undefined-name sweep"

@@ -1,0 +1,28 @@
+{
+  "$comment": [
+    "Every claim that a vendor capability is absent, limited, or impossible.",
+    "",
+    "scripts/check_evidence_claims.py fails when such a claim appears in a tracked",
+    "document without an entry here, and fails again when an entry is used as a design",
+    "premise while its evidence is still an inference. The failure being closed is a",
+    "real one: an S3 Access Point metric was declared unavailable on the strength of a",
+    "two-character selective search of two pages, that became a design premise, and a",
+    "second claim -- that two AWS pages contradicted each other -- turned out to be a",
+    "search-result snippet read without opening the page, which had the answer in it.",
+    "",
+    "Publishable fields only. A support case number, an account ID or a resource ID",
+    "belongs in the file named by support_inquiry.private_ref, which is gitignored.",
+    "This repository is public and its git history is permanent.",
+    "",
+    "tier:",
+    "  documented - a vendor document says so. Requires sources with read=full.",
+    "  verified   - observed by running something here. Requires observation.",
+    "  hypothesis - reasoned from adjacent facts. The vendor has not said it.",
+    "  open       - not established either way.",
+    "",
+    "premise: true means the design relies on this claim being true. A premise that is",
+    "hypothesis or open has to have been put to the vendor -- otherwise the design rests",
+    "on something nobody asked about."
+  ],
+  "claims": []
+}

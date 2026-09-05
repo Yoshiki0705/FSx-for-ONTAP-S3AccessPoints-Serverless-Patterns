@@ -1,0 +1,73 @@
+# Diagrams below the readability floor. Read by scripts/check_diagram_fonts.py.
+#
+# This file may only shrink. An unlisted violation fails the gate, and so does a listed file that
+# now meets the floor -- which is what forces a line out when a diagram is fixed. Adding a line is
+# possible but never quiet: it lands in the diff beside the diagram that needed it.
+#
+# All of these predate the gate. Canvases run from 900 to 1600px at fontSize 11 to 16, so a
+# reader's 880px column receives the smallest labels at about 6px. The widest figure would need
+# fontSize 28 to clear the floor at its current width, which is why the answer is not a font bump:
+# fold labels to two lines, move the notes box into the surrounding prose, narrow the canvas toward
+# 880px and stack vertically, or split the figure.
+#
+# Standard: ~/.kiro/steering/global-document-readability.md
+docs/diagrams/amplify-nextcloud-combined-architecture-en.drawio
+docs/diagrams/amplify-nextcloud-combined-architecture.drawio
+docs/diagrams/dark/amplify-nextcloud-combined-architecture-en.drawio
+docs/diagrams/dark/amplify-nextcloud-combined-architecture.drawio
+docs/diagrams/dark/file-portal-architecture-en.drawio
+docs/diagrams/dark/file-portal-architecture.drawio
+docs/diagrams/dark/file-portal-overview-en.drawio
+docs/diagrams/dark/file-portal-overview.drawio
+docs/diagrams/dark/nextcloud-only-architecture-en.drawio
+docs/diagrams/dark/nextcloud-only-architecture.drawio
+docs/diagrams/dark/part2-admin-operations-en.drawio
+docs/diagrams/dark/part2-admin-operations.drawio
+docs/diagrams/dark/part2-arp-incident-lifecycle-en.drawio
+docs/diagrams/dark/part2-arp-incident-lifecycle.drawio
+docs/diagrams/dark/part2-audit-log-pipeline-en.drawio
+docs/diagrams/dark/part2-audit-log-pipeline.drawio
+docs/diagrams/dark/part2-ontap-rest-api-path-en.drawio
+docs/diagrams/dark/part2-ontap-rest-api-path.drawio
+docs/diagrams/dark/part2-poc-to-production-en.drawio
+docs/diagrams/dark/part2-poc-to-production.drawio
+docs/diagrams/dark/part3-agent-teams-en.drawio
+docs/diagrams/dark/part3-agent-teams.drawio
+docs/diagrams/dark/part3-agentchat-modes-en.drawio
+docs/diagrams/dark/part3-agentchat-modes.drawio
+docs/diagrams/dark/part3-ai-agent-overview-en.drawio
+docs/diagrams/dark/part3-ai-agent-overview.drawio
+docs/diagrams/dark/part3-semantic-search-en.drawio
+docs/diagrams/dark/part3-semantic-search.drawio
+docs/diagrams/dark/saas-migration-group-a-routes-en.drawio
+docs/diagrams/dark/saas-migration-group-a-routes.drawio
+docs/diagrams/dark/saas-migration-group-b-worker-en.drawio
+docs/diagrams/dark/saas-migration-group-b-worker.drawio
+docs/diagrams/file-portal-architecture-en.drawio
+docs/diagrams/file-portal-architecture.drawio
+docs/diagrams/file-portal-overview-en.drawio
+docs/diagrams/file-portal-overview.drawio
+docs/diagrams/nextcloud-only-architecture-en.drawio
+docs/diagrams/nextcloud-only-architecture.drawio
+docs/diagrams/part2-admin-operations-en.drawio
+docs/diagrams/part2-admin-operations.drawio
+docs/diagrams/part2-arp-incident-lifecycle-en.drawio
+docs/diagrams/part2-arp-incident-lifecycle.drawio
+docs/diagrams/part2-audit-log-pipeline-en.drawio
+docs/diagrams/part2-audit-log-pipeline.drawio
+docs/diagrams/part2-ontap-rest-api-path-en.drawio
+docs/diagrams/part2-ontap-rest-api-path.drawio
+docs/diagrams/part2-poc-to-production-en.drawio
+docs/diagrams/part2-poc-to-production.drawio
+docs/diagrams/part3-agent-teams-en.drawio
+docs/diagrams/part3-agent-teams.drawio
+docs/diagrams/part3-agentchat-modes-en.drawio
+docs/diagrams/part3-agentchat-modes.drawio
+docs/diagrams/part3-ai-agent-overview-en.drawio
+docs/diagrams/part3-ai-agent-overview.drawio
+docs/diagrams/part3-semantic-search-en.drawio
+docs/diagrams/part3-semantic-search.drawio
+docs/diagrams/saas-migration-group-a-routes-en.drawio
+docs/diagrams/saas-migration-group-a-routes.drawio
+docs/diagrams/saas-migration-group-b-worker-en.drawio
+docs/diagrams/saas-migration-group-b-worker.drawio
