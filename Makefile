@@ -25,7 +25,9 @@
 	build-ops1 deploy-ops1 security-report security-cfn propose-cleanup ontap-preflight \
 	discover-s3ap check-group-ap-tags portal-preflight portal-grant-roles \
 	portal-demo-user portal-hosting portal-hosting-url \
-	portal-basic-auth portal-basic-auth-off
+	portal-basic-auth portal-basic-auth-off \
+	check-evidence evidence-baseline support-inquiry support-inquiry-draft \
+	support-inquiry-file support-inquiry-list
 
 # Target Python version — must match the Lambda runtime in the SAM templates
 # (`Runtime: python3.13`). Declared once here so `install`, the interpreter
@@ -558,6 +560,19 @@ drift:
 # which the check verifies is actually ignored.
 	$(PYTHON) -m pytest scripts/tests/test_check_dated_obligations.py --tb=short -q
 	$(PYTHON) scripts/check_dated_obligations.py
+# A claim that a vendor cannot do something, used as a design premise, with nobody
+# having asked the vendor. Five failures in one session, each of which looked like
+# success: an S3 Access Point metric declared absent on a two-character selective
+# search that returned no matches; that reading written into a document; the document
+# about to be committed to a public repository; the vendor's own pages not read even
+# though the limitation was the blocker; and "AWS cannot do this" asserted without a
+# support case or a feature request, in a repository that already keeps
+# docs/aws-feature-requests/. The gate fails while a premise rests on an inference
+# nobody put to AWS, which is the state it is meant to make visible rather than
+# comfortable. Its own tests run first, and assert it fails on a snippet cited as a
+# source and on a selective read passed off as documentation.
+	$(PYTHON) -m pytest scripts/tests/test_check_evidence_claims.py scripts/tests/test_aws_support_inquiry.py --tb=short -q
+	$(PYTHON) scripts/check_evidence_claims.py
 # Text half only. The OCR half reads 463 tracked images and takes ~8 minutes, which
 # does not belong in a check run before every commit, but the text half takes seconds
 # and is the half that catches an identifier pasted into a source file or a fixture.
@@ -565,6 +580,12 @@ drift:
 # it: `make drift` had no sensitive-string check at all, so the leak survived every
 # local gate and was caught after the pull request was opened.
 	$(PYTHON) scripts/_check_sensitive_leaks.py --text
+# Diagram labels, measured at the size a reader actually receives rather than the
+# size in the source. Reads the committed .drawio and .svg only, so it needs neither
+# the AWS icon package nor the draw.io CLI and can run before every commit. Its own
+# selftest goes first: a gate never seen to fail is not evidence it still detects.
+	$(PYTHON) scripts/check_diagram_fonts.py --selftest >/dev/null
+	$(PYTHON) scripts/check_diagram_fonts.py
 
 # Fetches the published posts from Hatena and dev.to, so it needs network and is
 # not part of `make lint`. Run it after shipping a feature that makes an article's
@@ -740,3 +761,46 @@ build-ops1:
 
 deploy-ops1:
 	cd operations/capacity-rightsizing && sam deploy --config-file samconfig.toml
+
+# ============================================================
+# Evidence for claims that a vendor cannot do something
+# ============================================================
+# `check-evidence` also runs inside `drift`. It is exposed on its own because the
+# thing it asks for -- read the vendor's page in full, then ask the vendor -- is work
+# with a turnaround, and you want to run the gate while doing it rather than only at
+# commit time.
+check-evidence:
+	$(PYTHON) scripts/check_evidence_claims.py
+
+# Re-record which pre-existing lines are exempt. Not an approval: 539 lines across
+# 281 documents already read as claims of absence when the gate was added, and failing
+# on all of them would have made the gate something people switch off. Run this only
+# after deciding that each newly exempted line genuinely predates the gate. Shrinking
+# the baseline is the work.
+evidence-baseline:
+	$(PYTHON) scripts/check_evidence_claims.py --update-baseline
+
+# Which claims still block the gate, and why.
+support-inquiry:
+	$(PYTHON) scripts/aws_support_inquiry.py --status
+
+# Print the case body built from the ledger entry. Sends nothing.
+#   make support-inquiry-draft ID=E-001
+support-inquiry-draft:
+	@test -n "$(ID)" || { echo "usage: make support-inquiry-draft ID=E-001"; exit 2; }
+	$(PYTHON) scripts/aws_support_inquiry.py --id $(ID) --draft
+
+# Open the case. Requires CONFIRM=1, because a case is visible to AWS, is attributed
+# to this account, and cannot be unsent. The case number is appended to the gitignored
+# path named by the entry's `private_ref` and never written to the ledger.
+#   make support-inquiry-file ID=E-001 CONFIRM=1 [DETAIL=.private/env.md]
+support-inquiry-file:
+	@test -n "$(ID)" || { echo "usage: make support-inquiry-file ID=E-001 CONFIRM=1"; exit 2; }
+	@test -n "$(CONFIRM)" || { echo "refusing without CONFIRM=1 -- a support case cannot be unsent"; exit 2; }
+	$(PYTHON) scripts/aws_support_inquiry.py --id $(ID) --file --confirm \
+		$(if $(DETAIL),--detail-file $(DETAIL),)
+
+# The cases this tooling opened, found by subject prefix rather than by keeping a list
+# of case numbers anywhere in the repository.
+support-inquiry-list:
+	$(PYTHON) scripts/aws_support_inquiry.py --list

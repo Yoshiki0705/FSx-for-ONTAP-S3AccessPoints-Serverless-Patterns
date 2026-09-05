@@ -1,0 +1,1113 @@
+{
+  "$comment": [
+    "Claims of vendor absence that predate scripts/check_evidence_claims.py.",
+    "Not an approval. The gate ratchets: nothing new may be added without a",
+    "ledger entry, and an entry here that no longer matches any line fails too,",
+    "so a line cannot be edited while leaving its old fingerprint behind.",
+    "Shrinking this file is the work. Regenerate with --update-baseline only",
+    "after deciding that each newly added line genuinely predates the gate."
+  ],
+  "baseline": {
+    "AGENTS.md": [
+      "03a8b5e5d0",
+      "240a8b3f16"
+    ],
+    "ROADMAP.md": [
+      "63aa45c39d",
+      "8d1b12f6a4",
+      "d53733d256"
+    ],
+    "docs/agent/pitfalls-ad-smb.md": [
+      "0cc63c496f",
+      "687cbb06b9",
+      "806442c40c",
+      "c812754dc3"
+    ],
+    "docs/agent/pitfalls-arp-ems.md": [
+      "72b2a9b06a"
+    ],
+    "docs/agent/pitfalls-s3ap-ontap.md": [
+      "3570b5c4e7",
+      "994bcae36c",
+      "adf60a8ad5",
+      "c8c9bc3a30",
+      "cae9198daf",
+      "ecb694073a"
+    ],
+    "docs/agent/pitfalls-snaplock.md": [
+      "617e01c71a",
+      "6b9c1f849b",
+      "856ee96568",
+      "b6ec75159c",
+      "f171b1bc58",
+      "f2b945b0a2"
+    ],
+    "docs/agent/portal-cdk-quality-gates.md": [
+      "5e7fcd99bd",
+      "9714e3ae08",
+      "b5bdfa7cb4",
+      "ef07b97582"
+    ],
+    "docs/agentcore-mcp-remaining-issues.md": [
+      "28fc825ca8"
+    ],
+    "docs/architecture-diagrams.md": [
+      "a03d17b1d2"
+    ],
+    "docs/article-phase13-en.md": [
+      "d7d215a471"
+    ],
+    "docs/article-phase14-en.md": [
+      "599d0cf27b",
+      "7f84af4b99",
+      "86c150ced8",
+      "d6b2c8ca24"
+    ],
+    "docs/aws-feature-requests/file-portal-service-gap.en.md": [
+      "031ff2622c",
+      "41cc09e9ee",
+      "5187b40d75",
+      "a691d44809"
+    ],
+    "docs/aws-feature-requests/file-portal-service-gap.md": [
+      "3b8a1f649f",
+      "5218c26e29",
+      "55b042a5d1",
+      "60252d5cda",
+      "64c88a6620",
+      "7a5e541abf",
+      "a691d44809",
+      "d9188cffdc",
+      "e17a06bb33",
+      "f17effe150"
+    ],
+    "docs/aws-feature-requests/fsxn-s3ap-improvements.md": [
+      "10a66d4d94",
+      "47a04272ba",
+      "e7cff7b8ed"
+    ],
+    "docs/aws-feature-requests/lambda-healthomics-s3ap-gaps.en.md": [
+      "0cbb3cf20d",
+      "2537fedfea",
+      "3de8000f4f",
+      "58f92dcafe",
+      "5d4acf040b",
+      "91268b0337",
+      "e28aebe6aa"
+    ],
+    "docs/aws-feature-requests/lambda-healthomics-s3ap-gaps.md": [
+      "3032eb3e4c",
+      "3e42ce84d2",
+      "47ceec03af",
+      "9f8edbaf51",
+      "a298bf2c1f",
+      "a657980928",
+      "dad0ed6b53",
+      "db20c800cf",
+      "efc6b85a0d",
+      "fd69ea5bb9"
+    ],
+    "docs/aws-feature-requests/native-s3ap-notifications-evidence.en.md": [
+      "2979fcf70f",
+      "6299d6649e"
+    ],
+    "docs/aws-feature-requests/native-s3ap-notifications-evidence.md": [
+      "16fc5db998",
+      "ca80552492"
+    ],
+    "docs/aws-feature-requests/snaplock-audit-log-retention.en.md": [
+      "1a2022c455",
+      "294966605c",
+      "6b04781165",
+      "7e5ea71976",
+      "8428acc19b",
+      "b95b8b3d27"
+    ],
+    "docs/aws-feature-requests/snaplock-audit-log-retention.md": [
+      "1b9e31ac2e",
+      "4cdd2a1357",
+      "8c5292a4f9",
+      "d919bbff11"
+    ],
+    "docs/bedrock-inference-profiles.md": [
+      "e7ca001f41"
+    ],
+    "docs/cdn-comparison.en.md": [
+      "8cc657e4ba",
+      "99ff39749e"
+    ],
+    "docs/cdn-comparison.md": [
+      "087bdbfad4",
+      "35d34deb2e",
+      "7b851246bf",
+      "8c0f95993e",
+      "a876d91649",
+      "e47a12a507"
+    ],
+    "docs/cdn-origin-verification-checklist.en.md": [
+      "266b9b0a22"
+    ],
+    "docs/comparison-alternatives.md": [
+      "13407dcaa0"
+    ],
+    "docs/cost-analysis.md": [
+      "8eda1f4073"
+    ],
+    "docs/cross-region-guide.md": [
+      "2c86f2f03a",
+      "6e2388c7f6"
+    ],
+    "docs/customer-discovery-template.md": [
+      "f80f11a93e"
+    ],
+    "docs/deployment-operations-guide.md": [
+      "c0f5ca763c"
+    ],
+    "docs/design-considerations-en.md": [
+      "2bda55d3f9",
+      "2e4ed96893",
+      "86bc2a6908",
+      "a1d280fd03",
+      "ae306b92b8"
+    ],
+    "docs/design-considerations.md": [
+      "2e4ed96893"
+    ],
+    "docs/design-pattern-c-to-b-hybrid.md": [
+      "29dc086222",
+      "371c973c69",
+      "e7717b6f06"
+    ],
+    "docs/devto-file-portal-series.en.md": [
+      "f8dbc6f572"
+    ],
+    "docs/en/ad-joined-svm-s3ap-prerequisites.md": [
+      "0645dbb8aa",
+      "7a6f38ce3e",
+      "8defbe0b3e"
+    ],
+    "docs/en/admin-resource-management-demo.md": [
+      "f8c73aba5e"
+    ],
+    "docs/en/agentcore-mcp-remaining-issues.md": [
+      "3b986131b2",
+      "b4dd4f13c5",
+      "e54d46346b"
+    ],
+    "docs/en/ai-features-quick-start.md": [
+      "b9d07cf6d7"
+    ],
+    "docs/en/arp-ai-isolation-demo-guide.md": [
+      "1d3d296a6a",
+      "7e7b120cdb"
+    ],
+    "docs/en/demo-agentcore-mcp-quick-desktop.md": [
+      "5513e87c83"
+    ],
+    "docs/en/deployment-guide.md": [
+      "55e9425d9c",
+      "63b973ec66",
+      "9a0d264929"
+    ],
+    "docs/en/fsx-ontap-management-interfaces.md": [
+      "563484f1f1"
+    ],
+    "docs/en/multi-tenant-design.md": [
+      "6dc820a775"
+    ],
+    "docs/en/portal-authorization-design.md": [
+      "53b7551551"
+    ],
+    "docs/en/portal-authorization-model.md": [
+      "48b8e945fc",
+      "562c054e17"
+    ],
+    "docs/en/portal-compliance-guide.md": [
+      "36b8abc02f",
+      "8efcc44baf"
+    ],
+    "docs/en/portal-deployment-runbook.md": [
+      "3ec6f0de16"
+    ],
+    "docs/en/portal-identity-verification-results.md": [
+      "3421e8a8f0",
+      "6388e7f16f",
+      "d6bc011b75"
+    ],
+    "docs/en/portal-poc-to-production.md": [
+      "335debd9bb"
+    ],
+    "docs/en/quick-desktop-mcp-setup.md": [
+      "1177b5e129"
+    ],
+    "docs/en/saas-to-fsx-ontap-migration.md": [
+      "71469065e4",
+      "b7d36a6071",
+      "c6a5e7cb1d"
+    ],
+    "docs/en/snaplock-audit-log-console-guardrails.md": [
+      "aa5c1d48b1"
+    ],
+    "docs/en/workshop-eda-integration.md": [
+      "167dfc7b54",
+      "9120286eb5"
+    ],
+    "docs/enterprise-workload-examples.en.md": [
+      "0140863bdc",
+      "1f4a82a5ba",
+      "302c172e90"
+    ],
+    "docs/enterprise-workload-examples.md": [
+      "d879362c3c"
+    ],
+    "docs/errata-fpolicy-s3ap-coverage.en.md": [
+      "7ad0024822"
+    ],
+    "docs/errata-fpolicy-s3ap-coverage.md": [
+      "7a4ac89573"
+    ],
+    "docs/event-driven/nfsv4-fpolicy-issue-report.md": [
+      "42c1545a21",
+      "d6a0b36541"
+    ],
+    "docs/file-portal-amplify-gen2.en.md": [
+      "6849809442"
+    ],
+    "docs/file-portal-amplify-gen2.md": [
+      "1a5e98fd71",
+      "6ac5c75439"
+    ],
+    "docs/flexcache-anycast-design-guide.md": [
+      "e806f02ad3"
+    ],
+    "docs/guides/fpolicy-setup-guide-en.md": [
+      "76cd97a02b"
+    ],
+    "docs/guides/fpolicy-setup-guide-fr.md": [
+      "5683e58de3"
+    ],
+    "docs/guides/fpolicy-setup-guide.md": [
+      "dad68e2fdd"
+    ],
+    "docs/guides/fr2-migration-path.md": [
+      "9f02df556a"
+    ],
+    "docs/guides/troubleshooting-guide.md": [
+      "4bd9cf973b",
+      "5b11aae712",
+      "6e5096f971",
+      "8f60c8f86d",
+      "b54182c175"
+    ],
+    "docs/index.md": [
+      "75b00221a5"
+    ],
+    "docs/investigations/agentcore-web-search-fsxn-integration.md": [
+      "562d84aa4a"
+    ],
+    "docs/investigations/aws-context-fsxn-metadata-graph.md": [
+      "f9c22ac582"
+    ],
+    "docs/investigations/managed-kb-vs-custom-kb-s3vectors.md": [
+      "25970509ba"
+    ],
+    "docs/investigations/s3-annotations-fsxn-compatibility.md": [
+      "317df40d80",
+      "77f0d5e8c7",
+      "f238a6a4bb"
+    ],
+    "docs/ja/ad-joined-svm-s3ap-prerequisites.md": [
+      "5c3922a102",
+      "e07cfb501d"
+    ],
+    "docs/ja/admin-resource-management-demo.md": [
+      "5c7a73a203",
+      "725245b28f",
+      "93b6702613"
+    ],
+    "docs/ja/arp-ai-isolation-demo-guide.md": [
+      "53b41d2f6d",
+      "afe92b08dd"
+    ],
+    "docs/ja/deployment-guide.md": [
+      "5d7ea45174",
+      "af1be47218"
+    ],
+    "docs/ja/fsx-ontap-management-interfaces.md": [
+      "1b1a76fd93",
+      "40d9bb01e5",
+      "41a37f7922",
+      "54781a3fac",
+      "5a2b1cfd0d",
+      "6d3dcdb60d",
+      "db3145aae5"
+    ],
+    "docs/ja/nfs-s3ap-write-conflict.md": [
+      "73168e2ac5",
+      "d6e087b206"
+    ],
+    "docs/ja/portal-authorization-design.md": [
+      "da6474bba9"
+    ],
+    "docs/ja/portal-authorization-model.md": [
+      "46f12bbbf0"
+    ],
+    "docs/ja/portal-compliance-guide.md": [
+      "4c5b684aa9"
+    ],
+    "docs/ja/portal-demo-guide.md": [
+      "1e8c87c2ac",
+      "39e35a61a3"
+    ],
+    "docs/ja/portal-deployment-runbook.md": [
+      "96e8cc9153",
+      "f25e09b80a"
+    ],
+    "docs/ja/portal-identity-verification-results.md": [
+      "143034b77b",
+      "3b953a1b71",
+      "bb6ffd2de7",
+      "c7d909292e",
+      "dd57062734"
+    ],
+    "docs/ja/saas-to-fsx-ontap-migration.md": [
+      "27136cf7de",
+      "2df1097b08",
+      "7293c4ca0d",
+      "bab619bc2c",
+      "c8ff825157",
+      "e803f4954d"
+    ],
+    "docs/ja/snaplock-audit-log-console-guardrails.md": [
+      "c7b9588a2e"
+    ],
+    "docs/ja/storage-browser-demo-guide.md": [
+      "70e7a4c98a"
+    ],
+    "docs/ja/well-architected-review.md": [
+      "781a6062f5"
+    ],
+    "docs/knfsd-s3ap-dual-path-architecture.en.md": [
+      "0b7ce8a727"
+    ],
+    "docs/local-testing-guide.md": [
+      "5c24590de3"
+    ],
+    "docs/multi-account/ram-sharing.md": [
+      "9b036d571b"
+    ],
+    "docs/nextcloud-external-storage-s3ap.en.md": [
+      "3f85e8e6c8"
+    ],
+    "docs/nextcloud-external-storage-s3ap.md": [
+      "b7331dffc4"
+    ],
+    "docs/ontap-integration-notes.en.md": [
+      "b934196627",
+      "fb952b75bb"
+    ],
+    "docs/ontap-integration-notes.md": [
+      "66f68b60c4",
+      "9418ccad02"
+    ],
+    "docs/operational-runbooks/cleanup-troubleshooting.md": [
+      "8c7ed5c9bc",
+      "9f07a7234f"
+    ],
+    "docs/output-destination-patterns.md": [
+      "63dd04b31f",
+      "c9fe8ceae1"
+    ],
+    "docs/phase7-troubleshooting.md": [
+      "8befda0ca0",
+      "91a9d5b234",
+      "9c8721a01d"
+    ],
+    "docs/production-readiness.en.md": [
+      "c6178e3290"
+    ],
+    "docs/quality-review-phase14.md": [
+      "3cbfb62ba1",
+      "57958feeef",
+      "96cff8b2fa"
+    ],
+    "docs/region-compatibility.md": [
+      "cb208455fc"
+    ],
+    "docs/repost-draft-presigned-url-compatibility.md": [
+      "3a4cb1f90d",
+      "97769f4cb6"
+    ],
+    "docs/retention-expiry-deletion-design.md": [
+      "ad851592bc"
+    ],
+    "docs/runbooks/slo-violation-response.md": [
+      "b4ce4ed6a7"
+    ],
+    "docs/s3-bucket-user-guide.en.md": [
+      "b81962f447",
+      "d2226a371a"
+    ],
+    "docs/s3ap-authorization-model.en.md": [
+      "3e2b9d0ad8",
+      "a47f53b3b9",
+      "aa88dd1281",
+      "b53ea26c21"
+    ],
+    "docs/s3ap-authorization-model.md": [
+      "09a01078c7",
+      "0d3015cd62",
+      "1ed469c439",
+      "5c25ac990e",
+      "9316c6252e",
+      "a8dbebdf78",
+      "c683213bc5",
+      "d9b20064c0",
+      "e803e84989"
+    ],
+    "docs/s3ap-benchmark-results.en.md": [
+      "0c4450fb95",
+      "be8b407ca6"
+    ],
+    "docs/s3ap-benchmark-results.md": [
+      "9730a2a34c"
+    ],
+    "docs/s3ap-compatibility-notes.en.md": [
+      "20b56078f7",
+      "48e6161b4f",
+      "4fe41c1591",
+      "71c0bbf4cb",
+      "9a2d6dd9ba",
+      "d65f01f58b",
+      "e4953bc16d",
+      "f3448253d6"
+    ],
+    "docs/s3ap-compatibility-notes.md": [
+      "0fd47eada4",
+      "0ff473f15d",
+      "738faabf4d",
+      "d65f01f58b",
+      "e274e9710b"
+    ],
+    "docs/s3ap-object-size-limits-verification.en.md": [
+      "b9dc1fe646"
+    ],
+    "docs/s3ap-object-size-limits-verification.md": [
+      "30b64fe68e"
+    ],
+    "docs/s3ap-performance-considerations.en.md": [
+      "32be69dd70",
+      "7488c7403c",
+      "f3c5449d96"
+    ],
+    "docs/s3ap-performance-considerations.md": [
+      "4c27179457"
+    ],
+    "docs/support-case-athena-outputlocation-s3ap-reply-draft.md": [
+      "d9170a3ac3"
+    ],
+    "docs/support-matrix-fsx-ontap-flexcache-s3ap.md": [
+      "4c61132ce5",
+      "6ab3e04b7e"
+    ],
+    "docs/tamperproof-snapshot-design.md": [
+      "15a366508f",
+      "422c42aae8",
+      "5c9339b675",
+      "7268ce8cbc",
+      "779a0237a2",
+      "d69bff52a0"
+    ],
+    "docs/verification-results-phase13-pending.md": [
+      "6190a0b5e7"
+    ],
+    "docs/well-architected-mapping.en.md": [
+      "229d139fe1",
+      "fd430b958e"
+    ],
+    "docs/workshop-eda-integration.md": [
+      "4b25c51622"
+    ],
+    "infrastructure/handson-lab/README.md": [
+      "5235999922"
+    ],
+    "infrastructure/knfsd-file-cache/docs/fsid-backend-options.en.md": [
+      "4951ee1361"
+    ],
+    "infrastructure/knfsd-file-cache/docs/fsid-backend-options.md": [
+      "b72784c886"
+    ],
+    "infrastructure/s3ap-data-collection/README.en.md": [
+      "406c51f87d",
+      "5f6b456a0a",
+      "8de95cdd02",
+      "9b202b12e8",
+      "adfb639c42",
+      "d62f10f296"
+    ],
+    "infrastructure/s3ap-data-collection/README.md": [
+      "5f6b456a0a",
+      "81b6e94326",
+      "8f42891976"
+    ],
+    "scripts/portal-probes/README.md": [
+      "6f448566c5"
+    ],
+    "security/cfn-guard-suppressions.md": [
+      "a0bc5ef114",
+      "e9545fc10c"
+    ],
+    "solutions/amplify-portal/README.ja.md": [
+      "219ee35ced",
+      "740558f238"
+    ],
+    "solutions/amplify-portal/README.md": [
+      "bb6a37dd3e",
+      "c1928ffdd3"
+    ],
+    "solutions/amplify-portal/docs/CONTRIBUTING-UI.en.md": [
+      "53becf8fc3",
+      "66547f94a4",
+      "9131442663"
+    ],
+    "solutions/amplify-portal/docs/CONTRIBUTING-UI.md": [
+      "a6b4f63013"
+    ],
+    "solutions/amplify-portal/docs/GETTING-STARTED.en.md": [
+      "97c0ea35f8",
+      "a13035a08b",
+      "e8db84381f"
+    ],
+    "solutions/amplify-portal/docs/GETTING-STARTED.md": [
+      "27ed6ade1b",
+      "4a8da2a822",
+      "5dcbb28156",
+      "b2e550e66e",
+      "d56b2455de"
+    ],
+    "solutions/amplify-portal/docs/IMPLEMENTATION.en.md": [
+      "f540e7edd1"
+    ],
+    "solutions/amplify-portal/docs/IMPLEMENTATION.md": [
+      "f540e7edd1"
+    ],
+    "solutions/amplify-portal/docs/ONTAP-CONNECTION-GUIDE.en.md": [
+      "127c570590",
+      "76fddf7a55",
+      "792ed732a1"
+    ],
+    "solutions/amplify-portal/docs/ONTAP-CONNECTION-GUIDE.md": [
+      "331d40d4d2",
+      "7369f3ee28",
+      "b3370e24e9"
+    ],
+    "solutions/amplify-portal/docs/admin-capability-map.en.md": [
+      "154b98d726",
+      "2a0414eeec"
+    ],
+    "solutions/amplify-portal/docs/admin-capability-map.md": [
+      "0d5041f20a",
+      "1f326b5bcb",
+      "52026a9474",
+      "bf2c8a7884",
+      "f23955a228"
+    ],
+    "solutions/amplify-portal/docs/amplify-gen2-cdk-patterns.en.md": [
+      "81f090e5f8"
+    ],
+    "solutions/amplify-portal/docs/amplify-gen2-cdk-patterns.md": [
+      "7cc439970a",
+      "cc08b4816d"
+    ],
+    "solutions/amplify-portal/docs/cleanup-guide.en.md": [
+      "249bede499"
+    ],
+    "solutions/amplify-portal/docs/cleanup-guide.md": [
+      "eefe9ced30"
+    ],
+    "solutions/amplify-portal/docs/flexgroup-rebalance-verification.en.md": [
+      "c8b6447c81"
+    ],
+    "solutions/amplify-portal/docs/flexgroup-rebalance-verification.md": [
+      "ab37d63115",
+      "ffd4a4593d"
+    ],
+    "solutions/amplify-portal/docs/iac-governance-patterns.en.md": [
+      "0ff728523f",
+      "b3d50ded3f"
+    ],
+    "solutions/amplify-portal/docs/iac-governance-patterns.md": [
+      "1ef965e95b"
+    ],
+    "solutions/amplify-portal/docs/office-preview-design.en.md": [
+      "5b4190cc3e"
+    ],
+    "solutions/amplify-portal/docs/office-preview-design.md": [
+      "95cb08d60b"
+    ],
+    "solutions/amplify-portal/docs/portal-handover-guide.en.md": [
+      "906510d0ef",
+      "de03c48d0d",
+      "edc1f5aa55"
+    ],
+    "solutions/amplify-portal/docs/portal-handover-guide.md": [
+      "6ec61a3938"
+    ],
+    "solutions/amplify-portal/docs/portal-tabs-guide.en.md": [
+      "98e156a53a"
+    ],
+    "solutions/amplify-portal/docs/resource-management-demo-guide.md": [
+      "8ebaa3c703"
+    ],
+    "solutions/amplify-portal/docs/verification-results.en.md": [
+      "1665398039",
+      "37a0c96412",
+      "418353f796",
+      "47a4a18ac6",
+      "4a3ac45e4e",
+      "5b58c7d5e3",
+      "9b75ff64bf",
+      "ba21681158",
+      "c848677af1",
+      "f4b232fe48",
+      "fad22ac387"
+    ],
+    "solutions/amplify-portal/docs/verification-results.md": [
+      "04b077ecf8",
+      "2228527beb",
+      "279de74113",
+      "4fd2f7eac2",
+      "8176fbd6a6",
+      "efb827ae26",
+      "fc8948678b",
+      "fe802deac6"
+    ],
+    "solutions/amplify-portal/docs/write-verification-plan.en.md": [
+      "351103f004",
+      "4aedc25fb8",
+      "cfacc72fc7"
+    ],
+    "solutions/amplify-portal/docs/write-verification-plan.md": [
+      "2995b0f7ee",
+      "b000771030"
+    ],
+    "solutions/edge/content-delivery/README.en.md": [
+      "b2c9f84d7a"
+    ],
+    "solutions/edge/media-ivs-vod-publishing/README.de.md": [
+      "c02883e958"
+    ],
+    "solutions/edge/media-ivs-vod-publishing/README.en.md": [
+      "00837d5ce9",
+      "4746f2da56",
+      "9b400ed067",
+      "ac0f3cd7ac"
+    ],
+    "solutions/edge/media-ivs-vod-publishing/README.es.md": [
+      "892cd43a53"
+    ],
+    "solutions/edge/media-ivs-vod-publishing/README.fr.md": [
+      "3ac07fc8a7"
+    ],
+    "solutions/edge/media-ivs-vod-publishing/README.ko.md": [
+      "5946ede0d0"
+    ],
+    "solutions/edge/media-ivs-vod-publishing/README.md": [
+      "203d25479c"
+    ],
+    "solutions/edge/media-ivs-vod-publishing/README.zh-CN.md": [
+      "5661125a6a"
+    ],
+    "solutions/edge/media-ivs-vod-publishing/README.zh-TW.md": [
+      "61e639bac6"
+    ],
+    "solutions/edge/media-ivs-vod-publishing/architecture.en.md": [
+      "778cf34d00",
+      "a27765991a",
+      "d8762fc078"
+    ],
+    "solutions/edge/media-ivs-vod-publishing/architecture.md": [
+      "17099ba528"
+    ],
+    "solutions/edge/media-ivs-vod-publishing/direct-recording-experiment.md": [
+      "8d33b07804",
+      "f995714072"
+    ],
+    "solutions/edge/media-ivs-vod-publishing/samples/cloudfront-oac-notes.md": [
+      "b8926a3cf0"
+    ],
+    "solutions/edge/media-ivs-vod-publishing/supported-path-ivs-s3-fsx-cloudfront.md": [
+      "da14462aee",
+      "e1bf5ec514"
+    ],
+    "solutions/edge/media-ivs-vod-publishing/validation-matrix.md": [
+      "7aa05aae9c",
+      "9d45f49d3b",
+      "c48dec4d24"
+    ],
+    "solutions/event-driven/fpolicy/README.en.md": [
+      "30c13a7c04"
+    ],
+    "solutions/event-driven/fpolicy/README.md": [
+      "90436894d9"
+    ],
+    "solutions/event-driven/fpolicy/docs/demo-guide.en.md": [
+      "5db8a19242"
+    ],
+    "solutions/flexcache/anycast-dr/README.en.md": [
+      "3d9cebdafc"
+    ],
+    "solutions/flexcache/anycast-dr/docs/flexcache-anycast-faq.md": [
+      "0ea5eaaa4a",
+      "e305c2dd2d"
+    ],
+    "solutions/flexcache/cross-region-s3ap/README.de.md": [
+      "2e4ed96893"
+    ],
+    "solutions/flexcache/cross-region-s3ap/README.en.md": [
+      "2e4ed96893"
+    ],
+    "solutions/flexcache/cross-region-s3ap/README.es.md": [
+      "2e4ed96893"
+    ],
+    "solutions/flexcache/cross-region-s3ap/README.fr.md": [
+      "2e4ed96893"
+    ],
+    "solutions/flexcache/cross-region-s3ap/README.ko.md": [
+      "2e4ed96893"
+    ],
+    "solutions/flexcache/cross-region-s3ap/README.md": [
+      "2e4ed96893"
+    ],
+    "solutions/flexcache/cross-region-s3ap/README.zh-CN.md": [
+      "2e4ed96893"
+    ],
+    "solutions/flexcache/cross-region-s3ap/README.zh-TW.md": [
+      "2e4ed96893"
+    ],
+    "solutions/flexcache/rag-enterprise-files/README.en.md": [
+      "08d9a6c231"
+    ],
+    "solutions/flexcache/same-region-s3ap/README.de.md": [
+      "2e4ed96893"
+    ],
+    "solutions/flexcache/same-region-s3ap/README.en.md": [
+      "2e4ed96893",
+      "978a133a75"
+    ],
+    "solutions/flexcache/same-region-s3ap/README.es.md": [
+      "2e4ed96893"
+    ],
+    "solutions/flexcache/same-region-s3ap/README.fr.md": [
+      "2e4ed96893"
+    ],
+    "solutions/flexcache/same-region-s3ap/README.ko.md": [
+      "2e4ed96893"
+    ],
+    "solutions/flexcache/same-region-s3ap/README.md": [
+      "2e4ed96893"
+    ],
+    "solutions/flexcache/same-region-s3ap/README.zh-CN.md": [
+      "2e4ed96893"
+    ],
+    "solutions/flexcache/same-region-s3ap/README.zh-TW.md": [
+      "2e4ed96893"
+    ],
+    "solutions/flexcache/snapmirror-cross-region-dr/README.de.md": [
+      "2e4ed96893"
+    ],
+    "solutions/flexcache/snapmirror-cross-region-dr/README.en.md": [
+      "0ea99de97d",
+      "2e4ed96893"
+    ],
+    "solutions/flexcache/snapmirror-cross-region-dr/README.es.md": [
+      "2e4ed96893"
+    ],
+    "solutions/flexcache/snapmirror-cross-region-dr/README.fr.md": [
+      "2e4ed96893"
+    ],
+    "solutions/flexcache/snapmirror-cross-region-dr/README.ko.md": [
+      "2e4ed96893"
+    ],
+    "solutions/flexcache/snapmirror-cross-region-dr/README.md": [
+      "2e4ed96893"
+    ],
+    "solutions/flexcache/snapmirror-cross-region-dr/README.zh-CN.md": [
+      "2e4ed96893"
+    ],
+    "solutions/flexcache/snapmirror-cross-region-dr/README.zh-TW.md": [
+      "2e4ed96893"
+    ],
+    "solutions/genai/kb-selfservice-curation/docs/demo-guide.md": [
+      "e85af77003"
+    ],
+    "solutions/genai/kb-selfservice-curation/docs/smb-windows-setup.md": [
+      "491bc41620"
+    ],
+    "solutions/genai/quick-agentic-workspace/README.en.md": [
+      "c96909c7f6"
+    ],
+    "solutions/genai/quick-agentic-workspace/README.md": [
+      "79f9e2a13f"
+    ],
+    "solutions/genai/quick-agentic-workspace/docs/quick-console-setup.md": [
+      "3328a97fbd"
+    ],
+    "solutions/industry/adtech-creative-management/README.en.md": [
+      "ab1930f91b",
+      "f12b861002"
+    ],
+    "solutions/industry/adtech-creative-management/README.fr.md": [
+      "db21572c25"
+    ],
+    "solutions/industry/adtech-creative-management/README.md": [
+      "7f606f2cb9",
+      "90436894d9"
+    ],
+    "solutions/industry/adtech-creative-management/docs/architecture.en.md": [
+      "e810ab4fdd"
+    ],
+    "solutions/industry/adtech-creative-management/docs/demo-guide.en.md": [
+      "f057244a70"
+    ],
+    "solutions/industry/agri-food-traceability/README.en.md": [
+      "ab1930f91b",
+      "b55dc00834"
+    ],
+    "solutions/industry/agri-food-traceability/README.md": [
+      "7f606f2cb9",
+      "90436894d9"
+    ],
+    "solutions/industry/autonomous-driving/README.en.md": [
+      "5519bd5224"
+    ],
+    "solutions/industry/autonomous-driving/README.md": [
+      "90436894d9"
+    ],
+    "solutions/industry/autonomous-driving/docs/architecture.en.md": [
+      "a776859088"
+    ],
+    "solutions/industry/chemical-sds-management/README.en.md": [
+      "7b56aeafbd"
+    ],
+    "solutions/industry/chemical-sds-management/README.md": [
+      "7f606f2cb9"
+    ],
+    "solutions/industry/chemical-sds-management/docs/architecture.en.md": [
+      "00029c131a"
+    ],
+    "solutions/industry/construction-bim/README.en.md": [
+      "165739c280",
+      "5519bd5224",
+      "6be4277bf7"
+    ],
+    "solutions/industry/construction-bim/README.md": [
+      "90436894d9"
+    ],
+    "solutions/industry/construction-bim/docs/architecture.en.md": [
+      "8bdb4244b9",
+      "a776859088"
+    ],
+    "solutions/industry/defense-satellite/docs/demo-guide.md": [
+      "0297b15596"
+    ],
+    "solutions/industry/education-research/README.en.md": [
+      "75c524a040",
+      "944dcd80e1",
+      "ab1930f91b"
+    ],
+    "solutions/industry/education-research/README.md": [
+      "90436894d9"
+    ],
+    "solutions/industry/education-research/docs/architecture.en.md": [
+      "a776859088",
+      "bd5425af4b"
+    ],
+    "solutions/industry/energy-seismic/README.en.md": [
+      "5519bd5224"
+    ],
+    "solutions/industry/energy-seismic/README.md": [
+      "90436894d9"
+    ],
+    "solutions/industry/energy-seismic/docs/architecture.en.md": [
+      "a776859088"
+    ],
+    "solutions/industry/financial-idp/README.en.md": [
+      "3559bd414c"
+    ],
+    "solutions/industry/financial-idp/README.md": [
+      "87df047f17"
+    ],
+    "solutions/industry/financial-idp/docs/architecture.en.md": [
+      "a776859088"
+    ],
+    "solutions/industry/genomics-pipeline/README.en.md": [
+      "a129f46e5d",
+      "ab1930f91b",
+      "c48d34ce9c"
+    ],
+    "solutions/industry/genomics-pipeline/README.md": [
+      "90436894d9"
+    ],
+    "solutions/industry/genomics-pipeline/docs/architecture.en.md": [
+      "a776859088"
+    ],
+    "solutions/industry/government-archives/docs/demo-guide.md": [
+      "7bb7201d37"
+    ],
+    "solutions/industry/healthcare-dicom/README.en.md": [
+      "1b1439e870"
+    ],
+    "solutions/industry/healthcare-dicom/README.md": [
+      "94bcc7ac48"
+    ],
+    "solutions/industry/healthcare-dicom/docs/architecture.en.md": [
+      "a776859088"
+    ],
+    "solutions/industry/hr-document-screening/README.en.md": [
+      "a997dd1c9c"
+    ],
+    "solutions/industry/hr-document-screening/README.md": [
+      "7f606f2cb9"
+    ],
+    "solutions/industry/hr-document-screening/docs/architecture.en.md": [
+      "00029c131a"
+    ],
+    "solutions/industry/insurance-claims/README.en.md": [
+      "165739c280",
+      "6be4277bf7",
+      "ab1930f91b"
+    ],
+    "solutions/industry/insurance-claims/README.md": [
+      "90436894d9"
+    ],
+    "solutions/industry/insurance-claims/docs/architecture.en.md": [
+      "a776859088"
+    ],
+    "solutions/industry/legal-compliance/README.en.md": [
+      "a57b565aa1",
+      "f679713fdf"
+    ],
+    "solutions/industry/legal-compliance/README.md": [
+      "90436894d9"
+    ],
+    "solutions/industry/legal-compliance/docs/architecture.en.md": [
+      "a776859088"
+    ],
+    "solutions/industry/logistics-ocr/README.en.md": [
+      "38e4b4fd66",
+      "3d718c69c8",
+      "ab1930f91b"
+    ],
+    "solutions/industry/logistics-ocr/README.md": [
+      "90436894d9"
+    ],
+    "solutions/industry/logistics-ocr/docs/architecture.en.md": [
+      "a776859088"
+    ],
+    "solutions/industry/manufacturing-analytics/docs/architecture.en.md": [
+      "a776859088"
+    ],
+    "solutions/industry/manufacturing-analytics/glue-etl/README.md": [
+      "c99363b492"
+    ],
+    "solutions/industry/media-vfx/cloudfront/README.md": [
+      "aa9c5afae4"
+    ],
+    "solutions/industry/media-vfx/docs/architecture.en.md": [
+      "a776859088"
+    ],
+    "solutions/industry/nonprofit-grant-management/README.en.md": [
+      "7b56aeafbd"
+    ],
+    "solutions/industry/nonprofit-grant-management/README.md": [
+      "7f606f2cb9"
+    ],
+    "solutions/industry/nonprofit-grant-management/docs/architecture.en.md": [
+      "00029c131a"
+    ],
+    "solutions/industry/real-estate-portfolio/README.en.md": [
+      "7b56aeafbd"
+    ],
+    "solutions/industry/real-estate-portfolio/README.md": [
+      "7f606f2cb9"
+    ],
+    "solutions/industry/real-estate-portfolio/docs/architecture.en.md": [
+      "00029c131a"
+    ],
+    "solutions/industry/retail-catalog/README.en.md": [
+      "5519bd5224"
+    ],
+    "solutions/industry/retail-catalog/README.md": [
+      "90436894d9"
+    ],
+    "solutions/industry/retail-catalog/docs/architecture.en.md": [
+      "a16ae99fe2"
+    ],
+    "solutions/industry/semiconductor-eda/README.en.md": [
+      "191264e5ad",
+      "30c13a7c04"
+    ],
+    "solutions/industry/semiconductor-eda/README.md": [
+      "08cc13d6ee",
+      "7b3139fbbd",
+      "90436894d9",
+      "e1ecefbce6"
+    ],
+    "solutions/industry/semiconductor-eda/docs/architecture.en.md": [
+      "93fb322e88",
+      "a73c5e38bc"
+    ],
+    "solutions/industry/semiconductor-eda/docs/architecture.md": [
+      "93fb322e88",
+      "a73c5e38bc"
+    ],
+    "solutions/industry/sustainability-esg-reporting/README.en.md": [
+      "25a1a92f4d",
+      "f679713fdf"
+    ],
+    "solutions/industry/sustainability-esg-reporting/README.md": [
+      "7f606f2cb9",
+      "90436894d9"
+    ],
+    "solutions/industry/sustainability-esg-reporting/docs/architecture.en.md": [
+      "00029c131a"
+    ],
+    "solutions/industry/telecom-network-analytics/README.en.md": [
+      "ab1930f91b",
+      "f12b861002"
+    ],
+    "solutions/industry/telecom-network-analytics/README.md": [
+      "7f606f2cb9",
+      "90436894d9"
+    ],
+    "solutions/industry/telecom-network-analytics/docs/architecture.en.md": [
+      "70eeb7f1b0"
+    ],
+    "solutions/industry/transportation-maintenance/README.en.md": [
+      "30c13a7c04",
+      "9e70fee774"
+    ],
+    "solutions/industry/transportation-maintenance/README.md": [
+      "7f606f2cb9",
+      "90436894d9"
+    ],
+    "solutions/industry/travel-document-processing/README.en.md": [
+      "5519bd5224",
+      "c1eb0f8883"
+    ],
+    "solutions/industry/travel-document-processing/README.md": [
+      "7f606f2cb9",
+      "90436894d9"
+    ],
+    "solutions/industry/utilities-asset-inspection/README.en.md": [
+      "7b56aeafbd"
+    ],
+    "solutions/industry/utilities-asset-inspection/README.md": [
+      "7f606f2cb9"
+    ],
+    "solutions/industry/utilities-asset-inspection/docs/architecture.en.md": [
+      "00029c131a"
+    ]
+  }
+}

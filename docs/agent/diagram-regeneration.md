@@ -116,3 +116,10 @@ python3 scripts/preview-diagram.py --glob 'docs/images/png/*-dark@2x.png' --out-
 | ヘルパースクリプトを別ディレクトリへ移動して repo root 解決が壊れる | `dirname` からの相対階層を見直し、ソースディレクトリ存在チェックを入れる |
 | ブログの画像が 404 | ブログは `raw.githubusercontent.com/.../main/...` 参照。`docs/images/` を main に push してから公開する |
 | ラベル変更後に alt text が古いまま | alt text は図の記述なので公式サービス名に追随させる（本文プロースの機能名はそのままでよい） |
+
+## ラベルサイズの下限
+
+図のラベルは、画像が読者のカラム幅に縮小された**後**の大きさで表示される。したがって
+`fontSize` の値だけでは可読性を判定できない。下限と、収まらないときの手順、既存の負債は
+[diagram-label-size](diagram-label-size.md) にある。**キャンバスを広げると必要な
+`fontSize` が上がる**ので、幅を決めるときに一緒に読むこと。

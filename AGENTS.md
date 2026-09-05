@@ -12,11 +12,10 @@ CloudFormation/SAM template sharing the Python modules in `shared/`.
 **Two pillars**: `solutions/` (S3 AP data processing) + `operations/` (file system operational
 optimization).
 
-**Test coverage**: ~4,900 Python tests across 291 files + ~495 vitest tests across 34 files.
+**Test coverage**: ~5,000 Python tests across 293 files + ~495 vitest tests across 34 files.
 
-> ファイル数は `make drift` がツリーと照合するので、古くなれば fail する。テスト総数は
-> `make test` / ポータルハンドラの個別実行 / vitest の 3 系統の合計なので概数。誰も保守
-> しない厳密な数値より、丸めた数値のほうがよい。
+> ファイル数は `make drift` がツリーと照合するので古くなれば fail する。テスト総数は 3 系統の
+> 合計なので概数。誰も保守しない厳密な数値より丸めた数値のほうがよい。
 ## 詳細知識の所在
 
 このファイルは**タスクの内容が分かる前に必要な情報**だけを持つ。作業別の詳細は
@@ -30,7 +29,7 @@ optimization).
 | FlexGroup を作る・容量の偏りを直す・型ごとの差を調べる | [pitfalls-flexgroup](docs/agent/pitfalls-flexgroup.md) |
 | S3 AP / ONTAP API を扱う・AccessDenied を調べる | [pitfalls-s3ap-ontap](docs/agent/pitfalls-s3ap-ontap.md) |
 | FlexCache / SnapMirror / SVM ピアを作る・消す | [pitfalls-flexcache-snapmirror](docs/agent/pitfalls-flexcache-snapmirror.md) |
-| ボリューム / FlexCache の作成・削除、SMB ローカルユーザー | [pitfalls-volume-lifecycle](docs/agent/pitfalls-volume-lifecycle.md) |
+| ボリューム / FlexCache の作成・削除 | [pitfalls-volume-lifecycle](docs/agent/pitfalls-volume-lifecycle.md) |
 | AD 連携 / SMB / Windows ドメイン参加 | [pitfalls-ad-smb](docs/agent/pitfalls-ad-smb.md) |
 | Bedrock / AgentCore / Quick / KNFSD | [pitfalls-genai-edge](docs/agent/pitfalls-genai-edge.md) |
 | SnapLock / WORM / Snapshot ロック | [pitfalls-snaplock](docs/agent/pitfalls-snaplock.md) |
@@ -38,12 +37,13 @@ optimization).
 | ポータルの CDK / cdk-nag | [portal-cdk-quality-gates](docs/agent/portal-cdk-quality-gates.md) |
 | ポータル sandbox の削除 / 同一 VPC への 2 台目 | [portal-sandbox-lifecycle](docs/agent/portal-sandbox-lifecycle.md) |
 | ポータル UI の文字列 / 翻訳 | [portal-i18n](docs/agent/portal-i18n.md) |
-| 他端末に渡すデモ環境（URL / アカウント） | [portal-demo-environment](docs/agent/portal-demo-environment.md) |
+| 他端末に渡すデモ環境 | [portal-demo-environment](docs/agent/portal-demo-environment.md) |
 | 作業を PR に切り分けて main に載せる | [landing-work](docs/agent/landing-work.md) |
+| ベンダーの「できない」を主張する | [evidence-discipline](docs/agent/evidence-discipline.md) |
 | コスト見積り / リソース停止 | [cost-awareness](docs/agent/cost-awareness.md) |
 | 依存追加 / Renovate | [dependency-updates](docs/agent/dependency-updates.md) |
-| 構成図の作成・再生成・エクスポート | [diagram-regeneration](docs/agent/diagram-regeneration.md) |
-| ポータル画面の撮影 / E2E / ブラウザ自動化 | [pitfalls-browser-automation](docs/agent/pitfalls-browser-automation.md) |
+| 構成図の作成・再生成・寸法 | [diagram-regeneration](docs/agent/diagram-regeneration.md) |
+| 画面撮影 / E2E / ブラウザ自動化 | [pitfalls-browser-automation](docs/agent/pitfalls-browser-automation.md) |
 | 新パターンの追加と公開判定 | [new-pattern](docs/agent/new-pattern.md) |
 | ドキュメント全体を探す | [docs/index.md](docs/index.md) |
 | README / ドキュメント構成の設計 | グローバル steering `documentation-design` |
