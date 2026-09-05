@@ -547,12 +547,46 @@ def main() -> int:
         # A gate that passes without running is worse than no gate. This asserts the
         # detector fires, rather than trusting that it would.
         sample = "AWS does not support this, and Amazon CloudWatch has no such metric."
-        ok = bool(ABSENCE.search(sample) and VENDOR.search(sample))
-        marked = "AWS does not support this [E-001]"
-        suppressed = LEDGER_REF.search(marked) is not None
-        print(f"detector fires on an unmarked claim: {ok}")
-        print(f"a ledger reference suppresses it:   {suppressed}")
-        return 0 if (ok and suppressed) else 1
+        cases: list[tuple[str, bool]] = [
+            ("detector fires on an unmarked claim", bool(ABSENCE.search(sample) and VENDOR.search(sample))),
+            ("a ledger reference suppresses it", LEDGER_REF.search("AWS does not support this [E-001]") is not None),
+            (
+                "an explicit allow with a reason suppresses it",
+                ALLOW.search("x <!-- allow:unverified: speculative -->") is not None,
+            ),
+            (
+                "a not-a-claim marker with a reason suppresses it",
+                ALLOW_NOT_A_CLAIM.search("x <!-- allow:not-a-claim: quotes the shape -->") is not None,
+            ),
+            # Written inside an HTML comment, an empty marker ends in the comment
+            # terminator, whose leading character satisfies "any non-space". The empty
+            # form therefore passed as an explanation, which is the form to expect from
+            # somebody silencing a finding rather than explaining one.
+            (
+                "an empty reason does not suppress (unverified)",
+                ALLOW.search("x <!-- allow:unverified: -->") is None,
+            ),
+            (
+                "an empty reason does not suppress (not-a-claim)",
+                ALLOW_NOT_A_CLAIM.search("x <!-- allow:not-a-claim: -->") is None,
+            ),
+            # Each marker says something different -- "deliberately speculative" against
+            # "not a claim at all" -- so one standing in for the other files a claim
+            # under the wrong reason.
+            (
+                "the two markers are not interchangeable",
+                ALLOW.search("x <!-- allow:not-a-claim: r -->") is None
+                and ALLOW_NOT_A_CLAIM.search("x <!-- allow:unverified: r -->") is None,
+            ),
+        ]
+        for name, held in cases:
+            print(f"  {'ok  ' if held else 'FAIL'} {name}")
+        failures = [name for name, held in cases if not held]
+        if failures:
+            print(f"self-test: {len(failures)} case(s) failed", file=sys.stderr)
+            return 1
+        print(f"self-test: {len(cases)} case(s) behave as documented")
+        return 0
 
     paths = args.paths or _tracked_markdown()
     found = scan(paths)

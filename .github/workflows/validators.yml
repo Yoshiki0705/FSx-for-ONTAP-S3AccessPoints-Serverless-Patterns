@@ -176,10 +176,12 @@ jobs:
       # and the local pre-commit hook lives in `.kiro/`, which is gitignored and so
       # protects one machine. Its own tests run first, because a checker that reports
       # success without evaluating its rules is the same shape as the problem.
+      # The self-test is the standard-library one the script carries, not pytest: this
+      # job installs no dev dependencies by design, as the note at the top of it says.
+      # The pytest suites for both scripts run in the unit-test job, which does.
       - name: Check evidence for claims of vendor absence
         run: |
-          python3 -m pytest scripts/tests/test_check_evidence_claims.py \
-            scripts/tests/test_aws_support_inquiry.py --tb=short -q
+          python3 scripts/check_evidence_claims.py --self-test
           python3 scripts/check_evidence_claims.py
       # A diagram label is displayed at the size it has after the image is scaled
       # into the reader's column, so a wide canvas makes a compliant-looking
