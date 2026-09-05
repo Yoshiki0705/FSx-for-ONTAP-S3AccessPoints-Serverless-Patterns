@@ -14,7 +14,7 @@ pytest-cov==7.1.0
 pytest-asyncio==1.4.0
 hypothesis==6.165.10
 moto[all]==5.2.3
-ruff==0.15.17
+ruff==0.16.6
 cfn-lint==1.56.0
 pyarrow==25.0.1
 bandit==1.9.4
