@@ -308,6 +308,7 @@ def test_positive_days(self, slope, intercept):
     assume(current_usage < total_capacity)  # 多くの入力がフィルタされる
     ...
 
+
 # ✅ Good: 有効な入力を直接構築
 @given(current_usage_pct=st.floats(min_value=0.01, max_value=0.95))
 def test_positive_days(self, current_usage_pct):

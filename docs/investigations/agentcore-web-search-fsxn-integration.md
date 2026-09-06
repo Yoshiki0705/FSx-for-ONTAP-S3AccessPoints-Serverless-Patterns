@@ -151,13 +151,11 @@ import boto3
 import json
 
 bedrock_agent_runtime = boto3.client("bedrock-agent-runtime")  # ap-northeast-1
-bedrock_runtime = boto3.client("bedrock-runtime")              # ap-northeast-1
+bedrock_runtime = boto3.client("bedrock-runtime")  # ap-northeast-1
 
 # AgentCore Gateway (us-east-1) への MCP 呼び出し用
-agentcore_data = boto3.client(
-    "bedrock-agentcore",
-    region_name="us-east-1"
-)
+agentcore_data = boto3.client("bedrock-agentcore", region_name="us-east-1")
+
 
 def hybrid_query(question: str, kb_id: str, web_search_gateway_url: str) -> dict:
     """内部 KB + Web Search のハイブリッド検索"""
@@ -166,16 +164,10 @@ def hybrid_query(question: str, kb_id: str, web_search_gateway_url: str) -> dict
     kb_response = bedrock_agent_runtime.retrieve(
         knowledgeBaseId=kb_id,
         retrievalQuery={"text": question},
-        retrievalConfiguration={
-            "vectorSearchConfiguration": {"numberOfResults": 5}
-        }
+        retrievalConfiguration={"vectorSearchConfiguration": {"numberOfResults": 5}},
     )
     internal_chunks = [
-        {
-            "text": r["content"]["text"],
-            "source": r["location"]["s3Location"]["uri"],
-            "score": r["score"]
-        }
+        {"text": r["content"]["text"], "source": r["location"]["s3Location"]["uri"], "score": r["score"]}
         for r in kb_response.get("retrievalResults", [])
     ]
 
@@ -191,7 +183,7 @@ def hybrid_query(question: str, kb_id: str, web_search_gateway_url: str) -> dict
         modelId="apac.amazon.nova-pro-v1:0",
         system=[{"text": HYBRID_SYSTEM_PROMPT}],
         messages=[{"role": "user", "content": [{"text": f"{context}\n\n質問: {question}"}]}],
-        inferenceConfig={"maxTokens": 1024, "temperature": 0.2}
+        inferenceConfig={"maxTokens": 1024, "temperature": 0.2},
     )
 
     return {
@@ -228,10 +220,7 @@ def _generate_brief_with_web_context(params: dict, caller: str) -> dict:
 
     # 内部コンテキスト + Web 検索を統合
     web_results = _invoke_web_search(web_query, max_results=3)
-    web_context = "\n".join([
-        f"- [{r['title']}]({r['url']}) ({r['publishedDate']}): {r['text']}"
-        for r in web_results
-    ])
+    web_context = "\n".join([f"- [{r['title']}]({r['url']}) ({r['publishedDate']}): {r['text']}" for r in web_results])
 
     enhanced_context = (
         f"<internal_documents>\n{context}\n</internal_documents>\n\n"
@@ -259,11 +248,7 @@ gateway = agentcore_control.create_gateway(
     protocolType="MCP",
     authorizerType="AWS_IAM",
     roleArn="arn:aws:iam::123456789012:role/AgentCoreGatewayServiceRole",
-    protocolConfiguration={
-        "mcp": {
-            "supportedVersions": ["2025-03-26"]
-        }
-    }
+    protocolConfiguration={"mcp": {"supportedVersions": ["2025-03-26"]}},
 )
 gateway_id = gateway["gatewayId"]
 print(f"Gateway ID: {gateway_id}")
@@ -277,13 +262,7 @@ print(f"Gateway URL: {gateway['gatewayUrl']}")
 target = agentcore_control.create_gateway_target(
     gatewayIdentifier=gateway_id,
     name="WebSearchTool",
-    targetConfiguration={
-        "mcp": {
-            "connector": {
-                "connectorId": "web-search"
-            }
-        }
-    }
+    targetConfiguration={"mcp": {"connector": {"connectorId": "web-search"}}},
 )
 print(f"Target ID: {target['targetId']}")
 ```
@@ -303,16 +282,13 @@ target_with_filter = agentcore_control.create_gateway_target(
                     "webSearch": {
                         "domainFilter": {
                             "filterType": "DENY",
-                            "domains": [
-                                "example-blocked.com",
-                                "competitor-internal.com"
-                            ]
+                            "domains": ["example-blocked.com", "competitor-internal.com"],
                         }
                     }
-                }
+                },
             }
         }
-    }
+    },
 )
 ```
 
@@ -385,10 +361,7 @@ def invoke_web_search(query: str, max_results: int = 5) -> list[dict[str, Any]]:
         response = client.invoke_gateway_tool(
             gatewayUrl=GATEWAY_URL,
             toolName="WebSearch___WebSearch",
-            arguments=json.dumps({
-                "query": truncated_query,
-                "maxResults": max_results
-            })
+            arguments=json.dumps({"query": truncated_query, "maxResults": max_results}),
         )
 
         # レスポンスパース
@@ -407,6 +380,7 @@ def invoke_web_search(query: str, max_results: int = 5) -> list[dict[str, Any]]:
     except Exception as e:
         # Web Search 失敗時は内部文書のみで回答を継続（graceful degradation）
         import logging
+
         logging.warning("Web Search invocation failed: %s", str(e))
         return []
 ```

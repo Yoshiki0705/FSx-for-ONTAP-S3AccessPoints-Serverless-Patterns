@@ -190,6 +190,7 @@ vserver export-policy rule create \
 ```python
 import boto3
 
+
 def get_cross_account_client(role_arn: str, external_id: str, region: str = "ap-northeast-1"):
     """クロスアカウントロールを引き受けて S3 クライアントを取得する。"""
     sts_client = boto3.client("sts")
@@ -207,6 +208,7 @@ def get_cross_account_client(role_arn: str, external_id: str, region: str = "ap-
         aws_secret_access_key=credentials["SecretAccessKey"],
         aws_session_token=credentials["SessionToken"],
     )
+
 
 def handler(event, context):
     """同一リージョンでのクロスアカウント S3 AP アクセス。"""

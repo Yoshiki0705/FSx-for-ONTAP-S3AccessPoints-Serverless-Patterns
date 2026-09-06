@@ -209,6 +209,7 @@ Parameters:
 
 Runs inside VPC (required for ONTAP management LIF access).
 """
+
 import json
 import os
 import urllib3
@@ -216,11 +217,13 @@ import boto3
 
 http = urllib3.PoolManager(cert_reqs="CERT_NONE")
 
+
 def get_ontap_credentials():
     """Retrieve ONTAP credentials from Secrets Manager."""
     client = boto3.client("secretsmanager")
     secret = client.get_secret_value(SecretId=os.environ["ONTAP_CREDENTIALS_SECRET"])
     return json.loads(secret["SecretString"])
+
 
 def handler(event, context):
     creds = get_ontap_credentials()
@@ -270,12 +273,14 @@ def handler(event, context):
 Runs outside VPC (required for Internet-origin S3AP access).
 Reads EXR/PNG frames via S3 API, generates thumbnails and QC reports.
 """
+
 import os
 import boto3
 from PIL import Image
 from io import BytesIO
 
 s3 = boto3.client("s3")
+
 
 def handler(event, context):
     s3ap_alias = event["s3ap_alias"]
@@ -491,6 +496,7 @@ New-PSDrive -Name Z -PSProvider FileSystem -Root "\\svm1.studio.local\render_out
 ```python
 # Access from Lambda via S3 Access Point (VPC-external execution)
 import boto3
+
 s3 = boto3.client("s3")
 
 # Read files from FlexClone volume via S3 API

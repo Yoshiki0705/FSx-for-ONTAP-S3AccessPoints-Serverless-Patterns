@@ -167,12 +167,13 @@ def validate_job_request(event: dict) -> None:
     for field in required_fields:
         if field not in event or not event[field]:
             raise ValueError(f"Missing required field: {field}")
-    
+
     # job_id のフォーマット検証（英数字とハイフンのみ）
     import re
-    if not re.match(r'^[a-zA-Z0-9\-_]+$', event["job_id"]):
+
+    if not re.match(r"^[a-zA-Z0-9\-_]+$", event["job_id"]):
         raise ValueError("job_id must contain only alphanumeric, hyphens, underscores")
-    
+
     # size_gb の範囲検証
     size_gb = event.get("size_gb", 100)
     if size_gb < 1 or size_gb > 10000:

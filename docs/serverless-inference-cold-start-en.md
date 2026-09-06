@@ -181,8 +181,8 @@ Parameters:
 ```python
 # Implementation pattern from shared/routing.py + realtime_invoke/handler.py
 INITIAL_TIMEOUT = 60  # seconds (accounting for cold start)
-RETRY_DELAY = 3       # seconds
-MAX_RETRIES = 2       # maximum retry count
+RETRY_DELAY = 3  # seconds
+MAX_RETRIES = 2  # maximum retry count
 
 # When ModelNotReadyException occurs:
 # 1. Wait 3 seconds

@@ -166,15 +166,15 @@ Day 14: v1=0%, v2=100%（完全切替）
 # Approved モデルの最新バージョンを取得
 import boto3
 
-sm = boto3.client('sagemaker')
+sm = boto3.client("sagemaker")
 response = sm.list_model_packages(
-    ModelPackageGroupName='fsxn-uc9-model-group',
-    ModelApprovalStatus='Approved',
-    SortBy='CreationTime',
-    SortOrder='Descending',
-    MaxResults=1
+    ModelPackageGroupName="fsxn-uc9-model-group",
+    ModelApprovalStatus="Approved",
+    SortBy="CreationTime",
+    SortOrder="Descending",
+    MaxResults=1,
 )
-latest_package_arn = response['ModelPackageSummaryList'][0]['ModelPackageArn']
+latest_package_arn = response["ModelPackageSummaryList"][0]["ModelPackageArn"]
 ```
 
 ## Phase 5: Monitoring（監視）

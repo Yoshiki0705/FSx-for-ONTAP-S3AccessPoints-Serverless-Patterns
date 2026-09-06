@@ -122,18 +122,14 @@ from shared import CrossRegionClient, CrossRegionConfig
 
 # 設定（Lambda 環境変数から取得）
 config = CrossRegionConfig(
-    target_region=os.environ.get("CROSS_REGION_TARGET", "us-east-1"),
-    services=["textract", "comprehendmedical"]
+    target_region=os.environ.get("CROSS_REGION_TARGET", "us-east-1"), services=["textract", "comprehendmedical"]
 )
 
 # クライアント生成
 client = CrossRegionClient(config)
 
 # Textract 呼び出し
-textract_response = client.analyze_document(
-    document_bytes=pdf_bytes,
-    feature_types=["TABLES", "FORMS"]
-)
+textract_response = client.analyze_document(document_bytes=pdf_bytes, feature_types=["TABLES", "FORMS"])
 
 # Comprehend Medical 呼び出し
 medical_response = client.detect_entities_v2(text=medical_text)

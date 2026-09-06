@@ -280,8 +280,9 @@ docs/output-destination-patterns.md
 ### 4.2 Implementation sketch for `put_stream`
 
 ```python
-def put_stream(self, key, data, content_type="application/octet-stream",
-               part_size=100*1024*1024, content_length_hint=None):
+def put_stream(
+    self, key, data, content_type="application/octet-stream", part_size=100 * 1024 * 1024, content_length_hint=None
+):
     # Normalize data to iterator
     if isinstance(data, bytes):
         if content_length_hint is None:
@@ -320,20 +321,16 @@ def put_stream(self, key, data, content_type="application/octet-stream",
 
     bucket_param, resolved_key = self._resolve_target(key)
     if self._destination == FSXN_S3AP:
-        return self._put_multipart_fsxn_s3ap(
-            resolved_key, merged_iterator(), content_type, part_size
-        )
-    return self._put_multipart_standard_s3(
-        bucket_param, resolved_key, merged_iterator(), content_type, part_size
-    )
+        return self._put_multipart_fsxn_s3ap(resolved_key, merged_iterator(), content_type, part_size)
+    return self._put_multipart_standard_s3(bucket_param, resolved_key, merged_iterator(), content_type, part_size)
 ```
 
 ### 4.3 FSXN_S3AP delegation
 
 ```python
-def _put_multipart_fsxn_s3ap(self, resolved_key, data_iterator,
-                              content_type, part_size):
+def _put_multipart_fsxn_s3ap(self, resolved_key, data_iterator, content_type, part_size):
     from shared.s3ap_helper import S3ApHelper
+
     helper = S3ApHelper(self._s3ap_alias, session=self._session)
     # NOTE: helper uses its own key resolution; we pre-resolved so
     # pass raw resolved_key (without adding prefix twice)

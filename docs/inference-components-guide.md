@@ -114,10 +114,10 @@ scale-from-zero 時のレイテンシは以下の要素で構成される:
 
 ```python
 # scale-from-zero リトライ設定
-MODEL_NOT_READY_RETRY_DELAY = 5      # 初期待機秒
-MODEL_NOT_READY_MAX_RETRIES = 10     # 最大リトライ回数
-MODEL_NOT_READY_MAX_DELAY = 30       # 最大待機秒
-STEP_FUNCTIONS_TASK_TIMEOUT = 300    # 合計タイムアウト秒
+MODEL_NOT_READY_RETRY_DELAY = 5  # 初期待機秒
+MODEL_NOT_READY_MAX_RETRIES = 10  # 最大リトライ回数
+MODEL_NOT_READY_MAX_DELAY = 30  # 最大待機秒
+STEP_FUNCTIONS_TASK_TIMEOUT = 300  # 合計タイムアウト秒
 
 # Exponential backoff: 5s, 10s, 20s, 30s, 30s, ...
 delay = min(

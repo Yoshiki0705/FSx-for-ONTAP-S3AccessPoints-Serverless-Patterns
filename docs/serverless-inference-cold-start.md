@@ -181,8 +181,8 @@ Parameters:
 ```python
 # shared/routing.py + realtime_invoke/handler.py の実装パターン
 INITIAL_TIMEOUT = 60  # 秒（コールドスタート考慮）
-RETRY_DELAY = 3       # 秒
-MAX_RETRIES = 2       # 最大リトライ回数
+RETRY_DELAY = 3  # 秒
+MAX_RETRIES = 2  # 最大リトライ回数
 
 # ModelNotReadyException 発生時:
 # 1. 3 秒待機

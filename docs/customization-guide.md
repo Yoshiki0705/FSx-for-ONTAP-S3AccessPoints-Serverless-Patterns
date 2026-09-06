@@ -116,6 +116,7 @@ Step Functions の ASL 定義にステップを追加:
 from shared.s3ap_helper import S3ApHelper
 from shared.observability import EmfMetrics
 
+
 class MyCustomHelper:
     def __init__(self, s3ap_alias: str):
         self._helper = S3ApHelper(s3ap_alias)

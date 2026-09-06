@@ -176,10 +176,7 @@ def discovery_handler(event, context):
     all_files = scan_s3ap_files()
 
     # Event-Driven で処理済みのファイルを除外
-    unprocessed_files = [
-        f for f in all_files
-        if not is_already_processed(f["key"], f["etag"])
-    ]
+    unprocessed_files = [f for f in all_files if not is_already_processed(f["key"], f["etag"])]
 
     if unprocessed_files:
         logger.warning(

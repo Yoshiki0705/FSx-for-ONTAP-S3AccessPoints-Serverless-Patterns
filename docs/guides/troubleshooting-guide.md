@@ -797,15 +797,12 @@ chars = string.ascii_letters + string.digits + "!@"
 new_password = "".join(secrets.choice(chars) for _ in range(20))
 
 fsx = boto3.client("fsx", region_name="ap-northeast-1")
-fsx.update_file_system(
-    FileSystemId="fs-xxx",
-    OntapConfiguration={"FsxAdminPassword": new_password}
-)
+fsx.update_file_system(FileSystemId="fs-xxx", OntapConfiguration={"FsxAdminPassword": new_password})
 
 sm = boto3.client("secretsmanager", region_name="ap-northeast-1")
 sm.put_secret_value(
     SecretId="fsx-ontap-fsxadmin-credentials",
-    SecretString=json.dumps({"username": "fsxadmin", "password": new_password})
+    SecretString=json.dumps({"username": "fsxadmin", "password": new_password}),
 )
 ```
 

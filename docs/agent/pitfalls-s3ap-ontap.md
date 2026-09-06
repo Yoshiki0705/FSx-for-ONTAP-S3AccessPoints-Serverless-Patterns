@@ -84,7 +84,7 @@ rekognition.detect_labels(Image={"S3Object": {"Bucket": ap_alias, "Name": key}})
 textract.detect_document_text(Document={"S3Object": {"Bucket": ap_alias, "Name": key}})
 
 # ✅ AP から bytes を取得して inline で渡す
-image_bytes = s3ap.get_object_bytes(key=key)      # shared/s3ap_helper.py
+image_bytes = s3ap.get_object_bytes(key=key)  # shared/s3ap_helper.py
 rekognition.detect_labels(Image={"Bytes": image_bytes})
 textract.detect_document_text(Document={"Bytes": doc_bytes})
 ```

@@ -31,6 +31,7 @@ SAM CLI は `CodeUri` で指定されたディレクトリを Lambda パッケ�
 # conftest.py（各パターンの tests/ に配置）
 import sys
 from pathlib import Path
+
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))  # リポジトリルート
 sys.path.insert(0, str(Path(__file__).parent.parent / "functions" / "discovery"))
 ```

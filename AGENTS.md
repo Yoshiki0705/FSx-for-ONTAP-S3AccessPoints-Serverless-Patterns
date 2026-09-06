@@ -215,6 +215,7 @@ KNFSD（Terraform、`infrastructure/knfsd-file-cache/`）は `scripts/{deploy,va
 # Pattern tests only need to add their local functions dir:
 import sys
 from pathlib import Path
+
 sys.path.insert(0, str(Path(__file__).parent.parent / "functions" / "discovery"))
 ```
 
@@ -304,6 +305,7 @@ All S3 AP access goes through `shared/s3ap_helper.py`. It accepts both S3 AP ali
 
 ```python
 from shared.human_review import evaluate_confidence
+
 decision = evaluate_confidence(confidence=0.72)
 # decision.action: "AUTO_APPROVE" | "HUMAN_REVIEW" | "REJECT"
 ```
