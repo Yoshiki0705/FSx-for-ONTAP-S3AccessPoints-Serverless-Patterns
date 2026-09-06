@@ -1,16 +1,18 @@
 #!/usr/bin/env python3
-"""Build the Part 2 / Part 3 architecture diagrams from declarative specs.
+"""Build every architecture diagram in this repository from declarative specs.
 
 Compliance (official icons, native sizes, service-name labels, single-colour Open
 Arrow edges, ※-numbered notes) is enforced by scripts/diagram_builder.py, so these
 specs only describe content and grid placement.
 
 Both the Japanese and the English variant are emitted from the same spec (see the
-EN dictionary below), so scripts/generate-en-diagrams.py — which substitutes strings
-in the hand-authored Part 1 XML — is not involved here.
+EN dictionary below). The Part 1 figures were hand-authored XML until they were
+ported here; the two scripts that maintained them — apply-official-aws-icons.py,
+which stamped icons into that XML, and generate-en-diagrams.py, which produced the
+English variant by string substitution — are no longer part of the pipeline.
 
 Usage (from repo root):
-    python3 scripts/build-part2-part3-diagrams.py --icon-root /tmp/awsicons
+    python3 scripts/build-diagrams.py --icon-root /tmp/awsicons
     bash scripts/export-diagrams.sh
 
 To check a diagram visually, downscale it first: exported PNGs are @2x and an agent
@@ -64,6 +66,15 @@ SFN = "Arch_AWS-Step-Functions_64.svg"
 SQS = "Arch_Amazon-Simple-Queue-Service_64.svg"
 DYNAMODB = "Arch_Amazon-DynamoDB_64.svg"
 NATGW = "Res_Amazon-VPC_NAT-Gateway_48.svg"
+EC2 = "Arch_Amazon-EC2_64.svg"
+ELB = "Arch_Elastic-Load-Balancing_64.svg"
+RDS = "Arch_Amazon-RDS_64.svg"
+QUICK = "Arch_Amazon-Quick_64.svg"
+EVENTBRIDGE = "Arch_Amazon-EventBridge_64.svg"
+CLIENT = "Res_Client_48_Light.svg"
+# The 07312026 package renamed this asset: the generation the hand-authored Part 1
+# figures embedded called it `Res_Traditional-server_48_Light`.
+SERVER = "Res_Server_48_Light.svg"
 
 # state / phase tints. These are plain boxes, not AWS icons, so the icon colour
 # rules do not apply — the tint only aids scanning.
@@ -75,6 +86,274 @@ BLUE = "#EDF3FB"
 GREY = "#F5F5F5"
 
 
+# --- Part 1 --------------------------------------------------------------------
+# Both notes appear on all four Part 1 figures, and both are about the access point
+# rather than about one portal, so they stay identical across the four.
+PART1_NOTES = [
+    (
+        "S3 Access Point の Internet origin はパブリック公開ではない",
+        "Block Public Access が常時有効（無効化不可）。全リクエストで IAM の認証と認可が必要",
+    ),
+    (
+        "マルチプロトコルでの同時アクセス",
+        "同一データに NFS / SMB / S3 API でアクセス可能。データ移行は不要",
+    ),
+]
+# The spine every Part 1 figure ends with: one access point, one file system, and the
+# same data reachable over both file protocols.
+NFS_LABEL = "NFS クライアント"
+SMB_LABEL = "SMB クライアント"
+
+
+def part1_overview() -> Diagram:
+    """Both portals over one access point — the figure the Part 1 article opens with.
+
+    Two portals on row 1, the shared spine down the middle, both file protocols on the
+    last row. The AI services are one box rather than five icons: this figure exists to
+    show that the two portals meet at the access point, and the fan-out belongs to
+    amplify-vpc-split, which is one figure away.
+    """
+    return Diagram(
+        id="architecture-overview",
+        name="Part1 Overview",
+        title="FSx for ONTAP S3 Access Points — ファイルポータル全体構成",
+        grid=Grid(col_pitch=340, row_pitch=175, box_w=300),
+        nodes=[
+            Node("users", "利用者（Web ブラウザ）", 1, 0, RESOURCE, icon=USERS),
+            Node("amplify", "AWS Amplify<br>(Gen2 / AI 処理ダッシュボード)", 0, 1, icon=AMPLIFY),
+            Node("nextcloud", "Amazon EC2<br>(Nextcloud / ファイル共有 UI)", 2, 1, icon=EC2),
+            Node(
+                "ai_group",
+                "AWS Lambda + AI サービス<br>(Amazon Bedrock / Amazon Textract / Amazon Athena ほか)",
+                0.5,
+                2,
+                BOX,
+                w=520,
+                h=86,
+            ),
+            Node("s3ap", "Amazon S3 Access Point", 1, 3, RESOURCE, icon=S3AP),
+            Node("fsxn", "Amazon FSx for<br>NetApp ONTAP", 1, 4, icon=FSXN),
+            Node("nfs_client", NFS_LABEL, 0, 5, RESOURCE, icon=SERVER),
+            Node("smb_client", SMB_LABEL, 2, 5, RESOURCE, icon=CLIENT),
+        ],
+        edges=[
+            Edge("users", "amplify", "HTTPS"),
+            Edge("users", "nextcloud", "HTTPS"),
+            Edge("amplify", "ai_group"),
+            Edge("ai_group", "s3ap", "S3 API"),
+            Edge("nextcloud", "s3ap", "S3 API<br>(External Storage)", at=-0.6),
+            Edge("s3ap", "fsxn"),
+            Edge("fsxn", "nfs_client", "NFS"),
+            Edge("fsxn", "smb_client", "SMB"),
+        ],
+        groups=[Group("aws_cloud", "AWS Cloud", (0, 2), (1, 5))],
+        notes=PART1_NOTES,
+    )
+
+
+def part1_nextcloud() -> Diagram:
+    """The Nextcloud portal, and the scheduled pipeline that runs beside it.
+
+    The four AI services Step Functions calls are one box, for the same reason as in
+    part1_overview: what this figure is for is the shape of the path, and five icons in
+    a row is what pushed the hand-authored version to 1734px.
+    """
+    return Diagram(
+        id="nextcloud-external-storage",
+        name="Part1 Nextcloud",
+        title="FSx for ONTAP S3 Access Points — Nextcloud によるファイル共有 UI 構成",
+        grid=Grid(col_pitch=310, row_pitch=170, box_w=270),
+        nodes=[
+            # Directly above the load balancer it enters, so the first hop is a
+            # straight drop. At column 1 it sat above the instance instead, with its
+            # own arrow leaving sideways to a box two columns away.
+            Node("browser", "Web ブラウザ<br>(ファイル管理 + 同期)", 0, 0, RESOURCE, icon=USERS),
+            Node("rds", "Amazon RDS<br>(MariaDB)", 2, 1, icon=RDS),
+            Node("alb", "Elastic Load Balancing", 0, 1, icon=ELB),
+            Node("nextcloud", "Amazon EC2<br>(Nextcloud / Docker)", 1, 1, icon=EC2),
+            Node("eventbridge", "Amazon EventBridge<br>Scheduler", 2, 2, icon=EVENTBRIDGE),
+            Node(
+                "ai_group",
+                # Broken by hand: left to wrap, the third line began "Amazon" and the
+                # fourth began "Athena".
+                "AI サービス<br>(Amazon Bedrock / Amazon Rekognition<br>Amazon Athena / Amazon Comprehend)",
+                0,
+                3,
+                BOX,
+                w=440,
+                h=96,
+            ),
+            Node("sfn", "AWS Step Functions<br>(UC1-28)", 2, 3, icon=SFN),
+            Node("s3ap", "Amazon S3 Access Point<br>(Internet origin)", 1, 4, RESOURCE, icon=S3AP),
+            Node("fsxn", "Amazon FSx for<br>NetApp ONTAP", 1, 5, icon=FSXN),
+            Node("nfs_client", NFS_LABEL, 0, 6, RESOURCE, icon=SERVER),
+            Node("smb_client", SMB_LABEL, 2, 6, RESOURCE, icon=CLIENT),
+        ],
+        edges=[
+            # Placed by hand into the band between the cloud frame and the load
+            # balancer. The automatic offset moved it up, away from the group's own
+            # label, and it landed inside the browser's two-line label, where the node
+            # paints over it and the label simply disappears.
+            Edge("browser", "alb", "HTTPS", dy=28),
+            Edge("alb", "nextcloud"),
+            Edge("nextcloud", "rds"),
+            Edge(
+                "nextcloud",
+                "eventbridge",
+                "Webhook / Schedule",
+                # Pushed toward the scheduler. At the path midpoint it sat on the
+                # External Storage label, which rides the next column's vertical.
+                at=0.45,
+                exit=(0.75, 1),
+                entry=(0, 0.5),
+            ),
+            Edge("eventbridge", "sfn"),
+            Edge("sfn", "ai_group"),
+            # Unlabelled on purpose. "S3 AP" restated what the target icon already
+            # says, and on this two-bend route it came to rest away from every
+            # segment, so it read as belonging to nothing.
+            Edge("sfn", "s3ap", exit=(0.25, 1)),
+            Edge("nextcloud", "s3ap", "External Storage<br>(S3 API)", at=-0.5),
+            Edge("s3ap", "fsxn"),
+            Edge("fsxn", "nfs_client", "NFS"),
+            Edge("fsxn", "smb_client", "SMB"),
+        ],
+        groups=[Group("aws_cloud", "AWS Cloud", (0, 2), (1, 6))],
+        notes=PART1_NOTES,
+    )
+
+
+def part1_amplify() -> Diagram:
+    """The Amplify Gen2 portal: the AI path, and where the audit trail lands.
+
+    Five AI services become one box. The AgentCore gateway keeps its own icon because
+    the figure's second claim is that a desktop client reaches the same Lambda the
+    portal does, and that claim needs both ends drawn.
+    """
+    return Diagram(
+        id="amplify-vpc-split",
+        name="Part1 Amplify",
+        title="FSx for ONTAP S3 Access Points — Amplify Gen2 による AI 処理ポータル構成",
+        grid=Grid(col_pitch=310, row_pitch=170, box_w=270),
+        nodes=[
+            Node("browser", "Web ブラウザ", 1, 0, RESOURCE, icon=USERS),
+            Node("quick_desktop", "Amazon Quick", 2, 0, icon=QUICK),
+            Node("cognito", "Amazon Cognito", 0, 1, icon=COGNITO),
+            Node("amplify", "AWS Amplify", 1, 1, icon=AMPLIFY),
+            Node("mcp_gw", "Amazon Bedrock AgentCore", 2, 1, icon=AGENTCORE),
+            Node("appsync", "AWS AppSync<br>(GraphQL API)", 1, 2, icon=APPSYNC),
+            Node(
+                "ai_group",
+                "AI サービス<br>(Amazon Bedrock / Amazon Rekognition<br>"
+                "Amazon Athena / Amazon Textract<br>Amazon Comprehend)",
+                0,
+                3,
+                BOX,
+                w=440,
+                h=118,
+            ),
+            Node("lambda", "AWS Lambda<br>(VPC 外 / ARM64)", 1, 3, icon=LAMBDA),
+            Node("s3_objectlock", "Amazon S3<br>(Object Lock / WORM)", 2, 4, icon=S3),
+            Node("s3ap", "Amazon S3 Access Point<br>(Internet origin)", 1, 5, RESOURCE, icon=S3AP),
+            Node("fsxn", "Amazon FSx for<br>NetApp ONTAP", 1, 6, icon=FSXN),
+            Node("nfs_client", NFS_LABEL, 0, 7, RESOURCE, icon=SERVER),
+            Node("smb_client", "SMB クライアント<br>(Windows)", 2, 7, RESOURCE, icon=CLIENT),
+        ],
+        edges=[
+            Edge("browser", "amplify"),
+            Edge("quick_desktop", "mcp_gw"),
+            Edge("amplify", "cognito"),
+            Edge("amplify", "appsync"),
+            Edge("appsync", "lambda"),
+            Edge("mcp_gw", "lambda"),
+            Edge("lambda", "ai_group"),
+            Edge("lambda", "s3_objectlock", "CloudTrail 監査ログ", at=-0.6),
+            Edge("lambda", "s3ap", "GetObject / PutObject", at=-0.5, dy=10),
+            Edge("s3ap", "fsxn"),
+            Edge("fsxn", "nfs_client", "NFS"),
+            Edge("fsxn", "smb_client", "SMB"),
+        ],
+        groups=[Group("aws_cloud", "AWS Cloud", (0, 2), (1, 7))],
+        notes=PART1_NOTES,
+    )
+
+
+def part1_coexistence() -> Diagram:
+    """The two portals side by side, meeting at one access point.
+
+    This one is deliberately the most abstracted of the four. It used to be the other
+    two figures drawn again in full, side by side, which is how it reached 2214px --
+    and at that width its labels arrive at 4.4px, so the detail it was carrying could
+    not be read anyway. Each portal is one box naming its own services, and the reader
+    who wants either side has a figure for it.
+    """
+    return Diagram(
+        id="coexistence-3path",
+        name="Part1 Coexistence",
+        title="FSx for ONTAP S3 Access Points — Amplify Gen2 と Nextcloud の併用構成",
+        grid=Grid(col_pitch=330, row_pitch=175, box_w=290),
+        nodes=[
+            Node("browser_ai", "Web ブラウザ<br>(AI ポータル)", 0, 0, RESOURCE, icon=USERS),
+            Node("browser_files", "Web ブラウザ<br>(ファイル管理)", 2, 0, RESOURCE, icon=USERS),
+            Node(
+                "ai_side",
+                # Three explicit lines. Left to wrap, the second one broke between
+                # "AWS" and "Lambda", and a service name split across lines is the one
+                # thing the label rules do not allow.
+                "AWS Amplify (Gen2)<br>Amazon Cognito / AWS AppSync<br>AWS Lambda / AI サービス",
+                0,
+                1,
+                BOX,
+                w=320,
+                h=116,
+            ),
+            Node(
+                "files_side",
+                "Amazon EC2 (Nextcloud)<br>Elastic Load Balancing<br>Amazon RDS (MariaDB)",
+                2,
+                1,
+                BOX,
+                w=320,
+                h=116,
+            ),
+            Node("s3ap", "Amazon S3 Access Point<br>(Internet origin)", 1, 2, RESOURCE, icon=S3AP),
+            Node("fsxn", "Amazon FSx for<br>NetApp ONTAP", 1, 3, icon=FSXN),
+            Node("nfs_client", NFS_LABEL, 0, 4, RESOURCE, icon=SERVER),
+            Node("smb_client", "SMB クライアント<br>(Windows)", 2, 4, RESOURCE, icon=CLIENT),
+        ],
+        edges=[
+            Edge("browser_ai", "ai_side"),
+            Edge("browser_files", "files_side"),
+            # Down each portal's own column, then in from the side. Routed through the
+            # midpoint above the access point instead, the two edges share one vertical
+            # run: the later line strikes through the earlier label, and a reader
+            # cannot tell which portal either label belongs to.
+            Edge(
+                "ai_side",
+                "s3ap",
+                "GetObject / PutObject",
+                at=-0.55,
+                exit=(0.5, 1),
+                entry=(0, 0.5),
+            ),
+            Edge(
+                "files_side",
+                "s3ap",
+                "External Storage<br>(S3 API)",
+                at=-0.55,
+                exit=(0.5, 1),
+                entry=(1, 0.5),
+            ),
+            Edge("s3ap", "fsxn"),
+            Edge("fsxn", "nfs_client", "NFS"),
+            Edge("fsxn", "smb_client", "SMB"),
+        ],
+        groups=[Group("aws_cloud", "AWS Cloud", (0, 2), (1, 4))],
+        notes=PART1_NOTES,
+    )
+
+
+# --- Part 2 --------------------------------------------------------------------
 def part2_overview() -> Diagram:
     return Diagram(
         id="part2-admin-operations",
@@ -494,6 +773,53 @@ def part3_agent_teams() -> Diagram:
 # fails the build when a string is missing or still contains CJK, so a label added
 # to a spec cannot ship without its English counterpart.
 EN: dict[str, str] = {
+    # ---- Part 1 ---------------------------------------------------------------
+    # Wording carried over from the published EN figures, so a reader who saw the
+    # earlier export finds the same terms.
+    "FSx for ONTAP S3 Access Points — ファイルポータル全体構成": (
+        "FSx for ONTAP S3 Access Points — File Portal Architecture Overview"
+    ),
+    "FSx for ONTAP S3 Access Points — Nextcloud によるファイル共有 UI 構成": (
+        "FSx for ONTAP S3 Access Points — File Sharing UI with Nextcloud"
+    ),
+    "FSx for ONTAP S3 Access Points — Amplify Gen2 による AI 処理ポータル構成": (
+        "FSx for ONTAP S3 Access Points — AI Processing Portal with Amplify Gen2"
+    ),
+    "FSx for ONTAP S3 Access Points — Amplify Gen2 と Nextcloud の併用構成": (
+        "FSx for ONTAP S3 Access Points — Amplify Gen2 and Nextcloud Side by Side"
+    ),
+    "AWS Amplify<br>(Gen2 / AI 処理ダッシュボード)": "AWS Amplify<br>(Gen2 / AI dashboard)",
+    "Amazon EC2<br>(Nextcloud / ファイル共有 UI)": "Amazon EC2<br>(Nextcloud / file sharing UI)",
+    "AWS Lambda + AI サービス<br>(Amazon Bedrock / Amazon Textract / Amazon Athena ほか)": (
+        "AWS Lambda + AI services<br>(Amazon Bedrock / Amazon Textract / Amazon Athena and others)"
+    ),
+    "AI サービス<br>(Amazon Bedrock / Amazon Rekognition<br>Amazon Athena / Amazon Comprehend)": (
+        "AI services<br>(Amazon Bedrock / Amazon Rekognition<br>Amazon Athena / Amazon Comprehend)"
+    ),
+    "AI サービス<br>(Amazon Bedrock / Amazon Rekognition<br>Amazon Athena / Amazon Textract<br>Amazon Comprehend)": (
+        "AI services<br>(Amazon Bedrock / Amazon Rekognition<br>Amazon Athena / Amazon Textract<br>Amazon Comprehend)"
+    ),
+    "AWS Amplify (Gen2)<br>Amazon Cognito / AWS AppSync<br>AWS Lambda / AI サービス": (
+        "AWS Amplify (Gen2)<br>Amazon Cognito / AWS AppSync<br>AWS Lambda / AI services"
+    ),
+    "AWS Lambda<br>(VPC 外 / ARM64)": "AWS Lambda<br>(outside VPC / ARM64)",
+    "Web ブラウザ": "Web browser",
+    "Web ブラウザ<br>(ファイル管理 + 同期)": "Web browser<br>(file management + sync)",
+    "Web ブラウザ<br>(AI ポータル)": "Web browser<br>(AI portal)",
+    "Web ブラウザ<br>(ファイル管理)": "Web browser<br>(file management)",
+    "NFS クライアント": "NFS client",
+    "SMB クライアント": "SMB client",
+    "SMB クライアント<br>(Windows)": "SMB client<br>(Windows)",
+    "CloudTrail 監査ログ": "CloudTrail audit logs",
+    "S3 Access Point の Internet origin はパブリック公開ではない": ("Internet origin does not mean public access"),
+    "Block Public Access が常時有効（無効化不可）。全リクエストで IAM の認証と認可が必要": (
+        "Block Public Access is always enabled and cannot be disabled; every request "
+        "requires IAM authentication and authorization"
+    ),
+    "マルチプロトコルでの同時アクセス": "Concurrent multi-protocol access",
+    "同一データに NFS / SMB / S3 API でアクセス可能。データ移行は不要": (
+        "The same data stays reachable over NFS / SMB / S3 API at once, with no data migration"
+    ),
     # ---- titles ---------------------------------------------------------------
     "群 A（ストレージエンドポイントを持つ移行元） — DataSync の 2 経路": (
         "Group A (sources with a storage endpoint) — the two DataSync routes"
@@ -830,6 +1156,10 @@ def saas_group_b_worker() -> Diagram:
 
 
 DIAGRAMS = [
+    part1_overview,
+    part1_nextcloud,
+    part1_amplify,
+    part1_coexistence,
     saas_group_a_routes,
     saas_group_b_worker,
     part2_overview,

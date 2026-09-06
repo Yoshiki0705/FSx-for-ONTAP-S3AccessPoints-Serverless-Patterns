@@ -13,14 +13,14 @@
 ### Layout
 
 ```
-docs/diagrams/                     # .drawio（Part1 は手書きソース / Part2・3 は生成物）
-├── architecture-overview.drawio            # Part1: JA authoring（直接編集する）
+docs/diagrams/                     # すべて生成物（手編集禁止 / spec は scripts/ 側）
+├── architecture-overview.drawio            # Part1
 ├── amplify-vpc-split.drawio
 ├── nextcloud-external-storage.drawio
 ├── coexistence-3path.drawio
-├── part2-*.drawio / part3-*.drawio        # 生成物（手編集禁止 / spec は scripts/ 側）
-├── *-en.drawio                            # 生成物（手編集禁止）
-└── dark/*.drawio                          # 生成物（手編集禁止 / ライト版から派生）
+├── part2-*.drawio / part3-*.drawio        # Part2・3
+├── *-en.drawio                            # spec を翻訳して生成
+└── dark/*.drawio                          # ライト版から派生
 docs/images/            *.svg              # ライト。GitHub docs 用（相対パス参照）
 docs/images/            *-dark.svg         # ダーク
 docs/images/png/        *@2x.png           # ライト。ブログ用（絶対 raw URL 参照）
@@ -35,14 +35,22 @@ docs/images/png/        *-dark@2x.png      # ダーク
 
 エクスポート後は `scripts/pin-svg-theme.py` が `light-dark()` を第 1 引数（= ソースが指定した配色）に解決し、閲覧環境のダークモード設定で勝手に反転しないよう固定する。ライトソースならライト、ダークソースならダークに固定される。
 
-図には 2 系統ある。**編集先を間違えないこと**。
+### 単一の生成系統
 
-| 系統 | ソース | JA→EN | 編集対象 |
-|------|--------|-------|----------|
-| Part1（4 図） | `docs/diagrams/*.drawio` を直接手書き | `generate-en-diagrams.py`（XML 文字列置換 + `TRANSLATIONS`） | `.drawio` |
-| Part2/Part3（9 図 × JA/EN） | `scripts/build-part2-part3-diagrams.py` の宣言的 spec | 同スクリプトの `EN` 辞書 → `translate_diagram()` で spec ごと翻訳 | **スクリプト**（`.drawio` は毎回上書き） |
+全図の唯一のソースは `scripts/build-diagrams.py` の宣言的 spec。JA と EN は同じ spec から
+生成され、EN は同スクリプトの `EN` 辞書を `translate_diagram()` に渡して spec ごと翻訳する。
+**`docs/diagrams/` 配下の `.drawio` は生成物なので直接編集してはいけない**（次回生成で上書き
+される）。編集対象はスクリプトだけ。
 
-Part2/3 が spec レベルで翻訳するのは、**EN ラベルは JA より幅が広く、レイアウト検査を EN でも再実行する必要があるため**。完成 XML への文字列置換ではラベル衝突が無言で残る（実際に `agent-teams` の EN ステップラベルが桁溢れし、`check_edge_labels` が検出した）。
+spec レベルで翻訳するのは、**EN ラベルは JA より幅が広く、レイアウト検査を EN でも再実行する
+必要があるため**。完成 XML への文字列置換ではラベル衝突が無言で残る（実際に `agent-teams` の
+EN ステップラベルが桁溢れし、`check_edge_labels` が検出した）。
+
+Part1 の 4 図は 2026-09 まで手書き XML で、`apply-official-aws-icons.py` がアイコンを流し込み
+`generate-en-diagrams.py` が文字列置換で EN を作っていた。この 2 本は削除済み。手書きだったこと
+自体が読めなさの原因で、AI サービス 5 個を横並びに描いたまま幅が 2214px まで伸び、880px の
+カラムに入れるとラベルが 4.4px になっていた。spec に移して各図を 1 ボックスへ抽象化した結果、
+4 図とも 982〜1010px = 実効 14.8px 以上に収まっている。
 
 ### Commands
 
@@ -52,29 +60,23 @@ Part2/3 が spec レベルで翻訳するのは、**EN ラベルは JA より幅
 curl -s https://aws.amazon.com/architecture/icons/ | grep -oE 'https://[^"]*Icon-package[^"]*\.zip'
 unzip -q Icon-package_*.zip -d /tmp/awsicons -x '__MACOSX/*'
 
-# 2. Part1: 公式アイコン・規定サイズ・公式サービス名・単色プリセット矢印を適用
-python3 scripts/apply-official-aws-icons.py --icon-root /tmp/awsicons
+# 2. 全図: spec から JA + EN を生成（レイアウト検査は EN でも再実行）
+python3 scripts/build-diagrams.py --icon-root /tmp/awsicons
 
-# 3. Part1: EN 版を JA から生成（CJK 残存で fail するゲート付き）
-python3 scripts/generate-en-diagrams.py
-
-# 4. Part2/Part3: spec から JA + EN を同時生成（レイアウト検査は EN でも再実行）
-python3 scripts/build-part2-part3-diagrams.py --icon-root /tmp/awsicons
-
-# 5. ダークテーマのソースをライト版から生成（アイコン素材ごと差し替え）
+# 3. ダークテーマのソースをライト版から生成（アイコン素材ごと差し替え）
 python3 scripts/make-dark-diagrams.py --icon-root /tmp/awsicons
 
-# 6. ライト + ダークを SVG + PNG@2x にエクスポート（テーマ固定まで実行される）
+# 4. ライト + ダークを SVG + PNG@2x にエクスポート（テーマ固定まで実行される）
 bash scripts/export-diagrams.sh
 
-# 7. 目視確認用に 2000px 以下へ縮小（エージェントが読める形にする）
+# 5. 目視確認用に 2000px 以下へ縮小（エージェントが読める形にする）
 python3 scripts/preview-diagram.py            # 全 part2/part3
 python3 scripts/preview-diagram.py part3-agentchat-modes
 python3 scripts/preview-diagram.py --glob 'docs/images/png/*-dark@2x.png' --out-dir /tmp/dark-previews
 ```
 
-`scripts/apply-official-aws-icons.py` と `scripts/make-dark-diagrams.py` は冪等。Part1 の JA 図を編集したら 2→3→5→6→7、Part2/3 の spec を編集したら 4→5→6→7 を再実行する。**ダーク生成（5）はライト版の変更後に必ず実行する**（漏れはコミット前に `make-dark-diagrams.py --icon-root <dir> --check` を走らせると exit 1 で検出できる。アイコンパッケージはリポジトリに含めないため CI では実行できない = ローカルでの確認が必須）。
-`-en.drawio`、`part2-*` / `part3-*` の `.drawio`、`dark/` 配下を直接編集してはいけない（次回生成で上書きされる）。
+`build-diagrams.py` と `make-dark-diagrams.py` は冪等。spec を編集したら 2→3→4→5 を順に再実行する。**ダーク生成（3）はライト版の変更後に必ず実行する**（漏れはコミット前に `make-dark-diagrams.py --icon-root <dir> --check` を走らせると exit 1 で検出できる。アイコンパッケージはリポジトリに含めないため CI では実行できない = ローカルでの確認が必須）。
+`docs/diagrams/` 配下のすべての `.drawio`（`-en`、`dark/` を含む）は生成物。直接編集してはいけない。
 
 ### 必ず守る最小セット
 
