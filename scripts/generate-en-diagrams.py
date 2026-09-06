@@ -28,10 +28,10 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 SRC_DIR = REPO_ROOT / "docs" / "diagrams"
 
 SOURCES = [
-    "file-portal-overview.drawio",
-    "file-portal-architecture.drawio",
-    "nextcloud-only-architecture.drawio",
-    "amplify-nextcloud-combined-architecture.drawio",
+    "architecture-overview.drawio",
+    "amplify-vpc-split.drawio",
+    "nextcloud-external-storage.drawio",
+    "coexistence-3path.drawio",
 ]
 
 # Values are stored exactly as they appear inside the drawio `value="..."`

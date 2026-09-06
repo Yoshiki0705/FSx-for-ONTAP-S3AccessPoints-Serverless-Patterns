@@ -43,10 +43,10 @@ SRC_DIR = REPO_ROOT / "docs" / "diagrams"
 AWS_ICON_PACKAGE_URL = "https://aws.amazon.com/architecture/icons/  (Asset Package, e.g. Icon-package_04302026)"
 
 SOURCES = [
-    "file-portal-overview.drawio",
-    "file-portal-architecture.drawio",
-    "nextcloud-only-architecture.drawio",
-    "amplify-nextcloud-combined-architecture.drawio",
+    "architecture-overview.drawio",
+    "amplify-vpc-split.drawio",
+    "nextcloud-external-storage.drawio",
+    "coexistence-3path.drawio",
 ]
 
 # Icons grew from 50/60px to their native 80/48px, so spread the layout to match.
@@ -127,19 +127,19 @@ CELLS_TO_DROP = {"note1"}
 
 # Per-file label overrides where the node carries diagram-specific context.
 LABEL_OVERRIDES: dict[str, dict[str, str]] = {
-    "file-portal-overview.drawio": {
+    "architecture-overview.drawio": {
         "amplify": "AWS Amplify&#xa;(Gen2 / AI 処理ダッシュボード)",
         "nextcloud": "Amazon EC2&#xa;(Nextcloud / ファイル共有 UI)",
         "s3ap": "Amazon S3 Access Point",
     },
-    "nextcloud-only-architecture.drawio": {
+    "nextcloud-external-storage.drawio": {
         "browser": "Web ブラウザ&#xa;(ファイル管理 + 同期)",
         "sfn": "AWS Step Functions&#xa;(UC1-28)",
     },
-    "amplify-nextcloud-combined-architecture.drawio": {
+    "coexistence-3path.drawio": {
         "smb-client": "SMB クライアント&#xa;(Windows)",
     },
-    "file-portal-architecture.drawio": {
+    "amplify-vpc-split.drawio": {
         "smb-client": "SMB クライアント&#xa;(Windows)",
         "appsync": "AWS AppSync&#xa;(GraphQL API)",
     },
