@@ -83,6 +83,7 @@ Quick Suite User → Cognito User Pool (OAuth 2.0) → AgentCore Gateway → Lam
 ```python
 import boto3
 
+
 def list_files(event):
     """S3 AP 経由で FSx for ONTAP ボリュームのファイルを一覧取得"""
     s3 = boto3.client("s3")
@@ -102,11 +103,13 @@ def list_files(event):
         key = obj["Key"]
         if file_extension and not key.endswith(file_extension):
             continue
-        files.append({
-            "path": key,
-            "size": obj["Size"],
-            "last_modified": obj["LastModified"].isoformat(),
-        })
+        files.append(
+            {
+                "path": key,
+                "size": obj["Size"],
+                "last_modified": obj["LastModified"].isoformat(),
+            }
+        )
 
     return {
         "files": files,
@@ -230,6 +233,7 @@ def read_file(event):
 ```python
 import re
 
+
 def search_files(event):
     """パターンに一致するファイルを検索"""
     s3 = boto3.client("s3")
@@ -257,12 +261,8 @@ def search_files(event):
                 }
                 if include_preview:
                     try:
-                        resp = s3.get_object(
-                            Bucket=ap_alias, Key=key, Range="bytes=0-1023"
-                        )
-                        match["preview"] = resp["Body"].read().decode(
-                            "utf-8", errors="replace"
-                        )
+                        resp = s3.get_object(Bucket=ap_alias, Key=key, Range="bytes=0-1023")
+                        match["preview"] = resp["Body"].read().decode("utf-8", errors="replace")
                     except Exception:
                         match["preview"] = "(read error)"
                 matches.append(match)
@@ -480,6 +480,7 @@ Lambda ハンドラーでは以下の防御を実装してください:
 
 ```python
 import os
+
 
 def validate_path(path: str) -> str:
     """パストラバーサル防止"""

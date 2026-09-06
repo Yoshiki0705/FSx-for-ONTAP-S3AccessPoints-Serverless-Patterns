@@ -127,9 +127,7 @@ fields @timestamp, @message
 1. **キャッシュ無効化**
 ```python
 # FlexCache の特定パスを無効化
-client.post(f"/storage/flexcache/flexcaches/{uuid}/invalidate", body={
-    "path": "/data/updated_dir/"
-})
+client.post(f"/storage/flexcache/flexcaches/{uuid}/invalidate", body={"path": "/data/updated_dir/"})
 ```
 
 2. **TTL 確認・調整**

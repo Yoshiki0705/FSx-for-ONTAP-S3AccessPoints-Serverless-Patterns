@@ -46,6 +46,7 @@ aws cloudformation deploy ... \
 ```python
 from decimal import Decimal
 
+
 def _to_decimal(obj):
     if isinstance(obj, float):
         return Decimal(str(obj))
@@ -325,12 +326,13 @@ AI が地理的・文化的に適切な提案を行いやすい。
 PIL で合成画像を生成して軽量にテストできる:
 ```python
 from PIL import Image, ImageDraw
-img = Image.new('RGB', (1024, 1024), (100, 150, 100))
+
+img = Image.new("RGB", (1024, 1024), (100, 150, 100))
 draw = ImageDraw.Draw(img)
 for x in range(100, 900, 200):
     for y in range(100, 900, 200):
-        draw.rectangle([x, y, x+100, y+100], fill=(120, 120, 120))
-img.save('sample.jpg', 'JPEG', quality=85)
+        draw.rectangle([x, y, x + 100, y + 100], fill=(120, 120, 120))
+img.save("sample.jpg", "JPEG", quality=85)
 ```
 
 ## 10. OutputDestination=FSXN_S3AP モードの知見（2026-05-11 Theme E 実検証で判明）
@@ -357,6 +359,7 @@ INFO ログが 1 行も見えない。それでも Step Functions は SUCCEEDED 
 - **デバッグ時のみ root logger を強制**: handler の先頭で
   ```python
   import logging
+
   logging.getLogger().setLevel(logging.INFO)
   logging.getLogger("shared").setLevel(logging.INFO)
   ```

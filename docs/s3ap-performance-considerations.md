@@ -94,7 +94,7 @@ S3 Access Points for FSx for ONTAP 経由のデータアクセスは、FSx フ�
 response = s3.list_objects_v2(
     Bucket=s3ap_alias,
     Prefix="data/2026/05/",  # 日付ベースの絞り込み
-    MaxKeys=1000
+    MaxKeys=1000,
 )
 
 # 大量ファイル時: ページネーションのレイテンシを考慮
@@ -122,7 +122,7 @@ S3 AP for FSx for ONTAP は GetObject をサポートしており、HTTP Range �
 response = s3.get_object(
     Bucket=s3ap_alias,
     Key="large-file.bin",
-    Range="bytes=0-1048575"  # 先頭 1 MB
+    Range="bytes=0-1048575",  # 先頭 1 MB
 )
 ```
 
@@ -226,7 +226,7 @@ import botocore.config
 s3_config = botocore.config.Config(
     retries={
         "max_attempts": 5,
-        "mode": "adaptive"  # adaptive mode: 自動的に backoff を調整
+        "mode": "adaptive",  # adaptive mode: 自動的に backoff を調整
     },
     connect_timeout=10,
     read_timeout=60,  # 大ファイル対応

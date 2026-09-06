@@ -176,9 +176,7 @@ FSx for ONTAP Volume
 retrieval_config = {
     "vectorSearchConfiguration": {
         "numberOfResults": 5,
-        "filter": {
-            "equals": {"key": "department", "value": user_department}
-        }
+        "filter": {"equals": {"key": "department", "value": user_department}},
     }
 }
 ```

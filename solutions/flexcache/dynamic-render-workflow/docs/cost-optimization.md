@@ -46,7 +46,7 @@ prepopulate_dirs = ["/"]  # 数TB のデータを全てフェッチ
 # ✅ 必要なディレクトリのみ
 prepopulate_dirs = [
     "/scene01/textures/",  # 50GB
-    "/scene01/geo/",       # 20GB
+    "/scene01/geo/",  # 20GB
 ]
 # 合計 70GB のみフェッチ → WAN 転送コスト削減
 ```

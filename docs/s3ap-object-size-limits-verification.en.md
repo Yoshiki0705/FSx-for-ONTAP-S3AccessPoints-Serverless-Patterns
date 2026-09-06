@@ -200,26 +200,41 @@ The probe relies on immediate over-limit rejection, so it **writes no data to th
 import boto3
 from botocore.config import Config
 
-s3 = boto3.client("s3", region_name="ap-northeast-1",
-                  config=Config(signature_version="s3v4",
-                                retries={"max_attempts": 1, "mode": "standard"}))
+s3 = boto3.client(
+    "s3",
+    region_name="ap-northeast-1",
+    config=Config(signature_version="s3v4", retries={"max_attempts": 1, "mode": "standard"}),
+)
+
 
 class ZeroStream:
     """Fixed-length zero stream (no memory or disk cost)."""
-    def __init__(self, size): self._size, self._pos, self.sent = size, 0, 0
-    def __len__(self): return self._size
-    def seek(self, off, whence=0): self._pos = off if whence == 0 else self._pos + off; return self._pos
-    def tell(self): return self._pos
+
+    def __init__(self, size):
+        self._size, self._pos, self.sent = size, 0, 0
+
+    def __len__(self):
+        return self._size
+
+    def seek(self, off, whence=0):
+        self._pos = off if whence == 0 else self._pos + off
+        return self._pos
+
+    def tell(self):
+        return self._pos
+
     def read(self, amt=None):
         rem = self._size - self._pos
-        if rem <= 0: return b""
+        if rem <= 0:
+            return b""
         n = rem if amt is None or amt < 0 else min(amt, rem)
-        self._pos += n; self.sent += n
+        self._pos += n
+        self.sent += n
         return b"\0" * n
 
-size = 5 * 1024**3 + 1          # 5 GiB + 1
-s3.put_object(Bucket="<ap-alias>", Key="probe.bin",
-              Body=ZeroStream(size), ContentLength=size)
+
+size = 5 * 1024**3 + 1  # 5 GiB + 1
+s3.put_object(Bucket="<ap-alias>", Key="probe.bin", Body=ZeroStream(size), ContentLength=size)
 # -> botocore.exceptions.ClientError: EntityTooLarge
 #    ProposedSize=5368709121 / MaxSizeAllowed=5368709120
 ```

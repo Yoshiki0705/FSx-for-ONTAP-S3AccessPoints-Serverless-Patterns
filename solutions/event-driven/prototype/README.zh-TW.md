@@ -79,6 +79,7 @@ response = s3_client.get_object(Bucket=source_bucket, Key=file_key)
 
 # 變更後（FSx for ONTAP S3 AP）
 from shared.s3ap_helper import S3ApHelper
+
 s3ap = S3ApHelper(os.environ["S3_ACCESS_POINT"])
 response = s3ap.get_object(file_key)
 ```

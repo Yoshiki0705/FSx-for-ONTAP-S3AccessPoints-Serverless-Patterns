@@ -83,6 +83,7 @@ Browse directory structure and list files and subdirectories under the specified
 ```python
 import boto3
 
+
 def list_files(event):
     """List files on FSx for ONTAP volume via S3 AP"""
     s3 = boto3.client("s3")
@@ -102,11 +103,13 @@ def list_files(event):
         key = obj["Key"]
         if file_extension and not key.endswith(file_extension):
             continue
-        files.append({
-            "path": key,
-            "size": obj["Size"],
-            "last_modified": obj["LastModified"].isoformat(),
-        })
+        files.append(
+            {
+                "path": key,
+                "size": obj["Size"],
+                "last_modified": obj["LastModified"].isoformat(),
+            }
+        )
 
     return {
         "files": files,
@@ -230,6 +233,7 @@ Search for related files using pattern matching. Performs **file path-based** pr
 ```python
 import re
 
+
 def search_files(event):
     """Search for files matching a pattern"""
     s3 = boto3.client("s3")
@@ -257,12 +261,8 @@ def search_files(event):
                 }
                 if include_preview:
                     try:
-                        resp = s3.get_object(
-                            Bucket=ap_alias, Key=key, Range="bytes=0-1023"
-                        )
-                        match["preview"] = resp["Body"].read().decode(
-                            "utf-8", errors="replace"
-                        )
+                        resp = s3.get_object(Bucket=ap_alias, Key=key, Range="bytes=0-1023")
+                        match["preview"] = resp["Body"].read().decode("utf-8", errors="replace")
                     except Exception:
                         match["preview"] = "(read error)"
                 matches.append(match)
@@ -480,6 +480,7 @@ Implement the following defense in your Lambda handler:
 
 ```python
 import os
+
 
 def validate_path(path: str) -> str:
     """Prevent path traversal"""

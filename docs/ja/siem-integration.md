@@ -37,15 +37,17 @@ sns = boto3.client("sns")
 sns.publish(
     TopicArn=os.environ["SECURITY_EVENTS_TOPIC_ARN"],
     Subject="ARP/AI Threat Contained",
-    Message=json.dumps({
-        "eventType": "THREAT_CONTAINED",
-        "timestamp": datetime.utcnow().isoformat(),
-        "volumeName": volume_name,
-        "blockedUser": username,
-        "blockedIp": client_ip,
-        "snapshotCreated": snapshot_name,
-        "severity": "HIGH",
-    }),
+    Message=json.dumps(
+        {
+            "eventType": "THREAT_CONTAINED",
+            "timestamp": datetime.utcnow().isoformat(),
+            "volumeName": volume_name,
+            "blockedUser": username,
+            "blockedIp": client_ip,
+            "snapshotCreated": snapshot_name,
+            "severity": "HIGH",
+        }
+    ),
     MessageAttributes={
         "eventType": {"DataType": "String", "StringValue": "THREAT_CONTAINED"},
     },

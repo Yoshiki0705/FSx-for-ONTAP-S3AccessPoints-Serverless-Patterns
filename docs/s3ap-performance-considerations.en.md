@@ -94,7 +94,7 @@ Data access via S3 Access Points for FSx for ONTAP depends on the FSx file syste
 response = s3.list_objects_v2(
     Bucket=s3ap_alias,
     Prefix="data/2026/05/",  # Date-based filtering
-    MaxKeys=1000
+    MaxKeys=1000,
 )
 
 # For large file counts: consider pagination latency
@@ -122,7 +122,7 @@ S3 AP for FSx for ONTAP supports GetObject, and partial reads via HTTP Range hea
 response = s3.get_object(
     Bucket=s3ap_alias,
     Key="large-file.bin",
-    Range="bytes=0-1048575"  # First 1 MB
+    Range="bytes=0-1048575",  # First 1 MB
 )
 ```
 
@@ -226,7 +226,7 @@ import botocore.config
 s3_config = botocore.config.Config(
     retries={
         "max_attempts": 5,
-        "mode": "adaptive"  # adaptive mode: automatically adjusts backoff
+        "mode": "adaptive",  # adaptive mode: automatically adjusts backoff
     },
     connect_timeout=10,
     read_timeout=60,  # For large files

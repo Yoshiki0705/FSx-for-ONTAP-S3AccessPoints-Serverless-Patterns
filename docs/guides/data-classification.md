@@ -86,6 +86,7 @@ FPolicy イベントパイプラインでは、ファイル操作のメタデー
 ```python
 import hashlib
 
+
 def hash_file_path(file_path: str, salt: str = "") -> str:
     """file_path を SHA-256 hash 化する（監査用に元パスは Audit Ledger に保存）."""
     return hashlib.sha256(f"{salt}{file_path}".encode()).hexdigest()[:16]

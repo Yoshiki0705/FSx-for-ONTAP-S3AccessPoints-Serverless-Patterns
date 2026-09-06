@@ -207,6 +207,7 @@ Parameters:
 
 VPC 内で実行（ONTAP 管理 LIF へのアクセスに必要）。
 """
+
 import json
 import os
 import urllib3
@@ -214,11 +215,13 @@ import boto3
 
 http = urllib3.PoolManager(cert_reqs="CERT_NONE")
 
+
 def get_ontap_credentials():
     """Secrets Manager から ONTAP 認証情報を取得。"""
     client = boto3.client("secretsmanager")
     secret = client.get_secret_value(SecretId=os.environ["ONTAP_CREDENTIALS_SECRET"])
     return json.loads(secret["SecretString"])
+
 
 def handler(event, context):
     creds = get_ontap_credentials()
@@ -268,12 +271,14 @@ def handler(event, context):
 VPC 外で実行（Internet-origin S3AP へのアクセスに必要）。
 S3 API 経由で EXR/PNG フレームを読み取り、サムネイル生成・QC レポート作成。
 """
+
 import os
 import boto3
 from PIL import Image
 from io import BytesIO
 
 s3 = boto3.client("s3")
+
 
 def handler(event, context):
     s3ap_alias = event["s3ap_alias"]
@@ -490,6 +495,7 @@ New-PSDrive -Name Z -PSProvider FileSystem -Root "\\svm1.studio.local\render_out
 ```python
 # Lambda から S3 Access Point 経由でアクセス（VPC 外実行）
 import boto3
+
 s3 = boto3.client("s3")
 
 # FlexClone ボリュームのファイルを S3 API で読み取り
