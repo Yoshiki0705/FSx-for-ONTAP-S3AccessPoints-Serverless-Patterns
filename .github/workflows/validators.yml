@@ -190,6 +190,12 @@ jobs:
         run: |
           python3 scripts/check_diagram_fonts.py --selftest
           python3 scripts/check_diagram_fonts.py
+      # A figure whose arrows change heading has no reading order, and a label beside
+      # an icon reads as belonging to its neighbour. Neither is visible in the source.
+      - name: Check diagram reading direction
+        run: |
+          python3 scripts/check_diagram_flow.py --selftest
+          python3 scripts/check_diagram_flow.py
 
   handler-name-check:
     name: "Handler undefined-name sweep"

@@ -586,6 +586,10 @@ drift:
 # selftest goes first: a gate never seen to fail is not evidence it still detects.
 	$(PYTHON) scripts/check_diagram_fonts.py --selftest >/dev/null
 	$(PYTHON) scripts/check_diagram_fonts.py
+# Reading direction and label placement, which are also invisible in the source and
+# only appear in the rendered image. Same reasoning, same selftest-first rule.
+	$(PYTHON) scripts/check_diagram_flow.py --selftest >/dev/null
+	$(PYTHON) scripts/check_diagram_flow.py
 
 # Fetches the published posts from Hatena and dev.to, so it needs network and is
 # not part of `make lint`. Run it after shipping a feature that makes an article's

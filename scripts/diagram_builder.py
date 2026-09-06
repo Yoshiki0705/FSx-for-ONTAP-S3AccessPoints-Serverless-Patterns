@@ -108,7 +108,11 @@ def group_style(px: int, *, gr: str, stroke: str) -> str:
         f"fontSize={px};fontStyle=1;"
         f"shape=mxgraph.aws4.group;grIcon=mxgraph.aws4.{gr};"
         f"strokeColor={stroke};fillColor=none;verticalAlign=top;align=left;"
-        f"spacingLeft=30;fontColor={stroke};dashed=0;"
+        # The title needs a background for the same reason an icon's label does: it sits
+        # at the top-left of the frame, and on a narrow diagram the leftmost column's
+        # vertical run enters exactly there. `fillColor=none` keeps the frame itself
+        # transparent, so this paints behind the text only.
+        f"spacingLeft=30;fontColor={stroke};dashed=0;labelBackgroundColor={CANVAS};"
     )
 
 
@@ -634,6 +638,7 @@ def build(diagram: Diagram, icons: IconResolver) -> str:
         f"        </mxCell>"
     )
 
+    group_start = len(cells)
     # groups first so they render behind the nodes
     for g in diagram.groups:
         gx, gy, gw, gh = _group_rect(g, diagram.nodes, grid, px)
@@ -741,7 +746,18 @@ def build(diagram: Diagram, icons: IconResolver) -> str:
     # builder forbids that arrangement anyway; and an edge label keeps its own
     # background and is already moved clear of the node's label band by
     # `vertical_label_shortfall`.
-    cells[node_start:] = cells[edge_start:] + cells[node_start:edge_start]
+    # Group frames go after the edges too, for the same reason one step out: a group's
+    # title sits at the top-left of its frame, which on a narrow diagram is exactly where
+    # the leftmost column's vertical run enters -- and a line through "AWS Cloud" is the
+    # same defect as a line through an icon's label. The frame paints nothing but its own
+    # border and title, so an edge crossing the border reads the same either way: two thin
+    # lines of one colour meeting, with no fill to hide anything behind.
+    cells[:] = (
+        cells[:group_start]  # title, section labels
+        + cells[edge_start:]  # edges
+        + cells[group_start:node_start]  # group frames
+        + cells[node_start:edge_start]  # nodes
+    )
 
     if diagram.notes:
         note_w = float(NOTE_BOX_W)
