@@ -30,6 +30,11 @@ export default tseslint.config(
       "coverage/**",
       "playwright-report/**",
       "test-results/**",
+      // CDK synth output from a CDK_NAG=1 run, which vendors the minified Lambda
+      // bundles the CDK ships. Gitignored, so CI never sees it and CI lint passes --
+      // but anyone who has run that path once gets 209 errors out of somebody else's
+      // build artifact on every lint from then on.
+      ".cdk-nag-out/**",
       // Copied verbatim from @aws-amplify/ui-react-storage by `npm run copy-sw`.
       // It is a service worker, so it legitimately uses globals this config does
       // not declare, and it is not ours to fix.
