@@ -224,3 +224,10 @@ solutions/amplify-portal/public/amplify-storage-download/
 # tracked because nothing reads it and its contents are whatever the last session
 # left behind. Anything worth keeping belongs in drafts/ under its own name.
 tmp/
+
+# Per-run output of scripts/translate_readmes.py: the locales whose Bedrock call
+# failed, so the operator can re-run just those. It is a record of one run on one
+# machine, not a fact about the repository — the copy committed on 2026-05-09
+# recorded five financial-idp locales as failed, and all five READMEs are in the
+# tree today, so what it preserved was a list of languages that look broken.
+translation_errors.log
