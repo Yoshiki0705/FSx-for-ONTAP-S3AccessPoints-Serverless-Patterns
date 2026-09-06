@@ -5,51 +5,43 @@
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
         <mxCell id="d-title" value="Agent Teams — Multi-Agent Coordination Led by a Supervisor" style="text;html=1;align=center;verticalAlign=middle;fontSize=16;fontStyle=1;fontColor=#E6EDF3;" vertex="1" parent="1">
-          <mxGeometry x="145" y="122" width="1630" height="34" as="geometry" />
-        </mxCell>
-        <mxCell id="user" value="User request&lt;br&gt;&amp;quot;Analyze engineering/&amp;quot;" style="rounded=1;whiteSpace=wrap;html=1;dashed=0;strokeColor=#E6EDF3;fillColor=#2D333B;align=center;verticalAlign=middle;fontSize=16;fontColor=#E6EDF3;" vertex="1" parent="1">
-          <mxGeometry x="145" y="192" width="180" height="80" as="geometry" />
-        </mxCell>
-        <mxCell id="supervisor" value="Supervisor&lt;br&gt;safety-controller" style="rounded=1;whiteSpace=wrap;html=1;dashed=0;strokeColor=#589BE5;fillColor=#152A3E;align=center;verticalAlign=middle;fontSize=16;fontColor=#E6EDF3;" vertex="1" parent="1">
-          <mxGeometry x="435" y="200" width="180" height="64" as="geometry" />
-        </mxCell>
-        <mxCell id="explorer" value="Collaborator&lt;br&gt;file-explorer" style="rounded=1;whiteSpace=wrap;html=1;dashed=0;strokeColor=#57A83A;fillColor=#16301C;align=center;verticalAlign=middle;fontSize=16;fontColor=#E6EDF3;" vertex="1" parent="1">
-          <mxGeometry x="725" y="200" width="180" height="64" as="geometry" />
-        </mxCell>
-        <mxCell id="analyst" value="Collaborator&lt;br&gt;knowledge-analyst" style="rounded=1;whiteSpace=wrap;html=1;dashed=0;strokeColor=#57A83A;fillColor=#16301C;align=center;verticalAlign=middle;fontSize=16;fontColor=#E6EDF3;" vertex="1" parent="1">
-          <mxGeometry x="1015" y="200" width="180" height="64" as="geometry" />
-        </mxCell>
-        <mxCell id="auditor" value="Reviewer&lt;br&gt;compliance-auditor" style="rounded=1;whiteSpace=wrap;html=1;dashed=0;strokeColor=#ED7100;fillColor=#3A2412;align=center;verticalAlign=middle;fontSize=16;fontColor=#E6EDF3;" vertex="1" parent="1">
-          <mxGeometry x="1305" y="200" width="180" height="64" as="geometry" />
-        </mxCell>
-        <mxCell id="answer" value="Final answer to the user&lt;br&gt;Summary + filtered results" style="rounded=1;whiteSpace=wrap;html=1;dashed=0;strokeColor=#E6EDF3;fillColor=#2D333B;align=center;verticalAlign=middle;fontSize=16;fontColor=#E6EDF3;" vertex="1" parent="1">
-          <mxGeometry x="1595" y="192" width="180" height="80" as="geometry" />
+          <mxGeometry x="110" y="138" width="250" height="34" as="geometry" />
         </mxCell>
         <mxCell id="e0" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeColor=#E6EDF3;strokeWidth=1;fontSize=16;fontColor=#E6EDF3;labelBackgroundColor=#21262D;" edge="1" source="user" target="supervisor" parent="1">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="e1" value="1. Explore" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeColor=#E6EDF3;strokeWidth=1;fontSize=16;fontColor=#E6EDF3;labelBackgroundColor=#21262D;" edge="1" source="supervisor" target="explorer" parent="1">
-          <mxGeometry relative="1" as="geometry">
-            <mxPoint as="offset" x="0" y="-13" />
-          </mxGeometry>
+        <mxCell id="e1" value="1.&lt;br&gt;Explore" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeColor=#E6EDF3;strokeWidth=1;fontSize=16;fontColor=#E6EDF3;labelBackgroundColor=#21262D;" edge="1" source="supervisor" target="explorer" parent="1">
+          <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="e2" value="2. Analyze" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeColor=#E6EDF3;strokeWidth=1;fontSize=16;fontColor=#E6EDF3;labelBackgroundColor=#21262D;" edge="1" source="explorer" target="analyst" parent="1">
-          <mxGeometry relative="1" as="geometry">
-            <mxPoint as="offset" x="0" y="-13" />
-          </mxGeometry>
+        <mxCell id="e2" value="2.&lt;br&gt;Analyze" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeColor=#E6EDF3;strokeWidth=1;fontSize=16;fontColor=#E6EDF3;labelBackgroundColor=#21262D;" edge="1" source="explorer" target="analyst" parent="1">
+          <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="e3" value="3. Review" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeColor=#E6EDF3;strokeWidth=1;fontSize=16;fontColor=#E6EDF3;labelBackgroundColor=#21262D;" edge="1" source="analyst" target="auditor" parent="1">
-          <mxGeometry relative="1" as="geometry">
-            <mxPoint as="offset" x="0" y="-13" />
-          </mxGeometry>
+        <mxCell id="e3" value="3.&lt;br&gt;Review" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeColor=#E6EDF3;strokeWidth=1;fontSize=16;fontColor=#E6EDF3;labelBackgroundColor=#21262D;" edge="1" source="analyst" target="auditor" parent="1">
+          <mxGeometry relative="1" as="geometry" />
         </mxCell>
         <mxCell id="e4" value="4.&lt;br&gt;Consolidate" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeColor=#E6EDF3;strokeWidth=1;fontSize=16;fontColor=#E6EDF3;labelBackgroundColor=#21262D;" edge="1" source="auditor" target="answer" parent="1">
-          <mxGeometry relative="1" as="geometry">
-            <mxPoint as="offset" x="0" y="-13" />
-          </mxGeometry>
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="user" value="User request&lt;br&gt;&amp;quot;Analyze engineering/&amp;quot;" style="rounded=1;whiteSpace=wrap;html=1;dashed=0;strokeColor=#E6EDF3;fillColor=#2D333B;align=center;verticalAlign=middle;fontSize=16;fontColor=#E6EDF3;" vertex="1" parent="1">
+          <mxGeometry x="110" y="208" width="250" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="supervisor" value="Supervisor&lt;br&gt;safety-controller" style="rounded=1;whiteSpace=wrap;html=1;dashed=0;strokeColor=#589BE5;fillColor=#152A3E;align=center;verticalAlign=middle;fontSize=16;fontColor=#E6EDF3;" vertex="1" parent="1">
+          <mxGeometry x="110" y="410" width="250" height="64" as="geometry" />
+        </mxCell>
+        <mxCell id="explorer" value="Collaborator&lt;br&gt;file-explorer" style="rounded=1;whiteSpace=wrap;html=1;dashed=0;strokeColor=#57A83A;fillColor=#16301C;align=center;verticalAlign=middle;fontSize=16;fontColor=#E6EDF3;" vertex="1" parent="1">
+          <mxGeometry x="110" y="606" width="250" height="64" as="geometry" />
+        </mxCell>
+        <mxCell id="analyst" value="Collaborator&lt;br&gt;knowledge-analyst" style="rounded=1;whiteSpace=wrap;html=1;dashed=0;strokeColor=#57A83A;fillColor=#16301C;align=center;verticalAlign=middle;fontSize=16;fontColor=#E6EDF3;" vertex="1" parent="1">
+          <mxGeometry x="110" y="800" width="250" height="64" as="geometry" />
+        </mxCell>
+        <mxCell id="auditor" value="Reviewer&lt;br&gt;compliance-auditor" style="rounded=1;whiteSpace=wrap;html=1;dashed=0;strokeColor=#ED7100;fillColor=#3A2412;align=center;verticalAlign=middle;fontSize=16;fontColor=#E6EDF3;" vertex="1" parent="1">
+          <mxGeometry x="110" y="996" width="250" height="64" as="geometry" />
+        </mxCell>
+        <mxCell id="answer" value="Final answer to the user&lt;br&gt;Summary + filtered results" style="rounded=1;whiteSpace=wrap;html=1;dashed=0;strokeColor=#E6EDF3;fillColor=#2D333B;align=center;verticalAlign=middle;fontSize=16;fontColor=#E6EDF3;" vertex="1" parent="1">
+          <mxGeometry x="110" y="1182" width="250" height="80" as="geometry" />
         </mxCell>
         <mxCell id="d-notes" value="&lt;b&gt;Notes&lt;/b&gt;&lt;br&gt;&lt;b&gt;*1 The Supervisor brokers every step&lt;/b&gt;&lt;br&gt;Collaborators never talk to each other directly; the Supervisor passes&lt;br&gt;the instructions and the results&lt;br&gt;&lt;b&gt;*2 What the user experiences&lt;/b&gt;&lt;br&gt;One chat message completes several phases, and the intermediate&lt;br&gt;exchanges stay hidden" style="rounded=1;whiteSpace=wrap;html=1;dashed=1;dashPattern=8 4;strokeColor=#E6EDF3;fillColor=#21262D;align=left;verticalAlign=top;spacingLeft=10;spacingTop=4;fontSize=16;fontColor=#E6EDF3;" vertex="1" parent="1">
-          <mxGeometry x="1135" y="346" width="640" height="175" as="geometry" />
+          <mxGeometry x="-280" y="1336" width="640" height="175" as="geometry" />
         </mxCell>
       </root>
     </mxGraphModel>

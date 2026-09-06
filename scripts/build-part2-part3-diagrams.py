@@ -118,14 +118,16 @@ def part2_arp_lifecycle() -> Diagram:
         id="part2-arp-incident-lifecycle",
         name="Part2 ARP Incident Lifecycle",
         title="ARP/AI インシデントライフサイクル — 4 状態での管理",
-        # Wider than the default because "Investigate" is one word and cannot be
-        # wrapped to fit the gap at the label floor.
-        grid=Grid(col_pitch=310),
+        # One column, like the other state pipeline in this set. Four states in a row
+        # needed a 310 pitch to hold "Investigate" -- one word, so unwrappable -- and
+        # the canvas that bought was 1158 px, which asks for a 19 px label. Stacked,
+        # the transition labels sit on vertical runs and the pitch stops mattering.
+        grid=Grid(col_pitch=310, box_w=240),
         nodes=[
             Node("detected", "検知 (Detected)", 0, 0, BOX, fill=RED, stroke="#DD344C"),
-            Node("contained", "封じ込め (Contained)", 1, 0, BOX, fill=ORANGE, stroke="#ED7100"),
-            Node("investigating", "調査中 (Investigating)", 2, 0, BOX, fill=YELLOW, stroke="#B7950B"),
-            Node("resolved", "解決済み (Resolved)", 3, 0, BOX, fill=GREEN, stroke="#3F8624"),
+            Node("contained", "封じ込め (Contained)", 0, 1, BOX, fill=ORANGE, stroke="#ED7100"),
+            Node("investigating", "調査中 (Investigating)", 0, 2, BOX, fill=YELLOW, stroke="#B7950B"),
+            Node("resolved", "解決済み (Resolved)", 0, 3, BOX, fill=GREEN, stroke="#3F8624"),
         ],
         edges=[
             Edge("detected", "contained", "封じ込め<br>実行"),
@@ -151,19 +153,23 @@ def part2_audit_log() -> Diagram:
         id="part2-audit-log-pipeline",
         name="Part2 Audit Log Pipeline",
         title="Audit Log — 「誰がいつ何にアクセスしたか」を UI で確認する経路",
+        # Two columns, not six. The query path used to run left to right across six
+        # columns, and a canvas that wide is scaled to a third in a reader's column,
+        # which is what put this diagram below the label floor. Depth costs nothing:
+        # rows do not compete for the width the reader gives the image.
         grid=Grid(col_pitch=250),
         nodes=[
             Node("browser", "利用者（Web ブラウザ）", 0, 0, RESOURCE, USERS),
-            Node("appsync", "AWS AppSync", 1, 0, SERVICE, APPSYNC),
-            Node("lambda", "AWS Lambda", 2, 0, SERVICE, LAMBDA),
-            Node("athena", "Amazon Athena", 3, 0, SERVICE, ATHENA),
-            Node("glue", "AWS Glue<br>(Data Catalog)", 3, 1, SERVICE, GLUE),
-            Node("s3logs", "Amazon S3<br>(CloudTrail ログ)", 4, 0, SERVICE, S3),
+            Node("appsync", "AWS AppSync", 0, 1, SERVICE, APPSYNC),
+            Node("lambda", "AWS Lambda", 0, 2, SERVICE, LAMBDA),
+            Node("athena", "Amazon Athena", 0, 3, SERVICE, ATHENA),
+            Node("glue", "AWS Glue<br>(Data Catalog)", 1, 3, SERVICE, GLUE),
+            Node("s3logs", "Amazon S3<br>(CloudTrail ログ)", 0, 4, SERVICE, S3),
             # same row as the bucket, so the connector stays a straight horizontal
             # run and never crosses the bucket's label
-            Node("cloudtrail", "AWS CloudTrail", 5, 0, SERVICE, CLOUDTRAIL),
+            Node("cloudtrail", "AWS CloudTrail", 1, 4, SERVICE, CLOUDTRAIL),
         ],
-        groups=[Group("aws-cloud", "AWS Cloud", (1, 5), (0, 1))],
+        groups=[Group("aws-cloud", "AWS Cloud", (0, 1), (1, 4))],
         edges=[
             Edge("browser", "appsync", "監査クエリ"),
             Edge("appsync", "lambda"),
@@ -336,25 +342,30 @@ def part3_agentchat() -> Diagram:
         id="part3-agentchat-modes",
         name="Part3 AgentChat Modes",
         title="AgentChat — 3 モードと MCP ツール経由のファイルアクセス",
+        # Three columns, not seven. This was the widest diagram in the set at 1739 px,
+        # and the one the label floor punished hardest: fitting its labels by widening
+        # the pitch reached 61 px on a 3815 px canvas, which is compliant arithmetic and
+        # an unreadable image. The request path and the tool chain both run downwards
+        # now; only the mode fan-out spends width, because three boxes beside one source
+        # is what it is.
         grid=Grid(col_pitch=250),
         nodes=[
-            Node("browser", "利用者（Web ブラウザ）", 0, 1, RESOURCE, USERS),
-            Node("appsync", "AWS AppSync", 1, 1, SERVICE, APPSYNC),
-            Node("agent", "AWS Lambda<br>(AgentChat)", 2, 1, SERVICE, LAMBDA),
+            Node("browser", "利用者（Web ブラウザ）", 2, 0, RESOURCE, USERS),
+            Node("appsync", "AWS AppSync", 2, 1, SERVICE, APPSYNC),
+            Node("agent", "AWS Lambda<br>(AgentChat)", 2, 2, SERVICE, LAMBDA),
             # mode names follow the handler: TOOLS_BY_MODE = {multi, kb, agent}.
             # kb is limited to the kb_search tool, agent to the file tools.
-            Node("m_kb", "mode=kb<br>セマンティック検索のみ", 3, 0, BOX, fill=GREY),
-            Node("m_agent", "mode=agent<br>ファイルツールのみ", 3, 1, BOX, fill=GREY),
-            Node("m_multi", "mode=multi<br>全ツールで協調", 3, 2, BOX, fill=GREY),
-            Node("kb", "Amazon Bedrock<br>(Knowledge Bases)", 4, 0, SERVICE, BEDROCK),
-            Node("bedrock", "Amazon Bedrock", 4, 1, SERVICE, BEDROCK),
-            Node("agentcore", "Amazon Bedrock<br>AgentCore", 5, 1, SERVICE, AGENTCORE),
-            # MCP tool Lambda and the S3 AP share column 6 so their connector does
-            # not run straight through the AgentCore icon in column 5
-            Node("mcp", "AWS Lambda<br>(MCP ツール)", 6, 1, SERVICE, LAMBDA),
-            Node("s3ap", "Amazon S3 Access Point", 6, 0, RESOURCE, S3AP),
+            Node("m_kb", "mode=kb<br>セマンティック検索のみ", 3, 1, BOX, fill=GREY),
+            Node("m_agent", "mode=agent<br>ファイルツールのみ", 3, 2, BOX, fill=GREY),
+            Node("m_multi", "mode=multi<br>全ツールで協調", 3, 3, BOX, fill=GREY),
+            Node("kb", "Amazon Bedrock<br>(Knowledge Bases)", 4, 1, SERVICE, BEDROCK),
+            Node("bedrock", "Amazon Bedrock", 4, 2, SERVICE, BEDROCK),
+            # the tool chain continues downwards rather than to the right
+            Node("agentcore", "Amazon Bedrock<br>AgentCore", 4, 3, SERVICE, AGENTCORE),
+            Node("mcp", "AWS Lambda<br>(MCP ツール)", 4, 4, SERVICE, LAMBDA),
+            Node("s3ap", "Amazon S3 Access Point", 3, 4, RESOURCE, S3AP),
         ],
-        groups=[Group("aws-cloud", "AWS Cloud", (1, 6), (0, 2))],
+        groups=[Group("aws-cloud", "AWS Cloud", (2, 4), (1, 4))],
         edges=[
             Edge("browser", "appsync", "チャット送信"),
             Edge("appsync", "agent"),
@@ -388,29 +399,31 @@ def part3_semantic_search() -> Diagram:
         id="part3-semantic-search",
         name="Part3 Semantic Search",
         title="SemanticSearch — Bedrock Knowledge Bases によるベクトル検索",
-        # Wider than the default because "RetrieveAndGenerate" is an API name: it can
-        # be neither shortened nor wrapped, and at the label floor it needs the room.
-        grid=Grid(col_pitch=265),
+        # Three columns, not five. "RetrieveAndGenerate" is an API name that can be
+        # neither shortened nor wrapped, and widening the pitch to fit it at the label
+        # floor spiralled: wider canvas, larger floor, wider label. Running the query
+        # path downwards makes the room instead of buying it.
+        grid=Grid(col_pitch=250),
         nodes=[
-            Node("browser", "利用者（Web ブラウザ）", 0, 0, RESOURCE, USERS),
-            Node("appsync", "AWS AppSync", 1, 0, SERVICE, APPSYNC),
-            Node("lambda", "AWS Lambda", 2, 0, SERVICE, LAMBDA),
-            Node("kb", "Amazon Bedrock<br>(Knowledge Bases)", 3, 0, SERVICE, BEDROCK),
-            Node("oss", "Amazon OpenSearch<br>Service", 4, 0, SERVICE, OPENSEARCH),
+            Node("s3ap", "Amazon S3 Access Point", 0, 3, RESOURCE, S3AP),
+            Node("fsxn", "Amazon FSx for<br>NetApp ONTAP", 0, 4, SERVICE, FSXN),
+            Node("browser", "利用者（Web ブラウザ）", 1, 0, RESOURCE, USERS),
+            Node("appsync", "AWS AppSync", 1, 1, SERVICE, APPSYNC),
+            Node("lambda", "AWS Lambda", 1, 2, SERVICE, LAMBDA),
+            Node("kb", "Amazon Bedrock<br>(Knowledge Bases)", 1, 3, SERVICE, BEDROCK),
             # directly under Knowledge Bases, so its edge label does not land on the
             # OpenSearch edge label
             Node(
                 "embed",
                 "Amazon Bedrock<br>(Titan Text Embeddings V2)",
-                3,
                 1,
+                4,
                 SERVICE,
                 BEDROCK,
             ),
-            Node("s3ap", "Amazon S3 Access Point", 2, 2, RESOURCE, S3AP),
-            Node("fsxn", "Amazon FSx for<br>NetApp ONTAP", 1, 2, SERVICE, FSXN),
+            Node("oss", "Amazon OpenSearch<br>Service", 2, 3, SERVICE, OPENSEARCH),
         ],
-        groups=[Group("aws-cloud", "AWS Cloud", (1, 4), (0, 2))],
+        groups=[Group("aws-cloud", "AWS Cloud", (0, 2), (1, 4))],
         edges=[
             Edge("browser", "appsync", "検索クエリ"),
             Edge("appsync", "lambda"),
@@ -419,8 +432,7 @@ def part3_semantic_search() -> Diagram:
             # clearance from the two-line Knowledge Bases label is applied
             # automatically (see vertical_label_shortfall)
             Edge("kb", "embed", "埋め込み生成"),
-            # land on the vertical run, right of the line, clear of the Lambda label
-            Edge("kb", "s3ap", "データソース同期", at=0.5, dx=85),
+            Edge("kb", "s3ap", "データソース同期"),
             Edge("s3ap", "fsxn"),
         ],
         notes=[
@@ -441,16 +453,21 @@ def part3_agent_teams() -> Diagram:
         id="part3-agent-teams",
         name="Part3 Agent Teams",
         title="Agent Teams — Supervisor が調整するマルチエージェント協調",
-        # 290 keeps a >=100px gap between boxes, which the longest English step
-        # label ("4.<br>Consolidate") needs; the Japanese labels are narrower
-        grid=Grid(col_pitch=290, box_w=180),
+        # One column. Six boxes in a row put every step label in the gap between two
+        # of them, and the English labels ("1.<br>Explore", "4. Consolidate") did not fit
+        # a gap this pitch could afford at the label floor. Stacked, the same labels
+        # sit on vertical runs, which no pitch has to accommodate. box_w carries the
+        # widest label line instead -- 250 covers "Summary + filtered results", because
+        # `whiteSpace=wrap` is not applied on export and a box label only breaks where
+        # a <br> says so.
+        grid=Grid(col_pitch=290, box_w=250),
         nodes=[
             Node("user", "利用者の指示<br>「engineering/ を分析して」", 0, 0, BOX, fill=GREY, h=80),
-            Node("supervisor", "Supervisor<br>safety-controller", 1, 0, BOX, fill=BLUE, stroke="#2E73B8"),
-            Node("explorer", "Collaborator<br>file-explorer", 2, 0, BOX, fill=GREEN, stroke="#3F8624"),
-            Node("analyst", "Collaborator<br>knowledge-analyst", 3, 0, BOX, fill=GREEN, stroke="#3F8624"),
-            Node("auditor", "Reviewer<br>compliance-auditor", 4, 0, BOX, fill=ORANGE, stroke="#ED7100"),
-            Node("answer", "利用者への最終回答<br>要約 + フィルタリング結果", 5, 0, BOX, fill=GREY, h=80),
+            Node("supervisor", "Supervisor<br>safety-controller", 0, 1, BOX, fill=BLUE, stroke="#2E73B8"),
+            Node("explorer", "Collaborator<br>file-explorer", 0, 2, BOX, fill=GREEN, stroke="#3F8624"),
+            Node("analyst", "Collaborator<br>knowledge-analyst", 0, 3, BOX, fill=GREEN, stroke="#3F8624"),
+            Node("auditor", "Reviewer<br>compliance-auditor", 0, 4, BOX, fill=ORANGE, stroke="#ED7100"),
+            Node("answer", "利用者への最終回答<br>要約 + フィルタリング結果", 0, 5, BOX, fill=GREY, h=80),
         ],
         edges=[
             Edge("user", "supervisor"),
@@ -489,8 +506,8 @@ EN: dict[str, str] = {
     "AWS DataSync<br>(エージェント)": "AWS DataSync<br>(with agent)",
     "AWS DataSync<br>(エージェントレス)": "AWS DataSync<br>(agentless)",
     "Amazon S3<br>(一時保管)": "Amazon S3<br>(staging)",
-    "経路 1: 直行": "Route 1: direct",
-    "経路 2: S3 経由": "Route 2: via S3",
+    "経路 1:<br>直行": "Route 1:<br>direct",
+    "経路 2:<br>S3 経由": "Route 2:<br>via S3",
     "Basic モード": "Basic mode",
     "Enhanced モード": "Enhanced mode",
     "エージェント不要": "No agent",
@@ -510,10 +527,10 @@ EN: dict[str, str] = {
     ),
     "SaaS テナント<br>(Microsoft 365 / Box 等)": "SaaS tenant<br>(Microsoft 365 / Box, etc.)",
     "AWS Lambda<br>(移行ワーカー / VPC 内)": "AWS Lambda<br>(migration worker, in VPC)",
-    "SaaS API 呼び出し": "SaaS API calls",
-    "テナント管理者認可": "Tenant admin grant",
+    "SaaS API<br>呼び出し": "SaaS API<br>calls",
+    "テナント<br>管理者認可": "Tenant admin<br>grant",
     "対象の一覧化と分割": "Enumerate and fan out targets",
-    "NFS / SMB で書き込み": "Write over NFS / SMB",
+    "NFS / SMB<br>で書き込み": "Write over<br>NFS / SMB",
     "移行後の活用経路": "Post-migration access",
     "認可はテナント単位なので利用者ごとの同意は不要": (
         "Authorization is tenant-wide, so per-user consent is not required"
@@ -591,7 +608,7 @@ EN: dict[str, str] = {
     "解決": "Resolve",
     "監査クエリ": "Audit query",
     "SQL 実行": "Run SQL",
-    "テーブル定義を参照": "Read table definition",
+    "テーブル定義を参照": "Read table<br>definition",
     "ログをスキャン": "Scan logs",
     "S3 データイベント<br>を記録": "Record S3 data<br>events",
     "Cognito 認証": "Cognito auth",
@@ -604,9 +621,9 @@ EN: dict[str, str] = {
     "ベクトル検索": "Vector search",
     "埋め込み生成": "Embeddings",
     "データソース同期": "Sync data source",
-    "① 探索": "1. Explore",
-    "② 分析": "2. Analyze",
-    "③ 検証": "3. Review",
+    "① 探索": "1.<br>Explore",
+    "② 分析": "2.<br>Analyze",
+    "③ 検証": "3.<br>Review",
     "④ 統合": "4.<br>Consolidate",
     # ---- notes ----------------------------------------------------------------
     "権限分離は Cognito Groups で行う": "Cognito Groups separate the privileges",
@@ -723,9 +740,9 @@ def saas_group_a_routes() -> Diagram:
         ],
         groups=[Group("aws-cloud", "AWS Cloud", (1, 3), (0, 1))],
         edges=[
-            Edge("source_a", "agent", "経路 1: 直行"),
+            Edge("source_a", "agent", "経路 1:<br>直行"),
             Edge("agent", "fsxn_direct", "Basic モード"),
-            Edge("source_b", "agentless", "経路 2: S3 経由"),
+            Edge("source_b", "agentless", "経路 2:<br>S3 経由"),
             Edge("agentless", "s3", "Enhanced モード"),
             Edge("s3", "fsxn_staged", "エージェント不要"),
         ],
@@ -758,7 +775,11 @@ def saas_group_b_worker() -> Diagram:
         id="saas-migration-group-b-worker",
         name="SaaS Migration Group B Worker",
         title="群 B（コラボレーション SaaS） — 管理者 API を使う中央実行の構成",
-        grid=Grid(col_pitch=300),
+        # Four columns at a tighter pitch, with the post-migration hop running
+        # downwards. The chain used to occupy five columns at 300, and the long
+        # horizontal labels on it demanded the width twice over: once for the pitch,
+        # again for the larger label the wider canvas then required.
+        grid=Grid(col_pitch=248),
         # Every edge joins adjacent or diagonal cells. An edge that spans an
         # occupied cell is drawn straight through it, which put a label on top of
         # the Amazon SQS icon in the first version of this figure.
@@ -774,15 +795,17 @@ def saas_group_b_worker() -> Diagram:
             Node("worker", "AWS Lambda<br>(移行ワーカー / VPC 内)", 2, 1, SERVICE, LAMBDA),
             Node("sfn", "AWS Step Functions", 2, 2, SERVICE, SFN),
             Node("fsxn", "Amazon FSx for<br>NetApp ONTAP", 3, 1, SERVICE, FSXN),
-            Node("s3ap", "Amazon S3 access point", 4, 1, RESOURCE, S3AP),
+            # below the file system rather than beside it: the label on this hop is
+            # long, and a vertical run does not have to fit it between two icons
+            Node("s3ap", "Amazon S3 access point", 3, 2, RESOURCE, S3AP),
         ],
-        groups=[Group("aws-cloud", "AWS Cloud", (1, 4), (0, 2))],
+        groups=[Group("aws-cloud", "AWS Cloud", (1, 3), (0, 2))],
         edges=[
-            Edge("worker", "natgw", "SaaS API 呼び出し"),
-            Edge("natgw", "saas", "テナント管理者認可"),
+            Edge("worker", "natgw", "SaaS API<br>呼び出し"),
+            Edge("natgw", "saas", "テナント<br>管理者認可"),
             Edge("secrets", "worker", "認証情報の取得"),
             Edge("sfn", "worker", "対象の一覧化と分割"),
-            Edge("worker", "fsxn", "NFS / SMB で書き込み"),
+            Edge("worker", "fsxn", "NFS / SMB<br>で書き込み"),
             Edge("fsxn", "s3ap", "移行後の活用経路"),
         ],
         notes=[
