@@ -133,7 +133,13 @@ ABSENCE = re.compile(
     rf"((?:{_JA_VERBS})(?:していない|していません|されていない|されていません|しておらず|されておらず)"
     rf"|未対応|未サポート|未実装"
     rf"|(?:{_JA_ABLE})(?:できない|できません)"
+    # `拒否しない` rather than a general `〜しない`: the general form sweeps in ordinary
+    # prose, while this one is how a permission or validation boundary is described as
+    # absent. The metrics design record asserted that AMP does not reject a write whose
+    # labels name another source -- a security premise, and an inference from the page
+    # being silent rather than a documented statement -- and this check did not see it.
     r"|存在しない|存在しません|できません|できない|不可能|持たない|持っていない|返さない"
+    r"|拒否しない|拒否しません"
     rf"|(?:does not|doesn't|do not|don't|cannot|can't|will not|won't)\s+(?:{_EN_VERBS})"
     r"|not supported|no support for|unsupported"
     r"|cannot |can't |unavailable|not available|does not exist|no way to|impossible)"
@@ -146,6 +152,13 @@ VENDOR = re.compile(
     r"|Cognito|AppSync|SnapLock|FlexCache|FlexGroup|SnapMirror|S3|Athena|Glue"
     r"|EventBridge|Secrets Manager|Transfer Family|Textract|Comprehend|Rekognition"
     r"|SageMaker|DataSync|Fargate|Lambda|DynamoDB|Step Functions"
+    # Abbreviations a document settles on after naming the service once. A claim of
+    # absence written this way read as prose about nothing in particular: the design
+    # record for the metrics work says "AMP" throughout, and its claim that AMP does
+    # not reject a write whose labels name another source -- a security premise, and an
+    # inference from the page being silent rather than a documented statement -- was
+    # invisible to this check for that reason alone.
+    r"|AMP|AMG"
 )
 
 #: Markers that attach evidence to a line, on the line itself or the one before it.
@@ -547,8 +560,20 @@ def main() -> int:
         # A gate that passes without running is worse than no gate. This asserts the
         # detector fires, rather than trusting that it would.
         sample = "AWS does not support this, and Amazon CloudWatch has no such metric."
+        # Both halves of this one were missing, so the line slipped through on either
+        # count: the abbreviation a document settles on after naming the service once,
+        # and the phrasing that describes a validation boundary as absent.
+        abbreviated = "AMP は偽ラベルの書き込みを拒否しない"
         cases: list[tuple[str, bool]] = [
             ("detector fires on an unmarked claim", bool(ABSENCE.search(sample) and VENDOR.search(sample))),
+            (
+                "a service abbreviation counts as a vendor (AMP, AMG)",
+                bool(VENDOR.search("AMP") and VENDOR.search("AMG")),
+            ),
+            (
+                "a rejection described as absent is an absence claim",
+                bool(ABSENCE.search(abbreviated) and VENDOR.search(abbreviated)),
+            ),
             ("a ledger reference suppresses it", LEDGER_REF.search("AWS does not support this [E-001]") is not None),
             (
                 "an explicit allow with a reason suppresses it",
