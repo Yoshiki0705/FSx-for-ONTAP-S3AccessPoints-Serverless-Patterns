@@ -41,31 +41,44 @@ BOX_H = 64
 SQUID = "#232F3E"
 
 # ---------------------------------------------------------------- styling ----
-TITLE_STYLE = f"text;html=1;align=center;verticalAlign=middle;fontSize=16;fontStyle=1;fontColor={SQUID};"
+# Every label size here is at or above the source floor in docs/agent/diagram-label-size.md.
+#
+# 16 is the floor, not a target: it is what a diagram exported at 880 px or less needs to
+# arrive at 14 px in a reader's column. A wider canvas is scaled down further and needs
+# more -- 1200 px needs 20, 1716 px needs 28 -- so meeting the floor here does not make a
+# wide diagram compliant. The values were 11 to 14, chosen in the editor where the whole
+# canvas is visible at full size, which is the one place the reader never sees.
+MIN_LABEL_PX = 16
+
+TITLE_STYLE = f"text;html=1;align=center;verticalAlign=middle;fontSize={MIN_LABEL_PX};fontStyle=1;fontColor={SQUID};"
 NOTE_STYLE = (
     "rounded=1;whiteSpace=wrap;html=1;dashed=1;dashPattern=8 4;"
     f"strokeColor={SQUID};fillColor=#FFFFFF;align=left;verticalAlign=top;"
-    f"spacingLeft=10;spacingTop=4;fontSize=11;fontColor={SQUID};"
+    f"spacingLeft=10;spacingTop=4;fontSize={MIN_LABEL_PX};fontColor={SQUID};"
 )
 EDGE_STYLE = (
     "edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;"
     f"endArrow=open;endFill=0;strokeColor={SQUID};strokeWidth=1;"
-    f"fontSize=12;fontColor={SQUID};labelBackgroundColor=#ffffff;"
+    f"fontSize={MIN_LABEL_PX};fontColor={SQUID};labelBackgroundColor=#ffffff;"
 )
 BOX_STYLE = (
     "rounded=1;whiteSpace=wrap;html=1;dashed=0;strokeColor={stroke};"
-    "fillColor={fill};align=center;verticalAlign=middle;fontSize=12;"
+    "fillColor={fill};align=center;verticalAlign=middle;"
+    f"fontSize={MIN_LABEL_PX};"
     f"fontColor={SQUID};"
 )
 GROUP_STYLE = (
     "points=[[0,0],[0.25,0],[0.5,0],[0.75,0],[1,0],[1,0.25],[1,0.5],[1,0.75],[1,1],"
     "[0.75,1],[0.5,1],[0.25,1],[0,1],[0,0.75],[0,0.5],[0,0.25]];outlineConnect=0;"
-    "gradientColor=none;html=1;whiteSpace=wrap;fontSize=14;fontStyle=1;"
+    "gradientColor=none;html=1;whiteSpace=wrap;"
+    f"fontSize={MIN_LABEL_PX};fontStyle=1;"
     "shape=mxgraph.aws4.group;grIcon=mxgraph.aws4.{gr};"
     "strokeColor={stroke};fillColor=none;verticalAlign=top;align=left;"
     "spacingLeft=30;fontColor={stroke};dashed=0;"
 )
-SECTION_LABEL_STYLE = "text;html=1;align=center;verticalAlign=middle;fontSize=13;fontStyle=1;fontColor=#ED7100;"
+SECTION_LABEL_STYLE = (
+    f"text;html=1;align=center;verticalAlign=middle;fontSize={MIN_LABEL_PX};fontStyle=1;fontColor=#ED7100;"
+)
 
 SERVICE = "service"
 RESOURCE = "resource"
@@ -145,7 +158,7 @@ class Node:
         return cx - half, cx + half
 
 
-def text_width(label: str, font_size: int = 13) -> float:
+def text_width(label: str, font_size: int = MIN_LABEL_PX) -> float:
     """Rough rendered width of the widest line, for collision-free bounds.
 
     Full-width (CJK) glyphs advance ~1.0em, ASCII ~0.55em.
@@ -249,7 +262,7 @@ def check_edge_labels(diagram: Diagram) -> list[str]:
         sx, _, sw, _ = s.rect(grid)
         tx, _, tw, _ = t.rect(grid)
         gap = max(tx - (sx + sw), sx - (tx + tw))
-        need = text_width(e.label, font_size=12)
+        need = text_width(e.label, font_size=MIN_LABEL_PX)
         if need > gap - 8:
             problems.append(
                 f"edge {e.source}->{e.target}: label '{e.label}' needs ~{need:.0f}px "
@@ -258,8 +271,11 @@ def check_edge_labels(diagram: Diagram) -> list[str]:
     return problems
 
 
-LABEL_LINE_H = 18  # rendered line height of a 13px icon label
-EDGE_LABEL_HALF_H = 9  # half the rendered height of a 12px edge label
+# Rendered line height of an icon label, from the label font size. Was a bare 18 for a
+# 13px label; left behind when the label grew, it under-reserved the band below a node
+# and an edge label landed on the label's second line.
+LABEL_LINE_H = round(MIN_LABEL_PX * 18 / 13)
+EDGE_LABEL_HALF_H = round(MIN_LABEL_PX * 9 / 12)  # half the rendered height, from the font size
 LABEL_BAND_GAP = 14  # breathing room between a node label and an edge label
 ARROWHEAD_KEEPOUT = 14  # keep a pushed-down label off the arrowhead
 
@@ -359,8 +375,11 @@ class IconResolver:
         return uri
 
 
-NOTE_FONT_SIZE = 11
-NOTE_LINE_H = 16
+# The size the note text is wrapped for. It has to be the size it is rendered at: when
+# these were separate numbers, the box was measured for 11 px text and drawn at 16, so
+# the wrap ran past the right border and the last line was cut off by the bottom one.
+NOTE_FONT_SIZE = MIN_LABEL_PX
+NOTE_LINE_H = round(MIN_LABEL_PX * 16 / 11)  # keeps the 11px:16px line-height ratio
 NOTE_PADDING = 20  # spacingLeft plus an equal right margin
 
 
@@ -476,7 +495,7 @@ def build(diagram: Diagram, icons: IconResolver) -> str:
             style = (
                 "sketch=0;html=1;shape=image;verticalLabelPosition=bottom;"
                 "verticalAlign=top;labelPosition=center;align=center;"
-                f"imageAspect=1;aspect=fixed;fontSize=13;fontColor={SQUID};"
+                f"imageAspect=1;aspect=fixed;fontSize={MIN_LABEL_PX};fontColor={SQUID};"
                 f"image={uri};"
             )
         else:

@@ -86,13 +86,15 @@ def part2_overview() -> Diagram:
             Node("amplify", "AWS Amplify", 2, 1, SERVICE, AMPLIFY),
             Node("appsync", "AWS AppSync", 2, 2, SERVICE, APPSYNC),
             Node("lambda", "AWS Lambda<br>(VPC 内)", 2, 3, SERVICE, LAMBDA),
-            Node("secrets", "AWS Secrets Manager", 3, 3, SERVICE, SECRETS),
+            # Two lines: at the label floor the single-line form is wider than the
+            # column and ran past the AWS Cloud boundary on the right.
+            Node("secrets", "AWS Secrets<br>Manager", 3, 3, SERVICE, SECRETS),
             Node("fsxn", "Amazon FSx for<br>NetApp ONTAP", 2, 4, SERVICE, FSXN),
         ],
         groups=[Group("aws-cloud", "AWS Cloud", (1, 3), (1, 4))],
         edges=[
             Edge("browser", "amplify", "HTTPS"),
-            Edge("amplify", "cognito", "認証 / グループ判定"),
+            Edge("amplify", "cognito", "認証 /<br>グループ判定"),
             Edge("amplify", "appsync"),
             Edge("appsync", "lambda"),
             Edge("lambda", "secrets", "認証情報の取得"),
@@ -116,7 +118,9 @@ def part2_arp_lifecycle() -> Diagram:
         id="part2-arp-incident-lifecycle",
         name="Part2 ARP Incident Lifecycle",
         title="ARP/AI インシデントライフサイクル — 4 状態での管理",
-        grid=Grid(col_pitch=290),
+        # Wider than the default because "Investigate" is one word and cannot be
+        # wrapped to fit the gap at the label floor.
+        grid=Grid(col_pitch=310),
         nodes=[
             Node("detected", "検知 (Detected)", 0, 0, BOX, fill=RED, stroke="#DD344C"),
             Node("contained", "封じ込め (Contained)", 1, 0, BOX, fill=ORANGE, stroke="#ED7100"),
@@ -124,7 +128,7 @@ def part2_arp_lifecycle() -> Diagram:
             Node("resolved", "解決済み (Resolved)", 3, 0, BOX, fill=GREEN, stroke="#3F8624"),
         ],
         edges=[
-            Edge("detected", "contained", "封じ込め実行"),
+            Edge("detected", "contained", "封じ込め<br>実行"),
             Edge("contained", "investigating", "調査開始"),
             Edge("investigating", "resolved", "解決"),
         ],
@@ -166,7 +170,7 @@ def part2_audit_log() -> Diagram:
             Edge("lambda", "athena", "SQL 実行"),
             Edge("athena", "glue", "テーブル定義を参照"),
             Edge("athena", "s3logs", "ログをスキャン"),
-            Edge("cloudtrail", "s3logs", "S3 データイベントを記録"),
+            Edge("cloudtrail", "s3logs", "S3 データイベント<br>を記録"),
         ],
         notes=[
             (
@@ -310,7 +314,7 @@ def part3_overview() -> Diagram:
             Edge("appsync", "agent"),
             Edge("agent", "bedrock", "推論"),
             Edge("agent", "agentcore", "MCP"),
-            Edge("agentcore", "mcp", "Lambda 呼び出し"),
+            Edge("agentcore", "mcp", "Lambda<br>呼び出し"),
             Edge("mcp", "s3ap", "S3 API"),
             Edge("s3ap", "fsxn"),
         ],
@@ -384,7 +388,9 @@ def part3_semantic_search() -> Diagram:
         id="part3-semantic-search",
         name="Part3 Semantic Search",
         title="SemanticSearch — Bedrock Knowledge Bases によるベクトル検索",
-        grid=Grid(col_pitch=250),
+        # Wider than the default because "RetrieveAndGenerate" is an API name: it can
+        # be neither shortened nor wrapped, and at the label floor it needs the room.
+        grid=Grid(col_pitch=265),
         nodes=[
             Node("browser", "利用者（Web ブラウザ）", 0, 0, RESOURCE, USERS),
             Node("appsync", "AWS AppSync", 1, 0, SERVICE, APPSYNC),
@@ -436,7 +442,7 @@ def part3_agent_teams() -> Diagram:
         name="Part3 Agent Teams",
         title="Agent Teams — Supervisor が調整するマルチエージェント協調",
         # 290 keeps a >=100px gap between boxes, which the longest English step
-        # label ("4. Consolidate") needs; the Japanese labels are narrower
+        # label ("4.<br>Consolidate") needs; the Japanese labels are narrower
         grid=Grid(col_pitch=290, box_w=180),
         nodes=[
             Node("user", "利用者の指示<br>「engineering/ を分析して」", 0, 0, BOX, fill=GREY, h=80),
@@ -578,20 +584,20 @@ EN: dict[str, str] = {
     "利用者の指示<br>「engineering/ を分析して」": ("User request<br>&quot;Analyze engineering/&quot;"),
     "利用者への最終回答<br>要約 + フィルタリング結果": ("Final answer to the user<br>Summary + filtered results"),
     # ---- edge labels ----------------------------------------------------------
-    "認証 / グループ判定": "Auth / groups",
-    "認証情報の取得": "Get credentials",
-    "封じ込め実行": "Contain",
+    "認証 /<br>グループ判定": "Auth / groups",
+    "認証情報の取得": "Get<br>credentials",
+    "封じ込め<br>実行": "Contain",
     "調査開始": "Investigate",
     "解決": "Resolve",
     "監査クエリ": "Audit query",
     "SQL 実行": "Run SQL",
     "テーブル定義を参照": "Read table definition",
     "ログをスキャン": "Scan logs",
-    "S3 データイベントを記録": "Record S3 data events",
+    "S3 データイベント<br>を記録": "Record S3 data<br>events",
     "Cognito 認証": "Cognito auth",
     "fsxadmin 認証情報": "fsxadmin credentials",
     "推論": "Inference",
-    "Lambda 呼び出し": "Invoke Lambda",
+    "Lambda<br>呼び出し": "Invoke Lambda",
     "チャット送信": "Send chat",
     "ツール呼び出し": "Tool call",
     "検索クエリ": "Search query",
@@ -601,7 +607,7 @@ EN: dict[str, str] = {
     "① 探索": "1. Explore",
     "② 分析": "2. Analyze",
     "③ 検証": "3. Review",
-    "④ 統合": "4. Consolidate",
+    "④ 統合": "4.<br>Consolidate",
     # ---- notes ----------------------------------------------------------------
     "権限分離は Cognito Groups で行う": "Cognito Groups separate the privileges",
     "storage-admin グループのみが変更操作を実行でき、一般ユーザーは閲覧のみ": (
