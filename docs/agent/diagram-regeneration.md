@@ -14,10 +14,10 @@
 
 ```
 docs/diagrams/                     # .drawio（Part1 は手書きソース / Part2・3 は生成物）
-├── file-portal-overview.drawio            # Part1: JA authoring（直接編集する）
-├── file-portal-architecture.drawio
-├── nextcloud-only-architecture.drawio
-├── amplify-nextcloud-combined-architecture.drawio
+├── architecture-overview.drawio            # Part1: JA authoring（直接編集する）
+├── amplify-vpc-split.drawio
+├── nextcloud-external-storage.drawio
+├── coexistence-3path.drawio
 ├── part2-*.drawio / part3-*.drawio        # 生成物（手編集禁止 / spec は scripts/ 側）
 ├── *-en.drawio                            # 生成物（手編集禁止）
 └── dark/*.drawio                          # 生成物（手編集禁止 / ライト版から派生）
