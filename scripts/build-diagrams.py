@@ -117,31 +117,42 @@ def part1_overview() -> Diagram:
         id="architecture-overview",
         name="Part1 Overview",
         title="FSx for ONTAP S3 Access Points — ファイルポータル全体構成",
-        grid=Grid(col_pitch=340, row_pitch=175, box_w=300),
+        grid=Grid(col_pitch=320, row_pitch=175, box_w=300),
+        # Every edge advances rightwards or downwards, so the users sit at the top left
+        # rather than centred above the two portals. Centred reads better in isolation
+        # and costs the figure its reading order: the left arm then runs down *and*
+        # left, and once one line runs backwards a reader cannot assume any of them.
         nodes=[
-            Node("users", "利用者（Web ブラウザ）", 1, 0, RESOURCE, icon=USERS),
+            Node("users", "利用者（Web ブラウザ）", 0, 0, RESOURCE, icon=USERS),
             Node("amplify", "AWS Amplify<br>(Gen2 / AI 処理ダッシュボード)", 0, 1, icon=AMPLIFY),
-            Node("nextcloud", "Amazon EC2<br>(Nextcloud / ファイル共有 UI)", 2, 1, icon=EC2),
+            Node("nextcloud", "Amazon EC2<br>(Nextcloud / ファイル共有 UI)", 1, 1, icon=EC2),
             Node(
                 "ai_group",
-                "AWS Lambda + AI サービス<br>(Amazon Bedrock / Amazon Textract / Amazon Athena ほか)",
-                0.5,
+                # Three lines in column 0, not two spanning half of column 1. A 520px
+                # box centred between the columns reached past the middle column, and
+                # the instance's run down to the access point then passed behind it,
+                # clipping its own label against the top edge of the box.
+                "AWS Lambda + AI サービス<br>(Amazon Bedrock / Amazon Textract<br>Amazon Athena ほか)",
+                0,
                 2,
                 BOX,
-                w=520,
-                h=86,
+                w=440,
+                h=104,
             ),
             Node("s3ap", "Amazon S3 Access Point", 1, 3, RESOURCE, icon=S3AP),
             Node("fsxn", "Amazon FSx for<br>NetApp ONTAP", 1, 4, icon=FSXN),
-            Node("nfs_client", NFS_LABEL, 0, 5, RESOURCE, icon=SERVER),
+            Node("nfs_client", NFS_LABEL, 1, 5, RESOURCE, icon=SERVER),
             Node("smb_client", SMB_LABEL, 2, 5, RESOURCE, icon=CLIENT),
         ],
         edges=[
-            Edge("users", "amplify", "HTTPS"),
+            # Into the band between the cloud frame and the icon. Left to the automatic
+            # offset it landed immediately under the users label and read as a third
+            # line of it.
+            Edge("users", "amplify", "HTTPS", dy=30),
             Edge("users", "nextcloud", "HTTPS"),
             Edge("amplify", "ai_group"),
             Edge("ai_group", "s3ap", "S3 API"),
-            Edge("nextcloud", "s3ap", "S3 API<br>(External Storage)", at=-0.6),
+            Edge("nextcloud", "s3ap", "S3 API<br>(External Storage)", at=-0.5, dy=8),
             Edge("s3ap", "fsxn"),
             Edge("fsxn", "nfs_client", "NFS"),
             Edge("fsxn", "smb_client", "SMB"),
@@ -163,47 +174,54 @@ def part1_nextcloud() -> Diagram:
         name="Part1 Nextcloud",
         title="FSx for ONTAP S3 Access Points — Nextcloud によるファイル共有 UI 構成",
         grid=Grid(col_pitch=310, row_pitch=170, box_w=270),
+        # The request path is one column descending on the left; everything the instance
+        # reaches sideways hangs off it to the right. Laid out with the access point in
+        # the middle column, the scheduled pipeline on the right had to come back
+        # leftwards to reach it, and the figure then had no single reading direction.
         nodes=[
-            # Directly above the load balancer it enters, so the first hop is a
-            # straight drop. At column 1 it sat above the instance instead, with its
-            # own arrow leaving sideways to a box two columns away.
-            Node("browser", "Web ブラウザ<br>(ファイル管理 + 同期)", 0, 0, RESOURCE, icon=USERS),
-            Node("rds", "Amazon RDS<br>(MariaDB)", 2, 1, icon=RDS),
+            # One line, because this node sits directly above the cloud frame's own
+            # title. A second line reaches down into it and the two names overlap.
+            Node("browser", "Web ブラウザ（ファイル管理・同期）", 0, 0, RESOURCE, icon=USERS),
             Node("alb", "Elastic Load Balancing", 0, 1, icon=ELB),
-            Node("nextcloud", "Amazon EC2<br>(Nextcloud / Docker)", 1, 1, icon=EC2),
-            Node("eventbridge", "Amazon EventBridge<br>Scheduler", 2, 2, icon=EVENTBRIDGE),
+            Node("nextcloud", "Amazon EC2<br>(Nextcloud / Docker)", 0, 2, icon=EC2),
+            Node("rds", "Amazon RDS<br>(MariaDB)", 1, 2, icon=RDS),
+            Node("eventbridge", "Amazon EventBridge<br>Scheduler", 1, 3, icon=EVENTBRIDGE),
+            Node("sfn", "AWS Step Functions<br>(UC1-28)", 1, 4, icon=SFN),
             Node(
                 "ai_group",
                 # Broken by hand: left to wrap, the third line began "Amazon" and the
                 # fourth began "Athena".
                 "AI サービス<br>(Amazon Bedrock / Amazon Rekognition<br>Amazon Athena / Amazon Comprehend)",
-                0,
-                3,
+                2,
+                4,
                 BOX,
                 w=440,
                 h=96,
             ),
-            Node("sfn", "AWS Step Functions<br>(UC1-28)", 2, 3, icon=SFN),
-            Node("s3ap", "Amazon S3 Access Point<br>(Internet origin)", 1, 4, RESOURCE, icon=S3AP),
-            Node("fsxn", "Amazon FSx for<br>NetApp ONTAP", 1, 5, icon=FSXN),
-            Node("nfs_client", NFS_LABEL, 0, 6, RESOURCE, icon=SERVER),
-            Node("smb_client", SMB_LABEL, 2, 6, RESOURCE, icon=CLIENT),
+            Node("s3ap", "Amazon S3 Access Point<br>(Internet origin)", 1, 5, RESOURCE, icon=S3AP),
+            Node("fsxn", "Amazon FSx for<br>NetApp ONTAP", 1, 6, icon=FSXN),
+            Node("nfs_client", NFS_LABEL, 1, 7, RESOURCE, icon=SERVER),
+            Node("smb_client", SMB_LABEL, 2, 7, RESOURCE, icon=CLIENT),
         ],
         edges=[
             # Placed by hand into the band between the cloud frame and the load
             # balancer. The automatic offset moved it up, away from the group's own
             # label, and it landed inside the browser's two-line label, where the node
             # paints over it and the label simply disappears.
-            Edge("browser", "alb", "HTTPS", dy=28),
+            Edge("browser", "alb", "HTTPS", dy=40),
             Edge("alb", "nextcloud"),
             Edge("nextcloud", "rds"),
+            # Both of the instance's remaining edges leave downwards in their own lane
+            # and turn right at their target's row. Allowed to leave sideways, each
+            # turned right at the instance's own row instead, where the two labels
+            # landed on each other and on the database icon between them.
             Edge(
                 "nextcloud",
                 "eventbridge",
                 "Webhook / Schedule",
-                # Pushed toward the scheduler. At the path midpoint it sat on the
-                # External Storage label, which rides the next column's vertical.
-                at=0.45,
+                # Held back from the scheduler: at the far end of the run the label
+                # overlapped the icon it points at.
+                at=0.3,
                 exit=(0.75, 1),
                 entry=(0, 0.5),
             ),
@@ -212,13 +230,21 @@ def part1_nextcloud() -> Diagram:
             # Unlabelled on purpose. "S3 AP" restated what the target icon already
             # says, and on this two-bend route it came to rest away from every
             # segment, so it read as belonging to nothing.
-            Edge("sfn", "s3ap", exit=(0.25, 1)),
-            Edge("nextcloud", "s3ap", "External Storage<br>(S3 API)", at=-0.5),
+            Edge("sfn", "s3ap"),
+            Edge(
+                "nextcloud",
+                "s3ap",
+                "External Storage<br>(S3 API)",
+                # On the long vertical leg, in the empty column beside the scheduler.
+                at=-0.35,
+                exit=(0.25, 1),
+                entry=(0, 0.5),
+            ),
             Edge("s3ap", "fsxn"),
             Edge("fsxn", "nfs_client", "NFS"),
             Edge("fsxn", "smb_client", "SMB"),
         ],
-        groups=[Group("aws_cloud", "AWS Cloud", (0, 2), (1, 6))],
+        groups=[Group("aws_cloud", "AWS Cloud", (0, 2), (1, 7))],
         notes=PART1_NOTES,
     )
 
@@ -235,28 +261,34 @@ def part1_amplify() -> Diagram:
         name="Part1 Amplify",
         title="FSx for ONTAP S3 Access Points — Amplify Gen2 による AI 処理ポータル構成",
         grid=Grid(col_pitch=310, row_pitch=170, box_w=270),
+        # Request path down the left column, everything it reaches out to on the right.
+        # Amazon Cognito and the AI services used to sit left of the services that call
+        # them, which made three of this figure's twelve edges run backwards.
         nodes=[
-            Node("browser", "Web ブラウザ", 1, 0, RESOURCE, icon=USERS),
-            Node("quick_desktop", "Amazon Quick", 2, 0, icon=QUICK),
-            Node("cognito", "Amazon Cognito", 0, 1, icon=COGNITO),
-            Node("amplify", "AWS Amplify", 1, 1, icon=AMPLIFY),
-            Node("mcp_gw", "Amazon Bedrock AgentCore", 2, 1, icon=AGENTCORE),
-            Node("appsync", "AWS AppSync<br>(GraphQL API)", 1, 2, icon=APPSYNC),
+            Node("browser", "Web ブラウザ", 0, 0, RESOURCE, icon=USERS),
+            # The desktop client and the gateway it reaches share column 1, and the row
+            # between them is left empty on purpose: with Amazon Cognito there, the run
+            # from the client passed straight through it.
+            Node("quick_desktop", "Amazon Quick", 1, 0, icon=QUICK),
+            Node("amplify", "AWS Amplify", 0, 1, icon=AMPLIFY),
+            Node("cognito", "Amazon Cognito", 2, 1, icon=COGNITO),
+            Node("appsync", "AWS AppSync<br>(GraphQL API)", 0, 2, icon=APPSYNC),
+            Node("mcp_gw", "Amazon Bedrock AgentCore", 1, 2, icon=AGENTCORE),
+            Node("lambda", "AWS Lambda<br>(VPC 外 / ARM64)", 1, 3, icon=LAMBDA),
             Node(
                 "ai_group",
                 "AI サービス<br>(Amazon Bedrock / Amazon Rekognition<br>"
                 "Amazon Athena / Amazon Textract<br>Amazon Comprehend)",
-                0,
+                2,
                 3,
                 BOX,
                 w=440,
                 h=118,
             ),
-            Node("lambda", "AWS Lambda<br>(VPC 外 / ARM64)", 1, 3, icon=LAMBDA),
             Node("s3_objectlock", "Amazon S3<br>(Object Lock / WORM)", 2, 4, icon=S3),
             Node("s3ap", "Amazon S3 Access Point<br>(Internet origin)", 1, 5, RESOURCE, icon=S3AP),
             Node("fsxn", "Amazon FSx for<br>NetApp ONTAP", 1, 6, icon=FSXN),
-            Node("nfs_client", NFS_LABEL, 0, 7, RESOURCE, icon=SERVER),
+            Node("nfs_client", NFS_LABEL, 1, 7, RESOURCE, icon=SERVER),
             Node("smb_client", "SMB クライアント<br>(Windows)", 2, 7, RESOURCE, icon=CLIENT),
         ],
         edges=[
@@ -264,10 +296,21 @@ def part1_amplify() -> Diagram:
             Edge("quick_desktop", "mcp_gw"),
             Edge("amplify", "cognito"),
             Edge("amplify", "appsync"),
-            Edge("appsync", "lambda"),
+            # Down its own column first, then in from the left. Leaving sideways, it
+            # turned right on the gateway's row and ran through the gateway icon.
+            Edge("appsync", "lambda", exit=(0.5, 1), entry=(0, 0.5)),
             Edge("mcp_gw", "lambda"),
             Edge("lambda", "ai_group"),
-            Edge("lambda", "s3_objectlock", "CloudTrail 監査ログ", at=-0.6),
+            # Down a row before turning right, so the run passes under the AI services
+            # box rather than through it, and the label lands on the horizontal leg.
+            Edge(
+                "lambda",
+                "s3_objectlock",
+                "CloudTrail 監査ログ",
+                at=0.3,
+                exit=(0.5, 1),
+                entry=(0, 0.5),
+            ),
             Edge("lambda", "s3ap", "GetObject / PutObject", at=-0.5, dy=10),
             Edge("s3ap", "fsxn"),
             Edge("fsxn", "nfs_client", "NFS"),
@@ -291,10 +334,14 @@ def part1_coexistence() -> Diagram:
         id="coexistence-3path",
         name="Part1 Coexistence",
         title="FSx for ONTAP S3 Access Points — Amplify Gen2 と Nextcloud の併用構成",
-        grid=Grid(col_pitch=330, row_pitch=175, box_w=290),
+        # The pitch carries two portal boxes side by side, so it is set from the boxes
+        # rather than from the icons: at 330 their edges came within 10px of each other
+        # and read as one enclosure, and at 380 the canvas reached 1106px, where the
+        # labels arrive at 13.5px in a reader's column.
+        grid=Grid(col_pitch=350, row_pitch=175, box_w=290),
         nodes=[
             Node("browser_ai", "Web ブラウザ<br>(AI ポータル)", 0, 0, RESOURCE, icon=USERS),
-            Node("browser_files", "Web ブラウザ<br>(ファイル管理)", 2, 0, RESOURCE, icon=USERS),
+            Node("browser_files", "Web ブラウザ<br>(ファイル管理)", 1, 0, RESOURCE, icon=USERS),
             Node(
                 "ai_side",
                 # Three explicit lines. Left to wrap, the second one broke between
@@ -304,30 +351,29 @@ def part1_coexistence() -> Diagram:
                 0,
                 1,
                 BOX,
-                w=320,
+                w=300,
                 h=116,
             ),
             Node(
                 "files_side",
                 "Amazon EC2 (Nextcloud)<br>Elastic Load Balancing<br>Amazon RDS (MariaDB)",
-                2,
+                1,
                 1,
                 BOX,
-                w=320,
+                w=300,
                 h=116,
             ),
             Node("s3ap", "Amazon S3 Access Point<br>(Internet origin)", 1, 2, RESOURCE, icon=S3AP),
             Node("fsxn", "Amazon FSx for<br>NetApp ONTAP", 1, 3, icon=FSXN),
-            Node("nfs_client", NFS_LABEL, 0, 4, RESOURCE, icon=SERVER),
+            Node("nfs_client", NFS_LABEL, 1, 4, RESOURCE, icon=SERVER),
             Node("smb_client", "SMB クライアント<br>(Windows)", 2, 4, RESOURCE, icon=CLIENT),
         ],
         edges=[
             Edge("browser_ai", "ai_side"),
             Edge("browser_files", "files_side"),
-            # Down each portal's own column, then in from the side. Routed through the
-            # midpoint above the access point instead, the two edges share one vertical
-            # run: the later line strikes through the earlier label, and a reader
-            # cannot tell which portal either label belongs to.
+            # The AI portal comes in from the left, the file portal straight down. Both
+            # labels used to ride one shared vertical run, where the second line struck
+            # through the first label and neither said which portal it belonged to.
             Edge(
                 "ai_side",
                 "s3ap",
@@ -336,14 +382,7 @@ def part1_coexistence() -> Diagram:
                 exit=(0.5, 1),
                 entry=(0, 0.5),
             ),
-            Edge(
-                "files_side",
-                "s3ap",
-                "External Storage<br>(S3 API)",
-                at=-0.55,
-                exit=(0.5, 1),
-                entry=(1, 0.5),
-            ),
+            Edge("files_side", "s3ap", "External Storage<br>(S3 API)", at=-0.35),
             Edge("s3ap", "fsxn"),
             Edge("fsxn", "nfs_client", "NFS"),
             Edge("fsxn", "smb_client", "SMB"),
@@ -360,17 +399,19 @@ def part2_overview() -> Diagram:
         name="Part2 Storage Operations Overview",
         title="ストレージ運用機能をポータルに組み込む — 管理操作の経路",
         nodes=[
-            Node("browser", "利用者（Web ブラウザ）", 2, 0, RESOURCE, USERS),
+            Node("browser", "利用者（Web ブラウザ）", 0, 0, RESOURCE, USERS),
+            Node("amplify", "AWS Amplify", 0, 1, SERVICE, AMPLIFY),
+            # Right of the service that calls it. Left of it, the only edge into it ran
+            # backwards against every other edge in the figure.
             Node("cognito", "Amazon Cognito", 1, 1, SERVICE, COGNITO),
-            Node("amplify", "AWS Amplify", 2, 1, SERVICE, AMPLIFY),
-            Node("appsync", "AWS AppSync", 2, 2, SERVICE, APPSYNC),
-            Node("lambda", "AWS Lambda<br>(VPC 内)", 2, 3, SERVICE, LAMBDA),
+            Node("appsync", "AWS AppSync", 0, 2, SERVICE, APPSYNC),
+            Node("lambda", "AWS Lambda<br>(VPC 内)", 0, 3, SERVICE, LAMBDA),
             # Two lines: at the label floor the single-line form is wider than the
             # column and ran past the AWS Cloud boundary on the right.
-            Node("secrets", "AWS Secrets<br>Manager", 3, 3, SERVICE, SECRETS),
-            Node("fsxn", "Amazon FSx for<br>NetApp ONTAP", 2, 4, SERVICE, FSXN),
+            Node("secrets", "AWS Secrets<br>Manager", 1, 3, SERVICE, SECRETS),
+            Node("fsxn", "Amazon FSx for<br>NetApp ONTAP", 0, 4, SERVICE, FSXN),
         ],
-        groups=[Group("aws-cloud", "AWS Cloud", (1, 3), (1, 4))],
+        groups=[Group("aws-cloud", "AWS Cloud", (0, 1), (1, 4))],
         edges=[
             Edge("browser", "amplify", "HTTPS"),
             Edge("amplify", "cognito", "認証 /<br>グループ判定"),
@@ -443,18 +484,20 @@ def part2_audit_log() -> Diagram:
             Node("lambda", "AWS Lambda", 0, 2, SERVICE, LAMBDA),
             Node("athena", "Amazon Athena", 0, 3, SERVICE, ATHENA),
             Node("glue", "AWS Glue<br>(Data Catalog)", 1, 3, SERVICE, GLUE),
-            Node("s3logs", "Amazon S3<br>(CloudTrail ログ)", 0, 4, SERVICE, S3),
-            # same row as the bucket, so the connector stays a straight horizontal
-            # run and never crosses the bucket's label
+            # The trail writes downwards into the bucket while the scan arrives from the
+            # left, so the two edges reaching the bucket come in on different sides.
+            # Both on the same row, their labels landed on each other and on the
+            # catalog icon between them.
             Node("cloudtrail", "AWS CloudTrail", 1, 4, SERVICE, CLOUDTRAIL),
+            Node("s3logs", "Amazon S3<br>(CloudTrail ログ)", 1, 5, SERVICE, S3),
         ],
-        groups=[Group("aws-cloud", "AWS Cloud", (0, 1), (1, 4))],
+        groups=[Group("aws-cloud", "AWS Cloud", (0, 1), (1, 5))],
         edges=[
             Edge("browser", "appsync", "監査クエリ"),
             Edge("appsync", "lambda"),
             Edge("lambda", "athena", "SQL 実行"),
             Edge("athena", "glue", "テーブル定義を参照"),
-            Edge("athena", "s3logs", "ログをスキャン"),
+            Edge("athena", "s3logs", "ログをスキャン", at=0.4, exit=(0.5, 1), entry=(0, 0.5)),
             Edge("cloudtrail", "s3logs", "S3 データイベント<br>を記録"),
         ],
         notes=[
@@ -582,17 +625,19 @@ def part3_overview() -> Diagram:
         name="Part3 AI Agent Overview",
         title="ファイルポータルに AI エージェントを組み込む — 全体構成",
         nodes=[
-            Node("browser", "利用者（Web ブラウザ）", 1, 0, RESOURCE, USERS),
-            Node("amplify", "AWS Amplify", 1, 1, SERVICE, AMPLIFY),
-            Node("appsync", "AWS AppSync", 1, 2, SERVICE, APPSYNC),
-            Node("bedrock", "Amazon Bedrock<br>(Converse API)", 0, 3, SERVICE, BEDROCK),
-            Node("agent", "AWS Lambda<br>(エージェント実行)", 1, 3, SERVICE, LAMBDA),
-            Node("agentcore", "Amazon Bedrock<br>AgentCore", 2, 3, SERVICE, AGENTCORE),
-            Node("mcp", "AWS Lambda<br>(MCP ツール)", 3, 3, SERVICE, LAMBDA),
-            Node("s3ap", "Amazon S3 Access Point", 3, 4, RESOURCE, S3AP),
-            Node("fsxn", "Amazon FSx for<br>NetApp ONTAP", 3, 5, SERVICE, FSXN),
+            Node("browser", "利用者（Web ブラウザ）", 0, 0, RESOURCE, USERS),
+            Node("amplify", "AWS Amplify", 0, 1, SERVICE, AMPLIFY),
+            Node("appsync", "AWS AppSync", 0, 2, SERVICE, APPSYNC),
+            Node("agent", "AWS Lambda<br>(エージェント実行)", 0, 3, SERVICE, LAMBDA),
+            # Under the agent rather than beside it on the left. The tool chain leaves
+            # to the right, so inference is the one hop with a column to itself.
+            Node("bedrock", "Amazon Bedrock<br>(Converse API)", 0, 4, SERVICE, BEDROCK),
+            Node("agentcore", "Amazon Bedrock<br>AgentCore", 1, 3, SERVICE, AGENTCORE),
+            Node("mcp", "AWS Lambda<br>(MCP ツール)", 2, 3, SERVICE, LAMBDA),
+            Node("s3ap", "Amazon S3 Access Point", 2, 4, RESOURCE, S3AP),
+            Node("fsxn", "Amazon FSx for<br>NetApp ONTAP", 2, 5, SERVICE, FSXN),
         ],
-        groups=[Group("aws-cloud", "AWS Cloud", (0, 3), (1, 5))],
+        groups=[Group("aws-cloud", "AWS Cloud", (0, 2), (1, 5))],
         edges=[
             Edge("browser", "amplify", "HTTPS"),
             Edge("amplify", "appsync"),
@@ -629,22 +674,28 @@ def part3_agentchat() -> Diagram:
         # is what it is.
         grid=Grid(col_pitch=250),
         nodes=[
-            Node("browser", "利用者（Web ブラウザ）", 2, 0, RESOURCE, USERS),
-            Node("appsync", "AWS AppSync", 2, 1, SERVICE, APPSYNC),
-            Node("agent", "AWS Lambda<br>(AgentChat)", 2, 2, SERVICE, LAMBDA),
+            Node("browser", "利用者（Web ブラウザ）", 0, 0, RESOURCE, USERS),
+            Node("appsync", "AWS AppSync", 0, 1, SERVICE, APPSYNC),
+            Node("agent", "AWS Lambda<br>(AgentChat)", 0, 2, SERVICE, LAMBDA),
             # mode names follow the handler: TOOLS_BY_MODE = {multi, kb, agent}.
             # kb is limited to the kb_search tool, agent to the file tools.
-            Node("m_kb", "mode=kb<br>セマンティック検索のみ", 3, 1, BOX, fill=GREY),
-            Node("m_agent", "mode=agent<br>ファイルツールのみ", 3, 2, BOX, fill=GREY),
-            Node("m_multi", "mode=multi<br>全ツールで協調", 3, 3, BOX, fill=GREY),
-            Node("kb", "Amazon Bedrock<br>(Knowledge Bases)", 4, 1, SERVICE, BEDROCK),
-            Node("bedrock", "Amazon Bedrock", 4, 2, SERVICE, BEDROCK),
+            #
+            # The three modes descend from the dispatching Lambda's own row rather than
+            # straddling it. Straddling centres the fan, and the top arm then runs
+            # upwards while the shared Bedrock target sits above the mode that reaches
+            # it -- two of this figure's eleven edges pointing back the way it came.
+            Node("m_kb", "mode=kb<br>セマンティック検索のみ", 1, 2, BOX, fill=GREY),
+            Node("m_agent", "mode=agent<br>ファイルツールのみ", 1, 3, BOX, fill=GREY),
+            Node("m_multi", "mode=multi<br>全ツールで協調", 1, 4, BOX, fill=GREY),
+            Node("kb", "Amazon Bedrock<br>(Knowledge Bases)", 2, 2, SERVICE, BEDROCK),
+            # below the last mode that reaches it, so both arms of the fan run downwards
+            Node("bedrock", "Amazon Bedrock", 2, 4, SERVICE, BEDROCK),
             # the tool chain continues downwards rather than to the right
-            Node("agentcore", "Amazon Bedrock<br>AgentCore", 4, 3, SERVICE, AGENTCORE),
-            Node("mcp", "AWS Lambda<br>(MCP ツール)", 4, 4, SERVICE, LAMBDA),
-            Node("s3ap", "Amazon S3 Access Point", 3, 4, RESOURCE, S3AP),
+            Node("agentcore", "Amazon Bedrock<br>AgentCore", 2, 5, SERVICE, AGENTCORE),
+            Node("mcp", "AWS Lambda<br>(MCP ツール)", 2, 6, SERVICE, LAMBDA),
+            Node("s3ap", "Amazon S3 Access Point", 2, 7, RESOURCE, S3AP),
         ],
-        groups=[Group("aws-cloud", "AWS Cloud", (2, 4), (1, 4))],
+        groups=[Group("aws-cloud", "AWS Cloud", (0, 2), (1, 7))],
         edges=[
             Edge("browser", "appsync", "チャット送信"),
             Edge("appsync", "agent"),
@@ -684,25 +735,29 @@ def part3_semantic_search() -> Diagram:
         # path downwards makes the room instead of buying it.
         grid=Grid(col_pitch=250),
         nodes=[
-            Node("s3ap", "Amazon S3 Access Point", 0, 3, RESOURCE, S3AP),
-            Node("fsxn", "Amazon FSx for<br>NetApp ONTAP", 0, 4, SERVICE, FSXN),
-            Node("browser", "利用者（Web ブラウザ）", 1, 0, RESOURCE, USERS),
-            Node("appsync", "AWS AppSync", 1, 1, SERVICE, APPSYNC),
-            Node("lambda", "AWS Lambda", 1, 2, SERVICE, LAMBDA),
-            Node("kb", "Amazon Bedrock<br>(Knowledge Bases)", 1, 3, SERVICE, BEDROCK),
+            Node("browser", "利用者（Web ブラウザ）", 0, 0, RESOURCE, USERS),
+            Node("appsync", "AWS AppSync", 0, 1, SERVICE, APPSYNC),
+            Node("lambda", "AWS Lambda", 0, 2, SERVICE, LAMBDA),
+            Node("kb", "Amazon Bedrock<br>(Knowledge Bases)", 0, 3, SERVICE, BEDROCK),
             # directly under Knowledge Bases, so its edge label does not land on the
             # OpenSearch edge label
             Node(
                 "embed",
                 "Amazon Bedrock<br>(Titan Text Embeddings V2)",
-                1,
-                4,
+                0,
+                6,
                 SERVICE,
                 BEDROCK,
             ),
-            Node("oss", "Amazon OpenSearch<br>Service", 2, 3, SERVICE, OPENSEARCH),
+            Node("oss", "Amazon OpenSearch<br>Service", 1, 3, SERVICE, OPENSEARCH),
+            # The data source is right of and below the Knowledge Base that syncs it.
+            # Placed to the left, it was the one hop in the figure running backwards,
+            # and moving it here costs a column rather than adding one: the query path
+            # already needed only two.
+            Node("s3ap", "Amazon S3 Access Point", 1, 4, RESOURCE, S3AP),
+            Node("fsxn", "Amazon FSx for<br>NetApp ONTAP", 1, 5, SERVICE, FSXN),
         ],
-        groups=[Group("aws-cloud", "AWS Cloud", (0, 2), (1, 4))],
+        groups=[Group("aws-cloud", "AWS Cloud", (0, 1), (1, 6))],
         edges=[
             Edge("browser", "appsync", "検索クエリ"),
             Edge("appsync", "lambda"),
@@ -711,7 +766,17 @@ def part3_semantic_search() -> Diagram:
             # clearance from the two-line Knowledge Bases label is applied
             # automatically (see vertical_label_shortfall)
             Edge("kb", "embed", "埋め込み生成"),
-            Edge("kb", "s3ap", "データソース同期"),
+            # Down its own lane and right on the access point's row. Sent sideways it
+            # left on the vector-search row, where the two labels sat on each other and
+            # the run then turned down straight through the OpenSearch icon.
+            Edge(
+                "kb",
+                "s3ap",
+                "データソース同期",
+                at=0.45,
+                exit=(0.75, 1),
+                entry=(0, 0.5),
+            ),
             Edge("s3ap", "fsxn"),
         ],
         notes=[
@@ -790,8 +855,8 @@ EN: dict[str, str] = {
     ),
     "AWS Amplify<br>(Gen2 / AI 処理ダッシュボード)": "AWS Amplify<br>(Gen2 / AI dashboard)",
     "Amazon EC2<br>(Nextcloud / ファイル共有 UI)": "Amazon EC2<br>(Nextcloud / file sharing UI)",
-    "AWS Lambda + AI サービス<br>(Amazon Bedrock / Amazon Textract / Amazon Athena ほか)": (
-        "AWS Lambda + AI services<br>(Amazon Bedrock / Amazon Textract / Amazon Athena and others)"
+    "AWS Lambda + AI サービス<br>(Amazon Bedrock / Amazon Textract<br>Amazon Athena ほか)": (
+        "AWS Lambda + AI services<br>(Amazon Bedrock / Amazon Textract<br>Amazon Athena and others)"
     ),
     "AI サービス<br>(Amazon Bedrock / Amazon Rekognition<br>Amazon Athena / Amazon Comprehend)": (
         "AI services<br>(Amazon Bedrock / Amazon Rekognition<br>Amazon Athena / Amazon Comprehend)"
@@ -804,7 +869,7 @@ EN: dict[str, str] = {
     ),
     "AWS Lambda<br>(VPC 外 / ARM64)": "AWS Lambda<br>(outside VPC / ARM64)",
     "Web ブラウザ": "Web browser",
-    "Web ブラウザ<br>(ファイル管理 + 同期)": "Web browser<br>(file management + sync)",
+    "Web ブラウザ（ファイル管理・同期）": "Web browser (file management and sync)",
     "Web ブラウザ<br>(AI ポータル)": "Web browser<br>(AI portal)",
     "Web ブラウザ<br>(ファイル管理)": "Web browser<br>(file management)",
     "NFS クライアント": "NFS client",
@@ -853,9 +918,9 @@ EN: dict[str, str] = {
     ),
     "SaaS テナント<br>(Microsoft 365 / Box 等)": "SaaS tenant<br>(Microsoft 365 / Box, etc.)",
     "AWS Lambda<br>(移行ワーカー / VPC 内)": "AWS Lambda<br>(migration worker, in VPC)",
-    "SaaS API<br>呼び出し": "SaaS API<br>calls",
+    "SaaS API<br>経由で取得": "Fetched over<br>the SaaS API",
     "テナント<br>管理者認可": "Tenant admin<br>grant",
-    "対象の一覧化と分割": "Enumerate and fan out targets",
+    "対象の<br>一覧化と分割": "Enumerate and<br>fan out targets",
     "NFS / SMB<br>で書き込み": "Write over<br>NFS / SMB",
     "移行後の活用経路": "Post-migration access",
     "認可はテナント単位なので利用者ごとの同意は不要": (
@@ -1115,22 +1180,44 @@ def saas_group_b_worker() -> Diagram:
         # NetApp ONTAP cell. Its role — externalised progress, without which a
         # rate-limited run cannot resume — is carried by note 3 instead.
         nodes=[
+            Node("sfn", "AWS Step Functions", 1, 0, SERVICE, SFN),
+            Node("secrets", "AWS Secrets Manager", 2, 0, SERVICE, SECRETS),
             Node("saas", "SaaS テナント<br>(Microsoft 365 / Box 等)", 0, 1, BOX, fill=GREY, w=210),
             Node("natgw", "Amazon VPC<br>NAT Gateway", 1, 1, RESOURCE, NATGW),
-            Node("secrets", "AWS Secrets Manager", 2, 0, SERVICE, SECRETS),
             Node("worker", "AWS Lambda<br>(移行ワーカー / VPC 内)", 2, 1, SERVICE, LAMBDA),
-            Node("sfn", "AWS Step Functions", 2, 2, SERVICE, SFN),
             Node("fsxn", "Amazon FSx for<br>NetApp ONTAP", 3, 1, SERVICE, FSXN),
             # below the file system rather than beside it: the label on this hop is
             # long, and a vertical run does not have to fit it between two icons
             Node("s3ap", "Amazon S3 access point", 3, 2, RESOURCE, S3AP),
         ],
         groups=[Group("aws-cloud", "AWS Cloud", (1, 3), (0, 2))],
+        # Drawn in the direction the files travel, left to right: out of the tenant,
+        # through the NAT gateway, into the worker, onto the file system. The first
+        # version drew the two left-hand hops as the API call instead, which points the
+        # opposite way, so the figure changed direction twice in four icons. The grant
+        # and the API are named on the hops they permit rather than given their own
+        # arrows.
         edges=[
-            Edge("worker", "natgw", "SaaS API<br>呼び出し"),
-            Edge("natgw", "saas", "テナント<br>管理者認可"),
-            Edge("secrets", "worker", "認証情報の取得"),
-            Edge("sfn", "worker", "対象の一覧化と分割"),
+            Edge("saas", "natgw", "テナント<br>管理者認可"),
+            Edge("natgw", "worker", "SaaS API<br>経由で取得"),
+            # Three edges reach the worker, and with only rightwards and downwards
+            # available that is one more than the two lanes an orthogonal route offers a
+            # node -- one from the left, one from above. The two control-plane hops
+            # therefore come down onto different points of the same top edge. Sent
+            # sideways instead, the workflow's run crossed the Secrets Manager icon and
+            # took its own label with it.
+            Edge(
+                "sfn",
+                "worker",
+                # Two lines and held back from the corner: at full width and at the
+                # midpoint it ran into the credential label coming down beside it.
+                "対象の<br>一覧化と分割",
+                at=0.3,
+                dx=-150,
+                exit=(0.5, 1),
+                entry=(0.25, 0),
+            ),
+            Edge("secrets", "worker", "認証情報の取得", dy=30, entry=(0.75, 0)),
             Edge("worker", "fsxn", "NFS / SMB<br>で書き込み"),
             Edge("fsxn", "s3ap", "移行後の活用経路"),
         ],

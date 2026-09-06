@@ -7,9 +7,6 @@
         <mxCell id="d-title" value="Group A (sources with a storage endpoint) — the two DataSync routes" style="text;html=1;align=center;verticalAlign=middle;fontSize=19;fontStyle=1;fontColor=#E6EDF3;" vertex="1" parent="1">
           <mxGeometry x="135" y="70" width="1135" height="34" as="geometry" />
         </mxCell>
-        <mxCell id="aws-cloud" value="AWS Cloud" style="points=[[0,0],[0.25,0],[0.5,0],[0.75,0],[1,0],[1,0.25],[1,0.5],[1,0.75],[1,1],[0.75,1],[0.5,1],[0.25,1],[0,1],[0,0.75],[0,0.5],[0,0.25]];outlineConnect=0;gradientColor=none;html=1;whiteSpace=wrap;fontSize=19;fontStyle=1;shape=mxgraph.aws4.group;grIcon=mxgraph.aws4.group_aws_cloud_alt;strokeColor=#E6EDF3;fillColor=none;verticalAlign=top;align=left;spacingLeft=30;fontColor=#E6EDF3;dashed=0;" vertex="1" parent="1">
-          <mxGeometry x="410" y="140" width="860" height="410" as="geometry" />
-        </mxCell>
         <mxCell id="e0" value="Route 1:&lt;br&gt;direct" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeColor=#E6EDF3;strokeWidth=1;fontSize=19;fontColor=#E6EDF3;labelBackgroundColor=#21262D;" edge="1" source="source_a" target="agent" parent="1">
           <mxGeometry relative="1" as="geometry">
             <mxPoint as="offset" x="0" y="-13" />
@@ -34,6 +31,9 @@
           <mxGeometry relative="1" as="geometry">
             <mxPoint as="offset" x="0" y="-13" />
           </mxGeometry>
+        </mxCell>
+        <mxCell id="aws-cloud" value="AWS Cloud" style="points=[[0,0],[0.25,0],[0.5,0],[0.75,0],[1,0],[1,0.25],[1,0.5],[1,0.75],[1,1],[0.75,1],[0.5,1],[0.25,1],[0,1],[0,0.75],[0,0.5],[0,0.25]];outlineConnect=0;gradientColor=none;html=1;whiteSpace=wrap;fontSize=19;fontStyle=1;shape=mxgraph.aws4.group;grIcon=mxgraph.aws4.group_aws_cloud_alt;strokeColor=#E6EDF3;fillColor=none;verticalAlign=top;align=left;spacingLeft=30;fontColor=#E6EDF3;dashed=0;labelBackgroundColor=#21262D;" vertex="1" parent="1">
+          <mxGeometry x="410" y="140" width="860" height="410" as="geometry" />
         </mxCell>
         <mxCell id="source_a" value="Object storage&lt;br&gt;(S3-compatible / Blob / GCS)" style="rounded=1;whiteSpace=wrap;html=1;dashed=0;strokeColor=#E6EDF3;fillColor=#2D333B;align=center;verticalAlign=middle;fontSize=19;fontColor=#E6EDF3;" vertex="1" parent="1">
           <mxGeometry x="135" y="216" width="210" height="64" as="geometry" />
