@@ -154,6 +154,8 @@ graph TB
 
 ## 關鍵 S3 Access Point 限制
 
+> 本表列出限制。**如何將每項限制轉化為設計決策**見 [FSx for ONTAP Adoption Playbook](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook)。
+
 | 限制 | 解決方案 |
 |---|---|
 | 不支援 S3 Event Notifications | EventBridge Scheduler 輪詢（FPolicy 無法偵測透過存取點的寫入。實測 2026-08-26，ONTAP 9.18.1P3D1） |
@@ -162,7 +164,7 @@ graph TB
 | 無法將 Athena 結果寫入 S3AP | 輸出到標準 S3 儲存桶 |
 | 僅支援 SSE-FSX | 使用磁碟區層級 KMS 加密 |
 
-詳情：[S3AP Compatibility Notes](docs/s3ap-compatibility-notes.en.md) | [Compatibility Matrix（AWS 確認）](https://github.com/Yoshiki0705/fsxn-lakehouse-integrations/blob/main/docs/en/compatibility-matrix.md)
+詳情：[S3AP Compatibility Notes](docs/s3ap-compatibility-notes.en.md) | [Compatibility Matrix（AWS 確認）](https://github.com/Yoshiki0705/FSx-for-ONTAP-Lakehouse-Integrations/blob/main/docs/en/compatibility-matrix.md)
 
 ---
 
@@ -184,9 +186,9 @@ graph TB
 
 | 儲存庫 | 摘要 |
 |---|---|
-| [Permission-aware-RAG-FSxN-CDK](https://github.com/Yoshiki0705/Permission-aware-RAG-FSxN-CDK-github) | 權限感知 RAG 聊天機器人 (CDK + Next.js + ECS) | <!-- allow:naming (external repo name) -->
-| [fsxn-lakehouse-integrations](https://github.com/Yoshiki0705/fsxn-lakehouse-integrations) | 湖倉整合 (Databricks, Snowflake, Athena, Glue, EMR) |
-| [vmware-migration-ec2-ontap](https://github.com/Yoshiki0705/vmware-migration-ec2-ontap) | VMware → EC2 + FSx for ONTAP 遷移 |
+| [FSx-for-ONTAP-Agentic-Access-Aware-RAG](https://github.com/Yoshiki0705/FSx-for-ONTAP-Agentic-Access-Aware-RAG) | 支援存取控制的 Agentic RAG (CDK + Amazon Bedrock) |
+| [FSx-for-ONTAP-Lakehouse-Integrations](https://github.com/Yoshiki0705/FSx-for-ONTAP-Lakehouse-Integrations) | 湖倉整合 (Databricks, Snowflake, Athena, Glue, EMR) |
+| [VMware-Migration-EC2-ONTAP](https://github.com/Yoshiki0705/VMware-Migration-EC2-ONTAP) | VMware → EC2 + FSx for ONTAP 遷移 |
 
 </details>
 

@@ -294,3 +294,15 @@ VOD 發佈不僅依賴自動判定。依套件**完整性訊號**計算 publish-
 - [事件回應 Playbook](../../docs/incident-response-playbook.md)
 - [Content Edge Delivery 模式](../content-delivery/README.md)
 - [Media/VFX 產業模式](../../industry/media-vfx/README.md)
+
+---
+
+<!-- playbook-reading:start -->
+## 上線前需要閱讀的內容
+
+部署後才會遇到的限制如何轉化為設計決策，記錄在 [FSx for ONTAP Adoption Playbook](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook)。同一內容放在兩處時，停止更新的那份會比已修正的那份留存更久。
+
+- [設計](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/tree/main/docs/en/playbooks/02-design) — 先讀
+- [效能](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/tree/main/docs/en/domains/performance) — 接著讀
+- [建置](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/tree/main/docs/en/playbooks/04-build) — 上線前通讀（所有模式通用）
+<!-- playbook-reading:end -->

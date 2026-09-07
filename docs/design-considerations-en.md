@@ -397,7 +397,7 @@ Additional design points when distributing data collected via S3 AP using FlexCa
 | DP Volume must be created via FSx API | SM-VAL-009: ONTAP REST API alone makes volume invisible for S3 AP attachment | [SnapMirror DR Pattern](../solutions/flexcache/snapmirror-cross-region-dr/) |
 | Teardown order | SM-VAL-011: SVM Peer deletion must complete before VPC Peering deletion | Each FlexCache/SnapMirror pattern Clean Up section |
 
-Detailed compatibility tables and version matrix: [FlexCache / SnapMirror Considerations (fsxn-lakehouse-integrations)](https://github.com/Yoshiki0705/fsxn-lakehouse-integrations/blob/main/docs/en/s3ap-flexcache-snapmirror-considerations.md)
+Detailed compatibility tables and version matrix: [FlexCache / SnapMirror Considerations (FSx-for-ONTAP-Lakehouse-Integrations)](https://github.com/Yoshiki0705/FSx-for-ONTAP-Lakehouse-Integrations/blob/main/docs/en/s3ap-flexcache-snapmirror-considerations.md)
 
 ---
 

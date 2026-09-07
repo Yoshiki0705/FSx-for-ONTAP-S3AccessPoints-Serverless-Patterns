@@ -459,3 +459,15 @@ sam deploy \
 > Dieses Muster bietet technische Architekturleitlinien. Es ist keine rechtliche, Compliance- oder regulatorische Beratung. Organisationen sollten qualifizierte Fachleute konsultieren. Die S3-AP-Datenquellengrenze liegt auf Volume-/Präfixebene; wenn eine Sichtbarkeitssteuerung pro einzelnem Benutzer erforderlich ist, liegt dies außerhalb des Umfangs dieser UC.
 >
 > **Drei Schichten der Zugriffssteuerung (je nach Anwendungsfall wählen)**: ① Sucheingrenzung = Bedrock-KB-Metadatenfilter (diese UC, keine AWS-Autorisierung) / ② ACL auf Dokumentebene = Amazon Quick S3-Wissensbasis ([UC30](../genai-quick-agentic-workspace/), pro Benutzer/Gruppe) / ③ Berechtigungsfilter pro Chunk = benutzerdefiniertes berechtigungsbewusstes RAG ([FC3](../genai-rag-enterprise-files/), AD SID/NTFS ACL, für regulierte Branchen)
+
+---
+
+<!-- playbook-reading:start -->
+## Vor dem Produktivbetrieb lesen
+
+Wie sich die nach der Bereitstellung auftretenden Einschränkungen in Entwurfsentscheidungen übersetzen, steht im [FSx for ONTAP Adoption Playbook](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook) beschrieben. Liegt derselbe Inhalt an zwei Stellen, überlebt die nicht mehr gepflegte Kopie die korrigierte.
+
+- [Datennutzung](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/tree/main/docs/en/domains/data-utilization) — zuerst lesen
+- [Sicherheit und Governance](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/tree/main/docs/en/domains/security-governance) — danach lesen
+- [Aufbauen](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/tree/main/docs/en/playbooks/04-build) — vor dem Produktivbetrieb durchgehen (alle Patterns)
+<!-- playbook-reading:end -->

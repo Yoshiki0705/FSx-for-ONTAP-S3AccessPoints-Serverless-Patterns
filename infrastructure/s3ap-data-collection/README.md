@@ -88,7 +88,7 @@ FlexCache や SnapMirror でデータを配信する場合、ディレクトリ�
 
 **設計指針**: Hive パーティション（`year=/month=/day=/`）は FlexCache の分散キャッシュと SnapMirror の増分効率の両方に適している。
 
-詳細: [FlexCache / SnapMirror 考慮事項（fsxn-lakehouse-integrations）](https://github.com/Yoshiki0705/fsxn-lakehouse-integrations/blob/main/docs/ja/s3ap-flexcache-snapmirror-considerations.md)
+詳細: [FlexCache / SnapMirror 考慮事項（FSx-for-ONTAP-Lakehouse-Integrations）](https://github.com/Yoshiki0705/FSx-for-ONTAP-Lakehouse-Integrations/blob/main/docs/ja/s3ap-flexcache-snapmirror-considerations.md)
 
 ### S3 Access Point の設計
 
@@ -304,10 +304,10 @@ aws cloudformation delete-stack --stack-name fsxn-s3ap-data-collection
 
 ## 関連リソース（Cross-Project）
 
-- [S3 AP 設計考慮事項（詳細版）](https://github.com/Yoshiki0705/fsxn-lakehouse-integrations/blob/main/docs/ja/s3ap-design-considerations.md)
-- [FlexCache / SnapMirror 追加考慮事項](https://github.com/Yoshiki0705/fsxn-lakehouse-integrations/blob/main/docs/ja/s3ap-flexcache-snapmirror-considerations.md)
-- [SnapMirror + FlexCache 調査・検証（41 findings, 12 demo guides）](https://github.com/Yoshiki0705/fsxn-lakehouse-integrations/tree/main/integrations/snapmirror-flexcache-multicloud)
-- [Cross-region deploy/test/teardown スクリプト](https://github.com/Yoshiki0705/fsxn-lakehouse-integrations/tree/main/integrations/snapmirror-flexcache-multicloud/scripts/validation)
+- [S3 AP 設計考慮事項（詳細版）](https://github.com/Yoshiki0705/FSx-for-ONTAP-Lakehouse-Integrations/blob/main/docs/ja/s3ap-design-considerations.md)
+- [FlexCache / SnapMirror 追加考慮事項](https://github.com/Yoshiki0705/FSx-for-ONTAP-Lakehouse-Integrations/blob/main/docs/ja/s3ap-flexcache-snapmirror-considerations.md)
+- [SnapMirror + FlexCache 調査・検証（41 findings, 12 demo guides）](https://github.com/Yoshiki0705/FSx-for-ONTAP-Lakehouse-Integrations/tree/main/integrations/snapmirror-flexcache-multicloud)
+- [Cross-region deploy/test/teardown スクリプト](https://github.com/Yoshiki0705/FSx-for-ONTAP-Lakehouse-Integrations/tree/main/integrations/snapmirror-flexcache-multicloud/scripts/validation)
 
 ---
 

@@ -14,7 +14,7 @@ AD-joined SVMs require Active Directory Domain Controller (AD DC) connectivity f
 - Same-account S3 AP resource policy (`put_access_point_policy`) is NOT required
 - AD DC reachability must be verified BEFORE S3 AP data operations
 
-> **Source**: Verified in `fsxn-observability-integrations` restore-verification workflow. Aligns with [AWS official troubleshooting guide](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/troubleshooting-access-points-for-fsxn.html) ("name service becomes unreachable" → MISCONFIGURED or AccessDenied).
+> **Source**: Verified in `FSx-for-ONTAP-Observability-integrations` restore-verification workflow. Aligns with [AWS official troubleshooting guide](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/troubleshooting-access-points-for-fsxn.html) ("name service becomes unreachable" → MISCONFIGURED or AccessDenied).
 
 ---
 

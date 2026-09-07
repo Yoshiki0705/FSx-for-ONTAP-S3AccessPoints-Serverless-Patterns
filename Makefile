@@ -510,6 +510,11 @@ drift:
 # left 53 group members with no switcher at all — so a reader who landed on one
 # language had no way to reach their own. `--check` makes a hand edit a build failure.
 	$(PYTHON) scripts/sync_lang_switcher.py --check
+# Same reasoning for the Playbook reading section: it is generated across 8 locales x 47
+# solutions, so a hand edit inside the markers, or a new solution nobody added to the
+# mapping, has no symptom. `--check` also fails when a README named in the mapping does
+# not exist, which is the typo that would otherwise skip eight files silently.
+	$(PYTHON) scripts/sync_playbook_reading_section.py --check
 # AGENTS.md is loaded on every turn and cannot be made conditional, so it had grown
 # to 78 KB carrying pitfall tables that matter only while doing that one kind of
 # work. Splitting it into task-triggered steering is undone by one useful paragraph

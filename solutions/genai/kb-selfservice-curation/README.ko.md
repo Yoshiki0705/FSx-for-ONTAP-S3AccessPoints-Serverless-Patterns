@@ -458,3 +458,15 @@ sam deploy \
 > 본 패턴은 기술 아키텍처 가이던스를 제공합니다. 법적·컴플라이언스·규제상의 조언이 아닙니다. 조직은 적격한 전문가에게 상담하세요. S3 AP의 데이터 소스 경계는 볼륨/프리픽스 단위이며, 이용자 개인별 가시 범위 제어가 필요한 경우에는 본 UC의 적용 범위 밖입니다.
 >
 > **접근 제어의 3계층 (용도에 따라 선택)**: ① 검색 좁히기 = Bedrock KB 메타데이터 필터(본 UC, AWS 인가가 아님) / ② 문서 레벨 ACL = Amazon Quick S3 지식 베이스([UC30](../genai-quick-agentic-workspace/), 이용자·그룹 단위) / ③ 청크 단위의 권한 필터 = 커스텀 Permission-aware RAG([FC3](../genai-rag-enterprise-files/), AD SID/NTFS ACL, 규제 업종용)
+
+---
+
+<!-- playbook-reading:start -->
+## 프로덕션 적용 전에 읽을 것
+
+배포 후에 부딪히는 제약을 설계 판단으로 어떻게 옮기는지는 [FSx for ONTAP Adoption Playbook](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook)에 정리되어 있습니다. 같은 내용을 두 곳에 두면 갱신이 멈춘 쪽이 더 오래 남기 때문입니다.
+
+- [데이터 활용](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/tree/main/docs/en/domains/data-utilization) — 먼저 읽기
+- [보안 및 거버넌스](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/tree/main/docs/en/domains/security-governance) — 다음에 읽기
+- [구축](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/tree/main/docs/en/playbooks/04-build) — 프로덕션 전에 확인 (모든 패턴 공통)
+<!-- playbook-reading:end -->

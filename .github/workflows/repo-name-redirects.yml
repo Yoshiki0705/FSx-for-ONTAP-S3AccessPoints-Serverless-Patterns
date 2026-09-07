@@ -1,0 +1,56 @@
+name: Repository Name Redirect Check
+
+# Deliberately not a pull-request gate. This job resolves every GitHub repository this
+# repository's prose links to, so it fails for reasons unrelated to the change under
+# review — a third-party repository going private, GitHub returning 503 — and a required
+# check that does that is one people learn to force through.
+#
+# What it catches cannot be caught on a pull request anyway. A link is added while the
+# name is correct and goes stale later, when the repository on the other end is renamed.
+# GitHub keeps serving the old name through a redirect, so the link returns 200 and a
+# link checker reports it healthy. The Adoption Playbook had seven repositories in that
+# state at once, all reported reachable.
+
+on:
+  schedule:
+    # Mondays 21:30 UTC (Tuesday 06:30 JST). Half an hour after the published-articles
+    # check so the two do not report on the same minute; nothing depends on the order.
+    - cron: "30 21 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: repo-name-redirects
+  cancel-in-progress: false
+
+jobs:
+  repo-names:
+    name: "Stale repository names in links"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.13"
+      - name: Resolve every referenced repository name
+        # Exit 2 means the network was unusable and no verdict was reached. That is
+        # reported as a failure here on purpose: this job has no other reason to run, so
+        # a run that concluded nothing and reported success would let the check quietly
+        # stop covering anything.
+        #
+        # --strict-casing adds a REST API lookup per name, which is the only way to see a
+        # rename that changed capitalisation only -- GitHub serves the casing requested and
+        # reports it back, so no redirect exposes it. One of the five names this check was
+        # written to find was in that class. The token lifts the 60/hour anonymous limit.
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: python3 scripts/check_repo_name_redirects.py --strict-casing
+      - name: Resolve the Playbook module hubs the generated sections link to
+        # The check above resolves repository names and drops everything after owner/repo,
+        # so the 24 hub paths written into 376 READMEs need their own pass. A renamed module
+        # directory would 404 in every one of those files at once.
+        run: python3 scripts/sync_playbook_reading_section.py --verify-hubs

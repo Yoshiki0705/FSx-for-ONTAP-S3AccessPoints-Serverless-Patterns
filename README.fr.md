@@ -154,6 +154,8 @@ Diagrammes d'architecture détaillés par catégorie :
 
 ## Contraintes clés des S3 Access Points
 
+> Ce tableau liste les contraintes. **La façon de traduire chacune en décision de conception** se trouve dans le [FSx for ONTAP Adoption Playbook](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook).
+
 | Contrainte | Solution de contournement |
 |---|---|
 | Pas de S3 Event Notifications | Polling EventBridge Scheduler (FPolicy ne détecte pas les écritures via l'access point ; mesuré le 2026-08-26, ONTAP 9.18.1P3D1) |
@@ -162,7 +164,7 @@ Diagrammes d'architecture détaillés par catégorie :
 | Impossible d'écrire les résultats Athena sur S3AP | Sortie vers un bucket S3 standard |
 | SSE-FSX uniquement | Utiliser le chiffrement KMS au niveau du volume |
 
-Détails : [S3AP Compatibility Notes](docs/s3ap-compatibility-notes.en.md) | [Compatibility Matrix (confirmée par AWS)](https://github.com/Yoshiki0705/fsxn-lakehouse-integrations/blob/main/docs/en/compatibility-matrix.md)
+Détails : [S3AP Compatibility Notes](docs/s3ap-compatibility-notes.en.md) | [Compatibility Matrix (confirmée par AWS)](https://github.com/Yoshiki0705/FSx-for-ONTAP-Lakehouse-Integrations/blob/main/docs/en/compatibility-matrix.md)
 
 ---
 
@@ -184,9 +186,9 @@ Détails : [S3AP Compatibility Notes](docs/s3ap-compatibility-notes.en.md) | [Co
 
 | Dépôt | Résumé |
 |---|---|
-| [Permission-aware-RAG-FSxN-CDK](https://github.com/Yoshiki0705/Permission-aware-RAG-FSxN-CDK-github) | Chatbot RAG avec gestion des permissions (CDK + Next.js + ECS) | <!-- allow:naming (external repo name) -->
-| [fsxn-lakehouse-integrations](https://github.com/Yoshiki0705/fsxn-lakehouse-integrations) | Intégration Lakehouse (Databricks, Snowflake, Athena, Glue, EMR) |
-| [vmware-migration-ec2-ontap](https://github.com/Yoshiki0705/vmware-migration-ec2-ontap) | Migration VMware → EC2 + FSx for ONTAP |
+| [FSx-for-ONTAP-Agentic-Access-Aware-RAG](https://github.com/Yoshiki0705/FSx-for-ONTAP-Agentic-Access-Aware-RAG) | RAG agentique avec contrôle d'accès (CDK + Amazon Bedrock) |
+| [FSx-for-ONTAP-Lakehouse-Integrations](https://github.com/Yoshiki0705/FSx-for-ONTAP-Lakehouse-Integrations) | Intégration Lakehouse (Databricks, Snowflake, Athena, Glue, EMR) |
+| [VMware-Migration-EC2-ONTAP](https://github.com/Yoshiki0705/VMware-Migration-EC2-ONTAP) | Migration VMware → EC2 + FSx for ONTAP |
 
 </details>
 

@@ -73,7 +73,7 @@ aws s3 ls s3://<your-ap-ext-s3alias>/ --max-items 5
 ### Step 2: リポジトリのクローンとディレクトリ移動
 
 ```bash
-git clone https://github.com/Yoshiki0705/fsxn-s3ap-serverless-patterns.git
+git clone https://github.com/Yoshiki0705/FSx-for-ONTAP-S3AccessPoints-Serverless-Patterns.git fsxn-s3ap-serverless-patterns
 cd fsxn-s3ap-serverless-patterns/solutions/industry/smart-city-geospatial
 ```
 

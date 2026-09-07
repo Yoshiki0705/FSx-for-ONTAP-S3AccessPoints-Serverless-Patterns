@@ -458,3 +458,15 @@ sam deploy \
 > 本パターンは技術アーキテクチャガイダンスを提供します。法的・コンプライアンス・規制上の助言ではありません。組織は適格な専門家に相談してください。S3 AP のデータソース境界はボリューム/プレフィックス単位であり、利用者個人ごとの可視範囲制御が必要な場合は本UCの適用範囲外です。
 >
 > **アクセス制御の3層（用途に応じて選択）**: ①検索絞り込み=Bedrock KB メタデータフィルタ（本UC、AWS 認可ではない） / ②文書レベル ACL=Amazon Quick S3 ナレッジベース（[UC30](../genai-quick-agentic-workspace/)、利用者・グループ単位） / ③チャンク単位の権限フィルタ=カスタム Permission-aware RAG（[FC3](../genai-rag-enterprise-files/)、AD SID/NTFS ACL、規制業種向け）
+
+---
+
+<!-- playbook-reading:start -->
+## 本番に出す前に読むもの
+
+デプロイしたあとに当たる制約を、どう設計判断に翻訳するかは [FSx for ONTAP Adoption Playbook](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook) 側にあります。同じ内容を 2 か所に置くと、更新が止まった側が更新された側より長く残るためです。
+
+- [データ活用](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/tree/main/docs/ja/domains/data-utilization) — 最初に読む
+- [セキュリティ・ガバナンス](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/tree/main/docs/ja/domains/security-governance) — 次に読む
+- [構築](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/tree/main/docs/ja/playbooks/04-build) — 本番前に通す（全パターン共通）
+<!-- playbook-reading:end -->

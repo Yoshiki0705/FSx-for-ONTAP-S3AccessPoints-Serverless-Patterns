@@ -110,3 +110,15 @@ sam deploy \
 - Lambda VPC placement requirements depend on NetworkOrigin setting (see steering docs)
 - FlexClone split converts to an independent volume (loses space efficiency)
 - **FSx API propagation delay (SM-VAL-009)**: FlexClones are created via ONTAP REST API and take ~30 minutes to propagate to FSx API (`describe-volumes`). S3 AP attachment (`create-and-attach-s3-access-point`) is only possible after the volume appears in FSx API. For automation, implement polling logic that waits for `fsvol-*` ID to appear in `describe-volumes`
+
+---
+
+<!-- playbook-reading:start -->
+## Read before going to production
+
+How the constraints that surface after deploying translate into design decisions is covered in the [FSx for ONTAP Adoption Playbook](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook). The same content in two places means the copy that stops being updated outlives the one that was corrected.
+
+- [Block Storage](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/tree/main/docs/en/domains/block-storage) — read first
+- [Cost](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/tree/main/docs/en/domains/cost) — read next
+- [Build](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/tree/main/docs/en/playbooks/04-build) — run through before production (every pattern)
+<!-- playbook-reading:end -->

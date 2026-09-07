@@ -25,7 +25,7 @@ Zero cost, no additional Lambda. Rendered directly in the browser:
 | File format | Library | Size | Notes |
 |------------|-----------|------|------|
 | PDF | [pdf.js](https://mozilla.github.io/pdf.js/) (Mozilla) | 350KB | Industry standard, Canvas rendering |
-| DOCX | [docx-preview](https://github.com/nicholasguo/docx-preview) | 80KB | XML → HTML conversion |
+| DOCX | [docx-preview](https://github.com/VolodymyrBaydalka/docxjs) | 80KB | XML → HTML conversion |
 | XLSX | — | — | Difficult client-side |
 | PPTX | — | — | Difficult client-side |
 
@@ -122,5 +122,5 @@ Reasons:
 
 - [shelfio/libreoffice-lambda-layer](https://github.com/shelfio/libreoffice-lambda-layer) — 95MB Brotli-compressed Layer
 - [shelfio/libreoffice-lambda-base-image](https://github.com/shelfio/libreoffice-lambda-base-image) — Container Image base
-- [docx-preview](https://github.com/nicholasguo/docx-preview) — client-side DOCX rendering
+- [docx-preview](https://github.com/VolodymyrBaydalka/docxjs) — client-side DOCX rendering
 - [pdf.js](https://mozilla.github.io/pdf.js/) — Mozilla PDF renderer

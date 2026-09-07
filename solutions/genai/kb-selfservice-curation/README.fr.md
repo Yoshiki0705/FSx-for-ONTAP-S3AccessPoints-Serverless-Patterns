@@ -461,3 +461,15 @@ sam deploy \
 > Ce modèle fournit des orientations d'architecture technique. Ce ne sont pas des conseils juridiques, de conformité ou réglementaires. Les organisations doivent consulter des professionnels qualifiés. La limite de source de données S3 AP est au niveau volume/préfixe ; si un contrôle de visibilité par utilisateur individuel est requis, cela est hors du périmètre de ce UC.
 >
 > **Trois couches de contrôle d'accès (à choisir selon le cas d'usage)** : ① Restriction de recherche = filtre de métadonnées Bedrock KB (ce UC, pas une autorisation AWS) / ② ACL au niveau document = base de connaissances S3 d'Amazon Quick ([UC30](../genai-quick-agentic-workspace/), par utilisateur/groupe) / ③ Filtre de permission par chunk = RAG personnalisé sensible aux permissions ([FC3](../genai-rag-enterprise-files/), AD SID/NTFS ACL, pour les secteurs réglementés)
+
+---
+
+<!-- playbook-reading:start -->
+## À lire avant la mise en production
+
+La façon de traduire en décisions de conception les contraintes qui apparaissent après le déploiement est documentée dans le [FSx for ONTAP Adoption Playbook](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook). Un même contenu présent à deux endroits laisse survivre la copie qui a cessé d'être mise à jour.
+
+- [Exploitation des données](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/tree/main/docs/en/domains/data-utilization) — à lire en premier
+- [Sécurité et gouvernance](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/tree/main/docs/en/domains/security-governance) — à lire ensuite
+- [Construire](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/tree/main/docs/en/playbooks/04-build) — à parcourir avant la production (tous les patterns)
+<!-- playbook-reading:end -->

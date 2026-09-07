@@ -137,7 +137,7 @@ These are useful when you want to act on one protocol without affecting the othe
 ## Where the portal is self-contained, and where it needs something else
 
 The containment primitives here are a port of `ontap_response.py` from
-[fsxn-observability-integrations](https://github.com/Yoshiki0705/fsxn-observability-integrations)
+[FSx-for-ONTAP-Observability-integrations](https://github.com/Yoshiki0705/FSx-for-ONTAP-Observability-integrations)
 (the module docstring records this). The ONTAP mechanisms are identical —
 name-mapping deny, export-policy deny rule, protective snapshot, CIFS session
 disconnect. What differs is the trigger and the layers around it.
@@ -260,6 +260,6 @@ Snapshot creation includes a 15-minute cooldown to prevent snapshot storms durin
 
 - [ARP/AI Documentation — AWS Docs](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/ARP.html)
 - [ONTAP Anti-Ransomware REST API](https://docs.netapp.com/us-en/ontap-restapi/)
-- [fsxn-observability-integrations (source implementation)](https://github.com/Yoshiki0705/fsxn-observability-integrations)
+- [FSx-for-ONTAP-Observability-integrations (source implementation)](https://github.com/Yoshiki0705/FSx-for-ONTAP-Observability-integrations)
 - [DII Storage Workload Security reference](https://docs.netapp.com/us-en/cloudinsights/cs_restrict_user_access.html)
 - [日本語版](../ja/arp-ai-isolation-demo-guide.md)

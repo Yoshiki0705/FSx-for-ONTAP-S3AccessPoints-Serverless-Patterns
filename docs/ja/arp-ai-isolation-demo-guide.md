@@ -137,7 +137,7 @@ curl -sk -u fsxadmin:<password> \
 
 ## ポータルで完結する範囲と、外部連携が必要な範囲
 
-ここで使っている封じ込めの部品は、[fsxn-observability-integrations](https://github.com/Yoshiki0705/fsxn-observability-integrations) の `ontap_response.py` を移植したものです（モジュールの docstring に明記しています）。呼んでいる ONTAP の仕組みは同一です — name-mapping deny、export-policy deny rule、保護スナップショット、CIFS セッション切断。違うのは引き金と、その周辺のレイヤーです。
+ここで使っている封じ込めの部品は、[FSx-for-ONTAP-Observability-integrations](https://github.com/Yoshiki0705/FSx-for-ONTAP-Observability-integrations) の `ontap_response.py` を移植したものです（モジュールの docstring に明記しています）。呼んでいる ONTAP の仕組みは同一です — name-mapping deny、export-policy deny rule、保護スナップショット、CIFS セッション切断。違うのは引き金と、その周辺のレイヤーです。
 
 ### ポータルで完結する範囲
 
@@ -250,6 +250,6 @@ PROTECTED_ACCOUNTS_EXTRA="svc-backup,svc-ml-pipeline,app-service"
 
 - [ARP/AI のドキュメント — AWS Docs](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/ARP.html)
 - [ONTAP Anti-Ransomware REST API](https://docs.netapp.com/us-en/ontap-restapi/)
-- [fsxn-observability-integrations（移植元の実装）](https://github.com/Yoshiki0705/fsxn-observability-integrations)
+- [FSx-for-ONTAP-Observability-integrations（移植元の実装）](https://github.com/Yoshiki0705/FSx-for-ONTAP-Observability-integrations)
 - [DII Storage Workload Security のリファレンス](https://docs.netapp.com/us-en/cloudinsights/cs_restrict_user_access.html)
 - [English version](../en/arp-ai-isolation-demo-guide.md)

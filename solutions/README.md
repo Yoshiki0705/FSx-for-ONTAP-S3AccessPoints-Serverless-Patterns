@@ -29,4 +29,4 @@
 - **Human Review**: `shared/human_review.py`
 - **エラーハンドリング**: `shared/exceptions.py`
 
-各パターンの詳細は個別の README を参照してください。
+各パターンの詳細は個別の README を参照してください。各 README の末尾に、そのパターンを本番に出す前に読む [FSx for ONTAP Adoption Playbook](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook) のモジュールが 3 つ挙がっています。

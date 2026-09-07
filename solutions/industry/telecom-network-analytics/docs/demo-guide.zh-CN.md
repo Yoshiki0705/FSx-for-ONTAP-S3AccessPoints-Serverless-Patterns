@@ -26,7 +26,7 @@ aws sts get-caller-identity
 ### 步骤 2：克隆仓库
 
 ```bash
-git clone https://github.com/Yoshiki0705/fsxn-s3ap-serverless-patterns.git
+git clone https://github.com/Yoshiki0705/FSx-for-ONTAP-S3AccessPoints-Serverless-Patterns.git fsxn-s3ap-serverless-patterns
 cd fsxn-s3ap-serverless-patterns/solutions/industry/telecom-network-analytics
 ```
 

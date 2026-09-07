@@ -154,6 +154,8 @@ graph TB
 
 ## 주요 S3 Access Point 제약 사항
 
+> 이 표는 제약 목록입니다. **각 제약을 설계 판단으로 옮기는 방법**은 [FSx for ONTAP Adoption Playbook](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook)에 있습니다.
+
 | 제약 사항 | 해결 방법 |
 |---|---|
 | S3 Event Notifications 미지원 | EventBridge Scheduler 폴링 (FPolicy는 액세스 포인트 경유 쓰기를 감지하지 않음. 2026-08-26 실측, ONTAP 9.18.1P3D1) |
@@ -162,7 +164,7 @@ graph TB
 | Athena 결과를 S3AP에 쓸 수 없음 | 표준 S3 버킷으로 출력 |
 | SSE-FSX 전용 | 볼륨 수준 KMS 암호화 사용 |
 
-상세: [S3AP Compatibility Notes](docs/s3ap-compatibility-notes.en.md) | [Compatibility Matrix (AWS 확인)](https://github.com/Yoshiki0705/fsxn-lakehouse-integrations/blob/main/docs/en/compatibility-matrix.md)
+상세: [S3AP Compatibility Notes](docs/s3ap-compatibility-notes.en.md) | [Compatibility Matrix (AWS 확인)](https://github.com/Yoshiki0705/FSx-for-ONTAP-Lakehouse-Integrations/blob/main/docs/en/compatibility-matrix.md)
 
 ---
 
@@ -184,9 +186,9 @@ graph TB
 
 | 리포지토리 | 요약 |
 |---|---|
-| [Permission-aware-RAG-FSxN-CDK](https://github.com/Yoshiki0705/Permission-aware-RAG-FSxN-CDK-github) | 권한 인식 RAG 챗봇 (CDK + Next.js + ECS) | <!-- allow:naming (external repo name) -->
-| [fsxn-lakehouse-integrations](https://github.com/Yoshiki0705/fsxn-lakehouse-integrations) | 레이크하우스 통합 (Databricks, Snowflake, Athena, Glue, EMR) |
-| [vmware-migration-ec2-ontap](https://github.com/Yoshiki0705/vmware-migration-ec2-ontap) | VMware → EC2 + FSx for ONTAP 마이그레이션 |
+| [FSx-for-ONTAP-Agentic-Access-Aware-RAG](https://github.com/Yoshiki0705/FSx-for-ONTAP-Agentic-Access-Aware-RAG) | 액세스 제어 대응 Agentic RAG (CDK + Amazon Bedrock) |
+| [FSx-for-ONTAP-Lakehouse-Integrations](https://github.com/Yoshiki0705/FSx-for-ONTAP-Lakehouse-Integrations) | 레이크하우스 통합 (Databricks, Snowflake, Athena, Glue, EMR) |
+| [VMware-Migration-EC2-ONTAP](https://github.com/Yoshiki0705/VMware-Migration-EC2-ONTAP) | VMware → EC2 + FSx for ONTAP 마이그레이션 |
 
 </details>
 
