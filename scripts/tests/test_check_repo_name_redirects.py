@@ -33,7 +33,7 @@ def write(tmp_path: Path, name: str, body: str) -> Path:
 def test_reference_inside_a_fenced_code_block_is_collected(tmp_path: Path) -> None:
     """The deliberate difference from the Playbook's version.
 
-    Ninety-eight files in this repository carry their only repository reference inside a
+    Ninety-one files in this repository carry their only repository reference inside a
     ```bash fence as a `git clone` line. Skipping fences would skip exactly the case
     with the most direct consequence for a reader.
     """
@@ -139,3 +139,90 @@ def test_the_file_list_is_truncated_but_counted() -> None:
     )
     assert "and 6 more" in stale[0]
     assert "docs/f9.md" not in stale[0]
+
+
+# --- fail-open and reporting ---
+
+
+def test_an_empty_corpus_is_a_failure_not_a_clean_run(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A gate that certifies nothing is a gate a file-filter change switches off silently."""
+    import check_repo_name_redirects as module
+
+    monkeypatch.setattr(module, "collect", lambda *a, **k: {})
+    monkeypatch.setattr(sys, "argv", ["check_repo_name_redirects.py"])
+    assert module.main() == 1
+
+
+def test_findings_dominate_when_names_are_also_unreachable() -> None:
+    def resolver(slug: str) -> tuple[str, str | None]:
+        return ("missing", "404") if slug == "o/gone" else ("unreachable", "HTTP 503")
+
+    stale, unreachable = audit({"o/gone": ["a.md"], "o/x": ["b.md"], "o/y": ["c.md"]}, resolver=resolver)
+    assert len(stale) == 1
+    assert len(unreachable) == 2
+
+
+# --- casing, the class the default mode cannot see ---
+
+
+def test_a_miscased_name_is_a_finding_under_strict_casing() -> None:
+    stale, unreachable = audit(
+        {"Owner/lower-case-name": ["README.md"]},
+        resolver=lambda _s: ("ok", None),
+        casing_resolver=lambda _s: ("miscased", "Owner/Lower-Case-Name"),
+    )
+    assert unreachable == []
+    assert len(stale) == 1
+    assert "capitalised Owner/Lower-Case-Name" in stale[0]
+
+
+def test_casing_is_not_consulted_for_a_name_that_already_failed() -> None:
+    """Reporting a rename and its capitalisation would be one problem under two labels."""
+    calls: list[str] = []
+
+    def casing(slug: str) -> tuple[str, str | None]:
+        calls.append(slug)
+        return "ok", None
+
+    audit(
+        {"o/renamed": ["a.md"]},
+        resolver=lambda _s: ("renamed", "o/new"),
+        casing_resolver=casing,
+    )
+    assert calls == []
+
+
+def test_casing_is_skipped_entirely_when_no_resolver_is_given() -> None:
+    stale, unreachable = audit({"o/x": ["a.md"]}, resolver=lambda _s: ("ok", None))
+    assert (stale, unreachable) == ([], [])
+
+
+def test_an_unreachable_casing_lookup_is_not_a_finding() -> None:
+    stale, unreachable = audit(
+        {"o/x": ["a.md"]},
+        resolver=lambda _s: ("ok", None),
+        casing_resolver=lambda _s: ("unreachable", "HTTP 403"),
+    )
+    assert stale == []
+    assert unreachable == ["o/x (casing): HTTP 403"]
+
+
+# --- collect() edges the first version got wrong ---
+
+
+def test_a_hyphen_wrapped_url_does_not_accuse_a_real_repository(tmp_path: Path) -> None:
+    """A name cannot end in a hyphen, so one came from a wrapped line, not from the name."""
+    path = write(tmp_path, "a.md", "see https://github.com/Owner/repo-\n")
+    assert list(collect([path], root=tmp_path)) == ["Owner/repo"]
+
+
+@pytest.mark.parametrize("segment", ["trending", "gist", "explore", "codespaces"])
+def test_more_product_surfaces_are_excluded(tmp_path: Path, segment: str) -> None:
+    path = write(tmp_path, "a.md", f"https://github.com/{segment}/whatever\n")
+    assert collect([path], root=tmp_path) == {}
+
+
+def test_an_owner_named_like_a_product_surface_is_still_collected(tmp_path: Path) -> None:
+    """`Security` is a plausible org name; the exclusion list is lowercase URL segments."""
+    path = write(tmp_path, "a.md", "https://github.com/Security/realrepo\n")
+    assert list(collect([path], root=tmp_path)) == ["Security/realrepo"]

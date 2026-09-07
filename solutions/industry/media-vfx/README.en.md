@@ -403,7 +403,7 @@ For S3 Access Points for FSx for ONTAP compatibility constraints, troubleshootin
 <!-- playbook-reading:start -->
 ## Read before going to production
 
-The constraints that surface after deploying are documented in the [FSx for ONTAP Adoption Playbook](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook), not here. The same content in two places means the copy that stops being updated outlives the one that was corrected.
+How the constraints that surface after deploying translate into design decisions is covered in the [FSx for ONTAP Adoption Playbook](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook). The same content in two places means the copy that stops being updated outlives the one that was corrected.
 
 - [Design](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/tree/main/docs/en/playbooks/02-design) — read first
 - [Performance](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/tree/main/docs/en/domains/performance) — read next

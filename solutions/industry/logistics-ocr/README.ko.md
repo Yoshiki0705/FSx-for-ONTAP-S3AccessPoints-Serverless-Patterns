@@ -107,8 +107,8 @@ Textract는 도쿄 리전을 지원하지 않으므로, `CrossRegion` 파라미�
 # https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/install-sam-cli.html
 
 # 리포지토리 클론
-git clone https://github.com/Yoshiki0705/FSx-for-ONTAP-S3AccessPoints-Serverless-Patterns.git
-cd FSx-for-ONTAP-S3AccessPoints-Serverless-Patterns/solutions/industry/logistics-ocr
+git clone https://github.com/Yoshiki0705/FSx-for-ONTAP-S3AccessPoints-Serverless-Patterns.git fsxn-s3ap-serverless-patterns
+cd fsxn-s3ap-serverless-patterns/solutions/industry/logistics-ocr
 ```
 
 ### 3. samconfig.toml 설정
@@ -364,7 +364,7 @@ S3 Access Points for FSx for ONTAP의 호환성 제약, 문제 해결, 트리거
 <!-- playbook-reading:start -->
 ## 프로덕션 적용 전에 읽을 것
 
-배포 후에 부딪히는 제약은 이 리포지토리가 아니라 [FSx for ONTAP Adoption Playbook](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook)에 정리되어 있습니다. 같은 내용을 두 곳에 두면 갱신이 멈춘 쪽이 더 오래 남기 때문입니다.
+배포 후에 부딪히는 제약을 설계 판단으로 어떻게 옮기는지는 [FSx for ONTAP Adoption Playbook](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook)에 정리되어 있습니다. 같은 내용을 두 곳에 두면 갱신이 멈춘 쪽이 더 오래 남기 때문입니다.
 
 - [마이그레이션](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/tree/main/docs/en/playbooks/03-migrate) — 먼저 읽기
 - [운영](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/tree/main/docs/en/playbooks/05-operate) — 다음에 읽기

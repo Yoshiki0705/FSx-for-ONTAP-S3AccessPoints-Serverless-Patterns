@@ -371,7 +371,7 @@ Para conocer las restricciones de compatibilidad, la solución de problemas y lo
 <!-- playbook-reading:start -->
 ## Lectura previa al paso a producción
 
-Las restricciones que aparecen después del despliegue están documentadas en el [FSx for ONTAP Adoption Playbook](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook), no aquí. El mismo contenido en dos lugares hace que la copia que deja de actualizarse sobreviva a la corregida.
+Cómo se traducen en decisiones de diseño las restricciones que aparecen después del despliegue está documentado en el [FSx for ONTAP Adoption Playbook](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook). El mismo contenido en dos lugares hace que la copia que deja de actualizarse sobreviva a la corregida.
 
 - [Protección de datos](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/tree/main/docs/en/domains/data-protection) — leer primero
 - [Seguridad y gobernanza](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/tree/main/docs/en/domains/security-governance) — leer a continuación

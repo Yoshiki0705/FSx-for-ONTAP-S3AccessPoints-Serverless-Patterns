@@ -107,8 +107,8 @@ graph LR
 # https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/install-sam-cli.html
 
 # 複製儲存庫
-git clone https://github.com/Yoshiki0705/FSx-for-ONTAP-S3AccessPoints-Serverless-Patterns.git
-cd FSx-for-ONTAP-S3AccessPoints-Serverless-Patterns/solutions/industry/logistics-ocr
+git clone https://github.com/Yoshiki0705/FSx-for-ONTAP-S3AccessPoints-Serverless-Patterns.git fsxn-s3ap-serverless-patterns
+cd fsxn-s3ap-serverless-patterns/solutions/industry/logistics-ocr
 ```
 
 ### 3. 設定 samconfig.toml
@@ -364,7 +364,7 @@ python3 -m pytest tests/ -v
 <!-- playbook-reading:start -->
 ## 上線前需要閱讀的內容
 
-部署後才會遇到的限制記錄在 [FSx for ONTAP Adoption Playbook](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook)，而非本儲存庫。同一內容放在兩處時，停止更新的那份會比已修正的那份留存更久。
+部署後才會遇到的限制如何轉化為設計決策，記錄在 [FSx for ONTAP Adoption Playbook](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook)。同一內容放在兩處時，停止更新的那份會比已修正的那份留存更久。
 
 - [遷移](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/tree/main/docs/en/playbooks/03-migrate) — 先讀
 - [運維](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/tree/main/docs/en/playbooks/05-operate) — 接著讀

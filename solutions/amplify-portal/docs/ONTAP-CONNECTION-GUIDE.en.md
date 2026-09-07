@@ -277,8 +277,8 @@ const client = generateClient<Schema>({ authMode: "userPool" });
 
 ```bash
 # 1. Get the repository
-git clone https://github.com/Yoshiki0705/FSx-for-ONTAP-S3AccessPoints-Serverless-Patterns.git
-cd FSx-for-ONTAP-S3AccessPoints-Serverless-Patterns/solutions/amplify-portal
+git clone https://github.com/Yoshiki0705/FSx-for-ONTAP-S3AccessPoints-Serverless-Patterns.git fsxn-s3ap-serverless-patterns
+cd fsxn-s3ap-serverless-patterns/solutions/amplify-portal
 
 # 2. Dependencies
 npm install

@@ -337,7 +337,7 @@ Informationen zu Kompatibilitätsbeschränkungen, Fehlerbehebung und Trigger-Mus
 <!-- playbook-reading:start -->
 ## Vor dem Produktivbetrieb lesen
 
-Die Einschränkungen, die nach der Bereitstellung auftreten, sind im [FSx for ONTAP Adoption Playbook](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook) dokumentiert, nicht hier. Liegt derselbe Inhalt an zwei Stellen, überlebt die nicht mehr gepflegte Kopie die korrigierte.
+Wie sich die nach der Bereitstellung auftretenden Einschränkungen in Entwurfsentscheidungen übersetzen, steht im [FSx for ONTAP Adoption Playbook](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook) beschrieben. Liegt derselbe Inhalt an zwei Stellen, überlebt die nicht mehr gepflegte Kopie die korrigierte.
 
 - [Performance](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/tree/main/docs/en/domains/performance) — zuerst lesen
 - [Datennutzung](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/tree/main/docs/en/domains/data-utilization) — danach lesen

@@ -116,7 +116,7 @@ sam deploy \
 <!-- playbook-reading:start -->
 ## Read before going to production
 
-The constraints that surface after deploying are documented in the [FSx for ONTAP Adoption Playbook](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook), not here. The same content in two places means the copy that stops being updated outlives the one that was corrected.
+How the constraints that surface after deploying translate into design decisions is covered in the [FSx for ONTAP Adoption Playbook](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook). The same content in two places means the copy that stops being updated outlives the one that was corrected.
 
 - [Block Storage](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/tree/main/docs/en/domains/block-storage) — read first
 - [Cost](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/tree/main/docs/en/domains/cost) — read next

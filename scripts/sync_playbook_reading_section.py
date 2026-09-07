@@ -30,23 +30,27 @@ row by workload shape, which the table itself instructs ("読むモジュール�
 あります"). `INFERRED` records which assignments are that inference rather than the
 Playbook's own, so a disagreement can be settled by moving one line.
 
-## Why module hubs rather than notes
+## Why module hubs rather than notes, and what still gates them
 
-Notes get renamed. A module hub does not. The Playbook's external gate corrects links
-*into* this repository when it is renamed; nothing on that side watches links pointing
-the other way, which is what `check_repo_name_redirects.py` here is for.
+Notes get renamed. A module hub does not. `check_repo_name_redirects.py` covers the
+*repository name* in these links; it deliberately drops everything after `owner/repo`, so
+the 24 hub paths themselves need `--verify-hubs`, which the weekly workflow runs. Without
+it the generator would be claiming coverage the name check does not provide.
 
 ## Usage
 
-    python3 scripts/sync_playbook_reading_section.py            # write
-    python3 scripts/sync_playbook_reading_section.py --check     # exit 1 if out of date
-    python3 scripts/sync_playbook_reading_section.py --dry-run   # show what would change
+    python3 scripts/sync_playbook_reading_section.py                # write
+    python3 scripts/sync_playbook_reading_section.py --check         # exit 1 if out of date
+    python3 scripts/sync_playbook_reading_section.py --dry-run       # show what would change
+    python3 scripts/sync_playbook_reading_section.py --verify-hubs   # resolve the hub URLs
 """
 
 from __future__ import annotations
 
 import argparse
 import sys
+import urllib.error
+import urllib.request
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -58,7 +62,7 @@ END = "<!-- playbook-reading:end -->"
 
 # The Playbook's `domains/` and `playbooks/` trees exist in ja and en only; the other six
 # locales carry just README, navigation and evidence-policy. So a non-Japanese README
-# points at the English hub. Verified 2026-09-07: all 28 ja/en hub URLs return 200.
+# points at the English hub. Verified 2026-09-07: all 24 ja/en hub URLs return 200, and --verify-hubs re-checks them.
 HUB_LOCALE = {"md": "ja"}  # everything else falls back to "en"
 
 # Suffix of each README variant, in the order the group is declared in the manifest.
@@ -269,6 +273,15 @@ ASSIGNMENT: dict[str, str] = {
     "sap/erp-adjacent": "financial",
 }
 
+# Solution directories deliberately without a section, and why. Recorded as data rather
+# than left absent, because `ASSIGNMENT` is the input to the writer: a directory missing
+# from it is indistinguishable from one nobody got round to, and `--check` walks
+# `ASSIGNMENT` so it cannot report the difference. `check_coverage()` reads this.
+EXCLUDED: dict[str, str] = {
+    "nextcloud-test": "S3 AP verification environment, not a pattern anyone deploys.",
+    "storage-browser-demo": "Storage Browser demo, not a pattern anyone deploys.",
+}
+
 # Assignments that are this repository's inference rather than the Playbook's own table.
 # Kept as data so the distinction survives; the Playbook is still the source for the
 # module pairs themselves.
@@ -303,45 +316,45 @@ HEADING = {
 
 LEAD = {
     "md": (
-        "デプロイしたあとに当たる制約は、このリポジトリではなく "
+        "デプロイしたあとに当たる制約を、どう設計判断に翻訳するかは "
         f"[FSx for ONTAP Adoption Playbook]({PLAYBOOK}) 側にあります。"
         "同じ内容を 2 か所に置くと、更新が止まった側が更新された側より長く残るためです。"
     ),
     "en.md": (
-        "The constraints that surface after deploying are documented in the "
-        f"[FSx for ONTAP Adoption Playbook]({PLAYBOOK}), not here. The same content in "
+        "How the constraints that surface after deploying translate into design decisions is covered in the "
+        f"[FSx for ONTAP Adoption Playbook]({PLAYBOOK}). The same content in "
         "two places means the copy that stops being updated outlives the one that was "
         "corrected."
     ),
     "ko.md": (
-        "배포 후에 부딪히는 제약은 이 리포지토리가 아니라 "
+        "배포 후에 부딪히는 제약을 설계 판단으로 어떻게 옮기는지는 "
         f"[FSx for ONTAP Adoption Playbook]({PLAYBOOK})에 정리되어 있습니다. "
         "같은 내용을 두 곳에 두면 갱신이 멈춘 쪽이 더 오래 남기 때문입니다."
     ),
     "zh-CN.md": (
-        "部署后才会遇到的约束记录在 "
-        f"[FSx for ONTAP Adoption Playbook]({PLAYBOOK})，而不是本仓库。"
+        "部署后才会遇到的约束如何转化为设计决策，记录在 "
+        f"[FSx for ONTAP Adoption Playbook]({PLAYBOOK})。"
         "同一内容放在两处时，停止更新的那份会比已修正的那份存留更久。"
     ),
     "zh-TW.md": (
-        "部署後才會遇到的限制記錄在 "
-        f"[FSx for ONTAP Adoption Playbook]({PLAYBOOK})，而非本儲存庫。"
+        "部署後才會遇到的限制如何轉化為設計決策，記錄在 "
+        f"[FSx for ONTAP Adoption Playbook]({PLAYBOOK})。"
         "同一內容放在兩處時，停止更新的那份會比已修正的那份留存更久。"
     ),
     "fr.md": (
-        "Les contraintes qui apparaissent après le déploiement sont documentées dans le "
-        f"[FSx for ONTAP Adoption Playbook]({PLAYBOOK}), pas ici. Un même contenu présent "
+        "La façon de traduire en décisions de conception les contraintes qui apparaissent après le déploiement est documentée dans le "
+        f"[FSx for ONTAP Adoption Playbook]({PLAYBOOK}). Un même contenu présent "
         "à deux endroits laisse survivre la copie qui a cessé d'être mise à jour."
     ),
     "de.md": (
-        "Die Einschränkungen, die nach der Bereitstellung auftreten, sind im "
-        f"[FSx for ONTAP Adoption Playbook]({PLAYBOOK}) dokumentiert, nicht hier. "
+        "Wie sich die nach der Bereitstellung auftretenden Einschränkungen in Entwurfsentscheidungen übersetzen, steht im "
+        f"[FSx for ONTAP Adoption Playbook]({PLAYBOOK}) beschrieben. "
         "Liegt derselbe Inhalt an zwei Stellen, überlebt die nicht mehr gepflegte Kopie "
         "die korrigierte."
     ),
     "es.md": (
-        "Las restricciones que aparecen después del despliegue están documentadas en el "
-        f"[FSx for ONTAP Adoption Playbook]({PLAYBOOK}), no aquí. El mismo contenido en "
+        "Cómo se traducen en decisiones de diseño las restricciones que aparecen después del despliegue está documentado en el "
+        f"[FSx for ONTAP Adoption Playbook]({PLAYBOOK}). El mismo contenido en "
         "dos lugares hace que la copia que deja de actualizarse sobreviva a la corregida."
     ),
 }
@@ -440,6 +453,10 @@ def readme_for(solution: str, locale: str, root: Path = ROOT) -> Path:
     return base / f"README.{locale}"
 
 
+class MarkerError(RuntimeError):
+    """A file's markers are in a state this cannot safely rewrite."""
+
+
 def apply(text: str, section: str) -> str:
     """Insert or replace the marked section, leaving the rest of the file alone.
 
@@ -449,25 +466,141 @@ def apply(text: str, section: str) -> str:
 
     Returns:
         The updated contents. Applying the same section twice is a no-op.
+
+    Raises:
+        MarkerError: One marker is present without the other. Rewriting then would
+            delete content, so it refuses instead.
     """
-    if BEGIN in text and END in text:
-        head, _, rest = text.partition(BEGIN)
-        _, _, tail = rest.partition(END)
-        return head + section.rstrip("\n") + tail
-    body = text.rstrip("\n")
-    return f"{body}\n\n---\n\n{section}"
+    begins = text.count(BEGIN)
+    ends = text.count(END)
+
+    if begins == 0 and ends == 0:
+        return f"{text.rstrip(chr(10))}\n\n---\n\n{section}"
+
+    # An orphaned marker used to fall through to the append path, which produced
+    # BEGIN...BEGIN...END. The run after that satisfied the replace condition, took
+    # everything between the FIRST begin and the FIRST end as the block, and deleted it --
+    # so a Governance Note survived one run and was gone after the next. The damage landed
+    # on the run `--check` tells you to make, which is the worst possible moment for it.
+    if begins != ends:
+        raise MarkerError(
+            f"found {begins} '{BEGIN}' and {ends} '{END}'. Repair the markers by hand: "
+            "rewriting a half-open block would delete everything after it."
+        )
+
+    head, _, rest = text.partition(BEGIN)
+    _, _, tail = rest.partition(END)
+
+    # More than one pair is not corruption, but it is a fixed point: rewriting the first
+    # and leaving the rest means `--check` calls a file with two sections up to date.
+    # sync_lang_switcher.py drops duplicates for the same reason.
+    if begins > 1:
+        while BEGIN in tail and END in tail:
+            before, _, after = tail.partition(BEGIN)
+            _, _, tail = after.partition(END)
+            head_tail = before.rstrip()
+            tail = (head_tail + tail) if head_tail else tail
+
+    return head + section.rstrip("\n") + tail
+
+
+def check_coverage(root: Path = ROOT) -> list[str]:
+    """Report solution directories on disk that the mapping says nothing about.
+
+    `main()` iterates `ASSIGNMENT`, so on its own it can only report a README the mapping
+    names and disk lacks. This is the other direction: a pattern added to the tree without
+    an `ASSIGNMENT` entry silently gets no section, and every gate stays green.
+
+    Args:
+        root: Repository root, overridable for tests.
+
+    Returns:
+        One message per uncovered directory. Empty when every directory is either mapped
+        or listed in `EXCLUDED`.
+    """
+    problems: list[str] = []
+    solutions = root / "solutions"
+    for readme in sorted(solutions.glob("*/*/README.md")) + sorted(solutions.glob("*/README.md")):
+        rel = readme.parent.relative_to(solutions).as_posix()
+        if rel in ASSIGNMENT or rel in EXCLUDED or rel == ".":
+            continue
+        problems.append(
+            f"solutions/{rel} has a README and no ASSIGNMENT entry. Add one, or record the "
+            f"exclusion in EXCLUDED with the reason."
+        )
+    return problems
+
+
+def hub_urls() -> list[str]:
+    """Every distinct hub URL the generator can emit, for both languages."""
+    modules = {UNIVERSAL}
+    for first, second in PLAYBOOK_ROWS.values():
+        modules.update((first, second))
+    return [f"{PLAYBOOK}/tree/main/docs/{lang}/{m}" for lang in ("ja", "en") for m in sorted(modules)]
+
+
+def verify_hubs() -> tuple[list[str], list[str]]:
+    """Resolve every hub URL the generated sections point at.
+
+    Returns:
+        A pair of `(broken, unreachable)`. `broken` is a 404 -- the module was renamed or
+        removed, and 376 READMEs now point at nothing. `unreachable` reached no verdict.
+    """
+    broken: list[str] = []
+    unreachable: list[str] = []
+    for url in hub_urls():
+        if not url.startswith("https://github.com/"):
+            raise ValueError(f"refusing a non-GitHub https URL: {url}")
+        request = urllib.request.Request(url, headers={"User-Agent": "playbook-hub-check"})
+        try:
+            with urllib.request.urlopen(  # nosec B310 - scheme asserted above  # noqa: S310
+                request, timeout=30
+            ) as response:
+                if response.status != 200:
+                    unreachable.append(f"{url}: HTTP {response.status}")
+        except urllib.error.HTTPError as exc:
+            (broken if exc.code == 404 else unreachable).append(f"{url}: HTTP {exc.code}")
+        except (urllib.error.URLError, TimeoutError) as exc:
+            unreachable.append(f"{url}: {exc}")
+    return broken, unreachable
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--check", action="store_true", help="exit 1 if any file is out of date")
     parser.add_argument("--dry-run", action="store_true", help="report without writing")
+    parser.add_argument("--verify-hubs", action="store_true", help="resolve the hub URLs (needs the network)")
     args = parser.parse_args()
+
+    if args.verify_hubs:
+        broken, unreachable = verify_hubs()
+        for label, rows in (("broken", broken), ("not checked", unreachable)):
+            for row_text in rows:
+                print(f"  {label}: {row_text}", file=sys.stderr)
+        if broken:
+            print(f"{len(broken)} hub URL(s) 404. 376 READMEs point at them.", file=sys.stderr)
+            return 1
+        if unreachable:
+            return 2
+        print(f"playbook-hubs: {len(hub_urls())} hub URL(s) resolve")
+        return 0
+
+    coverage = check_coverage()
+    if coverage:
+        print(f"{len(coverage)} solution directory(ies) outside the mapping:", file=sys.stderr)
+        for line in coverage:
+            print(f"  {line}", file=sys.stderr)
+        return 1
 
     written: list[str] = []
     stale: list[str] = []
     missing: list[str] = []
+    damaged: list[str] = []
 
+    # Every path is resolved and every file read before anything is written, so a mapping
+    # typo or a damaged marker pair fails before the first of several hundred writes rather
+    # than after some of them.
+    targets: list[tuple[Path, str, str]] = []
     for solution, row in sorted(ASSIGNMENT.items()):
         for locale in LOCALES:
             path = readme_for(solution, locale)
@@ -475,21 +608,31 @@ def main() -> int:
                 missing.append(path.relative_to(ROOT).as_posix())
                 continue
             current = path.read_text(encoding="utf-8")
-            updated = apply(current, render(locale, row))
-            if updated == current:
+            try:
+                updated = apply(current, render(locale, row))
+            except MarkerError as exc:
+                damaged.append(f"{path.relative_to(ROOT).as_posix()}: {exc}")
                 continue
-            rel = path.relative_to(ROOT).as_posix()
-            if args.check or args.dry_run:
-                stale.append(rel)
-                continue
-            path.write_text(updated, encoding="utf-8")
-            written.append(rel)
+            targets.append((path, current, updated))
 
-    if missing:
-        print(f"{len(missing)} README(s) declared in ASSIGNMENT do not exist:", file=sys.stderr)
-        for rel in missing:
-            print(f"  {rel}", file=sys.stderr)
+    if missing or damaged:
+        for label, rows in (("do not exist", missing), ("have damaged markers", damaged)):
+            if not rows:
+                continue
+            print(f"{len(rows)} README(s) {label}:", file=sys.stderr)
+            for row_text in rows:
+                print(f"  {row_text}", file=sys.stderr)
         return 1
+
+    for path, current, updated in targets:
+        if updated == current:
+            continue
+        rel = path.relative_to(ROOT).as_posix()
+        if args.check or args.dry_run:
+            stale.append(rel)
+            continue
+        path.write_text(updated, encoding="utf-8")
+        written.append(rel)
 
     if args.check:
         if stale:

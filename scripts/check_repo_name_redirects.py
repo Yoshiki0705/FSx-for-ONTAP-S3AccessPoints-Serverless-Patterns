@@ -24,19 +24,38 @@ repository the opposite is true: the majority of repository references sit insid
     ```
 
 in a demo guide, and that is a URL a reader pastes into a terminal. Skipping fences
-here would have skipped 98 files carrying a clone URL that 404s — the single most
+here would have skipped 91 files carrying a clone URL that 404s — the single most
 user-facing instance of exactly what this check is for.
 
-## What this cannot see
+## The two questions, and why casing needs the second one
 
-**A difference of casing alone.** Measured 2026-09-07: GitHub serves
-`Yoshiki0705/vmware-migration-ec2-ontap` at the URL requested and reports that URL
-back, while `Yoshiki0705/fsxn-cyber-resilience-patterns` redirects to
-`FSx-for-ONTAP-Cyber-Resilience-Patterns`. So a rename is visible in the landing URL
-and a casing difference is not, and no redirect-based check can close that gap. The
-REST API's `full_name` would answer it; that costs a rate limit and a token, and it is
-a different question from the one this gate was asked to settle. Recorded rather than
-silently left out.
+**Redirects do not reveal casing.** Measured 2026-09-07: GitHub serves
+`Yoshiki0705/vmware-migration-ec2-ontap` at the URL requested and reports that URL back,
+while `Yoshiki0705/fsxn-cyber-resilience-patterns` redirects to
+`FSx-for-ONTAP-Cyber-Resilience-Patterns`. A rename is visible in the landing URL; a
+casing difference is not.
+
+That gap is not academic here. Of the five stale names this check was written to find, one
+-- `vmware-migration-ec2-ontap`, whose real name is `VMware-Migration-EC2-ONTAP` -- sits
+inside it, and the default mode reports that name as canonical.
+
+So there are two modes:
+
+- **default** -- resolve the HTML URL. No token, no rate limit, catches renames.
+- **`--strict-casing`** -- additionally read `full_name` from the REST API, which is
+  authoritative for capitalisation. Costs one API call per name against a 60/hour
+  unauthenticated limit, so it is opt-in and runs weekly rather than on every invocation.
+  Reads `GITHUB_TOKEN` when present to lift that limit.
+
+`FSx-for-ONTAP-Observability-integrations` is the shape that makes this worth having: a
+lowercase `i` where its siblings use `-Integrations`, correct as written, and impossible to
+confirm without asking.
+
+## What this still cannot see
+
+A URL wrapped across two source lines. The first half yields no match at all, so the
+reference is skipped silently rather than reported. `WRAPPED` handles the narrower case of a
+name left with a trailing hyphen.
 
 ## What a 404 means, and what it does not
 
@@ -67,6 +86,8 @@ unusable and nothing could be concluded.
 from __future__ import annotations
 
 import argparse
+import json
+import os
 import re
 import subprocess
 import sys
@@ -102,11 +123,25 @@ NOT_OWNERS = {
     "login",
     "signup",
     "notifications",
+    "trending",
+    "gist",
+    "sponsors",
+    "codespaces",
+    "explore",
 }
 
 # Trailing punctuation that belongs to the prose rather than the URL. `)` and `>` come
 # from Markdown link syntax; `.` and `,` from the end of a sentence.
 TRAILING = ".,;:!?)>\"'"
+
+# A repository name cannot end in a hyphen, so one here came from a line-wrapped URL in the
+# source rather than from the name. Stripping it turned a false `missing` into a correct
+# lookup; a name that is genuinely truncated mid-word is still wrong, but it is wrong in a
+# way that resolves rather than one that accuses an existing repository of being gone.
+WRAPPED = "-"
+
+# Coverage floor. See the check in `main()`.
+MINIMUM_REFERENCES = 10
 
 REPO_REF = re.compile(r"https://github\.com/(?P<owner>[A-Za-z0-9][A-Za-z0-9._-]*)/(?P<repo>[A-Za-z0-9][A-Za-z0-9._-]*)")
 
@@ -148,9 +183,13 @@ def collect(paths: Iterable[Path] | None = None, root: Path = ROOT) -> dict[str,
             continue
         for match in REPO_REF.finditer(body):
             owner = match.group("owner")
-            if owner.lower() in NOT_OWNERS:
+            # Matched case-sensitively. These segments are always lowercase in a real
+            # github.com product URL, while `Security`, `About` and `Enterprise` are all
+            # plausible organisation names -- folding case would skip a real owner and
+            # produce no diagnostic saying so.
+            if owner in NOT_OWNERS:
                 continue
-            repo = match.group("repo").rstrip(TRAILING)
+            repo = match.group("repo").rstrip(TRAILING).rstrip(WRAPPED)
             # A clone URL ends in `.git`; the repository is the same one without it.
             if repo.endswith(".git"):
                 repo = repo[: -len(".git")]
@@ -203,15 +242,59 @@ def resolve(slug: str) -> tuple[str, str | None]:
     return "ok", None
 
 
+def canonical_casing(slug: str) -> tuple[str, str | None]:
+    """Ask the REST API for the repository's `full_name`.
+
+    The HTML endpoint echoes back whatever casing was requested, so it cannot answer this.
+    `full_name` can.
+
+    Args:
+        slug: An `owner/repo` reference as written in the prose.
+
+    Returns:
+        `("miscased", canonical)` when the capitalisation differs, `("ok", None)` when it
+        matches, `("unreachable", reason)` when no verdict was reached. A 404 is left to the
+        default mode, which already reports it.
+    """
+    url = f"https://api.github.com/repos/{slug}"
+    if not url.startswith("https://api.github.com/repos/"):
+        raise ValueError(f"refusing a non-GitHub https URL: {url}")
+    headers = {"User-Agent": "repo-name-redirect-check", "Accept": "application/vnd.github+json"}
+    token = os.environ.get("GITHUB_TOKEN")
+    if token:
+        headers["Authorization"] = f"Bearer {token}"
+    request = urllib.request.Request(url, headers=headers)
+    try:
+        with urllib.request.urlopen(  # nosec B310 - scheme asserted above  # noqa: S310
+            request, timeout=30
+        ) as response:
+            full_name = json.load(response).get("full_name")
+    except urllib.error.HTTPError as exc:
+        if exc.code == 404:
+            return "ok", None  # The default mode reports a missing name; not this one's job.
+        return "unreachable", f"HTTP {exc.code}"
+    except (urllib.error.URLError, TimeoutError, ValueError) as exc:
+        return "unreachable", str(exc)
+
+    if not full_name:
+        return "unreachable", "the API response carried no full_name"
+    if full_name != slug:
+        return "miscased", full_name
+    return "ok", None
+
+
 def audit(
     references: dict[str, list[str]],
     resolver: Callable[[str], tuple[str, str | None]] = resolve,
+    casing_resolver: Callable[[str], tuple[str, str | None]] | None = None,
 ) -> tuple[list[str], list[str]]:
     """Turn resolved names into findings.
 
     Args:
         references: Output of `collect()`.
         resolver: Injected so the verdict can be tested without the network.
+        casing_resolver: When given, each name that resolves cleanly is also checked for
+            capitalisation. `None` skips that pass entirely.
 
     Returns:
         A pair of `(stale, unreachable)` message lists. `stale` holds findings about
@@ -232,6 +315,18 @@ def audit(
             stale.append(f"{slug} does not resolve: {detail}. Referenced by: {listed}")
         elif outcome == "unreachable":
             unreachable.append(f"{slug}: {detail}")
+        elif casing_resolver is not None:
+            # Only for names that already resolve. Asking about capitalisation of a name that
+            # was renamed or is gone would report the same problem twice under two labels.
+            cased, canonical = casing_resolver(slug)
+            if cased == "miscased":
+                stale.append(
+                    f"{slug} is capitalised {canonical} upstream. GitHub serves the casing "
+                    f"requested and reports it back, so no redirect makes this visible. "
+                    f"Referenced by: {listed}"
+                )
+            elif cased == "unreachable":
+                unreachable.append(f"{slug} (casing): {canonical}")
 
     return stale, unreachable
 
@@ -240,16 +335,33 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--quiet", action="store_true", help="one summary line")
     parser.add_argument("--list", action="store_true", help="list referenced names and exit, no network")
+    parser.add_argument(
+        "--strict-casing",
+        action="store_true",
+        help="also read full_name from the REST API, the only way to see a casing-only rename",
+    )
     args = parser.parse_args()
 
     references = collect()
+
+    # A gate that certifies an empty corpus is a gate that a change to PROSE_SUFFIXES or to
+    # what `git ls-files` returns can switch off in silence. The floor is deliberately far
+    # below the current 29: it is asserting that scanning happened, not how much.
+    if len(references) < MINIMUM_REFERENCES:
+        print(
+            f"REPO NAMES: only {len(references)} repository reference(s) found, expected at "
+            f"least {MINIMUM_REFERENCES}. The scan found almost nothing, which is more likely "
+            "to be a broken file filter than a repository that stopped linking anywhere.",
+            file=sys.stderr,
+        )
+        return 1
 
     if args.list:
         for slug, files in sorted(references.items()):
             print(f"{slug}  ({len(files)} file(s))")
         return 0
 
-    stale, unreachable = audit(references)
+    stale, unreachable = audit(references, casing_resolver=canonical_casing if args.strict_casing else None)
 
     if unreachable and not stale:
         # Nothing was concluded, so do not report a clean run. Exit 2 keeps a flaky
@@ -261,7 +373,11 @@ def main() -> int:
 
     if stale:
         print(
-            f"REPO NAMES: {len(stale)} stale name(s) across {len(references)} referenced repositories",
+            # Counts what was concluded, not what was looked at. `len(references)` as the
+            # denominator read as "28 verified clean" in the shape that matters: GitHub
+            # degrading mid-run, one stale name and the rest never checked.
+            f"REPO NAMES: {len(stale)} stale of {len(references) - len(unreachable)} "
+            f"name(s) checked" + (f", {len(unreachable)} not checked" if unreachable else ""),
             file=sys.stderr,
         )
         for line in stale:

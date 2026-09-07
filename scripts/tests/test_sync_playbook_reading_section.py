@@ -20,6 +20,7 @@ from sync_playbook_reading_section import (  # noqa: E402
     ASSIGNMENT,
     BEGIN,
     END,
+    EXCLUDED,
     HEADING,
     INFERRED,
     LEAD,
@@ -30,7 +31,10 @@ from sync_playbook_reading_section import (  # noqa: E402
     ROLE_SECOND,
     ROLE_UNIVERSAL,
     UNIVERSAL,
+    MarkerError,
     apply,
+    check_coverage,
+    hub_urls,
     readme_for,
     render,
 )
@@ -218,3 +222,87 @@ def test_every_assigned_readme_exists_on_disk() -> None:
         if not readme_for(solution, locale).exists()
     ]
     assert not missing, missing
+
+
+# --- marker damage: the case that used to delete content ---
+
+
+def test_a_lone_begin_marker_refuses_rather_than_appending() -> None:
+    """The defect this replaces: an orphaned marker took the append path.
+
+    That produced BEGIN...BEGIN...END, and the NEXT write run treated everything between the
+    first BEGIN and the first END as the block and deleted it -- so content survived one run
+    and was gone after the one `--check` tells you to make.
+    """
+    damaged = f"# Pattern\n\n{BEGIN}\n## old\n\n## Governance Note\n\n> Keep me.\n"
+    with pytest.raises(MarkerError) as caught:
+        apply(damaged, render("md", "media"))
+    assert "1" in str(caught.value) and "0" in str(caught.value)
+
+
+def test_a_lone_end_marker_also_refuses() -> None:
+    with pytest.raises(MarkerError):
+        apply(f"# Pattern\n\nBody.\n{END}\n", render("md", "media"))
+
+
+def test_duplicate_marker_pairs_collapse_to_one() -> None:
+    """Two pairs used to be a fixed point: `--check` called the file up to date with both."""
+    section = render("md", "media")
+    doubled = f"# Pattern\n\n{section}\n{section}"
+    once = apply(doubled, section)
+    assert once.count(BEGIN) == 1
+    assert once.count(END) == 1
+    assert apply(once, section) == once
+
+
+def test_content_after_a_duplicate_pair_is_kept() -> None:
+    section = render("md", "media")
+    text = f"# Pattern\n\n{section}\n{section}\n## Governance Note\n\n> Keep me.\n"
+    result = apply(text, section)
+    assert "> Keep me." in result
+    assert result.count(BEGIN) == 1
+
+
+# --- coverage runs both ways now ---
+
+
+def test_a_solution_on_disk_outside_the_mapping_is_reported(tmp_path: Path) -> None:
+    """`main()` walks ASSIGNMENT, so this is the direction it structurally cannot see."""
+    (tmp_path / "solutions" / "industry" / "brand-new").mkdir(parents=True)
+    (tmp_path / "solutions" / "industry" / "brand-new" / "README.md").write_text("# x", "utf-8")
+    problems = check_coverage(tmp_path)
+    assert len(problems) == 1
+    assert "industry/brand-new" in problems[0]
+
+
+def test_an_excluded_directory_is_not_reported(tmp_path: Path) -> None:
+    for name in EXCLUDED:
+        (tmp_path / "solutions" / name).mkdir(parents=True)
+        (tmp_path / "solutions" / name / "README.md").write_text("# x", "utf-8")
+    assert check_coverage(tmp_path) == []
+
+
+def test_every_excluded_directory_carries_a_reason() -> None:
+    assert all(reason.strip() for reason in EXCLUDED.values())
+
+
+def test_the_real_tree_is_fully_covered() -> None:
+    assert check_coverage() == []
+
+
+# --- hub URLs ---
+
+
+def test_every_hub_url_is_a_tree_url_under_the_playbook() -> None:
+    urls = hub_urls()
+    assert len(urls) == 24
+    for url in urls:
+        assert url.startswith("https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/tree/main/docs/")
+        assert not url.endswith(".md")
+
+
+def test_hub_urls_cover_both_languages_and_every_module_in_use() -> None:
+    urls = hub_urls()
+    assert sum(1 for u in urls if "/docs/ja/" in u) == len(urls) // 2
+    for module in modules_in_use():
+        assert any(u.endswith(f"/docs/ja/{module}") for u in urls), module

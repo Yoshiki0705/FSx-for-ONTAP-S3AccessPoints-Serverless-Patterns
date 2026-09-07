@@ -107,8 +107,8 @@ Da Textract in einigen Regionen (z. B. ap-northeast-1) nicht unterstützt wird, 
 # https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/install-sam-cli.html
 
 # Repository klonen
-git clone https://github.com/Yoshiki0705/FSx-for-ONTAP-S3AccessPoints-Serverless-Patterns.git
-cd FSx-for-ONTAP-S3AccessPoints-Serverless-Patterns/solutions/industry/logistics-ocr
+git clone https://github.com/Yoshiki0705/FSx-for-ONTAP-S3AccessPoints-Serverless-Patterns.git fsxn-s3ap-serverless-patterns
+cd fsxn-s3ap-serverless-patterns/solutions/industry/logistics-ocr
 ```
 
 ### 3. samconfig.toml konfigurieren
@@ -364,7 +364,7 @@ Informationen zu Kompatibilitätsbeschränkungen, Fehlerbehebung und Trigger-Mus
 <!-- playbook-reading:start -->
 ## Vor dem Produktivbetrieb lesen
 
-Die Einschränkungen, die nach der Bereitstellung auftreten, sind im [FSx for ONTAP Adoption Playbook](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook) dokumentiert, nicht hier. Liegt derselbe Inhalt an zwei Stellen, überlebt die nicht mehr gepflegte Kopie die korrigierte.
+Wie sich die nach der Bereitstellung auftretenden Einschränkungen in Entwurfsentscheidungen übersetzen, steht im [FSx for ONTAP Adoption Playbook](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook) beschrieben. Liegt derselbe Inhalt an zwei Stellen, überlebt die nicht mehr gepflegte Kopie die korrigierte.
 
 - [Migrieren](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/tree/main/docs/en/playbooks/03-migrate) — zuerst lesen
 - [Betreiben](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/tree/main/docs/en/playbooks/05-operate) — danach lesen

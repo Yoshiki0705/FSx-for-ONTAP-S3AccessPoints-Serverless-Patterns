@@ -159,7 +159,7 @@ aws cloudformation delete-stack --stack-name fsxn-sm-dr
 <!-- playbook-reading:start -->
 ## À lire avant la mise en production
 
-Les contraintes qui apparaissent après le déploiement sont documentées dans le [FSx for ONTAP Adoption Playbook](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook), pas ici. Un même contenu présent à deux endroits laisse survivre la copie qui a cessé d'être mise à jour.
+La façon de traduire en décisions de conception les contraintes qui apparaissent après le déploiement est documentée dans le [FSx for ONTAP Adoption Playbook](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook). Un même contenu présent à deux endroits laisse survivre la copie qui a cessé d'être mise à jour.
 
 - [Protection des données](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/tree/main/docs/en/domains/data-protection) — à lire en premier
 - [Sécurité et gouvernance](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/tree/main/docs/en/domains/security-governance) — à lire ensuite

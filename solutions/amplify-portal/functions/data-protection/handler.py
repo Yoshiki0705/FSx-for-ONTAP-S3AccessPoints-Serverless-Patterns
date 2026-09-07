@@ -14,7 +14,7 @@ Reference:
 - AWS Docs: https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/ARP.html
 - ONTAP REST API: https://docs.netapp.com/us-en/ontap-restapi/
 - ARP snapshot prefix: "Anti_ransomware_backup"
-- Observability project: https://github.com/Yoshiki0705/fsxn-observability-integrations
+- Observability project: https://github.com/Yoshiki0705/FSx-for-ONTAP-Observability-integrations
 
 Containment blocks and expiry:
     ONTAP name-mapping and export-policy rules carry no timestamp, so a block

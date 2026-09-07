@@ -41,4 +41,16 @@ jobs:
         # reported as a failure here on purpose: this job has no other reason to run, so
         # a run that concluded nothing and reported success would let the check quietly
         # stop covering anything.
-        run: python3 scripts/check_repo_name_redirects.py
+        #
+        # --strict-casing adds a REST API lookup per name, which is the only way to see a
+        # rename that changed capitalisation only -- GitHub serves the casing requested and
+        # reports it back, so no redirect exposes it. One of the five names this check was
+        # written to find was in that class. The token lifts the 60/hour anonymous limit.
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: python3 scripts/check_repo_name_redirects.py --strict-casing
+      - name: Resolve the Playbook module hubs the generated sections link to
+        # The check above resolves repository names and drops everything after owner/repo,
+        # so the 24 hub paths written into 376 READMEs need their own pass. A renamed module
+        # directory would 404 in every one of those files at once.
+        run: python3 scripts/sync_playbook_reading_section.py --verify-hubs
