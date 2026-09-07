@@ -371,3 +371,15 @@ FlexCache 健康檢查 + 路由決策的輸出範例：
 ## Governance Note
 
 > 本模式提供技術架構指導。並非法律·合規·法規方面的建議。組織應諮詢合格的專業人士。
+
+---
+
+<!-- playbook-reading:start -->
+## 上線前需要閱讀的內容
+
+部署後才會遇到的限制記錄在 [FSx for ONTAP Adoption Playbook](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook)，而非本儲存庫。同一內容放在兩處時，停止更新的那份會比已修正的那份留存更久。
+
+- [資料保護](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/tree/main/docs/en/domains/data-protection) — 先讀
+- [安全與治理](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/tree/main/docs/en/domains/security-governance) — 接著讀
+- [建置](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/tree/main/docs/en/playbooks/04-build) — 上線前通讀（所有模式通用）
+<!-- playbook-reading:end -->

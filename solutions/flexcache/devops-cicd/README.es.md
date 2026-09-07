@@ -109,3 +109,15 @@ sam deploy \
 - Las escrituras vía S3AP están limitadas a 5 GB máximo (usar NFS para escrituras de datos de prueba grandes)
 - Los requisitos de ubicación VPC de Lambda dependen de la configuración NetworkOrigin (ver docs de steering)
 - La división de FlexClone lo convierte en un volumen independiente (pérdida de eficiencia de espacio)
+
+---
+
+<!-- playbook-reading:start -->
+## Lectura previa al paso a producción
+
+Las restricciones que aparecen después del despliegue están documentadas en el [FSx for ONTAP Adoption Playbook](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook), no aquí. El mismo contenido en dos lugares hace que la copia que deja de actualizarse sobreviva a la corregida.
+
+- [Almacenamiento en bloque](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/tree/main/docs/en/domains/block-storage) — leer primero
+- [Coste](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/tree/main/docs/en/domains/cost) — leer a continuación
+- [Construir](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/tree/main/docs/en/playbooks/04-build) — revisar antes de producción (todos los patrones)
+<!-- playbook-reading:end -->

@@ -125,11 +125,11 @@ FR-7 について: Presigned URL は互換性表では "Not supported" だが実
 
 | Repository | Status |
 |---|---|
-| `fsxn-lakehouse-integrations` | 📋 Prompt ready |
-| `fsxn-observability-integrations` | 📋 Prompt ready |
+| `FSx-for-ONTAP-Lakehouse-Integrations` | 📋 Prompt ready |
+| `FSx-for-ONTAP-Observability-integrations` | 📋 Prompt ready |
 | `fsxn-cyber-resilience-patterns` | 📋 Prompt ready |
 | `ontap-edge-to-cloud-ai` | 📋 Prompt ready |
-| `vmware-migration-ec2-ontap` | 📋 Prompt ready |
+| `VMware-Migration-EC2-ONTAP` | 📋 Prompt ready |
 | `blea-fsxn-usecase` | 📋 Prompt ready |
 | `FSx-for-ONTAP-Agentic-Access-Aware-RAG` | 📋 Prompt ready |
 

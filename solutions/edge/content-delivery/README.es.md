@@ -197,3 +197,15 @@ Para la verificación de DemoMode, consulte [docs/demo-guide.md](docs/demo-guide
 - [Comparación de arquitecturas alternativas](../docs/comparison-alternatives.md)
 - [Notas de compatibilidad de S3AP](../docs/s3ap-compatibility-notes.md)
 - [Playbook de respuesta a incidentes](../docs/incident-response-playbook.md) (ruta de respuesta ante distribución fuera de permisos / publicación errónea)
+
+---
+
+<!-- playbook-reading:start -->
+## Lectura previa al paso a producción
+
+Las restricciones que aparecen después del despliegue están documentadas en el [FSx for ONTAP Adoption Playbook](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook), no aquí. El mismo contenido en dos lugares hace que la copia que deja de actualizarse sobreviva a la corregida.
+
+- [Aprovechamiento de datos](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/tree/main/docs/en/domains/data-utilization) — leer primero
+- [Coste](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/tree/main/docs/en/domains/cost) — leer a continuación
+- [Construir](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/tree/main/docs/en/playbooks/04-build) — revisar antes de producción (todos los patrones)
+<!-- playbook-reading:end -->

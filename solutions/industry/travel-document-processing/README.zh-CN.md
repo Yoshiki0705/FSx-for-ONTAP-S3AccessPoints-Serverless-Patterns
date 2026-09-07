@@ -210,3 +210,15 @@ aws cloudformation wait stack-delete-complete \
 ## S3AP Compatibility
 
 关于 S3 Access Points for FSx for ONTAP 的兼容性约束、故障排查和触发模式，请参阅 [S3AP Compatibility Notes](../docs/s3ap-compatibility-notes.md)。
+
+---
+
+<!-- playbook-reading:start -->
+## 上生产前需要阅读的内容
+
+部署后才会遇到的约束记录在 [FSx for ONTAP Adoption Playbook](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook)，而不是本仓库。同一内容放在两处时，停止更新的那份会比已修正的那份存留更久。
+
+- [数据利用](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/tree/main/docs/en/domains/data-utilization) — 先读
+- [成本](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/tree/main/docs/en/domains/cost) — 接着读
+- [构建](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/tree/main/docs/en/playbooks/04-build) — 上生产前通读（所有模式通用）
+<!-- playbook-reading:end -->

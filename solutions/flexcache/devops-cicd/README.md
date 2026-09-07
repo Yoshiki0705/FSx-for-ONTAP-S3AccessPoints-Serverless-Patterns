@@ -110,3 +110,15 @@ sam deploy \
 - NetworkOrigin 設定により Lambda の VPC 配置要件が変わる（詳細は steering 参照）
 - FlexClone split を実行すると独立ボリュームになる（スペース効率を失う）
 - **FSx API 反映遅延（SM-VAL-009）**: FlexClone は ONTAP REST API で作成されるため、FSx API（`describe-volumes`）に反映されるまで ~30 分かかる。S3 AP アタッチ（`create-and-attach-s3-access-point`）は FSx API にボリュームが表示された後にのみ可能。自動化する場合は `describe-volumes` で `fsvol-*` が返されるまでポーリングするロジックを実装すること
+
+---
+
+<!-- playbook-reading:start -->
+## 本番に出す前に読むもの
+
+デプロイしたあとに当たる制約は、このリポジトリではなく [FSx for ONTAP Adoption Playbook](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook) 側にあります。同じ内容を 2 か所に置くと、更新が止まった側が更新された側より長く残るためです。
+
+- [ブロックストレージ](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/tree/main/docs/ja/domains/block-storage) — 最初に読む
+- [コスト](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/tree/main/docs/ja/domains/cost) — 次に読む
+- [構築](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/tree/main/docs/ja/playbooks/04-build) — 本番前に通す（全パターン共通）
+<!-- playbook-reading:end -->

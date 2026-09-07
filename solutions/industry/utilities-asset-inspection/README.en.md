@@ -104,3 +104,15 @@ aws cloudformation wait stack-delete-complete --stack-name fsxn-utilities-inspec
 ## S3AP Compatibility
 
 See [S3AP Compatibility Notes](../docs/s3ap-compatibility-notes.md) for FSx for ONTAP S3 Access Points constraints, troubleshooting, and trigger patterns.
+
+---
+
+<!-- playbook-reading:start -->
+## Read before going to production
+
+The constraints that surface after deploying are documented in the [FSx for ONTAP Adoption Playbook](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook), not here. The same content in two places means the copy that stops being updated outlives the one that was corrected.
+
+- [Operate](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/tree/main/docs/en/playbooks/05-operate) — read first
+- [Performance](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/tree/main/docs/en/domains/performance) — read next
+- [Build](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/tree/main/docs/en/playbooks/04-build) — run through before production (every pattern)
+<!-- playbook-reading:end -->

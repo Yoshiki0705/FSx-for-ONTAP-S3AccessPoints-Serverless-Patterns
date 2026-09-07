@@ -396,7 +396,7 @@ S3 AP で収集したデータを FlexCache（読み取り加速）や SnapMirro
 | DP Volume は FSx API で作成必須 | SM-VAL-009: ONTAP REST API のみでは S3 AP アタッチ不可 | [SnapMirror DR パターン](../solutions/flexcache/snapmirror-cross-region-dr/) |
 | Teardown 順序 | SM-VAL-011: VPC Peering 削除前に SVM Peer 削除完了必須 | 各 FlexCache/SnapMirror パターンの Clean Up セクション |
 
-詳細な互換性テーブル・バージョンマトリクス: [FlexCache / SnapMirror 考慮事項（fsxn-lakehouse-integrations）](https://github.com/Yoshiki0705/fsxn-lakehouse-integrations/blob/main/docs/ja/s3ap-flexcache-snapmirror-considerations.md)
+詳細な互換性テーブル・バージョンマトリクス: [FlexCache / SnapMirror 考慮事項（FSx-for-ONTAP-Lakehouse-Integrations）](https://github.com/Yoshiki0705/FSx-for-ONTAP-Lakehouse-Integrations/blob/main/docs/ja/s3ap-flexcache-snapmirror-considerations.md)
 
 ---
 

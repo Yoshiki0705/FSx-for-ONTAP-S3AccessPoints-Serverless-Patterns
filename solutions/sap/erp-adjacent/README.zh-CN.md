@@ -233,3 +233,15 @@ SAP/ERP 文件处理工作流的输出示例：
 - 增大 Lambda 内存大小也有助于提升网络带宽
 
 > **注**：本模式的性能数值为 sizing reference，并非 service limit。实际环境中的性能因 FSx for ONTAP 吞吐容量、网络配置和并发工作负载而异。
+
+---
+
+<!-- playbook-reading:start -->
+## 上生产前需要阅读的内容
+
+部署后才会遇到的约束记录在 [FSx for ONTAP Adoption Playbook](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook)，而不是本仓库。同一内容放在两处时，停止更新的那份会比已修正的那份存留更久。
+
+- [块存储](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/tree/main/docs/en/domains/block-storage) — 先读
+- [数据保护](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/tree/main/docs/en/domains/data-protection) — 接着读
+- [构建](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/tree/main/docs/en/playbooks/04-build) — 上生产前通读（所有模式通用）
+<!-- playbook-reading:end -->

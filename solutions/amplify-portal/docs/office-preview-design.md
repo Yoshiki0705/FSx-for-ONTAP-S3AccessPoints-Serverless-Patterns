@@ -25,7 +25,7 @@
 | ファイル形式 | ライブラリ | サイズ | 備考 |
 |------------|-----------|------|------|
 | PDF | [pdf.js](https://mozilla.github.io/pdf.js/) (Mozilla) | 350KB | 業界標準、Canvas レンダリング |
-| DOCX | [docx-preview](https://github.com/nicholasguo/docx-preview) | 80KB | XML → HTML 変換 |
+| DOCX | [docx-preview](https://github.com/VolodymyrBaydalka/docxjs) | 80KB | XML → HTML 変換 |
 | XLSX | — | — | クライアントサイドでは困難 |
 | PPTX | — | — | クライアントサイドでは困難 |
 
@@ -122,5 +122,5 @@ Browser → AppSync → Lambda (Container, x86_64)
 
 - [shelfio/libreoffice-lambda-layer](https://github.com/shelfio/libreoffice-lambda-layer) — 95MB Brotli 圧縮 Layer
 - [shelfio/libreoffice-lambda-base-image](https://github.com/shelfio/libreoffice-lambda-base-image) — Container Image ベース
-- [docx-preview](https://github.com/nicholasguo/docx-preview) — クライアントサイド DOCX レンダリング
+- [docx-preview](https://github.com/VolodymyrBaydalka/docxjs) — クライアントサイド DOCX レンダリング
 - [pdf.js](https://mozilla.github.io/pdf.js/) — Mozilla PDF レンダラー

@@ -308,3 +308,15 @@ VOD 게시는 자동 판정에만 의존하지 않습니다. 패키지 **완전�
 - [인시던트 대응 Playbook](../../docs/incident-response-playbook.md)
 - [Content Edge Delivery 패턴](../content-delivery/README.md)
 - [Media/VFX 산업 패턴](../../industry/media-vfx/README.md)
+
+---
+
+<!-- playbook-reading:start -->
+## 프로덕션 적용 전에 읽을 것
+
+배포 후에 부딪히는 제약은 이 리포지토리가 아니라 [FSx for ONTAP Adoption Playbook](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook)에 정리되어 있습니다. 같은 내용을 두 곳에 두면 갱신이 멈춘 쪽이 더 오래 남기 때문입니다.
+
+- [설계](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/tree/main/docs/en/playbooks/02-design) — 먼저 읽기
+- [성능](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/tree/main/docs/en/domains/performance) — 다음에 읽기
+- [구축](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/tree/main/docs/en/playbooks/04-build) — 프로덕션 전에 확인 (모든 패턴 공통)
+<!-- playbook-reading:end -->

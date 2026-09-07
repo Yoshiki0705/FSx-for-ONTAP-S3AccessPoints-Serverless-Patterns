@@ -358,3 +358,15 @@ sam deploy \
 > Dieses Muster liefert technische Architekturleitlinien. Es ist keine rechtliche, Compliance- oder regulatorische Beratung.
 > Funktionen / Preise / unterstützte Regionen von Amazon Quick ändern sich; überprüfen Sie den aktuellen Stand anhand offizieller Informationen.
 > Die Datenquellengrenze von S3 AP liegt auf Volume-/Präfix-Ebene, und die Sichtbarkeitskontrolle pro Benutzer liegt außerhalb des Umfangs dieses UC.
+
+---
+
+<!-- playbook-reading:start -->
+## Vor dem Produktivbetrieb lesen
+
+Die Einschränkungen, die nach der Bereitstellung auftreten, sind im [FSx for ONTAP Adoption Playbook](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook) dokumentiert, nicht hier. Liegt derselbe Inhalt an zwei Stellen, überlebt die nicht mehr gepflegte Kopie die korrigierte.
+
+- [Datennutzung](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/tree/main/docs/en/domains/data-utilization) — zuerst lesen
+- [Sicherheit und Governance](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/tree/main/docs/en/domains/security-governance) — danach lesen
+- [Aufbauen](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/tree/main/docs/en/playbooks/04-build) — vor dem Produktivbetrieb durchgehen (alle Patterns)
+<!-- playbook-reading:end -->

@@ -218,6 +218,8 @@ graph TB
 
 ## S3 Access Point の主要制約
 
+> この表は制約の一覧です。**それぞれをどう設計判断に翻訳するか**は [FSx for ONTAP Adoption Playbook](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook) 側にあります。
+
 | 制約 | 回避策 |
 |---|---|
 | S3 Event Notifications 非対応 | EventBridge Scheduler ポーリング（FPolicy は AP 経由の書き込みを検知しない。実測 2026-08-26 / ONTAP 9.18.1P3D1） |
@@ -226,7 +228,7 @@ graph TB
 | Athena 結果を S3AP に書き戻し不可 | 標準 S3 バケットに出力 |
 | SSE-FSX のみ | ボリュームの KMS 設定で暗号化 |
 
-詳細: [S3AP Compatibility Notes](docs/s3ap-compatibility-notes.md) | [Compatibility Matrix (AWS 確認済み)](https://github.com/Yoshiki0705/fsxn-lakehouse-integrations/blob/main/docs/en/compatibility-matrix.md)
+詳細: [S3AP Compatibility Notes](docs/s3ap-compatibility-notes.md) | [Compatibility Matrix (AWS 確認済み)](https://github.com/Yoshiki0705/FSx-for-ONTAP-Lakehouse-Integrations/blob/main/docs/en/compatibility-matrix.md)
 
 ---
 
@@ -269,10 +271,10 @@ dev.to では**シリーズを 2 つに分けています**。読者が違うた
 
 | リポジトリ | 概要 |
 |---|---|
-| [fsxn-observability-integrations](https://github.com/Yoshiki0705/fsxn-observability-integrations) | 可観測性統合 (ARP/AI 自動対応、メトリクス、アラート) |
-| [Permission-aware-RAG-FSxN-CDK](https://github.com/Yoshiki0705/Permission-aware-RAG-FSxN-CDK-github) | 権限考慮型 RAG チャットボット（CDK + Next.js + ECS） | <!-- allow:naming (external repo name) -->
-| [fsxn-lakehouse-integrations](https://github.com/Yoshiki0705/fsxn-lakehouse-integrations) | Lakehouse 統合（Databricks, Snowflake, Athena, Glue, EMR） |
-| [vmware-migration-ec2-ontap](https://github.com/Yoshiki0705/vmware-migration-ec2-ontap) | VMware → EC2 + FSx for ONTAP 移行 |
+| [FSx-for-ONTAP-Observability-integrations](https://github.com/Yoshiki0705/FSx-for-ONTAP-Observability-integrations) | 可観測性統合 (ARP/AI 自動対応、メトリクス、アラート) |
+| [FSx-for-ONTAP-Agentic-Access-Aware-RAG](https://github.com/Yoshiki0705/FSx-for-ONTAP-Agentic-Access-Aware-RAG) | アクセス制御対応の Agentic RAG（CDK + Amazon Bedrock） |
+| [FSx-for-ONTAP-Lakehouse-Integrations](https://github.com/Yoshiki0705/FSx-for-ONTAP-Lakehouse-Integrations) | Lakehouse 統合（Databricks, Snowflake, Athena, Glue, EMR） |
+| [VMware-Migration-EC2-ONTAP](https://github.com/Yoshiki0705/VMware-Migration-EC2-ONTAP) | VMware → EC2 + FSx for ONTAP 移行 |
 
 ### AWS 公式リソース
 

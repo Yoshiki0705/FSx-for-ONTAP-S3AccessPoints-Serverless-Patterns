@@ -661,3 +661,15 @@ Amplify Gen2 正在積極演進。鎖定 `@aws-amplify/*` 套件版本並在升�
 ---
 
 🌐 **語言**: [日本語](README.ja.md) | [English](README.md) | [한국어](README.ko.md) | [简体中文](README.zh-CN.md) | 繁體中文 | [Français](README.fr.md) | [Deutsch](README.de.md) | [Español](README.es.md)
+
+---
+
+<!-- playbook-reading:start -->
+## 上線前需要閱讀的內容
+
+部署後才會遇到的限制記錄在 [FSx for ONTAP Adoption Playbook](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook)，而非本儲存庫。同一內容放在兩處時，停止更新的那份會比已修正的那份留存更久。
+
+- [資料活用](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/tree/main/docs/en/domains/data-utilization) — 先讀
+- [安全與治理](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/tree/main/docs/en/domains/security-governance) — 接著讀
+- [建置](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/tree/main/docs/en/playbooks/04-build) — 上線前通讀（所有模式通用）
+<!-- playbook-reading:end -->

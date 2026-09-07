@@ -2,7 +2,7 @@
 
 **Submitter**: Yoshiki Fujiwara (NetApp Inc.)
 **Date**: 2026-05-10
-**Project**: [fsxn-s3ap-serverless-patterns](https://github.com/Yoshiki0705/fsxn-s3ap-serverless-patterns)
+**Project**: [FSx-for-ONTAP-S3AccessPoints-Serverless-Patterns](https://github.com/Yoshiki0705/FSx-for-ONTAP-S3AccessPoints-Serverless-Patterns)
 **Status**: **✅ Submitted to AWS Support on 2026-05-10** (3 separate cases for FR-1, FR-2, FR-3; FR-4 previously submitted separately)
 
 **Case status, confirmed through the Support API on 2026-09-02**: all three cases are **closed**.

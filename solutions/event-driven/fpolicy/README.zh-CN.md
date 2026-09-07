@@ -334,3 +334,15 @@ aws ecr delete-repository \
 - [ONTAP REST API 参考](https://docs.netapp.com/us-en/ontap-automation/)
 - [ECS Fargate 文档](https://docs.aws.amazon.com/AmazonECS/latest/developerguide/AWS_Fargate.html)
 - [EventBridge 自定义总线](https://docs.aws.amazon.com/eventbridge/latest/userguide/eb-create-event-bus.html)
+
+---
+
+<!-- playbook-reading:start -->
+## 上生产前需要阅读的内容
+
+部署后才会遇到的约束记录在 [FSx for ONTAP Adoption Playbook](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook)，而不是本仓库。同一内容放在两处时，停止更新的那份会比已修正的那份存留更久。
+
+- [性能](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/tree/main/docs/en/domains/performance) — 先读
+- [安全与治理](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/tree/main/docs/en/domains/security-governance) — 接着读
+- [构建](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/tree/main/docs/en/playbooks/04-build) — 上生产前通读（所有模式通用）
+<!-- playbook-reading:end -->

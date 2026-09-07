@@ -13,7 +13,7 @@ This demo showcases an automated pipeline where AI/ML services analyze files on 
 ## Quick Start
 
 ```bash
-git clone https://github.com/Yoshiki0705/fsxn-s3ap-serverless-patterns.git
+git clone https://github.com/Yoshiki0705/FSx-for-ONTAP-S3AccessPoints-Serverless-Patterns.git fsxn-s3ap-serverless-patterns
 cd fsxn-s3ap-serverless-patterns/solutions/industry/hr-document-screening
 # 前提: AWS SAM CLI が必要です。sam build がコードと共有レイヤーを自動でパッケージングします。
 sam build

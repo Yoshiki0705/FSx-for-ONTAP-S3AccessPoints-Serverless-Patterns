@@ -193,3 +193,15 @@ DemoMode の確認は [docs/demo-guide.md](docs/demo-guide.md) を参照。
 - [代替アーキテクチャ比較](../docs/comparison-alternatives.md)
 - [S3AP 互換性ノート](../docs/s3ap-compatibility-notes.md)
 - [インシデント対応 Playbook](../docs/incident-response-playbook.md)（権限外配信・誤公開時の対応導線）
+
+---
+
+<!-- playbook-reading:start -->
+## 本番に出す前に読むもの
+
+デプロイしたあとに当たる制約は、このリポジトリではなく [FSx for ONTAP Adoption Playbook](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook) 側にあります。同じ内容を 2 か所に置くと、更新が止まった側が更新された側より長く残るためです。
+
+- [データ活用](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/tree/main/docs/ja/domains/data-utilization) — 最初に読む
+- [コスト](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/tree/main/docs/ja/domains/cost) — 次に読む
+- [構築](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/tree/main/docs/ja/playbooks/04-build) — 本番前に通す（全パターン共通）
+<!-- playbook-reading:end -->

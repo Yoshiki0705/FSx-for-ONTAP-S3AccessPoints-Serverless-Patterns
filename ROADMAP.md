@@ -68,12 +68,12 @@ graph TD
 - FSx for ONTAP 間の SnapMirror 関係が構成済み
 - ONTAP REST API (9.13.1+) で SnapMirror break/resync をサポート
 - `shared/ontap_client.py` で SnapMirror API メソッド追加が必要
-- restore-verification パターン (`fsxn-observability-integrations`) の知見を流用
+- restore-verification パターン (`FSx-for-ONTAP-Observability-integrations`) の知見を流用
 
 ### 既存パターンとの関係
 
 - **FC1 (anycast-dr)**: FlexCache + Anycast ルーティングの DR パターン。SnapMirror DR テストはこの拡張として位置づけ
-- **restore-verification (fsxn-observability-integrations)**: S3 AP アタッチ → データ検証 → クリーンアップのフローを流用
+- **restore-verification (FSx-for-ONTAP-Observability-integrations)**: S3 AP アタッチ → データ検証 → クリーンアップのフローを流用
 - **shared/ad_health_check.py**: Pre-flight check で再利用
 
 ### Implementation Phases

@@ -358,3 +358,15 @@ sam deploy \
 > 本模式提供技术架构指导。并非法律 / 合规 / 监管方面的建议。
 > Amazon Quick 的功能 / 价格 / 支持区域会变更，最新信息请确认官方信息。
 > S3 AP 的数据源边界为卷/前缀单位，按用户个人的可见范围控制不在本 UC 范围内。
+
+---
+
+<!-- playbook-reading:start -->
+## 上生产前需要阅读的内容
+
+部署后才会遇到的约束记录在 [FSx for ONTAP Adoption Playbook](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook)，而不是本仓库。同一内容放在两处时，停止更新的那份会比已修正的那份存留更久。
+
+- [数据利用](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/tree/main/docs/en/domains/data-utilization) — 先读
+- [安全与治理](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/tree/main/docs/en/domains/security-governance) — 接着读
+- [构建](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/tree/main/docs/en/playbooks/04-build) — 上生产前通读（所有模式通用）
+<!-- playbook-reading:end -->

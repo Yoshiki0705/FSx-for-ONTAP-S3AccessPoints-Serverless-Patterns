@@ -176,3 +176,15 @@ Sources:
 ## S3AP Compatibility
 
 Consultez [S3AP Compatibility Notes](../docs/s3ap-compatibility-notes.md).
+
+---
+
+<!-- playbook-reading:start -->
+## À lire avant la mise en production
+
+Les contraintes qui apparaissent après le déploiement sont documentées dans le [FSx for ONTAP Adoption Playbook](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook), pas ici. Un même contenu présent à deux endroits laisse survivre la copie qui a cessé d'être mise à jour.
+
+- [Exploiter](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/tree/main/docs/en/playbooks/05-operate) — à lire en premier
+- [Performance](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/tree/main/docs/en/domains/performance) — à lire ensuite
+- [Construire](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/tree/main/docs/en/playbooks/04-build) — à parcourir avant la production (tous les patterns)
+<!-- playbook-reading:end -->

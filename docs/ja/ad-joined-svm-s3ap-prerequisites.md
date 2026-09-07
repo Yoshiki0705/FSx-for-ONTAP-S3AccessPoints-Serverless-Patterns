@@ -14,7 +14,7 @@ AD参加SVM では、全ての S3 Access Point データ操作に Active Directo
 - 同一アカウントの S3 AP リソースポリシー (`put_access_point_policy`) は不要
 - S3 AP データ操作の前に AD DC 到達性を検証すべき
 
-> **出典**: `fsxn-observability-integrations` restore-verification ワークフローで検証。[AWS公式トラブルシューティングガイド](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/troubleshooting-access-points-for-fsxn.html)（「name service が到達不能」→ MISCONFIGURED または AccessDenied）と整合。
+> **出典**: `FSx-for-ONTAP-Observability-integrations` restore-verification ワークフローで検証。[AWS公式トラブルシューティングガイド](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/troubleshooting-access-points-for-fsxn.html)（「name service が到達不能」→ MISCONFIGURED または AccessDenied）と整合。
 
 ---
 

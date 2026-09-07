@@ -458,7 +458,7 @@ D14 の間隔 → 約 120M サンプル / 月 / クラスター。
 
 ### D30. 姉妹リポジトリのファイルは変更しない
 
-- `fsxn-observability-integrations` の `docs/en/native-alternative-matrix.md` は
+- `FSx-for-ONTAP-Observability-integrations` の `docs/en/native-alternative-matrix.md` は
   「System Manager の性能ビューの代替 = CloudWatch ダッシュボード」と位置づけている。
   Harvest 経路は**同じ問いへの 2 つ目の答え**なので、あちらに「CloudWatch 経路と Harvest 経路の
   選び方」の追記が必要になる。**その必要性をここに記録し、あちらのファイルはこの作業で

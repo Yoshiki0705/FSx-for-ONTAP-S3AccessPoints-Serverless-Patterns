@@ -458,3 +458,15 @@ sam deploy \
 > 本模式提供技术架构指导。并非法律·合规·监管方面的建议。组织应咨询合格的专业人士。S3 AP 的数据源边界为卷/前缀单位，若需要针对每个使用者个人的可见范围控制，则超出本 UC 的适用范围。
 >
 > **访问控制的 3 层（按用途选择）**: ① 检索收窄 = Bedrock KB 元数据过滤（本 UC，非 AWS 授权） / ② 文档级别 ACL = Amazon Quick S3 知识库（[UC30](../genai-quick-agentic-workspace/)，按使用者·组单位） / ③ 分块单位的权限过滤 = 自定义 Permission-aware RAG（[FC3](../genai-rag-enterprise-files/)，AD SID/NTFS ACL，面向受监管行业）
+
+---
+
+<!-- playbook-reading:start -->
+## 上生产前需要阅读的内容
+
+部署后才会遇到的约束记录在 [FSx for ONTAP Adoption Playbook](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook)，而不是本仓库。同一内容放在两处时，停止更新的那份会比已修正的那份存留更久。
+
+- [数据利用](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/tree/main/docs/en/domains/data-utilization) — 先读
+- [安全与治理](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/tree/main/docs/en/domains/security-governance) — 接着读
+- [构建](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/tree/main/docs/en/playbooks/04-build) — 上生产前通读（所有模式通用）
+<!-- playbook-reading:end -->

@@ -336,3 +336,15 @@ sam deploy \
 ## Governance Note
 
 > Ce modèle fournit des recommandations d'architecture technique. Il ne constitue pas un avis juridique, de conformité ou réglementaire. Les organisations doivent consulter des professionnels qualifiés.
+
+---
+
+<!-- playbook-reading:start -->
+## À lire avant la mise en production
+
+Les contraintes qui apparaissent après le déploiement sont documentées dans le [FSx for ONTAP Adoption Playbook](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook), pas ici. Un même contenu présent à deux endroits laisse survivre la copie qui a cessé d'être mise à jour.
+
+- [Exploitation des données](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/tree/main/docs/en/domains/data-utilization) — à lire en premier
+- [Sécurité et gouvernance](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/tree/main/docs/en/domains/security-governance) — à lire ensuite
+- [Construire](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/tree/main/docs/en/playbooks/04-build) — à parcourir avant la production (tous les patterns)
+<!-- playbook-reading:end -->

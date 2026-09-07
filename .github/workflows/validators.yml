@@ -73,6 +73,12 @@ jobs:
       # label formats and left 53 group members unreachable from their own language.
       - name: Check the language switchers match the generated form
         run: python3 scripts/sync_lang_switcher.py --check
+      # The Playbook reading section is generated the same way, across 8 locales and 47
+      # solutions. Offline: it compares the committed text against the mapping and does
+      # not resolve the links. The weekly repo-name-redirects job is what notices the
+      # Playbook being renamed underneath them.
+      - name: Check the Playbook reading sections match the generated form
+        run: python3 scripts/sync_playbook_reading_section.py --check
       - name: Check the generated dispatch parameter types match the handlers
         run: python3 scripts/portal_action_types.py --check
       # The two checks above describe the shape of a call. This one describes who the

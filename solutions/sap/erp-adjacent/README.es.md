@@ -233,3 +233,15 @@ Para conocer las restricciones de compatibilidad, la resolución de problemas y 
 - Aumentar el tamaño de memoria de Lambda también mejora el ancho de banda de red
 
 > **Nota**: Las cifras de rendimiento de este patrón son una sizing reference, no un service limit. El rendimiento en entornos reales varía según la capacidad de rendimiento de FSx for ONTAP, la configuración de red y las cargas de trabajo concurrentes.
+
+---
+
+<!-- playbook-reading:start -->
+## Lectura previa al paso a producción
+
+Las restricciones que aparecen después del despliegue están documentadas en el [FSx for ONTAP Adoption Playbook](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook), no aquí. El mismo contenido en dos lugares hace que la copia que deja de actualizarse sobreviva a la corregida.
+
+- [Almacenamiento en bloque](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/tree/main/docs/en/domains/block-storage) — leer primero
+- [Protección de datos](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/tree/main/docs/en/domains/data-protection) — leer a continuación
+- [Construir](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/tree/main/docs/en/playbooks/04-build) — revisar antes de producción (todos los patrones)
+<!-- playbook-reading:end -->

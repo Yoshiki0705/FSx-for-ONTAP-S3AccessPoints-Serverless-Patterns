@@ -317,3 +317,15 @@ Exemple de sortie de l'analyse des données sismiques :
 ## S3AP Compatibility
 
 Pour les contraintes de compatibilité, le dépannage et les modèles de déclenchement des S3 Access Points for FSx for ONTAP, consultez les [S3AP Compatibility Notes](../docs/s3ap-compatibility-notes.md).
+
+---
+
+<!-- playbook-reading:start -->
+## À lire avant la mise en production
+
+Les contraintes qui apparaissent après le déploiement sont documentées dans le [FSx for ONTAP Adoption Playbook](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook), pas ici. Un même contenu présent à deux endroits laisse survivre la copie qui a cessé d'être mise à jour.
+
+- [Migrer](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/tree/main/docs/en/playbooks/03-migrate) — à lire en premier
+- [Concevoir](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/tree/main/docs/en/playbooks/02-design) — à lire ensuite
+- [Construire](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/tree/main/docs/en/playbooks/04-build) — à parcourir avant la production (tous les patterns)
+<!-- playbook-reading:end -->

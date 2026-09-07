@@ -460,3 +460,15 @@ sam deploy \
 > Este patrón proporciona orientación de arquitectura técnica. No es asesoramiento legal, de cumplimiento ni regulatorio. Las organizaciones deben consultar a profesionales cualificados. El límite de la fuente de datos del S3 AP es a nivel de volumen/prefijo; si se requiere control de visibilidad por usuario individual, queda fuera del alcance de este UC.
 >
 > **Tres capas de control de acceso (elegir según el caso de uso)**: ① Restricción de búsqueda = filtro de metadatos de Bedrock KB (este UC, no es autorización de AWS) / ② ACL a nivel de documento = base de conocimiento S3 de Amazon Quick ([UC30](../genai-quick-agentic-workspace/), por usuario/grupo) / ③ Filtro de permisos por chunk = RAG personalizado consciente de permisos ([FC3](../genai-rag-enterprise-files/), AD SID/NTFS ACL, para sectores regulados)
+
+---
+
+<!-- playbook-reading:start -->
+## Lectura previa al paso a producción
+
+Las restricciones que aparecen después del despliegue están documentadas en el [FSx for ONTAP Adoption Playbook](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook), no aquí. El mismo contenido en dos lugares hace que la copia que deja de actualizarse sobreviva a la corregida.
+
+- [Aprovechamiento de datos](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/tree/main/docs/en/domains/data-utilization) — leer primero
+- [Seguridad y gobernanza](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/tree/main/docs/en/domains/security-governance) — leer a continuación
+- [Construir](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/tree/main/docs/en/playbooks/04-build) — revisar antes de producción (todos los patrones)
+<!-- playbook-reading:end -->

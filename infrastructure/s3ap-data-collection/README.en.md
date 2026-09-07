@@ -88,7 +88,7 @@ When distributing data via FlexCache or SnapMirror, directory structure affects 
 
 **Design guidance**: Hive partitioning (`year=/month=/day=/`) suits both FlexCache distributed caching and SnapMirror incremental efficiency.
 
-Details: [FlexCache / SnapMirror Considerations (fsxn-lakehouse-integrations)](https://github.com/Yoshiki0705/fsxn-lakehouse-integrations/blob/main/docs/en/s3ap-flexcache-snapmirror-considerations.md)
+Details: [FlexCache / SnapMirror Considerations (FSx-for-ONTAP-Lakehouse-Integrations)](https://github.com/Yoshiki0705/FSx-for-ONTAP-Lakehouse-Integrations/blob/main/docs/en/s3ap-flexcache-snapmirror-considerations.md)
 
 ### S3 Access Point Design
 
@@ -304,10 +304,10 @@ aws cloudformation delete-stack --stack-name fsxn-s3ap-data-collection
 
 ## Related Resources (Cross-Project)
 
-- [S3 AP Design Considerations (detailed)](https://github.com/Yoshiki0705/fsxn-lakehouse-integrations/blob/main/docs/en/s3ap-design-considerations.md)
-- [FlexCache / SnapMirror Additional Considerations](https://github.com/Yoshiki0705/fsxn-lakehouse-integrations/blob/main/docs/en/s3ap-flexcache-snapmirror-considerations.md)
-- [SnapMirror + FlexCache Research & Validation (41 findings, 12 demo guides)](https://github.com/Yoshiki0705/fsxn-lakehouse-integrations/tree/main/integrations/snapmirror-flexcache-multicloud)
-- [Cross-region deploy/test/teardown scripts](https://github.com/Yoshiki0705/fsxn-lakehouse-integrations/tree/main/integrations/snapmirror-flexcache-multicloud/scripts/validation)
+- [S3 AP Design Considerations (detailed)](https://github.com/Yoshiki0705/FSx-for-ONTAP-Lakehouse-Integrations/blob/main/docs/en/s3ap-design-considerations.md)
+- [FlexCache / SnapMirror Additional Considerations](https://github.com/Yoshiki0705/FSx-for-ONTAP-Lakehouse-Integrations/blob/main/docs/en/s3ap-flexcache-snapmirror-considerations.md)
+- [SnapMirror + FlexCache Research & Validation (41 findings, 12 demo guides)](https://github.com/Yoshiki0705/FSx-for-ONTAP-Lakehouse-Integrations/tree/main/integrations/snapmirror-flexcache-multicloud)
+- [Cross-region deploy/test/teardown scripts](https://github.com/Yoshiki0705/FSx-for-ONTAP-Lakehouse-Integrations/tree/main/integrations/snapmirror-flexcache-multicloud/scripts/validation)
 
 ---
 
