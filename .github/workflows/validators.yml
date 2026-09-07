@@ -168,6 +168,16 @@ jobs:
       # the hook-wiring assertion skips here and runs locally.
       - name: Check the irreversible-operations guard blocks, asks and allows correctly
         run: python3 scripts/guard_irreversible_ops.py --selftest
+      # The unobserved-workflow merge guard, tracked and run here for the same reason. It asks
+      # before merging a change to a workflow that no pull request runs. repo-name-redirects.yml
+      # was merged with 31 green checks, none of which was the workflow itself, and it failed on
+      # its first hand dispatch; the misdiagnosis that followed cost a second merge.
+      - name: Check the unobserved-workflow merge guard asks and allows correctly
+        run: python3 scripts/guard_unobserved_workflow_merge.py --selftest
+      # The trigger parser, which the selftest above does not reach: it covers the decision
+      # layer, and the parser's first version misread indentation while the selftest passed.
+      - name: "Check the workflow trigger parser against every on: shape in use"
+        run: python3 -m pytest scripts/tests/guard_unobserved_workflow_merge_test.py -q
       # Obligations that come due on a date rather than on a code change. A SnapLock
       # audit log volume carries a 6-month minimum retention that blocks deletion of
       # the volume, its SVM and the file system, and AWS confirmed there is no

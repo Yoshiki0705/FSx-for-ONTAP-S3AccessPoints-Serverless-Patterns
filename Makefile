@@ -379,6 +379,14 @@ drift:
 # (block / ask / allow) behave as declared — a guard tested only on block cases
 # could be blocking everything.
 	$(PYTHON) -m pytest scripts/tests/test_guard_irreversible_ops.py --tb=short -q
+# The unobserved-workflow merge guard, tracked for the same reason. It asks before merging a
+# change to a workflow no pull request runs: repo-name-redirects.yml was merged with 31 green
+# checks, none of which was the workflow, and it failed on its first dispatch. The trigger
+# parser is the part worth testing — its first version used `\s{0,4}` for indentation, `\s`
+# matched newlines, and two workflows that do run on pull requests were reported as unobserved.
+# The selftest alone passed while that was true: it covered the decision layer only.
+	$(PYTHON) -m pytest scripts/tests/guard_unobserved_workflow_merge_test.py --tb=short -q
+	$(PYTHON) scripts/guard_unobserved_workflow_merge.py --selftest
 # A workflow step that ends in `|| true` cannot fail. 24 occurrences were audited
 # on 2026-08-15: 21 were the grep-no-match idiom (output captured, then tested),
 # and 3 were disarmed gates. cfn-guard was given `solutions/**/template-deploy.yaml`,
