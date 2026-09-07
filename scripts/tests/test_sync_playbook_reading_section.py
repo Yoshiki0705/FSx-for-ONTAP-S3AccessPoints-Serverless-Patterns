@@ -26,6 +26,8 @@ from sync_playbook_reading_section import (  # noqa: E402
     LEAD,
     LOCALES,
     MODULE_LABELS,
+    OPERATIONS_LOCALES,
+    OPERATIONS_ROW,
     PLAYBOOK_ROWS,
     ROLE_FIRST,
     ROLE_SECOND,
@@ -35,6 +37,7 @@ from sync_playbook_reading_section import (  # noqa: E402
     apply,
     check_coverage,
     hub_urls,
+    operations_dirs,
     readme_for,
     render,
 )
@@ -306,3 +309,46 @@ def test_hub_urls_cover_both_languages_and_every_module_in_use() -> None:
     assert sum(1 for u in urls if "/docs/ja/" in u) == len(urls) // 2
     for module in modules_in_use():
         assert any(u.endswith(f"/docs/ja/{module}") for u in urls), module
+
+
+# --- the operations pillar: one row, discovered directories ---
+
+
+def test_the_operations_row_exists_and_names_operate_first() -> None:
+    """Agreed with the Playbook side: one row for the pillar, 05-operate then performance."""
+    assert OPERATIONS_ROW in PLAYBOOK_ROWS
+    assert PLAYBOOK_ROWS[OPERATIONS_ROW] == ("playbooks/05-operate", "domains/performance")
+
+
+def test_operations_is_two_locales_not_eight() -> None:
+    """`operations/*/README.md` is declared ja+en in the manifest, unlike the pattern READMEs."""
+    assert OPERATIONS_LOCALES == ("md", "en.md")
+    assert set(OPERATIONS_LOCALES) < set(LOCALES)
+
+
+def test_operations_directories_are_discovered_not_listed(tmp_path: Path) -> None:
+    """A seventh pattern must need no edit here, and none on the Playbook side either.
+
+    That is the point of the pillar getting one row: listing the six would make the other
+    repository's table a copy of this catalogue, stale the moment a seventh lands.
+    """
+    for name in ("alpha", "beta"):
+        (tmp_path / "operations" / name).mkdir(parents=True)
+        (tmp_path / "operations" / name / "README.md").write_text("# x", "utf-8")
+    (tmp_path / "operations" / "tests").mkdir()  # no README: shared, not a pattern
+    assert operations_dirs(tmp_path) == ["alpha", "beta"]
+
+
+def test_operations_dirs_is_empty_when_the_tree_is_absent(tmp_path: Path) -> None:
+    assert operations_dirs(tmp_path) == []
+
+
+def test_every_operations_readme_exists_for_both_locales() -> None:
+    for name in operations_dirs():
+        for locale in OPERATIONS_LOCALES:
+            suffix = "README.md" if locale == "md" else f"README.{locale}"
+            assert (Path("operations") / name / suffix).exists(), f"{name}/{suffix}"
+
+
+def test_the_real_operations_tree_is_the_six_ops_patterns() -> None:
+    assert len(operations_dirs()) == 6

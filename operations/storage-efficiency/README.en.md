@@ -71,3 +71,15 @@ commitment.
 > improvement. It is neither a contractual cost-saving guarantee nor an audit
 > record. If it informs a regulatory decision, route it through your compliance
 > function first.
+
+---
+
+<!-- playbook-reading:start -->
+## Read before going to production
+
+How the constraints that surface after deploying translate into design decisions is covered in the [FSx for ONTAP Adoption Playbook](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook). The same content in two places means the copy that stops being updated outlives the one that was corrected.
+
+- [Operate](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/tree/main/docs/en/playbooks/05-operate) — read first
+- [Performance](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/tree/main/docs/en/domains/performance) — read next
+- [Build](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/tree/main/docs/en/playbooks/04-build) — run through before production (every pattern)
+<!-- playbook-reading:end -->

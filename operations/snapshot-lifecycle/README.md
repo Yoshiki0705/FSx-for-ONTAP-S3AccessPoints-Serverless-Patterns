@@ -167,3 +167,15 @@ make test-ops4
 | [operations/docs/metrics-mapping.md](../docs/metrics-mapping.md) | メトリクス対応表 |
 | [operations/docs/ops-adoption-roadmap.md](../docs/ops-adoption-roadmap.md) | 導入ロードマップ |
 | [operations/docs/existing-solutions-reference.md](../docs/existing-solutions-reference.md) | 既存ソリューション比較 |
+
+---
+
+<!-- playbook-reading:start -->
+## 本番に出す前に読むもの
+
+デプロイしたあとに当たる制約を、どう設計判断に翻訳するかは [FSx for ONTAP Adoption Playbook](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook) 側にあります。同じ内容を 2 か所に置くと、更新が止まった側が更新された側より長く残るためです。
+
+- [運用](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/tree/main/docs/ja/playbooks/05-operate) — 最初に読む
+- [性能](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/tree/main/docs/ja/domains/performance) — 次に読む
+- [構築](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/tree/main/docs/ja/playbooks/04-build) — 本番前に通す（全パターン共通）
+<!-- playbook-reading:end -->

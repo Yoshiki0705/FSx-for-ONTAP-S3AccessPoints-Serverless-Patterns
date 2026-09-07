@@ -224,6 +224,7 @@ PLAYBOOK_ROWS: dict[str, tuple[str, str]] = {
     "cyber-resilience": ("domains/data-protection", "domains/security-governance"),
     "observability": ("domains/performance", "domains/security-governance"),
     "lakehouse": ("domains/data-utilization", "domains/performance"),
+    "operations": ("playbooks/05-operate", "domains/performance"),
 }
 
 # Solution directory (relative to solutions/) -> row in PLAYBOOK_ROWS.
@@ -278,6 +279,12 @@ ASSIGNMENT: dict[str, str] = {
     "ha/lifekeeper-monitoring": "telecom",
     "sap/erp-adjacent": "financial",
 }
+
+# The operations pillar, which lives outside `solutions/` and is declared ja+en rather than
+# eight-locale. Held in its own map because the tree and the locale set both differ; folding it
+# into ASSIGNMENT would have needed a per-entry locale list to say the same thing.
+OPERATIONS_ROW = "operations"
+OPERATIONS_LOCALES = ("md", "en.md")
 
 # Solution directories deliberately without a section, and why. Recorded as data rather
 # than left absent, because `ASSIGNMENT` is the input to the writer: a directory missing
@@ -431,6 +438,25 @@ def render(locale: str, row: str) -> str:
         END,
     ]
     return "\n".join(lines) + "\n"
+
+
+def operations_dirs(root: Path = ROOT) -> list[str]:
+    """Every operations pattern directory, discovered rather than listed.
+
+    Discovered on purpose: the Playbook's table carries one row for the whole pillar, so a
+    seventh pattern needs no coordination with it. Listing them here would reintroduce exactly
+    the copy-of-the-catalogue problem that one row exists to avoid.
+
+    Args:
+        root: Repository root, overridable for tests.
+
+    Returns:
+        Directory names under `operations/`, sorted, excluding shared directories.
+    """
+    base = root / "operations"
+    if not base.is_dir():
+        return []
+    return sorted(d.name for d in base.iterdir() if d.is_dir() and (d / "README.md").is_file())
 
 
 def readme_for(solution: str, locale: str, root: Path = ROOT) -> Path:
@@ -614,20 +640,28 @@ def main() -> int:
     # Every path is resolved and every file read before anything is written, so a mapping
     # typo or a damaged marker pair fails before the first of several hundred writes rather
     # than after some of them.
+    planned: list[tuple[Path, str, str]] = [
+        (readme_for(solution, locale), row, locale)
+        for solution, row in sorted(ASSIGNMENT.items())
+        for locale in LOCALES
+    ] + [
+        (ROOT / "operations" / name / ("README.md" if loc == "md" else f"README.{loc}"), OPERATIONS_ROW, loc)
+        for name in operations_dirs()
+        for loc in OPERATIONS_LOCALES
+    ]
+
     targets: list[tuple[Path, str, str]] = []
-    for solution, row in sorted(ASSIGNMENT.items()):
-        for locale in LOCALES:
-            path = readme_for(solution, locale)
-            if not path.exists():
-                missing.append(path.relative_to(ROOT).as_posix())
-                continue
-            current = path.read_text(encoding="utf-8")
-            try:
-                updated = apply(current, render(locale, row))
-            except MarkerError as exc:
-                damaged.append(f"{path.relative_to(ROOT).as_posix()}: {exc}")
-                continue
-            targets.append((path, current, updated))
+    for path, row, locale in planned:
+        if not path.exists():
+            missing.append(path.relative_to(ROOT).as_posix())
+            continue
+        current = path.read_text(encoding="utf-8")
+        try:
+            updated = apply(current, render(locale, row))
+        except MarkerError as exc:
+            damaged.append(f"{path.relative_to(ROOT).as_posix()}: {exc}")
+            continue
+        targets.append((path, current, updated))
 
     if missing or damaged:
         for label, rows in (("do not exist", missing), ("have damaged markers", damaged)):
@@ -654,7 +688,7 @@ def main() -> int:
             for rel in stale[:10]:
                 print(f"  {rel}", file=sys.stderr)
             return 1
-        print(f"playbook-reading: {len(ASSIGNMENT) * len(LOCALES)} README(s) up to date")
+        print(f"playbook-reading: {len(planned)} README(s) up to date")
         return 0
 
     if args.dry_run:
@@ -662,8 +696,9 @@ def main() -> int:
         return 0
 
     print(
-        f"playbook-reading: {len(written)} file(s) written across "
-        f"{len(ASSIGNMENT)} solutions ({len(INFERRED)} by inferred row)"
+        f"playbook-reading: {len(written)} file(s) written across {len(ASSIGNMENT)} solutions "
+        f"and {len(operations_dirs())} operations patterns "
+        f"({len(INFERRED)} solutions by inferred row)"
     )
     return 0
 

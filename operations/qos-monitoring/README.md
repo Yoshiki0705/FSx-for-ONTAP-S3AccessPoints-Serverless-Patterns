@@ -57,3 +57,15 @@ QoS の上限設定は誤ると本番ワークロードを意図せず絞りま�
 「QoS 未割り当て」の検出は、そのボリュームが**問題である**ことを意味しません。単一ワークロード専有のファイルシステムでは、ポリシーを付けない運用が妥当な場合もあります。推奨は検討の起点として扱ってください。
 
 > **性能に関する補足**: 本パターンの出力は QoS 設定の構成情報に基づく静的な分析です。実際の帯域争奪の発生有無は、ONTAP の性能統計や CloudWatch のスループットメトリクスで確認する必要があります。
+
+---
+
+<!-- playbook-reading:start -->
+## 本番に出す前に読むもの
+
+デプロイしたあとに当たる制約を、どう設計判断に翻訳するかは [FSx for ONTAP Adoption Playbook](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook) 側にあります。同じ内容を 2 か所に置くと、更新が止まった側が更新された側より長く残るためです。
+
+- [運用](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/tree/main/docs/ja/playbooks/05-operate) — 最初に読む
+- [性能](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/tree/main/docs/ja/domains/performance) — 次に読む
+- [構築](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/tree/main/docs/ja/playbooks/04-build) — 本番前に通す（全パターン共通）
+<!-- playbook-reading:end -->
