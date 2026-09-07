@@ -49,9 +49,12 @@ from __future__ import annotations
 
 import argparse
 import sys
-import urllib.error
 import urllib.request
 from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+from check_repo_name_redirects import fetch  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -552,16 +555,14 @@ def verify_hubs() -> tuple[list[str], list[str]]:
         if not url.startswith("https://github.com/"):
             raise ValueError(f"refusing a non-GitHub https URL: {url}")
         request = urllib.request.Request(url, headers={"User-Agent": "playbook-hub-check"})
-        try:
-            with urllib.request.urlopen(  # nosec B310 - scheme asserted above  # noqa: S310
-                request, timeout=30
-            ) as response:
-                if response.status != 200:
-                    unreachable.append(f"{url}: HTTP {response.status}")
-        except urllib.error.HTTPError as exc:
-            (broken if exc.code == 404 else unreachable).append(f"{url}: HTTP {exc.code}")
-        except (urllib.error.URLError, TimeoutError) as exc:
-            unreachable.append(f"{url}: {exc}")
+        # Retry lives in the sibling check so the backoff policy has one definition. GitHub
+        # answers a burst of serial requests with 504, and these 24 run right after that
+        # check's 29.
+        _final, status, error = fetch(request)
+        if status == 404:
+            broken.append(f"{url}: 404 -- the module hub is gone; 376 READMEs link to it")
+        elif error is not None:
+            unreachable.append(f"{url}: {error}")
     return broken, unreachable
 
 
