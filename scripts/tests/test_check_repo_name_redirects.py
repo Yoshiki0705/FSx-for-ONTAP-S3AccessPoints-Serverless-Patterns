@@ -15,6 +15,8 @@ tracked scratch file.
 from __future__ import annotations
 
 import sys
+import urllib.error
+import urllib.request
 from pathlib import Path
 
 import pytest
@@ -226,3 +228,105 @@ def test_an_owner_named_like_a_product_surface_is_still_collected(tmp_path: Path
     """`Security` is a plausible org name; the exclusion list is lowercase URL segments."""
     path = write(tmp_path, "a.md", "https://github.com/Security/realrepo\n")
     assert list(collect([path], root=tmp_path)) == ["Security/realrepo"]
+
+
+# --- transient failures: a noisy weekly gate is one people force through ---
+
+
+class _Resp:
+    def __init__(self, url: str, status: int) -> None:
+        self.url, self.status = url, status
+
+    def __enter__(self) -> _Resp:
+        return self
+
+    def __exit__(self, *_exc: object) -> None:
+        return None
+
+
+def _sequence(outcomes: list[object]) -> tuple[object, list[int]]:
+    """Return an opener that yields each outcome in turn, and a call counter."""
+    calls: list[int] = []
+
+    def opener(_request: object, timeout: int = 0) -> object:
+        calls.append(1)
+        outcome = outcomes[len(calls) - 1]
+        if isinstance(outcome, Exception):
+            raise outcome
+        return outcome
+
+    return opener, calls
+
+
+@pytest.mark.parametrize("code", [500, 502, 503, 504])
+def test_a_retryable_status_is_retried_and_can_succeed(monkeypatch: pytest.MonkeyPatch, code: int) -> None:
+    """GitHub answered a burst of 29+24 serial requests with 504s on different URLs."""
+    import check_repo_name_redirects as module
+
+    err = urllib.error.HTTPError("u", code, "e", None, None)  # type: ignore[arg-type]
+    opener, calls = _sequence([err, _Resp("https://github.com/O/r", 200)])
+    monkeypatch.setattr(module.urllib.request, "urlopen", opener)
+    monkeypatch.setattr(module.time, "sleep", lambda _s: None)
+
+    final, status, error = module.fetch(urllib.request.Request("https://github.com/O/r"))
+    assert (final, status, error) == ("https://github.com/O/r", 200, None)
+    assert len(calls) == 2
+
+
+def test_a_404_is_an_answer_and_is_not_retried(monkeypatch: pytest.MonkeyPatch) -> None:
+    import check_repo_name_redirects as module
+
+    err = urllib.error.HTTPError("u", 404, "e", None, None)  # type: ignore[arg-type]
+    opener, calls = _sequence([err, err, err])
+    monkeypatch.setattr(module.urllib.request, "urlopen", opener)
+    monkeypatch.setattr(module.time, "sleep", lambda _s: None)
+
+    _final, status, error = module.fetch(urllib.request.Request("https://github.com/O/r"))
+    assert (status, error) == (404, None)
+    assert len(calls) == 1
+
+
+def test_a_non_retryable_status_is_not_retried(monkeypatch: pytest.MonkeyPatch) -> None:
+    """403 is a rate limit or a permission, and asking again immediately answers the same."""
+    import check_repo_name_redirects as module
+
+    err = urllib.error.HTTPError("u", 403, "e", None, None)  # type: ignore[arg-type]
+    opener, calls = _sequence([err, err, err])
+    monkeypatch.setattr(module.urllib.request, "urlopen", opener)
+    monkeypatch.setattr(module.time, "sleep", lambda _s: None)
+
+    _final, status, error = module.fetch(urllib.request.Request("https://github.com/O/r"))
+    assert status == 403
+    assert error == "HTTP 403"
+    assert len(calls) == 1
+
+
+def test_persistent_failure_gives_up_and_says_how_many_attempts(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    import check_repo_name_redirects as module
+
+    err = urllib.error.HTTPError("u", 504, "e", None, None)  # type: ignore[arg-type]
+    opener, calls = _sequence([err] * module.ATTEMPTS)
+    monkeypatch.setattr(module.urllib.request, "urlopen", opener)
+    monkeypatch.setattr(module.time, "sleep", lambda _s: None)
+
+    _final, _status, error = module.fetch(urllib.request.Request("https://github.com/O/r"))
+    assert error is not None
+    assert f"{module.ATTEMPTS} attempts" in error
+    assert len(calls) == module.ATTEMPTS
+
+
+def test_a_retried_transient_failure_is_never_reported_as_a_rename(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The point of the retry: a 504 must not turn into a finding about the name."""
+    import check_repo_name_redirects as module
+
+    err = urllib.error.HTTPError("u", 504, "e", None, None)  # type: ignore[arg-type]
+    opener, _calls = _sequence([err] * module.ATTEMPTS)
+    monkeypatch.setattr(module.urllib.request, "urlopen", opener)
+    monkeypatch.setattr(module.time, "sleep", lambda _s: None)
+
+    outcome, _detail = module.resolve("Owner/repo")
+    assert outcome == "unreachable"

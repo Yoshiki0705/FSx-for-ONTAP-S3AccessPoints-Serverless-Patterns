@@ -91,6 +91,7 @@ import os
 import re
 import subprocess
 import sys
+import time
 import urllib.error
 import urllib.request
 from collections import defaultdict
@@ -142,6 +143,48 @@ WRAPPED = "-"
 
 # Coverage floor. See the check in `main()`.
 MINIMUM_REFERENCES = 10
+
+# GitHub answers a burst of serial requests with 504 rather than a rate-limit header. Running
+# the two checks back to back -- 29 names plus 24 hub paths -- produced 2-6 of them per run,
+# on different URLs each time. Left unhandled the weekly job fails intermittently, and since
+# exit 2 is treated as a failure there, the result is a gate that cries wolf. The same comment
+# in published-articles-check.yml explains why that matters: a noisy required check is one
+# people learn to force through.
+RETRY_ON = (500, 502, 503, 504)
+ATTEMPTS = 3
+BACKOFF_SECONDS = 2.0
+
+
+def fetch(request: urllib.request.Request) -> tuple[str | None, int | None, str | None]:
+    """Open a request, retrying only the statuses that mean "ask again".
+
+    Args:
+        request: A prepared request whose scheme the caller has already asserted.
+
+    Returns:
+        `(landing_url, status, error)`. On success `error` is None. On a 404 the status is
+        404 and `error` is None, because that is an answer rather than a failure. Otherwise
+        `error` carries the reason and the caller reports it as unreachable.
+    """
+    last = "no attempt made"
+    for attempt in range(1, ATTEMPTS + 1):
+        try:
+            with urllib.request.urlopen(  # nosec B310 - scheme asserted by the caller  # noqa: S310
+                request, timeout=30
+            ) as response:
+                return response.url, response.status, None
+        except urllib.error.HTTPError as exc:
+            if exc.code == 404:
+                return None, 404, None
+            last = f"HTTP {exc.code}"
+            if exc.code not in RETRY_ON:
+                return None, exc.code, last
+        except (urllib.error.URLError, TimeoutError) as exc:
+            last = str(exc)
+        if attempt < ATTEMPTS:
+            time.sleep(BACKOFF_SECONDS * attempt)
+    return None, None, f"{last} after {ATTEMPTS} attempts"
+
 
 REPO_REF = re.compile(r"https://github\.com/(?P<owner>[A-Za-z0-9][A-Za-z0-9._-]*)/(?P<repo>[A-Za-z0-9][A-Za-z0-9._-]*)")
 
@@ -219,19 +262,13 @@ def resolve(slug: str) -> tuple[str, str | None]:
     if not url.startswith("https://github.com/"):
         raise ValueError(f"refusing a non-GitHub https URL: {url}")
     request = urllib.request.Request(url, headers={"User-Agent": "repo-name-redirect-check"})
-    try:
-        with urllib.request.urlopen(  # nosec B310 - scheme asserted above  # noqa: S310
-            request, timeout=30
-        ) as response:
-            final = response.url
-    except urllib.error.HTTPError as exc:
-        # 404 is a finding about the name. Every other status is about GitHub or the
-        # runner, and saying "renamed" on a 503 would be a false accusation.
-        if exc.code == 404:
-            return "missing", "404 (deleted, redirect expired, or now private)"
-        return "unreachable", f"HTTP {exc.code}"
-    except (urllib.error.URLError, TimeoutError) as exc:
-        return "unreachable", str(exc)
+    final, status, error = fetch(request)
+    # 404 is a finding about the name. Every other failure is about GitHub or the runner, and
+    # saying "renamed" on a 503 would be a false accusation.
+    if status == 404:
+        return "missing", "404 (deleted, redirect expired, or now private)"
+    if error is not None or final is None:
+        return "unreachable", error or "no response"
 
     canonical = "/".join(final.rstrip("/").split("/")[-2:])
     # Compared case-sensitively. Folding case would suppress a rename whose only
@@ -264,17 +301,23 @@ def canonical_casing(slug: str) -> tuple[str, str | None]:
     if token:
         headers["Authorization"] = f"Bearer {token}"
     request = urllib.request.Request(url, headers=headers)
-    try:
-        with urllib.request.urlopen(  # nosec B310 - scheme asserted above  # noqa: S310
-            request, timeout=30
-        ) as response:
-            full_name = json.load(response).get("full_name")
-    except urllib.error.HTTPError as exc:
-        if exc.code == 404:
-            return "ok", None  # The default mode reports a missing name; not this one's job.
-        return "unreachable", f"HTTP {exc.code}"
-    except (urllib.error.URLError, TimeoutError, ValueError) as exc:
-        return "unreachable", str(exc)
+    for attempt in range(1, ATTEMPTS + 1):
+        try:
+            with urllib.request.urlopen(  # nosec B310 - scheme asserted above  # noqa: S310
+                request, timeout=30
+            ) as response:
+                full_name = json.load(response).get("full_name")
+            break
+        except urllib.error.HTTPError as exc:
+            if exc.code == 404:
+                # The default mode already reports a missing name; not this one's job.
+                return "ok", None
+            if exc.code not in RETRY_ON or attempt == ATTEMPTS:
+                return "unreachable", f"HTTP {exc.code}"
+        except (urllib.error.URLError, TimeoutError, ValueError) as exc:
+            if attempt == ATTEMPTS:
+                return "unreachable", str(exc)
+        time.sleep(BACKOFF_SECONDS * attempt)
 
     if not full_name:
         return "unreachable", "the API response carried no full_name"
