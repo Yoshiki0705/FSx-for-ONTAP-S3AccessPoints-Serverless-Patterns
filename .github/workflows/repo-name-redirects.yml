@@ -10,6 +10,12 @@ name: Repository Name Redirect Check
 # GitHub keeps serving the old name through a redirect, so the link returns 200 and a
 # link checker reports it healthy. The Adoption Playbook had seven repositories in that
 # state at once, all reported reachable.
+#
+# Both steps read the REST API rather than fetching pages. The first version fetched
+# github.com/<owner>/<repo> and compared the landing URL, and this job failed on its first
+# real run: NetApp/FSx-ONTAP-samples-scripts and NetApp/fsxn-monitoring-auto-resizing
+# returned 504 on all three attempts while nothing was wrong with either name. They answer
+# the API immediately, and full_name also settles capitalisation, which a redirect cannot.
 
 on:
   schedule:
@@ -42,15 +48,16 @@ jobs:
         # a run that concluded nothing and reported success would let the check quietly
         # stop covering anything.
         #
-        # --strict-casing adds a REST API lookup per name, which is the only way to see a
-        # rename that changed capitalisation only -- GitHub serves the casing requested and
-        # reports it back, so no redirect exposes it. One of the five names this check was
-        # written to find was in that class. The token lifts the 60/hour anonymous limit.
+        # The token lifts the API's 60/hour anonymous limit to 5,000. Without it the 29 names
+        # here fit, but only just, and a second run in the same hour would report every name
+        # as "could not be checked".
         env:
           GITHUB_TOKEN: ${{ github.token }}
-        run: python3 scripts/check_repo_name_redirects.py --strict-casing
+        run: python3 scripts/check_repo_name_redirects.py
       - name: Resolve the Playbook module hubs the generated sections link to
         # The check above resolves repository names and drops everything after owner/repo,
         # so the 24 hub paths written into 376 READMEs need their own pass. A renamed module
         # directory would 404 in every one of those files at once.
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
         run: python3 scripts/sync_playbook_reading_section.py --verify-hubs
