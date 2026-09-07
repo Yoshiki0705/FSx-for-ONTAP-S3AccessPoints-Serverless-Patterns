@@ -164,49 +164,35 @@ def test_findings_dominate_when_names_are_also_unreachable() -> None:
     assert len(unreachable) == 2
 
 
-# --- casing, the class the default mode cannot see ---
+# --- casing now arrives with the rename, from the same answer ---
 
 
-def test_a_miscased_name_is_a_finding_under_strict_casing() -> None:
+def test_a_casing_only_rename_is_reported_as_capitalisation() -> None:
+    """Same verdict, different message: a reader is unaffected, every checker is blind."""
     stale, unreachable = audit(
         {"Owner/lower-case-name": ["README.md"]},
-        resolver=lambda _s: ("ok", None),
-        casing_resolver=lambda _s: ("miscased", "Owner/Lower-Case-Name"),
+        resolver=lambda _s: ("renamed", "Owner/Lower-Case-Name"),
     )
     assert unreachable == []
-    assert len(stale) == 1
-    assert "capitalised Owner/Lower-Case-Name" in stale[0]
+    assert "is capitalised Owner/Lower-Case-Name upstream" in stale[0]
+    assert "redirect" in stale[0]
 
 
-def test_casing_is_not_consulted_for_a_name_that_already_failed() -> None:
-    """Reporting a rename and its capitalisation would be one problem under two labels."""
-    calls: list[str] = []
-
-    def casing(slug: str) -> tuple[str, str | None]:
-        calls.append(slug)
-        return "ok", None
-
-    audit(
-        {"o/renamed": ["a.md"]},
-        resolver=lambda _s: ("renamed", "o/new"),
-        casing_resolver=casing,
+def test_a_real_rename_keeps_the_redirect_wording() -> None:
+    stale, _ = audit(
+        {"Owner/old-name": ["a.md"]},
+        resolver=lambda _s: ("renamed", "Owner/Completely-Different"),
     )
-    assert calls == []
+    assert "is now Owner/Completely-Different" in stale[0]
+    assert "capitalised" not in stale[0]
 
 
-def test_casing_is_skipped_entirely_when_no_resolver_is_given() -> None:
-    stale, unreachable = audit({"o/x": ["a.md"]}, resolver=lambda _s: ("ok", None))
-    assert (stale, unreachable) == ([], [])
-
-
-def test_an_unreachable_casing_lookup_is_not_a_finding() -> None:
-    stale, unreachable = audit(
-        {"o/x": ["a.md"]},
-        resolver=lambda _s: ("ok", None),
-        casing_resolver=lambda _s: ("unreachable", "HTTP 403"),
-    )
-    assert stale == []
-    assert unreachable == ["o/x (casing): HTTP 403"]
+def test_the_two_shapes_are_distinguished_by_case_folding_alone() -> None:
+    """`o/a-b` -> `o/A-B` is capitalisation; `o/a-b` -> `o/c-d` is a rename."""
+    cased, _ = audit({"o/a-b": ["x.md"]}, resolver=lambda _s: ("renamed", "o/A-B"))
+    moved, _ = audit({"o/a-b": ["x.md"]}, resolver=lambda _s: ("renamed", "o/c-d"))
+    assert "capitalised" in cased[0]
+    assert "capitalised" not in moved[0]
 
 
 # --- collect() edges the first version got wrong ---
@@ -330,3 +316,73 @@ def test_a_retried_transient_failure_is_never_reported_as_a_rename(
 
     outcome, _detail = module.resolve("Owner/repo")
     assert outcome == "unreachable"
+
+
+# --- fetch_json: the API path resolve() now takes ---
+
+
+def test_a_rate_limited_response_names_the_remedy(monkeypatch: pytest.MonkeyPatch) -> None:
+    """ "HTTP 403" alone does not tell anyone to set GITHUB_TOKEN."""
+    import check_repo_name_redirects as module
+
+    err = urllib.error.HTTPError("u", 403, "e", {"x-ratelimit-remaining": "0"}, None)  # type: ignore[arg-type]
+    opener, calls = _sequence([err])
+    monkeypatch.setattr(module.urllib.request, "urlopen", opener)
+    monkeypatch.setattr(module.time, "sleep", lambda _s: None)
+    monkeypatch.delenv("GITHUB_TOKEN", raising=False)
+
+    _body, status, error = module.fetch_json(urllib.request.Request("https://api.github.com/x"))
+    assert status == 403
+    assert error is not None and "rate limit exhausted" in error and "GITHUB_TOKEN" in error
+    assert len(calls) == 1
+
+
+def test_a_rate_limit_with_a_token_set_does_not_suggest_setting_one(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    import check_repo_name_redirects as module
+
+    err = urllib.error.HTTPError("u", 403, "e", {"x-ratelimit-remaining": "0"}, None)  # type: ignore[arg-type]
+    opener, _calls = _sequence([err])
+    monkeypatch.setattr(module.urllib.request, "urlopen", opener)
+    monkeypatch.setattr(module.time, "sleep", lambda _s: None)
+    monkeypatch.setenv("GITHUB_TOKEN", "x")
+
+    _body, _status, error = module.fetch_json(urllib.request.Request("https://api.github.com/x"))
+    assert error is not None and "GITHUB_TOKEN" not in error
+
+
+def test_a_response_without_full_name_is_unreachable_not_ok(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """An empty body must not be read as "the name is fine"."""
+    import check_repo_name_redirects as module
+
+    monkeypatch.setattr(module, "fetch_json", lambda _r: ({}, 200, None))
+    assert module.resolve("Owner/repo")[0] == "unreachable"
+
+
+def test_a_404_from_the_api_is_a_missing_name(monkeypatch: pytest.MonkeyPatch) -> None:
+    import check_repo_name_redirects as module
+
+    monkeypatch.setattr(module, "fetch_json", lambda _r: (None, 404, None))
+    outcome, detail = module.resolve("Owner/gone")
+    assert outcome == "missing"
+    assert detail is not None and "404" in detail
+
+
+def test_full_name_matching_the_slug_is_clean(monkeypatch: pytest.MonkeyPatch) -> None:
+    import check_repo_name_redirects as module
+
+    monkeypatch.setattr(module, "fetch_json", lambda _r: ({"full_name": "Owner/repo"}, 200, None))
+    assert module.resolve("Owner/repo") == ("ok", None)
+
+
+def test_full_name_differing_only_in_case_is_a_rename_verdict(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The whole reason for moving off the redirect: this case used to return ok."""
+    import check_repo_name_redirects as module
+
+    monkeypatch.setattr(module, "fetch_json", lambda _r: ({"full_name": "Owner/Repo-Name"}, 200, None))
+    assert module.resolve("Owner/repo-name") == ("renamed", "Owner/Repo-Name")

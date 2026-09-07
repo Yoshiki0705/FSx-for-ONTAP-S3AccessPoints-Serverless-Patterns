@@ -1,69 +1,81 @@
-#!/usr/bin/env python3
-"""Fail on a GitHub repository name that only still resolves because of a redirect.
+"""Fail on a GitHub repository name that is not the name the repository has.
 
 ## Why a link checker cannot find this
 
-A rename is normal. What has no symptom is that GitHub keeps serving the old name
-through a redirect: the link returns 200, a link checker reports it reachable, and
-two documents can spell the same repository differently while both look fine. The
-Adoption Playbook hit this with seven renamed repositories whose links all reported
-reachable, and its `tools/check_cross_repo.py` grew `check_repo_names()` for it.
+A rename is normal. What has no symptom is that GitHub keeps serving the old name through a
+redirect: the link returns 200, a link checker reports it reachable, and two documents can
+spell the same repository differently while both look fine. The Adoption Playbook hit this
+with seven renamed repositories whose links all reported reachable, and its
+`tools/check_cross_repo.py` grew `check_repo_names()` for it.
 
-Reachability is the wrong question. This asks a different one: **is the name we wrote
-the name the repository has?** The answer comes from the URL the request lands on,
-not from its status code.
+Reachability is the wrong question. This asks a different one: **is the name we wrote the
+name the repository has?**
+
+## Why this asks the API rather than following the redirect
+
+The Playbook's implementation, and the first version of this one, compared the landing URL of
+a request to `github.com/<owner>/<repo>`. Two things made that the wrong mechanism here, both
+found by running it rather than by reading it.
+
+**It cannot see capitalisation.** Measured 2026-09-07: GitHub serves
+`Yoshiki0705/vmware-migration-ec2-ontap` at the URL requested and reports that URL back,
+while `Yoshiki0705/fsxn-cyber-resilience-patterns` redirects to
+`FSx-for-ONTAP-Cyber-Resilience-Patterns`. A rename is visible in the landing URL; a rename
+that only changed case is not. That gap was not academic: of the five stale names this check
+was written to find, `vmware-migration-ec2-ontap` sits inside it, and the redirect method
+certified it as canonical.
+
+**And the HTML endpoint 504s.** On a GitHub-hosted runner, `NetApp/FSx-ONTAP-samples-scripts`
+and `NetApp/fsxn-monitoring-auto-resizing` returned 504 on all three attempts, so the weekly
+job failed with "could not be checked" while nothing was wrong with either name. Both answer
+the API immediately.
+
+`GET /repos/{owner}/{repo}` returns `full_name`, which is the canonical `owner/repo` including
+its capitalisation, and it follows renames. One request per name settles rename, casing and
+existence together:
+
+| written | `full_name` | verdict |
+|---|---|---|
+| `Yoshiki0705/fsxn-cyber-resilience-patterns` | `Yoshiki0705/FSx-for-ONTAP-Cyber-Resilience-Patterns` | renamed |
+| `Yoshiki0705/vmware-migration-ec2-ontap` | `Yoshiki0705/VMware-Migration-EC2-ONTAP` | miscapitalised |
+| `Yoshiki0705/Permission-aware-RAG-FSxN-CDK-github` | 404 | does not resolve |  # allow:naming - the retired repository name, quoted
+
+`FSx-for-ONTAP-Observability-integrations` is the shape that makes casing worth checking: a
+lowercase `i` where its siblings use `-Integrations`, correct as written, and impossible to
+confirm without asking.
+
+The cost is a rate limit. Unauthenticated is 60/hour, which covers the 29 names here but not
+much more; `GITHUB_TOKEN` lifts it to 5,000 and the weekly workflow passes one. When the limit
+is the reason a name could not be checked, the message says so rather than leaving someone to
+infer it from a 403.
 
 ## One deliberate difference from the Playbook's version
 
-**Fenced code blocks are scanned here, not skipped.** The Playbook blanks them out,
-because there a citation inside a fence is an example rather than a claim. In this
-repository the opposite is true: the majority of repository references sit inside
+**Fenced code blocks are scanned here, not skipped.** The Playbook blanks them out, because
+there a citation inside a fence is an example rather than a claim. In this repository the
+opposite is true: the majority of repository references sit inside
 
     ```bash
     git clone https://github.com/<owner>/<repo>.git
     ```
 
-in a demo guide, and that is a URL a reader pastes into a terminal. Skipping fences
-here would have skipped 91 files carrying a clone URL that 404s — the single most
-user-facing instance of exactly what this check is for.
-
-## The two questions, and why casing needs the second one
-
-**Redirects do not reveal casing.** Measured 2026-09-07: GitHub serves
-`Yoshiki0705/vmware-migration-ec2-ontap` at the URL requested and reports that URL back,
-while `Yoshiki0705/fsxn-cyber-resilience-patterns` redirects to
-`FSx-for-ONTAP-Cyber-Resilience-Patterns`. A rename is visible in the landing URL; a
-casing difference is not.
-
-That gap is not academic here. Of the five stale names this check was written to find, one
--- `vmware-migration-ec2-ontap`, whose real name is `VMware-Migration-EC2-ONTAP` -- sits
-inside it, and the default mode reports that name as canonical.
-
-So there are two modes:
-
-- **default** -- resolve the HTML URL. No token, no rate limit, catches renames.
-- **`--strict-casing`** -- additionally read `full_name` from the REST API, which is
-  authoritative for capitalisation. Costs one API call per name against a 60/hour
-  unauthenticated limit, so it is opt-in and runs weekly rather than on every invocation.
-  Reads `GITHUB_TOKEN` when present to lift that limit.
-
-`FSx-for-ONTAP-Observability-integrations` is the shape that makes this worth having: a
-lowercase `i` where its siblings use `-Integrations`, correct as written, and impossible to
-confirm without asking.
+in a demo guide, and that is a URL a reader pastes into a terminal. Skipping fences here would
+have skipped 91 files carrying a clone URL that 404s -- the single most user-facing instance of
+exactly what this check is for.
 
 ## What this still cannot see
 
-A URL wrapped across two source lines. The first half yields no match at all, so the
-reference is skipped silently rather than reported. `WRAPPED` handles the narrower case of a
-name left with a trailing hyphen.
+A URL wrapped across two source lines. The first half yields no match at all, so the reference
+is skipped silently rather than reported. `WRAPPED` handles the narrower case of a name left
+with a trailing hyphen.
 
 ## What a 404 means, and what it does not
 
-A 404 is reported separately from a redirect, because it has more than one cause: the
-repository was deleted, or renamed with the redirect expired, **or it is private and
-this request is unauthenticated.** The check cannot tell those apart and does not
-guess. It says the name does not resolve anonymously, which is what a reader of a
-public repository would experience, and leaves the interpretation to a human.
+A 404 has more than one cause: the repository was deleted, or renamed with the redirect
+expired, **or it is private and this request lacks access to it.** The check cannot tell those
+apart and does not guess. It reports that the name does not resolve, which is what a reader of
+a public repository would experience, and leaves the interpretation to a human. It is kept
+separate from "could not be checked" for that reason -- one is an answer, the other is not.
 
 ## Shape of the code
 
@@ -78,6 +90,8 @@ tested.
     python3 scripts/check_repo_name_redirects.py            # report, exit 1 on findings
     python3 scripts/check_repo_name_redirects.py --quiet     # one summary line
     python3 scripts/check_repo_name_redirects.py --list      # names only, no network
+
+Set GITHUB_TOKEN to lift the 60/hour unauthenticated rate limit.
 
 Exit codes: 0 clean, 1 stale or unresolvable names found, 2 the network was
 unusable and nothing could be concluded.
@@ -177,6 +191,15 @@ def fetch(request: urllib.request.Request) -> tuple[str | None, int | None, str 
             if exc.code == 404:
                 return None, 404, None
             last = f"HTTP {exc.code}"
+            if exc.code in (403, 429):
+                # The one unreachable reason a human can act on. Left unnamed it reads as an
+                # outage, and the fix -- set GITHUB_TOKEN -- is not guessable from "HTTP 403".
+                remaining = exc.headers.get("x-ratelimit-remaining") if exc.headers else None
+                if remaining == "0":
+                    last = f"HTTP {exc.code}: API rate limit exhausted" + (
+                        "" if os.environ.get("GITHUB_TOKEN") else ". Set GITHUB_TOKEN"
+                    )
+                return None, exc.code, last
             if exc.code not in RETRY_ON:
                 return None, exc.code, last
         except (urllib.error.URLError, TimeoutError) as exc:
@@ -187,6 +210,45 @@ def fetch(request: urllib.request.Request) -> tuple[str | None, int | None, str 
 
 
 REPO_REF = re.compile(r"https://github\.com/(?P<owner>[A-Za-z0-9][A-Za-z0-9._-]*)/(?P<repo>[A-Za-z0-9][A-Za-z0-9._-]*)")
+
+
+def fetch_json(
+    request: urllib.request.Request,
+) -> tuple[object | None, int | None, str | None]:
+    """`fetch()` for an endpoint whose answer is in the body rather than the landing URL.
+
+    Args:
+        request: A prepared request whose scheme the caller has already asserted.
+
+    Returns:
+        `(body, status, error)`. A 404 returns `(None, 404, None)`, because it is an answer.
+    """
+    last = "no attempt made"
+    for attempt in range(1, ATTEMPTS + 1):
+        try:
+            with urllib.request.urlopen(  # nosec B310 - scheme asserted by the caller  # noqa: S310
+                request, timeout=30
+            ) as response:
+                return json.load(response), response.status, None
+        except urllib.error.HTTPError as exc:
+            if exc.code == 404:
+                return None, 404, None
+            _body, _status, error = None, exc.code, f"HTTP {exc.code}"
+            if exc.code in (403, 429):
+                remaining = exc.headers.get("x-ratelimit-remaining") if exc.headers else None
+                if remaining == "0":
+                    error += ": API rate limit exhausted" + (
+                        "" if os.environ.get("GITHUB_TOKEN") else ". Set GITHUB_TOKEN"
+                    )
+                return None, exc.code, error
+            if exc.code not in RETRY_ON:
+                return None, exc.code, error
+            last = error
+        except (urllib.error.URLError, TimeoutError, ValueError) as exc:
+            last = str(exc)
+        if attempt < ATTEMPTS:
+            time.sleep(BACKOFF_SECONDS * attempt)
+    return None, None, f"{last} after {ATTEMPTS} attempts"
 
 
 def tracked_prose() -> list[Path]:
@@ -245,103 +307,56 @@ def collect(paths: Iterable[Path] | None = None, root: Path = ROOT) -> dict[str,
 
 
 def resolve(slug: str) -> tuple[str, str | None]:
-    """Ask GitHub what the canonical name of `slug` is.
+    """Ask the API what the canonical name of `slug` is.
 
     Args:
         slug: An `owner/repo` reference as written in the prose.
 
     Returns:
         A pair of `(outcome, detail)`. Outcome is `ok`, `renamed`, `missing` or
-        `unreachable`. `renamed` carries the canonical `owner/repo`; `missing` and
+        `unreachable`. `renamed` carries the canonical `owner/repo` -- which covers a change
+        of capitalisation, since `full_name` is authoritative for that too. `missing` and
         `unreachable` carry the reason. `ok` carries `None`.
     """
-    url = f"https://github.com/{slug}"
-    # `slug` comes out of a regex anchored on `https://github.com/`, so the scheme cannot
-    # be steered from prose. Asserted anyway, because `urlopen` also honours `file:` and
-    # the guarantee is one refactor away from being someone else's assumption.
-    if not url.startswith("https://github.com/"):
-        raise ValueError(f"refusing a non-GitHub https URL: {url}")
-    request = urllib.request.Request(url, headers={"User-Agent": "repo-name-redirect-check"})
-    final, status, error = fetch(request)
-    # 404 is a finding about the name. Every other failure is about GitHub or the runner, and
-    # saying "renamed" on a 503 would be a false accusation.
-    if status == 404:
-        return "missing", "404 (deleted, redirect expired, or now private)"
-    if error is not None or final is None:
-        return "unreachable", error or "no response"
-
-    canonical = "/".join(final.rstrip("/").split("/")[-2:])
-    # Compared case-sensitively. Folding case would suppress a rename whose only
-    # change was capitalisation, and it cannot buy anything back: GitHub echoes the
-    # casing that was requested, so a casing difference never reaches this line.
-    if canonical != slug:
-        return "renamed", canonical
-    return "ok", None
-
-
-def canonical_casing(slug: str) -> tuple[str, str | None]:
-    """Ask the REST API for the repository's `full_name`.
-
-    The HTML endpoint echoes back whatever casing was requested, so it cannot answer this.
-    `full_name` can.
-
-    Args:
-        slug: An `owner/repo` reference as written in the prose.
-
-    Returns:
-        `("miscased", canonical)` when the capitalisation differs, `("ok", None)` when it
-        matches, `("unreachable", reason)` when no verdict was reached. A 404 is left to the
-        default mode, which already reports it.
-    """
     url = f"https://api.github.com/repos/{slug}"
+    # `slug` comes out of a regex anchored on `https://github.com/`, so neither the scheme nor
+    # the host can be steered from prose. Asserted anyway, because `urlopen` also honours
+    # `file:` and the guarantee is one refactor away from being someone else's assumption.
     if not url.startswith("https://api.github.com/repos/"):
         raise ValueError(f"refusing a non-GitHub https URL: {url}")
-    headers = {"User-Agent": "repo-name-redirect-check", "Accept": "application/vnd.github+json"}
+
+    headers = {"User-Agent": "repo-name-check", "Accept": "application/vnd.github+json"}
     token = os.environ.get("GITHUB_TOKEN")
     if token:
         headers["Authorization"] = f"Bearer {token}"
-    request = urllib.request.Request(url, headers=headers)
-    for attempt in range(1, ATTEMPTS + 1):
-        try:
-            with urllib.request.urlopen(  # nosec B310 - scheme asserted above  # noqa: S310
-                request, timeout=30
-            ) as response:
-                full_name = json.load(response).get("full_name")
-            break
-        except urllib.error.HTTPError as exc:
-            if exc.code == 404:
-                # The default mode already reports a missing name; not this one's job.
-                return "ok", None
-            if exc.code not in RETRY_ON or attempt == ATTEMPTS:
-                return "unreachable", f"HTTP {exc.code}"
-        except (urllib.error.URLError, TimeoutError, ValueError) as exc:
-            if attempt == ATTEMPTS:
-                return "unreachable", str(exc)
-        time.sleep(BACKOFF_SECONDS * attempt)
 
-    if not full_name:
+    body, status, error = fetch_json(urllib.request.Request(url, headers=headers))
+    if status == 404:
+        return "missing", "404 (deleted, redirect expired, or not accessible)"
+    if error is not None:
+        return "unreachable", error
+    if not isinstance(body, dict) or not body.get("full_name"):
         return "unreachable", "the API response carried no full_name"
-    if full_name != slug:
-        return "miscased", full_name
+
+    canonical = body["full_name"]
+    if canonical != slug:
+        return "renamed", canonical
     return "ok", None
 
 
 def audit(
     references: dict[str, list[str]],
     resolver: Callable[[str], tuple[str, str | None]] = resolve,
-    casing_resolver: Callable[[str], tuple[str, str | None]] | None = None,
 ) -> tuple[list[str], list[str]]:
     """Turn resolved names into findings.
 
     Args:
         references: Output of `collect()`.
         resolver: Injected so the verdict can be tested without the network.
-        casing_resolver: When given, each name that resolves cleanly is also checked for
-            capitalisation. `None` skips that pass entirely.
 
     Returns:
-        A pair of `(stale, unreachable)` message lists. `stale` holds findings about
-        names; `unreachable` holds names about which nothing was concluded.
+        A pair of `(stale, unreachable)` message lists. `stale` holds findings about names;
+        `unreachable` holds names about which nothing was concluded.
     """
     stale: list[str] = []
     unreachable: list[str] = []
@@ -350,26 +365,20 @@ def audit(
         outcome, detail = resolver(slug)
         listed = ", ".join(files[:4]) + (f" and {len(files) - 4} more" if len(files) > 4 else "")
         if outcome == "renamed":
-            stale.append(
-                f"{slug} is now {detail}. The old name still resolves through a redirect, "
-                f"so nothing else reports it. Referenced by: {listed}"
-            )
+            # Split the message, because the two shapes need different reactions: a rename
+            # still resolves for a reader, a change of case is invisible to every other check.
+            miscased = (detail or "").lower() == slug.lower()
+            what = (
+                "is capitalised {0} upstream. GitHub serves the casing requested, so no "
+                "redirect and no link checker makes this visible."
+                if miscased
+                else "is now {0}. The old name still resolves through a redirect, so nothing else reports it."
+            ).format(detail)
+            stale.append(f"{slug} {what} Referenced by: {listed}")
         elif outcome == "missing":
             stale.append(f"{slug} does not resolve: {detail}. Referenced by: {listed}")
         elif outcome == "unreachable":
             unreachable.append(f"{slug}: {detail}")
-        elif casing_resolver is not None:
-            # Only for names that already resolve. Asking about capitalisation of a name that
-            # was renamed or is gone would report the same problem twice under two labels.
-            cased, canonical = casing_resolver(slug)
-            if cased == "miscased":
-                stale.append(
-                    f"{slug} is capitalised {canonical} upstream. GitHub serves the casing "
-                    f"requested and reports it back, so no redirect makes this visible. "
-                    f"Referenced by: {listed}"
-                )
-            elif cased == "unreachable":
-                unreachable.append(f"{slug} (casing): {canonical}")
 
     return stale, unreachable
 
@@ -378,11 +387,6 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--quiet", action="store_true", help="one summary line")
     parser.add_argument("--list", action="store_true", help="list referenced names and exit, no network")
-    parser.add_argument(
-        "--strict-casing",
-        action="store_true",
-        help="also read full_name from the REST API, the only way to see a casing-only rename",
-    )
     args = parser.parse_args()
 
     references = collect()
@@ -404,7 +408,7 @@ def main() -> int:
             print(f"{slug}  ({len(files)} file(s))")
         return 0
 
-    stale, unreachable = audit(references, casing_resolver=canonical_casing if args.strict_casing else None)
+    stale, unreachable = audit(references)
 
     if unreachable and not stale:
         # Nothing was concluded, so do not report a clean run. Exit 2 keeps a flaky

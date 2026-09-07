@@ -48,17 +48,20 @@ it the generator would be claiming coverage the name check does not provide.
 from __future__ import annotations
 
 import argparse
+import os
 import sys
 import urllib.request
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from check_repo_name_redirects import fetch  # noqa: E402
+from check_repo_name_redirects import fetch_json  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[1]
 
-PLAYBOOK = "https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook"
+OWNER = "Yoshiki0705"
+PLAYBOOK_REPO = "FSx-for-ONTAP-Adoption-Playbook"
+PLAYBOOK = f"https://github.com/{OWNER}/{PLAYBOOK_REPO}"
 
 BEGIN = "<!-- playbook-reading:start -->"
 END = "<!-- playbook-reading:end -->"
@@ -543,22 +546,32 @@ def hub_urls() -> list[str]:
 
 
 def verify_hubs() -> tuple[list[str], list[str]]:
-    """Resolve every hub URL the generated sections point at.
+    """Confirm every hub the generated sections point at still exists.
+
+    Asks the contents API rather than fetching the HTML tree page. The sibling name check
+    moved to the API for two reasons that apply here unchanged: GitHub 504s on a burst of
+    serial HTML requests -- which is what 24 of these are, right after that check's 29 -- and
+    the API is the interface built for this. `GITHUB_TOKEN` lifts the 60/hour limit.
 
     Returns:
-        A pair of `(broken, unreachable)`. `broken` is a 404 -- the module was renamed or
-        removed, and 376 READMEs now point at nothing. `unreachable` reached no verdict.
+        A pair of `(broken, unreachable)`. `broken` is a 404: the module directory is gone and
+        376 READMEs point at nothing. `unreachable` reached no verdict.
     """
     broken: list[str] = []
     unreachable: list[str] = []
+    headers = {"User-Agent": "playbook-hub-check", "Accept": "application/vnd.github+json"}
+    token = os.environ.get("GITHUB_TOKEN")
+    if token:
+        headers["Authorization"] = f"Bearer {token}"
+
     for url in hub_urls():
-        if not url.startswith("https://github.com/"):
-            raise ValueError(f"refusing a non-GitHub https URL: {url}")
-        request = urllib.request.Request(url, headers={"User-Agent": "playbook-hub-check"})
-        # Retry lives in the sibling check so the backoff policy has one definition. GitHub
-        # answers a burst of serial requests with 504, and these 24 run right after that
-        # check's 29.
-        _final, status, error = fetch(request)
+        # The hub URL is what a reader clicks; the API path is how it gets verified. Derived
+        # from the same string so the two cannot drift apart.
+        _, _, suffix = url.partition("/tree/main/")
+        api = f"https://api.github.com/repos/{OWNER}/{PLAYBOOK_REPO}/contents/{suffix}?ref=main"
+        if not api.startswith("https://api.github.com/repos/"):
+            raise ValueError(f"refusing a non-GitHub https URL: {api}")
+        _body, status, error = fetch_json(urllib.request.Request(api, headers=headers))
         if status == 404:
             broken.append(f"{url}: 404 -- the module hub is gone; 376 READMEs link to it")
         elif error is not None:
