@@ -75,3 +75,15 @@ make test-ops3
 ティアリングポリシーの変更は可逆的ですが、policy=all への変更は
 全ユーザデータを Capacity Pool に移動するため、読み取りレイテンシが
 数十ミリ秒に増加します。本番ワークロードへの適用前にテスト環境で検証してください。
+
+---
+
+<!-- playbook-reading:start -->
+## 本番に出す前に読むもの
+
+デプロイしたあとに当たる制約を、どう設計判断に翻訳するかは [FSx for ONTAP Adoption Playbook](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook) 側にあります。同じ内容を 2 か所に置くと、更新が止まった側が更新された側より長く残るためです。
+
+- [運用](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/tree/main/docs/ja/playbooks/05-operate) — 最初に読む
+- [性能](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/tree/main/docs/ja/domains/performance) — 次に読む
+- [構築](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/tree/main/docs/ja/playbooks/04-build) — 本番前に通す（全パターン共通）
+<!-- playbook-reading:end -->

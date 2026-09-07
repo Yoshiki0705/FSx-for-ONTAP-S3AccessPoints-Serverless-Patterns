@@ -57,3 +57,15 @@ make test-ops2
 推定効率比 2:1 は一般的な目安であり、暗号化済みデータや既に圧縮されたメディアファイルではほとんど効果が出ません。推奨に含まれる削減見込みは確約ではありません。
 
 > **コンプライアンスに関する補足**: 本パターンの出力は運用改善のための技術的な示唆であり、契約上のコスト削減保証や監査証跡としての性質を持ちません。規制対応の判断に用いる場合は、組織のコンプライアンス部門の確認を経てください。
+
+---
+
+<!-- playbook-reading:start -->
+## 本番に出す前に読むもの
+
+デプロイしたあとに当たる制約を、どう設計判断に翻訳するかは [FSx for ONTAP Adoption Playbook](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook) 側にあります。同じ内容を 2 か所に置くと、更新が止まった側が更新された側より長く残るためです。
+
+- [運用](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/tree/main/docs/ja/playbooks/05-operate) — 最初に読む
+- [性能](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/tree/main/docs/ja/domains/performance) — 次に読む
+- [構築](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/tree/main/docs/ja/playbooks/04-build) — 本番前に通す（全パターン共通）
+<!-- playbook-reading:end -->

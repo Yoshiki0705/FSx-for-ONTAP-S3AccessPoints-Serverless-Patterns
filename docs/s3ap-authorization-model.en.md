@@ -495,7 +495,7 @@ ONTAP S3 buckets surface as FlexGroup volumes named `fg_oss_*`, so **check the t
 ## References
 
 - [S3 Access Point permission design — evaluation order and the two layers that narrow access](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/blob/main/docs/en/domains/security-governance/notes/access-point-authorization-layers.md) — **the source of the measurements here, with six policy examples and the full results**
-- [How a request through an S3 access point is evaluated](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/blob/main/docs/en/reference/decision-trees/access-point-authorization.md) — evaluation order, and working back from a symptom to the failing step
+- [How a request through an S3 access point is evaluated](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/blob/main/docs/ja/reference/decision-trees/access-point-authorization.md) — evaluation order, and working back from a symptom to the failing step. **Japanese only**: the English side of that repository translates one decision tree, and this is not it
 - [AD-joined SVM S3 AP prerequisites](en/ad-joined-svm-s3ap-prerequisites.md) — AD DC reachability, and why `HeadBucket` is a false positive
 - [Cross-account S3 AP](multi-account/cross-account-s3ap.md) — cross-account access design patterns
 - [Managing access point access — Amazon FSx for ONTAP](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/s3-ap-manage-access-fsxn.html)
