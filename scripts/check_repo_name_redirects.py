@@ -173,12 +173,17 @@ def resolve(slug: str) -> tuple[str, str | None]:
         `unreachable`. `renamed` carries the canonical `owner/repo`; `missing` and
         `unreachable` carry the reason. `ok` carries `None`.
     """
-    request = urllib.request.Request(
-        f"https://github.com/{slug}",
-        headers={"User-Agent": "repo-name-redirect-check"},
-    )
+    url = f"https://github.com/{slug}"
+    # `slug` comes out of a regex anchored on `https://github.com/`, so the scheme cannot
+    # be steered from prose. Asserted anyway, because `urlopen` also honours `file:` and
+    # the guarantee is one refactor away from being someone else's assumption.
+    if not url.startswith("https://github.com/"):
+        raise ValueError(f"refusing a non-GitHub https URL: {url}")
+    request = urllib.request.Request(url, headers={"User-Agent": "repo-name-redirect-check"})
     try:
-        with urllib.request.urlopen(request, timeout=30) as response:
+        with urllib.request.urlopen(  # nosec B310 - scheme asserted above  # noqa: S310
+            request, timeout=30
+        ) as response:
             final = response.url
     except urllib.error.HTTPError as exc:
         # 404 is a finding about the name. Every other status is about GitHub or the
