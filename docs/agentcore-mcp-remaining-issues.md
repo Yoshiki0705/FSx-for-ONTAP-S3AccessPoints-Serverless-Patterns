@@ -104,14 +104,14 @@
 | **ステータス** | ✅ Verified — ap-northeast-1 で動作確認完了 (2026-07-22) |
 | **ケース** | Feature Request として起票（番号は `.private/` で追跡。公開リポジトリには記載しない）|
 | **起票日** | 2026-07（Feature Request） |
-| **AWS 回答日** | 2026-07-22 |
+| **当環境での検証日** | 2026-07-22 |
 
-**経緯**: 当初、AgentCore MCP Gateway を us-east-1 にデプロイしていた（ワークショップ手順と Web Search Tool ドキュメントに従った結果）。Feature Request として ap-northeast-1 対応を問い合わせた。
+**経緯**: 当初、AgentCore MCP Gateway を us-east-1 にデプロイしていました。ワークショップ手順と Web Search Tool のドキュメントがその前提で書かれていたためです。ap-northeast-1 で使えるかを Feature Request として起票し、あわせて自分でデプロイして確かめました。
 
-**AWS サポート回答（Ifra M.）**:
-- us-east-1 制約はワークショップ手順と Web Search Tool ドキュメントに起因するもので、AgentCore Gateway + Lambda targets 自体にリージョン制限はない
-- **ap-northeast-1 でのデプロイをテストしてほしい**
-- テスト結果を共有すればさらにサポート可能
+**当環境での検証結果（2026-07-22、ap-northeast-1）**:
+- AgentCore Gateway と Lambda targets を ap-northeast-1 にデプロイして動作しました
+- us-east-1 に置いていたのは手順とドキュメントの前提によるもので、構成上の制約ではありませんでした
+- 公開ドキュメントでのリージョン対応は [Amazon Bedrock AgentCore endpoints and quotas](https://docs.aws.amazon.com/general/latest/gr/bedrock-agentcore.html) を参照してください
 
 **次のアクション**:
 - [x] ~~`scripts/deploy-agentcore-mcp.sh` を ap-northeast-1 向けに実行~~
