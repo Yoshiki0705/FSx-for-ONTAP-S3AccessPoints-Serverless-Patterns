@@ -201,7 +201,7 @@ publish-readiness の confidence を算出し、`shared/human_review.py` の閾�
 | 統合ポイント | ステータス |
 |------------|-----------|
 | IVS Auto-Record → 標準 S3 バケット | Supported |
-| IVS RecordingConfiguration に FSx for ONTAP S3 AP alias | Not supported（AWS 確認済み） |
+| IVS RecordingConfiguration に FSx for ONTAP S3 AP alias | 未検証（`open`）。IVS のドキュメントに alias を受け付ける記載を見つけられていません |
 | S3 → FSx（NFS/SMB 経由） | Supported |
 | S3 → FSx（S3 AP `PutObject` 経由） | Supported（サイズ/API 制約あり） |
 | FSx for ONTAP S3 AP → CloudFront | Supported（公式チュートリアルあり） |

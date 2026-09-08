@@ -57,7 +57,7 @@
 
 **Resolution**: Re-attempted on 2026-07-20, server persisted successfully. Likely Quick Desktop auto-update or backend state change.
 
-**If it recurs** (AWS Support recommended info to collect):
+**If it recurs, collect**:
 - Timestamp (JST)
 - Screen recording of the issue
 - `~/Library/Logs/quickwork` logs

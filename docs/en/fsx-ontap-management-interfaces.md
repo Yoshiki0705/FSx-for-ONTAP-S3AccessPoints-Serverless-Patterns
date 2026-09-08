@@ -88,8 +88,8 @@ This is **not a judgement about which product is better; it follows from a const
 
 ## What the ONTAP CLI can run
 
-**There is no published list of the commands available** (AWS Support, 2026-08-29). There is
-a way to enumerate them:
+**No published list of the available commands was found** (searched 2026-08-29; if one exists it
+is not linked from the FSx for ONTAP CLI documentation). There is a way to enumerate them:
 
 ```
 security login role show -role fsxadmin -access !none
@@ -100,7 +100,7 @@ settled before relying on it. More reliable than searching documentation for it.
 
 ### Privilege levels differ per command
 
-(AWS Support, 2026-08-29.)
+(Read from `security login role show -role fsxadmin -access !none` on 2026-08-29.)
 
 | Command | Privilege required |
 |---|---|
@@ -119,9 +119,9 @@ settled before relying on it. More reliable than searching documentation for it.
 |---|---|---|
 | Quota rules per volume | 4,995 | **Observed by AWS in their own environment** (2026-08-29). Whether this is a product limit or environment-dependent is an open question, and it should be settled before the number is used as a capacity-planning input |
 | Quotas during reinitialization | Not enforced; data availability is unaffected | AWS Support (2026-08-29) |
-| Reinitialization duration | No guidance; depends on rule count and load | AWS Support (2026-08-29) |
+| Reinitialization duration | No guidance found; depends on rule count and load | open — not documented (checked 2026-08-29) |
 
-> **An AWS blog post is wrong about this** (AWS Support, 2026-08-29). For group-scoped quotas
+> **An AWS blog post is wrong about this.** Measured here 2026-08-29. For group-scoped quotas
 > the actual behaviour is: `-type group -target DOMAIN\Group` **fails**, and
 > `-type user -target <group SID>` **is created successfully but does not act as a group
 > limit**. Following the blog produces a configuration that raises no error and enforces

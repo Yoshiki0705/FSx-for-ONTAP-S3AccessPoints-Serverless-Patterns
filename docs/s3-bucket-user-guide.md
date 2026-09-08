@@ -145,7 +145,7 @@ File-system:    FSx CloudWatch metrics, ONTAP REST API, FPolicy audit logs
 | Lifecycle は使えますか？ | **いいえ**。Snapshot/SnapMirror/auto-tiering を使用 |
 | Versioning は使えますか？ | **いいえ**。ONTAP Snapshot が代替 |
 | Object Lock は使えますか？ | **いいえ**。SnapLock (Compliance/Enterprise) が代替 |
-| Presigned URL は使えますか？ | **動作する**（ドキュメント上は Not supported だが、GetObject の署名付きリクエストとして成功する。ただし本番依存は AWS が非推奨） |
+| Presigned URL は使えますか？ | **動作する**（ドキュメント上は Not supported だが、GetObject の署名付きリクエストとして成功する。ただし互換性テーブルは Presign を非対応として分類しているため、本番では依存しないこと [E-007]） |
 | NFS/SMB からもアクセスできますか？ | **はい**。同じデータに並行アクセス可能 |
 | データレイクとして使うべきですか？ | **通常 No**。Integration boundary として使い、分析出力は標準 S3 へ |
 | S3 Event Notifications は使えますか？ | **いいえ**。EventBridge Scheduler を使用。FPolicy が使えるのは書き込みが NFS / SMB 経由の場合のみ（AP 経由の書き込みは通知されない） |

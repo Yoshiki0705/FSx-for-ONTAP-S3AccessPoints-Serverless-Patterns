@@ -228,7 +228,7 @@ graph TB
 | Athena 結果を S3AP に書き戻し不可 | 標準 S3 バケットに出力 |
 | SSE-FSX のみ | ボリュームの KMS 設定で暗号化 |
 
-詳細: [S3AP Compatibility Notes](docs/s3ap-compatibility-notes.md) | [Compatibility Matrix (AWS 確認済み)](https://github.com/Yoshiki0705/FSx-for-ONTAP-Lakehouse-Integrations/blob/main/docs/en/compatibility-matrix.md)
+詳細: [S3AP Compatibility Notes](docs/s3ap-compatibility-notes.md) | [Compatibility Matrix](https://github.com/Yoshiki0705/FSx-for-ONTAP-Lakehouse-Integrations/blob/main/docs/en/compatibility-matrix.md)
 
 ---
 

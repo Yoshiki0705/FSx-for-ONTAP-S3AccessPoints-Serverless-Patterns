@@ -34,7 +34,7 @@
 
 **症状**: Connectors → Create for your team → Model Context Protocol → Step 2 (Authenticate) で「Fix highlighted fields to proceed.」エラーが表示されるが、赤枠のフィールドは存在しない。
 
-**根本原因（AWS 確認済み）**: Step 2 から「Previous」で Step 1 に戻ると OAuth フィールドがクリアされ、その状態で「作成して続行」をクリックするとバリデーションエラーが発生する。re:Post にも同一報告あり。
+**根本原因**: Step 2 から「Previous」で Step 1 に戻ると OAuth フィールドがクリアされ、その状態で「作成して続行」をクリックするとバリデーションエラーが発生する。re:Post にも同一報告あり。
 
 **解決**: 2026-07-20 に再試行したところ正常に作成可能。「Previous」を使わずに一度ウィザードを閉じてやり直すことで回避可能。
 
@@ -57,7 +57,7 @@
 
 **解決**: 2026-07-20 に再試行したところ正常に永続化。Quick Desktop の自動アップデートまたはバックエンド側の状態変化と推定。
 
-**再発時の情報収集手順**（AWS サポート推奨）:
+**再発時に集める情報**:
 - 検証時間 (JST)
 - 事象発生時の画面動画
 - `~/Library/Logs/quickwork` のログ

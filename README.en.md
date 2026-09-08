@@ -170,7 +170,7 @@ Detailed architecture diagrams for each category:
 | Cannot write Athena results to S3AP | Output to standard S3 bucket |
 | SSE-FSX only | Use volume-level KMS encryption |
 
-Details: [S3AP Compatibility Notes](docs/s3ap-compatibility-notes.en.md) | [Compatibility Matrix (AWS confirmed)](https://github.com/Yoshiki0705/FSx-for-ONTAP-Lakehouse-Integrations/blob/main/docs/en/compatibility-matrix.md)
+Details: [S3AP Compatibility Notes](docs/s3ap-compatibility-notes.en.md) | [Compatibility Matrix](https://github.com/Yoshiki0705/FSx-for-ONTAP-Lakehouse-Integrations/blob/main/docs/en/compatibility-matrix.md)
 
 ---
 

@@ -291,6 +291,42 @@
       ],
       "claim_ja": "AWS の FSx for ONTAP S3 Access Point 互換性テーブルは Presign を非対応として分類しています。",
       "observation_ja": "ONTAP 9.18.1P3D1 で presigned URL 経由の GetObject は HTTP 200 と正しい内容を返しました。テーブルが非対応と分類している理由は確認できておらず、公開された理由の記載も見つけられていません。"
+    },
+    {
+      "id": "E-008",
+      "claim": "A SnapLock audit log volume blocks deletion of the volume, the SVM and the file system until its retention period expires, and the minimum is six months.",
+      "subject": "AWS",
+      "tier": "documented",
+      "premise": true,
+      "sources": [
+        {
+          "url": "https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/snaplock-delete-volume.html",
+          "read": "full",
+          "retrieved": "2026-09-08",
+          "says": "States that until the audit log volume's retention period expires you cannot delete the audit log volume, the SVM, or the file system associated with the SVM, even if the volume was created in SnapLock Enterprise mode. Separately: closing an AWS account holding SnapLock volumes suspends it for 90 days with data intact, after which AWS deletes the data regardless of retention settings."
+        },
+        {
+          "url": "https://docs.aws.amazon.com/fsx/latest/APIReference/API_CreateSnaplockConfiguration.html",
+          "read": "full",
+          "retrieved": "2026-09-08",
+          "says": "AuditLogVolume defaults to false; when true the minimum retention period is six months. PrivilegedDelete applies to Enterprise volumes and does not exempt the audit log volume."
+        }
+      ],
+      "observation": "Hit here: creating an audit log volume on a verification file system made the file system undeletable. The block is on the delete path, not a quota, so it is not visible until deletion is attempted.",
+      "why_not_documented_is_not_absent": "This one is documented, and stating otherwise was the error this entry corrects. An earlier revision of pitfalls-snaplock.md said no published path existed and that none had been found here. The page above says it plainly.",
+      "appears_in": [
+        "docs/agent/pitfalls-snaplock.md"
+      ],
+      "claim_ja": "SnapLock 監査ログボリュームは、保持期間が満了するまでボリューム・SVM・ファイルシステムの削除をブロックします。最短の保持期間は 6 か月です。",
+      "observation_ja": "検証用ファイルシステムで実際に踏みました。削除経路側のブロックなので、削除を試みるまで表面化しません。",
+      "support_inquiry": {
+        "status": "not-needed",
+        "topic": "Nothing to ask: the AWS documentation states the block and the six-month minimum directly."
+      },
+      "feature_request": {
+        "status": "not-applicable",
+        "where": "documented behaviour, not a gap"
+      }
     }
   ]
 }
