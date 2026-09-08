@@ -229,6 +229,36 @@ jobs:
           fi
           echo "✅ No support case numbers in the changed files"
 
+      # A vendor's support reply is the vendor's confidential information, so it cannot be the
+      # published basis for a claim -- however it is worded, because what is confidential is the
+      # content and not the wording. Asking, the date, and filing a request stay publishable.
+      #
+      # The rule lives in the Adoption Playbook rather than being copied here. It was corrected
+      # seven times in one day, every time by running it over a repository it had not seen, and a
+      # copy in each repository would mean several repositories to update with no way to tell
+      # which had fallen behind. So this tracks `main` deliberately, against the usual rule of
+      # pinning: pinning would freeze the rule at whichever revision was current when this file
+      # was written, which for a detector still finding new shapes is the failure mode rather
+      # than the protection. It is a repository under the same owner, and it is read-only here.
+      #
+      # `--only` because a repository can be clean on this rule while carrying a backlog in
+      # another category: without it the run fails on the backlog and this rule's result is
+      # invisible inside it.
+      - name: "Checkout the canonical audit rule"
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook
+          ref: main
+          path: .canonical-audit
+          sparse-checkout: tools
+          persist-credentials: false
+      - name: "Check: Support attribution (whole tree, not just changed files)"
+        run: |
+          # Whole tree on purpose. This is not style debt that can ratchet down -- an
+          # attribution already published is already published, and a file nobody touched is
+          # exactly where one survives.
+          python3 .canonical-audit/tools/audit_public_output.py \
+            --path . --only support-attribution
       - name: "Check: JA/EN parity (warning only)"
         if: steps.changes.outputs.md_count > 0
         run: |
