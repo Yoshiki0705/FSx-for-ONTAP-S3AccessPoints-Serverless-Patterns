@@ -540,6 +540,16 @@ drift:
 # there could not learn that two thirds of the library existed. Every other doc check here asks
 # whether a document is internally consistent; none asked whether it covers the tree it indexes.
 	$(PYTHON) -m pytest scripts/tests/test_check_selection_guide_coverage.py --tb=short -q
+# Strings another repository publishes guidance against. The Adoption Playbook registers
+# nine of them inside this repository and reads none of ours; until this existed, a reword
+# here surfaced as a failure in their CI, after the commit, with their guidance already
+# published against a sentence that had moved. Only the owner of a string can say whether a
+# change was a reword or a retraction, and the owner is here.
+#
+# Skips without a sibling checkout, which is every runner -- so the network mode runs in
+# repo-name-redirects.yml, not here. The tests below are what runs unconditionally.
+	$(PYTHON) -m pytest scripts/tests/test_check_incoming_probes.py --tb=short -q
+	$(PYTHON) scripts/check_incoming_probes.py
 	$(PYTHON) scripts/check_selection_guide_coverage.py
 # AGENTS.md is loaded on every turn and cannot be made conditional, so it had grown
 # to 78 KB carrying pitfall tables that matter only while doing that one kind of

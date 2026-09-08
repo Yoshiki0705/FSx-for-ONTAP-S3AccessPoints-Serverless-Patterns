@@ -188,6 +188,7 @@ graph TB
 |---|---|
 | [FSx-for-ONTAP-Agentic-Access-Aware-RAG](https://github.com/Yoshiki0705/FSx-for-ONTAP-Agentic-Access-Aware-RAG) | 액세스 제어 대응 Agentic RAG (CDK + Amazon Bedrock) |
 | [FSx-for-ONTAP-Lakehouse-Integrations](https://github.com/Yoshiki0705/FSx-for-ONTAP-Lakehouse-Integrations) | 레이크하우스 통합 (Databricks, Snowflake, Athena, Glue, EMR) |
+| [S3-Burst-on-ONTAP-Files](https://github.com/Yoshiki0705/S3-Burst-on-ONTAP-Files) | S3 API로 수집한 데이터를 FSx for ONTAP에 정본으로 두고 FlexCache로 NFS / SMB 거점에 제공 (처리량 실측치의 출처) |
 | [VMware-Migration-EC2-ONTAP](https://github.com/Yoshiki0705/VMware-Migration-EC2-ONTAP) | VMware → EC2 + FSx for ONTAP 마이그레이션 |
 
 </details>

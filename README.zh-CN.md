@@ -188,6 +188,7 @@ graph TB
 |---|---|
 | [FSx-for-ONTAP-Agentic-Access-Aware-RAG](https://github.com/Yoshiki0705/FSx-for-ONTAP-Agentic-Access-Aware-RAG) | 支持访问控制的 Agentic RAG (CDK + Amazon Bedrock) |
 | [FSx-for-ONTAP-Lakehouse-Integrations](https://github.com/Yoshiki0705/FSx-for-ONTAP-Lakehouse-Integrations) | 湖仓集成 (Databricks, Snowflake, Athena, Glue, EMR) |
+| [S3-Burst-on-ONTAP-Files](https://github.com/Yoshiki0705/S3-Burst-on-ONTAP-Files) | 通过 S3 API 收集的数据在 FSx for ONTAP 上作为正本管理，并经 FlexCache 提供给 NFS / SMB 站点（吞吐量实测数据的来源） |
 | [VMware-Migration-EC2-ONTAP](https://github.com/Yoshiki0705/VMware-Migration-EC2-ONTAP) | VMware → EC2 + FSx for ONTAP 迁移 |
 
 </details>
