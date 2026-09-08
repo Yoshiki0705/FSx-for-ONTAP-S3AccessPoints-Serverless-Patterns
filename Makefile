@@ -387,6 +387,17 @@ drift:
 # The selftest alone passed while that was true: it covered the decision layer only.
 	$(PYTHON) -m pytest scripts/tests/guard_unobserved_workflow_merge_test.py --tb=short -q
 	$(PYTHON) scripts/guard_unobserved_workflow_merge.py --selftest
+# The shared-checkout guard, tracked for the same reason as the two above. Two agents
+# worked in one clone; one ran `git switch main -f` and `git reset --hard origin/main`
+# while the other had three files staged, and of the three only the untracked one
+# survived -- committed straight to main, because HEAD had been moved there too. The
+# same session then reported nothing was lost, having checked `git log main..<branch>`
+# and found no commits. A branch with no commits still has an index. These tests build
+# real repositories rather than matching command strings, because the verdict comes from
+# `git status` and a guard that answers from the wrong tree passes every test that only
+# looks at the command.
+	$(PYTHON) -m pytest scripts/tests/test_guard_shared_checkout.py --tb=short -q
+	$(PYTHON) scripts/guard_shared_checkout.py --selftest
 # A workflow step that ends in `|| true` cannot fail. 24 occurrences were audited
 # on 2026-08-15: 21 were the grep-no-match idiom (output captured, then tested),
 # and 3 were disarmed gates. cfn-guard was given `solutions/**/template-deploy.yaml`,
