@@ -16,10 +16,31 @@ FSx for ONTAP S3 Access Points provide an S3-facing access boundary for file dat
 | Permission-aware file access control | ✅ (dual-layer auth) | ✅ (NTFS/UNIX ACL) |
 | Low-latency metadata operations (stat, readdir) | △ (tens of ms) | ✅ (sub-ms) |
 | Existing application compatibility | — | ✅ |
-| AWS service integration (Athena, Bedrock, Textract) | ✅ | — |
+| AWS service integration (Athena, Bedrock, Textract) | ✅ on the read side. **Cannot be used as Athena's `OutputLocation`** (below) | — |
 | Event-driven file processing | △ (EventBridge Scheduler polling. **FPolicy does not see operations through the S3 access point** — measured 2026-08-26, ONTAP 9.18.1P3D1; AWS Support confirms it applies to all current releases. See [Auditing and event visibility](#auditing-and-event-visibility--the-s3-access-path)) | ✅ (FPolicy + NFS/SMB) |
 
 > **Note**: S3 AP is not a replacement for NFS/SMB. It is a complementary access path for AWS service integration. The same volume can be accessed via NFS/SMB and S3 AP simultaneously.
+
+### Not usable as Athena's OutputLocation
+
+Pointing `OutputLocation` at an FSx for ONTAP S3 AP alias — one ending in `-ext-s3alias` — fails the
+query with `InvalidBucketName` (`verified`, ap-northeast-1).
+
+```text
+InvalidRequestException: OutputLocation is not a valid S3 path
+AthenaErrorCode: INVALID_INPUT
+```
+
+**The alias form and the data plane both differ from a regular S3 Access Point.**
+[Access point aliases](https://docs.aws.amazon.com/AmazonS3/latest/userguide/access-points-naming.html)
+documents that an access point attached to a non-S3 data source gets an alias ending in
+`-ext-s3alias`. FSx for ONTAP S3 AP
+[supports PutObject](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/access-points-for-fsxn-object-api-support.html),
+so the block is less about writing than about resolution: **Athena appears to resolve the
+`OutputLocation` alias through the S3 data plane.** That reading is `open`.
+
+**Workaround**: write query results to a regular S3 bucket and move them to FSx for ONTAP afterwards
+if needed. The read side — an alias in `LOCATION` — works.
 
 ## Tested Operations
 
@@ -231,24 +252,24 @@ If annotations were supported through an FSx for ONTAP S3 AP, the following woul
 
 ## Auditing and event visibility — the S3 access path
 
-Access through an S3 access point falls outside ONTAP's auditing and event notification
-frameworks. Measurements and AWS Support confirmations are listed separately below.
+Access through an S3 access point is invisible to FPolicy and does appear in ONTAP's audit log.
+**The two mechanisms give opposite answers for the same path.** What follows is our own
+measurement (2026-08-26, ONTAP 9.18.1P3D1; [verification record](https://github.com/Yoshiki0705/FSx-for-ONTAP-Observability-integrations/blob/main/docs/en/verification-results-fpolicy-s3ap-and-session.md)).
 
 | Item | State | Basis |
 |---|---|---|
-| Does FPolicy see operations through the S3 access point | No | Measured (2026-08-26, ONTAP 9.18.1P3D1) and confirmed by AWS Support (2026-08-27). **This applies to all currently available ONTAP releases**, so upgrading does not resolve it |
-| FPolicy support for S3 | Under development at the vendor, no availability date | AWS Support (2026-08-27, restated 2026-08-29). No timeline is provided through AWS |
-| Is the gap documented | **No.** AWS has raised a documentation request (2026-08-29) | AWS Support. Until it is published, a reader has no way to discover this |
-| Does the ONTAP audit log carry the requesting identity (IAM principal) | No | AWS Support (2026-08-27) |
-| Does the ONTAP audit log carry the source IP | No | AWS Support (2026-08-27) |
-| Audit event corresponding to `HEAD` | Does not exist | AWS Support (2026-08-27) |
+| Does FPolicy see operations through the S3 access point | **No** | Measured for both UNIX / NFS and WINDOWS / SMB. NFS and SMB access to the same volume *is* seen, which rules out a mis-set SACL |
+| Does the same hold on other ONTAP releases | **`open`** | We measured one version, 9.18.1P3D1. Do not assume an upgrade resolves it |
+| Is the gap documented | **We could not find it documented** | A documentation request has been filed (2026-08). Until it is published, a reader has no way to discover this |
+| Do S3 access point operations appear in the ONTAP audit log | **Yes** | With `Source` set to `HTTP`, carrying the file name, the operation, and the offset and byte count for reads and writes. Only LIST arrives with `Source` set to `S3` |
+| Does the ONTAP audit log carry the requesting identity (IAM principal) | **No** | Measured. **"What" is traceable and "who" is not** |
+| Audit event corresponding to `HEAD` | **None was recorded** | Six HEAD requests produced zero events. **That is not the same as HEAD never being audited** (`open`) |
 
 ### The audit path is CloudTrail data events (measured 2026-08-29)
 
 **The identity and source IP that ONTAP does not record are available as CloudTrail data
-events.** AWS Support stated this on 2026-08-29 and it was then measured: `PutObject`,
-`GetObject` and `DeleteObject` were issued against an Internet-origin S3 access point and
-the delivered log files were inspected.
+events.** Measured: `PutObject`, `GetObject` and `DeleteObject` were issued against an
+Internet-origin S3 access point and the delivered log files were inspected.
 
 | Field | Measured |
 |---|---|
@@ -291,18 +312,16 @@ Lambda handlers that go through `S3ApHelper`.
 
 ## Presigned URL Support
 
-> ⚠️ **Production Warning**: The published AWS compatibility table still lists `Presign — Not supported`. In a later response, AWS Support confirmed that presigned URLs are supported at the ONTAP layer (subject to version requirements) and has submitted a documentation correction, but **that correction is not yet published**. Until the published documentation is updated, design alternatives for any production workload that would depend on presigned URLs (see "Additional AWS Support Confirmation" below).
+> ⚠️ **Production Warning**: The published AWS compatibility table still lists `Presign — Not supported`. ONTAP-layer support is documented in a NetApp KB, but **the FSx for ONTAP S3 AP compatibility table has not been updated.** A documentation correction has been requested, and **a request is not a publication**. Until the published table changes, design a fallback for any production workload that would depend on presigned URLs (see "ONTAP version requirements" below).
 
 ### Status: Listed as "Not supported" — but observed working
 
-The AWS documentation compatibility table lists `Presign — Not supported`, but AWS Support responses have clarified the actual situation.
+The AWS documentation compatibility table lists `Presign — Not supported`. **They work anyway, and the signing mechanism is why.**
 
-**AWS Support Findings (Summary)**:
-
-1. **Presigning is not a server-side API operation** — It is a client-side SigV4 signature calculation that does not generate a network request
-2. **Using a presigned URL with curl etc. actually executes a normal GetObject request** — The signature is simply included as query parameters instead of an Authorization header
-3. **Since GetObject is Supported, GetObject via presigned URL cannot be structurally blocked** — It is impossible to disable presigned URLs without breaking GetObject itself
-4. **Documentation intent**: Likely indicates "presigned URL workflows have not been officially tested" or "presigning scenarios involving unsupported features (SSE parameters, versioning parameters, etc.) may fail"
+1. **Presigning is not a server-side API operation** — [`aws s3 presign`](https://docs.aws.amazon.com/cli/latest/reference/s3/presign.html) computes a SigV4 signature client-side and makes no network request
+2. **Using the URL with curl executes an ordinary GetObject** — per the [presigned URL reference](https://docs.aws.amazon.com/AmazonS3/latest/userguide/ShareObjectPreSignedURL.html), the signature simply arrives as query parameters instead of an Authorization header
+3. **Since GetObject is supported, there is no place left to block a presigned GetObject** — not without breaking GetObject itself
+4. **Why the table says `Not supported` is `open`** — no published reason was found. Presigning that involves SSE or versioning parameters can fail separately, so test that case on its own
 
 **Test Results (confirmed in a separate project)**:
 
@@ -312,9 +331,9 @@ The AWS documentation compatibility table lists `Presign — Not supported`, but
 | PutObject | Not tested | — | May work based on same principle as GetObject |
 | HeadObject | Not tested | — | Same as above |
 
-### Additional AWS Support Confirmation (ONTAP Version Requirements)
+### ONTAP version requirements
 
-In a subsequent response, AWS Support confirmed — citing NetApp KB articles — that **ONTAP S3 does support presigned URLs**. The supported signature versions depend on the ONTAP release.
+**ONTAP S3 does support presigned URLs.** The [NetApp KB](https://kb.netapp.com/Advice_and_Troubleshooting/Data_Storage_Software/ONTAP_OS/What_version_of_ONTAP_support_pre-signed_URLs_for_S3_bucket) gives the supported releases, and the threshold differs by signature version.
 
 | ONTAP version | Presigned URL signature versions |
 |---------------|----------------------------------|
@@ -324,13 +343,11 @@ In a subsequent response, AWS Support confirmed — citing NetApp KB articles �
 
 - NetApp recommends using v4 signatures where possible
 - This repository's verification environment runs ONTAP 9.18.1P3D1, which satisfies both thresholds
-- This confirmation concerns **ONTAP-layer** behavior. Until the AWS compatibility table for FSx for ONTAP S3 Access Points is updated, the production use warning below remains in effect
+- The KB covers **ONTAP-layer** behavior. Until the AWS compatibility table for FSx for ONTAP S3 Access Points is updated, the production use warning below remains in effect
 
 ### ⚠️ Production Use Warning
 
-Clear guidance from AWS Support:
-
-> **Operations listed as "Not supported" should NOT be relied upon for production workloads, even when they return success today.**
+**The compatibility table is the contract, and it says `Not supported`.** Returning success today is not a commitment.
 
 Reasons:
 - Behavior may change without deprecation notice

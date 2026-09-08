@@ -53,7 +53,7 @@
 
 **症状**: + Create → MCP server → Local/Remote → Test connection 成功 → Add server → MCP SERVERS に表示されない。
 
-**根本原因**: 不明。Quick Desktop はプレビュー版のため不安定性あり。AWS サポートでも同事象を確認できず。
+**根本原因**: 不明（`open`）。Quick Desktop はプレビュー版のため不安定性あり。当方でも安定した再現手順を作れていない。
 
 **解決**: 2026-07-20 に再試行したところ正常に永続化。Quick Desktop の自動アップデートまたはバックエンド側の状態変化と推定。
 
@@ -75,7 +75,7 @@
 | 項目 | 内容 |
 |------|------|
 | **ステータス** | ⚠️ Current Limitation (2026-07-22 確認) |
-| **確認方法** | AWS サポートによる検証 + `CreateActionConnector` API ドキュメント確認 |
+| **確認方法** | `CreateActionConnector` の API ドキュメント確認 + 当環境での実行 |
 
 **詳細**: `CreateActionConnector` API の `Type` パラメータに MCP に相当する値がない。`MODEL_CONTEXT_PROTOCOL` を指定すると `InvalidParameterValueException` が返却される。
 
@@ -239,7 +239,7 @@ curl -X POST "https://<gateway-id>.gateway.bedrock-agentcore.<region>.amazonaws.
 | **解決日** | 2026-07-21 |
 | **根本原因** | Workshop が us-east-1 を使用していたのは簡便性のためであり、リージョン制約ではなかった |
 
-**修正**: ap-northeast-1 で Gateway + Lambda Target をデプロイし、E2E 動作確認。`tools/list` で 3 ツール返却、`tools/call` でファイル一覧取得成功。AWS サポートも ap-northeast-1 での利用可能性を Lab 環境で確認。
+**修正**: ap-northeast-1 で Gateway + Lambda Target をデプロイし、E2E 動作確認。`tools/list` で 3 ツール返却、`tools/call` でファイル一覧取得成功。リージョン対応は [Amazon Bedrock AgentCore endpoints and quotas](https://docs.aws.amazon.com/general/latest/gr/bedrock-agentcore.html) を参照。
 
 **影響**: クロスリージョンレイテンシーが排除され、アーキテクチャが簡素化。
 

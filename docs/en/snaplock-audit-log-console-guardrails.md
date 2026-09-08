@@ -134,7 +134,7 @@ not the configured retention, that tells you when deletion becomes possible.**
 
 ---
 
-## What AWS Support answered (from a case in 2026-08)
+## What the two fields mean, and which one to read
 
 | Question | Answer |
 |---|---|

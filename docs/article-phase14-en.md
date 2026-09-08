@@ -23,7 +23,7 @@ The work falls into four categories:
 
 1. **Partner/SI delivery acceleration** — one-pager, improved PoC templates, FC1-FC6 conversation starters
 2. **Benchmark methodology** — standardized run IDs, hypothesis-driven testing, Range GET plans
-3. **Compatibility clarification** — Presigned URL behavior confirmed with AWS Support
+3. **Compatibility clarification** — why presigned URLs work despite the compatibility table
 4. **Operational discovery** — S3 AP unavailability during throughput capacity changes
 
 ---
@@ -64,7 +64,7 @@ Each FlexCache/FlexClone pattern now has a **recommended first conversation ques
 
 The [FSx for ONTAP S3 AP compatibility table](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/access-points-for-fsxn-object-api-support.html) lists `Presign — Not supported`. However, testing showed presigned URLs for GetObject work successfully.
 
-### AWS Support Clarification
+### Why the table and the behaviour disagree
 
 After raising this with AWS Support, the explanation was clear:
 

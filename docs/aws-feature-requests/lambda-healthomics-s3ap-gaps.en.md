@@ -148,24 +148,26 @@ We therefore assess FSx for ONTAP S3 AP as unsupported for HealthOmics input and
 1. **Staging (copying) is built into the design** — inputs are copied to a scratch volume, so even if an S3 AP URI were accepted, part of the "no data movement" value would not be realized. That said, a run-scoped temporary volume is materially different from a permanent second copy.
 2. **Encryption model difference** — HealthOmics assumes Amazon S3 and KMS permissions, whereas SSE-FSX is the only server-side encryption mode on FSx for ONTAP S3 AP ([Access point compatibility](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/access-points-for-fsxn-object-api-support.html)). This creates a difference in service role permission design.
 
-### AWS Support Confirmation (August 2026)
+### Scope, and what we do not assert
 
-This section was originally an assessment based on public documentation. AWS Support has since answered three questions about current behaviour.
+**We do not think this restriction is specific to FSx for ONTAP S3 access points.**
+[`StartRun`](https://docs.aws.amazon.com/omics/latest/api/API_StartRun.html)'s `outputUri` is shown as
+`s3://<bucket>/<prefix>` in the [run examples](https://docs.aws.amazon.com/omics/latest/dev/starting-a-run.html),
+which treats the leading path segment as a bucket name. We found nothing documenting an access point
+ARN or a virtual-hosted URL as an accepted form. **Whether a standard S3 access point behaves the same
+is `open`** — we have not tried it.
 
-| Question | AWS Support answer |
-|----------|--------------------|
-| Is the restriction specific to FSx for ONTAP S3 access points? | It applies to **S3 access points in general**. `StartRun`'s `outputUri` contract requires `s3://USER-OWNED-BUCKET/` form and treats the first path segment as a bucket name. Access point ARNs and virtual-hosted-style URLs are rejected with a validation error at run submission, **identically for standard S3 access points and FSx for ONTAP ones**. There is no access-point-specific handling of any kind |
-| Does SSE-FSX conflict with the service role's KMS requirements? | The requirement that the run's service role and the caller hold permissions such as `kms:GenerateDataKey` and `kms:Decrypt` is documented for SSE-KMS output buckets. However, because access points are not a supported destination, **HealthOmics has not been qualified against SSE-FSX, so whether it would present an additional obstacle is unconfirmed** |
-| How are output objects near the 50 GiB limit handled? | HealthOmics writes large run outputs using **multipart upload**, so a single-`PutObject` limit is not the governing mechanism. No threshold can be stated for access point writes because that path is untested. Our copy-back step runs in our own Lambda, so the applicable limits are those of the S3 and FSx APIs it calls |
+**The encryption model difference noted under "Current State" is not a verified blocker.** With an
+access point not accepted as the output target, we cannot observe what SSE-FSX would do, so this
+document does not present it as one.
 
-Two things follow from this.
+On the object size limit mentioned under "Requested Behavior": **a single-`PutObject` limit is not
+necessarily the governing mechanism.** The copy-back is performed by our own Lambda, so the limits that
+apply are those of the S3 / FSx API it calls. How HealthOmics itself writes is outside what we observed
+and is `open`.
 
-1. The **encryption model difference noted under "Current State" is unconfirmed rather than a verified blocker**. This document does not present it as one.
-2. The restriction is **not specific to FSx for ONTAP**. We state this explicitly so readers do not over-generalise the scope.
-
-On the object size limit mentioned under "Requested Behavior": because HealthOmics uses multipart upload, that concern is on a different axis from the single-PUT limit.
-
-AWS Support confirmed that the documentation request — noting HealthOmics support status in the FSx for ONTAP user guide — is tracked independently of whether the feature is implemented.
+The documentation request — noting HealthOmics support status in the FSx for ONTAP user guide — has
+been filed (2026-08).
 
 ### Impact on Our Patterns
 
@@ -206,48 +208,61 @@ Steps 2 and 4 are what FR-6 would remove.
 
 `S3ObjectStorageMode` is documented on the [`Code` property of `AWS::Lambda::Function`](https://docs.aws.amazon.com/AWSCloudFormation/latest/TemplateReference/aws-properties-lambda-function-code.html) with allowed values `COPY | REFERENCE`. By contrast, `AWS::Serverless::Function` and `AWS::Serverless::LayerVersion` expose only `CodeUri` / `ContentUri` (a local path or an S3 URI), and we could not find an equivalent property in the SAM resource reference.
 
-> **Verification status update (August 2026)**: This item was originally an inference from public documentation alone. AWS Support has since reproduced it hands-on and confirmed that SAM discards the property without warning. See "AWS Support Confirmation" below.
+> **Status update (re-checked 2026-09)**: **this request is resolved and the public documentation now
+> covers it.** SAM's [`FunctionCode`](https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/sam-property-function-functioncode.html)
+> documents a `StorageMode` property with `COPY | REFERENCE`, passed directly to
+> `Code.S3ObjectStorageMode` on `AWS::Lambda::Function`.
 
-### AWS Support Confirmation (August 2026)
+### The property has a different name in SAM
 
-AWS Support reproduced this in a test environment and confirmed the following. This upgrades the item from our original inference ("we could not find the property documented") to **behaviour verified hands-on**.
+**The same setting is spelled differently, so CloudFormation's name does not work in a SAM template.**
 
-| Checked | Result |
-|---------|--------|
-| Specifying `S3ObjectStorageMode: REFERENCE` under `CodeUri` on `AWS::Serverless::Function` | `sam validate` and `sam deploy` both **succeed without error** |
-| Mode of the function actually created | The property is **silently dropped** during the SAM transform; the function is created in the default `COPY` mode |
-| Properties accepted by SAM's `S3Location` type (released versions) | Only `Bucket` / `Key` / `Version`; anything else is discarded during transformation (not specific to `S3ObjectStorageMode`) |
-| Methods listed in the Lambda Developer Guide | Console / AWS CLI / CloudFormation. **AWS SAM is not listed** |
-| `update-function-code` drift | Confirmed. `S3ObjectStorageMode` must be specified on every call or it reverts to `COPY` |
+| Template | Property | Source |
+|---|---|---|
+| `AWS::Lambda::Function` | `Code.S3ObjectStorageMode` | [Code property](https://docs.aws.amazon.com/AWSCloudFormation/latest/TemplateReference/aws-properties-lambda-function-code.html) |
+| `AWS::Serverless::Function` | `CodeUri.StorageMode` | [FunctionCode](https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/sam-property-function-functioncode.html) |
 
-> ⚠️ **What this means in practice**: A successful `sam deploy` does not mean `REFERENCE` mode was applied, so **the deployment result gives no signal that it was skipped**. Any workflow that depends on `REFERENCE` mode needs a post-deploy step that confirms the mode actually in effect.
+```yaml
+# For AWS::Serverless::Function
+CodeUri:
+  Bucket: amzn-s3-demo-bucket-name
+  Key: mykey-name
+  Version: 121212
+  StorageMode: REFERENCE
+```
 
-The Inactive-state coupling was also confirmed: Lambda periodically re-reads the source object and transitions the function to Inactive if access is lost. However, AWS Support explicitly stated they **could not confirm that this is the specific reason FSx for ONTAP S3 access points are unsupported**, so this document does not present it as the cause.
+**Using `REFERENCE` requires versioning on the bucket and access for the Lambda service principal**,
+which the same page states.
 
-On the AWS side, a feature request has been raised with the Lambda service team, a bug report with the SAM team (to add `S3ObjectStorageMode` to `AWS::Serverless::Function` and `AWS::Serverless::LayerVersion`), and feedback that SAM should raise a validation error for unrecognised properties rather than discarding them silently. However, these are **internal tickets and are not publicly accessible**. AWS Support advised that opening an issue ourselves on [aws/serverless-application-model](https://github.com/aws/serverless-application-model) is the appropriate channel for public tracking, and encouraged it on the grounds that community-filed issues with clear reproduction steps help the SAM team prioritise.
+> ⚠️ **On older SAM**: a version that does not know the property will let `sam validate` and
+> `sam deploy` succeed **without applying the setting**. The deployment result does not reveal it, so
+> if you depend on `REFERENCE`, check the actual mode afterwards. `update-function-code` also needs the
+> mode on every call and falls back to `COPY` when omitted.
 
-**Supported workaround (confirmed with AWS Support)**: For functions that require `REFERENCE` mode, define them as a native `AWS::Lambda::Function` with `Code.S3ObjectStorageMode: REFERENCE` rather than `AWS::Serverless::Function`, so no SAM transform is involved. Mixing `AWS::Serverless::` and native `AWS::` resources in the same SAM template was also confirmed to be **a valid and supported pattern**.
+The Inactive-state coupling — Lambda re-reads the source object and moves the function to Inactive if
+access is lost — is **`open` as an explanation for the lack of S3 AP support.** We cannot establish <!-- allow:unverified: stated as open in the same sentence; the link is what we could not establish -->
+that link, so this document does not present it as the cause.
 
-### Upstream Status (our own investigation, August 2026)
+### Upstream Status (re-checked 2026-09)
 
-What FR-7 asks for is **already implemented and merged upstream**. This subsection comes from inspecting `aws/serverless-application-model` directly, not from an AWS Support answer.
+What FR-7 asks for is **implemented upstream and now documented publicly.** This subsection comes from reading `aws/serverless-application-model` and the SAM reference directly.
 
 | Item | Detail |
 |------|--------|
 | Pull request | [aws/serverless-application-model#3959](https://github.com/aws/serverless-application-model/pull/3959) `feat: pass S3ObjectStorageMode through from CodeUri and ContentUri`, merged 2026-07-20 (tests in [#3961](https://github.com/aws/serverless-application-model/pull/3961)) |
 | **SAM-side property name** | **`StorageMode`**, inside `CodeUri` / `ContentUri` — a different name from CloudFormation's `S3ObjectStorageMode` |
 | Mapping applied by the transform | `CodeUri.StorageMode` → `Code.S3ObjectStorageMode` |
-| Release status | **Not yet released.** The latest release, `aws-sam-translator` 1.111.0 (2026-07-02), predates the 2026-07-20 merge and does not contain the code |
+| Release status | **Released.** SAM's [`FunctionCode`](https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/sam-property-function-functioncode.html) documents `StorageMode` (re-checked 2026-09). As of 2026-08, `aws-sam-translator` 1.111.0 predated the merge and did not carry it |
 
 ```yaml
-# Expected once released (not available in current releases)
+# The form the current reference documents
 CodeUri:
   Bucket: my-artifacts
   Key: app.zip
   StorageMode: REFERENCE     # the SAM-side name, not S3ObjectStorageMode
 ```
 
-> ⚠️ **Watch the name asymmetry**: writing CloudFormation's `S3ObjectStorageMode` inside `CodeUri` will **continue to be silently dropped even after release**. Only `StorageMode` is accepted.
+> ⚠️ **Watch the name asymmetry**: writing CloudFormation's `S3ObjectStorageMode` inside `CodeUri` is **silently dropped**. Only `StorageMode` is accepted.
 
 **The practical conclusion is unchanged** — on current releases you cannot select `REFERENCE` through SAM, so the native-resource workaround above stands. But the reason is not "SAM does not support it"; it is "**implemented, pending release, and the property is named `StorageMode`**". Re-evaluate this section and the workaround once a release includes it.
 
@@ -255,7 +270,7 @@ CodeUri:
 
 We filed the silent-drop behaviour as a public issue: [aws/serverless-application-model#3970](https://github.com/aws/serverless-application-model/issues/3970)
 
-AWS Support's tickets are internal and they could not file on our behalf, so the issue is written from our own testing. Behaviour observed locally against `aws-sam-translator` 1.111.0:
+The issue is written from our own testing. Behaviour observed locally against `aws-sam-translator` 1.111.0:
 
 | Value placed in `CodeUri` | Transform result | Reflected in output |
 |---------------------------|------------------|---------------------|

@@ -232,7 +232,7 @@ SaaS 各社が 2025-2026 年に急速に投入している AI 機能との比較
 
 | AWS 側の制約 | 制約の内容 | 当ポータルの現状 |
 |---|---|---|
-| S3 AP の Presigned URL が公式には未サポート | AWS の互換性テーブルは現時点でも `Presign — Not supported`。AWS サポートは ONTAP レイヤーでのサポート（9.11.1 以降で v4、9.16.1 以降で v2）を確認しドキュメント修正を提出済みだが、**未公開**（FR-7） | プレビュー・ダウンロード・共有リンクは presigned URL で実装済み。公開ドキュメントが更新されるまで本番では代替手段の設計が必要（[互換性ノート](../s3ap-compatibility-notes.md)） |
+| S3 AP の Presigned URL が公式には未サポート | AWS の互換性テーブルは現時点でも `Presign — Not supported`。[NetApp KB](https://kb.netapp.com/Advice_and_Troubleshooting/Data_Storage_Software/ONTAP_OS/What_version_of_ONTAP_support_pre-signed_URLs_for_S3_bucket) は ONTAP レイヤーでの対応を v4 が 9.11.1 以降、v2 が 9.16.1 以降と記載。ドキュメント修正を要望として起票済みだが **未公開**（FR-7） | プレビュー・ダウンロード・共有リンクは presigned URL で実装済み。公開ドキュメントが更新されるまで本番では代替手段の設計が必要（[互換性ノート](../s3ap-compatibility-notes.md)） | [E-007]
 | Amplify Storage が S3 AP 非対応 | コンポーネントが標準 S3 バケットのみサポート（FR-6、Open） | アップロードは Storage Browser for S3 で実装済み |
 | S3 AP コンテンツ向けのネイティブ検索/インデックスが無い | OpenSearch はデータコピーを要する | セマンティック検索を Bedrock KB で実装。全文一致検索は無い |
 | S3 AP がオブジェクトバージョニング非対応 | — | ファイル単位のバージョン履歴は無い。ボリューム単位の point-in-time 復旧は Snapshot + FlexClone |
@@ -305,20 +305,20 @@ export const storage = defineStorage({
 
 **現状**: Presigned URLs は FSx for ONTAP S3 AP の互換性テーブルで "Not supported" と記載されている（[Access point compatibility](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/access-points-for-fsxn-object-api-support.html)）。
 
-**しかし、実際には動作する**。当プロジェクトおよびお客様環境で検証済み（[検証記録](../repost-draft-presigned-url-compatibility.md), [互換性ノート](../s3ap-compatibility-notes.md#presigned-url-support)）。AWS Support に確認した結果:
+**しかし、実際には動作する**。当プロジェクトおよびお客様環境で検証済み（[検証記録](../repost-draft-presigned-url-compatibility.md), [互換性ノート](../s3ap-compatibility-notes.md#presigned-url-support)）。**動く理由は署名の仕組みから説明できます。**
 
-1. **Presigning はクライアントサイド操作** — `aws s3 presign` は SigV4 署名をローカルで計算するだけ。ネットワークリクエストは発生しない。
-2. **生成された URL は標準の GetObject** — 署名が Authorization ヘッダーではなくクエリパラメータに埋め込まれるだけ。
-3. **GetObject がサポートされている以上、Presigned URL をブロックすることは構造的に不可能**。
-4. **ドキュメントの意図（AWS Support 回答）**: "Presigned URL ワークフローを公式にテストしていない" ため "Not supported" と記載している。
+1. **Presigning はクライアントサイド操作** — [`aws s3 presign`](https://docs.aws.amazon.com/cli/latest/reference/s3/presign.html) は SigV4 署名をローカルで計算するだけで、ネットワークリクエストは発生しません。
+2. **生成された URL は標準の GetObject** — [Presigned URL の仕様](https://docs.aws.amazon.com/AmazonS3/latest/userguide/ShareObjectPreSignedURL.html)どおり、署名が Authorization ヘッダーではなくクエリパラメータに入るだけの違いです。
+3. **GetObject がサポートされている以上、Presigned URL だけを遮断する箇所がありません**。互換性テーブルは GetObject を対応と記載しています。
+4. **なぜ "Not supported" と書かれているのかは `open` です。** 公開ドキュメントに理由の記載を見つけられませんでした。
 
-**Technical context**: ONTAP native S3 は ONTAP 9.11 以降で Presigned URL を正式サポート（[NetApp KB](https://kb.netapp.com/Advice_and_Troubleshooting/Data_Storage_Software/ONTAP_OS/What_version_of_ONTAP_support_pre-signed_URLs_for_S3_bucket)）。プロトコル層に制約はない。
+**Technical context**: ONTAP native S3 は ONTAP 9.11 以降で Presigned URL を正式サポートしています（[NetApp KB](https://kb.netapp.com/Advice_and_Troubleshooting/Data_Storage_Software/ONTAP_OS/What_version_of_ONTAP_support_pre-signed_URLs_for_S3_bucket)。KB は v4 が 9.11.1 以降、v2 が 9.16.1 以降と記載）。プロトコル層に制約はありません。
 
 **FR-7 の変更**: 機能要望ではなく、**ドキュメント修正要望**に格下げ。
 - 互換性テーブルの「Presign — Not supported」を「Presign — Works (client-side SigV4; executes as GetObject)」に修正してほしい
 - または注記として "Presigned URLs function correctly because they execute as standard GetObject requests. The service does not officially test presigned URL workflows." を追記してほしい
 
-**Production Guidance**: AWS Support は「"Not supported" に分類されている操作を本番で依存することは推奨しない」と回答。動作は確認できるが、リージョン間の整合性やサービスアップデート後の動作保証はない。
+**Production Guidance**: **互換性テーブルが契約で、そこには "Not supported" と書かれています。** 今日動くことは約束ではありません。リージョン間の整合性やサービスアップデート後の動作を保証する公開情報はないので、動作は実測として扱ってください。
 
 **実装への影響**: Presigned URL が動作するため、以下は **今すぐ実装可能**:
 - ブラウザネイティブのファイルプレビュー（画像/PDF/動画）
@@ -326,7 +326,7 @@ export const storage = defineStorage({
 - 時限付き共有リンク
 - Storage Browser for S3 の FSx for ONTAP S3 AP 対応（S3 AP がクライアント利用をサポートした場合）
 
-**Production guidance**: AWS Support は「"Not supported" に分類されている操作を本番で依存することは推奨しない」と回答している。動作は確認済みだが、リージョン間の整合性やサービスアップデート後の動作保証はない。本番利用する場合は、Lambda プロキシによるフォールバック経路を用意しておくことを推奨。
+**Production guidance**: **互換性テーブルに "Not supported" と書かれている操作に本番を依存させないでください。** 動作は実測できていますが、リージョン間の整合性やサービスアップデート後の動作を保証する公開情報はありません。本番利用する場合は、Lambda プロキシによるフォールバック経路を用意しておくことを推奨します。
 
 ---
 

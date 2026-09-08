@@ -206,6 +206,91 @@
         "ワークスペース設定のラベルセットとアクティブ時系列数の上限は、ドキュメント上「一致する時系列のみがスロットルされる」と説明されており、流量制御の機能であって書き込み可能なラベルの制限ではないと理解しています。"
       ],
       "claim_ja": "Amazon Managed Service for Prometheus では、remote_write の送信元が他の送信元のラベル値を名乗って送信した場合にそれを拒否する仕組みが無いのではないか、と考えています。"
+    },
+    {
+      "id": "E-006",
+      "claim": "An FSx for ONTAP S3 Access Point alias cannot be used as Athena's query-result OutputLocation.",
+      "subject": "AWS",
+      "tier": "verified",
+      "premise": false,
+      "sources": [
+        {
+          "url": "https://docs.aws.amazon.com/AmazonS3/latest/userguide/access-points-naming.html",
+          "read": "full",
+          "retrieved": "2026-09-08",
+          "says": "An access point attached to a non-S3 bucket data source gets an alias ending in -ext-s3alias, distinct from the -s3alias form used by a regular S3 access point."
+        },
+        {
+          "url": "https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/access-points-for-fsxn-object-api-support.html",
+          "read": "full",
+          "retrieved": "2026-09-08",
+          "says": "Lists the S3 API operations supported through an FSx for ONTAP access point, PutObject among them. Says nothing about use as a service's output target."
+        },
+        {
+          "url": "https://docs.aws.amazon.com/athena/latest/ug/query-results-specify-location-workgroup.html",
+          "read": "full",
+          "retrieved": "2026-09-08",
+          "says": "Describes OutputLocation as an Amazon S3 path. Does not mention access point aliases."
+        }
+      ],
+      "observation": "ap-northeast-1: start-query-execution with OutputLocation set to s3://<alias ending in -ext-s3alias>/athena-results/ returned InvalidRequestException, AthenaErrorCode INVALID_INPUT, 'OutputLocation is not a valid S3 path'. The read side, an alias in LOCATION, works.",
+      "why_not_documented_is_not_absent": "PutObject is supported through the access point, so the block is unlikely to be about writing. Athena appears to resolve the alias through the S3 data plane, which the -ext-s3alias form does not use. That reading is inference, not something AWS has stated.",
+      "support_inquiry": {
+        "status": "filed",
+        "topic": "Athena の OutputLocation に FSx for ONTAP S3 Access Point の alias を指定できるかどうか、および指定できない場合の理由",
+        "private_ref": ".private/support-correspondence/",
+        "filed": "2026-07"
+      },
+      "feature_request": {
+        "status": "filed",
+        "where": "docs/aws-feature-requests/"
+      },
+      "appears_in": [
+        "docs/s3ap-compatibility-notes.md",
+        "docs/s3ap-compatibility-notes.en.md"
+      ],
+      "claim_ja": "FSx for ONTAP S3 Access Point の alias を Athena のクエリ結果出力先 (OutputLocation) に指定できません。",
+      "observation_ja": "ap-northeast-1 で start-query-execution の OutputLocation に -ext-s3alias で終わる alias を指定すると InvalidRequestException (AthenaErrorCode INVALID_INPUT、OutputLocation is not a valid S3 path) が返ります。読み取り側 (LOCATION への alias 指定) は動作します。"
+    },
+    {
+      "id": "E-007",
+      "claim": "AWS's FSx for ONTAP S3 Access Point compatibility table classifies Presign as not supported.",
+      "subject": "AWS",
+      "tier": "documented",
+      "premise": false,
+      "sources": [
+        {
+          "url": "https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/access-points-for-fsxn-object-api-support.html",
+          "read": "full",
+          "retrieved": "2026-09-08",
+          "says": "The compatibility table lists Presign as not supported."
+        },
+        {
+          "url": "https://kb.netapp.com/Advice_and_Troubleshooting/Data_Storage_Software/ONTAP_OS/What_version_of_ONTAP_support_pre-signed_URLs_for_S3_bucket",
+          "read": "full",
+          "retrieved": "2026-09-08",
+          "says": "ONTAP S3 supports presigned URLs, with v4 from 9.11.1 and v2 from 9.16.1."
+        }
+      ],
+      "observation": "GetObject through a presigned URL returned HTTP 200 with correct content on ONTAP 9.18.1P3D1. Why the table classifies Presign as unsupported is not established; no published reason was found.",
+      "why_not_documented_is_not_absent": "Presigning is a client-side SigV4 computation and the resulting request is an ordinary GetObject, which the same table lists as supported. A table entry saying otherwise is a classification, not an observed block. The classification is the contract, so production should not depend on the observed behaviour.",
+      "support_inquiry": {
+        "status": "filed",
+        "topic": "互換性テーブルの Presign 行の分類と、presigned URL が動作する実態の整合について",
+        "private_ref": ".private/support-correspondence/",
+        "filed": "2026-07"
+      },
+      "feature_request": {
+        "status": "filed",
+        "where": "docs/aws-feature-requests/file-portal-service-gap.md"
+      },
+      "appears_in": [
+        "docs/s3ap-compatibility-notes.md",
+        "docs/aws-feature-requests/file-portal-service-gap.md",
+        "docs/repost-draft-presigned-url-compatibility.md"
+      ],
+      "claim_ja": "AWS の FSx for ONTAP S3 Access Point 互換性テーブルは Presign を非対応として分類しています。",
+      "observation_ja": "ONTAP 9.18.1P3D1 で presigned URL 経由の GetObject は HTTP 200 と正しい内容を返しました。テーブルが非対応と分類している理由は確認できておらず、公開された理由の記載も見つけられていません。"
     }
   ]
 }

@@ -140,20 +140,31 @@ Either of the following.
 
 ---
 
-## AWS Support findings (2026-08)
+## The escape routes we tried, and closed
 
-| Request | Response |
+We looked for a way to delete before retention expiry, from both the AWS API and ONTAP REST.
+**All five routes were closed** (`verified`, 2026-08).
+
+| Attempt | Result |
 |---|---|
-| Can the audit log volume be deleted before retention expiry | **No** (confirmed internally) |
-| Can the file system deletion lock alone be released | **No** |
-| Does any route exist other than closing the account | **No such route exists** (explicit) |
-| Can billing relief be considered instead of early deletion | Only after the resource is gone. Delete the file system once retention expires, then raise a separate case with Account and Billing Support. No assurance that relief is possible |
-| SL-1 (warning and confirmation parameter at creation) | No addition mentioned. The response points to the console's audit log volume field and the `CreateVolume` / `UpdateVolume` documentation, which already state the six-month minimum |
-| SL-2 (return the reason a delete is refused) | Already returned, in `DescribeVolumes` as `LifecycleTransitionReason.Message` (`Cannot delete the volume because it contains unexpired log files.`) |
-| SL-3 (`AuditLogVolume` agreeing with `is_audit_log`) | As designed, and not a disagreement: the first is the current designation, the second a historical mark |
+| Delete through the AWS API, with `BypassSnaplockEnterpriseRetention=true` | Failed. Returned no error and reverted to the original state |
+| Clear the SVM-side audit log designation through ONTAP REST | Succeeds, and does not make the volume deletable |
+| Clear the volume-side `snaplock.is_audit_log` | Refused. Read-only field |
+| Take the volume offline and delete | Failed (retention not expired) |
+| Privileged delete of the WORM log files | No route (already `PERMANENTLY_DISABLED`) |
 
-To read the expiry, the response directs us to SSH to the management endpoint and check the Expiry Time from
-`volume snaplock show -vserver <svm> -volume <volume> -instance`. That value is not available through the AWS API.
+Two things are usable for a decision. **Why a delete was refused** comes back in `DescribeVolumes` as
+`LifecycleTransitionReason.Message`: `Cannot delete the volume because it contains unexpired log files.`
+**The expiry** comes from ONTAP REST, `GET /api/storage/volumes/{uuid}?fields=snaplock`, as
+`expiry_time` (`verified`, 2026-08-17). No SSH to the management endpoint is needed.
+
+The minimum retention itself is documented: the console's audit log volume field, and the
+[CreateVolume](https://docs.aws.amazon.com/fsx/latest/APIReference/API_CreateVolume.html) /
+[UpdateVolume](https://docs.aws.amazon.com/fsx/latest/APIReference/API_UpdateVolume.html) pages, all
+state the six-month floor. **What makes it easy to walk into is that the warning sits on the page about
+deleting rather than the page about enabling.**
+
+Billing is outside what we observed, so this document does not cover it.
 
 ---
 
