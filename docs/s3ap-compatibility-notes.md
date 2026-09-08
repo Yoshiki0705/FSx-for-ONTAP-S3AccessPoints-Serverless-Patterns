@@ -243,20 +243,20 @@ FSx for ONTAP S3 AP (READ) → Lambda 処理 → Standard S3 Bucket (WRITE + Ann
 
 ## 監査とイベント可視性 — S3 アクセス経路
 
-S3 AP 経由のアクセスは、ONTAP 側の監査とイベント通知の枠組みから外れます。実測と AWS サポートの確認を分けて記載します。
+S3 AP 経由のアクセスは FPolicy から見えず、ONTAP の監査ログには残ります。**この 2 つは同じ経路に対して逆の結果になります。** 以下は自環境での実測です（2026-08-26 / ONTAP 9.18.1P3D1、[検証記録](https://github.com/Yoshiki0705/FSx-for-ONTAP-Observability-integrations/blob/main/docs/ja/verification-results-fpolicy-s3ap-and-session.md)）。
 
 | 項目 | 状態 | 根拠 |
 |---|---|---|
-| FPolicy が S3 AP 経由の操作を検知するか | しない | 実測（2026-08-26 / ONTAP 9.18.1P3D1）+ AWS 確認（2026-08-27）。**現行の全 ONTAP リリースが該当**するため、バージョンを上げても解決しません |
-| S3 に対応した FPolicy | ベンダー側で開発中。提供時期は未定 | AWS 確認（2026-08-27、2026-08-29 に再確認）。AWS からタイムラインは提示されません |
-| この欠落がドキュメント化されているか | **されていない**。AWS がドキュメント要求を作成済み（2026-08-29） | AWS 確認。公開されるまでは、読者が気づく手段がありません |
-| ONTAP 監査ログにリクエスタ identity（IAM プリンシパル）が載るか | 載らない | AWS 確認（2026-08-27） |
-| ONTAP 監査ログに送信元 IP が載るか | 載らない | AWS 確認（2026-08-27） |
-| `HEAD` に対応する監査イベント | 存在しない | AWS 確認（2026-08-27） |
+| FPolicy が S3 AP 経由の操作を検知するか | **しない** | 実測（UNIX / NFS と WINDOWS / SMB の両方）。同じボリュームへの NFS / SMB アクセスは検知されるので、SACL の設定漏れではありません |
+| 他の ONTAP リリースでも同じか | **`open`** | 当方の測定は 9.18.1P3D1 の 1 バージョンだけです。バージョンを上げれば解決すると仮定しないでください |
+| この欠落がドキュメント化されているか | **見つけられませんでした** | 記載の追加を要望として起票済み（2026-08 起票）。公開されるまでは、読者が気づく手段がありません |
+| S3 AP 経由の操作が ONTAP 監査ログに載るか | **載る** | `Source` が `HTTP` で、ファイル名・操作・読み書きのオフセットとバイト数が記録されます。LIST だけ `Source` が `S3` |
+| ONTAP 監査ログにリクエスタ identity（IAM プリンシパル）が載るか | **載らない** | 実測。**「何が」は追えて「誰が」は追えません** |
+| `HEAD` に対応する監査イベント | **記録されなかった** | HEAD を 6 回発行して 0 件。**他のリリースでも常にそうだとは言えません**（`open`） |
 
 ### 監査経路は CloudTrail のデータイベント（実測 2026-08-29）
 
-**ONTAP 側で取れない identity と送信元 IP は、CloudTrail のデータイベントで取れます。** AWS サポートの回答（2026-08-29）を実測で確認しました。Internet origin の S3 AP に対して `PutObject` / `GetObject` / `DeleteObject` を実行し、配信されたログを検査した結果です。
+**ONTAP 側で取れない identity と送信元 IP は、CloudTrail のデータイベントで取れます。** Internet origin の S3 AP に対して `PutObject` / `GetObject` / `DeleteObject` を実行し、配信されたログを検査した実測です。
 
 | 記録される項目 | 実測値 |
 |---|---|
@@ -280,18 +280,16 @@ S3 AP 経由のアクセスは、ONTAP 側の監査とイベント通知の枠�
 
 ## Presigned URL Support
 
-> ⚠️ **Production Warning**: 公開されている AWS 互換性テーブルは現時点でも `Presign — Not supported` のままです。AWS サポートは後続の回答で、ONTAP レベルでは presigned URL がサポートされている（バージョン要件あり）ことを確認し、ドキュメント修正を提出済みですが、**修正はまだ公開されていません**。公開ドキュメントが更新されるまでは、presigned URL に依存する本番ワークロードには代替手段を設計してください（下記「AWS サポート追加確認」参照）。
+> ⚠️ **Production Warning**: 公開されている AWS 互換性テーブルは現時点でも `Presign — Not supported` のままです。ONTAP レイヤーでの対応は NetApp KB に記載がありますが、**FSx for ONTAP S3 AP の互換性テーブルは更新されていません。** ドキュメント修正を要望として起票済みです。公開テーブルが更新されるまでは、presigned URL に依存する本番ワークロードには代替手段を設計してください（下記「ONTAP バージョン要件」参照）。
 
 ### Status: Listed as "Not supported" — but observed working
 
-AWS ドキュメントの互換性テーブルでは `Presign — Not supported` と記載されていますが、AWS サポートからの回答により、実態が明確になりました。
+AWS ドキュメントの互換性テーブルでは `Presign — Not supported` と記載されています。**それでも動くのは、署名の仕組みからそうなるためです。**
 
-**AWS サポートの見解（要約）**:
-
-1. **Presigning はサーバー側の API 操作ではない** — クライアント側の SigV4 署名計算であり、ネットワークリクエストは発生しない
-2. **Presigned URL を curl 等で使用すると、実際には通常の GetObject リクエストが実行される** — 署名が Authorization ヘッダーではなくクエリパラメータに含まれるだけ
-3. **GetObject が Supported である以上、Presigned URL による GetObject は構造的にブロックできない** — GetObject 自体を壊さずに Presigned URL だけを無効化することは不可能
-4. **ドキュメントの意図**: 「Presigned URL ワークフローを公式にテストしていない」または「未サポート機能（SSE パラメータ、バージョニングパラメータ等）を含む Presigning シナリオは失敗する可能性がある」ことを示唆していた可能性が高い
+1. **Presigning はサーバー側の API 操作ではありません** — [`aws s3 presign`](https://docs.aws.amazon.com/cli/latest/reference/s3/presign.html) はクライアント側で SigV4 署名を計算するだけで、ネットワークリクエストは発生しません
+2. **生成した URL を curl 等で使うと、実行されるのは通常の GetObject です** — [Presigned URL の仕様](https://docs.aws.amazon.com/AmazonS3/latest/userguide/ShareObjectPreSignedURL.html)どおり、署名が Authorization ヘッダーではなくクエリパラメータに入るだけの違いです
+3. **GetObject が Supported である以上、Presigned URL 経由の GetObject だけを遮断する箇所がありません** — GetObject を壊さずに presigned URL だけ無効化する方法がないためです
+4. **テーブルが `Not supported` と書いている理由は `open` です** — 公開ドキュメントに理由の記載を見つけられませんでした。SSE やバージョニングのパラメータを含む presigning は別途失敗しうるので、そこは切り分けて検証してください
 
 **テスト結果（別プロジェクトで確認済み）**:
 
@@ -301,9 +299,9 @@ AWS ドキュメントの互換性テーブルでは `Presign — Not supported`
 | PutObject | 未検証 | — | GetObject と同じ原理で動作する可能性あり |
 | HeadObject | 未検証 | — | 同上 |
 
-### AWS サポート追加確認（ONTAP バージョン要件）
+### ONTAP バージョン要件
 
-その後の AWS サポート回答で、NetApp KB を根拠として **ONTAP S3 は presigned URL をサポートしている**ことが確認されました。ただしサポート範囲は ONTAP バージョンに依存します。
+**ONTAP S3 は presigned URL に対応しています。** [NetApp KB](https://kb.netapp.com/Advice_and_Troubleshooting/Data_Storage_Software/ONTAP_OS/What_version_of_ONTAP_support_pre-signed_URLs_for_S3_bucket) が対応バージョンを示しており、署名バージョンで閾値が違います。
 
 | ONTAP バージョン | Presigned URL の署名バージョン |
 |-----------------|-------------------------------|
@@ -313,13 +311,11 @@ AWS ドキュメントの互換性テーブルでは `Presign — Not supported`
 
 - NetApp は可能な限り v4 署名を使用することを推奨しています
 - 本リポジトリの検証環境は ONTAP 9.18.1P3D1 のため、両方の閾値を満たします
-- この確認は **ONTAP レイヤー**の挙動に関するものです。FSx for ONTAP S3 Access Points 経由の presigned URL について AWS 側の互換性テーブルが更新されるまでは、下記の本番利用に関する注意が引き続き有効です
+- この KB は **ONTAP レイヤー**の記載です。FSx for ONTAP S3 AP 経由の presigned URL について AWS 側の互換性テーブルが更新されるまでは、下記の本番利用に関する注意が引き続き有効です
 
 ### ⚠️ 本番利用に関する注意
 
-AWS サポートの明確な指針:
-
-> **"Not supported" と記載された操作が今日成功しても、本番ワークロードで依存すべきではない。**
+**互換性テーブルが契約で、そこには `Not supported` と書かれています。** 今日成功することは約束ではありません。
 
 理由:
 - 非推奨通知なしに動作が変更される可能性がある
@@ -349,14 +345,13 @@ Presigned URL に依存せずに時間制限付きファイルアクセスを実
 
 ### ドキュメント改善の見通し
 
-AWS サポートは FSx for ONTAP サービスチームにドキュメント改善をエスカレーション済み:
+ドキュメント改善として次の 3 点を要望に含めて起票しました（2026-07 起票）。
+
 1. "Presign" 行の削除または再構成（API ではないため）
-2. "Not supported + hard-blocked"（エラーを返す）と "Not supported + may incidentally work"（保証なし）の区別を明確化
-3. ONTAP バージョン別の presigned URL サポート状況（9.11.1 以降で v4、9.16.1 以降で v2）の反映
+2. `Not supported + hard-blocked`（エラーを返す）と `Not supported + may incidentally work`（保証なし）の区別を明確化
+3. ONTAP バージョン別の presigned URL 対応状況の反映
 
-**現在のステータス**: AWS サポートはドキュメント修正を社内ドキュメントチームに提出済みで、対応が進行中です。ただし**公開ドキュメントへの反映はまだ完了していません**。ドキュメント修正を追うケース（2026-07-19 起票）は **2026-09-02 時点で open**（Support API で確認）。公開テーブルが更新された時点で本セクションを更新してください。
-
-> **Content was rephrased for compliance with licensing restrictions. Sources: AWS Support correspondence (May–July 2026) and NetApp KB articles linked below.**
+**起票は公開ではありません。** 公開テーブルが更新されるまでは `Not supported` を前提に設計し、更新された時点で本セクションを更新してください。
 
 ### AWS Documentation Reference
 

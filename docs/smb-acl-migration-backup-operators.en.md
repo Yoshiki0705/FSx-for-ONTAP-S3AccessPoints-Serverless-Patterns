@@ -17,11 +17,11 @@ usual examples.
 If ACLs must be preserved, a plain robocopy run skips those files with access denied. Differential
 runs hit the mirror-image problem: no write permission on the existing files at the destination.
 
-## Confirmed behaviour
+## What the documentation implies
 
-AWS Support confirmed all three points below as correct.
+All three points below are derived from the public documentation listed at the end. **We did not measure them.**
 
-| Scope | Mechanism | Confirmed behaviour |
+| Scope | Mechanism | Implied behaviour |
 |-------|-----------|--------------------|
 | Source (Windows) | Backup Operators + `SeBackupPrivilege` | robocopy `/B` (backup mode) reads files including their ACLs even without ACL read rights |
 | Destination (FSx for ONTAP) | `BUILTIN\Backup Operators` + `SeRestorePrivilege` | Differential runs can overwrite (restore) files including ACLs without ACL write rights |
@@ -89,8 +89,8 @@ information. `S` and `O` are the ones that matter for preserving ACLs and owners
 > security styles handle ACLs differently, so also review the identity discussion in the
 > [ONTAP integration notes](./ontap-integration-notes.en.md).
 
-> **Scope of verification note**: the three points above were confirmed by AWS Support, but this
-> project has not run an end-to-end measurement on real hardware. Before a production migration,
+> **Scope of verification note**: the three points above are derived from the documentation, and this
+> project has not run an end-to-end measurement on real hardware (`open`). Before a production migration,
 > pilot the copy against a subset of the data and confirm that ACLs and ownership are preserved as
 > expected.
 

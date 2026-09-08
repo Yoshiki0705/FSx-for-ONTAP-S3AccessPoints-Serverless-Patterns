@@ -29,7 +29,7 @@ FSx for ONTAP Volume (/eda_demo — 50 simulation logs)
 ```
 
 > **リージョン**: 全コンポーネントが ap-northeast-1 に配置。クロスリージョンレイテンシーなし。
-> 初期検証時は us-east-1 に配置していましたが、AWS サポートの確認により ap-northeast-1 で利用可能と判明（2026-07-21）。
+> 初期検証時は us-east-1 に配置していましたが、ap-northeast-1 でデプロイして動作することを当環境で確認しました（2026-07-22）。リージョン対応は [Amazon Bedrock AgentCore endpoints and quotas](https://docs.aws.amazon.com/general/latest/gr/bedrock-agentcore.html) を参照。
 
 ---
 

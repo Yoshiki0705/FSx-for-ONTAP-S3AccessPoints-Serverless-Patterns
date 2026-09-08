@@ -47,23 +47,23 @@ file output.parquet
 - Valid file content downloaded (verified by file type and size)
 - No errors or access denied
 
-### AWS Support Clarification
+### Why the table and the behaviour disagree
 
-AWS Support confirmed the following:
+The signing mechanism explains it, and each step is documented.
 
-1. **Presigning is not a server-side API operation** — it is a purely client-side SigV4 signature calculation. When you run `aws s3 presign`, no network request is made to AWS.
+1. **Presigning is not a server-side API operation** — [`aws s3 presign`](https://docs.aws.amazon.com/cli/latest/reference/s3/presign.html) is a client-side SigV4 signature calculation. Running it makes no network request to AWS.
 
-2. **When you use the presigned URL**, you are issuing a standard `GetObject` HTTP request with the signature embedded in query-string parameters (instead of the `Authorization` header).
+2. **Using the presigned URL issues a standard `GetObject`** — per the [presigned URL reference](https://docs.aws.amazon.com/AmazonS3/latest/userguide/ShareObjectPreSignedURL.html), the signature arrives in query-string parameters instead of the `Authorization` header.
 
-3. **Since `GetObject` is listed as Supported**, the presigned URL works because it is just `GetObject`. It is structurally impossible for FSx for ONTAP to block presigning without also breaking `GetObject` itself.
+3. **Since `GetObject` is listed as Supported**, there is no place left to block a presigned URL. Not without breaking `GetObject` itself.
 
-4. **What the documentation likely intended**: The FSx for ONTAP team probably meant "we don't officially test presigned URL workflows" or "some presigning scenarios involving unsupported features (SSE parameters, versioning parameters, etc.) may fail."
+4. **Why the table reads `Not supported` is `open`** — no published reason was found. Presigning that involves SSE or versioning parameters may fail for its own reasons, so test that case separately.
 
 ### Important: Should You Rely on This?
 
-**No.** AWS Support explicitly stated:
+**No.** The compatibility table is the contract, and it says `Not supported`. An operation returning success today is not a commitment.
 
-> Even when an operation marked "Not supported" returns success today, customers should not depend on it for production workloads.
+> Treat the working behaviour as measured, not promised. Nothing published guarantees it across regions or after a service update.
 
 Reasons:
 - May change without deprecation notice
@@ -109,5 +109,5 @@ For teams building integrations (Athena, Databricks, Snowflake, etc.) against FS
 - [x] サポートケース番号が含まれていないこと
 - [x] サポート担当者名が含まれていないこと
 - [x] ファイルパス（実際の値）がマスクされていること
-- [x] AWS サポートの回答を要約・言い換えしていること（verbatim 引用なし）
+- [x] サポートの回答を根拠にしていないこと（挙動は公開ドキュメントと実測で説明していること）
 - [x] 「本番利用は非推奨」の注意書きが含まれていること

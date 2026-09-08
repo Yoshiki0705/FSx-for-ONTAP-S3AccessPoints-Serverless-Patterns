@@ -227,7 +227,7 @@ The following must be resolved before Quick + AgentCore MCP integration moves be
 
 ## Next Actions
 
-- [x] ~~Await AWS Support response (2 open cases)~~ -> **both cases resolved** (confirmed through the Support API, 2026-09-02)
+- [x] ~~Await a response on the two open cases~~ -> **both cases are closed** (checked through the Support API, 2026-09-02)
 - [x] ~~Investigate and test CUSTOM_JWT Gateway + Policy configuration~~ -> **resolved (2026-07-20)**, see ISSUE-3 above
 - [ ] Verify if MCP persistence bug is fixed in next Quick Desktop version
 - [ ] After Web console UI fix, run E2E test of Agent tool linking

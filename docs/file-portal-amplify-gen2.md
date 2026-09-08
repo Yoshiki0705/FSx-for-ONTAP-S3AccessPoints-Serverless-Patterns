@@ -704,7 +704,7 @@ A: 直接的には影響しません。フロントエンドは S3 AP 経由で�
 A: はい。バックエンドパターンはフロントエンド非依存です。ファイル閲覧用にまず Nextcloud を稼働させ、カスタム UI が必要になった段階で Amplify ベースの処理ダッシュボードを追加できます。
 
 **Q: S3 AP Presigned URL でのダイレクトダウンロードは？**
-A: AWS ドキュメント上は「Not supported」ですが、Presigned URL は実際にはクライアント側の SigV4 署名計算であり、使用時に実行されるのは通常の GetObject リクエストのため動作します（[検証結果と AWS Support の見解](./s3ap-compatibility-notes.md#presigned-url-support)）。ただし AWS Support は本番ワークロードでの依存を非推奨としています。データガバナンスの観点でサーバーサイドプロキシ経由を選択することも有効ですが、技術的にはダイレクトダウンロードも可能です。
+A: AWS ドキュメント上は「Not supported」ですが、Presigned URL は実際にはクライアント側の SigV4 署名計算であり、使用時に実行されるのは通常の GetObject リクエストのため動作します（[検証結果と根拠](./s3ap-compatibility-notes.md#presigned-url-support)）。ただし互換性テーブルが `Not supported` である以上、本番ワークロードで依存させるべきではありません。データガバナンスの観点でサーバーサイドプロキシ経由を選択することも有効ですが、技術的にはダイレクトダウンロードも可能です。
 
 **Q: 規制環境（FISC、HIPAA）ではどのアプローチが使えますか？**
 A: 3つすべてが適切に設定すれば規制要件を満たせます。主要な制御（監査ログ、暗号化、アクセス制御）は共有バックエンド層にあります。フロントエンド固有の考慮事項: Amplify Gen2（Cognito SAML + WAF）、Nextcloud（LDAP + ALB 上の WAF）、カスタム（実装依存）。

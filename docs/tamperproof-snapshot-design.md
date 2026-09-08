@@ -194,7 +194,7 @@ SVM レベルの監査ログ指定は ONTAP REST API で解除できます（ア
 
 ブロックしているのは指定ではなく、**すでにファイルに適用された保持期間**です。監査ログとして書かれたファイルには作成時に最短 6 か月の保持が付き、指定を解除してもその保持は残ります。したがって指定を外す操作は削除の前提を 1 つも変えません。
 
-2 つのフィールドの役割も分けて理解する必要があります。AWS サポートの回答によれば、現在の指定を表す正しいフィールドは AWS API の `AuditLogVolume` です。ONTAP の `snaplock.is_audit_log` は「その SVM の監査ログボリュームとして過去に一度でも設定された」ことを示す履歴マークで、読み取り専用のまま false に戻りません。**削除可否の判断に使えるのはどちらでもなく**、`DescribeVolumes` の `LifecycleTransitionReason.Message`（`Cannot delete the volume because it contains unexpired log files.`）と、ONTAP の `volume snaplock show -vserver <svm> -volume <vol> -instance` が返す Expiry Time です。
+2 つのフィールドの役割も分けて理解する必要があります。**現在の指定を表すのは AWS API の `AuditLogVolume` のほうです。**ONTAP の `snaplock.is_audit_log` は「その SVM の監査ログボリュームとして過去に一度でも設定された」ことを示す履歴マークで、読み取り専用のまま false に戻りません。**削除可否の判断に使えるのはどちらでもなく**、`DescribeVolumes` の `LifecycleTransitionReason.Message`（`Cannot delete the volume because it contains unexpired log files.`）と、ONTAP の `volume snaplock show -vserver <svm> -volume <vol> -instance` が返す Expiry Time です。
 
 さらに AWS API の `DeleteVolume` は、この状況で**エラーを返しません**。`DELETING` に遷移した後、無言で `CREATED` に戻ります。`BypassSnaplockEnterpriseRetention=true` や `SkipFinalBackup=true` を付けても同じです。成功したように見えて何も起きていないため、レスポンスではなく数十秒後の `Lifecycle` で判断する必要があります。
 

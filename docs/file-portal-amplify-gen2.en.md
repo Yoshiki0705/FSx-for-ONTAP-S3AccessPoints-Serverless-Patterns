@@ -741,7 +741,7 @@ A: Not directly. The frontend accesses data through S3 AP, which shares throughp
 A: Yes. The backend patterns are frontend-agnostic. You can run Nextcloud for file browsing immediately, then add an Amplify-based processing dashboard when custom UI needs arise.
 
 **Q: What about S3 AP Presigned URLs for direct download?**
-A: AWS documentation lists Presigned URLs as "Not supported", but they actually work — presigning is a client-side SigV4 calculation, and the resulting request is a standard GetObject which is supported ([verification and AWS Support clarification](./s3ap-compatibility-notes.en.md#presigned-url-support)). However, AWS Support recommends against production reliance. For data governance, you may choose to route content through a server-side proxy, but direct download via Presigned URL is technically possible.
+A: AWS documentation lists Presigned URLs as "Not supported", but they actually work — presigning is a client-side SigV4 calculation, and the resulting request is a standard GetObject which is supported ([verification and reasoning](./s3ap-compatibility-notes.en.md#presigned-url-support)). However, AWS Support recommends against production reliance. For data governance, you may choose to route content through a server-side proxy, but direct download via Presigned URL is technically possible.
 
 **Q: Which approach works for regulated environments (FISC, HIPAA)?**
 A: All three can meet regulatory requirements when properly configured. Key controls (audit logging, encryption, access control) are in the backend layer which is shared. Frontend-specific considerations: Amplify Gen2 (Cognito SAML + WAF), Nextcloud (LDAP + WAF on ALB), Custom (depends on implementation).
