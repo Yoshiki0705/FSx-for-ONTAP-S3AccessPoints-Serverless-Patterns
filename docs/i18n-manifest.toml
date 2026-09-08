@@ -168,6 +168,21 @@ locales = ["ja", "en"]
 why = "Written to be handed to AWS; Japanese for the author and English for the recipient."
 
 [[rule]]
+glob = "docs/aws-feature-requests/amp-label-scoping.md"
+locales = ["en"]
+why = """
+English-primary for the same reason as fsxn-s3ap-improvements.md below, and measured the
+same way: 1,736 characters with **zero** CJK. It is a feature request addressed to AWS, so
+English is the document rather than a translation of one.
+
+Without this rule the `ja` + `en` requirement above applies and reports one missing
+translation, which is what `main` was failing on. Adding the rule rather than writing a
+`.en.md` is the honest reading: an `.en.md` twin would make the English a translation of a
+Japanese original that does not exist, and translating the body into Japanese to create
+that original would leave a document nobody wrote for a reader nobody has.
+"""
+
+[[rule]]
 glob = "docs/aws-feature-requests/fsxn-s3ap-improvements.md"
 locales = ["en"]
 why = """
