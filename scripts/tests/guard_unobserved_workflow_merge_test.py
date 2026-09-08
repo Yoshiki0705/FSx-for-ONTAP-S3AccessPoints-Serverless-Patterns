@@ -53,14 +53,23 @@ def _load() -> object:
 guard = _load()
 
 
-def _repo(tmp: Path, workflows: dict[str, str]) -> Path:
-    """A git repository whose branch differs from origin/main by the given workflows."""
+def _repo(tmp: Path, workflows: dict[str, str], baseline: dict[str, str] | None = None) -> Path:
+    """A git repository whose branch differs from origin/main by the given workflows.
+
+    Args:
+        tmp: Directory to create the repository in.
+        workflows: Workflow files added on the branch.
+        baseline: Workflow files present on `origin/main` already, so the branch does not
+            touch them.
+    """
     (tmp / ".github" / "workflows").mkdir(parents=True, exist_ok=True)
     run = lambda *a: subprocess.run(a, cwd=tmp, capture_output=True, check=True)  # noqa: E731
     run("git", "init", "-q", "-b", "main")
     run("git", "config", "user.email", "t@example.com")
     run("git", "config", "user.name", "t")
     (tmp / "seed.txt").write_text("seed\n", encoding="utf-8")
+    for name, body in (baseline or {}).items():
+        (tmp / ".github" / "workflows" / name).write_text(body, encoding="utf-8")
     run("git", "add", "-A")
     run("git", "commit", "-qm", "seed")
     run("git", "branch", "-f", "origin/main", "main")  # a local ref named like the remote
@@ -105,6 +114,12 @@ _LAYOUTS: dict[str, dict[str, str]] = {
     "observed": {"validators.yml": ON_PR},
     "none": {},
 }
+
+# An unobserved workflow that the branch does NOT touch. git working -> allow; git failing ->
+# every unobserved workflow -> ask. The only layout where the two are distinguishable.
+_BASELINE_LAYOUTS: dict[str, dict[str, str]] = {
+    "untouched": {"repo-name-redirects.yml": SCHEDULED},
+}
 _CACHE: dict[str, Path] = {}
 
 
@@ -118,7 +133,7 @@ def corpus_root(kind: str) -> Path:
     """
     if kind not in _CACHE:
         base = Path(tempfile.mkdtemp(prefix=f"guard-corpus-{kind}-"))
-        _CACHE[kind] = _repo(base / kind, _LAYOUTS[kind])
+        _CACHE[kind] = _repo(base / kind, _LAYOUTS.get(kind, {}), _BASELINE_LAYOUTS.get(kind))
     return _CACHE[kind]
 
 
@@ -328,3 +343,52 @@ def test_the_selftest_agrees_with_this_corpus() -> None:
     )
     assert result.returncode == 0, result.stderr
     assert f"{len(ASK_CASES) + len(ALLOW_CASES)} case(s) as documented" in result.stdout
+
+
+# --- cwd independence, with a case that can tell the two apart ---
+
+
+def test_the_verdict_does_not_depend_on_the_process_working_directory(tmp_path: Path) -> None:
+    """A sibling repository shipped this guard's equivalent inert.
+
+    Its `git diff` inherited whatever directory the hook process happened to start in, git
+    failed there, and the empty result read as "the branch touches no workflow" -- so every
+    merge passed in silence. It had been tested from inside the repository, which is the one
+    place the bug cannot appear.
+
+    The corpus here is the `untouched` one on purpose: it holds an unobserved workflow that the
+    branch does not touch, so a working comparison answers `allow` while a broken one answers
+    `ask` (this guard reports everything when git cannot answer). On any other corpus both
+    answers coincide and the test would pass with `cwd=` deleted from the subprocess call.
+    """
+    root = corpus_root("untouched")
+    guard_copy = _guard_in(root)
+    for where in (tmp_path, Path.home(), Path("/")):
+        result = subprocess.run(
+            [sys.executable, str(guard_copy)],
+            input='{"tool_input":{"command":"gh pr merge 1 --squash"}}',
+            capture_output=True,
+            text=True,
+            cwd=where,
+            check=False,
+        )
+        assert result.returncode == 0, where
+        assert result.stdout.strip() == "", f"ran from {where}: {result.stdout}"
+
+
+def test_the_untouched_corpus_really_would_flip_if_git_were_broken() -> None:
+    """Proves the test above discriminates, rather than trusting that it does.
+
+    Points the guard at a tree with no git repository at all: the comparison fails, and the
+    verdict must become `ask` rather than staying `allow`. If this returned `allow`, the test
+    above would be vacuous.
+    """
+    root = corpus_root("untouched")
+    assert guard.decide("gh pr merge 1 --squash", root)[0] == "allow"
+
+    import tempfile as _tempfile
+
+    nogit = Path(_tempfile.mkdtemp(prefix="guard-nogit-"))
+    (nogit / ".github" / "workflows").mkdir(parents=True)
+    (nogit / ".github" / "workflows" / "w.yml").write_text(SCHEDULED, encoding="utf-8")
+    assert guard.decide("gh pr merge 1 --squash", nogit)[0] == "ask"
