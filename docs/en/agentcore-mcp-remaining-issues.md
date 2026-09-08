@@ -104,19 +104,19 @@
 | **Status** | ✅ Verified — confirmed working in ap-northeast-1 (2026-07-22) |
 | **Case** | Filed as a feature request (the number is tracked in `.private/`, not committed to a public repository) |
 | **Filed** | 2026-07 (Feature Request) |
-| **AWS Response** | 2026-07-22 |
+| **Verified here** | 2026-07-22 |
 
-**Background**: Initially deployed AgentCore MCP Gateway in us-east-1 (following workshop instructions and Web Search Tool documentation). Filed Feature Request asking about ap-northeast-1 availability.
+**Background**: The Gateway was initially deployed in us-east-1 because the workshop instructions and the Web Search Tool documentation are written for that region. We filed a feature request about ap-northeast-1 and, in parallel, deployed it there ourselves to find out.
 
-**AWS Support response (Ifra M.)**:
-- The us-east-1 constraint was driven by workshop instructions and Web Search Tool documentation, NOT an actual regional limitation for AgentCore Gateway with MCP targets
-- **Please test deploying the Gateway with Lambda targets in ap-northeast-1**
-- Will assist further based on test results
+**What we verified here (2026-07-22, ap-northeast-1)**:
+- AgentCore Gateway and its Lambda targets deployed and worked in ap-northeast-1
+- Being in us-east-1 came from the assumptions in those instructions, not from a constraint in the architecture
+- For the documented region coverage, see [Amazon Bedrock AgentCore endpoints and quotas](https://docs.aws.amazon.com/general/latest/gr/bedrock-agentcore.html)
 
 **Next actions**:
-- [ ] Run `scripts/deploy-agentcore-mcp.sh` targeting ap-northeast-1
-- [ ] Verify Gateway + Lambda targets work correctly in ap-northeast-1
-- [ ] Test Quick Desktop connection to ap-northeast-1 Gateway
+- [x] ~~Run `scripts/deploy-agentcore-mcp.sh` targeting ap-northeast-1~~
+- [x] ~~Verify Gateway + Lambda targets work correctly in ap-northeast-1~~
+- [x] ~~Test Quick Desktop connection to ap-northeast-1 Gateway~~
 - [x] ~~Reply to Support case with findings~~ -> the Tokyo-region case is resolved (confirmed through the Support API, 2026-09-02)
 
 **Impact (if successful)**:
