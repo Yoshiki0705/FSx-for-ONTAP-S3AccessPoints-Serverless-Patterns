@@ -38,7 +38,6 @@
       "617e01c71a",
       "6b9c1f849b",
       "856ee96568",
-      "b6ec75159c",
       "f171b1bc58",
       "f2b945b0a2"
     ],
@@ -73,7 +72,6 @@
       "3b8a1f649f",
       "5218c26e29",
       "55b042a5d1",
-      "60252d5cda",
       "64c88a6620",
       "7a5e541abf",
       "a691d44809",
@@ -87,7 +85,6 @@
       "e7cff7b8ed"
     ],
     "docs/aws-feature-requests/lambda-healthomics-s3ap-gaps.en.md": [
-      "0cbb3cf20d",
       "2537fedfea",
       "3de8000f4f",
       "58f92dcafe",
@@ -98,13 +95,10 @@
     "docs/aws-feature-requests/lambda-healthomics-s3ap-gaps.md": [
       "3032eb3e4c",
       "3e42ce84d2",
-      "47ceec03af",
-      "9f8edbaf51",
       "a298bf2c1f",
       "a657980928",
       "dad0ed6b53",
       "db20c800cf",
-      "efc6b85a0d",
       "fd69ea5bb9"
     ],
     "docs/aws-feature-requests/native-s3ap-notifications-evidence.en.md": [
@@ -118,14 +112,11 @@
     "docs/aws-feature-requests/snaplock-audit-log-retention.en.md": [
       "1a2022c455",
       "294966605c",
-      "6b04781165",
       "7e5ea71976",
       "8428acc19b",
       "b95b8b3d27"
     ],
     "docs/aws-feature-requests/snaplock-audit-log-retention.md": [
-      "1b9e31ac2e",
-      "4cdd2a1357",
       "8c5292a4f9",
       "d919bbff11"
     ],
@@ -434,10 +425,6 @@
     "docs/region-compatibility.md": [
       "cb208455fc"
     ],
-    "docs/repost-draft-presigned-url-compatibility.md": [
-      "3a4cb1f90d",
-      "97769f4cb6"
-    ],
     "docs/retention-expiry-deletion-design.md": [
       "ad851592bc"
     ],
@@ -479,15 +466,12 @@
       "71c0bbf4cb",
       "9a2d6dd9ba",
       "d65f01f58b",
-      "e4953bc16d",
       "f3448253d6"
     ],
     "docs/s3ap-compatibility-notes.md": [
       "0fd47eada4",
-      "0ff473f15d",
       "738faabf4d",
-      "d65f01f58b",
-      "e274e9710b"
+      "d65f01f58b"
     ],
     "docs/s3ap-object-size-limits-verification.en.md": [
       "b9dc1fe646"
@@ -502,9 +486,6 @@
     ],
     "docs/s3ap-performance-considerations.md": [
       "4c27179457"
-    ],
-    "docs/support-case-athena-outputlocation-s3ap-reply-draft.md": [
-      "d9170a3ac3"
     ],
     "docs/support-matrix-fsx-ontap-flexcache-s3ap.md": [
       "4c61132ce5",

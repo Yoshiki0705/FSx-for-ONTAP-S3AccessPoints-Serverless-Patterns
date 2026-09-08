@@ -232,7 +232,7 @@ SaaS 各社が 2025-2026 年に急速に投入している AI 機能との比較
 
 | AWS 側の制約 | 制約の内容 | 当ポータルの現状 |
 |---|---|---|
-| S3 AP の Presigned URL が公式には未サポート | AWS の互換性テーブルは現時点でも `Presign — Not supported`。[NetApp KB](https://kb.netapp.com/Advice_and_Troubleshooting/Data_Storage_Software/ONTAP_OS/What_version_of_ONTAP_support_pre-signed_URLs_for_S3_bucket) は ONTAP レイヤーでの対応を v4 が 9.11.1 以降、v2 が 9.16.1 以降と記載。ドキュメント修正を要望として起票済みだが **未公開**（FR-7） | プレビュー・ダウンロード・共有リンクは presigned URL で実装済み。公開ドキュメントが更新されるまで本番では代替手段の設計が必要（[互換性ノート](../s3ap-compatibility-notes.md)） |
+| S3 AP の Presigned URL が公式には未サポート | AWS の互換性テーブルは現時点でも `Presign — Not supported`。[NetApp KB](https://kb.netapp.com/Advice_and_Troubleshooting/Data_Storage_Software/ONTAP_OS/What_version_of_ONTAP_support_pre-signed_URLs_for_S3_bucket) は ONTAP レイヤーでの対応を v4 が 9.11.1 以降、v2 が 9.16.1 以降と記載。ドキュメント修正を要望として起票済みだが **未公開**（FR-7） | プレビュー・ダウンロード・共有リンクは presigned URL で実装済み。公開ドキュメントが更新されるまで本番では代替手段の設計が必要（[互換性ノート](../s3ap-compatibility-notes.md)） | [E-007]
 | Amplify Storage が S3 AP 非対応 | コンポーネントが標準 S3 バケットのみサポート（FR-6、Open） | アップロードは Storage Browser for S3 で実装済み |
 | S3 AP コンテンツ向けのネイティブ検索/インデックスが無い | OpenSearch はデータコピーを要する | セマンティック検索を Bedrock KB で実装。全文一致検索は無い |
 | S3 AP がオブジェクトバージョニング非対応 | — | ファイル単位のバージョン履歴は無い。ボリューム単位の point-in-time 復旧は Snapshot + FlexClone |

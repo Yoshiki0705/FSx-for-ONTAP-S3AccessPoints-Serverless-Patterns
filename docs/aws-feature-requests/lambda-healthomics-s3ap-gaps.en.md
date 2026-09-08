@@ -240,7 +240,7 @@ which the same page states.
 > mode on every call and falls back to `COPY` when omitted.
 
 The Inactive-state coupling — Lambda re-reads the source object and moves the function to Inactive if
-access is lost — is **`open` as an explanation for the lack of S3 AP support.** We cannot establish
+access is lost — is **`open` as an explanation for the lack of S3 AP support.** We cannot establish <!-- allow:unverified: stated as open in the same sentence; the link is what we could not establish -->
 that link, so this document does not present it as the cause.
 
 ### Upstream Status (re-checked 2026-09)
