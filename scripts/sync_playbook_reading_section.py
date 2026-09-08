@@ -199,10 +199,21 @@ MODULE_LABELS: dict[str, dict[str, str]] = {
     },
 }
 
-# Every pattern reads the Build module as well: the items that cannot be changed after
-# the fact are not industry-specific, which is what the Playbook's table says under
-# "どの業種でも共通して先に通すもの".
-UNIVERSAL = "playbooks/04-build"
+# Two modules every pattern here reads, whatever its workload shape.
+#
+# `data-utilization` holds the S3 Access Point constraints, and **every pattern in this
+# repository reaches its data through an S3 Access Point.** The first version of this section
+# took both links from the Playbook's per-industry row, and the row is chosen for how an
+# organisation adopts FSx for ONTAP rather than for what these patterns are -- so 27 of 47
+# READMEs never linked to it. #385 named `reaching-data-without-copies.md` and
+# `s3-access-point-constraints.md` as the constraints that surface after deploying, and both
+# live there. A section that answered that issue while omitting them was answering the letter
+# of it.
+#
+# `playbooks/04-build` holds the pre-production review, the list of choices that cannot be
+# changed afterwards, which the Playbook's table also marks as read-first for every industry.
+UNIVERSAL_FIRST = "domains/data-utilization"
+UNIVERSAL_LAST = "playbooks/04-build"
 
 # Transcribed from the Playbook's reading-order table: row label -> (first, second).
 PLAYBOOK_ROWS: dict[str, tuple[str, str]] = {
@@ -257,9 +268,11 @@ ASSIGNMENT: dict[str, str] = {
     "industry/construction-bim": "media",
     "industry/utilities-asset-inspection": "telecom",
     "industry/transportation-maintenance": "telecom",
-    "industry/real-estate-portfolio": "retail",
-    "industry/travel-document-processing": "retail",
-    "industry/nonprofit-grant-management": "retail",
+    # Documents and images with personal or contractual content: the decisions concentrate on
+    # who may read what, which is `security-governance` (6 notes), not billing.
+    "industry/real-estate-portfolio": "ai-ml",
+    "industry/travel-document-processing": "ai-ml",
+    "industry/nonprofit-grant-management": "ai-ml",
     "flexcache/automotive-cae": "semiconductor-eda",
     "flexcache/gaming-build-pipeline": "semiconductor-eda",
     "flexcache/life-sciences-research": "semiconductor-eda",
@@ -273,7 +286,9 @@ ASSIGNMENT: dict[str, str] = {
     "genai/kb-selfservice-curation": "ai-ml",
     "genai/quick-agentic-workspace": "ai-ml",
     "edge/media-ivs-vod-publishing": "media",
-    "edge/content-delivery": "retail",
+    # Delivery is a question about how end users reach the data, and `02-design` carries
+    # exactly that note ("エンドユーザーがデータに届く経路は 4 つある").
+    "edge/content-delivery": "media",
     "event-driven/fpolicy": "observability",
     "event-driven/prototype": "observability",
     "ha/lifekeeper-monitoring": "telecom",
@@ -372,17 +387,32 @@ LEAD = {
     ),
 }
 
-ROLE_FIRST = {
-    "md": "最初に読む",
-    "en.md": "read first",
-    "ko.md": "먼저 읽기",
-    "zh-CN.md": "先读",
-    "zh-TW.md": "先讀",
-    "fr.md": "à lire en premier",
-    "de.md": "zuerst lesen",
-    "es.md": "leer primero",
+ROLE_S3AP = {
+    "md": "S3 Access Point 経由の制約（全パターン共通）",
+    "en.md": "constraints of reaching data through an access point (every pattern)",
+    "ko.md": "액세스 포인트 경유의 제약 (모든 패턴 공통)",
+    "zh-CN.md": "通过访问点访问数据的约束（所有模式通用）",
+    "zh-TW.md": "透過存取點存取資料的限制（所有模式通用）",
+    "fr.md": "contraintes de l'accès via un access point (tous les patterns)",
+    "de.md": "Einschränkungen des Zugriffs über einen Access Point (alle Patterns)",
+    "es.md": "restricciones del acceso a través de un access point (todos los patrones)",
 }
-ROLE_SECOND = {
+ROLE_SPECIFIC = {
+    "md": "このパターンで判断が集中するところ",
+    "en.md": "where the decisions concentrate for this pattern",
+    "ko.md": "이 패턴에서 판단이 집중되는 곳",
+    "zh-CN.md": "该模式的决策集中之处",
+    "zh-TW.md": "該模式的決策集中之處",
+    "fr.md": "là où se concentrent les décisions pour ce pattern",
+    "de.md": "wo sich die Entscheidungen für dieses Pattern häufen",
+    "es.md": "donde se concentran las decisiones de este patrón",
+}
+# Describes when to read it, not what it says. An earlier draft read "the items that
+# cannot be changed afterwards", which `check_evidence_claims.py` correctly flagged: that
+# is an assertion about product behaviour, and asserting it here is the first half of the
+# duplication #88 exists to prevent. The claim belongs to the Playbook page behind the
+# link; this side supplies reading order.
+ROLE_SECONDARY = {
     "md": "次に読む",
     "en.md": "read next",
     "ko.md": "다음에 읽기",
@@ -392,11 +422,7 @@ ROLE_SECOND = {
     "de.md": "danach lesen",
     "es.md": "leer a continuación",
 }
-# Describes when to read it, not what it says. An earlier draft read "the items that
-# cannot be changed afterwards", which `check_evidence_claims.py` correctly flagged: that
-# is an assertion about product behaviour, and asserting it here is the first half of the
-# duplication #88 exists to prevent. The claim belongs to the Playbook page behind the
-# link; this side supplies reading order.
+
 ROLE_UNIVERSAL = {
     "md": "本番前に通す（全パターン共通）",
     "en.md": "run through before production (every pattern)",
@@ -409,22 +435,49 @@ ROLE_UNIVERSAL = {
 }
 
 
-def render(locale: str, row: str) -> str:
+def row_specific(row: str) -> str:
+    """The one module that differentiates this row from every other.
+
+    `UNIVERSAL_FIRST` occupies the first slot, so a row whose own first module is that same
+    one contributes its second instead. Verified across all 18 rows: no row collapses to a
+    duplicate or to nothing.
+
+    Args:
+        row: Key into `PLAYBOOK_ROWS`.
+
+    Returns:
+        A module path, distinct from both universal links.
+    """
+    first, second = PLAYBOOK_ROWS[row]
+    return second if first == UNIVERSAL_FIRST else first
+
+
+def render(locale: str, row: str, *, via_access_point: bool = True) -> str:
     """Build the section body for one locale.
 
     Args:
         locale: README suffix, e.g. `md` or `zh-CN.md`.
         row: Key into `PLAYBOOK_ROWS`.
+        via_access_point: Whether the pattern reaches its data through an S3 Access Point.
+            True for everything under `solutions/`. **False for the operations pillar**, which
+            AGENTS.md defines as the side that does not use S3 Access Points -- labelling its
+            first link "constraints of reaching data through an access point" stated something
+            untrue in twelve READMEs before this argument existed.
 
     Returns:
         The section text, markers included, ending in a newline.
     """
     hub_lang = HUB_LOCALE.get(locale, "en")
-    first, second = PLAYBOOK_ROWS[row]
 
     def item(module: str, role: dict[str, str]) -> str:
         label = MODULE_LABELS[module][locale]
         return f"- [{label}]({PLAYBOOK}/tree/main/docs/{hub_lang}/{module}) — {role[locale]}"
+
+    if via_access_point:
+        body = [item(UNIVERSAL_FIRST, ROLE_S3AP), item(row_specific(row), ROLE_SPECIFIC)]
+    else:
+        first, second = PLAYBOOK_ROWS[row]
+        body = [item(first, ROLE_SPECIFIC), item(second, ROLE_SECONDARY)]
 
     lines = [
         BEGIN,
@@ -432,9 +485,8 @@ def render(locale: str, row: str) -> str:
         "",
         LEAD[locale],
         "",
-        item(first, ROLE_FIRST),
-        item(second, ROLE_SECOND),
-        item(UNIVERSAL, ROLE_UNIVERSAL),
+        *body,
+        item(UNIVERSAL_LAST, ROLE_UNIVERSAL),
         END,
     ]
     return "\n".join(lines) + "\n"
@@ -565,7 +617,7 @@ def check_coverage(root: Path = ROOT) -> list[str]:
 
 def hub_urls() -> list[str]:
     """Every distinct hub URL the generator can emit, for both languages."""
-    modules = {UNIVERSAL}
+    modules = {UNIVERSAL_FIRST, UNIVERSAL_LAST}
     for first, second in PLAYBOOK_ROWS.values():
         modules.update((first, second))
     return [f"{PLAYBOOK}/tree/main/docs/{lang}/{m}" for lang in ("ja", "en") for m in sorted(modules)]
@@ -657,7 +709,7 @@ def main() -> int:
             continue
         current = path.read_text(encoding="utf-8")
         try:
-            updated = apply(current, render(locale, row))
+            updated = apply(current, render(locale, row, via_access_point=row != OPERATIONS_ROW))
         except MarkerError as exc:
             damaged.append(f"{path.relative_to(ROOT).as_posix()}: {exc}")
             continue

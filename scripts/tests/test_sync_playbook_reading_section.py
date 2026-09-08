@@ -29,10 +29,11 @@ from sync_playbook_reading_section import (  # noqa: E402
     OPERATIONS_LOCALES,
     OPERATIONS_ROW,
     PLAYBOOK_ROWS,
-    ROLE_FIRST,
-    ROLE_SECOND,
+    ROLE_S3AP,
+    ROLE_SPECIFIC,
     ROLE_UNIVERSAL,
-    UNIVERSAL,
+    UNIVERSAL_FIRST,
+    UNIVERSAL_LAST,
     MarkerError,
     apply,
     check_coverage,
@@ -40,13 +41,14 @@ from sync_playbook_reading_section import (  # noqa: E402
     operations_dirs,
     readme_for,
     render,
+    row_specific,
 )
 
 NAMED_BY_PLAYBOOK = frozenset(ASSIGNMENT) - INFERRED
 
 
 def modules_in_use() -> set[str]:
-    used = {UNIVERSAL}
+    used = {UNIVERSAL_FIRST, UNIVERSAL_LAST}
     for first, second in PLAYBOOK_ROWS.values():
         used.update((first, second))
     return used
@@ -67,8 +69,8 @@ def test_every_module_in_use_has_a_label_in_every_locale(module: str) -> None:
     [
         ("HEADING", HEADING),
         ("LEAD", LEAD),
-        ("ROLE_FIRST", ROLE_FIRST),
-        ("ROLE_SECOND", ROLE_SECOND),
+        ("ROLE_S3AP", ROLE_S3AP),
+        ("ROLE_SPECIFIC", ROLE_SPECIFIC),
         ("ROLE_UNIVERSAL", ROLE_UNIVERSAL),
     ],
 )
@@ -159,10 +161,29 @@ def test_links_point_at_module_hubs_not_at_notes() -> None:
                     assert not target.endswith(".md"), target
 
 
-def test_the_universal_module_is_the_third_link_everywhere() -> None:
+def test_both_universal_modules_appear_in_every_row() -> None:
+    """The defect this replaced: 27 of 47 READMEs never linked to the S3 AP constraints.
+
+    Both links from the Playbook's per-industry row meant a pattern whose row happens not to
+    include `data-utilization` never reached the two notes #385 actually named.
+    """
     for row in PLAYBOOK_ROWS:
-        assert render("md", row).splitlines()[-2].endswith("（全パターン共通）")
-        assert UNIVERSAL in render("md", row)
+        body = render("md", row)
+        assert f"/{UNIVERSAL_FIRST}" in body, row
+        assert f"/{UNIVERSAL_LAST}" in body, row
+        assert body.splitlines()[-2].endswith("（全パターン共通）")
+
+
+def test_the_row_specific_link_is_never_one_of_the_universals() -> None:
+    """Otherwise a row would spend two of its three links on the same page."""
+    for row in PLAYBOOK_ROWS:
+        assert row_specific(row) not in (UNIVERSAL_FIRST, UNIVERSAL_LAST), row
+
+
+def test_every_solution_reaches_the_s3_access_point_constraints() -> None:
+    """Every pattern here reaches its data through an S3 Access Point, so every one needs it."""
+    for solution, row in ASSIGNMENT.items():
+        assert f"/{UNIVERSAL_FIRST}" in render("md", row), solution
 
 
 def test_no_constraint_is_restated_in_the_section() -> None:
@@ -352,3 +373,46 @@ def test_every_operations_readme_exists_for_both_locales() -> None:
 
 def test_the_real_operations_tree_is_the_six_ops_patterns() -> None:
     assert len(operations_dirs()) == 6
+
+
+# --- the operations pillar does not go through an access point ---
+
+
+def test_the_operations_pillar_is_not_told_about_access_point_constraints() -> None:
+    """AGENTS.md defines operations/ as the pillar that does not use S3 Access Points.
+
+    The first draft of the universal link labelled `data-utilization` "constraints of reaching
+    data through an access point" for every README, which stated something untrue in the twelve
+    operations files. A link is not harmless when its label makes a claim.
+    """
+    body = render("md", OPERATIONS_ROW, via_access_point=False)
+    assert "S3 Access Point" not in body
+    assert f"/{UNIVERSAL_FIRST}" not in body
+    assert f"/{UNIVERSAL_LAST}" in body
+
+
+def test_the_operations_section_still_carries_three_links() -> None:
+    assert render("md", OPERATIONS_ROW, via_access_point=False).count("\n- [") == 3
+
+
+def test_the_operations_section_uses_its_rows_own_two_modules() -> None:
+    first, second = PLAYBOOK_ROWS[OPERATIONS_ROW]
+    body = render("md", OPERATIONS_ROW, via_access_point=False)
+    assert f"/{first}" in body
+    assert f"/{second}" in body
+
+
+def test_solutions_still_get_the_access_point_link() -> None:
+    for row in PLAYBOOK_ROWS:
+        if row == OPERATIONS_ROW:
+            continue
+        assert f"/{UNIVERSAL_FIRST}" in render("md", row), row
+
+
+def test_the_committed_operations_readmes_make_no_access_point_claim() -> None:
+    """Checked against the files, not only against render()."""
+    for name in operations_dirs():
+        for suffix in ("README.md", "README.en.md"):
+            text = (Path("operations") / name / suffix).read_text(encoding="utf-8")
+            section = text.split(BEGIN)[-1].split(END)[0]
+            assert "Access Point" not in section, f"{name}/{suffix}"

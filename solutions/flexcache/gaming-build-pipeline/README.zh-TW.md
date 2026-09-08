@@ -332,7 +332,7 @@ sam deploy \
 
 部署後才會遇到的限制如何轉化為設計決策，記錄在 [FSx for ONTAP Adoption Playbook](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook)。同一內容放在兩處時，停止更新的那份會比已修正的那份留存更久。
 
-- [效能](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/tree/main/docs/en/domains/performance) — 先讀
-- [資料活用](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/tree/main/docs/en/domains/data-utilization) — 接著讀
+- [資料活用](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/tree/main/docs/en/domains/data-utilization) — 透過存取點存取資料的限制（所有模式通用）
+- [效能](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/tree/main/docs/en/domains/performance) — 該模式的決策集中之處
 - [建置](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/tree/main/docs/en/playbooks/04-build) — 上線前通讀（所有模式通用）
 <!-- playbook-reading:end -->

@@ -332,7 +332,7 @@ sam deploy \
 
 La façon de traduire en décisions de conception les contraintes qui apparaissent après le déploiement est documentée dans le [FSx for ONTAP Adoption Playbook](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook). Un même contenu présent à deux endroits laisse survivre la copie qui a cessé d'être mise à jour.
 
-- [Performance](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/tree/main/docs/en/domains/performance) — à lire en premier
-- [Exploitation des données](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/tree/main/docs/en/domains/data-utilization) — à lire ensuite
+- [Exploitation des données](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/tree/main/docs/en/domains/data-utilization) — contraintes de l'accès via un access point (tous les patterns)
+- [Performance](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/tree/main/docs/en/domains/performance) — là où se concentrent les décisions pour ce pattern
 - [Construire](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/tree/main/docs/en/playbooks/04-build) — à parcourir avant la production (tous les patterns)
 <!-- playbook-reading:end -->
