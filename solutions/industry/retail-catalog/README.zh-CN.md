@@ -363,7 +363,7 @@ python3 -m pytest tests/ -v
 
 部署后才会遇到的约束如何转化为设计决策，记录在 [FSx for ONTAP Adoption Playbook](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook)。同一内容放在两处时，停止更新的那份会比已修正的那份存留更久。
 
-- [数据利用](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/tree/main/docs/en/domains/data-utilization) — 先读
-- [成本](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/tree/main/docs/en/domains/cost) — 接着读
+- [数据利用](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/tree/main/docs/en/domains/data-utilization) — 通过访问点访问数据的约束（所有模式通用）
+- [成本](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/tree/main/docs/en/domains/cost) — 该模式的决策集中之处
 - [构建](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/tree/main/docs/en/playbooks/04-build) — 上生产前通读（所有模式通用）
 <!-- playbook-reading:end -->

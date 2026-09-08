@@ -317,7 +317,7 @@ FlexCache 동적 프로비저닝 + 렌더링 작업의 출력 예:
 
 배포 후에 부딪히는 제약을 설계 판단으로 어떻게 옮기는지는 [FSx for ONTAP Adoption Playbook](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook)에 정리되어 있습니다. 같은 내용을 두 곳에 두면 갱신이 멈춘 쪽이 더 오래 남기 때문입니다.
 
-- [설계](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/tree/main/docs/en/playbooks/02-design) — 먼저 읽기
-- [성능](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/tree/main/docs/en/domains/performance) — 다음에 읽기
+- [데이터 활용](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/tree/main/docs/en/domains/data-utilization) — 액세스 포인트 경유의 제약 (모든 패턴 공통)
+- [설계](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/tree/main/docs/en/playbooks/02-design) — 이 패턴에서 판단이 집중되는 곳
 - [구축](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/tree/main/docs/en/playbooks/04-build) — 프로덕션 전에 확인 (모든 패턴 공통)
 <!-- playbook-reading:end -->
