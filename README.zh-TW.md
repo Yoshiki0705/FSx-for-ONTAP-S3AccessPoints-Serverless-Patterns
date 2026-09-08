@@ -164,7 +164,7 @@ graph TB
 | 無法將 Athena 結果寫入 S3AP | 輸出到標準 S3 儲存桶 |
 | 僅支援 SSE-FSX | 使用磁碟區層級 KMS 加密 |
 
-詳情：[S3AP Compatibility Notes](docs/s3ap-compatibility-notes.en.md) | [Compatibility Matrix（AWS 確認）](https://github.com/Yoshiki0705/FSx-for-ONTAP-Lakehouse-Integrations/blob/main/docs/en/compatibility-matrix.md)
+詳情：[S3AP Compatibility Notes](docs/s3ap-compatibility-notes.en.md) | [Compatibility Matrix](https://github.com/Yoshiki0705/FSx-for-ONTAP-Lakehouse-Integrations/blob/main/docs/en/compatibility-matrix.md)
 
 ---
 

@@ -17,7 +17,7 @@ FSx for ONTAP S3 Access Points provide an S3-facing access boundary for file dat
 | 低レイテンシ metadata 操作 (stat, readdir) | △ (tens of ms) | ✅ (sub-ms) |
 | 既存アプリケーション互換性 | — | ✅ |
 | AWS サービス統合 (Athena, Bedrock, Textract) | ✅ 読み取り側。**Athena の `OutputLocation` には指定できません**（下記） | — | [E-006]
-| イベント駆動ファイル処理 | △ (EventBridge Scheduler ポーリング。**FPolicy は S3 AP 経由の操作を検知しない** — 実測 2026-08-26 / ONTAP 9.18.1P3D1、現行の全リリースが該当と AWS 確認。[監査とイベント可視性](#監査とイベント可視性--s3-アクセス経路)) | ✅ (FPolicy + NFS/SMB) |
+| イベント駆動ファイル処理 | △ (EventBridge Scheduler ポーリング。**FPolicy は S3 AP 経由の操作を検知しない** — 実測 2026-08-26 / ONTAP 9.18.1P3D1。現行の全リリースが該当するかは `open`。[監査とイベント可視性](#監査とイベント可視性--s3-アクセス経路)) | ✅ (FPolicy + NFS/SMB) |
 
 > **注**: S3 AP は NFS/SMB の置き換えではなく、AWS サービス統合のための補完的アクセスパスです。同じボリュームに NFS/SMB と S3 AP の両方からアクセスできます。
 

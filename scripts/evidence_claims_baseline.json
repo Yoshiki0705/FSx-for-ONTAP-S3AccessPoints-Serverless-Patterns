@@ -36,8 +36,6 @@
     ],
     "docs/agent/pitfalls-snaplock.md": [
       "617e01c71a",
-      "6b9c1f849b",
-      "856ee96568",
       "f171b1bc58",
       "f2b945b0a2"
     ],
@@ -330,7 +328,6 @@
       "41a37f7922",
       "54781a3fac",
       "5a2b1cfd0d",
-      "6d3dcdb60d",
       "db3145aae5"
     ],
     "docs/ja/nfs-s3ap-write-conflict.md": [
