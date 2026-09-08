@@ -1,0 +1,141 @@
+# Amazon FSx for NetApp ONTAP — S3 Access Point Serverless Patterns
+
+> Deployable reference implementations for reaching data on Amazon FSx for NetApp ONTAP through
+> S3 Access Points, plus a second pillar of operations-optimisation patterns that do not use them.
+> 53 patterns, each independently deployable from one CloudFormation/SAM template or one CDK app.
+> This repository holds **implementations**. Specifications, limits and the reasoning behind design
+> decisions live in a sibling repository; see "Division of labour" below before answering a question
+> about how FSx for ONTAP behaves.
+
+## Division of labour — read this before citing anything here as a specification
+
+This repository is one of several, and the split is deliberate: the same content in two places means
+the copy that stops being updated outlives the one that was corrected.
+
+- **[FSx-for-ONTAP-Adoption-Playbook](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook)**
+  holds specifications, verified limits, and the reasoning that turns a constraint into a design
+  decision. It carries an `evidence` tier on every knowledge file (`verified`, `documented`,
+  `field-observation`, `hypothesis`) and an industry-by-industry reading order. **A question of the
+  form "can FSx for ONTAP do X" or "what is the limit on Y" is answered there, not here.**
+- **This repository** holds what runs: templates, Lambda handlers, state machines, tests, demo
+  guides. A claim here about product behaviour is either cited from the Playbook or recorded in
+  `docs/agent/evidence-ledger.json` with what was measured and when.
+- [S3-Burst-on-ONTAP-Files](https://github.com/Yoshiki0705/S3-Burst-on-ONTAP-Files) is the source of
+  the throughput measurements. Performance numbers cited anywhere in this account trace back there.
+- [FSx-for-ONTAP-Observability-integrations](https://github.com/Yoshiki0705/FSx-for-ONTAP-Observability-integrations)
+  (audit log forwarding), [FSx-for-ONTAP-Lakehouse-Integrations](https://github.com/Yoshiki0705/FSx-for-ONTAP-Lakehouse-Integrations)
+  (Athena, Glue, Spark), [FSx-for-ONTAP-Cyber-Resilience-Patterns](https://github.com/Yoshiki0705/FSx-for-ONTAP-Cyber-Resilience-Patterns)
+  (ARP, File Security, FPolicy), and
+  [FSx-for-ONTAP-Agentic-Access-Aware-RAG](https://github.com/Yoshiki0705/FSx-for-ONTAP-Agentic-Access-Aware-RAG)
+  (access-aware RAG on CDK) cover the remaining adjacent areas.
+
+## How to read this repository
+
+**`DemoMode` decides whether a result says anything about FSx for ONTAP.** Every pattern takes a
+`DemoMode` parameter. With `DemoMode=true` it runs against a regular Amazon S3 bucket and no FSx for
+ONTAP is involved — useful for confirming that a workflow executes, and **not** evidence about
+throughput, permission behaviour, or any access-point constraint. Treat a figure or a behaviour as
+saying something about FSx for ONTAP only when the surrounding text states the file system, the
+ONTAP version and the Region.
+
+The portal's verification records go further and label each feature `Live E2E`, live-read,
+tests-only, or `DemoMode only`. Prefer those labels over inference from the presence of a test.
+
+Naming convention throughout: "Amazon FSx for NetApp ONTAP" on first mention, "FSx for ONTAP"
+afterwards. An S3 Access Point on it is written "FSx for ONTAP S3 AP".
+
+Every pattern README ends with a section naming the Playbook modules to read before going to
+production. Those links are generated, not hand-written, so they are consistent across all
+8 languages and cannot drift per file.
+
+## Entry points
+
+- [Pattern selection guide](docs/pattern-selection-guide.md) ([English](docs/pattern-selection-guide.en.md)):
+  **Start here for "which pattern do I need".** Organised by the question a reader arrives with —
+  business problem, how the data is placed, how it reaches its users, how it is triggered, operations
+  — and it covers all 53 patterns. A check fails the build when a pattern is absent from it.
+- [Documentation index](docs/index.md): Intent-to-destination routing, the sibling projects, and
+  every cross-cutting document grouped by what a reader came to do.
+- [README](README.md): Repository front door. Also in en, ko, zh-CN, zh-TW, fr, de, es.
+- [AGENTS.md](AGENTS.md): Conventions, prohibitions and verification steps for coding agents.
+  Includes the irreversible-operation list that requires human approval before execution.
+- [docs/agent/](docs/agent/): Failure modes actually hit, one file per work area — CloudFormation and
+  SAM, S3 AP and the ONTAP REST API, FlexCache and SnapMirror, volume lifecycle, Active Directory and
+  SMB, SnapLock and WORM, ARP and EMS, the portal's CDK and i18n, browser automation.
+- [Demo Mode guide](docs/demo-mode-guide.md): Running without FSx for ONTAP, and what that does not prove.
+
+## The two pillars
+
+**`solutions/` — data processing through an S3 Access Point.** 47 patterns. A trigger
+(EventBridge Scheduler polling, or an FPolicy-driven EventBridge rule), a Step Functions state
+machine, and Lambda handlers on Python 3.13 that read and write through
+[`shared/s3ap_helper.py`](shared/s3ap_helper.py). AI services where the use case needs them: Amazon
+Bedrock, Amazon Textract, Amazon Comprehend, Amazon Rekognition, Amazon SageMaker AI. Analytics
+through Amazon Athena and the AWS Glue Data Catalog.
+
+- `solutions/industry/` — 28 industry use cases (UC1-UC28): document processing, image and video
+  analysis, large scientific and engineering datasets.
+- `solutions/flexcache/` — 10 patterns about where the data sits rather than what processes it:
+  FlexCache fan-out same- and cross-Region, SnapMirror DR, FlexClone dev/test refresh, RAG over
+  enterprise files.
+- `solutions/amplify-portal/` — a browser file portal on Amplify Gen2, so users reach NAS files
+  without a VPN. 8-language UI, AI classification and search, snapshot and resource panels.
+- `solutions/genai/`, `solutions/edge/`, `solutions/event-driven/`, `solutions/sap/`,
+  `solutions/ha/` — agentic workspaces and self-service knowledge bases; CDN and VOD delivery;
+  real-time FPolicy detection; ERP-adjacent file workflows; HA monitoring.
+
+**`operations/` — optimising a file system that already runs.** 6 patterns (OPS1-OPS6):
+capacity rightsizing, storage efficiency, FabricPool tiering, snapshot lifecycle, cost optimisation,
+QoS monitoring. **These do not use S3 Access Points**, so a constraint about access points does not
+apply to them.
+
+## Design decisions worth knowing before reading the code
+
+- **All access-point I/O goes through [`shared/s3ap_helper.py`](shared/s3ap_helper.py).** It accepts
+  both an access point alias and a plain bucket name, which is what makes `DemoMode` possible. Code
+  here does not call `boto3.client("s3")` directly.
+- **A single Lambda cannot reach both the ONTAP management LIF and an Internet-origin access point.**
+  The management LIF is private, so ONTAP REST calls run in the VPC; an Internet-origin access point
+  is not reachable through an S3 gateway endpoint. Patterns that need both split the functions.
+- **`NetworkOrigin` cannot be changed after creation.** See the guidance table at the end of the
+  pattern selection guide.
+- **Confidence-based human review** is a shared module, not per-pattern logic:
+  [`shared/human_review.py`](shared/human_review.py) returns `AUTO_APPROVE`, `HUMAN_REVIEW` or
+  `REJECT`, and outputs carry a classification label from
+  [`shared/data_classification.py`](shared/data_classification.py).
+
+## Measured records, as opposed to design intent
+
+These state what was run, in which environment, and what was not covered.
+
+- [Portal verification results](solutions/amplify-portal/docs/verification-results.en.md)
+  ([Japanese](solutions/amplify-portal/docs/verification-results.md)): per feature, whether it was
+  driven end to end against a real file system, read-only, tested only, or confirmed in `DemoMode`.
+- [FlexGroup capacity rebalance measurements](solutions/amplify-portal/docs/flexgroup-rebalance-verification.en.md):
+  a rebalance run end to end, including two runtime bounds absent from the API reference and states
+  ONTAP returns without documenting them.
+- [Identity and visibility measurements](docs/en/portal-identity-verification-results.md): which
+  files a signed-in user actually reaches, from controlled experiments varying only the identity
+  bound to the access point, plus what a presigned URL executes as.
+- [S3 AP authorization model](docs/s3ap-authorization-model.md)
+  ([English](docs/s3ap-authorization-model.en.md)): the two independent authorization layers, citing
+  the Playbook for the measurements rather than restating them.
+- [Object size limits](docs/s3ap-object-size-limits-verification.md): the size at which requests
+  actually fail, measured, against the documented figure.
+- [SnapLock audit log console guardrails](docs/ja/snaplock-audit-log-console-guardrails.md)
+  ([English](docs/en/snaplock-audit-log-console-guardrails.md)): what the console warning covers and
+  does not, and why a retention field that looks like the audit log's is not.
+
+## Feature requests submitted to AWS
+
+`docs/aws-feature-requests/` records gaps that are currently unresolved, each with what was
+attempted and the workaround in use. Useful for not designing around a limitation that is being
+worked on, and for not assuming one has been fixed.
+
+## Languages
+
+Pattern READMEs exist in 8 languages (ja, en, ko, zh-CN, zh-TW, fr, de, es); Japanese is the
+reference. Cross-cutting documents under `docs/` are Japanese and English, with `docs/ja/` and
+`docs/en/` as a pair. `docs/i18n-manifest.toml` declares which document must exist in which
+language, and a check compares the tree against it — an absent translation is a reported gap rather
+than a silently smaller set.
