@@ -37,6 +37,7 @@ import json
 import os
 import subprocess
 import sys
+import tempfile
 from pathlib import Path
 from types import ModuleType
 
@@ -498,6 +499,96 @@ def test_hook_invokes_the_tracked_copy_not_home() -> None:
     assert "$HOME" not in joined and "~/.kiro" not in joined, "the hook must not depend on a home-directory copy"
     triggers = [h.get("trigger") for h in config.get("hooks", [])]
     assert "PreToolUse" in triggers, "the guard has to run BEFORE the tool, not after"
+
+
+def _pretooluse_hook_commands() -> list[tuple[str, str]]:
+    """Every `PreToolUse` command in `.kiro/hooks/`, as (hook file name, command).
+
+    Returns:
+        One entry per command action. Empty when `.kiro/` is absent, which is the
+        case in a fresh clone and in CI.
+    """
+    directory = ROOT / ".kiro" / "hooks"
+    if not directory.is_dir():
+        return []
+    found: list[tuple[str, str]] = []
+    for path in sorted(directory.glob("*.json")):
+        try:
+            config = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            continue
+        for entry in config.get("hooks", []):
+            action = entry.get("action", {})
+            if entry.get("trigger") == "PreToolUse" and action.get("type") == "command":
+                found.append((path.name, action.get("command", "")))
+    return found
+
+
+def test_no_pretooluse_hook_blocks_when_it_cannot_locate_its_script() -> None:
+    """A guard that cannot find itself must not answer "blocked".
+
+    `python3 <missing path>` exits 2, and 2 is how a `PreToolUse` hook says *deny*.
+    Every hook here resolved its script through `git rev-parse --show-toplevel`
+    with `|| echo .` behind it, so from a working directory outside any repository
+    the path became `./scripts/...`, python3 exited 2, and **every** intercepted
+    command was denied -- `echo hi` included. Measured: exit 2 on a benign command
+    run from `/tmp`.
+
+    The sibling repository shipped the mirror image of this: its hook process
+    started outside the repository, `git` failed, and the empty result was read as
+    "the branch touches nothing", so every merge passed silently. Same broken
+    lookup, opposite verdict. Neither is a decision about the command.
+    """
+    commands = _pretooluse_hook_commands()
+    if not commands:
+        pytest.skip(".kiro/ is not present in this checkout (gitignored by design)")
+    payload = json.dumps({"tool_name": "execute_bash", "tool_input": {"command": "echo hi"}})
+    outside = Path(tempfile.gettempdir()).resolve()
+    assert not (outside / ".git").exists(), "the temp directory must not itself be a repository"
+    denied: list[str] = []
+    for name, command in commands:
+        proc = subprocess.run(
+            ["sh", "-c", command],
+            cwd=outside,
+            input=payload,
+            capture_output=True,
+            text=True,
+            timeout=30,
+            check=False,
+        )
+        if proc.returncode == 2:
+            denied.append(f"{name} (exit 2 on a benign command from {outside})")
+    assert not denied, "these hooks deny every command from outside a repository: " + ", ".join(denied)
+
+
+def test_the_wiring_still_carries_a_real_denial_through() -> None:
+    """Not blocking on a missing script must not become not blocking at all.
+
+    The fix adds `[ -f "$G" ] || exit 0` ahead of the interpreter, and an early
+    `exit 0` is one edit away from swallowing the guard's own verdict. A stub that
+    exits 2 stands in for the guard, so this asserts the shell propagates a denial
+    without needing a command whose text would trip the live guard.
+    """
+    hook = ROOT / ".kiro" / "hooks" / "irreversible-ops-guard.json"
+    if not hook.is_file():
+        pytest.skip(".kiro/ is not present in this checkout (gitignored by design)")
+    command = json.loads(hook.read_text(encoding="utf-8"))["hooks"][0]["action"]["command"]
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        subprocess.run(["git", "init", "-q", "."], cwd=root, timeout=30, check=True)
+        stub = root / "scripts" / "guard_irreversible_ops.py"
+        stub.parent.mkdir(parents=True)
+        stub.write_text("import sys\nsys.exit(2)\n", encoding="utf-8")
+        proc = subprocess.run(
+            ["sh", "-c", command],
+            cwd=root,
+            input="{}",
+            capture_output=True,
+            text=True,
+            timeout=30,
+            check=False,
+        )
+    assert proc.returncode == 2, f"a denial from the guard did not reach the tool call (exit {proc.returncode})"
 
 
 @pytest.mark.skipif(not GLOBAL_GUARD.is_file(), reason="no global guard on this machine")
