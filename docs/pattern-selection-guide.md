@@ -4,25 +4,139 @@
 
 ## 概要
 
-28 ユースケース + 6 FlexCache/FlexClone パターンから、導入先の状況に最適なパターンを選択するためのガイドです。Partner/SI が初回の導入検討会話で使用することを想定しています。
+このリポジトリのすべてのパターンから、導入先の状況に最適なものを選ぶためのガイドです。Partner/SI が初回の導入検討会話で使用することを想定しています。
 
-## 導入先の状況別の推奨パターン
+**先に 1 つ断っておきます。このガイドは「どれを deploy するか」に答えます。「その構成でよいか」には答えません。** 設計判断の根拠は [FSx for ONTAP Adoption Playbook](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook) 側にあり、業種から入る場合は [業種別リソースマップ](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/blob/main/docs/ja/reference/industry-resource-map.md#業種から入ったときの読む順序) が「最初に読むモジュール」を示します。同じ内容を 2 か所に置かない分担です。
 
-| 導入先の状況 | 推奨パターン |
+### 読む順序
+
+| # | やること | 場所 |
+|---|---|---|
+| 1 | **どのパターンか決める** | このページ |
+| 2 | 動かす | 各パターンの `README` と `docs/demo-guide.md` |
+| 3 | 本番に出す前に読む | 各 README 末尾の「本番に出す前に読むもの」（Playbook のモジュールへ） |
+| 4 | 運用する | [operations/](#運用最適化-ops16未使用容量とコストを下げる) の OPS1-6 |
+
+---
+
+## 1. 業務課題から選ぶ（業種別 UC1-UC28）
+
+すべて S3 Access Point 経由の Lambda パイプラインで、`DemoMode=true` なら FSx for ONTAP なしで動きます。
+
+### 文書を読ませたい（OCR・抽出・分類）
+
+| 課題 | パターン |
 |---|---|
-| FSx for ONTAP を既にファイル共有で利用中 | 業界別 UC + DemoMode=false |
-| FSx for ONTAP 未導入、ワークフロー評価したい | 任意の UC + DemoMode=true |
-| 文書処理中心（PDF、契約書、レポート） | UC20 / UC23 / UC24 / UC26 / UC27 / UC28 |
-| 画像・点検ワークロード中心 | UC19 / UC21 / UC22 / UC25 |
-| ログ / 時系列 / 分析ワークロード | UC18 / UC25 (SCADA) |
-| 安全重要領域で Human Review が必要 | UC22 / UC25 + human_review モジュール |
-| PII / 個人情報保護が必要 | UC27 / UC26 + data_classification モジュール |
-| ESG / サステナビリティ報告 | UC23 + framework mapping |
-| 既存 NFS/SMB ワークロードの横展開 | FC1-FC6（FlexCache/FlexClone パターン） |
-| コンテンツを CDN/エッジ配信したい（CloudFront / サードパーティ CDN） | solutions/edge/content-delivery（[CDN比較](cdn-comparison.md) 参照） |
-| 設備メンテナンス × マルチモーダル AI（画像 + 文書 RAG） | UC22 + Rekognition + Bedrock multimodal（[7-Eleven 事例参照](investigations/dais2026-agent-bricks-industry-cases.md#1-7-eleven-メンテナンス技術者向け-genai-アシスタント)） |
-| 製薬・ライフサイエンス × マルチエージェント権限保持 RAG | UC7 + Step Functions multi-agent routing（[AstraZeneca 事例参照](investigations/dais2026-agent-bricks-industry-cases.md#2-astrazeneca-マルチエージェントシステム10x-スケール)） |
-| 新規オブジェクトネイティブワークロード（NAS 不要） | 標準 S3 / DynamoDB サーバーレスネイティブ構成を推奨 |
+| 契約書・請求書の自動処理 | [UC2 financial-idp](../solutions/industry/financial-idp/) |
+| ファイルサーバーの監査・データガバナンス | [UC1 legal-compliance](../solutions/industry/legal-compliance/) |
+| 論文 PDF の分類・引用ネットワーク | [UC13 education-research](../solutions/industry/education-research/) |
+| 配送伝票 OCR・倉庫在庫画像 | [UC12 logistics-ocr](../solutions/industry/logistics-ocr/) |
+| 公文書アーカイブ・FOIA 対応 | [UC16 government-archives](../solutions/industry/government-archives/) |
+| 予約文書処理・施設点検 | [UC20 travel-document-processing](../solutions/industry/travel-document-processing/) |
+| ESG メトリクス抽出・フレームワークマッピング | [UC23 sustainability-esg-reporting](../solutions/industry/sustainability-esg-reporting/) |
+| 助成金申請の分類・成果マッチング | [UC24 nonprofit-grant-management](../solutions/industry/nonprofit-grant-management/) |
+| 物件画像分析・契約書抽出 | [UC26 real-estate-portfolio](../solutions/industry/real-estate-portfolio/) |
+| 履歴書スクリーニング（PII 厳格モード） | [UC27 hr-document-screening](../solutions/industry/hr-document-screening/) |
+| SDS 危険分類抽出・GHS バリデーション | [UC28 chemical-sds-management](../solutions/industry/chemical-sds-management/) |
+
+### 画像・映像を処理したい
+
+| 課題 | パターン |
+|---|---|
+| DICOM 画像の分類・匿名化 | [UC5 healthcare-dicom](../solutions/industry/healthcare-dicom/) |
+| VFX レンダリング品質チェック | [UC4 media-vfx](../solutions/industry/media-vfx/) |
+| 映像・LiDAR 前処理・アノテーション | [UC9 autonomous-driving](../solutions/industry/autonomous-driving/) |
+| BIM モデル管理・図面 OCR | [UC10 construction-bim](../solutions/industry/construction-bim/) |
+| 商品画像の自動タグ付け | [UC11 retail-catalog](../solutions/industry/retail-catalog/) |
+| 衛星画像解析 | [UC15 defense-satellite](../solutions/industry/defense-satellite/) |
+| クリエイティブアセットのカタログ化・ブランド適合 | [UC19 adtech-creative-management](../solutions/industry/adtech-creative-management/) |
+| 農地航空画像・トレーサビリティ | [UC21 agri-food-traceability](../solutions/industry/agri-food-traceability/) |
+| 設備点検画像・保守レポート | [UC22 transportation-maintenance](../solutions/industry/transportation-maintenance/) |
+| 事故写真の損害評価・見積書 OCR | [UC14 insurance-claims](../solutions/industry/insurance-claims/) |
+| ドローン画像点検・SCADA 異常検知 | [UC25 utilities-asset-inspection](../solutions/industry/utilities-asset-inspection/) |
+
+### 大容量の科学・工学データを扱いたい
+
+| 課題 | パターン |
+|---|---|
+| 設計ファイルのバリデーション・メタデータ抽出 | [UC6 semiconductor-eda](../solutions/industry/semiconductor-eda/) |
+| 品質チェック・バリアントコール集計 | [UC7 genomics-pipeline](../solutions/industry/genomics-pipeline/) |
+| 地震探査データ処理・坑井ログ異常検知 | [UC8 energy-seismic](../solutions/industry/energy-seismic/) |
+| IoT センサーログ・品質検査画像 | [UC3 manufacturing-analytics](../solutions/industry/manufacturing-analytics/) |
+| 地理空間データ解析・都市計画 | [UC17 smart-city-geospatial](../solutions/industry/smart-city-geospatial/) |
+| CDR/ネットワークログ異常検知 | [UC18 telecom-network-analytics](../solutions/industry/telecom-network-analytics/) |
+
+---
+
+## 2. データの置き方から選ぶ（FlexCache / FlexClone / SnapMirror）
+
+**既存の NFS/SMB ワークロードを動かさずに、別の場所から読ませたいときに使います。** UC 群との違いは、パイプラインではなくボリュームの配置を扱う点です。
+
+| 課題 | パターン |
+|---|---|
+| 同一リージョンで S3 AP と NFS/SMB を併用 | [same-region-s3ap](../solutions/flexcache/same-region-s3ap/) |
+| 別リージョンから低遅延で読ませる | [cross-region-s3ap](../solutions/flexcache/cross-region-s3ap/) |
+| DR 用にレプリカを置く（SnapMirror） | [snapmirror-cross-region-dr](../solutions/flexcache/snapmirror-cross-region-dr/) |
+| 複数拠点から同じデータを読む（AnyCast / DR） | [anycast-dr](../solutions/flexcache/anycast-dr/) |
+| CAE 解析を並列で回す | [automotive-cae](../solutions/flexcache/automotive-cae/) |
+| レンダー / EDA ワークフローを動的にスケール | [dynamic-render-workflow](../solutions/flexcache/dynamic-render-workflow/) |
+| ゲームアセット共有とビルドパイプライン | [gaming-build-pipeline](../solutions/flexcache/gaming-build-pipeline/) |
+| 研究データを複数チームで分析 | [life-sciences-research](../solutions/flexcache/life-sciences-research/) |
+| Dev/Test データを FlexClone で高速リフレッシュ | [devops-cicd](../solutions/flexcache/devops-cicd/) |
+| 社内ファイルを RAG の入力にする | [rag-enterprise-files](../solutions/flexcache/rag-enterprise-files/) |
+
+---
+
+## 3. 利用者への出し方から選ぶ
+
+| 課題 | パターン |
+|---|---|
+| NAS のファイルをブラウザから使わせたい（VPN 不要） | [ファイルポータル (Amplify Gen2)](../solutions/amplify-portal/) |
+| コンテンツを CDN/エッジ配信したい | [content-delivery](../solutions/edge/content-delivery/)（[CDN 比較](cdn-comparison.md)） |
+| ライブ配信を VOD として公開したい | [media-ivs-vod-publishing](../solutions/edge/media-ivs-vod-publishing/) |
+| 社内ナレッジを利用者自身に育てさせたい | [kb-selfservice-curation](../solutions/genai/kb-selfservice-curation/) |
+| エージェント型のワークスペースから使わせたい | [quick-agentic-workspace](../solutions/genai/quick-agentic-workspace/) |
+| ERP に隣接するファイルワークフロー | [sap/erp-adjacent](../solutions/sap/erp-adjacent/) |
+
+---
+
+## 4. 起動のしかたから選ぶ（ポーリング / イベント駆動）
+
+| 課題 | パターン |
+|---|---|
+| ファイル操作をリアルタイムに検知したい | [event-driven/fpolicy](../solutions/event-driven/fpolicy/)（[FPolicy セットアップ](guides/fpolicy-setup-guide.md)） |
+| イベント駆動の最小構成を試したい | [event-driven/prototype](../solutions/event-driven/prototype/) |
+| ポーリングとイベント駆動を選び分けたい | [TriggerMode 判断ガイド](trigger-mode-decision-guide.md) |
+| HA 構成の監視を組み込みたい | [ha/lifekeeper-monitoring](../solutions/ha/lifekeeper-monitoring/) |
+
+---
+
+## 5. 運用最適化（OPS1-6）— 未使用容量とコストを下げる
+
+**S3 Access Point を使わない側の柱です。** すでに動いているファイルシステムに対して行う操作で、パターンを deploy する話とは独立に使えます。
+
+| 課題 | パターン |
+|---|---|
+| 容量・スループットが過剰か判断したい | [OPS1 capacity-rightsizing](../operations/capacity-rightsizing/) |
+| 重複排除・圧縮の効きを測りたい | [OPS2 storage-efficiency](../operations/storage-efficiency/) |
+| FabricPool の階層化を最適化したい | [OPS3 tiering-optimizer](../operations/tiering-optimizer/) |
+| Snapshot の保持を整理したい | [OPS4 snapshot-lifecycle](../operations/snapshot-lifecycle/) |
+| コストを FinOps の枠に載せたい | [OPS5 cost-optimization](../operations/cost-optimization/) |
+| QoS ポリシーを監視したい | [OPS6 qos-monitoring](../operations/qos-monitoring/) |
+
+---
+
+## 6. 状況別の入り方
+
+| 導入先の状況 | 入り方 |
+|---|---|
+| FSx for ONTAP を既にファイル共有で利用中 | 業種別 UC + `DemoMode=false` |
+| FSx for ONTAP 未導入、ワークフローだけ評価したい | 任意の UC + `DemoMode=true` |
+| 安全重要領域で Human Review が必要 | UC22 / UC25 + `shared/human_review.py` |
+| PII / 個人情報保護が必要 | UC26 / UC27 + `shared/data_classification.py` |
+| 設備メンテナンス × マルチモーダル AI | UC22 + Rekognition + Bedrock multimodal（[事例](investigations/dais2026-agent-bricks-industry-cases.md#1-7-eleven-メンテナンス技術者向け-genai-アシスタント)） |
+| 製薬・ライフサイエンス × マルチエージェント RAG | UC7 + Step Functions multi-agent routing（[事例](investigations/dais2026-agent-bricks-industry-cases.md#2-astrazeneca-マルチエージェントシステム10x-スケール)） |
+| 新規オブジェクトネイティブワークロード（NAS 不要） | **このリポジトリのパターンは不要です。** 標準 S3 / DynamoDB のサーバーレス構成のほうが素直です |
 
 ## ワークロード別の技術選択
 

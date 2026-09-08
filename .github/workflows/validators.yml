@@ -79,6 +79,10 @@ jobs:
       # Playbook being renamed underneath them.
       - name: Check the Playbook reading sections match the generated form
         run: python3 scripts/sync_playbook_reading_section.py --check
+      # A pattern absent from the selection guide does not exist for the reader who starts
+      # there. The guide had drifted to 16 of 28 use cases with no operations patterns at all.
+      - name: Check every pattern is reachable from the selection guide
+        run: python3 scripts/check_selection_guide_coverage.py
       - name: Check the generated dispatch parameter types match the handlers
         run: python3 scripts/portal_action_types.py --check
       # The two checks above describe the shape of a call. This one describes who the

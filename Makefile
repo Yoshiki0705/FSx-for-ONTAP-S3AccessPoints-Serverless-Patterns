@@ -523,6 +523,13 @@ drift:
 # mapping, has no symptom. `--check` also fails when a README named in the mapping does
 # not exist, which is the typo that would otherwise skip eight files silently.
 	$(PYTHON) scripts/sync_playbook_reading_section.py --check
+# The selection guide is the first page a Partner reads to choose what to deploy, and it is
+# hand-maintained. Measured 2026-09-07: it named 16 of 28 use cases and did not mention
+# flexcache, operations, the portal, event-driven, sap or ha at all -- so a reader starting
+# there could not learn that two thirds of the library existed. Every other doc check here asks
+# whether a document is internally consistent; none asked whether it covers the tree it indexes.
+	$(PYTHON) -m pytest scripts/tests/test_check_selection_guide_coverage.py --tb=short -q
+	$(PYTHON) scripts/check_selection_guide_coverage.py
 # AGENTS.md is loaded on every turn and cannot be made conditional, so it had grown
 # to 78 KB carrying pitfall tables that matter only while doing that one kind of
 # work. Splitting it into task-triggered steering is undone by one useful paragraph
