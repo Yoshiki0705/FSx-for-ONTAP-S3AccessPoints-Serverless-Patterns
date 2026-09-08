@@ -235,7 +235,7 @@ This table records **limitations on the AWS side**. Some of them still hold whil
 
 | AWS-side limitation | What the limitation is | Where the portal stands |
 |---|---|---|
-| Presigned URLs on S3 AP are not officially supported | AWS's compatibility table still reads `Presign — Not supported`. AWS Support confirmed support at the ONTAP layer (v4 from 9.11.1, v2 from 9.16.1) and submitted a documentation fix, which is **not yet published** (FR-7) | Preview, download and sharing links are implemented with presigned URLs. Until the public documentation is updated, production workloads need an alternative designed in ([compatibility notes](../s3ap-compatibility-notes.en.md)) |
+| Presigned URLs on S3 AP are not officially supported | AWS's compatibility table still reads `Presign — Not supported`. The [NetApp KB](https://kb.netapp.com/Advice_and_Troubleshooting/Data_Storage_Software/ONTAP_OS/What_version_of_ONTAP_support_pre-signed_URLs_for_S3_bucket) puts ONTAP-layer support at 9.11.1 for v4 and 9.16.1 for v2. A documentation fix has been requested and is **not yet published** (FR-7) | Preview, download and sharing links are implemented with presigned URLs. Until the public documentation is updated, production workloads need an alternative designed in ([compatibility notes](../s3ap-compatibility-notes.en.md)) |
 | Amplify Storage does not support S3 AP | The component supports standard S3 buckets only (FR-6, Open) | Upload is implemented with Storage Browser for S3 |
 | No native search or indexing for S3 AP content | OpenSearch requires a data copy | Semantic search implemented with Bedrock KB. No literal full-text match |
 | S3 AP does not support Object Versioning | — | No per-file version history. Point-in-time recovery of the volume via Snapshot + FlexClone |
@@ -280,16 +280,16 @@ This table records **limitations on the AWS side**. Some of them still hold whil
 
 **Service**: Amazon FSx for ONTAP
 
-**Current state**: Presigned URLs are listed as "Not supported" in the FSx for ONTAP S3 AP compatibility table. **However, they actually work.** Verified in this project and other environments. AWS Support confirmed:
+**Current state**: Presigned URLs are listed as "Not supported" in the FSx for ONTAP S3 AP compatibility table. **However, they actually work.** Verified in this project and other environments, and **the signing mechanism explains why**:
 
-1. Presigning is a client-side operation — no network request is made
-2. The resulting URL executes as a standard GetObject
-3. Since GetObject is supported, blocking Presigned URLs is structurally impossible
-4. The "Not supported" documentation reflects that AWS has not officially tested the workflow
+1. Presigning is a client-side operation — [`aws s3 presign`](https://docs.aws.amazon.com/cli/latest/reference/s3/presign.html) computes a SigV4 signature locally and makes no network request
+2. The resulting URL executes as a standard GetObject, with the signature in query parameters instead of the Authorization header ([Presigned URL reference](https://docs.aws.amazon.com/AmazonS3/latest/userguide/ShareObjectPreSignedURL.html))
+3. Since GetObject is supported, there is no place left to block a presigned URL specifically
+4. **Why the table reads "Not supported" is `open`** — no published reason was found
 
 **Changed to**: Documentation correction request only — update the compatibility table to reflect actual behavior.
 
-**Production Guidance**: AWS Support states relying on operations classified as "Not supported" in production is not recommended. Working behavior is confirmed, but cross-region consistency and post-update guarantees are not provided. Recommend having a Lambda proxy fallback path for production use.
+**Production Guidance**: **the table is the contract, and it says "Not supported".** Behaviour that works today is not a commitment: nothing published guarantees it across regions or after a service update. Treat the working behaviour as measured, not promised. Recommend having a Lambda proxy fallback path for production use.
 
 ---
 

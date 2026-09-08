@@ -16,10 +16,29 @@ FSx for ONTAP S3 Access Points provide an S3-facing access boundary for file dat
 | 権限ベースのファイルアクセス制御 | ✅ (dual-layer auth) | ✅ (NTFS/UNIX ACL) |
 | 低レイテンシ metadata 操作 (stat, readdir) | △ (tens of ms) | ✅ (sub-ms) |
 | 既存アプリケーション互換性 | — | ✅ |
-| AWS サービス統合 (Athena, Bedrock, Textract) | ✅ | — |
+| AWS サービス統合 (Athena, Bedrock, Textract) | ✅ 読み取り側。**Athena の `OutputLocation` には指定できません**（下記） | — |
 | イベント駆動ファイル処理 | △ (EventBridge Scheduler ポーリング。**FPolicy は S3 AP 経由の操作を検知しない** — 実測 2026-08-26 / ONTAP 9.18.1P3D1、現行の全リリースが該当と AWS 確認。[監査とイベント可視性](#監査とイベント可視性--s3-アクセス経路)) | ✅ (FPolicy + NFS/SMB) |
 
 > **注**: S3 AP は NFS/SMB の置き換えではなく、AWS サービス統合のための補完的アクセスパスです。同じボリュームに NFS/SMB と S3 AP の両方からアクセスできます。
+
+### Athena の OutputLocation には指定できない
+
+`OutputLocation` に FSx for ONTAP S3 AP の alias（`-ext-s3alias` で終わるもの）を指定すると、クエリは
+`InvalidBucketName` で失敗します（`verified`、ap-northeast-1）。
+
+```text
+InvalidRequestException: OutputLocation is not a valid S3 path
+AthenaErrorCode: INVALID_INPUT
+```
+
+**通常の S3 Access Point とは alias 形式もデータプレーンも違います。** [Access point aliases](https://docs.aws.amazon.com/AmazonS3/latest/userguide/access-points-naming.html)
+に、S3 以外のデータソースに紐づくアクセスポイントの alias は `-ext-s3alias` で終わると書かれています。
+FSx for ONTAP S3 AP は [PutObject に対応している](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/access-points-for-fsxn-object-api-support.html)
+ので、書き込めないこと自体が制約というより、**Athena が `OutputLocation` の alias を S3 データプレーンとして
+解決しようとしている**のが原因だと推測しています。ここは `open` です。
+
+**回避策**: クエリ結果は通常の S3 バケットへ出力し、必要なら後段で FSx for ONTAP へ運びます。読み取り側
+（`s3://<alias>/...` を `LOCATION` に指定する）は動作します。
 
 ## Tested Operations
 

@@ -16,10 +16,31 @@ FSx for ONTAP S3 Access Points provide an S3-facing access boundary for file dat
 | Permission-aware file access control | ✅ (dual-layer auth) | ✅ (NTFS/UNIX ACL) |
 | Low-latency metadata operations (stat, readdir) | △ (tens of ms) | ✅ (sub-ms) |
 | Existing application compatibility | — | ✅ |
-| AWS service integration (Athena, Bedrock, Textract) | ✅ | — |
+| AWS service integration (Athena, Bedrock, Textract) | ✅ on the read side. **Cannot be used as Athena's `OutputLocation`** (below) | — |
 | Event-driven file processing | △ (EventBridge Scheduler polling. **FPolicy does not see operations through the S3 access point** — measured 2026-08-26, ONTAP 9.18.1P3D1; AWS Support confirms it applies to all current releases. See [Auditing and event visibility](#auditing-and-event-visibility--the-s3-access-path)) | ✅ (FPolicy + NFS/SMB) |
 
 > **Note**: S3 AP is not a replacement for NFS/SMB. It is a complementary access path for AWS service integration. The same volume can be accessed via NFS/SMB and S3 AP simultaneously.
+
+### Not usable as Athena's OutputLocation
+
+Pointing `OutputLocation` at an FSx for ONTAP S3 AP alias — one ending in `-ext-s3alias` — fails the
+query with `InvalidBucketName` (`verified`, ap-northeast-1).
+
+```text
+InvalidRequestException: OutputLocation is not a valid S3 path
+AthenaErrorCode: INVALID_INPUT
+```
+
+**The alias form and the data plane both differ from a regular S3 Access Point.**
+[Access point aliases](https://docs.aws.amazon.com/AmazonS3/latest/userguide/access-points-naming.html)
+documents that an access point attached to a non-S3 data source gets an alias ending in
+`-ext-s3alias`. FSx for ONTAP S3 AP
+[supports PutObject](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/access-points-for-fsxn-object-api-support.html),
+so the block is less about writing than about resolution: **Athena appears to resolve the
+`OutputLocation` alias through the S3 data plane.** That reading is `open`.
+
+**Workaround**: write query results to a regular S3 bucket and move them to FSx for ONTAP afterwards
+if needed. The read side — an alias in `LOCATION` — works.
 
 ## Tested Operations
 

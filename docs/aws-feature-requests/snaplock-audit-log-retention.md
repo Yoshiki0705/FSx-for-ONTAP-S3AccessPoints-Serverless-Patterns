@@ -25,7 +25,7 @@
 | SL-2 | 未満了の WORM / 監査ログにより削除できない場合、`DeleteVolume` がエラーを返す（現状は無言で復帰） | 挙動修正 |
 | SL-3 | `DescribeVolumes` の `AuditLogVolume` を ONTAP の実態と一致させる、または削除可否を判定できるフィールドを追加 | 挙動修正 |
 
-AWS サポートからは、依頼した「保持期間満了前の削除」および「ファイルシステムの削除ロック解除」はいずれも**不可**、かつ**アカウント閉鎖以外の経路は存在しない**との回答を得ています。したがって本件は事後救済の余地がなく、事前の可視化のみが対策になります。
+**満了前の削除と削除ロックの解除は、試した 5 経路すべてで塞がっていました**（下記）。事後救済の経路を当方では見つけられなかったため、対策は事前の可視化に寄せています。
 
 ---
 
@@ -140,20 +140,31 @@ AWS API のみを参照する利用者には「監査ログボリュームでは
 
 ---
 
-## AWS サポートによる確認結果（2026-08）
+## 自環境で確かめた退路の不在
 
-| 依頼 | 回答 |
+保持期間の満了前に削除する経路を、AWS API と ONTAP REST の両側から探しました。**試した 5 経路は
+いずれも塞がっていました**（`verified`、2026-08）。
+
+| 試したこと | 結果 |
 |---|---|
-| 保持期間満了前に監査ログボリュームを削除できるか | **不可**（社内確認済み） |
-| ファイルシステムの削除ロックのみ解除できるか | **不可** |
-| アカウント閉鎖以外の経路が存在するか | **存在しない**（明示回答） |
-| 満了前削除の代わりに請求面の配慮を検討できるか | 対象リソースの削除完了が前提。満了後にファイルシステムを削除し、改めて「アカウントおよび請求サポート」窓口へ相談する。配慮が可能である保証はない |
-| SL-1（作成時の警告・確認パラメータ） | 追加予定の言及なし。コンソールの「監査ログボリューム」欄と `CreateVolume` / `UpdateVolume` のドキュメントに 6 か月の最低保持期間が既に記載されている、との回答 |
-| SL-2（削除拒否の理由を返すこと） | 既に `DescribeVolumes` の `LifecycleTransitionReason.Message` で返っている（`Cannot delete the volume because it contains unexpired log files.`） |
-| SL-3（`AuditLogVolume` と `is_audit_log` の一致） | 仕様どおりで不一致ではない。前者は現在の指定、後者は過去に指定されたことを示す履歴マーク |
+| AWS API での削除（`BypassSnaplockEnterpriseRetention=true` 併用） | 失敗。エラーを返さず元の状態に復帰 |
+| ONTAP REST で SVM 側の監査ログ指定を解除 | 成功するが、削除できるようにはならない |
+| ボリューム側の `snaplock.is_audit_log` を解除 | 拒否。読み取り専用フィールド |
+| ボリュームをオフラインにして削除 | 失敗（保持期間が未満了） |
+| WORM ログファイルの特権削除 | 経路なし（`PERMANENTLY_DISABLED` 済み） |
 
-満了日時の確認方法として、管理エンドポイントへ SSH して
-`volume snaplock show -vserver <svm> -volume <volume> -instance` の Expiry Time を見る手順が案内されました。この値は AWS API からは取得できません。
+判定に使える材料は 2 つです。**削除が拒否された理由**は `DescribeVolumes` の
+`LifecycleTransitionReason.Message` に `Cannot delete the volume because it contains unexpired log files.`
+として返ります。**満了日時**は ONTAP REST の `GET /api/storage/volumes/{uuid}?fields=snaplock` が
+`expiry_time` として返します（`verified`、2026-08-17）。管理エンドポイントへ SSH する必要はありません。
+
+最低保持期間そのものは公開ドキュメントに記載があります。コンソールの監査ログボリュームの欄と、
+[CreateVolume](https://docs.aws.amazon.com/fsx/latest/APIReference/API_CreateVolume.html) /
+[UpdateVolume](https://docs.aws.amazon.com/fsx/latest/APIReference/API_UpdateVolume.html) の
+ドキュメントが 6 か月の下限を示しています。**作成時の警告が「機能を有効にする方法」のページではなく
+「削除する方法」のページにあることが、踏みやすさの原因です。**
+
+請求面の扱いは当方の観測範囲外なので、この文書では扱いません。
 
 ---
 

@@ -148,24 +148,25 @@ HealthOmics のワークフロー実行は、入力・出力の双方で Amazon 
 1. **ステージング（コピー）が設計に組み込まれている** — 入力は scratch ボリュームへコピーされるため、仮に S3 AP URI を受け付けたとしても「データを動かさない」という価値の一部は得られません。ただしコピー先が実行専用の一時領域である点は、恒久的な二重保管とは性質が異なります。
 2. **暗号化モデルの差異** — HealthOmics は S3 と KMS に対する権限を前提としますが、FSx for ONTAP S3 AP は SSE-FSX が唯一のサーバーサイド暗号化モードです（[Access point compatibility](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/access-points-for-fsxn-object-api-support.html)）。サービスロールの権限設計に差異が生じます。
 
-### AWS サポートによる確認結果（2026-08）
+### 適用範囲と、断定していないこと
 
-当初この節は公開ドキュメントからの判断でした。その後 AWS サポートから、現行挙動に関する 3 点の確認回答を得ています。
+**この制限は FSx for ONTAP S3 AP に固有ではないと考えています。** `StartRun` の
+[`outputUri`](https://docs.aws.amazon.com/omics/latest/api/API_StartRun.html) は
+[実行例](https://docs.aws.amazon.com/omics/latest/dev/starting-a-run.html)のとおり
+`s3://<bucket>/<prefix>` の形で示されており、先頭のパスセグメントをバケット名として扱う契約です。
+アクセスポイントの ARN や仮想ホスト形式の URL を渡す前提の記載は見つけられませんでした。
+**標準の S3 Access Point でも同じかどうかは当方で試していないので `open` です。**
 
-| 照会内容 | AWS サポートの回答 |
-|---------|------------------|
-| 制限の範囲は FSx for ONTAP S3 AP 固有か | **S3 Access Point 全般**。`StartRun` の `outputUri` は `s3://USER-OWNED-BUCKET/` 形式が契約であり、先頭のパスセグメントをバケット名として扱う。AP の ARN と仮想ホスト形式 URL は実行投入時にバリデーションエラーで拒否され、**標準 S3 AP と FSx for ONTAP AP で挙動は同一**。アクセスポイント固有の処理は一切存在しない |
-| SSE-FSX とサービスロールの KMS 要件の競合 | 出力バケットが SSE-KMS の場合にサービスロールと呼び出し元へ `kms:GenerateDataKey` / `kms:Decrypt` 等が必要という要件は文書化されている。ただし AP が出力先として未サポートのため、**SSE-FSX に対する検証は行われておらず、追加の障害となるかは確認できない** |
-| 50 GiB 上限に近い出力オブジェクトの扱い | HealthOmics は大きな実行出力を**マルチパートアップロード**で書き込むため、単一 `PutObject` の上限が支配要因にはならない。AP 書き込みのしきい値は未検証のため提示できない。コピーバックは本プロジェクト側の Lambda が行うため、適用される上限は呼び出す S3 / FSx API のもの |
+**上記「現状」で挙げた暗号化モデルの差異は、障害として確認したものではありません。** SSE-FSX で
+実際に何が起きるかは、出力先として AP を指定できない以上、当方では確かめられません。本ドキュメントでも
+障害として断定しません。
 
-この回答により 2 点が明確になりました。
+オブジェクトサイズ上限についても補足します。**単一 `PutObject` の上限が支配要因になるとは限りません。**
+コピーバックを行うのは本プロジェクト側の Lambda なので、適用される上限は呼び出す S3 / FSx API のもの
+です。HealthOmics 自身の書き込み方式は当方の観測範囲外で `open` です。
 
-1. 上記「現状」で挙げた**暗号化モデルの差異は「障害として確認された」ものではなく「未検証」**です。本ドキュメントでも障害として断定しません。
-2. 制限は **FSx for ONTAP 固有ではありません**。読者が適用範囲を過大に解釈しないよう、この点を明示します。
-
-また「要望する挙動」に記載したオブジェクトサイズ上限については、HealthOmics 側がマルチパートを使うため、単一 PUT 上限の議論とは別軸である点を補足します。
-
-ドキュメント要望（FSx for ONTAP ユーザーガイドに HealthOmics の対応状況を明記すること）は、機能実装の有無に関わらず追跡されることを AWS サポートが確認しています。
+ドキュメント要望（FSx for ONTAP ユーザーガイドに HealthOmics の対応状況を明記すること）は
+起票済みです（2026-08 起票）。
 
 ### 本プロジェクトへの影響
 
@@ -206,41 +207,54 @@ Step Functions で以下を構成します（未実装、新パターン候補�
 
 `S3ObjectStorageMode` は [`AWS::Lambda::Function` の `Code` プロパティ](https://docs.aws.amazon.com/AWSCloudFormation/latest/TemplateReference/aws-properties-lambda-function-code.html)に `COPY | REFERENCE` の許可値を持つプロパティとして文書化されています。一方 `AWS::Serverless::Function` / `AWS::Serverless::LayerVersion` は `CodeUri` / `ContentUri`（ローカルパスまたは S3 URI）のみを公開しており、SAM リソースリファレンスに該当プロパティの記載を確認できませんでした。
 
-> **検証状況の更新（2026-08）**: 当初この項目は公開ドキュメントのみに基づく推定でした。その後 AWS サポートが実機で再現し、SAM が当該プロパティを警告なく破棄することを確認しています。詳細は下記「AWS サポートによる確認結果」を参照してください。
+> **状況の更新（2026-09 再確認）**: **この要望は解決済みで、公開ドキュメントにも反映されています。**
+> SAM の [`FunctionCode`](https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/sam-property-function-functioncode.html)
+> に `StorageMode` プロパティが `COPY | REFERENCE` として記載され、`AWS::Lambda::Function` の
+> `Code.S3ObjectStorageMode` へそのまま渡されると明記されています。
 
-### AWS サポートによる確認結果（2026-08）
+### プロパティ名が CloudFormation と SAM で違う
 
-AWS サポートが検証環境で再現し、以下を確認しました。当初の「ドキュメントに記載が見つからない」という推定から、**実機で確認された挙動**に格上げされています。
+**同じ設定でも名前が違うので、CloudFormation の名前を SAM テンプレートに書いても効きません。**
 
-| 確認事項 | 結果 |
-|---------|------|
-| `AWS::Serverless::Function` の `CodeUri` に `S3ObjectStorageMode: REFERENCE` を指定 | `sam validate` / `sam deploy` は**エラーなく成功する** |
-| 実際に作成される関数のモード | SAM 変換時にプロパティが**警告なく破棄**され、既定の `COPY` モードで作成される |
-| SAM の `S3Location` 型が受け付けるプロパティ（リリース版） | `Bucket` / `Key` / `Version` のみ。それ以外は変換時に破棄される（`S3ObjectStorageMode` 固有の問題ではない） |
-| Lambda 開発者ガイドが挙げる利用手段 | コンソール / AWS CLI / CloudFormation。**AWS SAM は記載されていない** |
-| `update-function-code` のドリフト | 確認済み。`S3ObjectStorageMode` は毎回指定が必要で、省略すると `COPY` に戻る |
+| テンプレート | プロパティ | 出典 |
+|---|---|---|
+| `AWS::Lambda::Function` | `Code.S3ObjectStorageMode` | [Code プロパティ](https://docs.aws.amazon.com/AWSCloudFormation/latest/TemplateReference/aws-properties-lambda-function-code.html) |
+| `AWS::Serverless::Function` | `CodeUri.StorageMode` | [FunctionCode](https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/sam-property-function-functioncode.html) |
 
-> ⚠️ **実務上の意味**: `sam deploy` が成功しても `REFERENCE` モードは適用されていないため、**デプロイ結果からは適用漏れに気づけません**。`REFERENCE` モードを前提にする場合は、デプロイ後に実際のモードを確認する手順が必要です。
+```yaml
+# AWS::Serverless::Function ではこちら
+CodeUri:
+  Bucket: amzn-s3-demo-bucket-name
+  Key: mykey-name
+  Version: 121212
+  StorageMode: REFERENCE
+```
 
-Inactive 状態の結合（Lambda がソースオブジェクトを定期的に再読み込みし、アクセスできなくなると関数を Inactive に遷移させる）についても確認が取れました。ただし AWS サポートからは「**これが FSx for ONTAP S3 AP 非対応の理由であるという確認は取れていない**」と明示されているため、本ドキュメントでも原因として断定しません。
+**`REFERENCE` を使うにはバケットのバージョニングを有効にし、Lambda サービスプリンシパルに
+オブジェクトへのアクセスを与える必要があります**（同ページに記載）。
 
-AWS サポート側では、Lambda サービスチームへの機能リクエスト、SAM チームへのバグ報告（`AWS::Serverless::Function` / `AWS::Serverless::LayerVersion` への `S3ObjectStorageMode` 追加）、および未知のプロパティを警告なく破棄せずバリデーションエラーとすべき旨のフィードバックが起票されています。ただしこれらは**内部チケットであり公開されていません**。AWS サポートからは、公開追跡が必要であれば [aws/serverless-application-model](https://github.com/aws/serverless-application-model) に自分たちで issue を起票することが適切な経路であり、再現手順が明確なコミュニティ起票は優先度判断に役立つため推奨する、との回答を得ています。
+> ⚠️ **古い SAM を使っている場合の注意**: プロパティを知らないバージョンの SAM では、
+> **`sam validate` と `sam deploy` が成功しても設定が適用されません。** デプロイ結果からは
+> 気づけないので、`REFERENCE` を前提にするなら適用後に実際のモードを確認する手順を入れてください。
+> `update-function-code` でも毎回の指定が必要で、省略すると `COPY` に戻ります。
 
-**サポートされる回避策（AWS サポート確認済み）**: `REFERENCE` モードが必要な関数は、`AWS::Serverless::Function` ではなくネイティブの `AWS::Lambda::Function` に `Code.S3ObjectStorageMode: REFERENCE` を指定して定義します。SAM 変換を経由しないため確実に適用されます。SAM テンプレート内に `AWS::Serverless::` リソースとネイティブ `AWS::` リソースを混在させることは**有効かつサポートされた構成**であることも確認済みです。
+Inactive 状態への遷移（Lambda がソースオブジェクトを再読み込みし、アクセスできなくなると関数を
+Inactive にする）については、**これが FSx for ONTAP S3 AP 非対応の理由かどうかを当方では
+確かめられていないため `open` です。** 原因として断定しません。
 
-### 上流での対応状況（2026-08 時点の自己調査）
+### 上流での対応状況（2026-09 再確認）
 
-FR-7 の要望内容は **すでに upstream に実装・マージ済み**でした。本項は AWS サポートの回答ではなく、`aws/serverless-application-model` を直接調査した結果です。
+FR-7 の要望内容は **upstream に実装・マージされ、公開ドキュメントにも反映されました。** 本項は `aws/serverless-application-model` と SAM のリファレンスを直接読んだ結果です。
 
 | 項目 | 内容 |
 |------|------|
 | 該当 PR | [aws/serverless-application-model#3959](https://github.com/aws/serverless-application-model/pull/3959) `feat: pass S3ObjectStorageMode through from CodeUri and ContentUri`（2026-07-20 マージ、テストは [#3961](https://github.com/aws/serverless-application-model/pull/3961)） |
 | **SAM 側のプロパティ名** | **`StorageMode`**（`CodeUri` / `ContentUri` の中）。CloudFormation 側の `S3ObjectStorageMode` とは名前が異なる |
 | 変換後のマッピング | `CodeUri.StorageMode` → `Code.S3ObjectStorageMode` |
-| リリース状況 | **未リリース**。最新リリース `aws-sam-translator` 1.111.0（2026-07-02）はマージ（07-20）より前で、当該コードを含まない |
+| リリース状況 | **リリース済み。** SAM の [`FunctionCode`](https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/sam-property-function-functioncode.html) に `StorageMode` が記載されています（2026-09 再確認）。2026-08 時点では `aws-sam-translator` 1.111.0 が当該コードより前で未反映でした |
 
 ```yaml
-# リリース後の想定（現行リリースでは未対応）
+# 現行のリファレンスに記載のある形
 CodeUri:
   Bucket: my-artifacts
   Key: app.zip
