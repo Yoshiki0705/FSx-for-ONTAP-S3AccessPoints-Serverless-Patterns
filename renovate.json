@@ -6,84 +6,150 @@
     ":dependencyDashboard"
   ],
   "timezone": "Asia/Tokyo",
-  "schedule": ["before 6am on monday"],
-  "labels": ["dependencies"],
+  "schedule": [
+    "before 6am on monday"
+  ],
+  "labels": [
+    "dependencies"
+  ],
   "commitMessagePrefix": "chore(deps):",
   "prHourlyLimit": 4,
   "prConcurrentLimit": 10,
   "vulnerabilityAlerts": {
     "enabled": true,
-    "labels": ["security"],
+    "labels": [
+      "security"
+    ],
     "automerge": true
   },
   "osvVulnerabilityAlerts": true,
   "lockFileMaintenance": {
     "enabled": true,
     "automerge": true,
-    "schedule": ["before 6am on monday"]
+    "schedule": [
+      "before 6am on monday"
+    ]
   },
   "packageRules": [
     {
       "description": "Group all GitHub Actions updates together, keep SHA pinning per repo policy (zizmor/gitleaks/scorecard workflows rely on this)",
-      "matchManagers": ["github-actions"],
+      "matchManagers": [
+        "github-actions"
+      ],
       "groupName": "github-actions",
       "pinDigests": true,
       "automerge": true
     },
     {
       "description": "Group boto3/botocore (AWS SDK for Python) minor/patch and automerge. No matchManagers filter on purpose: boto3 is pinned in both requirements.txt and pyproject.toml, and scripts/check_runtime_pins_agree.py fails if the two disagree, so a PR that raises one file alone can never be green. That happened -- 2026-08-16 produced #328 for requirements.txt under this group and #329 for pyproject.toml ungrouped, and both were red on the pins check. Naming the managers is what let them split, so the match is by package name only.",
-      "matchPackageNames": ["/^boto/"],
-      "matchUpdateTypes": ["minor", "patch"],
+      "matchPackageNames": [
+        "/^boto/"
+      ],
+      "matchUpdateTypes": [
+        "minor",
+        "patch"
+      ],
       "groupName": "aws-sdk-python",
       "automerge": true
     },
     {
       "description": "AWS SDK major bumps require Dashboard approval",
-      "matchPackageNames": ["/^boto/"],
-      "matchUpdateTypes": ["major"],
+      "matchPackageNames": [
+        "/^boto/"
+      ],
+      "matchUpdateTypes": [
+        "major"
+      ],
       "groupName": "aws-sdk-python (major)",
       "dependencyDashboardApproval": true
     },
     {
       "description": "Group Python dev dependencies (pytest, hypothesis, moto, ruff, etc.) and automerge minor/patch",
-      "matchManagers": ["pip_requirements", "pep621"],
-      "matchPackageNames": ["!/^boto/"],
-      "matchDepTypes": ["devDependencies"],
-      "matchUpdateTypes": ["minor", "patch"],
+      "matchManagers": [
+        "pip_requirements",
+        "pep621"
+      ],
+      "matchPackageNames": [
+        "!/^boto/"
+      ],
+      "matchDepTypes": [
+        "devDependencies"
+      ],
+      "matchUpdateTypes": [
+        "minor",
+        "patch"
+      ],
       "groupName": "python-dev-dependencies",
       "automerge": true
     },
     {
       "description": "Group Python runtime dependencies (non-boto) minor/patch",
-      "matchManagers": ["pip_requirements", "pep621"],
-      "matchPackageNames": ["!/^boto/"],
-      "matchDepTypes": ["dependencies"],
-      "matchUpdateTypes": ["minor", "patch"],
+      "matchManagers": [
+        "pip_requirements",
+        "pep621"
+      ],
+      "matchPackageNames": [
+        "!/^boto/"
+      ],
+      "matchDepTypes": [
+        "dependencies"
+      ],
+      "matchUpdateTypes": [
+        "minor",
+        "patch"
+      ],
       "groupName": "python-runtime-dependencies",
       "automerge": true
     },
     {
       "description": "Group base image updates for FPolicy server Dockerfiles",
-      "matchManagers": ["dockerfile"],
+      "matchManagers": [
+        "dockerfile"
+      ],
       "groupName": "docker-base-images"
     },
     {
       "description": "Amplify portal npm dependencies — minor/patch automerge",
-      "matchManagers": ["npm"],
-      "matchUpdateTypes": ["minor", "patch"],
+      "matchManagers": [
+        "npm"
+      ],
+      "matchUpdateTypes": [
+        "minor",
+        "patch"
+      ],
       "groupName": "amplify-portal-npm",
       "automerge": true
     },
     {
       "description": "Require manual approval for major version bumps (non-boto)",
-      "matchUpdateTypes": ["major"],
-      "matchPackageNames": ["!/^boto/"],
+      "matchUpdateTypes": [
+        "major"
+      ],
+      "matchPackageNames": [
+        "!/^boto/"
+      ],
       "dependencyDashboardApproval": true
     },
     {
       "description": "Do not update Python runtime version pins (managed manually for Lambda compatibility)",
-      "matchPackageNames": ["python"],
+      "matchPackageNames": [
+        "python"
+      ],
       "enabled": false
+    },
+    {
+      "description": "Hold typescript at 6.x. Measured 2026-09-09 in solutions/amplify-portal/node_modules: typescript-eslint 8.69.0, @typescript-eslint/parser and @typescript-eslint/typescript-estree all declare peerDependencies.typescript '>=4.8.4 <6.1.0'. TypeScript 7.0 (GA 2026-07-08) is outside that range, and `npm run lint` runs eslint with --max-warnings 0, so the bump turns type-aware linting off by breaking it. The compiler itself is a faithful port and tsc would very likely be fine -- the blocker is the tools that use the compiler API, not the compiler. Lift this when typescript-eslint widens the range; check with `node -e \"console.log(require('typescript-eslint/package.json').peerDependencies)\"` rather than from a changelog.",
+      "matchPackageNames": [
+        "typescript"
+      ],
+      "allowedVersions": "<7"
+    },
+    {
+      "description": "Hold the mariadb image at 11.x. Nextcloud 34 (the image solutions/nextcloud-test pins) lists MariaDB 10.6 / 10.11 / 11.4 / 11.8 as supported, 11.8 being the recommended one the compose file already uses -- https://docs.nextcloud.com/server/stable/admin_manual/installation/system_requirements.html read 2026-09-09. MariaDB 12 is not on that list, so the bump would put the test environment on an unsupported database to no benefit. Lift this when Nextcloud lists 12, not when MariaDB releases it.",
+      "matchPackageNames": [
+        "mariadb"
+      ],
+      "allowedVersions": "<12"
     }
   ],
   "ignorePaths": [
