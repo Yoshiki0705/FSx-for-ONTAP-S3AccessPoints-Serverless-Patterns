@@ -274,6 +274,7 @@ dev.to では**シリーズを 2 つに分けています**。読者が違うた
 | [FSx-for-ONTAP-Observability-integrations](https://github.com/Yoshiki0705/FSx-for-ONTAP-Observability-integrations) | 可観測性統合 (ARP/AI 自動対応、メトリクス、アラート) |
 | [FSx-for-ONTAP-Agentic-Access-Aware-RAG](https://github.com/Yoshiki0705/FSx-for-ONTAP-Agentic-Access-Aware-RAG) | アクセス制御対応の Agentic RAG（CDK + Amazon Bedrock） |
 | [FSx-for-ONTAP-Lakehouse-Integrations](https://github.com/Yoshiki0705/FSx-for-ONTAP-Lakehouse-Integrations) | Lakehouse 統合（Databricks, Snowflake, Athena, Glue, EMR） |
+| [S3-Burst-on-ONTAP-Files](https://github.com/Yoshiki0705/S3-Burst-on-ONTAP-Files) | S3 API で収集したデータを FSx for ONTAP 上で正本として管理し、FlexCache で NFS / SMB 拠点へ提供（スループット実測の出典） |
 | [VMware-Migration-EC2-ONTAP](https://github.com/Yoshiki0705/VMware-Migration-EC2-ONTAP) | VMware → EC2 + FSx for ONTAP 移行 |
 
 ### AWS 公式リソース

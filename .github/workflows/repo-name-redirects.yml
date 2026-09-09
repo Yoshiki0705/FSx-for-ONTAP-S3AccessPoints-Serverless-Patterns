@@ -54,6 +54,17 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ github.token }}
         run: python3 scripts/check_repo_name_redirects.py
+      - name: Verify the strings a sibling repository has registered against this one
+        # The Adoption Playbook publishes one line per string it depends on inside another
+        # repository. Nine name this repository, and nothing here read them, so the first
+        # reword of one would have surfaced in their CI rather than in the commit that
+        # caused it.
+        #
+        # `--fetch` because a runner has no sibling checkout. Without it the check skips,
+        # and a gate that skips everywhere it runs automatically is not a gate. Exit 2 is
+        # a failure for the same reason as the step above: the contract is published today,
+        # so unreachable means the registration may be gone, not that it has yet to appear.
+        run: python3 scripts/check_incoming_probes.py --fetch
       - name: Resolve the Playbook module hubs the generated sections link to
         # The check above resolves repository names and drops everything after owner/repo,
         # so the 24 hub paths written into 376 READMEs need their own pass. A renamed module

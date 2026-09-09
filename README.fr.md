@@ -188,6 +188,7 @@ Détails : [S3AP Compatibility Notes](docs/s3ap-compatibility-notes.en.md) | [Co
 |---|---|
 | [FSx-for-ONTAP-Agentic-Access-Aware-RAG](https://github.com/Yoshiki0705/FSx-for-ONTAP-Agentic-Access-Aware-RAG) | RAG agentique avec contrôle d'accès (CDK + Amazon Bedrock) |
 | [FSx-for-ONTAP-Lakehouse-Integrations](https://github.com/Yoshiki0705/FSx-for-ONTAP-Lakehouse-Integrations) | Intégration Lakehouse (Databricks, Snowflake, Athena, Glue, EMR) |
+| [S3-Burst-on-ONTAP-Files](https://github.com/Yoshiki0705/S3-Burst-on-ONTAP-Files) | Données collectées via l'API S3 conservées comme référence sur FSx for ONTAP et servies aux sites NFS / SMB via FlexCache (source des mesures de débit) |
 | [VMware-Migration-EC2-ONTAP](https://github.com/Yoshiki0705/VMware-Migration-EC2-ONTAP) | Migration VMware → EC2 + FSx for ONTAP |
 
 </details>
