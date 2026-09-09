@@ -46,7 +46,7 @@ Ausführliche Datenflussdiagramme finden Sie im [Architekturdokument](docs/archi
 
 ## Voraussetzungen
 
-> **Hinweis zum NetworkOrigin des S3 AP**: Die Discovery-Lambda-Funktion wird innerhalb eines VPC bereitgestellt. Wenn der NetworkOrigin des S3 Access Point `Internet` lautet, kann er nicht über einen S3 Gateway VPC Endpoint erreicht werden (Anfragen werden nicht an die FSx-Datenebene weitergeleitet). Verwenden Sie einen S3 AP mit NetworkOrigin=VPC oder konfigurieren Sie den Zugriff über ein NAT Gateway. Weitere Einzelheiten finden Sie in den [S3AP Compatibility Notes](../docs/s3ap-compatibility-notes.md).
+> **Hinweis zum NetworkOrigin des S3 AP**: Die Discovery-Lambda-Funktion wird innerhalb eines VPC bereitgestellt. Wenn der NetworkOrigin des S3 Access Point `Internet` lautet, kann er nicht über einen S3 Gateway VPC Endpoint erreicht werden (Anfragen werden nicht an die FSx-Datenebene weitergeleitet). Verwenden Sie einen S3 AP mit NetworkOrigin=VPC oder konfigurieren Sie den Zugriff über ein NAT Gateway. Weitere Einzelheiten finden Sie in den [S3AP Compatibility Notes](../../../docs/s3ap-compatibility-notes.md).
 
 - AWS-Konto mit entsprechenden IAM-Berechtigungen
 - FSx for ONTAP-Dateisystem (ONTAP 9.17.1P4D3 oder höher)
@@ -113,7 +113,7 @@ aws cloudformation wait stack-delete-complete --stack-name fsxn-hr-screening --r
 
 ## S3AP Compatibility
 
-Informationen zu Kompatibilitätsbeschränkungen, Fehlerbehebung und Trigger-Mustern der FSx for ONTAP S3 Access Points finden Sie in den [S3AP Compatibility Notes](../docs/s3ap-compatibility-notes.md).
+Informationen zu Kompatibilitätsbeschränkungen, Fehlerbehebung und Trigger-Mustern der FSx for ONTAP S3 Access Points finden Sie in den [S3AP Compatibility Notes](../../../docs/s3ap-compatibility-notes.md).
 
 ---
 

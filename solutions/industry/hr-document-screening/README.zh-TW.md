@@ -46,7 +46,7 @@ Step Functions 執行歷程、AI/ML 服務擷取結果、CloudWatch EMF Metrics�
 
 ## 前提條件
 
-> **S3 AP NetworkOrigin 注意**：Discovery Lambda 部署在 VPC 內。如果 S3 Access Point 的 NetworkOrigin 為 `Internet`，則無法透過 S3 Gateway VPC Endpoint 存取（因為不會路由到 FSx 資料平面）。請使用 NetworkOrigin=VPC 的 S3 AP，或設定經由 NAT Gateway 的存取。詳情請參閱 [S3AP Compatibility Notes](../docs/s3ap-compatibility-notes.md)。
+> **S3 AP NetworkOrigin 注意**：Discovery Lambda 部署在 VPC 內。如果 S3 Access Point 的 NetworkOrigin 為 `Internet`，則無法透過 S3 Gateway VPC Endpoint 存取（因為不會路由到 FSx 資料平面）。請使用 NetworkOrigin=VPC 的 S3 AP，或設定經由 NAT Gateway 的存取。詳情請參閱 [S3AP Compatibility Notes](../../../docs/s3ap-compatibility-notes.md)。
 
 - AWS 帳戶與適當的 IAM 權限
 - FSx for ONTAP 檔案系統（ONTAP 9.17.1P4D3 以上）
@@ -113,7 +113,7 @@ aws cloudformation wait stack-delete-complete --stack-name fsxn-hr-screening --r
 
 ## S3AP Compatibility
 
-關於 FSx for ONTAP S3 Access Points 的相容性限制、疑難排解與觸發模式，請參閱 [S3AP Compatibility Notes](../docs/s3ap-compatibility-notes.md)。
+關於 FSx for ONTAP S3 Access Points 的相容性限制、疑難排解與觸發模式，請參閱 [S3AP Compatibility Notes](../../../docs/s3ap-compatibility-notes.md)。
 
 ---
 

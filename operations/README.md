@@ -1,6 +1,6 @@
 # Operations / 運用最適化パターン
 
-🌐 **Language / 言語**: 日本語 | [English](README.en.md)
+🌐 **Language / 言語**: 日本語（このファイルのみ。英語版は未作成です）
 
 ---
 
@@ -241,12 +241,20 @@ sam deploy --parameter-overrides DemoMode=true FileSystemIds=fs-demo01
 | ドキュメント | 内容 |
 |------------|------|
 | [metrics-mapping.md](docs/metrics-mapping.md) | CloudWatch ↔ ONTAP REST ↔ CLI 対応表 |
-| [ops-migration-from-gui.md](docs/ops-migration-from-gui.md) | GUI → API 移行ガイド |
 | [ops-adoption-roadmap.md](docs/ops-adoption-roadmap.md) | 段階的導入ロードマップ |
 | [slo-definitions.md](docs/slo-definitions.md) | SLO/SLI 定義 |
-| [finops-maturity-mapping.md](docs/finops-maturity-mapping.md) | FinOps 成熟度マッピング |
-| [multi-account-deployment.md](docs/multi-account-deployment.md) | マルチアカウント展開 |
-| [gameday-scenarios.md](docs/gameday-scenarios.md) | GameDay テストシナリオ |
+| [existing-solutions-reference.md](docs/existing-solutions-reference.md) | 既存ソリューションとの対応 |
+
+次の 4 件はこの表がリンクしていましたが、**文書が存在しません**。リンクを外して未作成である
+ことを明示しています（GitHub は解決しない相対リンクをプレーンテキストで描画するため、
+リンクのまま残すと読者には「あるのに開けない」に見えます）。
+
+| 未作成のドキュメント | 想定内容 |
+|---|---|
+| `docs/ops-migration-from-gui.md` | GUI → API 移行ガイド |
+| `docs/finops-maturity-mapping.md` | FinOps 成熟度マッピング |
+| `docs/multi-account-deployment.md` | マルチアカウント展開 |
+| `docs/gameday-scenarios.md` | GameDay テストシナリオ |
 
 ---
 

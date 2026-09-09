@@ -1,7 +1,7 @@
 # UC17: Smart City — Geodatenanalyse und Stadtplanung
 
 🌐 **Language / 言語**: [日本語](README.md) | [English](README.en.md) | [한국어](README.ko.md) | [简体中文](README.zh-CN.md) | [繁體中文](README.zh-TW.md) | [Français](README.fr.md) | Deutsch | [Español](README.es.md)
-📚 **Dokumentation**: [Architektur](docs/architecture.md) | [Demo-Skript](docs/demo-guide.md) | [Fehlerbehebung](../docs/phase7-troubleshooting.md)
+📚 **Dokumentation**: [Architektur](docs/architecture.md) | [Demo-Skript](docs/demo-guide.md) | [Fehlerbehebung](../../../docs/phase7-troubleshooting.md)
 
 ## Überblick
 
@@ -83,7 +83,7 @@ GeoTIFF / Shapefile / LAS werden unter dem Präfix `gis/YYYY/MM/` abgelegt.
 <!-- SCREENSHOT: phase7-uc17-s3-gis-uploaded.png
      Inhalt: Auflistung des gis/-Präfixes im S3 AP, gemischte Dateiformate
      Maske: Konto-ID, S3-AP-ARN, aus echten Koordinaten abgeleitete Dateinamen -->
-![UC17: Bestätigung der GIS-Datenspeicherung](../docs/screenshots/masked/phase7/phase7-uc17-s3-gis-uploaded.png)
+![UC17: Bestätigung der GIS-Datenspeicherung](../../../docs/screenshots/masked/phase7/phase7-uc17-s3-gis-uploaded.png)
 
 ### 2. Von Bedrock generierter Stadtplanungsbericht (Markdown-Ansicht)
 
@@ -100,7 +100,7 @@ einen japanischsprachigen Bericht für kommunale Mitarbeitende.
        #### Vorrangig zu erwägende Maßnahmen
        1. Hochwasserschutz verstärken ... 2. Erdbebenschutz verstärken ... 3. Schutz vor Hangrutschungen verstärken ...
      Maske: Konto-ID, Kommunenname (nur der Beispielname wird angezeigt) -->
-![UC17: von Bedrock generierter Bericht](../docs/screenshots/masked/phase7/phase7-uc17-bedrock-report.png)
+![UC17: von Bedrock generierter Bericht](../../../docs/screenshots/masked/phase7/phase7-uc17-bedrock-report.png)
 
 ### 3. JSON der Katastrophen-Risikokarte
 
@@ -110,7 +110,7 @@ in vier Stufen eingeteilt: CRITICAL / HIGH / MEDIUM / LOW.
 <!-- SCREENSHOT: phase7-uc17-risk-map-json.png
      Inhalt: formatierte Ansicht von risk-maps/*.json (level von flood, earthquake, landslide hervorgehoben)
      Maske: Konto-ID -->
-![UC17: Katastrophen-Risikokarte](../docs/screenshots/masked/phase7/phase7-uc17-risk-map-json.png)
+![UC17: Katastrophen-Risikokarte](../../../docs/screenshots/masked/phase7/phase7-uc17-risk-map-json.png)
 
 ### 4. Landnutzungsverteilung (JSON)
 
@@ -120,7 +120,7 @@ Anteile von residential / commercial / forest / water / road usw.
 <!-- SCREENSHOT: phase7-uc17-landuse-distribution.png
      Inhalt: Inhalt von landuse/*.json (residential: 0.5, forest: 0.3 usw.)
      Maske: Konto-ID -->
-![UC17: Landnutzungsverteilung](../docs/screenshots/masked/phase7/phase7-uc17-landuse-distribution.png)
+![UC17: Landnutzungsverteilung](../../../docs/screenshots/masked/phase7/phase7-uc17-landuse-distribution.png)
 
 ### 5. Visualisierung der Zeitreihen-Änderungen (DynamoDB Explorer)
 
@@ -130,7 +130,7 @@ Landnutzungsverteilungen mit aktuellen Werten verglichen, um change_magnitude zu
 <!-- SCREENSHOT: phase7-uc17-dynamodb-landuse-history.png
      Inhalt: Zeitreihenelemente der landuse-history-Tabelle im DynamoDB Explorer
      Maske: Konto-ID, area_id -->
-![UC17: Tabelle der Zeitreihen-Änderungen](../docs/screenshots/masked/phase7/phase7-uc17-dynamodb-landuse-history.png)
+![UC17: Tabelle der Zeitreihen-Änderungen](../../../docs/screenshots/masked/phase7/phase7-uc17-dynamodb-landuse-history.png)
 
 
 ## Success Metrics
@@ -304,7 +304,7 @@ sam local invoke DiscoveryFunction \
 python3 -m pytest tests/ -v
 ```
 
-Weitere Einzelheiten finden Sie im [Schnellstart für lokale Tests](../docs/local-testing-quick-start.md).
+Weitere Einzelheiten finden Sie im [Schnellstart für lokale Tests](../../../docs/local-testing-quick-start.md).
 
 ---
 
@@ -356,7 +356,7 @@ Beispielausgabe der Geodatenanalyse-Pipeline:
 
 ## S3AP Compatibility
 
-Informationen zu Kompatibilitätseinschränkungen, Fehlerbehebung und Auslösemustern für S3 Access Points for FSx for ONTAP finden Sie in den [S3AP Compatibility Notes](../docs/s3ap-compatibility-notes.md).
+Informationen zu Kompatibilitätseinschränkungen, Fehlerbehebung und Auslösemustern für S3 Access Points for FSx for ONTAP finden Sie in den [S3AP Compatibility Notes](../../../docs/s3ap-compatibility-notes.md).
 
 ---
 

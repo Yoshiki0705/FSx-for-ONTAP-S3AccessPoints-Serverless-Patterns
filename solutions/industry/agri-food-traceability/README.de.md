@@ -81,7 +81,7 @@ graph LR
 
 ## Voraussetzungen
 
-> **Hinweis zu S3 AP NetworkOrigin**: Die Discovery Lambda wird innerhalb einer VPC bereitgestellt. Wenn der NetworkOrigin des S3 Access Point `Internet` ist, kann nicht über den S3 Gateway VPC Endpoint darauf zugegriffen werden (da Anfragen nicht an die FSx-Datenebene weitergeleitet werden). Verwenden Sie einen S3 AP mit NetworkOrigin=VPC oder konfigurieren Sie den Zugriff über ein NAT Gateway. Siehe [S3AP Compatibility Notes](../docs/s3ap-compatibility-notes.md) für Details.
+> **Hinweis zu S3 AP NetworkOrigin**: Die Discovery Lambda wird innerhalb einer VPC bereitgestellt. Wenn der NetworkOrigin des S3 Access Point `Internet` ist, kann nicht über den S3 Gateway VPC Endpoint darauf zugegriffen werden (da Anfragen nicht an die FSx-Datenebene weitergeleitet werden). Verwenden Sie einen S3 AP mit NetworkOrigin=VPC oder konfigurieren Sie den Zugriff über ein NAT Gateway. Siehe [S3AP Compatibility Notes](../../../docs/s3ap-compatibility-notes.md) für Details.
 
 - Ein AWS-Konto und geeignete IAM-Berechtigungen
 - Ein FSx for ONTAP-Dateisystem (ONTAP 9.17.1P4D3 oder höher)
@@ -140,7 +140,7 @@ sam deploy \
 
 ## S3AP Compatibility
 
-Siehe [S3AP Compatibility Notes](../docs/s3ap-compatibility-notes.md).
+Siehe [S3AP Compatibility Notes](../../../docs/s3ap-compatibility-notes.md).
 
 ---
 

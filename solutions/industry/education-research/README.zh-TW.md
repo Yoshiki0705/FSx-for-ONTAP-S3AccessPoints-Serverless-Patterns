@@ -168,7 +168,7 @@ UC13 使用以下服務：
 | AWS X-Ray | 幾乎所有區域皆可使用 |
 | CloudWatch EMF | 幾乎所有區域皆可使用 |
 
-> 透過 Cross-Region Client 呼叫 Textract API。請確認您的資料落地要求。詳情請參閱[區域相容性矩陣](../docs/region-compatibility.md)。
+> 透過 Cross-Region Client 呼叫 Textract API。請確認您的資料落地要求。詳情請參閱[區域相容性矩陣](../../../docs/region-compatibility.md)。
 
 ## 參考連結
 
@@ -273,7 +273,7 @@ sam local invoke DiscoveryFunction \
 python3 -m pytest tests/ -v
 ```
 
-詳情請參閱[本地測試快速入門](../docs/local-testing-quick-start.md)。
+詳情請參閱[本地測試快速入門](../../../docs/local-testing-quick-start.md)。
 
 ---
 
@@ -324,7 +324,7 @@ python3 -m pytest tests/ -v
 
 ## S3AP Compatibility
 
-有關 S3 Access Points for FSx for ONTAP 的相容性限制、疑難排解與觸發模式，請參閱 [S3AP Compatibility Notes](../docs/s3ap-compatibility-notes.md)。
+有關 S3 Access Points for FSx for ONTAP 的相容性限制、疑難排解與觸發模式，請參閱 [S3AP Compatibility Notes](../../../docs/s3ap-compatibility-notes.md)。
 
 ---
 

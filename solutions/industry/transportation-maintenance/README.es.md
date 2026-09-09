@@ -96,7 +96,7 @@ graph LR
 
 ## Requisitos previos
 
-> **Nota sobre S3 AP NetworkOrigin**: la Discovery Lambda se despliega dentro de una VPC. Si el NetworkOrigin del S3 Access Point es `Internet`, no se puede acceder a él a través del S3 Gateway VPC Endpoint (las solicitudes no se enrutan al plano de datos de FSx). Utilice un S3 AP con NetworkOrigin=VPC, o configure el acceso a través de un NAT Gateway. Para más detalles, consulte [S3AP Compatibility Notes](../docs/s3ap-compatibility-notes.md).
+> **Nota sobre S3 AP NetworkOrigin**: la Discovery Lambda se despliega dentro de una VPC. Si el NetworkOrigin del S3 Access Point es `Internet`, no se puede acceder a él a través del S3 Gateway VPC Endpoint (las solicitudes no se enrutan al plano de datos de FSx). Utilice un S3 AP con NetworkOrigin=VPC, o configure el acceso a través de un NAT Gateway. Para más detalles, consulte [S3AP Compatibility Notes](../../../docs/s3ap-compatibility-notes.md).
 
 - Cuenta de AWS con permisos IAM adecuados
 - Sistema de archivos FSx for ONTAP (ONTAP 9.17.1P4D3 o posterior)
@@ -165,7 +165,7 @@ sam deploy \
 
 Este patrón (UC22) proporciona una arquitectura que resuelve la misma clase de problema (imágenes de inspección de equipos + análisis de documentos de mantenimiento) con FSx for ONTAP S3 AP + AWS Bedrock.
 
-Análisis detallado: [Análisis de casos del sector DAIS 2026 Agent Bricks](../docs/investigations/dais2026-agent-bricks-industry-cases.md)
+Análisis detallado: [Análisis de casos del sector DAIS 2026 Agent Bricks](../../../docs/investigations/dais2026-agent-bricks-industry-cases.md)
 
 Sources:
 - [DAIS 2026 Session: AI Agents for the Frontline](https://www.databricks.com/dataaisummit/session/ai-agents-frontline-7-elevens-genai-maintenance-assistant)
@@ -175,7 +175,7 @@ Sources:
 
 ## S3AP Compatibility
 
-Consulte [S3AP Compatibility Notes](../docs/s3ap-compatibility-notes.md).
+Consulte [S3AP Compatibility Notes](../../../docs/s3ap-compatibility-notes.md).
 
 ---
 

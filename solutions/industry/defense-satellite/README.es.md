@@ -1,7 +1,7 @@
 # UC15: Defensa / Espacio — Pipeline de análisis de imágenes satelitales
 
 🌐 **Language / 言語**: [日本語](README.md) | [English](README.en.md) | [한국어](README.ko.md) | [简体中文](README.zh-CN.md) | [繁體中文](README.zh-TW.md) | [Français](README.fr.md) | [Deutsch](README.de.md) | Español
-📚 **Documentación**: [Arquitectura](docs/architecture.es.md) | [Script de demostración](docs/demo-guide.es.md) | [Solución de problemas](../docs/phase7-troubleshooting.md)
+📚 **Documentación**: [Arquitectura](docs/architecture.es.md) | [Script de demostración](docs/demo-guide.es.md) | [Solución de problemas](../../../docs/phase7-troubleshooting.md)
 
 ## Descripción general
 
@@ -78,7 +78,7 @@ automáticamente.
 <!-- SCREENSHOT: phase7-uc15-s3-satellite-uploaded.png
      Contenido: listar satellite/2026/05/*.tif vía S3 AP (nombre de objeto, tamaño, fecha de modificación)
      Enmascarar: ID de cuenta, ARN del Access Point, nombres reales de imágenes satelitales -->
-![UC15: Colocación de imágenes satelitales](../docs/screenshots/masked/phase7/phase7-uc15-s3-satellite-uploaded.png)
+![UC15: Colocación de imágenes satelitales](../../../docs/screenshots/masked/phase7/phase7-uc15-s3-satellite-uploaded.png)
 
 ### 2. Visualización de resultados de análisis (bucket S3 de salida)
 
@@ -89,7 +89,7 @@ almacenan.
 <!-- SCREENSHOT: phase7-uc15-s3-output-bucket.png
      Contenido: vista general de los 3 prefijos detections/, enriched/, tiles/ en la consola de S3
      Enmascarar: ID de cuenta, prefijo del nombre del bucket -->
-![UC15: Bucket S3 de salida](../docs/screenshots/masked/phase7/phase7-uc15-s3-output-bucket.png)
+![UC15: Bucket S3 de salida](../../../docs/screenshots/masked/phase7/phase7-uc15-s3-output-bucket.png)
 
 ### 3. Alerta de detección de cambios (notificación por correo SNS)
 
@@ -99,7 +99,7 @@ automáticamente cuando el área de cambio supera el umbral (1 km² por defecto)
 <!-- SCREENSHOT: phase7-uc15-sns-alert-email.png
      Contenido: mostrar alert_type=SATELLITE_CHANGE_DETECTED en un cliente de correo (Gmail/Outlook)
      Enmascarar: dirección de correo del destinatario, dirección del remitente, coordenadas reales, tile_id -->
-![UC15: Correo de alerta SNS](../docs/screenshots/masked/phase7/phase7-uc15-sns-alert-email.png)
+![UC15: Correo de alerta SNS](../../../docs/screenshots/masked/phase7/phase7-uc15-sns-alert-email.png)
 
 ### 4. Contenido del JSON de resultado de detección
 
@@ -108,7 +108,7 @@ Un visor JSON limpio de los resultados de detección (etiqueta, confianza, bbox)
 <!-- SCREENSHOT: phase7-uc15-detections-json.png
      Contenido: vista previa del objeto en la consola de S3, contenido del JSON detections
      Enmascarar: ID de cuenta -->
-![UC15: Resultados de detección JSON](../docs/screenshots/masked/phase7/phase7-uc15-detections-json.png)
+![UC15: Resultados de detección JSON](../../../docs/screenshots/masked/phase7/phase7-uc15-detections-json.png)
 
 
 ## Success Metrics
@@ -163,7 +163,7 @@ sam deploy \
 ```
 
 **Importante**: `S3AccessPointName` es necesario para conceder permisos IAM al S3 AP.
-Para más detalles, consulte [`docs/phase7-troubleshooting.md`](../docs/phase7-troubleshooting.md).
+Para más detalles, consulte [`docs/phase7-troubleshooting.md`](../../../docs/phase7-troubleshooting.md).
 
 ## Estructura de directorios
 
@@ -285,7 +285,7 @@ sam local invoke DiscoveryFunction \
 python3 -m pytest tests/ -v
 ```
 
-Para más detalles, consulte [Inicio rápido de pruebas locales](../docs/local-testing-quick-start.md).
+Para más detalles, consulte [Inicio rápido de pruebas locales](../../../docs/local-testing-quick-start.md).
 
 ---
 
@@ -335,7 +335,7 @@ Ejemplo de salida del pipeline de análisis de imágenes satelitales (Human Revi
 
 ## S3AP Compatibility
 
-Para las restricciones de compatibilidad, la solución de problemas y los patrones de activación de S3 Access Points for FSx for ONTAP, consulte [S3AP Compatibility Notes](../docs/s3ap-compatibility-notes.md).
+Para las restricciones de compatibilidad, la solución de problemas y los patrones de activación de S3 Access Points for FSx for ONTAP, consulte [S3AP Compatibility Notes](../../../docs/s3ap-compatibility-notes.md).
 
 ---
 

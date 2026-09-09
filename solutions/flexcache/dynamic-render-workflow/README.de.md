@@ -161,8 +161,8 @@ aws stepfunctions start-execution \
 ## Verwandte Links
 
 - [FlexCache AnyCast / DR-Muster](../flexcache-anycast-dr/README.md)
-- [Support-Matrix](../docs/support-matrix-fsx-ontap-flexcache-s3ap.md)
-- [Branchen-·Workload-Zuordnung](../docs/industry-workload-mapping.md)
+- [Support-Matrix](../../../docs/support-matrix-fsx-ontap-flexcache-s3ap.md)
+- [Branchen-·Workload-Zuordnung](../../../docs/industry-workload-mapping.md)
 - [media-vfx/](../media-vfx/README.md)
 - [semiconductor-eda/](../semiconductor-eda/README.md)
 
@@ -256,7 +256,7 @@ sam local invoke DiscoveryFunction \
 python3 -m pytest tests/ -v
 ```
 
-Weitere Details finden Sie im [Schnellstart für lokales Testen](../docs/local-testing-quick-start.md).
+Weitere Details finden Sie im [Schnellstart für lokales Testen](../../../docs/local-testing-quick-start.md).
 
 ---
 

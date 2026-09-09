@@ -106,7 +106,7 @@ curl -X POST https://<api-id>.execute-api.ap-northeast-1.amazonaws.com/prod/acti
 - Graceful degradation: ante un fallo de la búsqueda web, se comporta igual que `generate_brief`
 - Citas: devuelve URL + título + fecha de publicación en el campo `web_citations`
 
-Detalles: [docs/investigations/agentcore-web-search-fsxn-integration.md](../../docs/investigations/agentcore-web-search-fsxn-integration.md)
+Detalles: [docs/investigations/agentcore-web-search-fsxn-integration.md](../../../docs/investigations/agentcore-web-search-fsxn-integration.md)
 
 ## Estructura rol × servicio (conforme a los roles previstos por Amazon Quick)
 
@@ -316,10 +316,10 @@ sam local invoke DataPrepFunction --event events/data-prep-event.json
 | [Pasos de configuración de la consola de Amazon Quick](docs/quick-console-setup.md) | Conexión de Index/Sight/Flows (con pautas de captura de pantalla) |
 | [Notas de Lake Formation TBAC](docs/lake-formation-tbac.md) | Visibilidad de datos por rol (LF-TBAC + Quick RLS) |
 | [Script de creación de tablas de Glue](scripts/create_glue_tables.sh) | DDL para Quick Sight/Athena (Parquet recomendado) |
-| [Runbook de limpieza](../docs/uc29-uc30-cleanup-runbook.md) | Pasos de desmontaje incluyendo artefactos manuales (comunes a los 2 UC) |
+| [Runbook de limpieza](../../../docs/uc29-uc30-cleanup-runbook.md) | Pasos de desmontaje incluyendo artefactos manuales (comunes a los 2 UC) |
 | [UC29 genai-kb-selfservice-curation](../genai-kb-selfservice-curation/) | Ingesta de autoservicio en una KB de Bedrock gestionada (misma estructura de roles) |
 | [FC3 genai-rag-enterprise-files](../genai-rag-enterprise-files/) | RAG personalizado que requiere filtrado estricto de permisos |
-| [Mapeo de sector / carga de trabajo](../docs/industry-workload-mapping.md) | Guía de selección de UC |
+| [Mapeo de sector / carga de trabajo](../../../docs/industry-workload-mapping.md) | Guía de selección de UC |
 
 ## Endurecimiento operativo (implementado)
 

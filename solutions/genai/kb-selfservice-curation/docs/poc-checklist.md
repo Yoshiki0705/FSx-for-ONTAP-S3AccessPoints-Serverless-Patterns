@@ -39,4 +39,4 @@
 - [ ] CloudTrail + S3 AP アクセス監査が有効
 - [ ] 機密データをログ/プロンプト/会話履歴に残さない
 
-> クリーンアップ手順は [UC29/UC30 クリーンアップ runbook](../../docs/uc29-uc30-cleanup-runbook.md) を参照。
+> クリーンアップ手順は [UC29/UC30 クリーンアップ runbook](../../../../docs/uc29-uc30-cleanup-runbook.md) を参照。

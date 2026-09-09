@@ -1,7 +1,7 @@
 # UC16: 정부 기관 — 공문서 디지털 아카이브·FOIA 대응
 
 🌐 **Language / 言語**: [日本語](README.md) | [English](README.en.md) | 한국어 | [简体中文](README.zh-CN.md) | [繁體中文](README.zh-TW.md) | [Français](README.fr.md) | [Deutsch](README.de.md) | [Español](README.es.md)
-📚 **문서**: [아키텍처](docs/architecture.md) | [데모 스크립트](docs/demo-guide.md) | [문제 해결](../docs/phase7-troubleshooting.md)
+📚 **문서**: [아키텍처](docs/architecture.md) | [데모 스크립트](docs/demo-guide.md) | [문제 해결](../../../docs/phase7-troubleshooting.md)
 
 ## 개요
 
@@ -84,7 +84,7 @@ FOIA 청구 접수
 <!-- SCREENSHOT: phase7-uc16-s3-archives-uploaded.png
      내용: S3 AP 의 archives/ 프리픽스에서 PDF 문서 목록
      마스크: 계정 ID, S3 AP ARN, 문서명 -->
-![UC16: 공문서 저장 확인](../docs/screenshots/masked/phase7/phase7-uc16-s3-archives-uploaded.png)
+![UC16: 공문서 저장 확인](../../../docs/screenshots/masked/phase7/phase7-uc16-s3-archives-uploaded.png)
 
 ### 2. 마스킹된 문서 열람
 
@@ -94,7 +94,7 @@ FOIA 청구 접수
 <!-- SCREENSHOT: phase7-uc16-redacted-text-preview.png
      내용: S3 콘솔에서의 redacted 텍스트 미리보기, [REDACTED] 마커 표시
      마스크: 계정 ID, 마스킹 대상 문서명(샘플명만 표시) -->
-![UC16: 마스킹된 문서 미리보기](../docs/screenshots/masked/phase7/phase7-uc16-redacted-text-preview.png)
+![UC16: 마스킹된 문서 미리보기](../../../docs/screenshots/masked/phase7/phase7-uc16-redacted-text-preview.png)
 
 ### 3. 마스킹 메타데이터(sidecar JSON)
 
@@ -104,7 +104,7 @@ FOIA 청구 접수
 <!-- SCREENSHOT: phase7-uc16-redaction-metadata-json.png
      내용: redaction-metadata/*.json 의 정형 뷰
      마스크: 계정 ID, 원본 문서명 -->
-![UC16: 마스킹 메타데이터 JSON](../docs/screenshots/masked/phase7/phase7-uc16-redaction-metadata-json.png)
+![UC16: 마스킹 메타데이터 JSON](../../../docs/screenshots/masked/phase7/phase7-uc16-redaction-metadata-json.png)
 
 ### 4. FOIA 기한 리마인더(SNS 이메일 통지)
 
@@ -114,7 +114,7 @@ FOIA 담당자가 기한 3 영업일 전에 수신하는 리마인더 이메일�
 <!-- SCREENSHOT: phase7-uc16-foia-reminder-email.png
      내용: 이메일 클라이언트에서 FOIA_DEADLINE_APPROACHING 이메일 표시
      마스크: 수신자·발신자 이메일, request_id(샘플 ID만 표시) -->
-![UC16: FOIA 기한 리마인더 이메일](../docs/screenshots/masked/phase7/phase7-uc16-foia-reminder-email.png)
+![UC16: FOIA 기한 리마인더 이메일](../../../docs/screenshots/masked/phase7/phase7-uc16-foia-reminder-email.png)
 
 ### 5. NARA GRS 보존 일정(DynamoDB Explorer)
 
@@ -124,7 +124,7 @@ FOIA 담당자가 기한 3 영업일 전에 수신하는 리마인더 이메일�
 <!-- SCREENSHOT: phase7-uc16-dynamodb-retention.png
      내용: DynamoDB Explorer 에서 retention 테이블의 항목 목록
      마스크: 계정 ID, document_key(샘플명만) -->
-![UC16: 보존 일정 테이블](../docs/screenshots/masked/phase7/phase7-uc16-dynamodb-retention.png)
+![UC16: 보존 일정 테이블](../../../docs/screenshots/masked/phase7/phase7-uc16-dynamodb-retention.png)
 
 
 ## Success Metrics
@@ -328,7 +328,7 @@ sam local invoke DiscoveryFunction \
 python3 -m pytest tests/ -v
 ```
 
-자세한 내용은 [로컬 테스트 퀵 스타트](../docs/local-testing-quick-start.md) 를 참조해 주십시오.
+자세한 내용은 [로컬 테스트 퀵 스타트](../../../docs/local-testing-quick-start.md) 를 참조해 주십시오.
 
 ---
 
@@ -383,7 +383,7 @@ python3 -m pytest tests/ -v
 
 ## S3AP Compatibility
 
-S3 Access Points for FSx for ONTAP 의 호환성 제약, 문제 해결, 트리거 패턴에 대해서는 [S3AP Compatibility Notes](../docs/s3ap-compatibility-notes.md) 를 참조해 주십시오.
+S3 Access Points for FSx for ONTAP 의 호환성 제약, 문제 해결, 트리거 패턴에 대해서는 [S3AP Compatibility Notes](../../../docs/s3ap-compatibility-notes.md) 를 참조해 주십시오.
 
 ---
 

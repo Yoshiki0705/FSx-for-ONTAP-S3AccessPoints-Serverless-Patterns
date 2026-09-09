@@ -168,7 +168,7 @@ UC13 verwendet die folgenden Services:
 | AWS X-Ray | In fast allen Regionen verfügbar |
 | CloudWatch EMF | In fast allen Regionen verfügbar |
 
-> Die Textract-API wird über den Cross-Region Client aufgerufen. Prüfen Sie Ihre Anforderungen an die Datenresidenz. Weitere Informationen finden Sie in der [Regions-Kompatibilitätsmatrix](../docs/region-compatibility.md).
+> Die Textract-API wird über den Cross-Region Client aufgerufen. Prüfen Sie Ihre Anforderungen an die Datenresidenz. Weitere Informationen finden Sie in der [Regions-Kompatibilitätsmatrix](../../../docs/region-compatibility.md).
 
 ## Referenzlinks
 
@@ -273,7 +273,7 @@ sam local invoke DiscoveryFunction \
 python3 -m pytest tests/ -v
 ```
 
-Weitere Informationen finden Sie im [Schnellstart für lokales Testen](../docs/local-testing-quick-start.md).
+Weitere Informationen finden Sie im [Schnellstart für lokales Testen](../../../docs/local-testing-quick-start.md).
 
 ---
 
@@ -324,7 +324,7 @@ Beispielausgabe der Paper-PDF-Klassifizierung + Zitationsnetzwerk-Analyse:
 
 ## S3AP Compatibility
 
-Informationen zu Kompatibilitätseinschränkungen, Fehlerbehebung und Trigger-Patterns von S3 Access Points for FSx for ONTAP finden Sie in den [S3AP Compatibility Notes](../docs/s3ap-compatibility-notes.md).
+Informationen zu Kompatibilitätseinschränkungen, Fehlerbehebung und Trigger-Patterns von S3 Access Points for FSx for ONTAP finden Sie in den [S3AP Compatibility Notes](../../../docs/s3ap-compatibility-notes.md).
 
 ---
 

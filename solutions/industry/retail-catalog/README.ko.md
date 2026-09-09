@@ -150,7 +150,7 @@ aws cloudformation wait stack-delete-complete \
 - [FSx for ONTAP S3 Access Points 개요](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/accessing-data-via-s3-access-points.html)
 - [Amazon Rekognition DetectLabels](https://docs.aws.amazon.com/rekognition/latest/dg/labels-detect-labels-image.html)
 - [Amazon Bedrock API 레퍼런스](https://docs.aws.amazon.com/bedrock/latest/APIReference/API_runtime_InvokeModel.html)
-- [스트리밍 vs 폴링 선택 가이드](../docs/streaming-vs-polling-guide.md)
+- [스트리밍 vs 폴링 선택 가이드](../../../docs/streaming-vs-polling-guide.md)
 
 ## Kinesis 스트리밍 모드(Phase 3)
 
@@ -189,7 +189,7 @@ EventBridge (rate(1 min)) → Stream Producer Lambda
 
 ### 패턴 선택
 
-어떤 패턴을 선택해야 하는지는 [스트리밍 vs 폴링 선택 가이드](../docs/streaming-vs-polling-guide.md)를 참조하세요.
+어떤 패턴을 선택해야 하는지는 [스트리밍 vs 폴링 선택 가이드](../../../docs/streaming-vs-polling-guide.md)를 참조하세요.
 
 ## Supported Regions
 
@@ -203,7 +203,7 @@ UC11은 다음 서비스를 사용합니다:
 | AWS X-Ray | 거의 모든 리전에서 이용 가능 |
 | CloudWatch EMF | 거의 모든 리전에서 이용 가능 |
 
-> Kinesis 스트리밍 모드를 활성화하는 경우 샤드 요금이 리전에 따라 다르다는 점에 유의하세요. 자세한 내용은 [리전 호환성 매트릭스](../docs/region-compatibility.md)를 참조하세요.
+> Kinesis 스트리밍 모드를 활성화하는 경우 샤드 요금이 리전에 따라 다르다는 점에 유의하세요. 자세한 내용은 [리전 호환성 매트릭스](../../../docs/region-compatibility.md)를 참조하세요.
 
 ---
 
@@ -302,7 +302,7 @@ sam local invoke DiscoveryFunction \
 python3 -m pytest tests/ -v
 ```
 
-자세한 내용은 [로컬 테스트 퀵 스타트](../docs/local-testing-quick-start.md)를 참조하세요.
+자세한 내용은 [로컬 테스트 퀵 스타트](../../../docs/local-testing-quick-start.md)를 참조하세요.
 
 ---
 
@@ -354,7 +354,7 @@ python3 -m pytest tests/ -v
 
 ## S3AP Compatibility
 
-S3 Access Points for FSx for ONTAP의 호환성 제약, 트러블슈팅, 트리거 패턴에 대해서는 [S3AP Compatibility Notes](../docs/s3ap-compatibility-notes.md)를 참조하세요.
+S3 Access Points for FSx for ONTAP의 호환성 제약, 트러블슈팅, 트리거 패턴에 대해서는 [S3AP Compatibility Notes](../../../docs/s3ap-compatibility-notes.md)를 참조하세요.
 
 ---
 

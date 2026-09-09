@@ -161,8 +161,8 @@ aws stepfunctions start-execution \
 ## 관련 링크
 
 - [FlexCache AnyCast / DR 패턴](../flexcache-anycast-dr/README.md)
-- [지원 매트릭스](../docs/support-matrix-fsx-ontap-flexcache-s3ap.md)
-- [업계·워크로드 매핑](../docs/industry-workload-mapping.md)
+- [지원 매트릭스](../../../docs/support-matrix-fsx-ontap-flexcache-s3ap.md)
+- [업계·워크로드 매핑](../../../docs/industry-workload-mapping.md)
 - [media-vfx/](../media-vfx/README.md)
 - [semiconductor-eda/](../semiconductor-eda/README.md)
 
@@ -256,7 +256,7 @@ sam local invoke DiscoveryFunction \
 python3 -m pytest tests/ -v
 ```
 
-자세한 내용은 [로컬 테스트 퀵 스타트](../docs/local-testing-quick-start.md)를 참조하세요.
+자세한 내용은 [로컬 테스트 퀵 스타트](../../../docs/local-testing-quick-start.md)를 참조하세요.
 
 ---
 

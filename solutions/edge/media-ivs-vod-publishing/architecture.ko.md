@@ -74,7 +74,7 @@ Amazon IVS
 
 - **Presigned URL 미지원** → 시청자 인증은 CloudFront 서명 URL/쿠키 사용.
 - 완전한 S3 버킷 아님: Object Versioning / Object Lock / Lifecycle / Static Website Hosting 미지원
-  (작업별로 [../../docs/s3ap-compatibility-notes.md](../../docs/s3ap-compatibility-notes.md) 확인).
+  (작업별로 [../../docs/s3ap-compatibility-notes.md](../../../docs/s3ap-compatibility-notes.md) 확인).
 - `PutObject` 최대 5 GB(초과는 multipart).
 - 이중 인가: IAM/AP 정책 **과** ONTAP 파일 시스템 identity(UNIX/Windows) 모두 허용해야 함.
 - `NetworkOrigin`(Internet vs VPC)은 생성 후 변경 불가.
@@ -179,7 +179,7 @@ flowchart TD
 > live-to-VOD** 인가(→ IVS + S3 + CloudFront)로 선택. 이들은 배타적이지 않고 조합 가능.
 
 > **비용**(FinOps lens): 지배적 비용은 FSx for ONTAP 스루풋/용량, CloudFront egress, 녹화의 S3 스토리지이며
-> Lambda 가 아니다. [../../docs/cost-calculator.md](../../docs/cost-calculator.md) 참조, 샘플 실행이 아니라
+> Lambda 가 아니다. [../../docs/cost-calculator.md](../../../docs/cost-calculator.md) 참조, 샘플 실행이 아니라
 > 실측 트래픽으로 사이징할 것.
 
 ## 신뢰성: EventBridge 전달 시맨틱
@@ -258,6 +258,6 @@ Amazon IVS 의 EventBridge 이벤트는 **베스트에포트** 전달로 누락�
 - [Direct recording experiment](direct-recording-experiment.md)
 - [Supported path notes](supported-path-ivs-s3-fsx-cloudfront.md)
 - [DemoMode 가이드](docs/demo-guide.md)
-- [S3AP 호환성 노트](../../docs/s3ap-compatibility-notes.md) / [S3AP 성능](../../docs/s3ap-performance-considerations.md)
-- [비용 계산](../../docs/cost-calculator.md)
+- [S3AP 호환성 노트](../../../docs/s3ap-compatibility-notes.md) / [S3AP 성능](../../../docs/s3ap-performance-considerations.md)
+- [비용 계산](../../../docs/cost-calculator.md)
 - [Content Edge Delivery 패턴](../content-delivery/README.md)

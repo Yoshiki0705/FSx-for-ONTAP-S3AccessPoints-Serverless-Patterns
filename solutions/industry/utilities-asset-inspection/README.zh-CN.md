@@ -37,7 +37,7 @@ Step Functions 执行历史、AI/ML 服务提取结果、CloudWatch EMF Metrics�
 
 ## 前提条件
 
-> **S3 AP NetworkOrigin 注意**: Discovery Lambda 部署在 VPC 内部。如果 S3 Access Point 的 NetworkOrigin 为 `Internet`，则无法通过 S3 Gateway VPC Endpoint 访问（因为不会路由到 FSx 数据平面）。请使用 NetworkOrigin=VPC 的 S3 AP，或配置通过 NAT Gateway 的访问。详情请参阅 [S3AP Compatibility Notes](../docs/s3ap-compatibility-notes.md)。
+> **S3 AP NetworkOrigin 注意**: Discovery Lambda 部署在 VPC 内部。如果 S3 Access Point 的 NetworkOrigin 为 `Internet`，则无法通过 S3 Gateway VPC Endpoint 访问（因为不会路由到 FSx 数据平面）。请使用 NetworkOrigin=VPC 的 S3 AP，或配置通过 NAT Gateway 的访问。详情请参阅 [S3AP Compatibility Notes](../../../docs/s3ap-compatibility-notes.md)。
 
 - AWS 账户和适当的 IAM 权限
 - FSx for ONTAP 文件系统（ONTAP 9.17.1P4D3 或更高版本）
@@ -103,7 +103,7 @@ aws cloudformation wait stack-delete-complete --stack-name fsxn-utilities-inspec
 
 ## S3AP Compatibility
 
-有关 FSx for ONTAP S3 Access Points 的兼容性约束、故障排查和触发模式，请参阅 [S3AP Compatibility Notes](../docs/s3ap-compatibility-notes.md)。
+有关 FSx for ONTAP S3 Access Points 的兼容性约束、故障排查和触发模式，请参阅 [S3AP Compatibility Notes](../../../docs/s3ap-compatibility-notes.md)。
 
 ---
 

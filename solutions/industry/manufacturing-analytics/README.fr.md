@@ -136,7 +136,7 @@ sam deploy \
 
 Après le déploiement, un e-mail de confirmation d'abonnement SNS est envoyé à l'adresse que vous avez indiquée.
 
-> **Remarque** : si vous omettez `S3AccessPointName`, la politique IAM devient uniquement basée sur l'Alias, ce qui peut provoquer une erreur `AccessDenied`. Sa spécification est recommandée pour les environnements de production. Pour plus de détails, consultez le [guide de dépannage](../docs/guides/troubleshooting-guide.md#1-accessdenied-エラー).
+> **Remarque** : si vous omettez `S3AccessPointName`, la politique IAM devient uniquement basée sur l'Alias, ce qui peut provoquer une erreur `AccessDenied`. Sa spécification est recommandée pour les environnements de production. Pour plus de détails, consultez le [guide de dépannage](../../../docs/guides/troubleshooting-guide.md#1-accessdenied-エラー).
 
 ## Liste des paramètres de configuration
 
@@ -205,7 +205,7 @@ UC3 utilise les services suivants :
 | AWS X-Ray | Disponible dans presque toutes les régions |
 | CloudWatch EMF | Disponible dans presque toutes les régions |
 
-> Consultez la [matrice de compatibilité des régions](../docs/region-compatibility.md) pour plus de détails.
+> Consultez la [matrice de compatibilité des régions](../../../docs/region-compatibility.md) pour plus de détails.
 
 ## Liens de référence
 
@@ -313,7 +313,7 @@ sam local invoke DiscoveryFunction \
 python3 -m pytest tests/ -v
 ```
 
-Pour plus de détails, consultez le [guide de démarrage rapide des tests locaux](../docs/local-testing-quick-start.md).
+Pour plus de détails, consultez le [guide de démarrage rapide des tests locaux](../../../docs/local-testing-quick-start.md).
 
 ---
 
@@ -362,7 +362,7 @@ Exemple de sortie de l'ETL de données de capteurs + analyse d'images :
 
 ## S3AP Compatibility
 
-Pour les contraintes de compatibilité, le dépannage et les modèles de déclenchement des S3 Access Points for FSx for ONTAP, consultez les [S3AP Compatibility Notes](../docs/s3ap-compatibility-notes.md).
+Pour les contraintes de compatibilité, le dépannage et les modèles de déclenchement des S3 Access Points for FSx for ONTAP, consultez les [S3AP Compatibility Notes](../../../docs/s3ap-compatibility-notes.md).
 
 ---
 

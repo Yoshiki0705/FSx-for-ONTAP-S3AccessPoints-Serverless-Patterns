@@ -108,7 +108,7 @@ graph LR
 
 - **PoC / demo environments**: Running Lambda outside the VPC is recommended. If the S3 AP network origin is `internet`, it can be accessed without issue from a Lambda outside the VPC
 - **Production environments**: Specify the `PrivateRouteTableId` parameter and associate the route table with the S3 Gateway Endpoint. If it is not specified, access from an in-VPC Lambda to the S3 AP will time out
-- For details, see the [Troubleshooting Guide](../docs/guides/troubleshooting-guide.md#6-lambda-vpc-内実行時の-s3-ap-タイムアウト)
+- For details, see the [Troubleshooting Guide](../../../docs/guides/troubleshooting-guide.md#6-lambda-vpc-内実行時の-s3-ap-タイムアウト)
 
 ## Deployment steps
 
@@ -159,7 +159,7 @@ sam deploy \
 
 After deployment, an SNS subscription confirmation email is sent to the specified email address. Click the link in the email to confirm.
 
-> **Note**: If you omit `S3AccessPointName`, the IAM policy becomes Alias-based only, which may cause an `AccessDenied` error. Specifying it is recommended in production environments. For details, see the [Troubleshooting Guide](../docs/guides/troubleshooting-guide.md#1-accessdenied-エラー).
+> **Note**: If you omit `S3AccessPointName`, the IAM policy becomes Alias-based only, which may cause an `AccessDenied` error. Specifying it is recommended in production environments. For details, see the [Troubleshooting Guide](../../../docs/guides/troubleshooting-guide.md#1-accessdenied-エラー).
 
 ## Configuration parameters
 
@@ -229,7 +229,7 @@ UC1 uses the following services:
 | AWS X-Ray | Available in almost all regions |
 | CloudWatch EMF | Available in almost all regions |
 
-> See the [Region Compatibility Matrix](../docs/region-compatibility.md) for details.
+> See the [Region Compatibility Matrix](../../../docs/region-compatibility.md) for details.
 
 ## Reference links
 
@@ -338,7 +338,7 @@ sam local invoke DiscoveryFunction \
 python3 -m pytest tests/ -v
 ```
 
-For details, see the [Local Testing Quick Start](../docs/local-testing-quick-start.md).
+For details, see the [Local Testing Quick Start](../../../docs/local-testing-quick-start.md).
 
 ---
 
@@ -387,7 +387,7 @@ Example of the final output when the Step Functions execution completes:
 
 ## S3AP Compatibility
 
-For compatibility constraints, troubleshooting, and trigger patterns of S3 Access Points for FSx for ONTAP, see the [S3AP Compatibility Notes](../docs/s3ap-compatibility-notes.md).
+For compatibility constraints, troubleshooting, and trigger patterns of S3 Access Points for FSx for ONTAP, see the [S3AP Compatibility Notes](../../../docs/s3ap-compatibility-notes.md).
 
 ---
 

@@ -163,7 +163,7 @@ UC8 verwendet die folgenden Dienste:
 | AWS X-Ray | In fast allen Regionen verfügbar |
 | CloudWatch EMF | In fast allen Regionen verfügbar |
 
-> Siehe die [Regionskompatibilitätsmatrix](../docs/region-compatibility.md) für Details.
+> Siehe die [Regionskompatibilitätsmatrix](../../../docs/region-compatibility.md) für Details.
 
 ## Referenzlinks
 
@@ -267,7 +267,7 @@ sam local invoke DiscoveryFunction \
 python3 -m pytest tests/ -v
 ```
 
-Siehe [Schnellstart für lokale Tests](../docs/local-testing-quick-start.md) für Details.
+Siehe [Schnellstart für lokale Tests](../../../docs/local-testing-quick-start.md) für Details.
 
 ---
 
@@ -316,7 +316,7 @@ Beispielausgabe der Analyse seismischer Vermessungsdaten:
 
 ## S3AP Compatibility
 
-Für Kompatibilitätseinschränkungen, Fehlerbehebung und Trigger-Muster der S3 Access Points for FSx for ONTAP siehe die [S3AP Compatibility Notes](../docs/s3ap-compatibility-notes.md).
+Für Kompatibilitätseinschränkungen, Fehlerbehebung und Trigger-Muster der S3 Access Points for FSx for ONTAP siehe die [S3AP Compatibility Notes](../../../docs/s3ap-compatibility-notes.md).
 
 ---
 

@@ -161,8 +161,8 @@ aws stepfunctions start-execution \
 ## 相关链接
 
 - [FlexCache AnyCast / DR 模式](../flexcache-anycast-dr/README.md)
-- [支持矩阵](../docs/support-matrix-fsx-ontap-flexcache-s3ap.md)
-- [行业·工作负载映射](../docs/industry-workload-mapping.md)
+- [支持矩阵](../../../docs/support-matrix-fsx-ontap-flexcache-s3ap.md)
+- [行业·工作负载映射](../../../docs/industry-workload-mapping.md)
 - [media-vfx/](../media-vfx/README.md)
 - [semiconductor-eda/](../semiconductor-eda/README.md)
 
@@ -256,7 +256,7 @@ sam local invoke DiscoveryFunction \
 python3 -m pytest tests/ -v
 ```
 
-详情请参阅 [本地测试快速开始](../docs/local-testing-quick-start.md)。
+详情请参阅 [本地测试快速开始](../../../docs/local-testing-quick-start.md)。
 
 ---
 

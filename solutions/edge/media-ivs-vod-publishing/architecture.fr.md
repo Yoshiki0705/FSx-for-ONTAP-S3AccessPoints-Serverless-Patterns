@@ -80,7 +80,7 @@ Amazon IVS
 
 - **URL présignées non prises en charge** → auth spectateur via URL/cookies signés CloudFront.
 - Pas un bucket S3 complet : pas d'Object Versioning / Object Lock / Lifecycle / Static Website
-  Hosting (vérifier par opération dans [../../docs/s3ap-compatibility-notes.md](../../docs/s3ap-compatibility-notes.md)).
+  Hosting (vérifier par opération dans [../../docs/s3ap-compatibility-notes.md](../../../docs/s3ap-compatibility-notes.md)).
 - `PutObject` max 5 Go (multipart au-delà).
 - Autorisation à deux couches : la politique IAM/AP **et** l'identité du système de fichiers ONTAP
   (UNIX/Windows) doivent toutes deux autoriser.
@@ -195,7 +195,7 @@ pour l'approche recommandée par ce modèle.
 
 > **Coût** (FinOps lens) : les coûts dominants sont le débit/capacité FSx for ONTAP, l'egress
 > CloudFront et le stockage S3 des enregistrements — pas le Lambda. Voir
-> [../../docs/cost-calculator.md](../../docs/cost-calculator.md) et dimensionner sur le trafic mesuré,
+> [../../docs/cost-calculator.md](../../../docs/cost-calculator.md) et dimensionner sur le trafic mesuré,
 > pas sur des exécutions d'exemple.
 
 ## Fiabilité : sémantique de livraison EventBridge
@@ -287,6 +287,6 @@ désordonnés possibles. Ne pas traiter un unique `Recording End` comme un décl
 - [Direct recording experiment](direct-recording-experiment.md)
 - [Supported path notes](supported-path-ivs-s3-fsx-cloudfront.md)
 - [Guide DemoMode](docs/demo-guide.md)
-- [Notes de compatibilité S3AP](../../docs/s3ap-compatibility-notes.md) / [Performance S3AP](../../docs/s3ap-performance-considerations.md)
-- [Calculateur de coûts](../../docs/cost-calculator.md)
+- [Notes de compatibilité S3AP](../../../docs/s3ap-compatibility-notes.md) / [Performance S3AP](../../../docs/s3ap-performance-considerations.md)
+- [Calculateur de coûts](../../../docs/cost-calculator.md)
 - [Modèle Content Edge Delivery](../content-delivery/README.md)

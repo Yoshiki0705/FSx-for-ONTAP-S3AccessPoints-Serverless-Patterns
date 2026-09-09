@@ -99,8 +99,8 @@ life-sciences-research/
 ## Enlaces relacionados
 
 - [FlexCache AnyCast / DR](../flexcache-anycast-dr/README.md)
-- [Mapeo de sector / carga de trabajo](../docs/industry-workload-mapping.md)
-- [Matriz de compatibilidad](../docs/support-matrix-fsx-ontap-flexcache-s3ap.md)
+- [Mapeo de sector / carga de trabajo](../../../docs/industry-workload-mapping.md)
+- [Matriz de compatibilidad](../../../docs/support-matrix-fsx-ontap-flexcache-s3ap.md)
 
 
 ## Success Metrics
@@ -228,7 +228,7 @@ sam local invoke DiscoveryFunction \
 python3 -m pytest tests/ -v
 ```
 
-Para más detalles, consulte la [Guía de inicio rápido de pruebas locales](../docs/local-testing-quick-start.md).
+Para más detalles, consulte la [Guía de inicio rápido de pruebas locales](../../../docs/local-testing-quick-start.md).
 
 ---
 
@@ -296,7 +296,7 @@ AstraZeneca creó un sistema multiagente para que los equipos comerciales acceda
 
 Este patrón (UC7) proporciona una arquitectura que resuelve la misma clase de problema (análisis de AI + clasificación de documentos de investigación) con FSx for ONTAP S3 AP + AWS Bedrock. La extensión multiagente puede realizarse mediante enrutamiento por área terapéutica con Step Functions.
 
-Análisis detallado: [Análisis de casos DAIS 2026 Agent Bricks](../docs/investigations/dais2026-agent-bricks-industry-cases.md)
+Análisis detallado: [Análisis de casos DAIS 2026 Agent Bricks](../../../docs/investigations/dais2026-agent-bricks-industry-cases.md)
 
 Sources:
 - [DAIS 2026 Session: AstraZeneca's Multi-Agent System](https://www.databricks.com/dataaisummit/session/astrazenecas-multi-agent-system-lessons-scaling-agents-10x-agent-bricks)

@@ -166,7 +166,7 @@ UC10 verwendet die folgenden Dienste:
 | AWS X-Ray | In fast allen Regionen verfügbar |
 | CloudWatch EMF | In fast allen Regionen verfügbar |
 
-> Rufen Sie die Textract API über den Cross-Region Client auf. Überprüfen Sie die Datenresidenzanforderungen. Weitere Informationen finden Sie in der [Regionskompatibilitätsmatrix](../docs/region-compatibility.md).
+> Rufen Sie die Textract API über den Cross-Region Client auf. Überprüfen Sie die Datenresidenzanforderungen. Weitere Informationen finden Sie in der [Regionskompatibilitätsmatrix](../../../docs/region-compatibility.md).
 
 ## Referenzlinks
 
@@ -271,7 +271,7 @@ sam local invoke DiscoveryFunction \
 python3 -m pytest tests/ -v
 ```
 
-Weitere Informationen finden Sie im [Schnellstart für lokale Tests](../docs/local-testing-quick-start.md).
+Weitere Informationen finden Sie im [Schnellstart für lokale Tests](../../../docs/local-testing-quick-start.md).
 
 ---
 
@@ -321,7 +321,7 @@ Beispielausgabe der BIM-Modellverwaltungspipeline:
 
 ## S3AP Compatibility
 
-Informationen zu Kompatibilitätsbeschränkungen, Fehlerbehebung und Trigger-Mustern von S3 Access Points für FSx for ONTAP finden Sie in den [S3AP Compatibility Notes](../docs/s3ap-compatibility-notes.md).
+Informationen zu Kompatibilitätsbeschränkungen, Fehlerbehebung und Trigger-Mustern von S3 Access Points für FSx for ONTAP finden Sie in den [S3AP Compatibility Notes](../../../docs/s3ap-compatibility-notes.md).
 
 ---
 

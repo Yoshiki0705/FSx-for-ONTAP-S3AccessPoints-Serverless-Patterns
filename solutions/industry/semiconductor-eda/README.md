@@ -279,7 +279,7 @@ UC6 は以下のサービスを使用します:
 | AWS X-Ray | ほぼ全リージョンで利用可能 |
 | CloudWatch EMF | ほぼ全リージョンで利用可能 |
 
-> 詳細は [リージョン互換性マトリックス](../docs/region-compatibility.md) を参照。
+> 詳細は [リージョン互換性マトリックス](../../../docs/region-compatibility.md) を参照。
 
 ## 参考リンク
 
@@ -466,7 +466,7 @@ graph TB
 
 - [Dynamic FlexCache Render/EDA Workflow](../dynamic-flexcache-render-workflow/README.md) — ジョブ単位の FlexCache 動的作成・削除
 - [FlexCache AnyCast / DR](../flexcache-anycast-dr/README.md) — マルチリージョンクラウドバースト
-- [業界・ワークロード マッピング](../docs/industry-workload-mapping.md) — Pattern D: EDA Cloud Burst
+- [業界・ワークロード マッピング](../../../docs/industry-workload-mapping.md) — Pattern D: EDA Cloud Burst
 
 
 ---
@@ -570,7 +570,7 @@ sam local invoke DiscoveryFunction \
 python3 -m pytest tests/ -v
 ```
 
-詳細は [ローカルテスト クイックスタート](../docs/local-testing-quick-start.md) を参照してください。
+詳細は [ローカルテスト クイックスタート](../../../docs/local-testing-quick-start.md) を参照してください。
 
 ---
 
@@ -619,7 +619,7 @@ EDA 設計ファイルバリデーションの出力例:
 
 ## S3AP Compatibility
 
-S3 Access Points for FSx for ONTAP の互換性制約、トラブルシューティング、トリガーパターンについては [S3AP Compatibility Notes](../docs/s3ap-compatibility-notes.md) を参照してください。
+S3 Access Points for FSx for ONTAP の互換性制約、トラブルシューティング、トリガーパターンについては [S3AP Compatibility Notes](../../../docs/s3ap-compatibility-notes.md) を参照してください。
 
 ---
 

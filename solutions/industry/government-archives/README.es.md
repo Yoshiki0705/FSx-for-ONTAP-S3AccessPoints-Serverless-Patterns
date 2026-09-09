@@ -1,7 +1,7 @@
 # UC16: Organismos públicos — Archivo digital de documentos públicos y respuesta FOIA
 
 🌐 **Language / 言語**: [日本語](README.md) | [English](README.en.md) | [한국어](README.ko.md) | [简体中文](README.zh-CN.md) | [繁體中文](README.zh-TW.md) | [Français](README.fr.md) | [Deutsch](README.de.md) | Español
-📚 **Documentación**: [Arquitectura](docs/architecture.md) | [Script de demostración](docs/demo-guide.md) | [Solución de problemas](../docs/phase7-troubleshooting.md)
+📚 **Documentación**: [Arquitectura](docs/architecture.md) | [Script de demostración](docs/demo-guide.md) | [Solución de problemas](../../../docs/phase7-troubleshooting.md)
 
 ## Descripción general
 
@@ -86,7 +86,7 @@ Tras recibir una solicitud de acceso a la información, los documentos de destin
 <!-- SCREENSHOT: phase7-uc16-s3-archives-uploaded.png
      Contenido: Lista de documentos PDF bajo el prefijo archives/ en el S3 AP
      Máscara: ID de cuenta, ARN del S3 AP, nombres de documentos -->
-![UC16: Confirmación del almacenamiento de documentos públicos](../docs/screenshots/masked/phase7/phase7-uc16-s3-archives-uploaded.png)
+![UC16: Confirmación del almacenamiento de documentos públicos](../../../docs/screenshots/masked/phase7/phase7-uc16-s3-archives-uploaded.png)
 
 ### 2. Visualización de documentos redactados
 
@@ -96,7 +96,7 @@ se ha sustituido por el marcador `[REDACTED]`. **La pantalla que el personal gen
 <!-- SCREENSHOT: phase7-uc16-redacted-text-preview.png
      Contenido: Vista previa del texto redacted en la consola de S3, marcadores [REDACTED] visibles
      Máscara: ID de cuenta, nombres de documentos redactados (solo nombres de ejemplo) -->
-![UC16: Vista previa del documento redactado](../docs/screenshots/masked/phase7/phase7-uc16-redacted-text-preview.png)
+![UC16: Vista previa del documento redactado](../../../docs/screenshots/masked/phase7/phase7-uc16-redacted-text-preview.png)
 
 ### 3. Metadatos de redacción (sidecar JSON)
 
@@ -106,7 +106,7 @@ Se registran los desplazamientos, los tipos de entidad (NAME / EMAIL / SSN, etc.
 <!-- SCREENSHOT: phase7-uc16-redaction-metadata-json.png
      Contenido: Vista formateada de redaction-metadata/*.json
      Máscara: ID de cuenta, nombres de documentos originales -->
-![UC16: Metadatos de redacción JSON](../docs/screenshots/masked/phase7/phase7-uc16-redaction-metadata-json.png)
+![UC16: Metadatos de redacción JSON](../../../docs/screenshots/masked/phase7/phase7-uc16-redaction-metadata-json.png)
 
 ### 4. Recordatorio de plazo FOIA (notificación por correo SNS)
 
@@ -116,7 +116,7 @@ Cuando se supera el plazo, una notificación OVERDUE con severity=HIGH.
 <!-- SCREENSHOT: phase7-uc16-foia-reminder-email.png
      Contenido: Correo FOIA_DEADLINE_APPROACHING mostrado en un cliente de correo
      Máscara: correos de destinatario/remitente, request_id (solo ID de ejemplo) -->
-![UC16: Correo de recordatorio de plazo FOIA](../docs/screenshots/masked/phase7/phase7-uc16-foia-reminder-email.png)
+![UC16: Correo de recordatorio de plazo FOIA](../../../docs/screenshots/masked/phase7/phase7-uc16-foia-reminder-email.png)
 
 ### 5. Calendario de conservación NARA GRS (DynamoDB Explorer)
 
@@ -126,7 +126,7 @@ Tabla `fsxn-uc16-demo-retention`. Para cada documento se registran el código NA
 <!-- SCREENSHOT: phase7-uc16-dynamodb-retention.png
      Contenido: Lista de elementos de la tabla retention en DynamoDB Explorer
      Máscara: ID de cuenta, document_key (solo nombres de ejemplo) -->
-![UC16: Tabla del calendario de conservación](../docs/screenshots/masked/phase7/phase7-uc16-dynamodb-retention.png)
+![UC16: Tabla del calendario de conservación](../../../docs/screenshots/masked/phase7/phase7-uc16-dynamodb-retention.png)
 
 
 ## Success Metrics
@@ -330,7 +330,7 @@ sam local invoke DiscoveryFunction \
 python3 -m pytest tests/ -v
 ```
 
-Para más detalles, consulte la [Guía de inicio rápido de pruebas locales](../docs/local-testing-quick-start.md).
+Para más detalles, consulte la [Guía de inicio rápido de pruebas locales](../../../docs/local-testing-quick-start.md).
 
 ---
 
@@ -385,7 +385,7 @@ Ejemplo de salida del procesamiento de archivo de documentos públicos / FOIA:
 
 ## S3AP Compatibility
 
-Para conocer las restricciones de compatibilidad, la solución de problemas y los patrones de activación de S3 Access Points for FSx for ONTAP, consulte las [S3AP Compatibility Notes](../docs/s3ap-compatibility-notes.md).
+Para conocer las restricciones de compatibilidad, la solución de problemas y los patrones de activación de S3 Access Points for FSx for ONTAP, consulte las [S3AP Compatibility Notes](../../../docs/s3ap-compatibility-notes.md).
 
 ---
 

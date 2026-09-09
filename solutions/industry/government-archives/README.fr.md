@@ -1,7 +1,7 @@
 # UC16 : Administrations publiques — Archivage numérique des documents publics et réponse FOIA
 
 🌐 **Language / 言語**: [日本語](README.md) | [English](README.en.md) | [한국어](README.ko.md) | [简体中文](README.zh-CN.md) | [繁體中文](README.zh-TW.md) | Français | [Deutsch](README.de.md) | [Español](README.es.md)
-📚 **Documentation**: [Architecture](docs/architecture.md) | [Script de démo](docs/demo-guide.md) | [Dépannage](../docs/phase7-troubleshooting.md)
+📚 **Documentation**: [Architecture](docs/architecture.md) | [Script de démo](docs/demo-guide.md) | [Dépannage](../../../docs/phase7-troubleshooting.md)
 
 ## Vue d'ensemble
 
@@ -85,7 +85,7 @@ Après réception d'une demande d'accès à l'information, les documents ciblés
 <!-- SCREENSHOT: phase7-uc16-s3-archives-uploaded.png
      Contenu : Liste des documents PDF sous le préfixe archives/ sur le S3 AP
      Masque : ID de compte, ARN du S3 AP, noms des documents -->
-![UC16 : Confirmation du stockage des documents publics](../docs/screenshots/masked/phase7/phase7-uc16-s3-archives-uploaded.png)
+![UC16 : Confirmation du stockage des documents publics](../../../docs/screenshots/masked/phase7/phase7-uc16-s3-archives-uploaded.png)
 
 ### 2. Consultation des documents caviardés
 
@@ -95,7 +95,7 @@ personnelles sont remplacées par le marqueur `[REDACTED]`. **Écran que les age
 <!-- SCREENSHOT: phase7-uc16-redacted-text-preview.png
      Contenu : Aperçu du texte redacted dans la console S3, marqueurs [REDACTED] visibles
      Masque : ID de compte, noms des documents caviardés (noms d'exemple uniquement) -->
-![UC16 : Aperçu du document caviardé](../docs/screenshots/masked/phase7/phase7-uc16-redacted-text-preview.png)
+![UC16 : Aperçu du document caviardé](../../../docs/screenshots/masked/phase7/phase7-uc16-redacted-text-preview.png)
 
 ### 3. Métadonnées de caviardage (sidecar JSON)
 
@@ -105,7 +105,7 @@ Les décalages, les types d'entités (NAME / EMAIL / SSN, etc.) et la confiance 
 <!-- SCREENSHOT: phase7-uc16-redaction-metadata-json.png
      Contenu : Vue formatée de redaction-metadata/*.json
      Masque : ID de compte, noms des documents d'origine -->
-![UC16 : Métadonnées de caviardage JSON](../docs/screenshots/masked/phase7/phase7-uc16-redaction-metadata-json.png)
+![UC16 : Métadonnées de caviardage JSON](../../../docs/screenshots/masked/phase7/phase7-uc16-redaction-metadata-json.png)
 
 ### 4. Rappel d'échéance FOIA (notification e-mail SNS)
 
@@ -115,7 +115,7 @@ En cas de dépassement, une notification OVERDUE avec severity=HIGH.
 <!-- SCREENSHOT: phase7-uc16-foia-reminder-email.png
      Contenu : E-mail FOIA_DEADLINE_APPROACHING affiché dans un client de messagerie
      Masque : e-mails destinataire/expéditeur, request_id (ID d'exemple uniquement) -->
-![UC16 : E-mail de rappel d'échéance FOIA](../docs/screenshots/masked/phase7/phase7-uc16-foia-reminder-email.png)
+![UC16 : E-mail de rappel d'échéance FOIA](../../../docs/screenshots/masked/phase7/phase7-uc16-foia-reminder-email.png)
 
 ### 5. Calendrier de conservation NARA GRS (DynamoDB Explorer)
 
@@ -125,7 +125,7 @@ Table `fsxn-uc16-demo-retention`. Pour chaque document, le code NARA GRS
 <!-- SCREENSHOT: phase7-uc16-dynamodb-retention.png
      Contenu : Liste des éléments de la table retention dans DynamoDB Explorer
      Masque : ID de compte, document_key (noms d'exemple uniquement) -->
-![UC16 : Table du calendrier de conservation](../docs/screenshots/masked/phase7/phase7-uc16-dynamodb-retention.png)
+![UC16 : Table du calendrier de conservation](../../../docs/screenshots/masked/phase7/phase7-uc16-dynamodb-retention.png)
 
 
 ## Success Metrics
@@ -329,7 +329,7 @@ sam local invoke DiscoveryFunction \
 python3 -m pytest tests/ -v
 ```
 
-Pour plus de détails, consultez le [Guide de démarrage rapide des tests locaux](../docs/local-testing-quick-start.md).
+Pour plus de détails, consultez le [Guide de démarrage rapide des tests locaux](../../../docs/local-testing-quick-start.md).
 
 ---
 
@@ -384,7 +384,7 @@ Exemple de sortie du traitement d'archivage des documents publics / FOIA :
 
 ## S3AP Compatibility
 
-Pour les contraintes de compatibilité, le dépannage et les modèles de déclenchement des S3 Access Points for FSx for ONTAP, consultez les [S3AP Compatibility Notes](../docs/s3ap-compatibility-notes.md).
+Pour les contraintes de compatibilité, le dépannage et les modèles de déclenchement des S3 Access Points for FSx for ONTAP, consultez les [S3AP Compatibility Notes](../../../docs/s3ap-compatibility-notes.md).
 
 ---
 

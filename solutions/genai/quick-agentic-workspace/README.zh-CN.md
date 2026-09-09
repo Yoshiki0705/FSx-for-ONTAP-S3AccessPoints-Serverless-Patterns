@@ -106,7 +106,7 @@ curl -X POST https://<api-id>.execute-api.ap-northeast-1.amazonaws.com/prod/acti
 - Graceful degradation：Web 检索失败时与 `generate_brief` 行为等同
 - 引用：在 `web_citations` 字段返回 URL + 标题 + 公开日期
 
-详情：[docs/investigations/agentcore-web-search-fsxn-integration.md](../../docs/investigations/agentcore-web-search-fsxn-integration.md)
+详情：[docs/investigations/agentcore-web-search-fsxn-integration.md](../../../docs/investigations/agentcore-web-search-fsxn-integration.md)
 
 ## 角色 × 服务构成 (符合 Amazon Quick 设想角色)
 
@@ -316,10 +316,10 @@ sam local invoke DataPrepFunction --event events/data-prep-event.json
 | [Amazon Quick 控制台设置步骤](docs/quick-console-setup.md) | Index/Sight/Flows 连接（含截图取得指引） |
 | [Lake Formation TBAC 笔记](docs/lake-formation-tbac.md) | 按角色的数据可见性（LF-TBAC + Quick RLS） |
 | [Glue 表创建脚本](scripts/create_glue_tables.sh) | Quick Sight/Athena 用 DDL（建议 Parquet 化） |
-| [清理 runbook](../docs/uc29-uc30-cleanup-runbook.md) | 含手动成果物的拆除步骤（2UC 通用） |
+| [清理 runbook](../../../docs/uc29-uc30-cleanup-runbook.md) | 含手动成果物的拆除步骤（2UC 通用） |
 | [UC29 genai-kb-selfservice-curation](../genai-kb-selfservice-curation/) | 向托管 Bedrock KB 的自助投入（相同角色构成） |
 | [FC3 genai-rag-enterprise-files](../genai-rag-enterprise-files/) | 需要严格权限过滤的自定义 RAG |
-| [行业 / 工作负载映射](../docs/industry-workload-mapping.md) | UC 选择指南 |
+| [行业 / 工作负载映射](../../../docs/industry-workload-mapping.md) | UC 选择指南 |
 
 ## 运营加固 (已实现)
 

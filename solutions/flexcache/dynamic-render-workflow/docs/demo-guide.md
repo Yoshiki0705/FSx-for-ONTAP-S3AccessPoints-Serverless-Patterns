@@ -149,5 +149,5 @@ sam deploy \
 
 ## スクリーンショット
 
-![Phase 13 — FlexClone Step Functions (SUCCEEDED)](../../docs/screenshots/masked/phase13-flexclone-step-functions.png)
-![Phase 13 — FlexClone Execution Result](../../docs/screenshots/masked/phase13-flexclone-execution-result.png)
+![Phase 13 — FlexClone Step Functions (SUCCEEDED)](../../../../docs/screenshots/masked/phase13-flexclone-step-functions.png)
+![Phase 13 — FlexClone Execution Result](../../../../docs/screenshots/masked/phase13-flexclone-execution-result.png)

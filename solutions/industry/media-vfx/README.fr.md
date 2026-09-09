@@ -133,7 +133,7 @@ sam deploy \
 
 Après le déploiement, un e-mail de confirmation d'abonnement SNS est envoyé à l'adresse e-mail que vous avez indiquée.
 
-> **Remarque** : Si vous omettez `S3AccessPointName`, la politique IAM devient uniquement basée sur l'Alias, ce qui peut provoquer une erreur `AccessDenied`. Il est recommandé de le spécifier dans un environnement de production. Pour plus de détails, consultez le [Guide de dépannage](../docs/guides/troubleshooting-guide.md#1-accessdenied-エラー).
+> **Remarque** : Si vous omettez `S3AccessPointName`, la politique IAM devient uniquement basée sur l'Alias, ce qui peut provoquer une erreur `AccessDenied`. Il est recommandé de le spécifier dans un environnement de production. Pour plus de détails, consultez le [Guide de dépannage](../../../docs/guides/troubleshooting-guide.md#1-accessdenied-エラー).
 
 ## Liste des paramètres de configuration
 
@@ -204,7 +204,7 @@ UC4 utilise les services suivants :
 | AWS X-Ray | Disponible dans presque toutes les régions |
 | CloudWatch EMF | Disponible dans presque toutes les régions |
 
-> Pour plus de détails, consultez la [Matrice de compatibilité des régions](../docs/region-compatibility.md).
+> Pour plus de détails, consultez la [Matrice de compatibilité des régions](../../../docs/region-compatibility.md).
 
 ## Liens de référence
 
@@ -229,8 +229,8 @@ UC4 utilise les services suivants :
 
 ### Guides internes au projet
 
-- [FlexClone Serverless Patterns (japonais)](../docs/guides/flexclone-serverless-patterns.md) — Pipeline de traitement de trames séquentielles avec FlexClone + Step Functions + S3AP, montage multiprotocole, cas d'usage sectoriels
-- [FlexClone Serverless Patterns (English)](../docs/guides/flexclone-serverless-patterns-en.md) — FlexClone + Step Functions + S3AP sequential frame processing pipeline
+- [FlexClone Serverless Patterns (japonais)](../../../docs/guides/flexclone-serverless-patterns.md) — Pipeline de traitement de trames séquentielles avec FlexClone + Step Functions + S3AP, montage multiprotocole, cas d'usage sectoriels
+- [FlexClone Serverless Patterns (English)](../../../docs/guides/flexclone-serverless-patterns-en.md) — FlexClone + Step Functions + S3AP sequential frame processing pipeline
 
 ## Environnement validé
 
@@ -279,7 +279,7 @@ Pour plus de détails sur un workflow qui crée et supprime un FlexCache par tra
 
 - **[Dynamic FlexCache Render/EDA Workflow](../dynamic-flexcache-render-workflow/README.md)** — Automatisation avec Step Functions
 - [FlexCache AnyCast / DR](../flexcache-anycast-dr/README.md) — Ferme de rendu multi-région
-- [Mappage secteur / charge de travail](../docs/industry-workload-mapping.md) — Pattern E: Media/VFX Render Farm
+- [Mappage secteur / charge de travail](../../../docs/industry-workload-mapping.md) — Pattern E: Media/VFX Render Farm
 
 ### Bénéfices attendus
 
@@ -350,7 +350,7 @@ sam local invoke DiscoveryFunction \
 python3 -m pytest tests/ -v
 ```
 
-Pour plus de détails, consultez le [Démarrage rapide des tests locaux](../docs/local-testing-quick-start.md).
+Pour plus de détails, consultez le [Démarrage rapide des tests locaux](../../../docs/local-testing-quick-start.md).
 
 ---
 
@@ -396,7 +396,7 @@ Exemple de sortie d'un contrôle de qualité de rendu VFX :
 
 ## S3AP Compatibility
 
-Pour les contraintes de compatibilité, le dépannage et les modèles de déclencheurs des S3 Access Points for FSx for ONTAP, consultez [S3AP Compatibility Notes](../docs/s3ap-compatibility-notes.md).
+Pour les contraintes de compatibilité, le dépannage et les modèles de déclencheurs des S3 Access Points for FSx for ONTAP, consultez [S3AP Compatibility Notes](../../../docs/s3ap-compatibility-notes.md).
 
 ---
 

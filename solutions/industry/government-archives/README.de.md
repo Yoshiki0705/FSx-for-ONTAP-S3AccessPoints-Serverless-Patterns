@@ -1,7 +1,7 @@
 # UC16: Behörden — Digitales Archiv öffentlicher Akten & FOIA-Bearbeitung
 
 🌐 **Language / 言語**: [日本語](README.md) | [English](README.en.md) | [한국어](README.ko.md) | [简体中文](README.zh-CN.md) | [繁體中文](README.zh-TW.md) | [Français](README.fr.md) | Deutsch | [Español](README.es.md)
-📚 **Dokumentation**: [Architektur](docs/architecture.md) | [Demo-Skript](docs/demo-guide.md) | [Fehlerbehebung](../docs/phase7-troubleshooting.md)
+📚 **Dokumentation**: [Architektur](docs/architecture.md) | [Demo-Skript](docs/demo-guide.md) | [Fehlerbehebung](../../../docs/phase7-troubleshooting.md)
 
 ## Überblick
 
@@ -85,7 +85,7 @@ Nach Eingang eines FOIA-Antrags werden die Zieldokumente unter dem Präfix `arch
 <!-- SCREENSHOT: phase7-uc16-s3-archives-uploaded.png
      Inhalt: Liste der PDF-Dokumente unter dem Präfix archives/ auf dem S3 AP
      Maskierung: Konto-ID, S3-AP-ARN, Dokumentnamen -->
-![UC16: Bestätigung der Aktenablage](../docs/screenshots/masked/phase7/phase7-uc16-s3-archives-uploaded.png)
+![UC16: Bestätigung der Aktenablage](../../../docs/screenshots/masked/phase7/phase7-uc16-s3-archives-uploaded.png)
 
 ### 2. Ansicht geschwärzter Dokumente
 
@@ -95,7 +95,7 @@ durch den Marker `[REDACTED]` ersetzt wurde. **Der Bildschirm, den allgemeine Mi
 <!-- SCREENSHOT: phase7-uc16-redacted-text-preview.png
      Inhalt: Vorschau des redacted-Textes in der S3-Konsole, [REDACTED]-Marker sichtbar
      Maskierung: Konto-ID, Namen geschwärzter Dokumente (nur Beispielnamen) -->
-![UC16: Vorschau des geschwärzten Dokuments](../docs/screenshots/masked/phase7/phase7-uc16-redacted-text-preview.png)
+![UC16: Vorschau des geschwärzten Dokuments](../../../docs/screenshots/masked/phase7/phase7-uc16-redacted-text-preview.png)
 
 ### 3. Schwärzungs-Metadaten (Sidecar-JSON)
 
@@ -105,7 +105,7 @@ Offsets, Entitätstypen (NAME / EMAIL / SSN usw.) und Konfidenz werden erfasst.
 <!-- SCREENSHOT: phase7-uc16-redaction-metadata-json.png
      Inhalt: Formatierte Ansicht von redaction-metadata/*.json
      Maskierung: Konto-ID, Namen der Originaldokumente -->
-![UC16: Schwärzungs-Metadaten JSON](../docs/screenshots/masked/phase7/phase7-uc16-redaction-metadata-json.png)
+![UC16: Schwärzungs-Metadaten JSON](../../../docs/screenshots/masked/phase7/phase7-uc16-redaction-metadata-json.png)
 
 ### 4. FOIA-Fristerinnerung (SNS-E-Mail-Benachrichtigung)
 
@@ -115,7 +115,7 @@ Bei Überschreitung eine OVERDUE-Benachrichtigung mit severity=HIGH.
 <!-- SCREENSHOT: phase7-uc16-foia-reminder-email.png
      Inhalt: FOIA_DEADLINE_APPROACHING-E-Mail in einem E-Mail-Client angezeigt
      Maskierung: Empfänger-/Absender-E-Mails, request_id (nur Beispiel-ID) -->
-![UC16: FOIA-Fristerinnerungs-E-Mail](../docs/screenshots/masked/phase7/phase7-uc16-foia-reminder-email.png)
+![UC16: FOIA-Fristerinnerungs-E-Mail](../../../docs/screenshots/masked/phase7/phase7-uc16-foia-reminder-email.png)
 
 ### 5. NARA-GRS-Aufbewahrungsplan (DynamoDB Explorer)
 
@@ -125,7 +125,7 @@ Tabelle `fsxn-uc16-demo-retention`. Für jedes Dokument werden der NARA-GRS-Code
 <!-- SCREENSHOT: phase7-uc16-dynamodb-retention.png
      Inhalt: Liste der Einträge in der retention-Tabelle im DynamoDB Explorer
      Maskierung: Konto-ID, document_key (nur Beispielnamen) -->
-![UC16: Tabelle des Aufbewahrungsplans](../docs/screenshots/masked/phase7/phase7-uc16-dynamodb-retention.png)
+![UC16: Tabelle des Aufbewahrungsplans](../../../docs/screenshots/masked/phase7/phase7-uc16-dynamodb-retention.png)
 
 
 ## Success Metrics
@@ -329,7 +329,7 @@ sam local invoke DiscoveryFunction \
 python3 -m pytest tests/ -v
 ```
 
-Weitere Details finden Sie im [Schnellstart für lokales Testen](../docs/local-testing-quick-start.md).
+Weitere Details finden Sie im [Schnellstart für lokales Testen](../../../docs/local-testing-quick-start.md).
 
 ---
 
@@ -384,7 +384,7 @@ Beispielausgabe der Verarbeitung von Aktenarchivierung / FOIA:
 
 ## S3AP Compatibility
 
-Informationen zu Kompatibilitätsbeschränkungen, Fehlerbehebung und Trigger-Mustern für S3 Access Points for FSx for ONTAP finden Sie in den [S3AP Compatibility Notes](../docs/s3ap-compatibility-notes.md).
+Informationen zu Kompatibilitätsbeschränkungen, Fehlerbehebung und Trigger-Mustern für S3 Access Points for FSx for ONTAP finden Sie in den [S3AP Compatibility Notes](../../../docs/s3ap-compatibility-notes.md).
 
 ---
 

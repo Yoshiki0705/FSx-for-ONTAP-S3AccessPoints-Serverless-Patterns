@@ -81,7 +81,7 @@ graph LR
 
 ## 先決條件
 
-> **S3 AP NetworkOrigin 注意**：Discovery Lambda 部署在 VPC 內。若 S3 Access Point 的 NetworkOrigin 為 `Internet`，則無法透過 S3 Gateway VPC Endpoint 存取（因為請求不會路由到 FSx 資料平面）。請使用 NetworkOrigin=VPC 的 S3 AP，或設定經由 NAT Gateway 的存取。詳情請參閱 [S3AP Compatibility Notes](../docs/s3ap-compatibility-notes.md)。
+> **S3 AP NetworkOrigin 注意**：Discovery Lambda 部署在 VPC 內。若 S3 Access Point 的 NetworkOrigin 為 `Internet`，則無法透過 S3 Gateway VPC Endpoint 存取（因為請求不會路由到 FSx 資料平面）。請使用 NetworkOrigin=VPC 的 S3 AP，或設定經由 NAT Gateway 的存取。詳情請參閱 [S3AP Compatibility Notes](../../../docs/s3ap-compatibility-notes.md)。
 
 - AWS 帳戶與適當的 IAM 權限
 - FSx for ONTAP 檔案系統（ONTAP 9.17.1P4D3 或更新版本）
@@ -140,7 +140,7 @@ sam deploy \
 
 ## S3AP Compatibility
 
-請參閱 [S3AP Compatibility Notes](../docs/s3ap-compatibility-notes.md)。
+請參閱 [S3AP Compatibility Notes](../../../docs/s3ap-compatibility-notes.md)。
 
 ---
 

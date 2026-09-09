@@ -254,7 +254,7 @@ VOD 发布不仅依赖自动判定。基于包的**完整性信号**计算 publi
 - **告警**：`EnableCloudWatchAlarms=true` 将 Lambda 错误 / Step Functions 失败通过 SNS 通知。
 - **故障处理**：publish 失败时查看 `/aws/lambda/<stack>-publish`，区分 S3 AP 授权（IAM + AP policy +
   ONTAP identity）与源 S3 读取。误发布时从 CloudFront 源移除该对象并在修正后重跑。参见
-  [事件响应 Playbook](../../docs/incident-response-playbook.md)。
+  [事件响应 Playbook](../../../docs/incident-response-playbook.md)。
 
 ## FAQ / 常见误解
 
@@ -274,7 +274,7 @@ VOD 发布不仅依赖自动判定。基于包的**完整性信号**计算 publi
 - Playlist（`.m3u8`）短 TTL，Segment（`.ts` / `.m4s`）长 TTL。
 - 若需将分发读取与业务卷隔离，可考虑用 **FlexCache** 卷（ONTAP 原生）作为 CloudFront 源。
 - **S3 AP 不是完整的 S3 存储桶** — 是 S3 兼容访问边界。勿假设桶级功能（Presigned URL、Versioning、
-  Object Lock、Lifecycle、Static Website Hosting）可用。参见 [../../docs/s3ap-compatibility-notes.md](../../docs/s3ap-compatibility-notes.md)。
+  Object Lock、Lifecycle、Static Website Hosting）可用。参见 [../../docs/s3ap-compatibility-notes.md](../../../docs/s3ap-compatibility-notes.md)。
 
 ## 参考（AWS 官方文档）
 
@@ -287,11 +287,11 @@ VOD 发布不仅依赖自动判定。基于包的**完整性信号**计算 publi
 
 ## 相关文档
 
-- [S3AP 兼容性说明](../../docs/s3ap-compatibility-notes.md)
-- [S3AP 性能考量](../../docs/s3ap-performance-considerations.md)
-- [成本估算](../../docs/cost-calculator.md)
-- [替代架构比较](../../docs/comparison-alternatives.md)
-- [事件响应 Playbook](../../docs/incident-response-playbook.md)
+- [S3AP 兼容性说明](../../../docs/s3ap-compatibility-notes.md)
+- [S3AP 性能考量](../../../docs/s3ap-performance-considerations.md)
+- [成本估算](../../../docs/cost-calculator.md)
+- [替代架构比较](../../../docs/comparison-alternatives.md)
+- [事件响应 Playbook](../../../docs/incident-response-playbook.md)
 - [Content Edge Delivery 模式](../content-delivery/README.md)
 - [Media/VFX 行业模式](../../industry/media-vfx/README.md)
 

@@ -289,7 +289,7 @@ publish-readiness の confidence を算出し、`shared/human_review.py` の閾�
 - **アラーム**: `EnableCloudWatchAlarms=true` で Lambda エラー / Step Functions 失敗を SNS 通知。
 - **障害対応**: publish 失敗時は `/aws/lambda/<stack>-publish` を確認し、S3 AP 認可（IAM + AP policy +
   ONTAP identity）と取り込み元 S3 読み取りを切り分ける。誤公開時は CloudFront オリジンから該当オブジェクトを
-  除去し、原因修正後に再実行。詳細導線は [インシデント対応 Playbook](../../docs/incident-response-playbook.md)。
+  除去し、原因修正後に再実行。詳細導線は [インシデント対応 Playbook](../../../docs/incident-response-playbook.md)。
 
 ## FAQ / よくある誤解
 
@@ -313,7 +313,7 @@ publish-readiness の confidence を算出し、`shared/human_review.py` の閾�
   CloudFront オリジンのソースにすることを検討します。
 - **S3 AP はフル S3 バケットではありません** — S3 互換のアクセス境界です。バケットレベル機能
   （Presigned URL、Versioning、Object Lock、Lifecycle、Static Website Hosting）が使える前提にしないこと。
-  [../../docs/s3ap-compatibility-notes.md](../../docs/s3ap-compatibility-notes.md) を参照。
+  [../../docs/s3ap-compatibility-notes.md](../../../docs/s3ap-compatibility-notes.md) を参照。
 
 ## 参照元（AWS 公式ドキュメント）
 
@@ -328,11 +328,11 @@ publish-readiness の confidence を算出し、`shared/human_review.py` の閾�
 
 ## 関連ドキュメント
 
-- [S3AP 互換性ノート](../../docs/s3ap-compatibility-notes.md)
-- [S3AP 性能考慮事項](../../docs/s3ap-performance-considerations.md)
-- [コスト試算](../../docs/cost-calculator.md)
-- [代替アーキテクチャ比較](../../docs/comparison-alternatives.md)
-- [インシデント対応 Playbook](../../docs/incident-response-playbook.md)
+- [S3AP 互換性ノート](../../../docs/s3ap-compatibility-notes.md)
+- [S3AP 性能考慮事項](../../../docs/s3ap-performance-considerations.md)
+- [コスト試算](../../../docs/cost-calculator.md)
+- [代替アーキテクチャ比較](../../../docs/comparison-alternatives.md)
+- [インシデント対応 Playbook](../../../docs/incident-response-playbook.md)
 - [Content Edge Delivery パターン](../content-delivery/README.md)（CDN 非依存の配信）
 - [Media/VFX 業界パターン](../../industry/media-vfx/README.md)
 

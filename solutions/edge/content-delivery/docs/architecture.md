@@ -19,7 +19,7 @@
 
 ## 統合メカニズムと CDN の対応
 
-詳細は [../../docs/cdn-comparison.md](../../docs/cdn-comparison.md) を参照。要点:
+詳細は [../../docs/cdn-comparison.md](../../../../docs/cdn-comparison.md) を参照。要点:
 
 - SigV4 オリジン直引き（ORIGIN_PULL）は CloudFront(OAC) で実績、Fastly/Akamai/Google で機能あり（S3 AP alias は要検証）。
 - SigV4 を持たない CDN は Workers 等のエッジ署名、または PUBLISH_PUSH で対応。
@@ -44,7 +44,7 @@
 - **S3AP ≠ フル S3 バケット**: S3 AP は S3 互換の「アクセス境界」であり、S3 バケットの全機能等価ではない
   （Presigned URL 非対応等）。配信設計でバケット同等を前提にしない。
 - **sample vs production**: デモ/サンプル実行のコストと本番見積もりを混同しない。本番は対象トラフィック量で
-  各社最新料金により算出（[コスト試算](../../docs/cost-calculator.md) 参照）。
+  各社最新料金により算出（[コスト試算](../../../../docs/cost-calculator.md) 参照）。
 
 ## 冪等性 / トリガーモード
 

@@ -1,7 +1,7 @@
 # UC15: Défense / Spatial — Pipeline d'analyse d'imagerie satellite
 
 🌐 **Language / 言語**: [日本語](README.md) | [English](README.en.md) | [한국어](README.ko.md) | [简体中文](README.zh-CN.md) | [繁體中文](README.zh-TW.md) | Français | [Deutsch](README.de.md) | [Español](README.es.md)
-📚 **Documentation**: [Architecture](docs/architecture.fr.md) | [Script de démonstration](docs/demo-guide.fr.md) | [Dépannage](../docs/phase7-troubleshooting.md)
+📚 **Documentation**: [Architecture](docs/architecture.fr.md) | [Script de démonstration](docs/demo-guide.fr.md) | [Dépannage](../../../docs/phase7-troubleshooting.md)
 
 ## Présentation
 
@@ -78,7 +78,7 @@ automatiquement.
 <!-- SCREENSHOT: phase7-uc15-s3-satellite-uploaded.png
      Contenu : lister satellite/2026/05/*.tif via S3 AP (nom d'objet, taille, date de modification)
      Masquer : ID de compte, ARN de l'Access Point, noms réels des images satellite -->
-![UC15 : placement de l'imagerie satellite](../docs/screenshots/masked/phase7/phase7-uc15-s3-satellite-uploaded.png)
+![UC15 : placement de l'imagerie satellite](../../../docs/screenshots/masked/phase7/phase7-uc15-s3-satellite-uploaded.png)
 
 ### 2. Consultation des résultats d'analyse (bucket S3 de sortie)
 
@@ -89,7 +89,7 @@ organisés et stockés.
 <!-- SCREENSHOT: phase7-uc15-s3-output-bucket.png
      Contenu : vue d'ensemble des 3 préfixes detections/, enriched/, tiles/ dans la console S3
      Masquer : ID de compte, préfixe du nom de bucket -->
-![UC15 : bucket S3 de sortie](../docs/screenshots/masked/phase7/phase7-uc15-s3-output-bucket.png)
+![UC15 : bucket S3 de sortie](../../../docs/screenshots/masked/phase7/phase7-uc15-s3-output-bucket.png)
 
 ### 3. Alerte de détection de changement (notification par e-mail SNS)
 
@@ -99,7 +99,7 @@ surface de changement dépasse le seuil (1 km² par défaut).
 <!-- SCREENSHOT: phase7-uc15-sns-alert-email.png
      Contenu : afficher alert_type=SATELLITE_CHANGE_DETECTED dans un client de messagerie (Gmail/Outlook)
      Masquer : adresse e-mail du destinataire, adresse de l'expéditeur, coordonnées réelles, tile_id -->
-![UC15 : e-mail d'alerte SNS](../docs/screenshots/masked/phase7/phase7-uc15-sns-alert-email.png)
+![UC15 : e-mail d'alerte SNS](../../../docs/screenshots/masked/phase7/phase7-uc15-sns-alert-email.png)
 
 ### 4. Contenu du JSON de résultat de détection
 
@@ -108,7 +108,7 @@ Un visualiseur JSON épuré des résultats de détection (étiquette, confiance,
 <!-- SCREENSHOT: phase7-uc15-detections-json.png
      Contenu : aperçu de l'objet dans la console S3, contenu du JSON detections
      Masquer : ID de compte -->
-![UC15 : résultats de détection JSON](../docs/screenshots/masked/phase7/phase7-uc15-detections-json.png)
+![UC15 : résultats de détection JSON](../../../docs/screenshots/masked/phase7/phase7-uc15-detections-json.png)
 
 
 ## Success Metrics
@@ -163,7 +163,7 @@ sam deploy \
 ```
 
 **Important** : `S3AccessPointName` est requis pour l'attribution des autorisations IAM au S3 AP.
-Pour les détails, voir [`docs/phase7-troubleshooting.md`](../docs/phase7-troubleshooting.md).
+Pour les détails, voir [`docs/phase7-troubleshooting.md`](../../../docs/phase7-troubleshooting.md).
 
 ## Structure du répertoire
 
@@ -285,7 +285,7 @@ sam local invoke DiscoveryFunction \
 python3 -m pytest tests/ -v
 ```
 
-Pour les détails, voir [Démarrage rapide des tests locaux](../docs/local-testing-quick-start.md).
+Pour les détails, voir [Démarrage rapide des tests locaux](../../../docs/local-testing-quick-start.md).
 
 ---
 
@@ -335,7 +335,7 @@ Exemple de sortie du pipeline d'analyse d'imagerie satellite (Human Review requi
 
 ## S3AP Compatibility
 
-Pour les contraintes de compatibilité, le dépannage et les patterns de déclenchement des S3 Access Points for FSx for ONTAP, voir [S3AP Compatibility Notes](../docs/s3ap-compatibility-notes.md).
+Pour les contraintes de compatibilité, le dépannage et les patterns de déclenchement des S3 Access Points for FSx for ONTAP, voir [S3AP Compatibility Notes](../../../docs/s3ap-compatibility-notes.md).
 
 ---
 

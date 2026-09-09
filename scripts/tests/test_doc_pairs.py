@@ -548,3 +548,87 @@ def test_a_target_outside_the_repository_is_not_offered(pairs, bilingual_repo, m
         lambda: {p for p in bilingual_repo.rglob("*.md") if p.name != "notes.md"},
     )
     assert pairs.check_link_language() == []
+
+
+# --- the widened scope, and the baseline that makes it landable ---
+
+
+def test_a_document_outside_the_old_directory_list_is_now_read(pairs, fixture_repo):
+    """The scope was a tuple of directories and missed 613 of 1,378 tracked files.
+
+    `solutions/edge/`, `solutions/flexcache/`, `solutions/event-driven/`, the per-locale
+    `docs/<lang>/` trees and `operations/` were all unread, and held 1,316 unresolved
+    links between them — including the same depth mistake that was repaired for
+    `solutions/industry/*/docs` on 2026-08-12, still present in its sibling groups
+    because nothing looked there.
+    """
+    root = fixture_repo
+    edge = root / "solutions" / "edge" / "content-delivery" / "docs"
+    edge.mkdir(parents=True)
+    (edge / "demo.md").write_text("# Demo\n\n[guide](../../../docs/en/guide.md)\n", encoding="utf-8")
+    (root / "docs" / "en" / "guide.md").write_text("# Guide\n", encoding="utf-8")
+    findings = pairs.check_links()
+    assert len(findings) == 1, findings
+    assert "solutions/edge/content-delivery/docs/demo.md:3" in findings[0], (
+        "a directory nobody added to a tuple has to be covered anyway"
+    )
+
+
+def test_llms_txt_is_in_scope_although_it_is_not_markdown(pairs, fixture_repo, monkeypatch):
+    """It is entirely links, and crawlers follow every one of them."""
+    root = fixture_repo
+    (root / "llms.txt").write_text("# Hub\n\n[gone](docs/en/absent.md)\n", encoding="utf-8")
+    monkeypatch.setattr(pairs, "_in_repository", lambda: set(root.rglob("*.md")) | {root / "llms.txt"})
+    findings = pairs.check_links()
+    assert any("llms.txt:3" in f for f in findings), findings
+
+
+def test_a_recorded_link_is_not_reported_and_a_new_one_is(pairs, fixture_repo):
+    """The baseline is what let the widened scope land without disabling the gate.
+
+    1,316 pre-existing unresolved links cannot be fixed in the change that finds them,
+    and a gate failing on untouched debt is one people switch off. So recorded links stay
+    quiet while anything new fails — including a new broken target in a file that already
+    has one, which a plain count baseline would let through.
+    """
+    root = fixture_repo
+    (root / "docs" / "agent").mkdir(parents=True, exist_ok=True)
+    (root / "docs" / "guides" / "a.md").write_text(
+        "# A\n\n[old](missing-old.md)\n[new](missing-new.md)\n", encoding="utf-8"
+    )
+    (root / pairs.BASELINE_NAME).write_text("docs/guides/a.md\tmissing-old.md\n", encoding="utf-8")
+    findings = pairs.check_links()
+    assert len(findings) == 1, findings
+    assert "missing-new.md" in findings[0]
+    assert "missing-old.md" not in findings[0]
+
+
+def test_a_recorded_link_that_now_resolves_must_be_removed(pairs, fixture_repo):
+    """Otherwise the baseline only ever grows stale, and stops describing anything."""
+    root = fixture_repo
+    (root / "docs" / "agent").mkdir(parents=True, exist_ok=True)
+    (root / "docs" / "guides" / "a.md").write_text("# A\n\n[fine](b.md)\n", encoding="utf-8")
+    (root / "docs" / "guides" / "b.md").write_text("# B\n", encoding="utf-8")
+    (root / pairs.BASELINE_NAME).write_text("docs/guides/a.md\tb.md\n", encoding="utf-8")
+    findings = pairs.check_links()
+    assert len(findings) == 1, findings
+    assert "may only shrink" in findings[0]
+
+
+def test_the_baseline_path_follows_a_patched_root(pairs, fixture_repo):
+    """Bound at import, a fixture would read the real repository's baseline.
+
+    A recorded key from the actual tree would then suppress a finding the fixture was
+    built to produce, and the test would pass by not looking.
+    """
+    assert pairs._baseline_path() == fixture_repo / pairs.BASELINE_NAME
+
+
+def test_the_committed_baseline_only_holds_links_that_are_really_broken(pairs):
+    """Read against the real tree: every recorded key must still be unresolved.
+
+    This is the same assertion as the "may only shrink" rule, made against what is
+    committed rather than against a fixture, so a baseline entry fixed by someone else's
+    change surfaces here.
+    """
+    assert pairs.check_links() == []

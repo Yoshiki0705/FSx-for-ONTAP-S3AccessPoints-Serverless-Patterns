@@ -108,7 +108,7 @@ graph LR
 
 - **Environnements PoC / démo** : Il est recommandé d'exécuter Lambda en dehors du VPC. Si la network origin du S3 AP est `internet`, l'accès depuis une Lambda hors VPC est possible sans problème
 - **Environnements de production** : Spécifiez le paramètre `PrivateRouteTableId` et associez la table de routage au S3 Gateway Endpoint. S'il n'est pas spécifié, l'accès d'une Lambda dans le VPC au S3 AP expirera
-- Pour plus de détails, consultez le [Guide de dépannage](../docs/guides/troubleshooting-guide.md#6-lambda-vpc-内実行時の-s3-ap-タイムアウト)
+- Pour plus de détails, consultez le [Guide de dépannage](../../../docs/guides/troubleshooting-guide.md#6-lambda-vpc-内実行時の-s3-ap-タイムアウト)
 
 ## Procédure de déploiement
 
@@ -159,7 +159,7 @@ sam deploy \
 
 Après le déploiement, un e-mail de confirmation d'abonnement SNS est envoyé à l'adresse e-mail spécifiée. Cliquez sur le lien dans l'e-mail pour confirmer.
 
-> **Remarque** : Si vous omettez `S3AccessPointName`, la politique IAM devient basée uniquement sur l'Alias, ce qui peut provoquer une erreur `AccessDenied`. Il est recommandé de le spécifier dans les environnements de production. Pour plus de détails, consultez le [Guide de dépannage](../docs/guides/troubleshooting-guide.md#1-accessdenied-エラー).
+> **Remarque** : Si vous omettez `S3AccessPointName`, la politique IAM devient basée uniquement sur l'Alias, ce qui peut provoquer une erreur `AccessDenied`. Il est recommandé de le spécifier dans les environnements de production. Pour plus de détails, consultez le [Guide de dépannage](../../../docs/guides/troubleshooting-guide.md#1-accessdenied-エラー).
 
 ## Liste des paramètres de configuration
 
@@ -229,7 +229,7 @@ UC1 utilise les services suivants :
 | AWS X-Ray | Disponible dans presque toutes les régions |
 | CloudWatch EMF | Disponible dans presque toutes les régions |
 
-> Pour plus de détails, consultez la [Matrice de compatibilité des régions](../docs/region-compatibility.md).
+> Pour plus de détails, consultez la [Matrice de compatibilité des régions](../../../docs/region-compatibility.md).
 
 ## Liens de référence
 
@@ -338,7 +338,7 @@ sam local invoke DiscoveryFunction \
 python3 -m pytest tests/ -v
 ```
 
-Pour plus de détails, consultez le [Démarrage rapide des tests locaux](../docs/local-testing-quick-start.md).
+Pour plus de détails, consultez le [Démarrage rapide des tests locaux](../../../docs/local-testing-quick-start.md).
 
 ---
 
@@ -387,7 +387,7 @@ Exemple de sortie finale à la fin de l'exécution de Step Functions :
 
 ## S3AP Compatibility
 
-Pour les contraintes de compatibilité, le dépannage et les modèles de déclenchement des S3 Access Points for FSx for ONTAP, consultez les [S3AP Compatibility Notes](../docs/s3ap-compatibility-notes.md).
+Pour les contraintes de compatibilité, le dépannage et les modèles de déclenchement des S3 Access Points for FSx for ONTAP, consultez les [S3AP Compatibility Notes](../../../docs/s3ap-compatibility-notes.md).
 
 ---
 

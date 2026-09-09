@@ -241,8 +241,8 @@ DynamoDB routing table updates, CloudWatch Logs, ONTAP REST API health check res
 
 ## Related Links
 
-- [Support Matrix](../docs/support-matrix-fsx-ontap-flexcache-s3ap.md)
-- [Industry / Workload Mapping](../docs/industry-workload-mapping.md)
+- [Support Matrix](../../../docs/support-matrix-fsx-ontap-flexcache-s3ap.md)
+- [Industry / Workload Mapping](../../../docs/industry-workload-mapping.md)
 - [Dynamic FlexCache Render Workflow](../dynamic-flexcache-render-workflow/README.md)
 - [NetApp FlexCache Documentation](https://docs.netapp.com/us-en/ontap/flexcache/index.html)
 - [FSx for ONTAP Documentation](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/)
@@ -320,7 +320,7 @@ sam local invoke DiscoveryFunction \
 python3 -m pytest tests/ -v
 ```
 
-For details, see [Local Testing Quick Start](../docs/local-testing-quick-start.md).
+For details, see [Local Testing Quick Start](../../../docs/local-testing-quick-start.md).
 
 ---
 

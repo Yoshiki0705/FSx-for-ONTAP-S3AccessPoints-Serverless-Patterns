@@ -1,7 +1,7 @@
 # UC17: スマートシティ — 地理空間データ解析・都市計画
 
 🌐 **Language / 言語**: 日本語 | [English](README.en.md) | [한국어](README.ko.md) | [简体中文](README.zh-CN.md) | [繁體中文](README.zh-TW.md) | [Français](README.fr.md) | [Deutsch](README.de.md) | [Español](README.es.md)
-📚 **ドキュメント**: [アーキテクチャ](docs/architecture.md) | [デモスクリプト](docs/demo-guide.md) | [トラブルシューティング](../docs/phase7-troubleshooting.md)
+📚 **ドキュメント**: [アーキテクチャ](docs/architecture.md) | [デモスクリプト](docs/demo-guide.md) | [トラブルシューティング](../../../docs/phase7-troubleshooting.md)
 
 ## 概要
 
@@ -82,7 +82,7 @@ FSx for ONTAP (GIS データ格納 — 部署別アクセス制御)
 <!-- SCREENSHOT: phase7-uc17-s3-gis-uploaded.png
      内容: S3 AP の gis/ プレフィックス一覧、ファイル形式が混在
      マスク: アカウント ID、S3 AP ARN、実座標由来のファイル名 -->
-![UC17: GIS データ格納確認](../docs/screenshots/masked/phase7/phase7-uc17-s3-gis-uploaded.png)
+![UC17: GIS データ格納確認](../../../docs/screenshots/masked/phase7/phase7-uc17-s3-gis-uploaded.png)
 
 ### 2. Bedrock 生成の都市計画レポート（Markdown 表示）
 
@@ -98,7 +98,7 @@ Bedrock Nova Lite が自治体担当者向けに日本語レポートを自動�
        #### 優先すべき対策案
        1. 洪水対策の強化 ... 2. 地震対策の強化 ... 3. 斜面崩壊対策の強化 ...
      マスク: アカウント ID、自治体名（サンプル名のみ表示） -->
-![UC17: Bedrock 生成レポート](../docs/screenshots/masked/phase7/phase7-uc17-bedrock-report.png)
+![UC17: Bedrock 生成レポート](../../../docs/screenshots/masked/phase7/phase7-uc17-bedrock-report.png)
 
 ### 3. 災害リスクマップ JSON
 
@@ -108,7 +108,7 @@ Bedrock Nova Lite が自治体担当者向けに日本語レポートを自動�
 <!-- SCREENSHOT: phase7-uc17-risk-map-json.png
      内容: risk-maps/*.json の整形ビュー（flood, earthquake, landslide の level を強調）
      マスク: アカウント ID -->
-![UC17: 災害リスクマップ](../docs/screenshots/masked/phase7/phase7-uc17-risk-map-json.png)
+![UC17: 災害リスクマップ](../../../docs/screenshots/masked/phase7/phase7-uc17-risk-map-json.png)
 
 ### 4. 土地利用分布（JSON）
 
@@ -118,7 +118,7 @@ residential / commercial / forest / water / road 等の比率。
 <!-- SCREENSHOT: phase7-uc17-landuse-distribution.png
      内容: landuse/*.json の中身（residential: 0.5, forest: 0.3 等）
      マスク: アカウント ID -->
-![UC17: 土地利用分布](../docs/screenshots/masked/phase7/phase7-uc17-landuse-distribution.png)
+![UC17: 土地利用分布](../../../docs/screenshots/masked/phase7/phase7-uc17-landuse-distribution.png)
 
 ### 5. 時系列変化の可視化（DynamoDB Explorer）
 
@@ -128,7 +128,7 @@ residential / commercial / forest / water / road 等の比率。
 <!-- SCREENSHOT: phase7-uc17-dynamodb-landuse-history.png
      内容: DynamoDB Explorer で landuse-history テーブルの時系列項目
      マスク: アカウント ID、area_id -->
-![UC17: 時系列変化テーブル](../docs/screenshots/masked/phase7/phase7-uc17-dynamodb-landuse-history.png)
+![UC17: 時系列変化テーブル](../../../docs/screenshots/masked/phase7/phase7-uc17-dynamodb-landuse-history.png)
 
 
 ## Success Metrics
@@ -302,7 +302,7 @@ sam local invoke DiscoveryFunction \
 python3 -m pytest tests/ -v
 ```
 
-詳細は [ローカルテスト クイックスタート](../docs/local-testing-quick-start.md) を参照してください。
+詳細は [ローカルテスト クイックスタート](../../../docs/local-testing-quick-start.md) を参照してください。
 
 ---
 
@@ -354,7 +354,7 @@ python3 -m pytest tests/ -v
 
 ## S3AP Compatibility
 
-S3 Access Points for FSx for ONTAP の互換性制約、トラブルシューティング、トリガーパターンについては [S3AP Compatibility Notes](../docs/s3ap-compatibility-notes.md) を参照してください。
+S3 Access Points for FSx for ONTAP の互換性制約、トラブルシューティング、トリガーパターンについては [S3AP Compatibility Notes](../../../docs/s3ap-compatibility-notes.md) を参照してください。
 
 ---
 

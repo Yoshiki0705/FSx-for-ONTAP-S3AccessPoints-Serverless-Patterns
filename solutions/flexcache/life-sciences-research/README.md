@@ -99,8 +99,8 @@ life-sciences-research/
 ## 関連リンク
 
 - [FlexCache AnyCast / DR](../flexcache-anycast-dr/README.md)
-- [業界・ワークロード マッピング](../docs/industry-workload-mapping.md)
-- [サポートマトリックス](../docs/support-matrix-fsx-ontap-flexcache-s3ap.md)
+- [業界・ワークロード マッピング](../../../docs/industry-workload-mapping.md)
+- [サポートマトリックス](../../../docs/support-matrix-fsx-ontap-flexcache-s3ap.md)
 
 
 ## Success Metrics
@@ -228,7 +228,7 @@ sam local invoke DiscoveryFunction \
 python3 -m pytest tests/ -v
 ```
 
-詳細は [ローカルテスト クイックスタート](../docs/local-testing-quick-start.md) を参照してください。
+詳細は [ローカルテスト クイックスタート](../../../docs/local-testing-quick-start.md) を参照してください。
 
 ---
 
@@ -296,7 +296,7 @@ AstraZeneca は治療領域横断でコマーシャルチームが医薬品デ�
 
 本パターン（UC7）は同種の課題（研究文書の AI 分析 + 分類）を FSx for ONTAP S3 AP + AWS Bedrock で解決するアーキテクチャを提供する。マルチエージェント拡張は Step Functions による治療領域別ルーティングで実現可能。
 
-詳細分析: [DAIS 2026 Agent Bricks 事例分析](../docs/investigations/dais2026-agent-bricks-industry-cases.md)
+詳細分析: [DAIS 2026 Agent Bricks 事例分析](../../../docs/investigations/dais2026-agent-bricks-industry-cases.md)
 
 Sources:
 - [DAIS 2026 Session: AstraZeneca's Multi-Agent System](https://www.databricks.com/dataaisummit/session/astrazenecas-multi-agent-system-lessons-scaling-agents-10x-agent-bricks)

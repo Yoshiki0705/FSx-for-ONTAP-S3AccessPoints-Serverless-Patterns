@@ -90,7 +90,7 @@ graph LR
 
 ## Voraussetzungen
 
-> **Hinweis zu S3 AP NetworkOrigin**: Die Discovery Lambda wird innerhalb einer VPC bereitgestellt. Wenn der NetworkOrigin des S3 Access Point `Internet` ist, kann der Zugriff nicht über einen S3 Gateway VPC Endpoint erfolgen (da Anfragen nicht an die FSx-Datenebene geroutet werden). Verwenden Sie einen S3 AP mit NetworkOrigin=VPC oder konfigurieren Sie den Zugriff über eine NAT Gateway. Weitere Details siehe [S3AP Compatibility Notes](../docs/s3ap-compatibility-notes.md).
+> **Hinweis zu S3 AP NetworkOrigin**: Die Discovery Lambda wird innerhalb einer VPC bereitgestellt. Wenn der NetworkOrigin des S3 Access Point `Internet` ist, kann der Zugriff nicht über einen S3 Gateway VPC Endpoint erfolgen (da Anfragen nicht an die FSx-Datenebene geroutet werden). Verwenden Sie einen S3 AP mit NetworkOrigin=VPC oder konfigurieren Sie den Zugriff über eine NAT Gateway. Weitere Details siehe [S3AP Compatibility Notes](../../../docs/s3ap-compatibility-notes.md).
 
 - Ein AWS-Konto und geeignete IAM-Berechtigungen
 - FSx for ONTAP-Dateisystem (ONTAP 9.17.1P4D3 oder höher)
@@ -292,7 +292,7 @@ sam local invoke DiscoveryFunction \
 python3 -m pytest tests/ -v
 ```
 
-Weitere Details siehe [Schnellstart für lokale Tests](../docs/local-testing-quick-start.md).
+Weitere Details siehe [Schnellstart für lokale Tests](../../../docs/local-testing-quick-start.md).
 
 ---
 
@@ -306,7 +306,7 @@ Weitere Details siehe [Schnellstart für lokale Tests](../docs/local-testing-qui
 
 ## S3AP Compatibility
 
-Siehe [S3AP Compatibility Notes](../docs/s3ap-compatibility-notes.md) für die Kompatibilitätsbeschränkungen, Fehlerbehebung und Trigger-Muster der S3 Access Points for FSx for ONTAP.
+Siehe [S3AP Compatibility Notes](../../../docs/s3ap-compatibility-notes.md) für die Kompatibilitätsbeschränkungen, Fehlerbehebung und Trigger-Muster der S3 Access Points for FSx for ONTAP.
 
 ---
 

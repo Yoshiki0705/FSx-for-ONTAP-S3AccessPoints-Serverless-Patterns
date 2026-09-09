@@ -9,14 +9,14 @@ FSx for NetApp ONTAP 을 **Single Source of Truth(마스터)** 로 유지하면�
 **배포 벤더 비종속** 서버리스 패턴입니다.
 
 통합 메커니즘 및 각 배포망의 실현 가능성(CloudFront / Akamai / Fastly / Cloudflare / Bunny.net /
-Google Media CDN 등)의 기술 비교는 **[docs/cdn-comparison.md](../docs/cdn-comparison.md)** 를 참조하십시오.
+Google Media CDN 등)의 기술 비교는 **[docs/cdn-comparison.md](../../../docs/cdn-comparison.md)** 를 참조하십시오.
 
 > 본 패턴은 reference implementation(참조 구현)입니다. 배포 벤더 선정, 권리 처리, 지역 제한,
 > 컴플라이언스는 고객이 판단합니다.
 
 > **TL;DR(30초)**: ONTAP/NAS 의 마스터를 이동하지 않고, **승인된 배포용 산출물만** CloudFront 나
 > 서드파티 CDN 에서 배포합니다. 첫걸음은 검증 리스크가 가장 낮은 `PUBLISH_PUSH`(M3). SigV4 직접 조회
-> (ORIGIN_PULL)는 [검증 체크리스트](../docs/cdn-origin-verification-checklist.md)에서 실측한 후 채택하십시오.
+> (ORIGIN_PULL)는 [검증 체크리스트](../../../docs/cdn-origin-verification-checklist.md)에서 실측한 후 채택하십시오.
 
 ## 비즈니스 성과와 도입(Outcome / Adoption)
 
@@ -45,7 +45,7 @@ permission-aware 필터, 승인 증적, PII 마스킹 동작을 확인할 수 �
 - **첫 고객 질문**: 「기존 NAS/ONTAP 자산을 복사하지 않고 엣지 배포에 연결하고 싶은가. 배포는 CloudFront 인가,
   기존 계약 CDN(Akamai 등)인가」
 - **PoC 산출물**: DemoMode 데모 → 승인된 렌디션의 배포 매니페스트 → (선택) 실기 SigV4 검증 결과.
-- 배포망 선정은 [CDN 비교](../docs/cdn-comparison.md) 를 고객 대화에서 그대로 사용할 수 있습니다.
+- 배포망 선정은 [CDN 비교](../../../docs/cdn-comparison.md) 를 고객 대화에서 그대로 사용할 수 있습니다.
 
 ## 해결하는 과제
 
@@ -79,7 +79,7 @@ graph LR
 
 - **ORIGIN_PULL**: 오브젝트를 복제하지 않고, CDN 이 S3 AP 를 SigV4 로 직접 취득하는 것을 전제로 한
   오리진 참조 매니페스트를 생성합니다. CloudFront 는 OAC 로 대응(참조 구현).
-  서드파티 CDN 의 SigV4 오리진 서명은 **검증 필요**([비교 문서](../docs/cdn-comparison.md) 참조).
+  서드파티 CDN 의 SigV4 오리진 서명은 **검증 필요**([비교 문서](../../../docs/cdn-comparison.md) 참조).
 - **PUBLISH_PUSH**: 승인된 렌디션을 CDN 측 S3 호환 스토어로 복제합니다. 오리진 인증 문제를 회피할 수 있으며,
   CDN 비종속. 검증 리스크가 가장 낮은 첫걸음.
 
@@ -160,7 +160,7 @@ DemoMode 확인은 [docs/demo-guide.md](docs/demo-guide.md) 를 참조하십시�
   멱등화(idempotency)를 미구현**. HYBRID 의 중복 제거가 필요한 경우 `shared/idempotency_checker.py` 를
   publish 경로에 통합하십시오. 현재의 동작 확인은 `POLLING` 으로 수행합니다.
 - `PUBLISH_PUSH` 의 외부 스토어로의 실제 push 는 엔드포인트/버킷 설정 시에만 유효(DemoMode 는 건너뜀 기록).
-- ORIGIN_PULL 의 SigV4 오리진 직접 조회는 서드파티 CDN 에서 **검증 필요**([비교 문서](../docs/cdn-comparison.md) 4.1 참조).
+- ORIGIN_PULL 의 SigV4 오리진 직접 조회는 서드파티 CDN 에서 **검증 필요**([비교 문서](../../../docs/cdn-comparison.md) 4.1 참조).
 
 ## 운영 / Runbook(Reliability/Ops)
 
@@ -170,7 +170,7 @@ DemoMode 확인은 [docs/demo-guide.md](docs/demo-guide.md) 를 참조하십시�
   - publish 에러 → CloudWatch Logs `/aws/lambda/<stack>-publish` 를 확인. S3 AP 인가(IAM + AP policy +
     ONTAP ID)와 외부 스토어 인증(Secrets Manager)을 분리.
   - 외부 push 실패 → `ExternalStoreSecretName` 의 인증 정보·엔드포인트·버킷을 확인.
-  - 배포 경계 의심(권한 외 배포) → [인시던트 대응 Playbook](../docs/incident-response-playbook.md).
+  - 배포 경계 의심(권한 외 배포) → [인시던트 대응 Playbook](../../../docs/incident-response-playbook.md).
 - **롤백**: 배포는 승인된 산출물의 publish 만. 오배포 시에는 배포 대상(CDN 스토어/Distribution)에서 해당
   오브젝트를 제거하고, `ApprovedPrefix` 에서 회수하여 재 publish.
 - **외부 스토어 인증**: PUBLISH_PUSH 로 Akamai/R2/Fastly 등에 복제하는 경우, AWS 기본 인증은 통용되지 않으므로
@@ -188,11 +188,11 @@ DemoMode 확인은 [docs/demo-guide.md](docs/demo-guide.md) 를 참조하십시�
 
 ## 관련 문서
 
-- [CDN/엣지 배포 통합 비교](../docs/cdn-comparison.md) / [English](../docs/cdn-comparison.en.md)
-- [ORIGIN_PULL SigV4 검증 체크리스트](../docs/cdn-origin-verification-checklist.md)(실기 검증 절차)
-- [대체 아키텍처 비교](../docs/comparison-alternatives.md)
-- [S3AP 호환성 노트](../docs/s3ap-compatibility-notes.md)
-- [인시던트 대응 Playbook](../docs/incident-response-playbook.md)(권한 외 배포·오배포 시의 대응 동선)
+- [CDN/엣지 배포 통합 비교](../../../docs/cdn-comparison.md) / [English](../../../docs/cdn-comparison.en.md)
+- [ORIGIN_PULL SigV4 검증 체크리스트](../../../docs/cdn-origin-verification-checklist.md)(실기 검증 절차)
+- [대체 아키텍처 비교](../../../docs/comparison-alternatives.md)
+- [S3AP 호환성 노트](../../../docs/s3ap-compatibility-notes.md)
+- [인시던트 대응 Playbook](../../../docs/incident-response-playbook.md)(권한 외 배포·오배포 시의 대응 동선)
 
 ---
 

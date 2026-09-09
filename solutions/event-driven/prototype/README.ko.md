@@ -158,8 +158,8 @@ CloudWatch EMF 형식으로 다음 메트릭을 출력:
 
 ## 관련 문서
 
-- [이벤트 기반 아키텍처 설계](../docs/event-driven/architecture-design.md)
-- [마이그레이션 가이드](../docs/event-driven/migration-guide.md)
+- [이벤트 기반 아키텍처 설계](../../../docs/event-driven/architecture-design.md)
+- [마이그레이션 가이드](../../../docs/event-driven/migration-guide.md)
 - [UC11 Retail Catalog](../retail-catalog/README.md)
 
 ---

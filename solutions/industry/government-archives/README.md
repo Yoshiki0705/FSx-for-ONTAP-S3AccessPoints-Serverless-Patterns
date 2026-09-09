@@ -1,7 +1,7 @@
 # UC16: 政府機関 — 公文書デジタルアーカイブ・FOIA 対応
 
 🌐 **Language / 言語**: 日本語 | [English](README.en.md) | [한국어](README.ko.md) | [简体中文](README.zh-CN.md) | [繁體中文](README.zh-TW.md) | [Français](README.fr.md) | [Deutsch](README.de.md) | [Español](README.es.md)
-📚 **ドキュメント**: [アーキテクチャ](docs/architecture.md) | [デモスクリプト](docs/demo-guide.md) | [トラブルシューティング](../docs/phase7-troubleshooting.md)
+📚 **ドキュメント**: [アーキテクチャ](docs/architecture.md) | [デモスクリプト](docs/demo-guide.md) | [トラブルシューティング](../../../docs/phase7-troubleshooting.md)
 
 ## 概要
 
@@ -84,7 +84,7 @@ FOIA 請求受付
 <!-- SCREENSHOT: phase7-uc16-s3-archives-uploaded.png
      内容: S3 AP の archives/ プレフィックスで PDF 文書一覧
      マスク: アカウント ID、S3 AP ARN、文書名 -->
-![UC16: 公文書の格納確認](../docs/screenshots/masked/phase7/phase7-uc16-s3-archives-uploaded.png)
+![UC16: 公文書の格納確認](../../../docs/screenshots/masked/phase7/phase7-uc16-s3-archives-uploaded.png)
 
 ### 2. 墨消し済み文書の閲覧
 
@@ -94,7 +94,7 @@ FOIA 請求受付
 <!-- SCREENSHOT: phase7-uc16-redacted-text-preview.png
      内容: S3 コンソールでの redacted テキストプレビュー、[REDACTED] マーカー可視
      マスク: アカウント ID、墨消し対象文書名（サンプル名のみ表示） -->
-![UC16: 墨消し済み文書プレビュー](../docs/screenshots/masked/phase7/phase7-uc16-redacted-text-preview.png)
+![UC16: 墨消し済み文書プレビュー](../../../docs/screenshots/masked/phase7/phase7-uc16-redacted-text-preview.png)
 
 ### 3. 墨消しメタデータ（sidecar JSON）
 
@@ -104,7 +104,7 @@ FOIA 請求受付
 <!-- SCREENSHOT: phase7-uc16-redaction-metadata-json.png
      内容: redaction-metadata/*.json の整形ビュー
      マスク: アカウント ID、元文書名 -->
-![UC16: 墨消しメタデータ JSON](../docs/screenshots/masked/phase7/phase7-uc16-redaction-metadata-json.png)
+![UC16: 墨消しメタデータ JSON](../../../docs/screenshots/masked/phase7/phase7-uc16-redaction-metadata-json.png)
 
 ### 4. FOIA 期限リマインダー（SNS メール通知）
 
@@ -114,7 +114,7 @@ FOIA 担当者が期限 3 営業日前に受信するリマインダーメール
 <!-- SCREENSHOT: phase7-uc16-foia-reminder-email.png
      内容: メールクライアントで FOIA_DEADLINE_APPROACHING メールを表示
      マスク: 受信者・送信者メール、request_id（サンプル ID のみ表示） -->
-![UC16: FOIA 期限リマインダーメール](../docs/screenshots/masked/phase7/phase7-uc16-foia-reminder-email.png)
+![UC16: FOIA 期限リマインダーメール](../../../docs/screenshots/masked/phase7/phase7-uc16-foia-reminder-email.png)
 
 ### 5. NARA GRS 保存スケジュール（DynamoDB Explorer）
 
@@ -124,7 +124,7 @@ FOIA 担当者が期限 3 営業日前に受信するリマインダーメール
 <!-- SCREENSHOT: phase7-uc16-dynamodb-retention.png
      内容: DynamoDB Explorer で retention テーブルの項目一覧
      マスク: アカウント ID、document_key（サンプル名のみ） -->
-![UC16: 保存スケジュールテーブル](../docs/screenshots/masked/phase7/phase7-uc16-dynamodb-retention.png)
+![UC16: 保存スケジュールテーブル](../../../docs/screenshots/masked/phase7/phase7-uc16-dynamodb-retention.png)
 
 
 ## Success Metrics
@@ -328,7 +328,7 @@ sam local invoke DiscoveryFunction \
 python3 -m pytest tests/ -v
 ```
 
-詳細は [ローカルテスト クイックスタート](../docs/local-testing-quick-start.md) を参照してください。
+詳細は [ローカルテスト クイックスタート](../../../docs/local-testing-quick-start.md) を参照してください。
 
 ---
 
@@ -383,7 +383,7 @@ python3 -m pytest tests/ -v
 
 ## S3AP Compatibility
 
-S3 Access Points for FSx for ONTAP の互換性制約、トラブルシューティング、トリガーパターンについては [S3AP Compatibility Notes](../docs/s3ap-compatibility-notes.md) を参照してください。
+S3 Access Points for FSx for ONTAP の互換性制約、トラブルシューティング、トリガーパターンについては [S3AP Compatibility Notes](../../../docs/s3ap-compatibility-notes.md) を参照してください。
 
 ---
 

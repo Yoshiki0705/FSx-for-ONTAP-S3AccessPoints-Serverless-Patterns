@@ -37,7 +37,7 @@ Consulte el [documento de arquitectura](docs/architecture.es.md) para ver diagra
 
 ## Requisitos previos
 
-> **Nota sobre S3 AP NetworkOrigin**: La Lambda Discovery se implementa dentro de una VPC. Si el NetworkOrigin del S3 Access Point es `Internet`, no se puede acceder a través del S3 Gateway VPC Endpoint (las solicitudes no se enrutan al plano de datos de FSx). Utilice un S3 AP con NetworkOrigin=VPC o configure el acceso a través de un NAT Gateway. Consulte [S3AP Compatibility Notes](../docs/s3ap-compatibility-notes.md).
+> **Nota sobre S3 AP NetworkOrigin**: La Lambda Discovery se implementa dentro de una VPC. Si el NetworkOrigin del S3 Access Point es `Internet`, no se puede acceder a través del S3 Gateway VPC Endpoint (las solicitudes no se enrutan al plano de datos de FSx). Utilice un S3 AP con NetworkOrigin=VPC o configure el acceso a través de un NAT Gateway. Consulte [S3AP Compatibility Notes](../../../docs/s3ap-compatibility-notes.md).
 
 - Cuenta de AWS con los permisos de IAM adecuados
 - Sistema de archivos FSx for ONTAP (ONTAP 9.17.1P4D3 o posterior)
@@ -104,7 +104,7 @@ aws cloudformation wait stack-delete-complete --stack-name fsxn-chemical-sds --r
 
 ## S3AP Compatibility
 
-Consulte [S3AP Compatibility Notes](../docs/s3ap-compatibility-notes.md) para conocer las restricciones de compatibilidad, la resolución de problemas y los patrones de activación de FSx for ONTAP S3 Access Points.
+Consulte [S3AP Compatibility Notes](../../../docs/s3ap-compatibility-notes.md) para conocer las restricciones de compatibilidad, la resolución de problemas y los patrones de activación de FSx for ONTAP S3 Access Points.
 
 ---
 

@@ -97,9 +97,9 @@ Edit `functions/processing/index.py` to customize the summarization prompt for y
 
 ## Related
 
-- [Enterprise Workload Examples](../docs/enterprise-workload-examples.md) — Full list of enterprise patterns
-- [Quick Start Guide](../docs/quick-start.md) — First deployment walkthrough
-- [Deployment Profiles](../docs/deployment-profiles.md) — Production configuration options
+- [Enterprise Workload Examples](../../../docs/enterprise-workload-examples.md) — Full list of enterprise patterns
+- [Quick Start Guide](../../../docs/quick-start.md) — First deployment walkthrough
+- [Deployment Profiles](../../../docs/deployment-profiles.md) — Production configuration options
 
 ---
 
@@ -173,7 +173,7 @@ sam local invoke DiscoveryFunction \
 python3 -m pytest tests/ -v
 ```
 
-詳細は [ローカルテスト クイックスタート](../docs/local-testing-quick-start.md) を参照してください。
+詳細は [ローカルテスト クイックスタート](../../../docs/local-testing-quick-start.md) を参照してください。
 
 ---
 
@@ -222,7 +222,7 @@ SAP/ERP ファイル処理ワークフローの出力例:
 
 ## S3AP Compatibility
 
-S3 Access Points for FSx for ONTAP の互換性制約、トラブルシューティング、トリガーパターンについては [S3AP Compatibility Notes](../docs/s3ap-compatibility-notes.md) を参照してください。
+S3 Access Points for FSx for ONTAP の互換性制約、トラブルシューティング、トリガーパターンについては [S3AP Compatibility Notes](../../../docs/s3ap-compatibility-notes.md) を参照してください。
 ---
 
 ## Performance Considerations

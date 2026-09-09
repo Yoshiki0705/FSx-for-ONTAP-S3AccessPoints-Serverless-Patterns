@@ -134,7 +134,7 @@ sam deploy \
 
 部署後，指定的電子郵件位址將收到 SNS 訂閱確認郵件。
 
-> **注意**：如果省略 `S3AccessPointName`，IAM 策略將僅基於 Alias，可能導致 `AccessDenied` 錯誤。建議在生產環境中指定。詳細資訊請參閱 [疑難排解指南](../docs/guides/troubleshooting-guide.md#1-accessdenied-エラー)。
+> **注意**：如果省略 `S3AccessPointName`，IAM 策略將僅基於 Alias，可能導致 `AccessDenied` 錯誤。建議在生產環境中指定。詳細資訊請參閱 [疑難排解指南](../../../docs/guides/troubleshooting-guide.md#1-accessdenied-エラー)。
 
 ## 設定參數列表
 
@@ -212,7 +212,7 @@ UC5 使用以下服務：
 | AWS X-Ray | 幾乎所有區域均可用 |
 | CloudWatch EMF | 幾乎所有區域均可用 |
 
-> 透過 Cross-Region Client 呼叫 Comprehend Medical API。請確認資料駐留需求。詳細資訊請參閱 [區域相容性矩陣](../docs/region-compatibility.md)。
+> 透過 Cross-Region Client 呼叫 Comprehend Medical API。請確認資料駐留需求。詳細資訊請參閱 [區域相容性矩陣](../../../docs/region-compatibility.md)。
 
 ## 參考連結
 
@@ -319,7 +319,7 @@ sam local invoke DiscoveryFunction \
 python3 -m pytest tests/ -v
 ```
 
-詳細資訊請參閱 [本地測試快速入門](../docs/local-testing-quick-start.md)。
+詳細資訊請參閱 [本地測試快速入門](../../../docs/local-testing-quick-start.md)。
 
 ---
 
@@ -364,7 +364,7 @@ DICOM 匿名化管線的輸出範例：
 
 ## S3AP Compatibility
 
-有關 S3 Access Points for FSx for ONTAP 的相容性限制、疑難排解和觸發模式，請參閱 [S3AP Compatibility Notes](../docs/s3ap-compatibility-notes.md)。
+有關 S3 Access Points for FSx for ONTAP 的相容性限制、疑難排解和觸發模式，請參閱 [S3AP Compatibility Notes](../../../docs/s3ap-compatibility-notes.md)。
 
 ---
 

@@ -158,8 +158,8 @@ The following metrics are emitted in CloudWatch EMF format:
 
 ## Related Documents
 
-- [Event-Driven Architecture Design](../docs/event-driven/architecture-design.md)
-- [Migration Guide](../docs/event-driven/migration-guide.md)
+- [Event-Driven Architecture Design](../../../docs/event-driven/architecture-design.md)
+- [Migration Guide](../../../docs/event-driven/migration-guide.md)
 - [UC11 Retail Catalog](../retail-catalog/README.md)
 
 ---

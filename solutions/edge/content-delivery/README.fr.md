@@ -10,7 +10,7 @@ S3 Access Points (S3 AP) diffusables depuis un réseau de diffusion CDN/edge.
 
 Pour la comparaison technique des mécanismes d'intégration et de la faisabilité de chaque réseau de diffusion
 (CloudFront / Akamai / Fastly / Cloudflare / Bunny.net / Google Media CDN, etc.),
-consultez **[docs/cdn-comparison.md](../docs/cdn-comparison.md)**.
+consultez **[docs/cdn-comparison.md](../../../docs/cdn-comparison.md)**.
 
 > Ce pattern est une reference implementation (implémentation de référence). La sélection du fournisseur de
 > diffusion, la gestion des droits, les restrictions géographiques et la conformité relèvent de la décision du client.
@@ -18,7 +18,7 @@ consultez **[docs/cdn-comparison.md](../docs/cdn-comparison.md)**.
 > **TL;DR (30 s)** : sans déplacer le master ONTAP/NAS, diffusez **uniquement les artefacts de diffusion approuvés**
 > via CloudFront ou un CDN tiers. Commencez par `PUBLISH_PUSH` (M3), qui présente le risque de vérification le plus
 > faible. N'adoptez le pull direct SigV4 (ORIGIN_PULL) qu'après l'avoir mesuré avec la
-> [checklist de vérification](../docs/cdn-origin-verification-checklist.md).
+> [checklist de vérification](../../../docs/cdn-origin-verification-checklist.md).
 
 ## Résultat métier et adoption (Outcome / Adoption)
 
@@ -47,7 +47,7 @@ unitaires (13 cas) et confirmer le fonctionnement du filtre permission-aware, de
 - **Première question client** : « Souhaitez-vous connecter vos actifs NAS/ONTAP existants à la diffusion edge sans
   copie ? La diffusion se fait-elle via CloudFront ou via un CDN déjà sous contrat (Akamai, etc.) ? »
 - **Livrables PoC** : démo DemoMode → manifeste de diffusion des rendus approuvés → (facultatif) résultat de vérification SigV4 sur matériel réel.
-- Pour la sélection du réseau de diffusion, la [comparaison CDN](../docs/cdn-comparison.md) peut être utilisée telle quelle dans les conversations client.
+- Pour la sélection du réseau de diffusion, la [comparaison CDN](../../../docs/cdn-comparison.md) peut être utilisée telle quelle dans les conversations client.
 
 ## Problèmes résolus
 
@@ -81,7 +81,7 @@ graph LR
 
 - **ORIGIN_PULL** : ne copie pas les objets ; génère un manifeste de référence d'origine partant du principe que le
   CDN récupère le S3 AP directement via SigV4. CloudFront le prend en charge via OAC (implémentation de référence).
-  La signature d'origine SigV4 sur les CDN tiers est **à vérifier** (voir le [document de comparaison](../docs/cdn-comparison.md)).
+  La signature d'origine SigV4 sur les CDN tiers est **à vérifier** (voir le [document de comparaison](../../../docs/cdn-comparison.md)).
 - **PUBLISH_PUSH** : réplique les rendus approuvés vers le store compatible S3 côté CDN. Évite le problème
   d'authentification d'origine et est indépendant du CDN — le premier pas au risque de vérification le plus faible.
 
@@ -165,7 +165,7 @@ Pour la vérification de DemoMode, consultez [docs/demo-guide.md](docs/demo-guid
   l'intégration FPolicy ni l'idempotence (idempotency)**. Si la déduplication pour HYBRID est nécessaire, intégrez
   `shared/idempotency_checker.py` dans le chemin de publication. La vérification actuelle du fonctionnement se fait avec `POLLING`.
 - Le push réel vers le store externe pour `PUBLISH_PUSH` n'est effectif que lorsque l'endpoint/le bucket sont configurés (DemoMode enregistre un skip).
-- Le pull direct d'origine SigV4 d'ORIGIN_PULL est **à vérifier** sur les CDN tiers (voir le [document de comparaison](../docs/cdn-comparison.md) 4.1).
+- Le pull direct d'origine SigV4 d'ORIGIN_PULL est **à vérifier** sur les CDN tiers (voir le [document de comparaison](../../../docs/cdn-comparison.md) 4.1).
 
 ## Exploitation / Runbook (Reliability/Ops)
 
@@ -175,7 +175,7 @@ Pour la vérification de DemoMode, consultez [docs/demo-guide.md](docs/demo-guid
   - erreur publish → vérifier CloudWatch Logs `/aws/lambda/<stack>-publish`. Isoler l'autorisation S3 AP
     (IAM + AP policy + ID ONTAP) de l'authentification du store externe (Secrets Manager).
   - échec du push externe → vérifier les informations d'authentification, l'endpoint et le bucket dans `ExternalStoreSecretName`.
-  - suspicion de problème de frontière de diffusion (diffusion hors autorisation) → [playbook de réponse aux incidents](../docs/incident-response-playbook.md).
+  - suspicion de problème de frontière de diffusion (diffusion hors autorisation) → [playbook de réponse aux incidents](../../../docs/incident-response-playbook.md).
 - **Rollback** : la diffusion ne publie que des artefacts approuvés. En cas de publication erronée, retirez l'objet
   concerné de la cible de diffusion (store CDN/Distribution), retirez-le de `ApprovedPrefix`, puis republiez.
 - **Authentification du store externe** : lors d'une réplication vers Akamai/R2/Fastly, etc. avec PUBLISH_PUSH, les
@@ -193,11 +193,11 @@ Pour la vérification de DemoMode, consultez [docs/demo-guide.md](docs/demo-guid
 
 ## Documents connexes
 
-- [Comparaison de l'intégration diffusion CDN/edge](../docs/cdn-comparison.md) / [English](../docs/cdn-comparison.en.md)
-- [Checklist de vérification SigV4 ORIGIN_PULL](../docs/cdn-origin-verification-checklist.md) (procédure sur matériel réel)
-- [Comparaison des architectures alternatives](../docs/comparison-alternatives.md)
-- [Notes de compatibilité S3AP](../docs/s3ap-compatibility-notes.md)
-- [Playbook de réponse aux incidents](../docs/incident-response-playbook.md) (parcours de réponse en cas de diffusion hors autorisation / publication erronée)
+- [Comparaison de l'intégration diffusion CDN/edge](../../../docs/cdn-comparison.md) / [English](../../../docs/cdn-comparison.en.md)
+- [Checklist de vérification SigV4 ORIGIN_PULL](../../../docs/cdn-origin-verification-checklist.md) (procédure sur matériel réel)
+- [Comparaison des architectures alternatives](../../../docs/comparison-alternatives.md)
+- [Notes de compatibilité S3AP](../../../docs/s3ap-compatibility-notes.md)
+- [Playbook de réponse aux incidents](../../../docs/incident-response-playbook.md) (parcours de réponse en cas de diffusion hors autorisation / publication erronée)
 
 ---
 

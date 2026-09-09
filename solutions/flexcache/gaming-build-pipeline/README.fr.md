@@ -113,7 +113,7 @@ gaming-build-pipeline/
 - [media-vfx/](../media-vfx/README.md) — Pipeline de rendu
 - [Dynamic FlexCache Render Workflow](../dynamic-flexcache-render-workflow/README.md)
 - [FlexCache AnyCast / DR](../flexcache-anycast-dr/README.md)
-- [Cartographie secteurs·workloads](../docs/industry-workload-mapping.md)
+- [Cartographie secteurs·workloads](../../../docs/industry-workload-mapping.md)
 
 
 ## Success Metrics
@@ -242,7 +242,7 @@ sam local invoke DiscoveryFunction \
 python3 -m pytest tests/ -v
 ```
 
-Pour plus de détails, consultez le [Démarrage rapide des tests locaux](../docs/local-testing-quick-start.md).
+Pour plus de détails, consultez le [Démarrage rapide des tests locaux](../../../docs/local-testing-quick-start.md).
 
 ---
 

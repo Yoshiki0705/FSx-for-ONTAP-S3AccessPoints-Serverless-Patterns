@@ -1,7 +1,7 @@
 # UC15: 防衛・宇宙 — 衛星画像解析パイプライン
 
 🌐 **Language / 言語**: 日本語 | [English](README.en.md) | [한국어](README.ko.md) | [简体中文](README.zh-CN.md) | [繁體中文](README.zh-TW.md) | [Français](README.fr.md) | [Deutsch](README.de.md) | [Español](README.es.md)
-📚 **ドキュメント**: [アーキテクチャ](docs/architecture.md) | [デモスクリプト](docs/demo-guide.md) | [トラブルシューティング](../docs/phase7-troubleshooting.md)
+📚 **ドキュメント**: [アーキテクチャ](docs/architecture.md) | [デモスクリプト](docs/demo-guide.md) | [トラブルシューティング](../../../docs/phase7-troubleshooting.md)
 
 ## 概要
 
@@ -74,7 +74,7 @@ FSx for ONTAP (衛星画像格納)
 <!-- SCREENSHOT: phase7-uc15-s3-satellite-uploaded.png
      内容: S3 AP 経由で satellite/2026/05/*.tif を一覧表示（オブジェクト名、サイズ、更新日時）
      マスク: アカウント ID、Access Point ARN、実衛星画像名 -->
-![UC15: 衛星画像配置確認](../docs/screenshots/masked/phase7/phase7-uc15-s3-satellite-uploaded.png)
+![UC15: 衛星画像配置確認](../../../docs/screenshots/masked/phase7/phase7-uc15-s3-satellite-uploaded.png)
 
 ### 2. 解析結果の閲覧（S3 出力バケット）
 
@@ -84,7 +84,7 @@ FSx for ONTAP (衛星画像格納)
 <!-- SCREENSHOT: phase7-uc15-s3-output-bucket.png
      内容: S3 コンソールで detections/, enriched/, tiles/ の 3 プレフィックスを俯瞰
      マスク: アカウント ID、バケット名プレフィックス -->
-![UC15: S3 出力バケット](../docs/screenshots/masked/phase7/phase7-uc15-s3-output-bucket.png)
+![UC15: S3 出力バケット](../../../docs/screenshots/masked/phase7/phase7-uc15-s3-output-bucket.png)
 
 ### 3. 変化検出アラート（SNS メール通知）
 
@@ -94,7 +94,7 @@ FSx for ONTAP (衛星画像格納)
 <!-- SCREENSHOT: phase7-uc15-sns-alert-email.png
      内容: メールクライアント（Gmail/Outlook）で alert_type=SATELLITE_CHANGE_DETECTED を表示
      マスク: 受信者メールアドレス、送信者アドレス、実座標、tile_id -->
-![UC15: SNS アラート通知メール](../docs/screenshots/masked/phase7/phase7-uc15-sns-alert-email.png)
+![UC15: SNS アラート通知メール](../../../docs/screenshots/masked/phase7/phase7-uc15-sns-alert-email.png)
 
 ### 4. 検出結果 JSON の内容
 
@@ -103,7 +103,7 @@ FSx for ONTAP (衛星画像格納)
 <!-- SCREENSHOT: phase7-uc15-detections-json.png
      内容: S3 コンソールでオブジェクトプレビュー、detections JSON の中身
      マスク: アカウント ID -->
-![UC15: 検出結果 JSON](../docs/screenshots/masked/phase7/phase7-uc15-detections-json.png)
+![UC15: 検出結果 JSON](../../../docs/screenshots/masked/phase7/phase7-uc15-detections-json.png)
 
 
 ## Success Metrics
@@ -158,7 +158,7 @@ sam deploy \
 ```
 
 **重要**: `S3AccessPointName` は S3 AP の IAM 権限付与に必須。
-詳細は [`docs/phase7-troubleshooting.md`](../docs/phase7-troubleshooting.md) 参照。
+詳細は [`docs/phase7-troubleshooting.md`](../../../docs/phase7-troubleshooting.md) 参照。
 
 ## ディレクトリ構成
 
@@ -280,7 +280,7 @@ sam local invoke DiscoveryFunction \
 python3 -m pytest tests/ -v
 ```
 
-詳細は [ローカルテスト クイックスタート](../docs/local-testing-quick-start.md) を参照してください。
+詳細は [ローカルテスト クイックスタート](../../../docs/local-testing-quick-start.md) を参照してください。
 
 ---
 
@@ -330,7 +330,7 @@ python3 -m pytest tests/ -v
 
 ## S3AP Compatibility
 
-S3 Access Points for FSx for ONTAP の互換性制約、トラブルシューティング、トリガーパターンについては [S3AP Compatibility Notes](../docs/s3ap-compatibility-notes.md) を参照してください。
+S3 Access Points for FSx for ONTAP の互換性制約、トラブルシューティング、トリガーパターンについては [S3AP Compatibility Notes](../../../docs/s3ap-compatibility-notes.md) を参照してください。
 
 ---
 

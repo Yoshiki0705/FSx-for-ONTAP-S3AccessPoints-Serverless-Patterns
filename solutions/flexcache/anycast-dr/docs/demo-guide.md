@@ -306,5 +306,5 @@ aws s3 cp s3://<OUTPUT_BUCKET>/render-reports/render-001.json -
 
 ## スクリーンショット
 
-![Phase 13 — CloudFormation Stacks](../../docs/screenshots/masked/phase13-cloudformation-stacks.png)
-![Phase 13 — Lambda Functions](../../docs/screenshots/masked/phase13-lambda-functions.png)
+![Phase 13 — CloudFormation Stacks](../../../../docs/screenshots/masked/phase13-cloudformation-stacks.png)
+![Phase 13 — Lambda Functions](../../../../docs/screenshots/masked/phase13-lambda-functions.png)

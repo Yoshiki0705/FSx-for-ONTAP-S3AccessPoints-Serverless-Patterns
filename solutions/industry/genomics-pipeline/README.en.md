@@ -175,7 +175,7 @@ UC7 uses the following services:
 | AWS X-Ray | Available in almost all regions |
 | CloudWatch EMF | Available in almost all regions |
 
-> The Comprehend Medical API is called via the Cross-Region Client. Verify your data residency requirements. For details, see the [Region Compatibility Matrix](../docs/region-compatibility.md).
+> The Comprehend Medical API is called via the Cross-Region Client. Verify your data residency requirements. For details, see the [Region Compatibility Matrix](../../../docs/region-compatibility.md).
 
 ## References
 
@@ -280,7 +280,7 @@ sam local invoke DiscoveryFunction \
 python3 -m pytest tests/ -v
 ```
 
-For details, see the [Local Testing Quick Start](../docs/local-testing-quick-start.md).
+For details, see the [Local Testing Quick Start](../../../docs/local-testing-quick-start.md).
 
 ---
 
@@ -330,7 +330,7 @@ Example output of the genomics variant analysis pipeline:
 
 ## S3AP Compatibility
 
-For compatibility constraints, troubleshooting, and trigger patterns of S3 Access Points for FSx for ONTAP, see the [S3AP Compatibility Notes](../docs/s3ap-compatibility-notes.md).
+For compatibility constraints, troubleshooting, and trigger patterns of S3 Access Points for FSx for ONTAP, see the [S3AP Compatibility Notes](../../../docs/s3ap-compatibility-notes.md).
 
 ---
 

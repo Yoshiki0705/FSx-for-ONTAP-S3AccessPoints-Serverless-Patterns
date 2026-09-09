@@ -158,8 +158,8 @@ CloudWatch EMF 形式で以下のメトリクスを出力:
 
 ## 関連ドキュメント
 
-- [イベント駆動アーキテクチャ設計](../docs/event-driven/architecture-design.md)
-- [移行ガイド](../docs/event-driven/migration-guide.md)
+- [イベント駆動アーキテクチャ設計](../../../docs/event-driven/architecture-design.md)
+- [移行ガイド](../../../docs/event-driven/migration-guide.md)
 - [UC11 Retail Catalog](../retail-catalog/README.md)
 
 ---

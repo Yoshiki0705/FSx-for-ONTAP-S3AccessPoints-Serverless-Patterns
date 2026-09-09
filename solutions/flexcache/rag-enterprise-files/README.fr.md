@@ -133,7 +133,7 @@ genai-rag-enterprise-files/
 
 - [Dynamic FlexCache Render Workflow](../dynamic-flexcache-render-workflow/README.md)
 - [FlexCache AnyCast / DR](../flexcache-anycast-dr/README.md)
-- [Mappage secteurs et charges de travail](../docs/industry-workload-mapping.md)
+- [Mappage secteurs et charges de travail](../../../docs/industry-workload-mapping.md)
 
 
 ## Success Metrics
@@ -262,7 +262,7 @@ sam local invoke DiscoveryFunction \
 python3 -m pytest tests/ -v
 ```
 
-Pour plus de détails, consultez le [démarrage rapide des tests locaux](../docs/local-testing-quick-start.md).
+Pour plus de détails, consultez le [démarrage rapide des tests locaux](../../../docs/local-testing-quick-start.md).
 
 ---
 

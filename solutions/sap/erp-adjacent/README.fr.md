@@ -97,9 +97,9 @@ Modifiez `functions/processing/index.py` pour personnaliser le prompt de synthè
 
 ## Related
 
-- [Enterprise Workload Examples](../docs/enterprise-workload-examples.md) — Liste complète des modèles d'entreprise
-- [Quick Start Guide](../docs/quick-start.md) — Guide du premier déploiement
-- [Deployment Profiles](../docs/deployment-profiles.md) — Options de configuration de production
+- [Enterprise Workload Examples](../../../docs/enterprise-workload-examples.md) — Liste complète des modèles d'entreprise
+- [Quick Start Guide](../../../docs/quick-start.md) — Guide du premier déploiement
+- [Deployment Profiles](../../../docs/deployment-profiles.md) — Options de configuration de production
 
 ---
 
@@ -173,7 +173,7 @@ sam local invoke DiscoveryFunction \
 python3 -m pytest tests/ -v
 ```
 
-Pour plus de détails, consultez le [Guide de démarrage rapide des tests locaux](../docs/local-testing-quick-start.md).
+Pour plus de détails, consultez le [Guide de démarrage rapide des tests locaux](../../../docs/local-testing-quick-start.md).
 
 ---
 
@@ -222,7 +222,7 @@ Exemple de sortie du workflow de traitement de fichiers SAP/ERP :
 
 ## S3AP Compatibility
 
-Pour les contraintes de compatibilité, le dépannage et les modèles de déclenchement des S3 Access Points for FSx for ONTAP, consultez les [S3AP Compatibility Notes](../docs/s3ap-compatibility-notes.md).
+Pour les contraintes de compatibilité, le dépannage et les modèles de déclenchement des S3 Access Points for FSx for ONTAP, consultez les [S3AP Compatibility Notes](../../../docs/s3ap-compatibility-notes.md).
 ---
 
 ## Performance Considerations

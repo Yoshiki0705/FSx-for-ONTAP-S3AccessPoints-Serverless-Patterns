@@ -96,7 +96,7 @@ graph LR
 
 ## 사전 준비 사항
 
-> **S3 AP NetworkOrigin 주의**: Discovery Lambda는 VPC 내에 배치됩니다. S3 Access Point의 NetworkOrigin이 `Internet`인 경우, S3 Gateway VPC Endpoint 경유로는 액세스할 수 없습니다(FSx 데이터 플레인으로 라우팅되지 않기 때문). NetworkOrigin=VPC의 S3 AP를 사용하거나 NAT Gateway 경유의 액세스를 설정하십시오. 자세한 내용은 [S3AP Compatibility Notes](../docs/s3ap-compatibility-notes.md)를 참조하십시오.
+> **S3 AP NetworkOrigin 주의**: Discovery Lambda는 VPC 내에 배치됩니다. S3 Access Point의 NetworkOrigin이 `Internet`인 경우, S3 Gateway VPC Endpoint 경유로는 액세스할 수 없습니다(FSx 데이터 플레인으로 라우팅되지 않기 때문). NetworkOrigin=VPC의 S3 AP를 사용하거나 NAT Gateway 경유의 액세스를 설정하십시오. 자세한 내용은 [S3AP Compatibility Notes](../../../docs/s3ap-compatibility-notes.md)를 참조하십시오.
 
 - AWS 계정과 적절한 IAM 권한
 - FSx for ONTAP 파일 시스템(ONTAP 9.17.1P4D3 이상)
@@ -165,7 +165,7 @@ sam deploy \
 
 본 패턴(UC22)은 동종의 과제(설비 점검 이미지 + 유지보수 문서 분석)를 FSx for ONTAP S3 AP + AWS Bedrock으로 해결하는 아키텍처를 제공합니다.
 
-상세 분석: [DAIS 2026 Agent Bricks 사례 분석](../docs/investigations/dais2026-agent-bricks-industry-cases.md)
+상세 분석: [DAIS 2026 Agent Bricks 사례 분석](../../../docs/investigations/dais2026-agent-bricks-industry-cases.md)
 
 Sources:
 - [DAIS 2026 Session: AI Agents for the Frontline](https://www.databricks.com/dataaisummit/session/ai-agents-frontline-7-elevens-genai-maintenance-assistant)
@@ -175,7 +175,7 @@ Sources:
 
 ## S3AP Compatibility
 
-[S3AP Compatibility Notes](../docs/s3ap-compatibility-notes.md)를 참조하십시오.
+[S3AP Compatibility Notes](../../../docs/s3ap-compatibility-notes.md)를 참조하십시오.
 
 ---
 

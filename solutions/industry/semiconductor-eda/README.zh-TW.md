@@ -279,7 +279,7 @@ UC6 使用以下服務：
 | AWS X-Ray | 幾乎所有區域均可用 |
 | CloudWatch EMF | 幾乎所有區域均可用 |
 
-> 詳情請參閱 [區域相容性矩陣](../docs/region-compatibility.md)。
+> 詳情請參閱 [區域相容性矩陣](../../../docs/region-compatibility.md)。
 
 ## 參考連結
 
@@ -364,7 +364,7 @@ graph TB
 
 - [Dynamic FlexCache Render/EDA Workflow](../dynamic-flexcache-render-workflow/README.md) — 按作業的 FlexCache 動態建立·刪除
 - [FlexCache AnyCast / DR](../flexcache-anycast-dr/README.md) — 多區域雲端爆發
-- [產業·工作負載對應](../docs/industry-workload-mapping.md) — Pattern D: EDA Cloud Burst
+- [產業·工作負載對應](../../../docs/industry-workload-mapping.md) — Pattern D: EDA Cloud Burst
 
 
 ---
@@ -468,7 +468,7 @@ sam local invoke DiscoveryFunction \
 python3 -m pytest tests/ -v
 ```
 
-詳情請參閱 [本地測試快速入門](../docs/local-testing-quick-start.md)。
+詳情請參閱 [本地測試快速入門](../../../docs/local-testing-quick-start.md)。
 
 ---
 
@@ -517,7 +517,7 @@ EDA 設計檔案驗證的輸出範例：
 
 ## S3AP Compatibility
 
-關於 S3 Access Points for FSx for ONTAP 的相容性限制、疑難排解和觸發模式，請參閱 [S3AP Compatibility Notes](../docs/s3ap-compatibility-notes.md)。
+關於 S3 Access Points for FSx for ONTAP 的相容性限制、疑難排解和觸發模式，請參閱 [S3AP Compatibility Notes](../../../docs/s3ap-compatibility-notes.md)。
 
 ---
 

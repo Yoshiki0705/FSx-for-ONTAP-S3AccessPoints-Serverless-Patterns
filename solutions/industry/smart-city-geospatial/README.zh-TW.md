@@ -1,7 +1,7 @@
 # UC17：智慧城市 — 地理空間資料分析·都市規劃
 
 🌐 **Language / 言語**: [日本語](README.md) | [English](README.en.md) | [한국어](README.ko.md) | [简体中文](README.zh-CN.md) | 繁體中文 | [Français](README.fr.md) | [Deutsch](README.de.md) | [Español](README.es.md)
-📚 **文件**: [架構](docs/architecture.md) | [示範腳本](docs/demo-guide.md) | [疑難排解](../docs/phase7-troubleshooting.md)
+📚 **文件**: [架構](docs/architecture.md) | [示範腳本](docs/demo-guide.md) | [疑難排解](../../../docs/phase7-troubleshooting.md)
 
 ## 概述
 
@@ -82,7 +82,7 @@ FSx for ONTAP (GIS 資料儲存 — 依部門存取控制)
 <!-- SCREENSHOT: phase7-uc17-s3-gis-uploaded.png
      內容：S3 AP 的 gis/ 前綴清單，檔案格式混合
      遮罩：帳戶 ID、S3 AP ARN、源自真實座標的檔名 -->
-![UC17：GIS 資料儲存確認](../docs/screenshots/masked/phase7/phase7-uc17-s3-gis-uploaded.png)
+![UC17：GIS 資料儲存確認](../../../docs/screenshots/masked/phase7/phase7-uc17-s3-gis-uploaded.png)
 
 ### 2. Bedrock 生成的都市規劃報告（Markdown 顯示）
 
@@ -98,7 +98,7 @@ FSx for ONTAP (GIS 資料儲存 — 依部門存取控制)
        #### 應優先的對策方案
        1. 強化洪水對策 …… 2. 強化地震對策 …… 3. 強化斜坡崩塌對策 ……
      遮罩：帳戶 ID、自治體名稱（僅顯示樣本名稱） -->
-![UC17：Bedrock 生成報告](../docs/screenshots/masked/phase7/phase7-uc17-bedrock-report.png)
+![UC17：Bedrock 生成報告](../../../docs/screenshots/masked/phase7/phase7-uc17-bedrock-report.png)
 
 ### 3. 災害風險地圖 JSON
 
@@ -108,7 +108,7 @@ FSx for ONTAP (GIS 資料儲存 — 依部門存取控制)
 <!-- SCREENSHOT: phase7-uc17-risk-map-json.png
      內容：risk-maps/*.json 的格式化檢視（強調 flood, earthquake, landslide 的 level）
      遮罩：帳戶 ID -->
-![UC17：災害風險地圖](../docs/screenshots/masked/phase7/phase7-uc17-risk-map-json.png)
+![UC17：災害風險地圖](../../../docs/screenshots/masked/phase7/phase7-uc17-risk-map-json.png)
 
 ### 4. 土地利用分布（JSON）
 
@@ -118,7 +118,7 @@ residential / commercial / forest / water / road 等的比例。
 <!-- SCREENSHOT: phase7-uc17-landuse-distribution.png
      內容：landuse/*.json 的內容（residential: 0.5, forest: 0.3 等）
      遮罩：帳戶 ID -->
-![UC17：土地利用分布](../docs/screenshots/masked/phase7/phase7-uc17-landuse-distribution.png)
+![UC17：土地利用分布](../../../docs/screenshots/masked/phase7/phase7-uc17-landuse-distribution.png)
 
 ### 5. 時間序列變化視覺化（DynamoDB Explorer）
 
@@ -128,7 +128,7 @@ residential / commercial / forest / water / road 等的比例。
 <!-- SCREENSHOT: phase7-uc17-dynamodb-landuse-history.png
      內容：在 DynamoDB Explorer 中 landuse-history 資料表的時間序列項目
      遮罩：帳戶 ID、area_id -->
-![UC17：時間序列變化資料表](../docs/screenshots/masked/phase7/phase7-uc17-dynamodb-landuse-history.png)
+![UC17：時間序列變化資料表](../../../docs/screenshots/masked/phase7/phase7-uc17-dynamodb-landuse-history.png)
 
 
 ## Success Metrics
@@ -302,7 +302,7 @@ sam local invoke DiscoveryFunction \
 python3 -m pytest tests/ -v
 ```
 
-詳情請參閱 [本機測試快速入門](../docs/local-testing-quick-start.md)。
+詳情請參閱 [本機測試快速入門](../../../docs/local-testing-quick-start.md)。
 
 ---
 
@@ -354,7 +354,7 @@ python3 -m pytest tests/ -v
 
 ## S3AP Compatibility
 
-關於 S3 Access Points for FSx for ONTAP 的相容性限制、疑難排解與觸發模式，請參閱 [S3AP Compatibility Notes](../docs/s3ap-compatibility-notes.md)。
+關於 S3 Access Points for FSx for ONTAP 的相容性限制、疑難排解與觸發模式，請參閱 [S3AP Compatibility Notes](../../../docs/s3ap-compatibility-notes.md)。
 
 ---
 

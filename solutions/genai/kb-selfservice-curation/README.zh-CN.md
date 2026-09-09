@@ -126,7 +126,7 @@ graph TB
 - 引用分离: `[内部: 文件名]` + `[Web: 标题](URL)`
 - 安全: Web 结果为非可信数据，已完成提示注入防御
 
-详情: [docs/investigations/agentcore-web-search-fsxn-integration.md](../../docs/investigations/agentcore-web-search-fsxn-integration.md)
+详情: [docs/investigations/agentcore-web-search-fsxn-integration.md](../../../docs/investigations/agentcore-web-search-fsxn-integration.md)
 
 ## 自助服务运营模型（民主化）
 
@@ -413,11 +413,11 @@ sam local invoke AutoSyncFunction --event events/auto-sync-event.json
 | 相关 | 相关要点 |
 |---------|------------|
 | [PoC 前提条件检查清单](docs/poc-checklist.md) | 部署前的确认事项（S3 Vectors 约束·推理配置文件等） |
-| [清理 runbook](../docs/uc29-uc30-cleanup-runbook.md) | 含手动成果物的拆除流程（2UC 共通） |
+| [清理 runbook](../../../docs/uc29-uc30-cleanup-runbook.md) | 含手动成果物的拆除流程（2UC 共通） |
 | [FC3 genai-rag-enterprise-files](../genai-rag-enterprise-files/) | 需要严格权限过滤时的自定义 RAG（Pattern A） |
-| [扩展模式: Bedrock KB 集成](../docs/extension-patterns.md) | 托管 KB + S3 AP 的通用模式 |
+| [扩展模式: Bedrock KB 集成](../../../docs/extension-patterns.md) | 托管 KB + S3 AP 的通用模式 |
 | [KB 创建脚本](../scripts/create_bedrock_kb.py) | KB / 数据源创建（本 UC 的部署前提） |
-| [行业·工作负载映射](../docs/industry-workload-mapping.md) | UC 选择指南 |
+| [行业·工作负载映射](../../../docs/industry-workload-mapping.md) | UC 选择指南 |
 
 ## 运营健壮化（已实现）
 

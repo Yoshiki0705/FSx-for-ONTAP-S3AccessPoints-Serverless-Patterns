@@ -10,7 +10,7 @@ S3 Access Points (S3 AP) deliverable from a CDN/edge delivery network.
 
 For the technical comparison of integration mechanisms and the feasibility of each delivery network
 (CloudFront / Akamai / Fastly / Cloudflare / Bunny.net / Google Media CDN, etc.),
-see **[docs/cdn-comparison.md](../docs/cdn-comparison.md)**.
+see **[docs/cdn-comparison.md](../../../docs/cdn-comparison.md)**.
 
 > This pattern is a reference implementation. Delivery-vendor selection, rights processing,
 > geo-restrictions, and compliance are decided by the customer.
@@ -18,7 +18,7 @@ see **[docs/cdn-comparison.md](../docs/cdn-comparison.md)**.
 > **TL;DR (30s)**: Without moving the ONTAP/NAS master, deliver **only approved delivery artifacts** via
 > CloudFront or a third-party CDN. Start with the lowest-verification-risk `PUBLISH_PUSH` (M3). Adopt
 > SigV4 direct pull (ORIGIN_PULL) only after measuring it with the
-> [verification checklist](../docs/cdn-origin-verification-checklist.md).
+> [verification checklist](../../../docs/cdn-origin-verification-checklist.md).
 
 ## Business Outcome and Adoption (Outcome / Adoption)
 
@@ -47,7 +47,7 @@ and confirm the behavior of the permission-aware filter, approval provenance, an
 - **First customer question**: "Do you want to connect existing NAS/ONTAP assets to edge delivery without
   copying? Is delivery via CloudFront, or via an already-contracted CDN (e.g., Akamai)?"
 - **PoC deliverables**: DemoMode demo → delivery manifest of approved renditions → (optional) hardware SigV4 verification result.
-- For delivery-network selection, the [CDN comparison](../docs/cdn-comparison.md) can be used as-is in customer conversations.
+- For delivery-network selection, the [CDN comparison](../../../docs/cdn-comparison.md) can be used as-is in customer conversations.
 
 ## Problems Solved
 
@@ -81,7 +81,7 @@ graph LR
 
 - **ORIGIN_PULL**: Generates an origin-reference manifest on the premise that the CDN fetches the S3 AP
   directly via SigV4, without copying objects. CloudFront supports this via OAC (reference implementation).
-  SigV4 origin signing on third-party CDNs is **to be verified** (see the [comparison doc](../docs/cdn-comparison.md)).
+  SigV4 origin signing on third-party CDNs is **to be verified** (see the [comparison doc](../../../docs/cdn-comparison.md)).
 - **PUBLISH_PUSH**: Replicates approved renditions to the CDN-side S3-compatible store. Avoids the
   origin-authentication problem and is CDN-agnostic — the lowest-verification-risk first step.
 
@@ -163,7 +163,7 @@ For DemoMode verification, see [docs/demo-guide.md](docs/demo-guide.md).
   FPolicy integration or idempotency**. If deduplication for HYBRID is required, incorporate
   `shared/idempotency_checker.py` into the publish path. Current behavior verification is done with `POLLING`.
 - The actual push to the external store for `PUBLISH_PUSH` is effective only when the endpoint/bucket are configured (DemoMode records a skip).
-- ORIGIN_PULL's SigV4 origin direct pull is **to be verified** on third-party CDNs (see [comparison doc](../docs/cdn-comparison.md) 4.1).
+- ORIGIN_PULL's SigV4 origin direct pull is **to be verified** on third-party CDNs (see [comparison doc](../../../docs/cdn-comparison.md) 4.1).
 
 ## Operations / Runbook (Reliability/Ops)
 
@@ -173,7 +173,7 @@ For DemoMode verification, see [docs/demo-guide.md](docs/demo-guide.md).
   - publish error → check CloudWatch Logs `/aws/lambda/<stack>-publish`. Isolate S3 AP authorization
     (IAM + AP policy + ONTAP ID) from external-store authentication (Secrets Manager).
   - external push failure → check the credentials, endpoint, and bucket in `ExternalStoreSecretName`.
-  - suspected delivery-boundary issue (out-of-permission delivery) → [incident response playbook](../docs/incident-response-playbook.md).
+  - suspected delivery-boundary issue (out-of-permission delivery) → [incident response playbook](../../../docs/incident-response-playbook.md).
 - **Rollback**: Delivery only publishes approved artifacts. On mis-publish, remove the relevant object from the
   delivery target (CDN store/Distribution), withdraw it from `ApprovedPrefix`, and re-publish.
 - **External-store authentication**: When replicating to Akamai/R2/Fastly, etc. with PUBLISH_PUSH, AWS default
@@ -191,11 +191,11 @@ For DemoMode verification, see [docs/demo-guide.md](docs/demo-guide.md).
 
 ## Related Documents
 
-- [CDN/edge delivery integration comparison](../docs/cdn-comparison.md) / [English](../docs/cdn-comparison.en.md)
-- [ORIGIN_PULL SigV4 verification checklist](../docs/cdn-origin-verification-checklist.md) (hardware verification procedure)
-- [Alternative architecture comparison](../docs/comparison-alternatives.md)
-- [S3AP compatibility notes](../docs/s3ap-compatibility-notes.md)
-- [Incident response playbook](../docs/incident-response-playbook.md) (response path for out-of-permission delivery / mis-publish)
+- [CDN/edge delivery integration comparison](../../../docs/cdn-comparison.md) / [English](../../../docs/cdn-comparison.en.md)
+- [ORIGIN_PULL SigV4 verification checklist](../../../docs/cdn-origin-verification-checklist.md) (hardware verification procedure)
+- [Alternative architecture comparison](../../../docs/comparison-alternatives.md)
+- [S3AP compatibility notes](../../../docs/s3ap-compatibility-notes.md)
+- [Incident response playbook](../../../docs/incident-response-playbook.md) (response path for out-of-permission delivery / mis-publish)
 
 ---
 

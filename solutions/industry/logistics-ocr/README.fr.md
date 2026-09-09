@@ -199,7 +199,7 @@ UC12 utilise les services suivants :
 | AWS X-Ray | Disponible dans presque toutes les régions |
 | CloudWatch EMF | Disponible dans presque toutes les régions |
 
-> Appelez l'API Textract via le Cross-Region Client. Vérifiez les exigences de résidence des données. Pour plus de détails, consultez la [Matrice de compatibilité des régions](../docs/region-compatibility.md).
+> Appelez l'API Textract via le Cross-Region Client. Vérifiez les exigences de résidence des données. Pour plus de détails, consultez la [Matrice de compatibilité des régions](../../../docs/region-compatibility.md).
 
 ## Liens utiles
 
@@ -305,7 +305,7 @@ sam local invoke DiscoveryFunction \
 python3 -m pytest tests/ -v
 ```
 
-Pour plus de détails, consultez le [Démarrage rapide des tests locaux](../docs/local-testing-quick-start.md).
+Pour plus de détails, consultez le [Démarrage rapide des tests locaux](../../../docs/local-testing-quick-start.md).
 
 ---
 
@@ -357,7 +357,7 @@ Exemple de sortie de l'OCR des bons de livraison + analyse d'images de stock :
 
 ## S3AP Compatibility
 
-Pour les contraintes de compatibilité, le dépannage et les modèles de déclenchement des S3 Access Points for FSx for ONTAP, consultez les [S3AP Compatibility Notes](../docs/s3ap-compatibility-notes.md).
+Pour les contraintes de compatibilité, le dépannage et les modèles de déclenchement des S3 Access Points for FSx for ONTAP, consultez les [S3AP Compatibility Notes](../../../docs/s3ap-compatibility-notes.md).
 
 ---
 

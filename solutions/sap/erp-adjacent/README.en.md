@@ -97,9 +97,9 @@ Edit `functions/processing/index.py` to customize the summarization prompt for y
 
 ## Related
 
-- [Enterprise Workload Examples](../docs/enterprise-workload-examples.md) — Full list of enterprise patterns
-- [Quick Start Guide](../docs/quick-start.md) — First deployment walkthrough
-- [Deployment Profiles](../docs/deployment-profiles.md) — Production configuration options
+- [Enterprise Workload Examples](../../../docs/enterprise-workload-examples.md) — Full list of enterprise patterns
+- [Quick Start Guide](../../../docs/quick-start.md) — First deployment walkthrough
+- [Deployment Profiles](../../../docs/deployment-profiles.md) — Production configuration options
 
 ---
 
@@ -173,7 +173,7 @@ sam local invoke DiscoveryFunction \
 python3 -m pytest tests/ -v
 ```
 
-For details, see the [Local Testing Quick Start](../docs/local-testing-quick-start.md).
+For details, see the [Local Testing Quick Start](../../../docs/local-testing-quick-start.md).
 
 ---
 
@@ -222,7 +222,7 @@ Example output of the SAP/ERP file processing workflow:
 
 ## S3AP Compatibility
 
-For compatibility constraints, troubleshooting, and trigger patterns for S3 Access Points for FSx for ONTAP, see the [S3AP Compatibility Notes](../docs/s3ap-compatibility-notes.md).
+For compatibility constraints, troubleshooting, and trigger patterns for S3 Access Points for FSx for ONTAP, see the [S3AP Compatibility Notes](../../../docs/s3ap-compatibility-notes.md).
 ---
 
 ## Performance Considerations

@@ -167,7 +167,7 @@ UC14 usa los siguientes servicios:
 | AWS X-Ray | Disponible en casi todas las regiones |
 | CloudWatch EMF | Disponible en casi todas las regiones |
 
-> La API de Textract se invoca a través del Cross-Region Client. Verifique sus requisitos de residencia de datos. Para más detalles, consulte la [Matriz de compatibilidad de regiones](../docs/region-compatibility.md).
+> La API de Textract se invoca a través del Cross-Region Client. Verifique sus requisitos de residencia de datos. Para más detalles, consulte la [Matriz de compatibilidad de regiones](../../../docs/region-compatibility.md).
 
 ## Enlaces de referencia
 
@@ -273,7 +273,7 @@ sam local invoke DiscoveryFunction \
 python3 -m pytest tests/ -v
 ```
 
-Para más detalles, consulte el [Inicio rápido de pruebas locales](../docs/local-testing-quick-start.md).
+Para más detalles, consulte el [Inicio rápido de pruebas locales](../../../docs/local-testing-quick-start.md).
 
 ---
 
@@ -327,7 +327,7 @@ Ejemplo de salida de la canalización de peritaje de daños:
 
 ## S3AP Compatibility
 
-Para conocer las restricciones de compatibilidad, la resolución de problemas y los patrones de activación de los S3 Access Points for FSx for ONTAP, consulte las [S3AP Compatibility Notes](../docs/s3ap-compatibility-notes.md).
+Para conocer las restricciones de compatibilidad, la resolución de problemas y los patrones de activación de los S3 Access Points for FSx for ONTAP, consulte las [S3AP Compatibility Notes](../../../docs/s3ap-compatibility-notes.md).
 
 ---
 

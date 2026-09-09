@@ -112,7 +112,7 @@ curl -X POST https://<api-id>.execute-api.ap-northeast-1.amazonaws.com/prod/acti
 - Graceful degradation: Web Search 失敗時は `generate_brief` と同等動作
 - 引用: `web_citations` フィールドに URL + タイトル + 公開日を返却
 
-詳細: [docs/investigations/agentcore-web-search-fsxn-integration.md](../../docs/investigations/agentcore-web-search-fsxn-integration.md)
+詳細: [docs/investigations/agentcore-web-search-fsxn-integration.md](../../../docs/investigations/agentcore-web-search-fsxn-integration.md)
 
 ## AgentCore MCP Gateway（Workshop Module 09 検証済み）
 
@@ -358,15 +358,15 @@ sam local invoke DataPrepFunction --event events/data-prep-event.json
 | 関連 | ポイント |
 |------|---------|
 | [AWS Workshop: FSx for ONTAP S3 AP (EDA)](https://catalog.us-east-1.prod.workshops.aws/workshops/9cd82e0b-8348-456b-932a-818b9e5825a1/en-US) | Quick + AgentCore + S3 AP 統合ハンズオン（Module 08-12） |
-| [Workshop EDA 統合ガイド](../../docs/workshop-eda-integration.md) | Workshop 各モジュールと本リポジトリ UC の対応表 |
+| [Workshop EDA 統合ガイド](../../../docs/workshop-eda-integration.md) | Workshop 各モジュールと本リポジトリ UC の対応表 |
 | [PoC 前提条件チェックリスト](docs/poc-checklist.md) | Quick 有効化・Glue/LF・推論プロファイル等 |
 | [Amazon Quick コンソール設定手順](docs/quick-console-setup.md) | Index/Sight/Flows 接続（スクショ取得指針つき） |
 | [Lake Formation TBAC ノート](docs/lake-formation-tbac.md) | ロール別データ可視性（LF-TBAC + Quick RLS） |
 | [Glue テーブル作成スクリプト](scripts/create_glue_tables.sh) | Quick Sight/Athena 用 DDL（Parquet 化推奨） |
-| [クリーンアップ runbook](../docs/uc29-uc30-cleanup-runbook.md) | 手動成果物を含む撤去手順（2UC 共通） |
+| [クリーンアップ runbook](../../../docs/uc29-uc30-cleanup-runbook.md) | 手動成果物を含む撤去手順（2UC 共通） |
 | [UC29 genai-kb-selfservice-curation](../genai-kb-selfservice-curation/) | マネージド Bedrock KB へのセルフサービス投入（同じロール構成） |
 | [FC3 genai-rag-enterprise-files](../genai-rag-enterprise-files/) | 厳密な権限フィルタが必要なカスタム RAG |
-| [業界・ワークロード マッピング](../docs/industry-workload-mapping.md) | UC 選択ガイド |
+| [業界・ワークロード マッピング](../../../docs/industry-workload-mapping.md) | UC 選択ガイド |
 
 ## 運用堅牢化（実装済み）
 
