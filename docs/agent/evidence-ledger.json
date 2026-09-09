@@ -54,17 +54,19 @@
       "observation": "2026-09-05, ap-northeast-1: list-metrics on the AWS/FSx namespace returned 33 distinct metric names, none containing s3, object, accesspoint or bucket, in an account holding 22 S3 access point attachments all in AVAILABLE. Caveat: list-metrics returns only metrics with recent datapoints.",
       "why_not_documented_is_not_absent": "Amazon S3's own access-point request metrics are documented as a per-bucket opt-in. There is no S3 bucket behind an FSx for ONTAP access point, so that mechanism is not expected to apply -- but AWS has not said this.",
       "support_inquiry": {
-        "status": "filed",
+        "status": "answered",
         "topic": "FSx for ONTAP のボリュームに接続した S3 アクセスポイントについて、リクエスト数・エラー率・レイテンシを CloudWatch などから取得する ドキュメントに記載された手段が現時点で存在するかどうかをご確認いただきたいです。存在しない場合、今後の対応予定の有無と、機能追加のご要望としてサービスチームへ連携いただくことも併せてお願いしたいです。",
         "private_ref": ".private/support-case-refs.md",
         "language": "ja",
         "service_code": "service-fsx-for-netapp-ontap-linux",
         "category_code": "general-guidance",
         "subject": "FSx for ONTAP に接続した S3 アクセスポイントのリクエストメトリクス取得手段について",
-        "filed": "2026-09-06"
+        "filed": "2026-09-06",
+        "answered": "2026-09-07",
+        "what_changed": "公開できる変更は無い。回答はベンダーの秘密情報にあたるため本文・要約とも記録せず、tier と根拠は据え置き。公開可能なのは、訊いた事実・日付・機能要望を起票した事実のみ。"
       },
       "feature_request": {
-        "status": "not-yet",
+        "status": "filed",
         "where": "docs/aws-feature-requests/fsxn-s3ap-improvements.md"
       },
       "appears_in": [
@@ -183,21 +185,24 @@
       "observation": "",
       "why_not_documented_is_not_absent": "ドキュメントに記載が見当たらないことは、機能が存在しないことの証明ではないため、断定せずに確認しています。なお当方の設計はこの仕組みが無いことに依存しておらず、あった場合に選択肢が増えるという位置づけです。",
       "support_inquiry": {
-        "status": "filed",
+        "status": "answered",
         "topic": "特定の IAM プリンシパルが remote_write で送信できるラベルセットを制限する仕組みが現時点で存在するかをご確認いただきたいです。存在しない場合、今後の対応予定の有無と、機能追加のご要望としてサービスチームへ連携いただくことも併せてお願いしたいです。",
         "private_ref": ".private/support-case-refs.md",
         "language": "ja",
         "service_code": "service-managed-service-for-prometheus",
         "category_code": "authentication",
         "subject": "remote_write で送信されるラベルを IAM プリンシパル単位で制限する仕組みの有無について",
-        "filed": "2026-09-06"
+        "filed": "2026-09-06",
+        "answered": "2026-09-08",
+        "what_changed": "公開できる変更は無い。回答はベンダーの秘密情報にあたるため本文・要約とも記録せず、tier と根拠は据え置き。公開可能なのは、訊いた事実・日付・機能要望を起票した事実のみ。"
       },
       "feature_request": {
-        "status": "not-yet",
-        "where": "docs/aws-feature-requests/fsxn-s3ap-improvements.md"
+        "status": "filed",
+        "where": "docs/aws-feature-requests/amp-label-scoping.md"
       },
       "appears_in": [
-        "docs/harvest-metrics-decisions.md"
+        "docs/harvest-metrics-decisions.md",
+        "docs/aws-feature-requests/amp-label-scoping.md"
       ],
       "subject_service": "Amazon Managed Service for Prometheus",
       "user_problem": "複数の利用部門のメトリクスを Amazon Managed Service for Prometheus に集約する構成を検討しています。書き込み側が他部門のラベル値を名乗って送信した場合に、それを拒否する仕組みがあるかどうかが分からず、部門ごとにワークスペースを分ける必要があるかどうかが決まりません。ワークスペースを分けると部門数に比例して固定費が増えます。",

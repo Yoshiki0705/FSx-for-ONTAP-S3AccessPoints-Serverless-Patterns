@@ -17,6 +17,7 @@ repository can still observe of the underlying gaps:
 | FR-2 (Event Notifications / EventBridge) | closed | **Still absent.** FPolicy does not fire for writes arriving through an S3 access point (measured 2026-08-26, ONTAP 9.18.1P3D1) and no workaround exists for that path — see [native-s3ap-notifications-evidence](native-s3ap-notifications-evidence.en.md). |
 | FR-3 (Object Lifecycle) | closed | **Still absent.** Retention is reachable only through SnapLock / S3 Object Lock, which are ONTAP-side mechanisms rather than S3 lifecycle semantics — see the root-cause table in [file-portal-service-gap](file-portal-service-gap.en.md). |
 | FR-4 (Versioning + Presigned URL) | see below | Presigned URLs work but the compatibility table still publishes `Not supported`; the documentation-correction case filed 2026-07-19 is **still open**. Object versioning remains absent. |
+| FR-5 (Per-request metrics) | filed 2026-09-06, raised as a request 2026-09-07 | **Still absent as far as this repository can observe.** Tracked as `E-001` in [`docs/agent/evidence-ledger.json`](../agent/evidence-ledger.json), tier `hypothesis` — see FR-5 below for what was read and measured, and for why absence is not asserted. |
 
 ---
 
@@ -171,6 +172,69 @@ Object Versioning is also listed in the Limitations section.
 ### Workaround in this Project
 
 External DynamoDB table for document version tracking; standard S3 copy + presign for external sharing (not implemented, backlog).
+
+---
+
+## FR-5: Per-Request CloudWatch Metrics for FSx for ONTAP S3 Access Points
+
+Request count, error rate and latency, per access point attachment.
+
+### Current State
+
+Three pages of the FSx for ONTAP User Guide, each read in full on 2026-09-05:
+
+| Page | What it says |
+|---|---|
+| [Monitoring with CloudWatch](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/monitoring-cloudwatch.html) | Enumerates the metric categories by dimension — file system, file server, detailed file system aggregate, detailed file system, volume, detailed volume. **No access-point dimension.** All metrics publish to the `AWS/FSx` namespace |
+| [File system metrics](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/file-system-metrics.html) | Every metric takes `FileSystemId`; the detailed ones add `StorageTier` and `DataType`. No S3 or access-point metric |
+| [Managing S3 access point attachments](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/access-points-for-fsxn-manage.html) | The management section for attachments. Its table of contents carries no monitoring or metrics topic |
+
+Measured 2026-09-05 in `ap-northeast-1`:
+
+```
+aws cloudwatch list-metrics --namespace AWS/FSx
+→ 33 distinct metric names
+→ 0 containing s3, object, accesspoint or bucket
+```
+
+The same account and Region held **22 S3 access point attachments, all `AVAILABLE`**, so "no
+metrics because nothing was created" is ruled out.
+
+**This does not establish absence.** `list-metrics` returns only metrics that have had a datapoint
+published recently, so a metric that exists and is idle would not appear. The claim is therefore
+carried at tier `hypothesis`, not `documented`.
+
+Amazon S3's own access-point request metrics are documented as a **per-bucket opt-in**. There is no
+S3 bucket behind an FSx for ONTAP access point, so that mechanism is not expected to apply here —
+but AWS has not stated that, which is the other reason the tier does not move.
+
+### Impact on Our Patterns
+
+| Where | Pain point |
+|---|---|
+| `solutions/amplify-portal` | An operator dashboard cannot show request count, error rate or latency for the access-point path, so a failing data path has no signal an operator would notice |
+| All S3 AP patterns | Every pattern reads and writes through an access point. Errors are visible per invocation in Lambda logs, and nowhere in aggregate |
+| Capacity and cost work | Request volume through the access point cannot be trended, so `operations/` has nothing to size against |
+
+### Requested Behavior
+
+Per-attachment metrics in the `AWS/FSx` namespace with an access-point dimension, covering at least
+request count, 4xx/5xx counts and first-byte latency — the same shape Amazon S3 publishes per bucket,
+scoped to the attachment rather than to a bucket that does not exist.
+
+### Workaround in this Project
+
+None that covers the gap. Per-invocation outcomes are logged by each Lambda and EMF metrics are
+emitted through [`shared/observability.py`](../../shared/observability.py), which measures **our
+code's** view of a call rather than the service's. A request rejected before it reaches the function
+is not counted anywhere.
+
+### Status
+
+Asked 2026-09-06, answer received 2026-09-07, raised as a feature request the same day. **The answer
+is not reproduced here**: vendor support correspondence is not a source this repository can publish
+against, so the evidence above is unchanged and the tier stays at `hypothesis`. What is publishable
+is that the question was asked, on which date, and that a request was filed.
 
 ---
 
