@@ -182,6 +182,18 @@ jobs:
       # layer, and the parser's first version misread indentation while the selftest passed.
       - name: "Check the workflow trigger parser against every on: shape in use"
         run: python3 -m pytest scripts/tests/guard_unobserved_workflow_merge_test.py -q
+      # The shared-checkout guard. Two agents shared one clone, a `reset --hard` discarded
+      # the other one's staged files, and the surviving untracked file landed on main
+      # directly because HEAD had been moved there. Run here for the same reason as the two
+      # above: `.kiro/` is absent on the runner, so the hook-wiring assertion skips and the
+      # decision layer is what CI keeps from being narrowed by an edit nobody executes.
+      - name: Check the shared-checkout guard blocks staging by scope and asks over dirty trees
+        run: python3 scripts/guard_shared_checkout.py --selftest
+      # The verdicts that depend on repository state, which the selftest does not reach:
+      # each case builds a real repository, because a guard reading the wrong tree would
+      # pass every assertion made against a command string alone.
+      - name: Check the shared-checkout guard against real repository states
+        run: python3 -m pytest scripts/tests/test_guard_shared_checkout.py -q
       # Obligations that come due on a date rather than on a code change. A SnapLock
       # audit log volume carries a 6-month minimum retention that blocks deletion of
       # the volume, its SVM and the file system, and AWS confirmed there is no
