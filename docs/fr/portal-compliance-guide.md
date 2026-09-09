@@ -174,7 +174,7 @@ Lorsqu'un incident ransomware est détecté :
 | Document | Objectif |
 |----------|----------|
 | [Guide utilisateur](portal-user-guide.md) | Opérations quotidiennes des utilisateurs |
-| [Modèle d'autorisation](portal-authorization-model.md) | Matrice complète des permissions |
-| [Guide de démonstration admin](admin-resource-management-demo.md) | Opérations d'administration du stockage |
+| [Modèle d'autorisation](../en/portal-authorization-model.md) | Matrice complète des permissions |
+| [Guide de démonstration admin](../en/admin-resource-management-demo.md) | Opérations d'administration du stockage |
 | [Playbook de réponse aux incidents](../../docs/incident-response-playbook.md) | Procédures complètes de réponse aux incidents |
 | [Aide-mémoire](portal-quick-reference.md) | Résumé sur 1 page |

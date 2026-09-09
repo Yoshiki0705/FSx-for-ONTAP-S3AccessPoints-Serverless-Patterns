@@ -66,7 +66,7 @@ FSx for ONTAP (Satellitenbild-Speicher)
 Mit Fokus auf **die UI, die allgemeine Mitarbeitende im Alltag bedienen**, basierend auf
 einer am 2026-05-10 in ap-northeast-1 verifizierten Live-Ausführung. Für technische
 Konsolenansichten (Step-Functions-Graphen usw.) siehe
-[docs/verification-results-phase7.md](../docs/verification-results-phase7.md).
+`docs/verification-results-phase7.md` (not published).
 
 ### 1. Satellitenbild-Platzierung (über FSx for ONTAP / S3 Access Point)
 

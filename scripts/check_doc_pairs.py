@@ -388,6 +388,14 @@ def check_links(*, write_baseline: bool = False) -> list[str]:
             line = CODE_SPAN.sub("", raw)
             for kind, pattern in (("link", RELATIVE_LINK), ("image", RELATIVE_IMAGE), ("image", HTML_IMAGE)):
                 for match in pattern.finditer(line):
+                    # A target carrying angle brackets is a form to fill in, not a
+                    # reference: `docs/screenshots/SCREENSHOT_ADDITION_WORKFLOW.md` shows
+                    # `masked/ucN-demo/ucN-<name>.png` as the shape a contributor should
+                    # write. Reporting it asks someone to "fix" a template by inventing a
+                    # file, and the only way to make it pass would be to stop documenting
+                    # the convention.
+                    if "<" in match.group(1) or ">" in match.group(1):
+                        continue
                     target = (md.parent / match.group(1)).resolve()
                     if not target.exists():
                         reason = "resolves to nothing"
@@ -402,18 +410,22 @@ def check_links(*, write_baseline: bool = False) -> list[str]:
                     findings.append(f"{relative}:{number}: {kind} {reason}: {match.group(1)}")
     if write_baseline:
         _baseline_path().write_text(
-            "# Unresolved relative links present when the link check's scope was widened.\n"
+            "# Relative links that do not resolve, accepted as pre-existing.\n"
             "# Generated -- regenerate with: python3 scripts/check_doc_pairs.py --write-baseline\n"
             "#\n"
-            "# One line per <file>TAB<target>. Line numbers are deliberately absent: they move\n"
-            "# when a paragraph is added above, and a baseline that churns on every edit gets\n"
-            "# regenerated without being read.\n"
+            "# THIS FILE IS EMPTY AND HAS TO STAY THAT WAY. It held 1,316 entries when the\n"
+            "# link check's scope was widened from a list of directories to every tracked\n"
+            "# document; all of them are now fixed. It is kept rather than deleted so that\n"
+            "# adding one is a reviewable diff -- a deleted file comes back silently the\n"
+            "# first time somebody runs --write-baseline to make a red gate green.\n"
             "#\n"
-            "# This file may only get SHORTER. Every line is a link a reader cannot follow --\n"
-            "# GitHub renders it as plain text, so the page looks fine and the reference is\n"
-            "# silently gone. Mostly per-locale documents linking siblings that were never\n"
-            "# translated, and pattern groups outside solutions/industry carrying the depth\n"
-            "# mistake that was fixed there on 2026-08-12.\n" + "".join(f"{key}\n" for key in sorted(current)),
+            "# One line per <file>TAB<target>. Line numbers are deliberately absent: they\n"
+            "# move when a paragraph is added above, and a baseline that churns on every\n"
+            "# edit gets regenerated without being read.\n"
+            "#\n"
+            "# Every line would be a link a reader cannot follow. GitHub renders one as\n"
+            "# plain text, so the page looks intact while the reference is gone.\n"
+            + "".join(f"{key}\n" for key in sorted(current)),
             encoding="utf-8",
         )
         print(f"broken-link baseline: wrote {len(current)} entr(ies) to {BASELINE_NAME}")

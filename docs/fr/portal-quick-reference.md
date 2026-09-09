@@ -123,6 +123,6 @@ Aide-mémoire d'une page pour les opérations quotidiennes du portail. Imprimez 
 |-------------|---------------|
 | Utilisateur final (tâches quotidiennes) | [Guide utilisateur](portal-user-guide.md) |
 | Responsable sécurité / conformité | [Guide conformité](portal-compliance-guide.md) |
-| Administrateur de stockage | [Guide de démonstration admin](admin-resource-management-demo.md) |
+| Administrateur de stockage | [Guide de démonstration admin](../en/admin-resource-management-demo.md) |
 | Administrateur IT (déploiement) | [Guide de démarrage](../../solutions/amplify-portal/docs/GETTING-STARTED.md) |
 | Développeur (personnalisation) | [Guide d'implémentation](../../solutions/amplify-portal/docs/IMPLEMENTATION.md) |

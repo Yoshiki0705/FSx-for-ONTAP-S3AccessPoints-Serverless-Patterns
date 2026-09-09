@@ -123,6 +123,6 @@
 |------------|-----------|
 | 일반 사용자 (일상 업무) | [사용자 가이드](portal-user-guide.md) |
 | 보안 / 컴플라이언스 담당자 | [컴플라이언스 가이드](portal-compliance-guide.md) |
-| 스토리지 관리자 | [관리자 데모 가이드](admin-resource-management-demo.md) |
+| 스토리지 관리자 | [관리자 데모 가이드](../en/admin-resource-management-demo.md) |
 | IT 관리자 (배포) | [시작 가이드](../../solutions/amplify-portal/docs/GETTING-STARTED.md) |
 | 개발자 (커스터마이즈) | [구현 가이드](../../solutions/amplify-portal/docs/IMPLEMENTATION.md) |

@@ -63,7 +63,7 @@ FSx for ONTAP (卫星图像存储)
 
 以 2026-05-10 在 ap-northeast-1 实际确认运行时**一般人员日常操作的 UI**
 为中心进行展示。面向技术人员的控制台界面（Step Functions 图形等）请参见
-[docs/verification-results-phase7.md](../docs/verification-results-phase7.md)。
+`docs/verification-results-phase7.md` (not published)。
 
 ### 1. 卫星图像存储（通过 FSx for ONTAP / S3 Access Point）
 

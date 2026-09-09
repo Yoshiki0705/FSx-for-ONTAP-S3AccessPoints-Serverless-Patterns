@@ -174,7 +174,7 @@
 | 文件 | 用途 |
 |------|------|
 | [使用者指南](portal-user-guide.md) | 一般使用者日常操作 |
-| [授權模型](portal-authorization-model.md) | 完整權限矩陣 |
-| [管理員示範指南](admin-resource-management-demo.md) | 儲存管理操作 |
+| [授權模型](../en/portal-authorization-model.md) | 完整權限矩陣 |
+| [管理員示範指南](../en/admin-resource-management-demo.md) | 儲存管理操作 |
 | [事件回應手冊](../../docs/incident-response-playbook.md) | 完整事件回應流程 |
 | [快速參考卡](portal-quick-reference.md) | 1 頁速查 |

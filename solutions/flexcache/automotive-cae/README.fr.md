@@ -107,9 +107,9 @@ automotive-cae/
 
 ## Liens connexes
 
-- [manufacturing-analytics/](../manufacturing-analytics/README.md)
-- [semiconductor-eda/](../semiconductor-eda/README.md)
-- [Dynamic FlexCache Render Workflow](../dynamic-flexcache-render-workflow/README.md)
+- [manufacturing-analytics/](../../industry/manufacturing-analytics/README.md)
+- [semiconductor-eda/](../../industry/semiconductor-eda/README.md)
+- [Dynamic FlexCache Render Workflow](../dynamic-render-workflow/README.md)
 - [Cartographie secteurs / charges de travail](../../../docs/industry-workload-mapping.md)
 
 

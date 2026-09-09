@@ -123,6 +123,6 @@ Hoja de referencia de una página para las operaciones diarias del portal. Impri
 |--------|--------------|
 | Usuario final (tareas diarias) | [Guía del usuario](portal-user-guide.md) |
 | Seguridad / Cumplimiento | [Guía de cumplimiento](portal-compliance-guide.md) |
-| Administrador de almacenamiento | [Guía de demostración admin](admin-resource-management-demo.md) |
+| Administrador de almacenamiento | [Guía de demostración admin](../en/admin-resource-management-demo.md) |
 | Administrador IT (despliegue) | [Guía de inicio](../../solutions/amplify-portal/docs/GETTING-STARTED.md) |
 | Desarrollador (personalizar) | [Guía de implementación](../../solutions/amplify-portal/docs/IMPLEMENTATION.md) |

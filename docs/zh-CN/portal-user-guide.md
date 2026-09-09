@@ -243,9 +243,9 @@ A: 使用 Cognito Hosted UI 或请管理员重置。
 | 文档 | 受众 | 用途 |
 |------|------|------|
 | [Getting Started (Deploy)](../../solutions/amplify-portal/docs/GETTING-STARTED.md) | 管理员 | 从零开始部署门户 |
-| [Admin Demo Guide](admin-resource-management-demo.md) | 存储管理员 | 管理操作 E2E 演示 |
-| [AI Features Quick Start](ai-features-quick-start.md) | 所有用户 | 试用 Bedrock、Rekognition、Athena |
+| [Admin Demo Guide](../en/admin-resource-management-demo.md) | 存储管理员 | 管理操作 E2E 演示 |
+| [AI Features Quick Start](../en/ai-features-quick-start.md) | 所有用户 | 试用 Bedrock、Rekognition、Athena |
 | [Implementation Guide](../../solutions/amplify-portal/docs/IMPLEMENTATION.md) | 开发者 | 架构与自定义 |
-| [Authorization Model](portal-authorization-model.md) | 安全团队 | Cognito 组、IAM、文件级访问 |
+| [Authorization Model](../en/portal-authorization-model.md) | 安全团队 | Cognito 组、IAM、文件级访问 |
 | [Compliance Guide](portal-compliance-guide.md) | 安全/合规 | 验证监管控制 |
 | [Quick Reference](portal-quick-reference.md) | 所有角色 | 单页速查表 |

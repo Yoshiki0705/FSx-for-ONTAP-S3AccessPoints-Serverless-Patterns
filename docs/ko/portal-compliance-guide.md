@@ -174,7 +174,7 @@
 | 문서 | 목적 |
 |------|------|
 | [사용자 가이드](portal-user-guide.md) | 일반 사용자 일상 작업 |
-| [권한 모델](portal-authorization-model.md) | 전체 권한 매트릭스 |
-| [관리자 데모 가이드](admin-resource-management-demo.md) | 스토리지 관리 작업 |
+| [권한 모델](../en/portal-authorization-model.md) | 전체 권한 매트릭스 |
+| [관리자 데모 가이드](../en/admin-resource-management-demo.md) | 스토리지 관리 작업 |
 | [인시던트 대응 플레이북](../../docs/incident-response-playbook.md) | 전체 인시던트 대응 절차 |
 | [빠른 참조 카드](portal-quick-reference.md) | 1페이지 요약 |

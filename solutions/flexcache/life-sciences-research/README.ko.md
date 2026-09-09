@@ -98,7 +98,7 @@ life-sciences-research/
 
 ## 관련 링크
 
-- [FlexCache AnyCast / DR](../flexcache-anycast-dr/README.md)
+- [FlexCache AnyCast / DR](../anycast-dr/README.md)
 - [업계·워크로드 매핑](../../../docs/industry-workload-mapping.md)
 - [지원 매트릭스](../../../docs/support-matrix-fsx-ontap-flexcache-s3ap.md)
 

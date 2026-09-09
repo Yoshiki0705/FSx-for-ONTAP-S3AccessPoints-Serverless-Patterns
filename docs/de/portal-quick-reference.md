@@ -123,6 +123,6 @@ Einseiter für die tägliche Portal-Nutzung. Drucken Sie diese Seite aus oder se
 |-----------|-----------------|
 | Endbenutzer (tägliche Aufgaben) | [Benutzerhandbuch](portal-user-guide.md) |
 | Sicherheit / Compliance | [Compliance-Leitfaden](portal-compliance-guide.md) |
-| Speicheradministrator | [Admin-Demo-Leitfaden](admin-resource-management-demo.md) |
+| Speicheradministrator | [Admin-Demo-Leitfaden](../en/admin-resource-management-demo.md) |
 | IT-Administrator (Bereitstellung) | [Erste-Schritte-Anleitung](../../solutions/amplify-portal/docs/GETTING-STARTED.md) |
 | Entwickler (Anpassung) | [Implementierungsleitfaden](../../solutions/amplify-portal/docs/IMPLEMENTATION.md) |

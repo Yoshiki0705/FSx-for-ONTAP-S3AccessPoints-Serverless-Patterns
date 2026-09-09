@@ -632,3 +632,32 @@ def test_the_committed_baseline_only_holds_links_that_are_really_broken(pairs):
     change surfaces here.
     """
     assert pairs.check_links() == []
+
+
+def test_the_committed_baseline_is_empty(pairs):
+    """It held 1,316 entries and now holds none, so anything in it is a regression.
+
+    Kept as a file rather than deleted: `--write-baseline` recreates it, and the way a
+    gate stops working is somebody running that to turn a red check green. An empty
+    tracked file makes the first entry a diff a reviewer sees.
+    """
+    path = pairs.ROOT / pairs.BASELINE_NAME
+    entries = [
+        line for line in path.read_text(encoding="utf-8").split("\n") if line.strip() and not line.startswith("#")
+    ]
+    assert entries == [], "the broken-link baseline is not empty. Fix the link rather than recording it: " + "; ".join(
+        entries[:3]
+    )
+
+
+def test_a_target_with_angle_brackets_is_a_template_not_a_reference(pairs, fixture_repo):
+    """`SCREENSHOT_ADDITION_WORKFLOW.md` documents `masked/ucN-demo/ucN-<name>.png`.
+
+    Reporting it asks someone to fix a template by inventing a file, and the only way to
+    make it pass would be to stop documenting the convention.
+    """
+    root = fixture_repo
+    (root / "docs" / "guides" / "howto.md").write_text(
+        "# How to\n\n![shot](../shots/uc<N>-demo.png)\n", encoding="utf-8"
+    )
+    assert pairs.check_links() == []

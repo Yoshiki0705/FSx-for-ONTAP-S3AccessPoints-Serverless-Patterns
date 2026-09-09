@@ -110,9 +110,9 @@ gaming-build-pipeline/
 
 ## Related Links
 
-- [media-vfx/](../media-vfx/README.md) — Rendering pipeline
-- [Dynamic FlexCache Render Workflow](../dynamic-flexcache-render-workflow/README.md)
-- [FlexCache AnyCast / DR](../flexcache-anycast-dr/README.md)
+- [media-vfx/](../../industry/media-vfx/README.md) — Rendering pipeline
+- [Dynamic FlexCache Render Workflow](../dynamic-render-workflow/README.md)
+- [FlexCache AnyCast / DR](../anycast-dr/README.md)
 - [Industry & Workload Mapping](../../../docs/industry-workload-mapping.md)
 
 

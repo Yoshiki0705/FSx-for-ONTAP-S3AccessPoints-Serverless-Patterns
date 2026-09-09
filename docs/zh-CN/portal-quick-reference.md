@@ -123,6 +123,6 @@
 |---------|-----------|
 | 最终用户（日常任务） | [用户指南](portal-user-guide.md) |
 | 安全 / 合规人员 | [合规指南](portal-compliance-guide.md) |
-| 存储管理员 | [管理员演示指南](admin-resource-management-demo.md) |
+| 存储管理员 | [管理员演示指南](../en/admin-resource-management-demo.md) |
 | IT 管理员（部署） | [入门指南](../../solutions/amplify-portal/docs/GETTING-STARTED.md) |
 | 开发者（定制） | [实施指南](../../solutions/amplify-portal/docs/IMPLEMENTATION.md) |

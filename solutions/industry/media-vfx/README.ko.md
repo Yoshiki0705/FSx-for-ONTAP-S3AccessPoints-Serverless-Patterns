@@ -277,8 +277,8 @@ VFX 렌더링 워크플로에서 render input assets(텍스처, 지오메트리,
 
 작업 단위로 FlexCache를 생성·삭제하는 워크플로의 자세한 내용은 다음을 참조하십시오:
 
-- **[Dynamic FlexCache Render/EDA Workflow](../dynamic-flexcache-render-workflow/README.md)** — Step Functions에 의한 자동화
-- [FlexCache AnyCast / DR](../flexcache-anycast-dr/README.md) — 멀티 리전 렌더 팜
+- **[Dynamic FlexCache Render/EDA Workflow](../../flexcache/dynamic-render-workflow/README.md)** — Step Functions에 의한 자동화
+- [FlexCache AnyCast / DR](../../flexcache/anycast-dr/README.md) — 멀티 리전 렌더 팜
 - [산업·워크로드 매핑](../../../docs/industry-workload-mapping.md) — Pattern E: Media/VFX Render Farm
 
 ### 기대되는 효과

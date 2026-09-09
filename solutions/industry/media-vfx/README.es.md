@@ -277,8 +277,8 @@ En los flujos de trabajo de renderizado VFX, los render input assets (texturas, 
 
 Para más detalles sobre un flujo de trabajo que crea y elimina un FlexCache por trabajo, consulte:
 
-- **[Dynamic FlexCache Render/EDA Workflow](../dynamic-flexcache-render-workflow/README.md)** — Automatización con Step Functions
-- [FlexCache AnyCast / DR](../flexcache-anycast-dr/README.md) — Granja de renderizado multirregión
+- **[Dynamic FlexCache Render/EDA Workflow](../../flexcache/dynamic-render-workflow/README.md)** — Automatización con Step Functions
+- [FlexCache AnyCast / DR](../../flexcache/anycast-dr/README.md) — Granja de renderizado multirregión
 - [Mapeo de sector / carga de trabajo](../../../docs/industry-workload-mapping.md) — Pattern E: Media/VFX Render Farm
 
 ### Beneficios esperados

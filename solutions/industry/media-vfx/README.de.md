@@ -277,8 +277,8 @@ In VFX-Rendering-Workflows sind render input assets (Texturen, Geometrie, Plates
 
 Details zu einem Workflow, der pro Job einen FlexCache erstellt und löscht, finden Sie unter:
 
-- **[Dynamic FlexCache Render/EDA Workflow](../dynamic-flexcache-render-workflow/README.md)** — Automatisierung mit Step Functions
-- [FlexCache AnyCast / DR](../flexcache-anycast-dr/README.md) — Multi-Region-Render-Farm
+- **[Dynamic FlexCache Render/EDA Workflow](../../flexcache/dynamic-render-workflow/README.md)** — Automatisierung mit Step Functions
+- [FlexCache AnyCast / DR](../../flexcache/anycast-dr/README.md) — Multi-Region-Render-Farm
 - [Branchen-/Workload-Zuordnung](../../../docs/industry-workload-mapping.md) — Pattern E: Media/VFX Render Farm
 
 ### Erwartete Vorteile

@@ -362,8 +362,8 @@ graph TB
 
 ### 相關模式
 
-- [Dynamic FlexCache Render/EDA Workflow](../dynamic-flexcache-render-workflow/README.md) — 按作業的 FlexCache 動態建立·刪除
-- [FlexCache AnyCast / DR](../flexcache-anycast-dr/README.md) — 多區域雲端爆發
+- [Dynamic FlexCache Render/EDA Workflow](../../flexcache/dynamic-render-workflow/README.md) — 按作業的 FlexCache 動態建立·刪除
+- [FlexCache AnyCast / DR](../../flexcache/anycast-dr/README.md) — 多區域雲端爆發
 - [產業·工作負載對應](../../../docs/industry-workload-mapping.md) — Pattern D: EDA Cloud Burst
 
 

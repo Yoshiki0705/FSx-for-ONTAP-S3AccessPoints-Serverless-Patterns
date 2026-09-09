@@ -98,7 +98,7 @@ life-sciences-research/
 
 ## Verwandte Links
 
-- [FlexCache AnyCast / DR](../flexcache-anycast-dr/README.md)
+- [FlexCache AnyCast / DR](../anycast-dr/README.md)
 - [Branchen-/Workload-Zuordnung](../../../docs/industry-workload-mapping.md)
 - [Support-Matrix](../../../docs/support-matrix-fsx-ontap-flexcache-s3ap.md)
 

@@ -122,7 +122,7 @@ Bedrock KB へ手動取り込み → 完了連絡。依頼ごとのボトルネ�
 >
 > ![Product catalog files in Windows Explorer](screenshots/masked/windows-smb-product-catalog.png)
 >
-> これらは実機実証済み（AD 参加 SVM + Windows EC2 + Windows identity S3 AP）。詳細は [verification-results.md](verification-results.md)。
+> これらは実機実証済み（AD 参加 SVM + Windows EC2 + Windows identity S3 AP）。
 
 ### A-2. 手動で取り込みをトリガー
 
@@ -168,7 +168,7 @@ aws lambda invoke --function-name <QueryFunctionName> \
 - **削除**: ファイルを Windows でゴミ箱へ → 再同期 → そのファイル由来の回答が出なくなる
 
 > **実機検証済み（削除伝播）**: S3 AP 経由で削除 → 同期で `numberOfDocumentsDeleted=1` → 再クエリで「情報が見つかりません」。
-> データソースは `dataDeletionPolicy=DELETE`。反映は次回同期まで遅延するため、緊急失効が必要なら直接 Ingestion（`DeleteKnowledgeBaseDocuments`）を併用。詳細は [verification-results.md](verification-results.md)。
+> データソースは `dataDeletionPolicy=DELETE`。反映は次回同期まで遅延するため、緊急失効が必要なら直接 Ingestion（`DeleteKnowledgeBaseDocuments`）を併用。
 
 ### Storyboard（A）
 
@@ -325,7 +325,7 @@ EventBridge ターゲットの `DeadLetterConfig` は EventBridge→Lambda の**
 > ![EventBridge rule for FPolicy KB trigger](screenshots/masked/scenario-c-eventbridge-rule.png)
 >
 > 合成 FPolicy イベント注入で `EventBridge ルール → KB Trigger Lambda → StartIngestionJob` を実証。
-> 詳細は [verification-results.md](verification-results.md)。
+> 詳細は `verification-results.md`（gitignore 対象。公開されていません）。
 
 ### C-4. リアルタイム反映の確認
 

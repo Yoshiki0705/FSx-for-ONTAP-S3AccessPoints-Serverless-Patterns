@@ -63,7 +63,7 @@ FSx for ONTAP (衛星画像格納)
 
 2026-05-10 に ap-northeast-1 で実際に稼働確認した際の、**一般職員が日常操作する UI**
 を中心に掲載する。技術者向けのコンソール画面（Step Functions グラフ等）は
-[docs/verification-results-phase7.md](../docs/verification-results-phase7.md) 参照。
+`docs/verification-results-phase7.md`（未公開） 参照。
 
 ### 1. 衛星画像の格納（FSx for ONTAP / S3 Access Point 経由）
 

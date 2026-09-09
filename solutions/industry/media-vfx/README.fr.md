@@ -277,8 +277,8 @@ Dans les workflows de rendu VFX, les render input assets (textures, géométrie,
 
 Pour plus de détails sur un workflow qui crée et supprime un FlexCache par travail, consultez :
 
-- **[Dynamic FlexCache Render/EDA Workflow](../dynamic-flexcache-render-workflow/README.md)** — Automatisation avec Step Functions
-- [FlexCache AnyCast / DR](../flexcache-anycast-dr/README.md) — Ferme de rendu multi-région
+- **[Dynamic FlexCache Render/EDA Workflow](../../flexcache/dynamic-render-workflow/README.md)** — Automatisation avec Step Functions
+- [FlexCache AnyCast / DR](../../flexcache/anycast-dr/README.md) — Ferme de rendu multi-région
 - [Mappage secteur / charge de travail](../../../docs/industry-workload-mapping.md) — Pattern E: Media/VFX Render Farm
 
 ### Bénéfices attendus

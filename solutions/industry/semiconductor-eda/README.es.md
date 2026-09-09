@@ -362,8 +362,8 @@ graph TB
 
 ### Patrones relacionados
 
-- [Dynamic FlexCache Render/EDA Workflow](../dynamic-flexcache-render-workflow/README.md) — Creación y eliminación dinámicas de FlexCache por trabajo
-- [FlexCache AnyCast / DR](../flexcache-anycast-dr/README.md) — Cloud bursting multirregión
+- [Dynamic FlexCache Render/EDA Workflow](../../flexcache/dynamic-render-workflow/README.md) — Creación y eliminación dinámicas de FlexCache por trabajo
+- [FlexCache AnyCast / DR](../../flexcache/anycast-dr/README.md) — Cloud bursting multirregión
 - [Asignación de sector/carga de trabajo](../../../docs/industry-workload-mapping.md) — Pattern D: EDA Cloud Burst
 
 

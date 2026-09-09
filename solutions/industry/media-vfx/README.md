@@ -277,8 +277,8 @@ VFX レンダリングワークフローでは、render input assets（テクス
 
 ジョブ単位で FlexCache を作成・削除するワークフローの詳細は以下を参照:
 
-- **[Dynamic FlexCache Render/EDA Workflow](../dynamic-flexcache-render-workflow/README.md)** — Step Functions による自動化
-- [FlexCache AnyCast / DR](../flexcache-anycast-dr/README.md) — マルチリージョンレンダーファーム
+- **[Dynamic FlexCache Render/EDA Workflow](../../flexcache/dynamic-render-workflow/README.md)** — Step Functions による自動化
+- [FlexCache AnyCast / DR](../../flexcache/anycast-dr/README.md) — マルチリージョンレンダーファーム
 - [業界・ワークロード マッピング](../../../docs/industry-workload-mapping.md) — Pattern E: Media/VFX Render Farm
 
 ### 期待される効果

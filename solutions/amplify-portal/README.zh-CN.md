@@ -650,8 +650,8 @@ Amplify Gen2 正在积极演进。锁定 `@aws-amplify/*` 包版本并在升级�
 - [部署运行手册 (EN)](../../docs/en/portal-deployment-runbook.md) | [JA](../../docs/ja/portal-deployment-runbook.md)
 - [含截图的演示指南 (EN)](../../docs/en/portal-demo-guide.md) | [JA](../../docs/ja/portal-demo-guide.md)
 - [SaaS 差距分析和功能请求 (JA)](../../docs/aws-feature-requests/file-portal-service-gap.md) | [EN](../../docs/aws-feature-requests/file-portal-service-gap.en.md)
-- [全文搜索设计决策](../../.private/design-decisions/c4-fulltext-search-comparison.md)（gitignored — private）
-- [门户路线图 (P0-P4)](../../.private/file-portal-roadmap.md)（gitignored — private）
+- 全文搜索设计决策（gitignored — private）
+- 门户路线图 (P0-P4)（gitignored — private）
 - [Quick Desktop MCP 设置（AgentCore Gateway）](../../docs/quick-desktop-mcp-setup.md)
 - [Nextcloud External Storage 设置](../../docs/nextcloud-external-storage-s3ap.md)
 - [S3AP 兼容性说明](../../docs/s3ap-compatibility-notes.md)
