@@ -106,7 +106,7 @@ curl -X POST https://<api-id>.execute-api.ap-northeast-1.amazonaws.com/prod/acti
 - Graceful degradation: 웹 검색 실패 시 `generate_brief` 와 동등하게 동작
 - 인용: `web_citations` 필드에 URL + 제목 + 공개일을 반환
 
-자세한 내용: [docs/investigations/agentcore-web-search-fsxn-integration.md](../../docs/investigations/agentcore-web-search-fsxn-integration.md)
+자세한 내용: [docs/investigations/agentcore-web-search-fsxn-integration.md](../../../docs/investigations/agentcore-web-search-fsxn-integration.md)
 
 ## 역할 × 서비스 구성 (Amazon Quick 상정 역할에 준거)
 
@@ -316,10 +316,10 @@ sam local invoke DataPrepFunction --event events/data-prep-event.json
 | [Amazon Quick 콘솔 설정 순서](docs/quick-console-setup.md) | Index/Sight/Flows 연결(스크린샷 취득 지침 포함) |
 | [Lake Formation TBAC 노트](docs/lake-formation-tbac.md) | 역할별 데이터 가시성(LF-TBAC + Quick RLS) |
 | [Glue 테이블 생성 스크립트](scripts/create_glue_tables.sh) | Quick Sight/Athena 용 DDL(Parquet 화 권장) |
-| [클린업 runbook](../docs/uc29-uc30-cleanup-runbook.md) | 수동 산출물을 포함한 철거 순서(2UC 공통) |
+| [클린업 runbook](../../../docs/uc29-uc30-cleanup-runbook.md) | 수동 산출물을 포함한 철거 순서(2UC 공통) |
 | [UC29 genai-kb-selfservice-curation](../genai-kb-selfservice-curation/) | 관리형 Bedrock KB 로의 셀프서비스 투입(동일 역할 구성) |
 | [FC3 genai-rag-enterprise-files](../genai-rag-enterprise-files/) | 엄밀한 권한 필터가 필요한 커스텀 RAG |
-| [업계 / 워크로드 매핑](../docs/industry-workload-mapping.md) | UC 선택 가이드 |
+| [업계 / 워크로드 매핑](../../../docs/industry-workload-mapping.md) | UC 선택 가이드 |
 
 ## 운영 견고화 (구현 완료)
 

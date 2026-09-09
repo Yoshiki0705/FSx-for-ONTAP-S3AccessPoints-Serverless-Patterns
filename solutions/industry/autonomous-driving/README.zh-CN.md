@@ -216,7 +216,7 @@ UC9 使用以下服务：
 | AWS X-Ray | 几乎所有区域均可用 |
 | CloudWatch EMF | 几乎所有区域均可用 |
 
-> 如果启用 SageMaker Batch Transform，请在部署前于 [AWS Regional Services List](https://aws.amazon.com/about-aws/global-infrastructure/regional-product-services/) 确认目标区域的实例类型可用性。详情请参见 [区域兼容性矩阵](../docs/region-compatibility.md)。
+> 如果启用 SageMaker Batch Transform，请在部署前于 [AWS Regional Services List](https://aws.amazon.com/about-aws/global-infrastructure/regional-product-services/) 确认目标区域的实例类型可用性。详情请参见 [区域兼容性矩阵](../../../docs/region-compatibility.md)。
 
 ---
 
@@ -315,7 +315,7 @@ sam local invoke DiscoveryFunction \
 python3 -m pytest tests/ -v
 ```
 
-详情请参见 [本地测试快速入门](../docs/local-testing-quick-start.md)。
+详情请参见 [本地测试快速入门](../../../docs/local-testing-quick-start.md)。
 
 ---
 
@@ -365,7 +365,7 @@ python3 -m pytest tests/ -v
 
 ## S3AP Compatibility
 
-关于 S3 Access Points for FSx for ONTAP 的兼容性约束、故障排除和触发模式，请参见 [S3AP Compatibility Notes](../docs/s3ap-compatibility-notes.md)。
+关于 S3 Access Points for FSx for ONTAP 的兼容性约束、故障排除和触发模式，请参见 [S3AP Compatibility Notes](../../../docs/s3ap-compatibility-notes.md)。
 
 ---
 

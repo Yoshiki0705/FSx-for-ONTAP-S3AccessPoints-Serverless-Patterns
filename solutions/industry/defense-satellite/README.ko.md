@@ -1,7 +1,7 @@
 # UC15: 국방 / 우주 — 위성 이미지 분석 파이프라인
 
 🌐 **Language / 言語**: [日本語](README.md) | [English](README.en.md) | 한국어 | [简体中文](README.zh-CN.md) | [繁體中文](README.zh-TW.md) | [Français](README.fr.md) | [Deutsch](README.de.md) | [Español](README.es.md)
-📚 **문서**: [아키텍처](docs/architecture.ko.md) | [데모 스크립트](docs/demo-guide.ko.md) | [문제 해결](../docs/phase7-troubleshooting.md)
+📚 **문서**: [아키텍처](docs/architecture.ko.md) | [데모 스크립트](docs/demo-guide.ko.md) | [문제 해결](../../../docs/phase7-troubleshooting.md)
 
 ## 개요
 
@@ -75,7 +75,7 @@ FSx for ONTAP (위성 이미지 저장)
 <!-- SCREENSHOT: phase7-uc15-s3-satellite-uploaded.png
      내용: S3 AP 경유로 satellite/2026/05/*.tif 를 목록 표시 (오브젝트명, 크기, 갱신 일시)
      마스크: 계정 ID, Access Point ARN, 실제 위성 이미지명 -->
-![UC15: 위성 이미지 배치](../docs/screenshots/masked/phase7/phase7-uc15-s3-satellite-uploaded.png)
+![UC15: 위성 이미지 배치](../../../docs/screenshots/masked/phase7/phase7-uc15-s3-satellite-uploaded.png)
 
 ### 2. 분석 결과 열람 (S3 출력 버킷)
 
@@ -85,7 +85,7 @@ FSx for ONTAP (위성 이미지 저장)
 <!-- SCREENSHOT: phase7-uc15-s3-output-bucket.png
      내용: S3 콘솔에서 detections/, enriched/, tiles/ 의 3개 프리픽스를 조감
      마스크: 계정 ID, 버킷명 프리픽스 -->
-![UC15: S3 출력 버킷](../docs/screenshots/masked/phase7/phase7-uc15-s3-output-bucket.png)
+![UC15: S3 출력 버킷](../../../docs/screenshots/masked/phase7/phase7-uc15-s3-output-bucket.png)
 
 ### 3. 변화 감지 경보 (SNS 이메일 알림)
 
@@ -95,7 +95,7 @@ FSx for ONTAP (위성 이미지 저장)
 <!-- SCREENSHOT: phase7-uc15-sns-alert-email.png
      내용: 이메일 클라이언트(Gmail/Outlook)에서 alert_type=SATELLITE_CHANGE_DETECTED 표시
      마스크: 수신자 이메일 주소, 발신자 주소, 실제 좌표, tile_id -->
-![UC15: SNS 경보 알림 이메일](../docs/screenshots/masked/phase7/phase7-uc15-sns-alert-email.png)
+![UC15: SNS 경보 알림 이메일](../../../docs/screenshots/masked/phase7/phase7-uc15-sns-alert-email.png)
 
 ### 4. 감지 결과 JSON 의 내용
 
@@ -104,7 +104,7 @@ FSx for ONTAP (위성 이미지 저장)
 <!-- SCREENSHOT: phase7-uc15-detections-json.png
      내용: S3 콘솔에서 오브젝트 미리보기, detections JSON 의 내용
      마스크: 계정 ID -->
-![UC15: 감지 결과 JSON](../docs/screenshots/masked/phase7/phase7-uc15-detections-json.png)
+![UC15: 감지 결과 JSON](../../../docs/screenshots/masked/phase7/phase7-uc15-detections-json.png)
 
 
 ## Success Metrics
@@ -159,7 +159,7 @@ sam deploy \
 ```
 
 **중요**: `S3AccessPointName` 은 S3 AP 의 IAM 권한 부여에 필수입니다.
-자세한 내용은 [`docs/phase7-troubleshooting.md`](../docs/phase7-troubleshooting.md) 를 참조하세요.
+자세한 내용은 [`docs/phase7-troubleshooting.md`](../../../docs/phase7-troubleshooting.md) 를 참조하세요.
 
 ## 디렉터리 구성
 
@@ -281,7 +281,7 @@ sam local invoke DiscoveryFunction \
 python3 -m pytest tests/ -v
 ```
 
-자세한 내용은 [로컬 테스트 퀵 스타트](../docs/local-testing-quick-start.md) 를 참조하세요.
+자세한 내용은 [로컬 테스트 퀵 스타트](../../../docs/local-testing-quick-start.md) 를 참조하세요.
 
 ---
 
@@ -331,7 +331,7 @@ python3 -m pytest tests/ -v
 
 ## S3AP Compatibility
 
-S3 Access Points for FSx for ONTAP 의 호환성 제약, 문제 해결, 트리거 패턴에 대해서는 [S3AP Compatibility Notes](../docs/s3ap-compatibility-notes.md) 를 참조하세요.
+S3 Access Points for FSx for ONTAP 의 호환성 제약, 문제 해결, 트리거 패턴에 대해서는 [S3AP Compatibility Notes](../../../docs/s3ap-compatibility-notes.md) 를 참조하세요.
 
 ---
 

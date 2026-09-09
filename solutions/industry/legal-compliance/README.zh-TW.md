@@ -108,7 +108,7 @@ graph LR
 
 - **PoC / 示範環境**：建議在 VPC 外執行 Lambda。若 S3 AP 的 network origin 為 `internet`，則可從 VPC 外 Lambda 順利存取
 - **生產環境**：請指定 `PrivateRouteTableId` 參數，並將路由表關聯至 S3 Gateway Endpoint。若未指定，從 VPC 內 Lambda 存取 S3 AP 將逾時
-- 詳情請參閱[疑難排解指南](../docs/guides/troubleshooting-guide.md#6-lambda-vpc-内実行時の-s3-ap-タイムアウト)
+- 詳情請參閱[疑難排解指南](../../../docs/guides/troubleshooting-guide.md#6-lambda-vpc-内実行時の-s3-ap-タイムアウト)
 
 ## 部署步驟
 
@@ -159,7 +159,7 @@ sam deploy \
 
 部署後，將向指定的電子郵件地址傳送 SNS 訂閱確認郵件。請點擊郵件中的連結進行確認。
 
-> **注意**：如果省略 `S3AccessPointName`，IAM 原則將僅以 Alias 為基礎，可能會發生 `AccessDenied` 錯誤。生產環境建議指定。詳情請參閱[疑難排解指南](../docs/guides/troubleshooting-guide.md#1-accessdenied-エラー)。
+> **注意**：如果省略 `S3AccessPointName`，IAM 原則將僅以 Alias 為基礎，可能會發生 `AccessDenied` 錯誤。生產環境建議指定。詳情請參閱[疑難排解指南](../../../docs/guides/troubleshooting-guide.md#1-accessdenied-エラー)。
 
 ## 設定參數一覽
 
@@ -229,7 +229,7 @@ UC1 使用以下服務：
 | AWS X-Ray | 幾乎所有區域均可使用 |
 | CloudWatch EMF | 幾乎所有區域均可使用 |
 
-> 詳情請參閱[區域相容性矩陣](../docs/region-compatibility.md)。
+> 詳情請參閱[區域相容性矩陣](../../../docs/region-compatibility.md)。
 
 ## 參考連結
 
@@ -338,7 +338,7 @@ sam local invoke DiscoveryFunction \
 python3 -m pytest tests/ -v
 ```
 
-詳情請參閱[本機測試快速入門](../docs/local-testing-quick-start.md)。
+詳情請參閱[本機測試快速入門](../../../docs/local-testing-quick-start.md)。
 
 ---
 
@@ -387,7 +387,7 @@ Step Functions 執行完成時的最終輸出範例：
 
 ## S3AP Compatibility
 
-關於 S3 Access Points for FSx for ONTAP 的相容性約束、疑難排解和觸發模式，請參閱 [S3AP Compatibility Notes](../docs/s3ap-compatibility-notes.md)。
+關於 S3 Access Points for FSx for ONTAP 的相容性約束、疑難排解和觸發模式，請參閱 [S3AP Compatibility Notes](../../../docs/s3ap-compatibility-notes.md)。
 
 ---
 

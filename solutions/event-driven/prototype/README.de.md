@@ -158,8 +158,8 @@ Die folgenden Metriken werden im CloudWatch-EMF-Format ausgegeben:
 
 ## Zugehörige Dokumente
 
-- [Entwurf der ereignisgesteuerten Architektur](../docs/event-driven/architecture-design.md)
-- [Migrationsleitfaden](../docs/event-driven/migration-guide.md)
+- [Entwurf der ereignisgesteuerten Architektur](../../../docs/event-driven/architecture-design.md)
+- [Migrationsleitfaden](../../../docs/event-driven/migration-guide.md)
 - [UC11 Retail Catalog](../retail-catalog/README.md)
 
 ---

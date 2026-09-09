@@ -254,7 +254,7 @@ VOD 發佈不僅依賴自動判定。依套件**完整性訊號**計算 publish-
 - **警示**：`EnableCloudWatchAlarms=true` 將 Lambda 錯誤 / Step Functions 失敗透過 SNS 通知。
 - **故障處理**：publish 失敗時查看 `/aws/lambda/<stack>-publish`，區分 S3 AP 授權（IAM + AP policy +
   ONTAP identity）與來源 S3 讀取。誤發佈時從 CloudFront 來源移除該物件並於修正後重跑。參見
-  [事件回應 Playbook](../../docs/incident-response-playbook.md)。
+  [事件回應 Playbook](../../../docs/incident-response-playbook.md)。
 
 ## FAQ / 常見誤解
 
@@ -274,7 +274,7 @@ VOD 發佈不僅依賴自動判定。依套件**完整性訊號**計算 publish-
 - Playlist（`.m3u8`）短 TTL，Segment（`.ts` / `.m4s`）長 TTL。
 - 若需將分發讀取與業務磁碟區隔離，可考慮以 **FlexCache** 磁碟區（ONTAP 原生）作為 CloudFront 來源。
 - **S3 AP 不是完整的 S3 儲存貯體** — 是 S3 相容存取邊界。勿假設貯體層級功能（Presigned URL、Versioning、
-  Object Lock、Lifecycle、Static Website Hosting）可用。參見 [../../docs/s3ap-compatibility-notes.md](../../docs/s3ap-compatibility-notes.md)。
+  Object Lock、Lifecycle、Static Website Hosting）可用。參見 [../../docs/s3ap-compatibility-notes.md](../../../docs/s3ap-compatibility-notes.md)。
 
 ## 參考（AWS 官方文件）
 
@@ -287,11 +287,11 @@ VOD 發佈不僅依賴自動判定。依套件**完整性訊號**計算 publish-
 
 ## 相關文件
 
-- [S3AP 相容性說明](../../docs/s3ap-compatibility-notes.md)
-- [S3AP 效能考量](../../docs/s3ap-performance-considerations.md)
-- [成本試算](../../docs/cost-calculator.md)
-- [替代架構比較](../../docs/comparison-alternatives.md)
-- [事件回應 Playbook](../../docs/incident-response-playbook.md)
+- [S3AP 相容性說明](../../../docs/s3ap-compatibility-notes.md)
+- [S3AP 效能考量](../../../docs/s3ap-performance-considerations.md)
+- [成本試算](../../../docs/cost-calculator.md)
+- [替代架構比較](../../../docs/comparison-alternatives.md)
+- [事件回應 Playbook](../../../docs/incident-response-playbook.md)
 - [Content Edge Delivery 模式](../content-delivery/README.md)
 - [Media/VFX 產業模式](../../industry/media-vfx/README.md)
 

@@ -150,7 +150,7 @@ aws cloudformation wait stack-delete-complete \
 - [FSx for ONTAP S3 Access Points 概述](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/accessing-data-via-s3-access-points.html)
 - [Amazon Rekognition DetectLabels](https://docs.aws.amazon.com/rekognition/latest/dg/labels-detect-labels-image.html)
 - [Amazon Bedrock API 参考](https://docs.aws.amazon.com/bedrock/latest/APIReference/API_runtime_InvokeModel.html)
-- [流式 vs 轮询选择指南](../docs/streaming-vs-polling-guide.md)
+- [流式 vs 轮询选择指南](../../../docs/streaming-vs-polling-guide.md)
 
 ## Kinesis 流式模式（Phase 3）
 
@@ -189,7 +189,7 @@ EventBridge (rate(1 min)) → Stream Producer Lambda
 
 ### 模式选择
 
-关于应选择哪种模式，请参阅 [流式 vs 轮询选择指南](../docs/streaming-vs-polling-guide.md)。
+关于应选择哪种模式，请参阅 [流式 vs 轮询选择指南](../../../docs/streaming-vs-polling-guide.md)。
 
 ## Supported Regions
 
@@ -203,7 +203,7 @@ UC11 使用以下服务：
 | AWS X-Ray | 几乎所有区域均可用 |
 | CloudWatch EMF | 几乎所有区域均可用 |
 
-> 启用 Kinesis 流式模式时，请注意分片费用因区域而异。详情请参阅 [区域兼容性矩阵](../docs/region-compatibility.md)。
+> 启用 Kinesis 流式模式时，请注意分片费用因区域而异。详情请参阅 [区域兼容性矩阵](../../../docs/region-compatibility.md)。
 
 ---
 
@@ -302,7 +302,7 @@ sam local invoke DiscoveryFunction \
 python3 -m pytest tests/ -v
 ```
 
-详情请参阅 [本地测试快速入门](../docs/local-testing-quick-start.md)。
+详情请参阅 [本地测试快速入门](../../../docs/local-testing-quick-start.md)。
 
 ---
 
@@ -354,7 +354,7 @@ python3 -m pytest tests/ -v
 
 ## S3AP Compatibility
 
-有关 S3 Access Points for FSx for ONTAP 的兼容性约束、故障排查和触发模式，请参阅 [S3AP Compatibility Notes](../docs/s3ap-compatibility-notes.md)。
+有关 S3 Access Points for FSx for ONTAP 的兼容性约束、故障排查和触发模式，请参阅 [S3AP Compatibility Notes](../../../docs/s3ap-compatibility-notes.md)。
 
 ---
 

@@ -158,8 +158,8 @@ Les métriques suivantes sont émises au format CloudWatch EMF:
 
 ## Documents connexes
 
-- [Conception de l'architecture événementielle](../docs/event-driven/architecture-design.md)
-- [Guide de migration](../docs/event-driven/migration-guide.md)
+- [Conception de l'architecture événementielle](../../../docs/event-driven/architecture-design.md)
+- [Guide de migration](../../../docs/event-driven/migration-guide.md)
 - [UC11 Retail Catalog](../retail-catalog/README.md)
 
 ---

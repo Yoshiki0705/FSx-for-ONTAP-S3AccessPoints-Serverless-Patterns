@@ -297,6 +297,6 @@ NFSv4.2 は ONTAP FPolicy monitoring に非対応です。`mount -o vers=4.1` �
 
 ## スクリーンショット
 
-![FPolicy Pipeline — CloudFormation Stacks](../../docs/screenshots/masked/phase13-cloudformation-stacks.png)
+![FPolicy Pipeline — CloudFormation Stacks](../../../../docs/screenshots/masked/phase13-cloudformation-stacks.png)
 
-![FPolicy Pipeline — Lambda Functions](../../docs/screenshots/masked/phase13-lambda-functions.png)
+![FPolicy Pipeline — Lambda Functions](../../../../docs/screenshots/masked/phase13-lambda-functions.png)

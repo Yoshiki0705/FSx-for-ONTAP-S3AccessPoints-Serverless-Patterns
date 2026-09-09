@@ -167,7 +167,7 @@ UC14는 다음 서비스를 사용합니다:
 | AWS X-Ray | 거의 모든 리전에서 사용 가능 |
 | CloudWatch EMF | 거의 모든 리전에서 사용 가능 |
 
-> Cross-Region Client를 통해 Textract API를 호출합니다. 데이터 레지던시 요구 사항을 확인하십시오. 자세한 내용은 [리전 호환성 매트릭스](../docs/region-compatibility.md)를 참조하십시오.
+> Cross-Region Client를 통해 Textract API를 호출합니다. 데이터 레지던시 요구 사항을 확인하십시오. 자세한 내용은 [리전 호환성 매트릭스](../../../docs/region-compatibility.md)를 참조하십시오.
 
 ## 참고 링크
 
@@ -273,7 +273,7 @@ sam local invoke DiscoveryFunction \
 python3 -m pytest tests/ -v
 ```
 
-자세한 내용은 [로컬 테스트 퀵 스타트](../docs/local-testing-quick-start.md)를 참조하십시오.
+자세한 내용은 [로컬 테스트 퀵 스타트](../../../docs/local-testing-quick-start.md)를 참조하십시오.
 
 ---
 
@@ -327,7 +327,7 @@ python3 -m pytest tests/ -v
 
 ## S3AP Compatibility
 
-S3 Access Points for FSx for ONTAP의 호환성 제약, 트러블슈팅, 트리거 패턴에 대해서는 [S3AP Compatibility Notes](../docs/s3ap-compatibility-notes.md)를 참조하십시오.
+S3 Access Points for FSx for ONTAP의 호환성 제약, 트러블슈팅, 트리거 패턴에 대해서는 [S3AP Compatibility Notes](../../../docs/s3ap-compatibility-notes.md)를 참조하십시오.
 
 ---
 

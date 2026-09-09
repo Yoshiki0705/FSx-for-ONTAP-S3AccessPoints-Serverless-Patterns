@@ -9,14 +9,14 @@
 **分发供应商无关** 无服务器模式。
 
 关于集成机制以及各分发网络的可行性（CloudFront / Akamai / Fastly / Cloudflare / Bunny.net /
-Google Media CDN 等）的技术比较，请参阅 **[docs/cdn-comparison.md](../docs/cdn-comparison.md)**。
+Google Media CDN 等）的技术比较，请参阅 **[docs/cdn-comparison.md](../../../docs/cdn-comparison.md)**。
 
 > 本模式是 reference implementation（参考实现）。分发供应商的选型、权利处理、地域限制、
 > 合规性由客户判断。
 
 > **TL;DR（30 秒）**: 不移动 ONTAP/NAS 的主副本，**仅将已批准的分发用产物** 通过 CloudFront 或
 > 第三方 CDN 进行分发。第一步采用验证风险最小的 `PUBLISH_PUSH`（M3）。SigV4 直接拉取（ORIGIN_PULL）
-> 需在[验证检查清单](../docs/cdn-origin-verification-checklist.md)中实测后再采用。
+> 需在[验证检查清单](../../../docs/cdn-origin-verification-checklist.md)中实测后再采用。
 
 ## 业务成果与落地（Outcome / Adoption）
 
@@ -45,7 +45,7 @@ Google Media CDN 等）的技术比较，请参阅 **[docs/cdn-comparison.md](..
 - **首个客户问题**: 「是否希望在不复制的情况下将现有的 NAS/ONTAP 资产连接到边缘分发。分发是通过 CloudFront，
   还是通过已签约的 CDN（Akamai 等）」
 - **PoC 产物**: DemoMode 演示 → 已批准呈现版本的分发清单 →（可选）实机 SigV4 验证结果。
-- 分发网络选型可将 [CDN 比较](../docs/cdn-comparison.md) 在客户对话中直接使用。
+- 分发网络选型可将 [CDN 比较](../../../docs/cdn-comparison.md) 在客户对话中直接使用。
 
 ## 要解决的课题
 
@@ -79,7 +79,7 @@ graph LR
 
 - **ORIGIN_PULL**: 不复制对象，生成以 CDN 通过 SigV4 直接获取 S3 AP 为前提的
   源引用清单。CloudFront 通过 OAC 支持（参考实现）。
-  第三方 CDN 的 SigV4 源签名 **需验证**（参阅[比较文档](../docs/cdn-comparison.md)）。
+  第三方 CDN 的 SigV4 源签名 **需验证**（参阅[比较文档](../../../docs/cdn-comparison.md)）。
 - **PUBLISH_PUSH**: 将已批准的呈现版本复制到 CDN 侧 S3 兼容存储。可规避源认证问题，
   且与 CDN 无关。验证风险最低的第一步。
 
@@ -160,7 +160,7 @@ DemoMode 的确认请参阅 [docs/demo-guide.md](docs/demo-guide.md)。
   幂等化（idempotency）**。若需要 HYBRID 的去重，请将 `shared/idempotency_checker.py` 集成到
   publish 路径中。当前的运行确认以 `POLLING` 进行。
 - `PUBLISH_PUSH` 向外部存储的实际 push 仅在配置了端点/存储桶时有效（DemoMode 记录跳过）。
-- ORIGIN_PULL 的 SigV4 源直接拉取在第三方 CDN 上 **需验证**（参阅[比较文档](../docs/cdn-comparison.md) 4.1）。
+- ORIGIN_PULL 的 SigV4 源直接拉取在第三方 CDN 上 **需验证**（参阅[比较文档](../../../docs/cdn-comparison.md) 4.1）。
 
 ## 运营 / Runbook（Reliability/Ops）
 
@@ -170,7 +170,7 @@ DemoMode 的确认请参阅 [docs/demo-guide.md](docs/demo-guide.md)。
   - publish 错误 → 检查 CloudWatch Logs `/aws/lambda/<stack>-publish`。区分 S3 AP 授权（IAM + AP policy +
     ONTAP ID）与外部存储认证（Secrets Manager）。
   - 外部 push 失败 → 检查 `ExternalStoreSecretName` 的认证信息·端点·存储桶。
-  - 疑似分发边界问题（越权分发）→ [事件响应 Playbook](../docs/incident-response-playbook.md)。
+  - 疑似分发边界问题（越权分发）→ [事件响应 Playbook](../../../docs/incident-response-playbook.md)。
 - **回滚**: 分发仅进行已批准产物的 publish。误发布时，从分发目标（CDN 存储/Distribution）移除相应
   对象，从 `ApprovedPrefix` 撤下后重新 publish。
 - **外部存储认证**: 使用 PUBLISH_PUSH 向 Akamai/R2/Fastly 等复制时，AWS 默认认证不适用，因此需要
@@ -188,11 +188,11 @@ DemoMode 的确认请参阅 [docs/demo-guide.md](docs/demo-guide.md)。
 
 ## 相关文档
 
-- [CDN/边缘分发集成比较](../docs/cdn-comparison.md) / [English](../docs/cdn-comparison.en.md)
-- [ORIGIN_PULL SigV4 验证检查清单](../docs/cdn-origin-verification-checklist.md)（实机验证步骤）
-- [替代架构比较](../docs/comparison-alternatives.md)
-- [S3AP 兼容性说明](../docs/s3ap-compatibility-notes.md)
-- [事件响应 Playbook](../docs/incident-response-playbook.md)（越权分发·误发布时的应对动线）
+- [CDN/边缘分发集成比较](../../../docs/cdn-comparison.md) / [English](../../../docs/cdn-comparison.en.md)
+- [ORIGIN_PULL SigV4 验证检查清单](../../../docs/cdn-origin-verification-checklist.md)（实机验证步骤）
+- [替代架构比较](../../../docs/comparison-alternatives.md)
+- [S3AP 兼容性说明](../../../docs/s3ap-compatibility-notes.md)
+- [事件响应 Playbook](../../../docs/incident-response-playbook.md)（越权分发·误发布时的应对动线）
 
 ---
 

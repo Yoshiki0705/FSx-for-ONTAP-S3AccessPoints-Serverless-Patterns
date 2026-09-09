@@ -150,7 +150,7 @@ aws cloudformation wait stack-delete-complete \
 - [FSx for ONTAP S3 Access Points – Überblick](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/accessing-data-via-s3-access-points.html)
 - [Amazon Rekognition DetectLabels](https://docs.aws.amazon.com/rekognition/latest/dg/labels-detect-labels-image.html)
 - [Amazon Bedrock API-Referenz](https://docs.aws.amazon.com/bedrock/latest/APIReference/API_runtime_InvokeModel.html)
-- [Leitfaden zur Auswahl Streaming vs. Polling](../docs/streaming-vs-polling-guide.md)
+- [Leitfaden zur Auswahl Streaming vs. Polling](../../../docs/streaming-vs-polling-guide.md)
 
 ## Kinesis-Streaming-Modus (Phase 3)
 
@@ -189,7 +189,7 @@ EventBridge (rate(1 min)) → Stream Producer Lambda
 
 ### Pattern-Auswahl
 
-Welches Pattern zu wählen ist, erfahren Sie im [Leitfaden zur Auswahl Streaming vs. Polling](../docs/streaming-vs-polling-guide.md).
+Welches Pattern zu wählen ist, erfahren Sie im [Leitfaden zur Auswahl Streaming vs. Polling](../../../docs/streaming-vs-polling-guide.md).
 
 ## Supported Regions
 
@@ -203,7 +203,7 @@ UC11 verwendet die folgenden Dienste:
 | AWS X-Ray | In fast allen Regionen verfügbar |
 | CloudWatch EMF | In fast allen Regionen verfügbar |
 
-> Beachten Sie beim Aktivieren des Kinesis-Streaming-Modus, dass die Shard-Preise je nach Region variieren. Weitere Details finden Sie in der [Regionskompatibilitätsmatrix](../docs/region-compatibility.md).
+> Beachten Sie beim Aktivieren des Kinesis-Streaming-Modus, dass die Shard-Preise je nach Region variieren. Weitere Details finden Sie in der [Regionskompatibilitätsmatrix](../../../docs/region-compatibility.md).
 
 ---
 
@@ -302,7 +302,7 @@ sam local invoke DiscoveryFunction \
 python3 -m pytest tests/ -v
 ```
 
-Weitere Details finden Sie im [Schnellstart für lokales Testen](../docs/local-testing-quick-start.md).
+Weitere Details finden Sie im [Schnellstart für lokales Testen](../../../docs/local-testing-quick-start.md).
 
 ---
 
@@ -354,7 +354,7 @@ Beispielausgabe der Pipeline zum Tagging von Produktbildern:
 
 ## S3AP Compatibility
 
-Informationen zu Kompatibilitätseinschränkungen, Fehlerbehebung und Trigger-Patterns der S3 Access Points für FSx for ONTAP finden Sie in den [S3AP Compatibility Notes](../docs/s3ap-compatibility-notes.md).
+Informationen zu Kompatibilitätseinschränkungen, Fehlerbehebung und Trigger-Patterns der S3 Access Points für FSx for ONTAP finden Sie in den [S3AP Compatibility Notes](../../../docs/s3ap-compatibility-notes.md).
 
 ---
 

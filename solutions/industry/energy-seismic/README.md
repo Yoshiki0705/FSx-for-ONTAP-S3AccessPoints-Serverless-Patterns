@@ -163,7 +163,7 @@ UC8 は以下のサービスを使用します:
 | AWS X-Ray | ほぼ全リージョンで利用可能 |
 | CloudWatch EMF | ほぼ全リージョンで利用可能 |
 
-> 詳細は [リージョン互換性マトリックス](../docs/region-compatibility.md) を参照。
+> 詳細は [リージョン互換性マトリックス](../../../docs/region-compatibility.md) を参照。
 
 ## 参考リンク
 
@@ -267,7 +267,7 @@ sam local invoke DiscoveryFunction \
 python3 -m pytest tests/ -v
 ```
 
-詳細は [ローカルテスト クイックスタート](../docs/local-testing-quick-start.md) を参照してください。
+詳細は [ローカルテスト クイックスタート](../../../docs/local-testing-quick-start.md) を参照してください。
 
 ---
 
@@ -316,7 +316,7 @@ python3 -m pytest tests/ -v
 
 ## S3AP Compatibility
 
-S3 Access Points for FSx for ONTAP の互換性制約、トラブルシューティング、トリガーパターンについては [S3AP Compatibility Notes](../docs/s3ap-compatibility-notes.md) を参照してください。
+S3 Access Points for FSx for ONTAP の互換性制約、トラブルシューティング、トリガーパターンについては [S3AP Compatibility Notes](../../../docs/s3ap-compatibility-notes.md) を参照してください。
 
 ---
 

@@ -150,7 +150,7 @@ aws cloudformation wait stack-delete-complete \
 - [Présentation des S3 Access Points pour FSx for ONTAP](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/accessing-data-via-s3-access-points.html)
 - [Amazon Rekognition DetectLabels](https://docs.aws.amazon.com/rekognition/latest/dg/labels-detect-labels-image.html)
 - [Référence de l'API Amazon Bedrock](https://docs.aws.amazon.com/bedrock/latest/APIReference/API_runtime_InvokeModel.html)
-- [Guide de choix Streaming vs Polling](../docs/streaming-vs-polling-guide.md)
+- [Guide de choix Streaming vs Polling](../../../docs/streaming-vs-polling-guide.md)
 
 ## Mode streaming Kinesis (Phase 3)
 
@@ -189,7 +189,7 @@ EventBridge (rate(1 min)) → Stream Producer Lambda
 
 ### Sélection du pattern
 
-Pour savoir quel pattern choisir, consultez le [Guide de choix Streaming vs Polling](../docs/streaming-vs-polling-guide.md).
+Pour savoir quel pattern choisir, consultez le [Guide de choix Streaming vs Polling](../../../docs/streaming-vs-polling-guide.md).
 
 ## Supported Regions
 
@@ -203,7 +203,7 @@ UC11 utilise les services suivants :
 | AWS X-Ray | Disponible dans presque toutes les régions |
 | CloudWatch EMF | Disponible dans presque toutes les régions |
 
-> Lors de l'activation du mode streaming Kinesis, notez que la tarification des shards varie selon la région. Consultez la [Matrice de compatibilité des régions](../docs/region-compatibility.md) pour plus de détails.
+> Lors de l'activation du mode streaming Kinesis, notez que la tarification des shards varie selon la région. Consultez la [Matrice de compatibilité des régions](../../../docs/region-compatibility.md) pour plus de détails.
 
 ---
 
@@ -302,7 +302,7 @@ sam local invoke DiscoveryFunction \
 python3 -m pytest tests/ -v
 ```
 
-Pour plus de détails, consultez le [Démarrage rapide des tests locaux](../docs/local-testing-quick-start.md).
+Pour plus de détails, consultez le [Démarrage rapide des tests locaux](../../../docs/local-testing-quick-start.md).
 
 ---
 
@@ -354,7 +354,7 @@ Exemple de sortie du pipeline d'étiquetage des images produits :
 
 ## S3AP Compatibility
 
-Pour les contraintes de compatibilité, le dépannage et les patterns de déclenchement des S3 Access Points pour FSx for ONTAP, consultez les [S3AP Compatibility Notes](../docs/s3ap-compatibility-notes.md).
+Pour les contraintes de compatibilité, le dépannage et les patterns de déclenchement des S3 Access Points pour FSx for ONTAP, consultez les [S3AP Compatibility Notes](../../../docs/s3ap-compatibility-notes.md).
 
 ---
 

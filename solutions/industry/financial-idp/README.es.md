@@ -132,7 +132,7 @@ sam deploy \
 
 Tras la implementación, se envía un correo electrónico de confirmación de suscripción de SNS a la dirección de correo electrónico que haya especificado.
 
-> **Nota**: Si omite `S3AccessPointName`, la política de IAM queda basada únicamente en el Alias, lo que puede provocar un error `AccessDenied`. Se recomienda especificarlo en entornos de producción. Para más detalles, consulte la [Guía de resolución de problemas](../docs/guides/troubleshooting-guide.md#1-accessdenied-エラー).
+> **Nota**: Si omite `S3AccessPointName`, la política de IAM queda basada únicamente en el Alias, lo que puede provocar un error `AccessDenied`. Se recomienda especificarlo en entornos de producción. Para más detalles, consulte la [Guía de resolución de problemas](../../../docs/guides/troubleshooting-guide.md#1-accessdenied-エラー).
 
 ## Lista de parámetros de configuración
 
@@ -218,7 +218,7 @@ UC2 utiliza los siguientes servicios:
 | AWS X-Ray | Disponible en casi todas las regiones |
 | CloudWatch EMF | Disponible en casi todas las regiones |
 
-> La API de Textract se llama a través de un Cross-Region Client. Compruebe sus requisitos de residencia de datos. Para más detalles, consulte la [Matriz de compatibilidad de regiones](../docs/region-compatibility.md).
+> La API de Textract se llama a través de un Cross-Region Client. Compruebe sus requisitos de residencia de datos. Para más detalles, consulte la [Matriz de compatibilidad de regiones](../../../docs/region-compatibility.md).
 
 ## Enlaces de referencia
 
@@ -327,7 +327,7 @@ sam local invoke DiscoveryFunction \
 python3 -m pytest tests/ -v
 ```
 
-Para más detalles, consulte el [Inicio rápido de pruebas locales](../docs/local-testing-quick-start.md).
+Para más detalles, consulte el [Inicio rápido de pruebas locales](../../../docs/local-testing-quick-start.md).
 
 ---
 
@@ -402,7 +402,7 @@ Para las instituciones financieras de Japón, esta sección relaciona los elemen
 
 ## S3AP Compatibility
 
-Para conocer las restricciones de compatibilidad, la resolución de problemas y los patrones de activación de S3 Access Points for FSx for ONTAP, consulte las [S3AP Compatibility Notes](../docs/s3ap-compatibility-notes.md).
+Para conocer las restricciones de compatibilidad, la resolución de problemas y los patrones de activación de S3 Access Points for FSx for ONTAP, consulte las [S3AP Compatibility Notes](../../../docs/s3ap-compatibility-notes.md).
 
 ---
 

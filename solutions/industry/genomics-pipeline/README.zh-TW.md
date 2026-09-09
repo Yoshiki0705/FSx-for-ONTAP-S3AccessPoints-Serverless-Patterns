@@ -175,7 +175,7 @@ UC7 使用以下服務：
 | AWS X-Ray | 幾乎所有區域皆可用 |
 | CloudWatch EMF | 幾乎所有區域皆可用 |
 
-> 透過跨區域用戶端呼叫 Comprehend Medical API。請確認資料駐留要求。詳細資訊請參閱 [區域相容性矩陣](../docs/region-compatibility.md)。
+> 透過跨區域用戶端呼叫 Comprehend Medical API。請確認資料駐留要求。詳細資訊請參閱 [區域相容性矩陣](../../../docs/region-compatibility.md)。
 
 ## 參考連結
 
@@ -280,7 +280,7 @@ sam local invoke DiscoveryFunction \
 python3 -m pytest tests/ -v
 ```
 
-詳細資訊請參閱 [本機測試快速入門](../docs/local-testing-quick-start.md)。
+詳細資訊請參閱 [本機測試快速入門](../../../docs/local-testing-quick-start.md)。
 
 ---
 
@@ -330,7 +330,7 @@ python3 -m pytest tests/ -v
 
 ## S3AP Compatibility
 
-有關 S3 Access Points for FSx for ONTAP 的相容性約束、疑難排解與觸發器模式，請參閱 [S3AP Compatibility Notes](../docs/s3ap-compatibility-notes.md)。
+有關 S3 Access Points for FSx for ONTAP 的相容性約束、疑難排解與觸發器模式，請參閱 [S3AP Compatibility Notes](../../../docs/s3ap-compatibility-notes.md)。
 
 ---
 

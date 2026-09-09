@@ -133,7 +133,7 @@ sam deploy \
 
 デプロイ後、指定したメールアドレスに SNS サブスクリプション確認メールが届きます。
 
-> **注意**: `S3AccessPointName` を省略すると、IAM ポリシーが Alias ベースのみとなり `AccessDenied` エラーが発生する場合があります。本番環境では指定を推奨します。詳細は [トラブルシューティングガイド](../docs/guides/troubleshooting-guide.md#1-accessdenied-エラー) を参照してください。
+> **注意**: `S3AccessPointName` を省略すると、IAM ポリシーが Alias ベースのみとなり `AccessDenied` エラーが発生する場合があります。本番環境では指定を推奨します。詳細は [トラブルシューティングガイド](../../../docs/guides/troubleshooting-guide.md#1-accessdenied-エラー) を参照してください。
 
 ## 設定パラメータ一覧
 
@@ -204,7 +204,7 @@ UC4 は以下のサービスを使用します:
 | AWS X-Ray | ほぼ全リージョンで利用可能 |
 | CloudWatch EMF | ほぼ全リージョンで利用可能 |
 
-> 詳細は [リージョン互換性マトリックス](../docs/region-compatibility.md) を参照。
+> 詳細は [リージョン互換性マトリックス](../../../docs/region-compatibility.md) を参照。
 
 ## 参考リンク
 
@@ -229,8 +229,8 @@ UC4 は以下のサービスを使用します:
 
 ### プロジェクト内ガイド
 
-- [FlexClone サーバーレスパターン（日本語）](../docs/guides/flexclone-serverless-patterns.md) — FlexClone + Step Functions + S3AP による連番フレーム処理パイプライン、マルチプロトコルマウント、業界別ユースケース
-- [FlexClone Serverless Patterns (English)](../docs/guides/flexclone-serverless-patterns-en.md) — FlexClone + Step Functions + S3AP sequential frame processing pipeline
+- [FlexClone サーバーレスパターン（日本語）](../../../docs/guides/flexclone-serverless-patterns.md) — FlexClone + Step Functions + S3AP による連番フレーム処理パイプライン、マルチプロトコルマウント、業界別ユースケース
+- [FlexClone Serverless Patterns (English)](../../../docs/guides/flexclone-serverless-patterns-en.md) — FlexClone + Step Functions + S3AP sequential frame processing pipeline
 
 ## 検証済み環境
 
@@ -279,7 +279,7 @@ VFX レンダリングワークフローでは、render input assets（テクス
 
 - **[Dynamic FlexCache Render/EDA Workflow](../dynamic-flexcache-render-workflow/README.md)** — Step Functions による自動化
 - [FlexCache AnyCast / DR](../flexcache-anycast-dr/README.md) — マルチリージョンレンダーファーム
-- [業界・ワークロード マッピング](../docs/industry-workload-mapping.md) — Pattern E: Media/VFX Render Farm
+- [業界・ワークロード マッピング](../../../docs/industry-workload-mapping.md) — Pattern E: Media/VFX Render Farm
 
 ### 期待される効果
 
@@ -350,7 +350,7 @@ sam local invoke DiscoveryFunction \
 python3 -m pytest tests/ -v
 ```
 
-詳細は [ローカルテスト クイックスタート](../docs/local-testing-quick-start.md) を参照してください。
+詳細は [ローカルテスト クイックスタート](../../../docs/local-testing-quick-start.md) を参照してください。
 
 ---
 
@@ -396,7 +396,7 @@ VFX レンダリング品質チェックの出力例:
 
 ## S3AP Compatibility
 
-S3 Access Points for FSx for ONTAP の互換性制約、トラブルシューティング、トリガーパターンについては [S3AP Compatibility Notes](../docs/s3ap-compatibility-notes.md) を参照してください。
+S3 Access Points for FSx for ONTAP の互換性制約、トラブルシューティング、トリガーパターンについては [S3AP Compatibility Notes](../../../docs/s3ap-compatibility-notes.md) を参照してください。
 
 ---
 

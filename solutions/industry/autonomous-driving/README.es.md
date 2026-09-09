@@ -216,7 +216,7 @@ UC9 utiliza los siguientes servicios:
 | AWS X-Ray | Disponible en casi todas las regiones |
 | CloudWatch EMF | Disponible en casi todas las regiones |
 
-> Si habilita SageMaker Batch Transform, verifique la disponibilidad del tipo de instancia en la región objetivo en la [Lista de servicios regionales de AWS](https://aws.amazon.com/about-aws/global-infrastructure/regional-product-services/) antes de la implementación. Para más detalles, consulte la [Matriz de compatibilidad regional](../docs/region-compatibility.md).
+> Si habilita SageMaker Batch Transform, verifique la disponibilidad del tipo de instancia en la región objetivo en la [Lista de servicios regionales de AWS](https://aws.amazon.com/about-aws/global-infrastructure/regional-product-services/) antes de la implementación. Para más detalles, consulte la [Matriz de compatibilidad regional](../../../docs/region-compatibility.md).
 
 ---
 
@@ -315,7 +315,7 @@ sam local invoke DiscoveryFunction \
 python3 -m pytest tests/ -v
 ```
 
-Para más detalles, consulte el [Inicio rápido de pruebas locales](../docs/local-testing-quick-start.md).
+Para más detalles, consulte el [Inicio rápido de pruebas locales](../../../docs/local-testing-quick-start.md).
 
 ---
 
@@ -365,7 +365,7 @@ Ejemplo de salida del pipeline de preprocesamiento de datos de conducción autó
 
 ## S3AP Compatibility
 
-Para conocer las restricciones de compatibilidad, la solución de problemas y los patrones de activación de los S3 Access Points for FSx for ONTAP, consulte las [S3AP Compatibility Notes](../docs/s3ap-compatibility-notes.md).
+Para conocer las restricciones de compatibilidad, la solución de problemas y los patrones de activación de los S3 Access Points for FSx for ONTAP, consulte las [S3AP Compatibility Notes](../../../docs/s3ap-compatibility-notes.md).
 
 ---
 

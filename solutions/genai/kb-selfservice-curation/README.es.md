@@ -128,7 +128,7 @@ Cuando establece `EnableWebSearch=true`, la Query Lambda genera una respuesta un
 - Separación de citas: `[Interno: nombre de archivo]` + `[Web: título](URL)`
 - Seguridad: los resultados web son datos no confiables, con defensa contra inyección de prompts implementada
 
-Detalles: [docs/investigations/agentcore-web-search-fsxn-integration.md](../../docs/investigations/agentcore-web-search-fsxn-integration.md)
+Detalles: [docs/investigations/agentcore-web-search-fsxn-integration.md](../../../docs/investigations/agentcore-web-search-fsxn-integration.md)
 
 ## Modelo operativo de autoservicio (democratización)
 
@@ -415,11 +415,11 @@ sam local invoke AutoSyncFunction --event events/auto-sync-event.json
 | Relacionado | Punto relevante |
 |---------|------------|
 | [Lista de verificación de requisitos previos de PoC](docs/poc-checklist.md) | Comprobaciones previas al despliegue (restricciones de S3 Vectors, perfiles de inferencia, etc.) |
-| [Runbook de limpieza](../docs/uc29-uc30-cleanup-runbook.md) | Procedimiento de desmantelamiento que incluye artefactos manuales (compartido por 2 UC) |
+| [Runbook de limpieza](../../../docs/uc29-uc30-cleanup-runbook.md) | Procedimiento de desmantelamiento que incluye artefactos manuales (compartido por 2 UC) |
 | [FC3 genai-rag-enterprise-files](../genai-rag-enterprise-files/) | RAG personalizado cuando se requiere un filtrado estricto de permisos (Pattern A) |
-| [Patrón de extensión: integración de Bedrock KB](../docs/extension-patterns.md) | Patrón genérico de KB gestionado + S3 AP |
+| [Patrón de extensión: integración de Bedrock KB](../../../docs/extension-patterns.md) | Patrón genérico de KB gestionado + S3 AP |
 | [Script de creación de KB](../scripts/create_bedrock_kb.py) | Creación de KB / fuente de datos (requisito previo de despliegue para este UC) |
-| [Mapeo de sector / carga de trabajo](../docs/industry-workload-mapping.md) | Guía de selección de UC |
+| [Mapeo de sector / carga de trabajo](../../../docs/industry-workload-mapping.md) | Guía de selección de UC |
 
 ## Endurecimiento operativo (implementado)
 

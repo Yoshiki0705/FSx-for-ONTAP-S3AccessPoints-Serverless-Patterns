@@ -292,7 +292,7 @@ These are composable, not mutually exclusive.
 - **Incident response**: on publish failure, check `/aws/lambda/<stack>-publish` and isolate S3 AP
   authorization (IAM + AP policy + ONTAP identity) from source-bucket read. On mis-publish, remove
   the object from the CloudFront origin path and re-run after correcting the source. See the
-  [incident response playbook](../../docs/incident-response-playbook.md).
+  [incident response playbook](../../../docs/incident-response-playbook.md).
 
 ## FAQ / common misconceptions
 
@@ -316,7 +316,7 @@ These are composable, not mutually exclusive.
 - To isolate delivery reads, consider a **FlexCache** volume (ONTAP-native) as the CloudFront-origin source.
 - **S3 AP is not a full S3 bucket** — it is an S3-compatible access boundary. Don't assume
   bucket-level features (Presigned URL, Versioning, Object Lock, Lifecycle, Static Website Hosting).
-  See [../../docs/s3ap-compatibility-notes.md](../../docs/s3ap-compatibility-notes.md).
+  See [../../docs/s3ap-compatibility-notes.md](../../../docs/s3ap-compatibility-notes.md).
 
 ## Source references (AWS official docs)
 
@@ -331,11 +331,11 @@ These are composable, not mutually exclusive.
 
 ## Related documents
 
-- [S3AP Compatibility Notes](../../docs/s3ap-compatibility-notes.md)
-- [S3AP Performance Considerations](../../docs/s3ap-performance-considerations.md)
-- [Cost calculator](../../docs/cost-calculator.md)
-- [Alternative architecture comparison](../../docs/comparison-alternatives.md)
-- [Incident response playbook](../../docs/incident-response-playbook.md)
+- [S3AP Compatibility Notes](../../../docs/s3ap-compatibility-notes.md)
+- [S3AP Performance Considerations](../../../docs/s3ap-performance-considerations.md)
+- [Cost calculator](../../../docs/cost-calculator.md)
+- [Alternative architecture comparison](../../../docs/comparison-alternatives.md)
+- [Incident response playbook](../../../docs/incident-response-playbook.md)
 - [Content Edge Delivery pattern](../content-delivery/README.md) (CDN-agnostic delivery)
 - [Media/VFX industry pattern](../../industry/media-vfx/README.md)
 

@@ -108,7 +108,7 @@ graph LR
 
 - **PoC / デモ環境**: Lambda を VPC 外で実行することを推奨。S3 AP の network origin が `internet` であれば VPC 外 Lambda から問題なくアクセス可能
 - **本番環境**: `PrivateRouteTableId` パラメータを指定し、S3 Gateway Endpoint にルートテーブルを関連付けること。未指定の場合、VPC 内 Lambda から S3 AP へのアクセスがタイムアウトする
-- 詳細は [トラブルシューティングガイド](../docs/guides/troubleshooting-guide.md#6-lambda-vpc-内実行時の-s3-ap-タイムアウト) を参照
+- 詳細は [トラブルシューティングガイド](../../../docs/guides/troubleshooting-guide.md#6-lambda-vpc-内実行時の-s3-ap-タイムアウト) を参照
 
 ## デプロイ手順
 
@@ -159,7 +159,7 @@ sam deploy \
 
 デプロイ後、指定したメールアドレスに SNS サブスクリプション確認メールが届きます。メール内のリンクをクリックして確認してください。
 
-> **注意**: `S3AccessPointName` を省略すると、IAM ポリシーが Alias ベースのみとなり `AccessDenied` エラーが発生する場合があります。本番環境では指定を推奨します。詳細は [トラブルシューティングガイド](../docs/guides/troubleshooting-guide.md#1-accessdenied-エラー) を参照してください。
+> **注意**: `S3AccessPointName` を省略すると、IAM ポリシーが Alias ベースのみとなり `AccessDenied` エラーが発生する場合があります。本番環境では指定を推奨します。詳細は [トラブルシューティングガイド](../../../docs/guides/troubleshooting-guide.md#1-accessdenied-エラー) を参照してください。
 
 ## 設定パラメータ一覧
 
@@ -229,7 +229,7 @@ UC1 は以下のサービスを使用します:
 | AWS X-Ray | ほぼ全リージョンで利用可能 |
 | CloudWatch EMF | ほぼ全リージョンで利用可能 |
 
-> 詳細は [リージョン互換性マトリックス](../docs/region-compatibility.md) を参照。
+> 詳細は [リージョン互換性マトリックス](../../../docs/region-compatibility.md) を参照。
 
 ## 参考リンク
 
@@ -338,7 +338,7 @@ sam local invoke DiscoveryFunction \
 python3 -m pytest tests/ -v
 ```
 
-詳細は [ローカルテスト クイックスタート](../docs/local-testing-quick-start.md) を参照してください。
+詳細は [ローカルテスト クイックスタート](../../../docs/local-testing-quick-start.md) を参照してください。
 
 ---
 
@@ -387,7 +387,7 @@ Step Functions 実行完了時の最終出力例:
 
 ## S3AP Compatibility
 
-S3 Access Points for FSx for ONTAP の互換性制約、トラブルシューティング、トリガーパターンについては [S3AP Compatibility Notes](../docs/s3ap-compatibility-notes.md) を参照してください。
+S3 Access Points for FSx for ONTAP の互換性制約、トラブルシューティング、トリガーパターンについては [S3AP Compatibility Notes](../../../docs/s3ap-compatibility-notes.md) を参照してください。
 
 ---
 

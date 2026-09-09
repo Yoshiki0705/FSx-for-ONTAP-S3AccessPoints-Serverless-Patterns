@@ -305,36 +305,135 @@ def check_link_language() -> list[str]:
     return findings
 
 
-def check_links() -> list[str]:
+BASELINE_NAME = "docs/agent/broken-link-baseline.txt"
+
+
+def _baseline_path() -> pathlib.Path:
+    """Where the recorded links live.
+
+    Derived at call time rather than bound at import: the tests monkeypatch `ROOT` to a
+    temporary tree, and a module-level constant would keep pointing at the real baseline
+    there -- letting a recorded key from the actual repository suppress a finding a
+    fixture was built to produce.
+
+    Returns:
+        Absolute path, under whatever `ROOT` currently is.
+    """
+    return ROOT / BASELINE_NAME
+
+
+def _link_scope(published: set[pathlib.Path]) -> list[pathlib.Path]:
+    """Every document whose links this checks.
+
+    Was a list of directories, and it covered 765 of the 1,378 tracked markdown files.
+    The 613 it did not open held **1,515 unresolved links** -- the whole of
+    `solutions/edge`, `solutions/flexcache`, `solutions/event-driven`, the per-locale
+    `docs/<lang>/` trees and `operations/`. The same off-by-one that was fixed for
+    `solutions/industry/*/docs` on 2026-08-12 was still present in the sibling groups,
+    because nothing looked there.
+
+    So the scope is now derived: every tracked markdown file, plus `llms.txt`, which is
+    entirely links and is read by crawlers that follow every one of them. A directory
+    added tomorrow is covered without anyone extending a tuple.
+
+    `check_link_language()` keeps the narrower `LINK_DIRS` scope deliberately -- it
+    carries about a hundred pre-existing cross-locale references, and widening both at
+    once would fail on untouched debt in two dimensions at the same time.
+
+    Args:
+        published: Files a reader can open, from `_in_repository()`.
+
+    Returns:
+        Absolute paths, sorted.
+    """
+    scope = [path for path in published if path.suffix == ".md" and path.is_file()]
+    extra = ROOT / "llms.txt"
+    if extra in published and extra.is_file():
+        scope.append(extra)
+    return sorted(scope)
+
+
+def _baseline() -> set[str]:
+    """Unresolved links recorded as pre-existing.
+
+    Keyed by `<file>\t<target>` rather than by line number: a line number moves when a
+    paragraph is added above it, which would turn every edit into a baseline update and
+    teach people to regenerate the file without reading it. Keyed this way, a genuinely
+    new broken target in an already-listed file still fails.
+
+    Returns:
+        The recorded keys, empty when the file is absent.
+    """
+    path = _baseline_path()
+    if not path.is_file():
+        return set()
+    return {
+        line.strip()
+        for line in path.read_text(encoding="utf-8").split("\n")
+        if line.strip() and not line.startswith("#")
+    }
+
+
+def check_links(*, write_baseline: bool = False) -> list[str]:
     published = _in_repository()
+    recorded = set() if write_baseline else _baseline()
     findings = []
-    for name in LINK_DIRS + _pattern_doc_dirs():
-        parent = ROOT / name
-        if not parent.is_dir():
-            continue
-        for md in sorted(parent.glob("*.md")):
-            if published and md not in published:
-                continue
-            lines = md.read_text(encoding="utf-8").split("\n")
-            for number, raw in enumerate(lines, start=1):
-                # An inline code span quotes a name rather than referring to a file, and
-                # a doc explaining the syntax writes the whole `![alt](path)` form. The
-                # `](` prefix alone does not distinguish that from a real reference.
-                line = CODE_SPAN.sub("", raw)
-                for kind, pattern in (("link", RELATIVE_LINK), ("image", RELATIVE_IMAGE), ("image", HTML_IMAGE)):
-                    for match in pattern.finditer(line):
-                        target = (md.parent / match.group(1)).resolve()
-                        if not target.exists():
-                            reason = "resolves to nothing"
-                        elif published and target not in published:
-                            reason = "resolves to a file that is not in the repository"
-                        else:
-                            continue
-                        findings.append(f"{md.relative_to(ROOT)}:{number}: {kind} {reason}: {match.group(1)}")
+    current: set[str] = set()
+    for md in _link_scope(published):
+        relative = md.relative_to(ROOT)
+        for number, raw in enumerate(md.read_text(encoding="utf-8").split("\n"), start=1):
+            # An inline code span quotes a name rather than referring to a file, and
+            # a doc explaining the syntax writes the whole `![alt](path)` form. The
+            # `](` prefix alone does not distinguish that from a real reference.
+            line = CODE_SPAN.sub("", raw)
+            for kind, pattern in (("link", RELATIVE_LINK), ("image", RELATIVE_IMAGE), ("image", HTML_IMAGE)):
+                for match in pattern.finditer(line):
+                    target = (md.parent / match.group(1)).resolve()
+                    if not target.exists():
+                        reason = "resolves to nothing"
+                    elif published and target not in published:
+                        reason = "resolves to a file that is not in the repository"
+                    else:
+                        continue
+                    key = f"{relative}\t{match.group(1)}"
+                    current.add(key)
+                    if key in recorded:
+                        continue
+                    findings.append(f"{relative}:{number}: {kind} {reason}: {match.group(1)}")
+    if write_baseline:
+        _baseline_path().write_text(
+            "# Unresolved relative links present when the link check's scope was widened.\n"
+            "# Generated -- regenerate with: python3 scripts/check_doc_pairs.py --write-baseline\n"
+            "#\n"
+            "# One line per <file>TAB<target>. Line numbers are deliberately absent: they move\n"
+            "# when a paragraph is added above, and a baseline that churns on every edit gets\n"
+            "# regenerated without being read.\n"
+            "#\n"
+            "# This file may only get SHORTER. Every line is a link a reader cannot follow --\n"
+            "# GitHub renders it as plain text, so the page looks fine and the reference is\n"
+            "# silently gone. Mostly per-locale documents linking siblings that were never\n"
+            "# translated, and pattern groups outside solutions/industry carrying the depth\n"
+            "# mistake that was fixed there on 2026-08-12.\n" + "".join(f"{key}\n" for key in sorted(current)),
+            encoding="utf-8",
+        )
+        print(f"broken-link baseline: wrote {len(current)} entr(ies) to {BASELINE_NAME}")
+    else:
+        stale = sorted(recorded - current)
+        if stale:
+            findings.append(
+                f"{BASELINE_NAME}: {len(stale)} recorded link(s) now resolve. "
+                f"The baseline may only shrink, so remove them: {', '.join(stale[:3])}"
+                + (" …" if len(stale) > 3 else "")
+            )
     return findings
 
 
 def main() -> int:
+    write_baseline = "--write-baseline" in sys.argv
+    if write_baseline:
+        check_links(write_baseline=True)
+        return 0
+
     pairs = find_pairs()
     if not pairs:
         print("DOC PAIRS: FAIL — found no pairs at all, so this check proves nothing")

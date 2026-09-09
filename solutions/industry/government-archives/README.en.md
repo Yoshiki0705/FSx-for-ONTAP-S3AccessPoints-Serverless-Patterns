@@ -1,7 +1,7 @@
 # UC16: Government Agencies — Public Records Digital Archive & FOIA Response
 
 🌐 **Language / 言語**: [日本語](README.md) | English | [한국어](README.ko.md) | [简体中文](README.zh-CN.md) | [繁體中文](README.zh-TW.md) | [Français](README.fr.md) | [Deutsch](README.de.md) | [Español](README.es.md)
-📚 **Documentation**: [Architecture](docs/architecture.md) | [Demo Script](docs/demo-guide.md) | [Troubleshooting](../docs/phase7-troubleshooting.md)
+📚 **Documentation**: [Architecture](docs/architecture.md) | [Demo Script](docs/demo-guide.md) | [Troubleshooting](../../../docs/phase7-troubleshooting.md)
 
 ## Overview
 
@@ -84,7 +84,7 @@ After a FOIA request is received, the target documents are stored under the `arc
 <!-- SCREENSHOT: phase7-uc16-s3-archives-uploaded.png
      Content: List of PDF documents under the archives/ prefix on the S3 AP
      Mask: account ID, S3 AP ARN, document names -->
-![UC16: Confirming stored public records](../docs/screenshots/masked/phase7/phase7-uc16-s3-archives-uploaded.png)
+![UC16: Confirming stored public records](../../../docs/screenshots/masked/phase7/phase7-uc16-s3-archives-uploaded.png)
 
 ### 2. Viewing redacted documents
 
@@ -94,7 +94,7 @@ replaced with the `[REDACTED]` marker. **The screen that general staff review be
 <!-- SCREENSHOT: phase7-uc16-redacted-text-preview.png
      Content: Redacted text preview in the S3 console, [REDACTED] markers visible
      Mask: account ID, redacted document names (sample names only) -->
-![UC16: Redacted document preview](../docs/screenshots/masked/phase7/phase7-uc16-redacted-text-preview.png)
+![UC16: Redacted document preview](../../../docs/screenshots/masked/phase7/phase7-uc16-redacted-text-preview.png)
 
 ### 3. Redaction metadata (sidecar JSON)
 
@@ -104,7 +104,7 @@ Offsets, entity types (NAME / EMAIL / SSN, etc.), and confidence are recorded.
 <!-- SCREENSHOT: phase7-uc16-redaction-metadata-json.png
      Content: Formatted view of redaction-metadata/*.json
      Mask: account ID, original document names -->
-![UC16: Redaction metadata JSON](../docs/screenshots/masked/phase7/phase7-uc16-redaction-metadata-json.png)
+![UC16: Redaction metadata JSON](../../../docs/screenshots/masked/phase7/phase7-uc16-redaction-metadata-json.png)
 
 ### 4. FOIA deadline reminder (SNS email notification)
 
@@ -114,7 +114,7 @@ When overdue, an OVERDUE notification with severity=HIGH.
 <!-- SCREENSHOT: phase7-uc16-foia-reminder-email.png
      Content: FOIA_DEADLINE_APPROACHING email shown in an email client
      Mask: recipient/sender emails, request_id (sample ID only) -->
-![UC16: FOIA deadline reminder email](../docs/screenshots/masked/phase7/phase7-uc16-foia-reminder-email.png)
+![UC16: FOIA deadline reminder email](../../../docs/screenshots/masked/phase7/phase7-uc16-foia-reminder-email.png)
 
 ### 5. NARA GRS retention schedule (DynamoDB Explorer)
 
@@ -124,7 +124,7 @@ The `fsxn-uc16-demo-retention` table. For each document, the NARA GRS code
 <!-- SCREENSHOT: phase7-uc16-dynamodb-retention.png
      Content: List of items in the retention table in DynamoDB Explorer
      Mask: account ID, document_key (sample names only) -->
-![UC16: Retention schedule table](../docs/screenshots/masked/phase7/phase7-uc16-dynamodb-retention.png)
+![UC16: Retention schedule table](../../../docs/screenshots/masked/phase7/phase7-uc16-dynamodb-retention.png)
 
 
 ## Success Metrics
@@ -328,7 +328,7 @@ sam local invoke DiscoveryFunction \
 python3 -m pytest tests/ -v
 ```
 
-For details, see [Local Testing Quick Start](../docs/local-testing-quick-start.md).
+For details, see [Local Testing Quick Start](../../../docs/local-testing-quick-start.md).
 
 ---
 
@@ -383,7 +383,7 @@ Example output of public records archiving / FOIA processing:
 
 ## S3AP Compatibility
 
-For compatibility constraints, troubleshooting, and trigger patterns for S3 Access Points for FSx for ONTAP, see [S3AP Compatibility Notes](../docs/s3ap-compatibility-notes.md).
+For compatibility constraints, troubleshooting, and trigger patterns for S3 Access Points for FSx for ONTAP, see [S3AP Compatibility Notes](../../../docs/s3ap-compatibility-notes.md).
 
 ---
 

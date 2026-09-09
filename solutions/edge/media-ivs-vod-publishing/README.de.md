@@ -278,7 +278,7 @@ Diese sind **kombinierbar**, nicht exklusiv.
 - **Incident Response**: bei Publish-Fehler `/aws/lambda/<stack>-publish` prüfen und S3-AP-Autorisierung
   (IAM + AP-Policy + ONTAP-Identität) vom Quell-S3-Lesen isolieren. Bei Fehlveröffentlichung Objekt aus
   dem CloudFront-Origin entfernen und nach Korrektur erneut ausführen. Siehe
-  [Incident-Response-Playbook](../../docs/incident-response-playbook.md).
+  [Incident-Response-Playbook](../../../docs/incident-response-playbook.md).
 
 ## FAQ / verbreitete Missverständnisse
 
@@ -303,7 +303,7 @@ Diese sind **kombinierbar**, nicht exklusiv.
 - Zur Trennung der Auslieferungs-Lesevorgänge ein **FlexCache**-Volume (ONTAP-nativ) als CloudFront-Origin-Quelle erwägen.
 - **Ein S3 AP ist kein vollständiger S3-Bucket** — es ist eine S3-kompatible Zugriffsgrenze. Keine
   Bucket-Funktionen (Presigned URL, Versioning, Object Lock, Lifecycle, Static Website Hosting) voraussetzen.
-  Siehe [../../docs/s3ap-compatibility-notes.md](../../docs/s3ap-compatibility-notes.md).
+  Siehe [../../docs/s3ap-compatibility-notes.md](../../../docs/s3ap-compatibility-notes.md).
 
 ## Referenzen (offizielle AWS-Dokumentation)
 
@@ -316,11 +316,11 @@ Diese sind **kombinierbar**, nicht exklusiv.
 
 ## Verwandte Dokumente
 
-- [S3AP-Kompatibilitätshinweise](../../docs/s3ap-compatibility-notes.md)
-- [S3AP-Leistungsüberlegungen](../../docs/s3ap-performance-considerations.md)
-- [Kostenrechner](../../docs/cost-calculator.md)
-- [Vergleich alternativer Architekturen](../../docs/comparison-alternatives.md)
-- [Incident-Response-Playbook](../../docs/incident-response-playbook.md)
+- [S3AP-Kompatibilitätshinweise](../../../docs/s3ap-compatibility-notes.md)
+- [S3AP-Leistungsüberlegungen](../../../docs/s3ap-performance-considerations.md)
+- [Kostenrechner](../../../docs/cost-calculator.md)
+- [Vergleich alternativer Architekturen](../../../docs/comparison-alternatives.md)
+- [Incident-Response-Playbook](../../../docs/incident-response-playbook.md)
 - [Content-Edge-Delivery-Muster](../content-delivery/README.md)
 - [Media/VFX-Branchenmuster](../../industry/media-vfx/README.md)
 

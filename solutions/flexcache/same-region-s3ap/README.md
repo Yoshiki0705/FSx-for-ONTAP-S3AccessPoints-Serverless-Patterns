@@ -41,7 +41,7 @@ graph LR
 
 ## 前提条件
 
-> 📐 **設計ガイド**: S3 AP のディレクトリ設計、性能特性、PoC チェックリストは [設計考慮事項](../../docs/design-considerations.md) を参照。
+> 📐 **設計ガイド**: S3 AP のディレクトリ設計、性能特性、PoC チェックリストは [設計考慮事項](../../../docs/design-considerations.md) を参照。
 
 - FSx for ONTAP ファイルシステム（ONTAP 9.12.1 以上）
 - 2 つの SVM（Origin 用 / Cache 用。同一 SVM でも可だが分離を推奨）

@@ -106,7 +106,7 @@ curl -X POST https://<api-id>.execute-api.ap-northeast-1.amazonaws.com/prod/acti
 - Graceful degradation: on web search failure, behaves the same as `generate_brief`
 - Citations: returns URL + title + publication date in the `web_citations` field
 
-Details: [docs/investigations/agentcore-web-search-fsxn-integration.md](../../docs/investigations/agentcore-web-search-fsxn-integration.md)
+Details: [docs/investigations/agentcore-web-search-fsxn-integration.md](../../../docs/investigations/agentcore-web-search-fsxn-integration.md)
 
 ## AgentCore MCP Gateway (Workshop Module 09 Validated)
 
@@ -343,15 +343,15 @@ sam local invoke DataPrepFunction --event events/data-prep-event.json
 | Related | Point |
 |------|---------|
 | [AWS Workshop: FSx for ONTAP S3 AP (EDA)](https://catalog.us-east-1.prod.workshops.aws/workshops/9cd82e0b-8348-456b-932a-818b9e5825a1/en-US) | Quick + AgentCore + S3 AP hands-on (Modules 08-12) |
-| [Workshop EDA Integration Guide](../../docs/en/workshop-eda-integration.md) | Workshop module ↔ repository UC mapping |
+| [Workshop EDA Integration Guide](../../../docs/en/workshop-eda-integration.md) | Workshop module ↔ repository UC mapping |
 | [PoC prerequisites checklist](docs/poc-checklist.md) | Quick enablement, Glue/LF, inference profiles, etc. |
 | [Amazon Quick console setup steps](docs/quick-console-setup.md) | Index/Sight/Flows connection (with screenshot guidance) |
 | [Lake Formation TBAC notes](docs/lake-formation-tbac.md) | Per-role data visibility (LF-TBAC + Quick RLS) |
 | [Glue table creation script](scripts/create_glue_tables.sh) | DDL for Quick Sight/Athena (Parquet recommended) |
-| [Cleanup runbook](../docs/uc29-uc30-cleanup-runbook.md) | Teardown steps including manual artifacts (shared by the 2 UCs) |
+| [Cleanup runbook](../../../docs/uc29-uc30-cleanup-runbook.md) | Teardown steps including manual artifacts (shared by the 2 UCs) |
 | [UC29 genai-kb-selfservice-curation](../genai-kb-selfservice-curation/) | Self-service ingestion into a managed Bedrock KB (same role layout) |
 | [FC3 genai-rag-enterprise-files](../genai-rag-enterprise-files/) | Custom RAG requiring strict permission filtering |
-| [Industry and workload mapping](../docs/industry-workload-mapping.md) | UC selection guide |
+| [Industry and workload mapping](../../../docs/industry-workload-mapping.md) | UC selection guide |
 
 ## Operational hardening (implemented)
 

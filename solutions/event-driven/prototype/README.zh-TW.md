@@ -158,8 +158,8 @@ event-driven-prototype/
 
 ## 相關文件
 
-- [事件驅動架構設計](../docs/event-driven/architecture-design.md)
-- [移轉指南](../docs/event-driven/migration-guide.md)
+- [事件驅動架構設計](../../../docs/event-driven/architecture-design.md)
+- [移轉指南](../../../docs/event-driven/migration-guide.md)
 - [UC11 Retail Catalog](../retail-catalog/README.md)
 
 ---

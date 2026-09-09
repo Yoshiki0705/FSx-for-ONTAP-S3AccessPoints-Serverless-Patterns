@@ -75,7 +75,7 @@ Amazon IVS
 
 - **Presigned URL 非対応** → 視聴者認証は CloudFront ネイティブの署名付き URL/Cookie を使用。
 - フル S3 バケットではない: Object Versioning / Object Lock / Lifecycle / Static Website Hosting は非対応
-  （操作ごとに [../../docs/s3ap-compatibility-notes.md](../../docs/s3ap-compatibility-notes.md) で確認）。
+  （操作ごとに [../../docs/s3ap-compatibility-notes.md](../../../docs/s3ap-compatibility-notes.md) で確認）。
 - `PutObject` は最大 5 GB（超過は multipart）。
 - 二層認可: IAM/AP ポリシー **と** ONTAP ファイルシステム identity（UNIX/Windows）の両方が許可すること。
 - `NetworkOrigin`（Internet か VPC か）は作成後に変更不可。
@@ -180,7 +180,7 @@ flowchart TD
 > live-to-VOD** か（→ IVS + S3 + CloudFront）で選ぶ。これらは排他ではなく組み合わせ可能。
 
 > **コスト**（FinOps lens）: 支配的コストは FSx for ONTAP のスループット/容量、CloudFront egress、録画の
-> S3 ストレージであり、Lambda ではない。[../../docs/cost-calculator.md](../../docs/cost-calculator.md) を参照し、
+> S3 ストレージであり、Lambda ではない。[../../docs/cost-calculator.md](../../../docs/cost-calculator.md) を参照し、
 > サンプル実行ではなく実測トラフィックでサイジングすること。
 
 ## 信頼性: EventBridge 配信セマンティクス
@@ -263,6 +263,6 @@ Amazon IVS の EventBridge イベントは **ベストエフォート** 配信�
 - [Direct recording experiment](direct-recording-experiment.md)
 - [Supported path notes](supported-path-ivs-s3-fsx-cloudfront.md)
 - [DemoMode ガイド](docs/demo-guide.md)
-- [S3AP 互換性ノート](../../docs/s3ap-compatibility-notes.md) / [S3AP 性能](../../docs/s3ap-performance-considerations.md)
-- [コスト試算](../../docs/cost-calculator.md)
+- [S3AP 互換性ノート](../../../docs/s3ap-compatibility-notes.md) / [S3AP 性能](../../../docs/s3ap-performance-considerations.md)
+- [コスト試算](../../../docs/cost-calculator.md)
 - [Content Edge Delivery パターン](../content-delivery/README.md)

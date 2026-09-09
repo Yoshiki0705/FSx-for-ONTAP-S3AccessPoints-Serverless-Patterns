@@ -129,7 +129,7 @@ Lorsque vous définissez `EnableWebSearch=true`, la Query Lambda génère une r�
 - Séparation des citations : `[Interne : nom de fichier]` + `[Web : titre](URL)`
 - Sécurité : les résultats Web sont des données non fiables, avec une défense contre l'injection de prompt en place
 
-Détails : [docs/investigations/agentcore-web-search-fsxn-integration.md](../../docs/investigations/agentcore-web-search-fsxn-integration.md)
+Détails : [docs/investigations/agentcore-web-search-fsxn-integration.md](../../../docs/investigations/agentcore-web-search-fsxn-integration.md)
 
 ## Modèle opérationnel self-service (démocratisation)
 
@@ -416,11 +416,11 @@ sam local invoke AutoSyncFunction --event events/auto-sync-event.json
 | Connexe | Point pertinent |
 |---------|------------|
 | [Liste de contrôle des prérequis PoC](docs/poc-checklist.md) | Vérifications avant déploiement (contraintes S3 Vectors, profils d'inférence, etc.) |
-| [Runbook de nettoyage](../docs/uc29-uc30-cleanup-runbook.md) | Procédure de démantèlement incluant les artefacts manuels (partagée par 2 UC) |
+| [Runbook de nettoyage](../../../docs/uc29-uc30-cleanup-runbook.md) | Procédure de démantèlement incluant les artefacts manuels (partagée par 2 UC) |
 | [FC3 genai-rag-enterprise-files](../genai-rag-enterprise-files/) | RAG personnalisé lorsqu'un filtrage strict des permissions est requis (Pattern A) |
-| [Modèle d'extension : intégration Bedrock KB](../docs/extension-patterns.md) | Modèle générique KB managé + S3 AP |
+| [Modèle d'extension : intégration Bedrock KB](../../../docs/extension-patterns.md) | Modèle générique KB managé + S3 AP |
 | [Script de création de KB](../scripts/create_bedrock_kb.py) | Création de KB / source de données (prérequis de déploiement pour ce UC) |
-| [Cartographie secteur / charge de travail](../docs/industry-workload-mapping.md) | Guide de sélection de UC |
+| [Cartographie secteur / charge de travail](../../../docs/industry-workload-mapping.md) | Guide de sélection de UC |
 
 ## Renforcement opérationnel (implémenté)
 

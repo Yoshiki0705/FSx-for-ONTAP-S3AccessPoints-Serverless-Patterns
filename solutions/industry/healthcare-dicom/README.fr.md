@@ -134,7 +134,7 @@ sam deploy \
 
 Après le déploiement, un e-mail de confirmation d'abonnement SNS est envoyé à l'adresse e-mail spécifiée.
 
-> **Remarque** : si vous omettez `S3AccessPointName`, la politique IAM ne repose que sur l'Alias et une erreur `AccessDenied` peut se produire. Il est recommandé de le spécifier dans les environnements de production. Pour plus de détails, consultez le [Guide de dépannage](../docs/guides/troubleshooting-guide.md#1-accessdenied-エラー).
+> **Remarque** : si vous omettez `S3AccessPointName`, la politique IAM ne repose que sur l'Alias et une erreur `AccessDenied` peut se produire. Il est recommandé de le spécifier dans les environnements de production. Pour plus de détails, consultez le [Guide de dépannage](../../../docs/guides/troubleshooting-guide.md#1-accessdenied-エラー).
 
 ## Liste des paramètres de configuration
 
@@ -212,7 +212,7 @@ UC5 utilise les services suivants :
 | AWS X-Ray | Disponible dans presque toutes les régions |
 | CloudWatch EMF | Disponible dans presque toutes les régions |
 
-> L'API Comprehend Medical est appelée via un Cross-Region Client. Vérifiez vos exigences de résidence des données. Pour plus de détails, consultez la [Matrice de compatibilité des régions](../docs/region-compatibility.md).
+> L'API Comprehend Medical est appelée via un Cross-Region Client. Vérifiez vos exigences de résidence des données. Pour plus de détails, consultez la [Matrice de compatibilité des régions](../../../docs/region-compatibility.md).
 
 ## Références
 
@@ -319,7 +319,7 @@ sam local invoke DiscoveryFunction \
 python3 -m pytest tests/ -v
 ```
 
-Pour plus de détails, consultez le [Démarrage rapide des tests locaux](../docs/local-testing-quick-start.md).
+Pour plus de détails, consultez le [Démarrage rapide des tests locaux](../../../docs/local-testing-quick-start.md).
 
 ---
 
@@ -364,7 +364,7 @@ Exemple de sortie du pipeline d'anonymisation DICOM :
 
 ## S3AP Compatibility
 
-Pour les contraintes de compatibilité, le dépannage et les modèles de déclenchement des S3 Access Points for FSx for ONTAP, consultez les [S3AP Compatibility Notes](../docs/s3ap-compatibility-notes.md).
+Pour les contraintes de compatibilité, le dépannage et les modèles de déclenchement des S3 Access Points for FSx for ONTAP, consultez les [S3AP Compatibility Notes](../../../docs/s3ap-compatibility-notes.md).
 
 ---
 

@@ -166,7 +166,7 @@ UC10은 다음 서비스를 사용합니다:
 | AWS X-Ray | 거의 모든 리전에서 이용 가능 |
 | CloudWatch EMF | 거의 모든 리전에서 이용 가능 |
 
-> Cross-Region Client을 통해 Textract API를 호출합니다. 데이터 레지던시 요건을 확인하세요. 자세한 내용은 [리전 호환성 매트릭스](../docs/region-compatibility.md)를 참조하세요.
+> Cross-Region Client을 통해 Textract API를 호출합니다. 데이터 레지던시 요건을 확인하세요. 자세한 내용은 [리전 호환성 매트릭스](../../../docs/region-compatibility.md)를 참조하세요.
 
 ## 참조 링크
 
@@ -271,7 +271,7 @@ sam local invoke DiscoveryFunction \
 python3 -m pytest tests/ -v
 ```
 
-자세한 내용은 [로컬 테스트 퀵 스타트](../docs/local-testing-quick-start.md)를 참조하세요.
+자세한 내용은 [로컬 테스트 퀵 스타트](../../../docs/local-testing-quick-start.md)를 참조하세요.
 
 ---
 
@@ -321,7 +321,7 @@ BIM 모델 관리 파이프라인의 출력 예:
 
 ## S3AP Compatibility
 
-S3 Access Points for FSx for ONTAP의 호환성 제약, 트러블슈팅, 트리거 패턴에 대해서는 [S3AP Compatibility Notes](../docs/s3ap-compatibility-notes.md)를 참조하세요.
+S3 Access Points for FSx for ONTAP의 호환성 제약, 트러블슈팅, 트리거 패턴에 대해서는 [S3AP Compatibility Notes](../../../docs/s3ap-compatibility-notes.md)를 참조하세요.
 
 ---
 

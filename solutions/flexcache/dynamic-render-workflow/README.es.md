@@ -161,8 +161,8 @@ aws stepfunctions start-execution \
 ## Enlaces relacionados
 
 - [Patrón FlexCache AnyCast / DR](../flexcache-anycast-dr/README.md)
-- [Matriz de compatibilidad](../docs/support-matrix-fsx-ontap-flexcache-s3ap.md)
-- [Mapeo de sector·carga de trabajo](../docs/industry-workload-mapping.md)
+- [Matriz de compatibilidad](../../../docs/support-matrix-fsx-ontap-flexcache-s3ap.md)
+- [Mapeo de sector·carga de trabajo](../../../docs/industry-workload-mapping.md)
 - [media-vfx/](../media-vfx/README.md)
 - [semiconductor-eda/](../semiconductor-eda/README.md)
 
@@ -256,7 +256,7 @@ sam local invoke DiscoveryFunction \
 python3 -m pytest tests/ -v
 ```
 
-Para más detalles, consulte el [Inicio rápido de pruebas locales](../docs/local-testing-quick-start.md).
+Para más detalles, consulte el [Inicio rápido de pruebas locales](../../../docs/local-testing-quick-start.md).
 
 ---
 

@@ -136,7 +136,7 @@ sam deploy \
 
 Nach der Bereitstellung wird eine SNS-Abonnement-Bestätigungs-E-Mail an die von Ihnen angegebene Adresse gesendet.
 
-> **Hinweis**: Wenn Sie `S3AccessPointName` weglassen, wird die IAM-Richtlinie nur Alias-basiert, was einen `AccessDenied`-Fehler verursachen kann. Für Produktionsumgebungen wird die Angabe empfohlen. Weitere Einzelheiten finden Sie im [Leitfaden zur Fehlerbehebung](../docs/guides/troubleshooting-guide.md#1-accessdenied-エラー).
+> **Hinweis**: Wenn Sie `S3AccessPointName` weglassen, wird die IAM-Richtlinie nur Alias-basiert, was einen `AccessDenied`-Fehler verursachen kann. Für Produktionsumgebungen wird die Angabe empfohlen. Weitere Einzelheiten finden Sie im [Leitfaden zur Fehlerbehebung](../../../docs/guides/troubleshooting-guide.md#1-accessdenied-エラー).
 
 ## Liste der Konfigurationsparameter
 
@@ -205,7 +205,7 @@ UC3 verwendet die folgenden Dienste:
 | AWS X-Ray | In fast allen Regionen verfügbar |
 | CloudWatch EMF | In fast allen Regionen verfügbar |
 
-> Weitere Einzelheiten finden Sie in der [Regionskompatibilitätsmatrix](../docs/region-compatibility.md).
+> Weitere Einzelheiten finden Sie in der [Regionskompatibilitätsmatrix](../../../docs/region-compatibility.md).
 
 ## Referenzlinks
 
@@ -313,7 +313,7 @@ sam local invoke DiscoveryFunction \
 python3 -m pytest tests/ -v
 ```
 
-Weitere Einzelheiten finden Sie im [Schnellstart für lokale Tests](../docs/local-testing-quick-start.md).
+Weitere Einzelheiten finden Sie im [Schnellstart für lokale Tests](../../../docs/local-testing-quick-start.md).
 
 ---
 
@@ -362,7 +362,7 @@ Beispielausgabe von Sensordaten-ETL + Bildanalyse:
 
 ## S3AP Compatibility
 
-Informationen zu Kompatibilitätsbeschränkungen, Fehlerbehebung und Trigger-Mustern der S3 Access Points for FSx for ONTAP finden Sie in den [S3AP Compatibility Notes](../docs/s3ap-compatibility-notes.md).
+Informationen zu Kompatibilitätsbeschränkungen, Fehlerbehebung und Trigger-Mustern der S3 Access Points for FSx for ONTAP finden Sie in den [S3AP Compatibility Notes](../../../docs/s3ap-compatibility-notes.md).
 
 ---
 

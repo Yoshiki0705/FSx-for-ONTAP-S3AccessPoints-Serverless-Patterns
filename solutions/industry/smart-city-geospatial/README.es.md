@@ -1,7 +1,7 @@
 # UC17: Smart City — Análisis geoespacial y planificación urbana
 
 🌐 **Language / 言語**: [日本語](README.md) | [English](README.en.md) | [한국어](README.ko.md) | [简体中文](README.zh-CN.md) | [繁體中文](README.zh-TW.md) | [Français](README.fr.md) | [Deutsch](README.de.md) | Español
-📚 **Documentación**: [Arquitectura](docs/architecture.md) | [Script de demostración](docs/demo-guide.md) | [Solución de problemas](../docs/phase7-troubleshooting.md)
+📚 **Documentación**: [Arquitectura](docs/architecture.md) | [Script de demostración](docs/demo-guide.md) | [Solución de problemas](../../../docs/phase7-troubleshooting.md)
 
 ## Descripción general
 
@@ -83,7 +83,7 @@ Se colocan GeoTIFF / Shapefile / LAS bajo el prefijo `gis/YYYY/MM/`.
 <!-- SCREENSHOT: phase7-uc17-s3-gis-uploaded.png
      Contenido: listado del prefijo gis/ del S3 AP, formatos de archivo mixtos
      Máscara: ID de cuenta, ARN del S3 AP, nombres de archivo derivados de coordenadas reales -->
-![UC17: confirmación del almacenamiento de datos SIG](../docs/screenshots/masked/phase7/phase7-uc17-s3-gis-uploaded.png)
+![UC17: confirmación del almacenamiento de datos SIG](../../../docs/screenshots/masked/phase7/phase7-uc17-s3-gis-uploaded.png)
 
 ### 2. Informe de planificación urbana generado por Bedrock (vista Markdown)
 
@@ -100,7 +100,7 @@ automáticamente un informe en japonés para el personal municipal.
        #### Medidas prioritarias a considerar
        1. Reforzar las medidas contra inundaciones ... 2. Reforzar las medidas antisísmicas ... 3. Reforzar las medidas contra deslizamientos de laderas ...
      Máscara: ID de cuenta, nombre del municipio (solo se muestra el nombre de muestra) -->
-![UC17: informe generado por Bedrock](../docs/screenshots/masked/phase7/phase7-uc17-bedrock-report.png)
+![UC17: informe generado por Bedrock](../../../docs/screenshots/masked/phase7/phase7-uc17-bedrock-report.png)
 
 ### 3. JSON del mapa de riesgo de desastres
 
@@ -110,7 +110,7 @@ en cuatro niveles: CRITICAL / HIGH / MEDIUM / LOW.
 <!-- SCREENSHOT: phase7-uc17-risk-map-json.png
      Contenido: vista formateada de risk-maps/*.json (level de flood, earthquake, landslide resaltado)
      Máscara: ID de cuenta -->
-![UC17: mapa de riesgo de desastres](../docs/screenshots/masked/phase7/phase7-uc17-risk-map-json.png)
+![UC17: mapa de riesgo de desastres](../../../docs/screenshots/masked/phase7/phase7-uc17-risk-map-json.png)
 
 ### 4. Distribución del uso del suelo (JSON)
 
@@ -120,7 +120,7 @@ Proporciones de residential / commercial / forest / water / road, etc.
 <!-- SCREENSHOT: phase7-uc17-landuse-distribution.png
      Contenido: contenido de landuse/*.json (residential: 0.5, forest: 0.3, etc.)
      Máscara: ID de cuenta -->
-![UC17: distribución del uso del suelo](../docs/screenshots/masked/phase7/phase7-uc17-landuse-distribution.png)
+![UC17: distribución del uso del suelo](../../../docs/screenshots/masked/phase7/phase7-uc17-landuse-distribution.png)
 
 ### 5. Visualización del cambio en series temporales (DynamoDB Explorer)
 
@@ -130,7 +130,7 @@ distribuciones pasadas del uso del suelo con los valores actuales para calcular 
 <!-- SCREENSHOT: phase7-uc17-dynamodb-landuse-history.png
      Contenido: elementos de series temporales de la tabla landuse-history en DynamoDB Explorer
      Máscara: ID de cuenta, area_id -->
-![UC17: tabla de cambios en series temporales](../docs/screenshots/masked/phase7/phase7-uc17-dynamodb-landuse-history.png)
+![UC17: tabla de cambios en series temporales](../../../docs/screenshots/masked/phase7/phase7-uc17-dynamodb-landuse-history.png)
 
 
 ## Success Metrics
@@ -304,7 +304,7 @@ sam local invoke DiscoveryFunction \
 python3 -m pytest tests/ -v
 ```
 
-Para más detalles, consulte el [Inicio rápido de pruebas locales](../docs/local-testing-quick-start.md).
+Para más detalles, consulte el [Inicio rápido de pruebas locales](../../../docs/local-testing-quick-start.md).
 
 ---
 
@@ -356,7 +356,7 @@ Ejemplo de salida del canal de análisis de datos geoespaciales:
 
 ## S3AP Compatibility
 
-Para conocer las restricciones de compatibilidad, la solución de problemas y los patrones de activación de S3 Access Points for FSx for ONTAP, consulte las [S3AP Compatibility Notes](../docs/s3ap-compatibility-notes.md).
+Para conocer las restricciones de compatibilidad, la solución de problemas y los patrones de activación de S3 Access Points for FSx for ONTAP, consulte las [S3AP Compatibility Notes](../../../docs/s3ap-compatibility-notes.md).
 
 ---
 

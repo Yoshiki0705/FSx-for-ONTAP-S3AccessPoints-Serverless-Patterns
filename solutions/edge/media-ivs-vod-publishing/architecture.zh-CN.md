@@ -69,7 +69,7 @@ Amazon IVS
 
 - **不支持 Presigned URL** → 观众认证用 CloudFront 签名 URL/Cookie。
 - 非完整 S3 存储桶：不支持 Object Versioning / Object Lock / Lifecycle / Static Website Hosting
-  （按操作在 [../../docs/s3ap-compatibility-notes.md](../../docs/s3ap-compatibility-notes.md) 核对）。
+  （按操作在 [../../docs/s3ap-compatibility-notes.md](../../../docs/s3ap-compatibility-notes.md) 核对）。
 - `PutObject` 最大 5 GB（更大用 multipart）。
 - 双层授权：IAM/AP 策略**与** ONTAP 文件系统 identity（UNIX/Windows）都必须允许。
 - `NetworkOrigin`（Internet 或 VPC）创建后不可变。
@@ -169,7 +169,7 @@ flowchart TD
 > CloudFront）。三者可组合，非互斥。
 
 > **成本**（FinOps lens）：主导成本是 FSx for ONTAP 吞吐/容量、CloudFront egress 与录制的 S3 存储，而非
-> Lambda。参见 [../../docs/cost-calculator.md](../../docs/cost-calculator.md)，应按实测流量而非示例运行进行估算。
+> Lambda。参见 [../../docs/cost-calculator.md](../../../docs/cost-calculator.md)，应按实测流量而非示例运行进行估算。
 
 ## 可靠性：EventBridge 交付语义
 
@@ -242,6 +242,6 @@ Amazon IVS 的 EventBridge 事件为**尽力交付**——可能丢失、延迟�
 - [Direct recording experiment](direct-recording-experiment.md)
 - [Supported path notes](supported-path-ivs-s3-fsx-cloudfront.md)
 - [DemoMode 指南](docs/demo-guide.md)
-- [S3AP 兼容性说明](../../docs/s3ap-compatibility-notes.md) / [S3AP 性能](../../docs/s3ap-performance-considerations.md)
-- [成本估算](../../docs/cost-calculator.md)
+- [S3AP 兼容性说明](../../../docs/s3ap-compatibility-notes.md) / [S3AP 性能](../../../docs/s3ap-performance-considerations.md)
+- [成本估算](../../../docs/cost-calculator.md)
 - [Content Edge Delivery 模式](../content-delivery/README.md)

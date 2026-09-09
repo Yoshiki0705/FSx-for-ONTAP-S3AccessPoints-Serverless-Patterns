@@ -279,7 +279,7 @@ Ces options sont **composables**, non exclusives.
 - **Réponse aux incidents** : en cas d'échec de publication, consultez `/aws/lambda/<stack>-publish`
   et isolez l'autorisation S3 AP (IAM + politique AP + identité ONTAP) de la lecture du bucket source.
   En cas de mauvaise publication, retirez l'objet de l'origine CloudFront et relancez après correction.
-  Voir le [playbook de réponse aux incidents](../../docs/incident-response-playbook.md).
+  Voir le [playbook de réponse aux incidents](../../../docs/incident-response-playbook.md).
 
 ## FAQ / idées reçues
 
@@ -304,7 +304,7 @@ Ces options sont **composables**, non exclusives.
 - Pour isoler les lectures de diffusion, envisagez un volume **FlexCache** (natif ONTAP) comme source d'origine CloudFront.
 - **Un S3 AP n'est pas un bucket S3 complet** — c'est une limite d'accès compatible S3. Ne présumez pas des
   fonctions au niveau bucket (URL présignée, Versioning, Object Lock, Lifecycle, Static Website Hosting).
-  Voir [../../docs/s3ap-compatibility-notes.md](../../docs/s3ap-compatibility-notes.md).
+  Voir [../../docs/s3ap-compatibility-notes.md](../../../docs/s3ap-compatibility-notes.md).
 
 ## Références (documentation officielle AWS)
 
@@ -317,11 +317,11 @@ Ces options sont **composables**, non exclusives.
 
 ## Documents associés
 
-- [Notes de compatibilité S3AP](../../docs/s3ap-compatibility-notes.md)
-- [Considérations de performance S3AP](../../docs/s3ap-performance-considerations.md)
-- [Calculateur de coûts](../../docs/cost-calculator.md)
-- [Comparaison d'architectures alternatives](../../docs/comparison-alternatives.md)
-- [Playbook de réponse aux incidents](../../docs/incident-response-playbook.md)
+- [Notes de compatibilité S3AP](../../../docs/s3ap-compatibility-notes.md)
+- [Considérations de performance S3AP](../../../docs/s3ap-performance-considerations.md)
+- [Calculateur de coûts](../../../docs/cost-calculator.md)
+- [Comparaison d'architectures alternatives](../../../docs/comparison-alternatives.md)
+- [Playbook de réponse aux incidents](../../../docs/incident-response-playbook.md)
 - [Modèle Content Edge Delivery](../content-delivery/README.md)
 - [Modèle secteur Media/VFX](../../industry/media-vfx/README.md)
 

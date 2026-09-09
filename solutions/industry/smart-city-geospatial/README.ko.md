@@ -1,7 +1,7 @@
 # UC17: 스마트시티 — 지리공간 데이터 분석·도시 계획
 
 🌐 **Language / 言語**: [日本語](README.md) | [English](README.en.md) | 한국어 | [简体中文](README.zh-CN.md) | [繁體中文](README.zh-TW.md) | [Français](README.fr.md) | [Deutsch](README.de.md) | [Español](README.es.md)
-📚 **문서**: [아키텍처](docs/architecture.md) | [데모 스크립트](docs/demo-guide.md) | [문제 해결](../docs/phase7-troubleshooting.md)
+📚 **문서**: [아키텍처](docs/architecture.md) | [데모 스크립트](docs/demo-guide.md) | [문제 해결](../../../docs/phase7-troubleshooting.md)
 
 ## 개요
 
@@ -82,7 +82,7 @@ FSx for ONTAP (GIS 데이터 저장 — 부서별 접근 제어)
 <!-- SCREENSHOT: phase7-uc17-s3-gis-uploaded.png
      내용: S3 AP 의 gis/ 프리픽스 목록, 파일 형식이 혼재
      마스크: 계정 ID, S3 AP ARN, 실제 좌표에서 유래한 파일명 -->
-![UC17: GIS 데이터 저장 확인](../docs/screenshots/masked/phase7/phase7-uc17-s3-gis-uploaded.png)
+![UC17: GIS 데이터 저장 확인](../../../docs/screenshots/masked/phase7/phase7-uc17-s3-gis-uploaded.png)
 
 ### 2. Bedrock 생성 도시 계획 보고서(Markdown 표시)
 
@@ -98,7 +98,7 @@ Bedrock Nova Lite 가 자치단체 담당자용으로 일본어 보고서를 자
        #### 우선해야 할 대책안
        1. 홍수 대책 강화 ... 2. 지진 대책 강화 ... 3. 사면 붕괴 대책 강화 ...
      마스크: 계정 ID, 자치단체명(샘플명만 표시) -->
-![UC17: Bedrock 생성 보고서](../docs/screenshots/masked/phase7/phase7-uc17-bedrock-report.png)
+![UC17: Bedrock 생성 보고서](../../../docs/screenshots/masked/phase7/phase7-uc17-bedrock-report.png)
 
 ### 3. 재난 위험 지도 JSON
 
@@ -108,7 +108,7 @@ Bedrock Nova Lite 가 자치단체 담당자용으로 일본어 보고서를 자
 <!-- SCREENSHOT: phase7-uc17-risk-map-json.png
      내용: risk-maps/*.json 의 정형 뷰(flood, earthquake, landslide 의 level 강조)
      마스크: 계정 ID -->
-![UC17: 재난 위험 지도](../docs/screenshots/masked/phase7/phase7-uc17-risk-map-json.png)
+![UC17: 재난 위험 지도](../../../docs/screenshots/masked/phase7/phase7-uc17-risk-map-json.png)
 
 ### 4. 토지 이용 분포(JSON)
 
@@ -118,7 +118,7 @@ residential / commercial / forest / water / road 등의 비율.
 <!-- SCREENSHOT: phase7-uc17-landuse-distribution.png
      내용: landuse/*.json 의 내용(residential: 0.5, forest: 0.3 등)
      마스크: 계정 ID -->
-![UC17: 토지 이용 분포](../docs/screenshots/masked/phase7/phase7-uc17-landuse-distribution.png)
+![UC17: 토지 이용 분포](../../../docs/screenshots/masked/phase7/phase7-uc17-landuse-distribution.png)
 
 ### 5. 시계열 변화 시각화(DynamoDB Explorer)
 
@@ -128,7 +128,7 @@ residential / commercial / forest / water / road 등의 비율.
 <!-- SCREENSHOT: phase7-uc17-dynamodb-landuse-history.png
      내용: DynamoDB Explorer 에서 landuse-history 테이블의 시계열 항목
      마스크: 계정 ID, area_id -->
-![UC17: 시계열 변화 테이블](../docs/screenshots/masked/phase7/phase7-uc17-dynamodb-landuse-history.png)
+![UC17: 시계열 변화 테이블](../../../docs/screenshots/masked/phase7/phase7-uc17-dynamodb-landuse-history.png)
 
 
 ## Success Metrics
@@ -302,7 +302,7 @@ sam local invoke DiscoveryFunction \
 python3 -m pytest tests/ -v
 ```
 
-자세한 내용은 [로컬 테스트 퀵 스타트](../docs/local-testing-quick-start.md) 를 참조하세요.
+자세한 내용은 [로컬 테스트 퀵 스타트](../../../docs/local-testing-quick-start.md) 를 참조하세요.
 
 ---
 
@@ -354,7 +354,7 @@ python3 -m pytest tests/ -v
 
 ## S3AP Compatibility
 
-S3 Access Points for FSx for ONTAP 의 호환성 제약, 문제 해결, 트리거 패턴에 대해서는 [S3AP Compatibility Notes](../docs/s3ap-compatibility-notes.md) 를 참조하세요.
+S3 Access Points for FSx for ONTAP 의 호환성 제약, 문제 해결, 트리거 패턴에 대해서는 [S3AP Compatibility Notes](../../../docs/s3ap-compatibility-notes.md) 를 참조하세요.
 
 ---
 

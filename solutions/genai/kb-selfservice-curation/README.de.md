@@ -127,7 +127,7 @@ Wenn Sie `EnableWebSearch=true` setzen, erzeugt die Query Lambda eine einheitlic
 - Zitattrennung: `[Intern: Dateiname]` + `[Web: Titel](URL)`
 - Sicherheit: Web-Ergebnisse sind nicht vertrauenswürdige Daten, mit vorhandener Prompt-Injection-Abwehr
 
-Details: [docs/investigations/agentcore-web-search-fsxn-integration.md](../../docs/investigations/agentcore-web-search-fsxn-integration.md)
+Details: [docs/investigations/agentcore-web-search-fsxn-integration.md](../../../docs/investigations/agentcore-web-search-fsxn-integration.md)
 
 ## Self-Service-Betriebsmodell (Demokratisierung)
 
@@ -414,11 +414,11 @@ sam local invoke AutoSyncFunction --event events/auto-sync-event.json
 | Verwandt | Relevanter Punkt |
 |---------|------------|
 | [PoC-Voraussetzungs-Checkliste](docs/poc-checklist.md) | Prüfpunkte vor der Bereitstellung (S3-Vectors-Einschränkungen, Inferenzprofile usw.) |
-| [Cleanup-Runbook](../docs/uc29-uc30-cleanup-runbook.md) | Abbauverfahren einschließlich manueller Artefakte (von 2 UCs geteilt) |
+| [Cleanup-Runbook](../../../docs/uc29-uc30-cleanup-runbook.md) | Abbauverfahren einschließlich manueller Artefakte (von 2 UCs geteilt) |
 | [FC3 genai-rag-enterprise-files](../genai-rag-enterprise-files/) | Benutzerdefiniertes RAG, wenn strikte Berechtigungsfilterung erforderlich ist (Pattern A) |
-| [Erweiterungsmuster: Bedrock-KB-Integration](../docs/extension-patterns.md) | Generisches Muster verwaltete KB + S3 AP |
+| [Erweiterungsmuster: Bedrock-KB-Integration](../../../docs/extension-patterns.md) | Generisches Muster verwaltete KB + S3 AP |
 | [KB-Erstellungsskript](../scripts/create_bedrock_kb.py) | KB-/Datenquellen-Erstellung (Bereitstellungsvoraussetzung für diese UC) |
-| [Branchen-/Workload-Zuordnung](../docs/industry-workload-mapping.md) | UC-Auswahlleitfaden |
+| [Branchen-/Workload-Zuordnung](../../../docs/industry-workload-mapping.md) | UC-Auswahlleitfaden |
 
 ## Betriebshärtung (implementiert)
 

@@ -1,7 +1,7 @@
 # UC17: Smart City — Geospatial Analytics & Urban Planning
 
 🌐 **Language / 言語**: [日本語](README.md) | English | [한국어](README.ko.md) | [简体中文](README.zh-CN.md) | [繁體中文](README.zh-TW.md) | [Français](README.fr.md) | [Deutsch](README.de.md) | [Español](README.es.md)
-📚 **Documentation**: [Architecture](docs/architecture.md) | [Demo Script](docs/demo-guide.md) | [Troubleshooting](../docs/phase7-troubleshooting.md)
+📚 **Documentation**: [Architecture](docs/architecture.md) | [Demo Script](docs/demo-guide.md) | [Troubleshooting](../../../docs/phase7-troubleshooting.md)
 
 ## Overview
 
@@ -83,7 +83,7 @@ GeoTIFF / Shapefile / LAS are placed under the `gis/YYYY/MM/` prefix.
 <!-- SCREENSHOT: phase7-uc17-s3-gis-uploaded.png
      Content: S3 AP gis/ prefix listing, mixed file formats
      Mask: account ID, S3 AP ARN, file names derived from real coordinates -->
-![UC17: GIS data storage confirmation](../docs/screenshots/masked/phase7/phase7-uc17-s3-gis-uploaded.png)
+![UC17: GIS data storage confirmation](../../../docs/screenshots/masked/phase7/phase7-uc17-s3-gis-uploaded.png)
 
 ### 2. Bedrock-Generated Urban Planning Report (Markdown view)
 
@@ -100,7 +100,7 @@ report for municipal staff.
        #### Priority measures to consider
        1. Strengthen flood countermeasures ... 2. Strengthen earthquake countermeasures ... 3. Strengthen slope-failure countermeasures ...
      Mask: account ID, municipality name (only the sample name is shown) -->
-![UC17: Bedrock-generated report](../docs/screenshots/masked/phase7/phase7-uc17-bedrock-report.png)
+![UC17: Bedrock-generated report](../../../docs/screenshots/masked/phase7/phase7-uc17-bedrock-report.png)
 
 ### 3. Disaster Risk Map JSON
 
@@ -110,7 +110,7 @@ into four levels: CRITICAL / HIGH / MEDIUM / LOW.
 <!-- SCREENSHOT: phase7-uc17-risk-map-json.png
      Content: formatted view of risk-maps/*.json (flood, earthquake, landslide levels highlighted)
      Mask: account ID -->
-![UC17: Disaster risk map](../docs/screenshots/masked/phase7/phase7-uc17-risk-map-json.png)
+![UC17: Disaster risk map](../../../docs/screenshots/masked/phase7/phase7-uc17-risk-map-json.png)
 
 ### 4. Land Use Distribution (JSON)
 
@@ -120,7 +120,7 @@ Ratios of residential / commercial / forest / water / road, etc.
 <!-- SCREENSHOT: phase7-uc17-landuse-distribution.png
      Content: contents of landuse/*.json (residential: 0.5, forest: 0.3, etc.)
      Mask: account ID -->
-![UC17: Land use distribution](../docs/screenshots/masked/phase7/phase7-uc17-landuse-distribution.png)
+![UC17: Land use distribution](../../../docs/screenshots/masked/phase7/phase7-uc17-landuse-distribution.png)
 
 ### 5. Time-Series Change Visualization (DynamoDB Explorer)
 
@@ -130,7 +130,7 @@ distributions are compared with current values to compute change_magnitude.
 <!-- SCREENSHOT: phase7-uc17-dynamodb-landuse-history.png
      Content: time-series items of the landuse-history table in DynamoDB Explorer
      Mask: account ID, area_id -->
-![UC17: Time-series change table](../docs/screenshots/masked/phase7/phase7-uc17-dynamodb-landuse-history.png)
+![UC17: Time-series change table](../../../docs/screenshots/masked/phase7/phase7-uc17-dynamodb-landuse-history.png)
 
 
 ## Success Metrics
@@ -304,7 +304,7 @@ sam local invoke DiscoveryFunction \
 python3 -m pytest tests/ -v
 ```
 
-See the [Local Testing Quick Start](../docs/local-testing-quick-start.md) for details.
+See the [Local Testing Quick Start](../../../docs/local-testing-quick-start.md) for details.
 
 ---
 
@@ -356,7 +356,7 @@ Example output of the geospatial data analysis pipeline:
 
 ## S3AP Compatibility
 
-For compatibility constraints, troubleshooting, and trigger patterns for S3 Access Points for FSx for ONTAP, see the [S3AP Compatibility Notes](../docs/s3ap-compatibility-notes.md).
+For compatibility constraints, troubleshooting, and trigger patterns for S3 Access Points for FSx for ONTAP, see the [S3AP Compatibility Notes](../../../docs/s3ap-compatibility-notes.md).
 
 ---
 

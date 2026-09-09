@@ -1,7 +1,7 @@
 # UC15: 国防 / 航天 — 卫星图像分析管道
 
 🌐 **Language / 言語**: [日本語](README.md) | [English](README.en.md) | [한국어](README.ko.md) | 简体中文 | [繁體中文](README.zh-TW.md) | [Français](README.fr.md) | [Deutsch](README.de.md) | [Español](README.es.md)
-📚 **文档**: [架构](docs/architecture.zh-CN.md) | [演示脚本](docs/demo-guide.zh-CN.md) | [故障排除](../docs/phase7-troubleshooting.md)
+📚 **文档**: [架构](docs/architecture.zh-CN.md) | [演示脚本](docs/demo-guide.zh-CN.md) | [故障排除](../../../docs/phase7-troubleshooting.md)
 
 ## 概述
 
@@ -74,7 +74,7 @@ FSx for ONTAP (卫星图像存储)
 <!-- SCREENSHOT: phase7-uc15-s3-satellite-uploaded.png
      内容: 通过 S3 AP 列表显示 satellite/2026/05/*.tif (对象名、大小、更新时间)
      掩码: 账户 ID、Access Point ARN、真实卫星图像名 -->
-![UC15: 卫星图像放置](../docs/screenshots/masked/phase7/phase7-uc15-s3-satellite-uploaded.png)
+![UC15: 卫星图像放置](../../../docs/screenshots/masked/phase7/phase7-uc15-s3-satellite-uploaded.png)
 
 ### 2. 分析结果查看（S3 输出桶）
 
@@ -84,7 +84,7 @@ FSx for ONTAP (卫星图像存储)
 <!-- SCREENSHOT: phase7-uc15-s3-output-bucket.png
      内容: 在 S3 控制台俯瞰 detections/、enriched/、tiles/ 三个前缀
      掩码: 账户 ID、桶名前缀 -->
-![UC15: S3 输出桶](../docs/screenshots/masked/phase7/phase7-uc15-s3-output-bucket.png)
+![UC15: S3 输出桶](../../../docs/screenshots/masked/phase7/phase7-uc15-s3-output-bucket.png)
 
 ### 3. 变化检测告警（SNS 电子邮件通知）
 
@@ -94,7 +94,7 @@ FSx for ONTAP (卫星图像存储)
 <!-- SCREENSHOT: phase7-uc15-sns-alert-email.png
      内容: 在邮件客户端 (Gmail/Outlook) 显示 alert_type=SATELLITE_CHANGE_DETECTED
      掩码: 收件人邮箱地址、发件人地址、真实坐标、tile_id -->
-![UC15: SNS 告警通知邮件](../docs/screenshots/masked/phase7/phase7-uc15-sns-alert-email.png)
+![UC15: SNS 告警通知邮件](../../../docs/screenshots/masked/phase7/phase7-uc15-sns-alert-email.png)
 
 ### 4. 检测结果 JSON 的内容
 
@@ -103,7 +103,7 @@ FSx for ONTAP (卫星图像存储)
 <!-- SCREENSHOT: phase7-uc15-detections-json.png
      内容: 在 S3 控制台预览对象，detections JSON 的内容
      掩码: 账户 ID -->
-![UC15: 检测结果 JSON](../docs/screenshots/masked/phase7/phase7-uc15-detections-json.png)
+![UC15: 检测结果 JSON](../../../docs/screenshots/masked/phase7/phase7-uc15-detections-json.png)
 
 
 ## Success Metrics
@@ -158,7 +158,7 @@ sam deploy \
 ```
 
 **重要**: `S3AccessPointName` 是为 S3 AP 授予 IAM 权限所必需的。
-详情请参见 [`docs/phase7-troubleshooting.md`](../docs/phase7-troubleshooting.md)。
+详情请参见 [`docs/phase7-troubleshooting.md`](../../../docs/phase7-troubleshooting.md)。
 
 ## 目录结构
 
@@ -280,7 +280,7 @@ sam local invoke DiscoveryFunction \
 python3 -m pytest tests/ -v
 ```
 
-详情请参见 [本地测试快速入门](../docs/local-testing-quick-start.md)。
+详情请参见 [本地测试快速入门](../../../docs/local-testing-quick-start.md)。
 
 ---
 
@@ -330,7 +330,7 @@ python3 -m pytest tests/ -v
 
 ## S3AP Compatibility
 
-关于 S3 Access Points for FSx for ONTAP 的兼容性约束、故障排除和触发模式，请参见 [S3AP Compatibility Notes](../docs/s3ap-compatibility-notes.md)。
+关于 S3 Access Points for FSx for ONTAP 的兼容性约束、故障排除和触发模式，请参见 [S3AP Compatibility Notes](../../../docs/s3ap-compatibility-notes.md)。
 
 ---
 

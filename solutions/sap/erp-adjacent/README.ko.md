@@ -97,9 +97,9 @@ sam deploy --guided --stack-name fsxn-s3ap-sap-erp \
 
 ## Related
 
-- [Enterprise Workload Examples](../docs/enterprise-workload-examples.md) — 엔터프라이즈 패턴 전체 목록
-- [Quick Start Guide](../docs/quick-start.md) — 첫 배포 안내
-- [Deployment Profiles](../docs/deployment-profiles.md) — 프로덕션 구성 옵션
+- [Enterprise Workload Examples](../../../docs/enterprise-workload-examples.md) — 엔터프라이즈 패턴 전체 목록
+- [Quick Start Guide](../../../docs/quick-start.md) — 첫 배포 안내
+- [Deployment Profiles](../../../docs/deployment-profiles.md) — 프로덕션 구성 옵션
 
 ---
 
@@ -173,7 +173,7 @@ sam local invoke DiscoveryFunction \
 python3 -m pytest tests/ -v
 ```
 
-자세한 내용은 [로컬 테스트 퀵 스타트](../docs/local-testing-quick-start.md)를 참조하세요.
+자세한 내용은 [로컬 테스트 퀵 스타트](../../../docs/local-testing-quick-start.md)를 참조하세요.
 
 ---
 
@@ -222,7 +222,7 @@ SAP/ERP 파일 처리 워크플로의 출력 예시:
 
 ## S3AP Compatibility
 
-S3 Access Points for FSx for ONTAP의 호환성 제약, 트러블슈팅, 트리거 패턴에 대해서는 [S3AP Compatibility Notes](../docs/s3ap-compatibility-notes.md)를 참조하세요.
+S3 Access Points for FSx for ONTAP의 호환성 제약, 트러블슈팅, 트리거 패턴에 대해서는 [S3AP Compatibility Notes](../../../docs/s3ap-compatibility-notes.md)를 참조하세요.
 ---
 
 ## Performance Considerations

@@ -41,7 +41,7 @@ graph LR
 
 ## Prerequisites
 
-> 📐 **Design Guide**: For S3 AP directory design, performance characteristics, and PoC checklist, see [Design Considerations](../../docs/design-considerations-en.md).
+> 📐 **Design Guide**: For S3 AP directory design, performance characteristics, and PoC checklist, see [Design Considerations](../../../docs/design-considerations-en.md).
 
 - FSx for ONTAP file system (ONTAP 9.12.1 or later)
 - 2 SVMs (one for Origin, one for Cache; same SVM possible but separation recommended)

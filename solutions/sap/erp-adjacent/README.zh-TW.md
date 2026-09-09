@@ -97,9 +97,9 @@ sam deploy --guided --stack-name fsxn-s3ap-sap-erp \
 
 ## Related
 
-- [Enterprise Workload Examples](../docs/enterprise-workload-examples.md) — 企業模式完整清單
-- [Quick Start Guide](../docs/quick-start.md) — 首次部署逐步導覽
-- [Deployment Profiles](../docs/deployment-profiles.md) — 生產配置選項
+- [Enterprise Workload Examples](../../../docs/enterprise-workload-examples.md) — 企業模式完整清單
+- [Quick Start Guide](../../../docs/quick-start.md) — 首次部署逐步導覽
+- [Deployment Profiles](../../../docs/deployment-profiles.md) — 生產配置選項
 
 ---
 
@@ -173,7 +173,7 @@ sam local invoke DiscoveryFunction \
 python3 -m pytest tests/ -v
 ```
 
-詳情請參閱 [本機測試快速入門](../docs/local-testing-quick-start.md)。
+詳情請參閱 [本機測試快速入門](../../../docs/local-testing-quick-start.md)。
 
 ---
 
@@ -222,7 +222,7 @@ SAP/ERP 檔案處理工作流程的輸出範例：
 
 ## S3AP Compatibility
 
-有關 S3 Access Points for FSx for ONTAP 的相容性限制、疑難排解和觸發模式，請參閱 [S3AP Compatibility Notes](../docs/s3ap-compatibility-notes.md)。
+有關 S3 Access Points for FSx for ONTAP 的相容性限制、疑難排解和觸發模式，請參閱 [S3AP Compatibility Notes](../../../docs/s3ap-compatibility-notes.md)。
 ---
 
 ## Performance Considerations

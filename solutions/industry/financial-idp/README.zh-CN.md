@@ -132,7 +132,7 @@ sam deploy \
 
 部署后，指定的电子邮件地址会收到 SNS 订阅确认邮件。
 
-> **注意**：如果省略 `S3AccessPointName`，IAM 策略将仅基于 Alias，可能会发生 `AccessDenied` 错误。在生产环境中建议指定。详情请参阅[故障排除指南](../docs/guides/troubleshooting-guide.md#1-accessdenied-エラー)。
+> **注意**：如果省略 `S3AccessPointName`，IAM 策略将仅基于 Alias，可能会发生 `AccessDenied` 错误。在生产环境中建议指定。详情请参阅[故障排除指南](../../../docs/guides/troubleshooting-guide.md#1-accessdenied-エラー)。
 
 ## 配置参数一览
 
@@ -218,7 +218,7 @@ UC2 使用以下服务：
 | AWS X-Ray | 几乎所有区域均可使用 |
 | CloudWatch EMF | 几乎所有区域均可使用 |
 
-> 通过 Cross-Region Client 调用 Textract API。请确认数据驻留要求。详情请参阅[区域兼容性矩阵](../docs/region-compatibility.md)。
+> 通过 Cross-Region Client 调用 Textract API。请确认数据驻留要求。详情请参阅[区域兼容性矩阵](../../../docs/region-compatibility.md)。
 
 ## 参考链接
 
@@ -327,7 +327,7 @@ sam local invoke DiscoveryFunction \
 python3 -m pytest tests/ -v
 ```
 
-详情请参阅[本地测试快速入门](../docs/local-testing-quick-start.md)。
+详情请参阅[本地测试快速入门](../../../docs/local-testing-quick-start.md)。
 
 ---
 
@@ -402,7 +402,7 @@ python3 -m pytest tests/ -v
 
 ## S3AP Compatibility
 
-关于 S3 Access Points for FSx for ONTAP 的兼容性约束、故障排除和触发器模式，请参阅 [S3AP Compatibility Notes](../docs/s3ap-compatibility-notes.md)。
+关于 S3 Access Points for FSx for ONTAP 的兼容性约束、故障排除和触发器模式，请参阅 [S3AP Compatibility Notes](../../../docs/s3ap-compatibility-notes.md)。
 
 ---
 

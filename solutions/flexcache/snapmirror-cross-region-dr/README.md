@@ -58,7 +58,7 @@ graph TB
 
 ## 前提条件
 
-> 📐 **設計ガイド**: S3 AP のディレクトリ設計、性能特性、PoC チェックリストは [設計考慮事項](../../docs/design-considerations.md) を参照。
+> 📐 **設計ガイド**: S3 AP のディレクトリ設計、性能特性、PoC チェックリストは [設計考慮事項](../../../docs/design-considerations.md) を参照。
 
 - FSx for ONTAP × 2 クラスタ（異なるリージョン）
 - VPC Peering + Cluster/SVM Peering 確立済み

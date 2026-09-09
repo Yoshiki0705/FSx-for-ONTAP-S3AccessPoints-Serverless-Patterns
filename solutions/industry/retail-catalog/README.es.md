@@ -150,7 +150,7 @@ aws cloudformation wait stack-delete-complete \
 - [Descripción general de los S3 Access Points para FSx for ONTAP](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/accessing-data-via-s3-access-points.html)
 - [Amazon Rekognition DetectLabels](https://docs.aws.amazon.com/rekognition/latest/dg/labels-detect-labels-image.html)
 - [Referencia de la API de Amazon Bedrock](https://docs.aws.amazon.com/bedrock/latest/APIReference/API_runtime_InvokeModel.html)
-- [Guía de selección Streaming vs Polling](../docs/streaming-vs-polling-guide.md)
+- [Guía de selección Streaming vs Polling](../../../docs/streaming-vs-polling-guide.md)
 
 ## Modo de streaming Kinesis (Phase 3)
 
@@ -189,7 +189,7 @@ EventBridge (rate(1 min)) → Stream Producer Lambda
 
 ### Selección de patrón
 
-Para saber qué patrón elegir, consulte la [Guía de selección Streaming vs Polling](../docs/streaming-vs-polling-guide.md).
+Para saber qué patrón elegir, consulte la [Guía de selección Streaming vs Polling](../../../docs/streaming-vs-polling-guide.md).
 
 ## Supported Regions
 
@@ -203,7 +203,7 @@ UC11 utiliza los siguientes servicios:
 | AWS X-Ray | Disponible en casi todas las regiones |
 | CloudWatch EMF | Disponible en casi todas las regiones |
 
-> Al habilitar el modo de streaming Kinesis, tenga en cuenta que el precio de los shards varía según la región. Consulte la [Matriz de compatibilidad de regiones](../docs/region-compatibility.md) para obtener más detalles.
+> Al habilitar el modo de streaming Kinesis, tenga en cuenta que el precio de los shards varía según la región. Consulte la [Matriz de compatibilidad de regiones](../../../docs/region-compatibility.md) para obtener más detalles.
 
 ---
 
@@ -302,7 +302,7 @@ sam local invoke DiscoveryFunction \
 python3 -m pytest tests/ -v
 ```
 
-Para obtener más detalles, consulte el [Inicio rápido de pruebas locales](../docs/local-testing-quick-start.md).
+Para obtener más detalles, consulte el [Inicio rápido de pruebas locales](../../../docs/local-testing-quick-start.md).
 
 ---
 
@@ -354,7 +354,7 @@ Ejemplo de salida del pipeline de etiquetado de imágenes de productos:
 
 ## S3AP Compatibility
 
-Para conocer las restricciones de compatibilidad, la resolución de problemas y los patrones de activación de los S3 Access Points para FSx for ONTAP, consulte las [S3AP Compatibility Notes](../docs/s3ap-compatibility-notes.md).
+Para conocer las restricciones de compatibilidad, la resolución de problemas y los patrones de activación de los S3 Access Points para FSx for ONTAP, consulte las [S3AP Compatibility Notes](../../../docs/s3ap-compatibility-notes.md).
 
 ---
 

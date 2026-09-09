@@ -99,8 +99,8 @@ life-sciences-research/
 ## 相關連結
 
 - [FlexCache AnyCast / DR](../flexcache-anycast-dr/README.md)
-- [產業·工作負載對應](../docs/industry-workload-mapping.md)
-- [支援矩陣](../docs/support-matrix-fsx-ontap-flexcache-s3ap.md)
+- [產業·工作負載對應](../../../docs/industry-workload-mapping.md)
+- [支援矩陣](../../../docs/support-matrix-fsx-ontap-flexcache-s3ap.md)
 
 
 ## Success Metrics
@@ -228,7 +228,7 @@ sam local invoke DiscoveryFunction \
 python3 -m pytest tests/ -v
 ```
 
-詳情請參閱 [本地測試快速入門](../docs/local-testing-quick-start.md)。
+詳情請參閱 [本地測試快速入門](../../../docs/local-testing-quick-start.md)。
 
 ---
 
@@ -296,7 +296,7 @@ AstraZeneca 建置了一個多代理系統，讓商業團隊能夠跨治療領�
 
 本模式（UC7）提供了一種使用 FSx for ONTAP S3 AP + AWS Bedrock 解決同類問題（研究文件的 AI 分析 + 分類）的架構。多代理擴展可透過 Step Functions 的依治療領域路由實現。
 
-詳細分析: [DAIS 2026 Agent Bricks 案例分析](../docs/investigations/dais2026-agent-bricks-industry-cases.md)
+詳細分析: [DAIS 2026 Agent Bricks 案例分析](../../../docs/investigations/dais2026-agent-bricks-industry-cases.md)
 
 Sources:
 - [DAIS 2026 Session: AstraZeneca's Multi-Agent System](https://www.databricks.com/dataaisummit/session/astrazenecas-multi-agent-system-lessons-scaling-agents-10x-agent-bricks)

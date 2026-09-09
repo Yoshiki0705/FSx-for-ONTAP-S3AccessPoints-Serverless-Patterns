@@ -44,7 +44,7 @@ graph LR
 
 ## 前提条件
 
-> 📐 **設計ガイド**: S3 AP のディレクトリ設計、性能特性、PoC チェックリストは [設計考慮事項](../../docs/design-considerations.md) を参照。
+> 📐 **設計ガイド**: S3 AP のディレクトリ設計、性能特性、PoC チェックリストは [設計考慮事項](../../../docs/design-considerations.md) を参照。
 
 - FSx for ONTAP × 2 クラスタ（リージョン A / リージョン B）
 - VPC Peering 確立済み（TCP 11104, 11105, ICMP 許可）

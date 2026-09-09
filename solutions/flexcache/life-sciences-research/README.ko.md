@@ -99,8 +99,8 @@ life-sciences-research/
 ## 관련 링크
 
 - [FlexCache AnyCast / DR](../flexcache-anycast-dr/README.md)
-- [업계·워크로드 매핑](../docs/industry-workload-mapping.md)
-- [지원 매트릭스](../docs/support-matrix-fsx-ontap-flexcache-s3ap.md)
+- [업계·워크로드 매핑](../../../docs/industry-workload-mapping.md)
+- [지원 매트릭스](../../../docs/support-matrix-fsx-ontap-flexcache-s3ap.md)
 
 
 ## Success Metrics
@@ -228,7 +228,7 @@ sam local invoke DiscoveryFunction \
 python3 -m pytest tests/ -v
 ```
 
-자세한 내용은 [로컬 테스트 퀵스타트](../docs/local-testing-quick-start.md)를 참조하세요.
+자세한 내용은 [로컬 테스트 퀵스타트](../../../docs/local-testing-quick-start.md)를 참조하세요.
 
 ---
 
@@ -296,7 +296,7 @@ AstraZeneca는 치료 영역 횡단으로 커머셜 팀이 의약품 데이터(�
 
 본 패턴(UC7)은 동종의 과제(연구 문서의 AI 분석 + 분류)를 FSx for ONTAP S3 AP + AWS Bedrock으로 해결하는 아키텍처를 제공합니다. 멀티 에이전트 확장은 Step Functions에 의한 치료 영역별 라우팅으로 실현 가능합니다.
 
-상세 분석: [DAIS 2026 Agent Bricks 사례 분석](../docs/investigations/dais2026-agent-bricks-industry-cases.md)
+상세 분석: [DAIS 2026 Agent Bricks 사례 분석](../../../docs/investigations/dais2026-agent-bricks-industry-cases.md)
 
 Sources:
 - [DAIS 2026 Session: AstraZeneca's Multi-Agent System](https://www.databricks.com/dataaisummit/session/astrazenecas-multi-agent-system-lessons-scaling-agents-10x-agent-bricks)

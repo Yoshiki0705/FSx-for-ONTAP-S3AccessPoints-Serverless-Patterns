@@ -44,7 +44,7 @@ See [Architecture Document](docs/architecture.en.md) for detailed data flow diag
 - Amazon Bedrock model access enabled (Claude / Nova)
 - Amazon Textract — Cross-Region (us-east-1) configuration
 
-> **S3 AP NetworkOrigin Note**: The Discovery Lambda is deployed inside a VPC. If the S3 Access Point's NetworkOrigin is `Internet`, it cannot be accessed via S3 Gateway VPC Endpoint (requests are not routed to the FSx data plane). Use a VPC-origin S3 AP or configure NAT Gateway access. See [S3AP Compatibility Notes](../docs/s3ap-compatibility-notes.md).
+> **S3 AP NetworkOrigin Note**: The Discovery Lambda is deployed inside a VPC. If the S3 Access Point's NetworkOrigin is `Internet`, it cannot be accessed via S3 Gateway VPC Endpoint (requests are not routed to the FSx data plane). Use a VPC-origin S3 AP or configure NAT Gateway access. See [S3AP Compatibility Notes](../../../docs/s3ap-compatibility-notes.md).
 
 ## Deployment
 
@@ -104,7 +104,7 @@ aws cloudformation wait stack-delete-complete --stack-name fsxn-chemical-sds --r
 
 ## S3AP Compatibility
 
-See [S3AP Compatibility Notes](../docs/s3ap-compatibility-notes.md) for FSx for ONTAP S3 Access Points constraints, troubleshooting, and trigger patterns.
+See [S3AP Compatibility Notes](../../../docs/s3ap-compatibility-notes.md) for FSx for ONTAP S3 Access Points constraints, troubleshooting, and trigger patterns.
 
 ---
 

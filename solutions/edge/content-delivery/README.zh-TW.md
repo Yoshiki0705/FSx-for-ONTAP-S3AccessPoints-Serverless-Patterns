@@ -9,14 +9,14 @@
 **傳遞供應商無關** 無伺服器模式。
 
 關於整合機制以及各傳遞網路的可行性（CloudFront / Akamai / Fastly / Cloudflare / Bunny.net /
-Google Media CDN 等）的技術比較，請參閱 **[docs/cdn-comparison.md](../docs/cdn-comparison.md)**。
+Google Media CDN 等）的技術比較，請參閱 **[docs/cdn-comparison.md](../../../docs/cdn-comparison.md)**。
 
 > 本模式為 reference implementation（參考實作）。傳遞供應商的選型、權利處理、地區限制、
 > 合規性由客戶判斷。
 
 > **TL;DR（30 秒）**: 不移動 ONTAP/NAS 的主副本，**僅將已核准的傳遞用產物** 透過 CloudFront 或
 > 第三方 CDN 進行傳遞。第一步採用驗證風險最小的 `PUBLISH_PUSH`（M3）。SigV4 直接拉取（ORIGIN_PULL）
-> 需在[驗證檢查清單](../docs/cdn-origin-verification-checklist.md)中實測後再採用。
+> 需在[驗證檢查清單](../../../docs/cdn-origin-verification-checklist.md)中實測後再採用。
 
 ## 業務成果與導入（Outcome / Adoption）
 
@@ -45,7 +45,7 @@ Google Media CDN 等）的技術比較，請參閱 **[docs/cdn-comparison.md](..
 - **首個客戶問題**: 「是否希望在不複製的情況下將既有的 NAS/ONTAP 資產連接到邊緣傳遞。傳遞是透過 CloudFront，
   還是透過已簽約的 CDN（Akamai 等）」
 - **PoC 產物**: DemoMode 示範 → 已核准轉譯版本的傳遞資訊清單 →（選用）實機 SigV4 驗證結果。
-- 傳遞網路選型可將 [CDN 比較](../docs/cdn-comparison.md) 在客戶對話中直接使用。
+- 傳遞網路選型可將 [CDN 比較](../../../docs/cdn-comparison.md) 在客戶對話中直接使用。
 
 ## 要解決的課題
 
@@ -79,7 +79,7 @@ graph LR
 
 - **ORIGIN_PULL**: 不複製物件，產生以 CDN 透過 SigV4 直接取得 S3 AP 為前提的
   來源參照資訊清單。CloudFront 透過 OAC 支援（參考實作）。
-  第三方 CDN 的 SigV4 來源簽章 **需驗證**（參閱[比較文件](../docs/cdn-comparison.md)）。
+  第三方 CDN 的 SigV4 來源簽章 **需驗證**（參閱[比較文件](../../../docs/cdn-comparison.md)）。
 - **PUBLISH_PUSH**: 將已核准的轉譯版本複製到 CDN 側 S3 相容儲存。可規避來源認證問題，
   且與 CDN 無關。驗證風險最低的第一步。
 
@@ -160,7 +160,7 @@ DemoMode 的確認請參閱 [docs/demo-guide.md](docs/demo-guide.md)。
   冪等化（idempotency）**。若需要 HYBRID 的去重，請將 `shared/idempotency_checker.py` 整合到
   publish 路徑中。目前的運作確認以 `POLLING` 進行。
 - `PUBLISH_PUSH` 向外部儲存的實際 push 僅在設定了端點/儲存貯體時有效（DemoMode 記錄略過）。
-- ORIGIN_PULL 的 SigV4 來源直接拉取在第三方 CDN 上 **需驗證**（參閱[比較文件](../docs/cdn-comparison.md) 4.1）。
+- ORIGIN_PULL 的 SigV4 來源直接拉取在第三方 CDN 上 **需驗證**（參閱[比較文件](../../../docs/cdn-comparison.md) 4.1）。
 
 ## 營運 / Runbook（Reliability/Ops）
 
@@ -170,7 +170,7 @@ DemoMode 的確認請參閱 [docs/demo-guide.md](docs/demo-guide.md)。
   - publish 錯誤 → 檢查 CloudWatch Logs `/aws/lambda/<stack>-publish`。區分 S3 AP 授權（IAM + AP policy +
     ONTAP ID）與外部儲存認證（Secrets Manager）。
   - 外部 push 失敗 → 檢查 `ExternalStoreSecretName` 的認證資訊·端點·儲存貯體。
-  - 疑似傳遞邊界問題（越權傳遞）→ [事件回應 Playbook](../docs/incident-response-playbook.md)。
+  - 疑似傳遞邊界問題（越權傳遞）→ [事件回應 Playbook](../../../docs/incident-response-playbook.md)。
 - **回復**: 傳遞僅進行已核准產物的 publish。誤發布時，從傳遞目標（CDN 儲存/Distribution）移除相應
   物件，從 `ApprovedPrefix` 撤下後重新 publish。
 - **外部儲存認證**: 使用 PUBLISH_PUSH 向 Akamai/R2/Fastly 等複製時，AWS 預設認證不適用，因此需要
@@ -188,11 +188,11 @@ DemoMode 的確認請參閱 [docs/demo-guide.md](docs/demo-guide.md)。
 
 ## 相關文件
 
-- [CDN/邊緣傳遞整合比較](../docs/cdn-comparison.md) / [English](../docs/cdn-comparison.en.md)
-- [ORIGIN_PULL SigV4 驗證檢查清單](../docs/cdn-origin-verification-checklist.md)（實機驗證步驟）
-- [替代架構比較](../docs/comparison-alternatives.md)
-- [S3AP 相容性說明](../docs/s3ap-compatibility-notes.md)
-- [事件回應 Playbook](../docs/incident-response-playbook.md)（越權傳遞·誤發布時的應對動線）
+- [CDN/邊緣傳遞整合比較](../../../docs/cdn-comparison.md) / [English](../../../docs/cdn-comparison.en.md)
+- [ORIGIN_PULL SigV4 驗證檢查清單](../../../docs/cdn-origin-verification-checklist.md)（實機驗證步驟）
+- [替代架構比較](../../../docs/comparison-alternatives.md)
+- [S3AP 相容性說明](../../../docs/s3ap-compatibility-notes.md)
+- [事件回應 Playbook](../../../docs/incident-response-playbook.md)（越權傳遞·誤發布時的應對動線）
 
 ---
 

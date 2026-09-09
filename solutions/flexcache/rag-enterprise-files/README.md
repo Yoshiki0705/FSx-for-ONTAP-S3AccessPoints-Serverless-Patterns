@@ -133,7 +133,7 @@ genai-rag-enterprise-files/
 
 - [Dynamic FlexCache Render Workflow](../dynamic-flexcache-render-workflow/README.md)
 - [FlexCache AnyCast / DR](../flexcache-anycast-dr/README.md)
-- [業界・ワークロード マッピング](../docs/industry-workload-mapping.md)
+- [業界・ワークロード マッピング](../../../docs/industry-workload-mapping.md)
 
 
 ## Success Metrics
@@ -262,7 +262,7 @@ sam local invoke DiscoveryFunction \
 python3 -m pytest tests/ -v
 ```
 
-詳細は [ローカルテスト クイックスタート](../docs/local-testing-quick-start.md) を参照してください。
+詳細は [ローカルテスト クイックスタート](../../../docs/local-testing-quick-start.md) を参照してください。
 
 ---
 

@@ -88,7 +88,7 @@ graph LR
 
 ## 사전 요구 사항
 
-> **S3 AP NetworkOrigin 주의**: Discovery Lambda는 VPC 내부에 배치됩니다. S3 Access Point의 NetworkOrigin이 `Internet`인 경우 S3 Gateway VPC Endpoint를 통해서는 접근할 수 없습니다(FSx 데이터 플레인으로 라우팅되지 않기 때문). NetworkOrigin=VPC인 S3 AP를 사용하거나 NAT Gateway를 통한 접근을 구성하세요. 자세한 내용은 [S3AP Compatibility Notes](../docs/s3ap-compatibility-notes.md)를 참조하세요.
+> **S3 AP NetworkOrigin 주의**: Discovery Lambda는 VPC 내부에 배치됩니다. S3 Access Point의 NetworkOrigin이 `Internet`인 경우 S3 Gateway VPC Endpoint를 통해서는 접근할 수 없습니다(FSx 데이터 플레인으로 라우팅되지 않기 때문). NetworkOrigin=VPC인 S3 AP를 사용하거나 NAT Gateway를 통한 접근을 구성하세요. 자세한 내용은 [S3AP Compatibility Notes](../../../docs/s3ap-compatibility-notes.md)를 참조하세요.
 
 - AWS 계정과 적절한 IAM 권한
 - FSx for ONTAP 파일 시스템(ONTAP 9.17.1P4D3 이상)
@@ -202,7 +202,7 @@ aws cloudformation wait stack-delete-complete \
 
 ## S3AP Compatibility
 
-FSx for ONTAP S3 Access Points의 호환성 제약, 트러블슈팅, 트리거 패턴에 대해서는 [S3AP Compatibility Notes](../docs/s3ap-compatibility-notes.md)를 참조하세요.
+FSx for ONTAP S3 Access Points의 호환성 제약, 트러블슈팅, 트리거 패턴에 대해서는 [S3AP Compatibility Notes](../../../docs/s3ap-compatibility-notes.md)를 참조하세요.
 
 ---
 

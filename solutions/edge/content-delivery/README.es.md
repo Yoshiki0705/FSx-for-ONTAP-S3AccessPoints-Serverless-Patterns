@@ -10,7 +10,7 @@ S3 Access Points (S3 AP) puedan distribuirse desde una red de distribución CDN/
 
 Para la comparación técnica de los mecanismos de integración y la viabilidad de cada red de distribución
 (CloudFront / Akamai / Fastly / Cloudflare / Bunny.net / Google Media CDN, etc.),
-consulte **[docs/cdn-comparison.md](../docs/cdn-comparison.md)**.
+consulte **[docs/cdn-comparison.md](../../../docs/cdn-comparison.md)**.
 
 > Este patrón es una reference implementation (implementación de referencia). La selección del proveedor de
 > distribución, la gestión de derechos, las restricciones geográficas y el cumplimiento los decide el cliente.
@@ -18,7 +18,7 @@ consulte **[docs/cdn-comparison.md](../docs/cdn-comparison.md)**.
 > **TL;DR (30 s)**: sin mover el maestro ONTAP/NAS, distribuya **solo los artefactos de distribución aprobados**
 > mediante CloudFront o un CDN de terceros. Comience con `PUBLISH_PUSH` (M3), que presenta el menor riesgo de
 > verificación. Adopte el pull directo SigV4 (ORIGIN_PULL) solo después de medirlo con la
-> [lista de verificación](../docs/cdn-origin-verification-checklist.md).
+> [lista de verificación](../../../docs/cdn-origin-verification-checklist.md).
 
 ## Resultado de negocio y adopción (Outcome / Adoption)
 
@@ -47,7 +47,7 @@ unitarias (13 casos) y confirmar el funcionamiento del filtro permission-aware, 
 - **Primera pregunta al cliente**: «¿Desea conectar los activos NAS/ONTAP existentes a la distribución edge sin
   copiar? ¿La distribución es mediante CloudFront o mediante un CDN ya contratado (p. ej., Akamai)?»
 - **Entregables del PoC**: demo de DemoMode → manifiesto de distribución de las renditions aprobadas → (opcional) resultado de verificación SigV4 en hardware real.
-- Para la selección de la red de distribución, la [comparación de CDN](../docs/cdn-comparison.md) puede usarse tal cual en las conversaciones con el cliente.
+- Para la selección de la red de distribución, la [comparación de CDN](../../../docs/cdn-comparison.md) puede usarse tal cual en las conversaciones con el cliente.
 
 ## Problemas que resuelve
 
@@ -81,7 +81,7 @@ graph LR
 
 - **ORIGIN_PULL**: no copia objetos; genera un manifiesto de referencia de origen partiendo de la premisa de que el
   CDN obtiene el S3 AP directamente mediante SigV4. CloudFront lo admite mediante OAC (implementación de referencia).
-  La firma de origen SigV4 en CDN de terceros está **por verificar** (consulte el [documento de comparación](../docs/cdn-comparison.md)).
+  La firma de origen SigV4 en CDN de terceros está **por verificar** (consulte el [documento de comparación](../../../docs/cdn-comparison.md)).
 - **PUBLISH_PUSH**: replica las renditions aprobadas al store compatible con S3 del lado del CDN. Evita el problema
   de autenticación de origen y es independiente del CDN — el primer paso con el menor riesgo de verificación.
 
@@ -164,7 +164,7 @@ Para la verificación de DemoMode, consulte [docs/demo-guide.md](docs/demo-guide
   integración con FPolicy ni la idempotencia (idempotency)**. Si se requiere la deduplicación para HYBRID, integre
   `shared/idempotency_checker.py` en la ruta de publicación. La verificación actual del funcionamiento se realiza con `POLLING`.
 - El push real al store externo para `PUBLISH_PUSH` solo es efectivo cuando el endpoint/bucket están configurados (DemoMode registra un skip).
-- El pull directo de origen SigV4 de ORIGIN_PULL está **por verificar** en CDN de terceros (consulte el [documento de comparación](../docs/cdn-comparison.md) 4.1).
+- El pull directo de origen SigV4 de ORIGIN_PULL está **por verificar** en CDN de terceros (consulte el [documento de comparación](../../../docs/cdn-comparison.md) 4.1).
 
 ## Operación / Runbook (Reliability/Ops)
 
@@ -174,7 +174,7 @@ Para la verificación de DemoMode, consulte [docs/demo-guide.md](docs/demo-guide
   - error de publish → revisar CloudWatch Logs `/aws/lambda/<stack>-publish`. Separar la autorización del S3 AP
     (IAM + AP policy + ID de ONTAP) de la autenticación del store externo (Secrets Manager).
   - fallo del push externo → revisar las credenciales, el endpoint y el bucket en `ExternalStoreSecretName`.
-  - sospecha de problema de límite de distribución (distribución fuera de permisos) → [playbook de respuesta a incidentes](../docs/incident-response-playbook.md).
+  - sospecha de problema de límite de distribución (distribución fuera de permisos) → [playbook de respuesta a incidentes](../../../docs/incident-response-playbook.md).
 - **Rollback**: la distribución solo publica artefactos aprobados. En caso de publicación errónea, elimine el objeto
   correspondiente del destino de distribución (store del CDN/Distribution), retírelo de `ApprovedPrefix` y vuelva a publicar.
 - **Autenticación del store externo**: al replicar a Akamai/R2/Fastly, etc. con PUBLISH_PUSH, las credenciales
@@ -192,11 +192,11 @@ Para la verificación de DemoMode, consulte [docs/demo-guide.md](docs/demo-guide
 
 ## Documentos relacionados
 
-- [Comparación de la integración de distribución CDN/edge](../docs/cdn-comparison.md) / [English](../docs/cdn-comparison.en.md)
-- [Lista de verificación SigV4 de ORIGIN_PULL](../docs/cdn-origin-verification-checklist.md) (procedimiento en hardware real)
-- [Comparación de arquitecturas alternativas](../docs/comparison-alternatives.md)
-- [Notas de compatibilidad de S3AP](../docs/s3ap-compatibility-notes.md)
-- [Playbook de respuesta a incidentes](../docs/incident-response-playbook.md) (ruta de respuesta ante distribución fuera de permisos / publicación errónea)
+- [Comparación de la integración de distribución CDN/edge](../../../docs/cdn-comparison.md) / [English](../../../docs/cdn-comparison.en.md)
+- [Lista de verificación SigV4 de ORIGIN_PULL](../../../docs/cdn-origin-verification-checklist.md) (procedimiento en hardware real)
+- [Comparación de arquitecturas alternativas](../../../docs/comparison-alternatives.md)
+- [Notas de compatibilidad de S3AP](../../../docs/s3ap-compatibility-notes.md)
+- [Playbook de respuesta a incidentes](../../../docs/incident-response-playbook.md) (ruta de respuesta ante distribución fuera de permisos / publicación errónea)
 
 ---
 

@@ -10,7 +10,7 @@ S3 Access Points (S3 AP) über ein CDN/Edge-Auslieferungsnetz auslieferbar macht
 
 Den technischen Vergleich der Integrationsmechanismen und der Machbarkeit der einzelnen Auslieferungsnetze
 (CloudFront / Akamai / Fastly / Cloudflare / Bunny.net / Google Media CDN usw.)
-finden Sie in **[docs/cdn-comparison.md](../docs/cdn-comparison.md)**.
+finden Sie in **[docs/cdn-comparison.md](../../../docs/cdn-comparison.md)**.
 
 > Dieses Pattern ist eine reference implementation (Referenzimplementierung). Die Auswahl des
 > Auslieferungsherstellers, die Rechteverwaltung, geografische Beschränkungen und Compliance liegen in der Entscheidung des Kunden.
@@ -18,7 +18,7 @@ finden Sie in **[docs/cdn-comparison.md](../docs/cdn-comparison.md)**.
 > **TL;DR (30 Sek.)**: Ohne den ONTAP/NAS-Master zu bewegen, liefern Sie **nur freigegebene Auslieferungsartefakte**
 > über CloudFront oder ein Drittanbieter-CDN aus. Beginnen Sie mit `PUBLISH_PUSH` (M3), das das geringste
 > Verifizierungsrisiko aufweist. Übernehmen Sie den direkten SigV4-Pull (ORIGIN_PULL) erst, nachdem Sie ihn mit der
-> [Verifizierungs-Checkliste](../docs/cdn-origin-verification-checklist.md) gemessen haben.
+> [Verifizierungs-Checkliste](../../../docs/cdn-origin-verification-checklist.md) gemessen haben.
 
 ## Geschäftsergebnis und Einführung (Outcome / Adoption)
 
@@ -47,7 +47,7 @@ aus und bestätigen Sie das Verhalten des permission-aware-Filters, der Freigabe
 - **Erste Kundenfrage**: „Möchten Sie bestehende NAS/ONTAP-Assets ohne Kopie an die Edge-Auslieferung anbinden?
   Erfolgt die Auslieferung über CloudFront oder über ein bereits vertraglich gebundenes CDN (z. B. Akamai)?"
 - **PoC-Ergebnisse**: DemoMode-Demo → Auslieferungsmanifest der freigegebenen Renditions → (optional) SigV4-Verifizierungsergebnis auf realer Hardware.
-- Für die Auswahl des Auslieferungsnetzes kann der [CDN-Vergleich](../docs/cdn-comparison.md) unmittelbar in Kundengesprächen verwendet werden.
+- Für die Auswahl des Auslieferungsnetzes kann der [CDN-Vergleich](../../../docs/cdn-comparison.md) unmittelbar in Kundengesprächen verwendet werden.
 
 ## Zu lösende Herausforderungen
 
@@ -81,7 +81,7 @@ graph LR
 
 - **ORIGIN_PULL**: kopiert keine Objekte; erzeugt ein Origin-Referenzmanifest unter der Voraussetzung, dass das CDN
   das S3 AP direkt per SigV4 abruft. CloudFront unterstützt dies über OAC (Referenzimplementierung).
-  Die SigV4-Origin-Signierung bei Drittanbieter-CDNs ist **zu verifizieren** (siehe [Vergleichsdokument](../docs/cdn-comparison.md)).
+  Die SigV4-Origin-Signierung bei Drittanbieter-CDNs ist **zu verifizieren** (siehe [Vergleichsdokument](../../../docs/cdn-comparison.md)).
 - **PUBLISH_PUSH**: repliziert freigegebene Renditions in den S3-kompatiblen Store auf CDN-Seite. Umgeht das
   Origin-Authentifizierungsproblem und ist CDN-unabhängig — der erste Schritt mit dem geringsten Verifizierungsrisiko.
 
@@ -164,7 +164,7 @@ Zur Verifizierung von DemoMode siehe [docs/demo-guide.md](docs/demo-guide.md).
   FPolicy-Integration noch die Idempotenz (idempotency)**. Wenn eine Deduplizierung für HYBRID erforderlich ist,
   integrieren Sie `shared/idempotency_checker.py` in den Publish-Pfad. Die aktuelle Betriebsprüfung erfolgt mit `POLLING`.
 - Der tatsächliche Push in den externen Store für `PUBLISH_PUSH` ist nur wirksam, wenn Endpoint/Bucket konfiguriert sind (DemoMode zeichnet ein Skip auf).
-- Der direkte SigV4-Origin-Pull von ORIGIN_PULL ist bei Drittanbieter-CDNs **zu verifizieren** (siehe [Vergleichsdokument](../docs/cdn-comparison.md) 4.1).
+- Der direkte SigV4-Origin-Pull von ORIGIN_PULL ist bei Drittanbieter-CDNs **zu verifizieren** (siehe [Vergleichsdokument](../../../docs/cdn-comparison.md) 4.1).
 
 ## Betrieb / Runbook (Reliability/Ops)
 
@@ -174,7 +174,7 @@ Zur Verifizierung von DemoMode siehe [docs/demo-guide.md](docs/demo-guide.md).
   - publish-Fehler → CloudWatch Logs `/aws/lambda/<stack>-publish` prüfen. S3-AP-Autorisierung
     (IAM + AP policy + ONTAP-ID) von der Authentifizierung des externen Stores (Secrets Manager) abgrenzen.
   - Fehler beim externen Push → Anmeldeinformationen, Endpoint und Bucket in `ExternalStoreSecretName` prüfen.
-  - Verdacht auf Auslieferungsgrenzenproblem (Auslieferung außerhalb der Berechtigung) → [Incident-Response-Playbook](../docs/incident-response-playbook.md).
+  - Verdacht auf Auslieferungsgrenzenproblem (Auslieferung außerhalb der Berechtigung) → [Incident-Response-Playbook](../../../docs/incident-response-playbook.md).
 - **Rollback**: Die Auslieferung veröffentlicht nur freigegebene Artefakte. Bei einer Fehlveröffentlichung entfernen
   Sie das betreffende Objekt aus dem Auslieferungsziel (CDN-Store/Distribution), ziehen es aus `ApprovedPrefix` zurück und veröffentlichen es erneut.
 - **Authentifizierung des externen Stores**: Bei der Replikation nach Akamai/R2/Fastly usw. mit PUBLISH_PUSH gelten
@@ -192,11 +192,11 @@ Zur Verifizierung von DemoMode siehe [docs/demo-guide.md](docs/demo-guide.md).
 
 ## Zugehörige Dokumente
 
-- [Vergleich der CDN/Edge-Auslieferungsintegration](../docs/cdn-comparison.md) / [English](../docs/cdn-comparison.en.md)
-- [ORIGIN_PULL-SigV4-Verifizierungs-Checkliste](../docs/cdn-origin-verification-checklist.md) (Verfahren auf realer Hardware)
-- [Vergleich alternativer Architekturen](../docs/comparison-alternatives.md)
-- [S3AP-Kompatibilitätshinweise](../docs/s3ap-compatibility-notes.md)
-- [Incident-Response-Playbook](../docs/incident-response-playbook.md) (Reaktionspfad bei Auslieferung außerhalb der Berechtigung / Fehlveröffentlichung)
+- [Vergleich der CDN/Edge-Auslieferungsintegration](../../../docs/cdn-comparison.md) / [English](../../../docs/cdn-comparison.en.md)
+- [ORIGIN_PULL-SigV4-Verifizierungs-Checkliste](../../../docs/cdn-origin-verification-checklist.md) (Verfahren auf realer Hardware)
+- [Vergleich alternativer Architekturen](../../../docs/comparison-alternatives.md)
+- [S3AP-Kompatibilitätshinweise](../../../docs/s3ap-compatibility-notes.md)
+- [Incident-Response-Playbook](../../../docs/incident-response-playbook.md) (Reaktionspfad bei Auslieferung außerhalb der Berechtigung / Fehlveröffentlichung)
 
 ---
 

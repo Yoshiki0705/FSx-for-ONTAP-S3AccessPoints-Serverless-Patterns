@@ -126,7 +126,7 @@ When you set `EnableWebSearch=true`, the Query Lambda generates a unified answer
 - Citation separation: `[Internal: filename]` + `[Web: title](URL)`
 - Security: web results are untrusted data, with prompt injection defense in place
 
-Details: [docs/investigations/agentcore-web-search-fsxn-integration.md](../../docs/investigations/agentcore-web-search-fsxn-integration.md)
+Details: [docs/investigations/agentcore-web-search-fsxn-integration.md](../../../docs/investigations/agentcore-web-search-fsxn-integration.md)
 
 ## Self-service operational model (democratization)
 
@@ -413,11 +413,11 @@ sam local invoke AutoSyncFunction --event events/auto-sync-event.json
 | Related | Relevance |
 |---------|------------|
 | [PoC prerequisites checklist](docs/poc-checklist.md) | Pre-deployment checks (S3 Vectors constraints, inference profiles, etc.) |
-| [Cleanup runbook](../docs/uc29-uc30-cleanup-runbook.md) | Teardown procedure including manual artifacts (shared by 2 UCs) |
+| [Cleanup runbook](../../../docs/uc29-uc30-cleanup-runbook.md) | Teardown procedure including manual artifacts (shared by 2 UCs) |
 | [FC3 genai-rag-enterprise-files](../genai-rag-enterprise-files/) | Custom RAG when strict permission filtering is required (Pattern A) |
-| [Extension pattern: Bedrock KB integration](../docs/extension-patterns.md) | Generic managed KB + S3 AP pattern |
+| [Extension pattern: Bedrock KB integration](../../../docs/extension-patterns.md) | Generic managed KB + S3 AP pattern |
 | [KB creation script](../scripts/create_bedrock_kb.py) | KB / data source creation (deployment prerequisite for this UC) |
-| [Industry / workload mapping](../docs/industry-workload-mapping.md) | UC selection guide |
+| [Industry / workload mapping](../../../docs/industry-workload-mapping.md) | UC selection guide |
 
 ## Operational hardening (implemented)
 

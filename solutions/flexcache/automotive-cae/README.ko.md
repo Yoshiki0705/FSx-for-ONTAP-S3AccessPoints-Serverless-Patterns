@@ -110,7 +110,7 @@ automotive-cae/
 - [manufacturing-analytics/](../manufacturing-analytics/README.md)
 - [semiconductor-eda/](../semiconductor-eda/README.md)
 - [Dynamic FlexCache Render Workflow](../dynamic-flexcache-render-workflow/README.md)
-- [업계·워크로드 매핑](../docs/industry-workload-mapping.md)
+- [업계·워크로드 매핑](../../../docs/industry-workload-mapping.md)
 
 
 ## Success Metrics
@@ -239,7 +239,7 @@ sam local invoke DiscoveryFunction \
 python3 -m pytest tests/ -v
 ```
 
-자세한 내용은 [로컬 테스트 퀵 스타트](../docs/local-testing-quick-start.md)를 참조하세요.
+자세한 내용은 [로컬 테스트 퀵 스타트](../../../docs/local-testing-quick-start.md)를 참조하세요.
 
 ---
 

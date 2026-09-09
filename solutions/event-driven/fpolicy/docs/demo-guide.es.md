@@ -297,6 +297,6 @@ NFSv4.2 no es compatible con el monitoreo ONTAP FPolicy. Especifique explícitam
 
 ## Capturas de pantalla
 
-![FPolicy Pipeline — CloudFormation Stacks](../../docs/screenshots/masked/phase13-cloudformation-stacks.png)
+![FPolicy Pipeline — CloudFormation Stacks](../../../../docs/screenshots/masked/phase13-cloudformation-stacks.png)
 
-![FPolicy Pipeline — Lambda Functions](../../docs/screenshots/masked/phase13-lambda-functions.png)
+![FPolicy Pipeline — Lambda Functions](../../../../docs/screenshots/masked/phase13-lambda-functions.png)

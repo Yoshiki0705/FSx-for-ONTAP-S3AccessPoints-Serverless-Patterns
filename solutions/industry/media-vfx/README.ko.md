@@ -133,7 +133,7 @@ sam deploy \
 
 배포 후 지정한 이메일 주소로 SNS 구독 확인 이메일이 전송됩니다.
 
-> **참고**: `S3AccessPointName`을 생략하면 IAM 정책이 Alias 기반만 되어 `AccessDenied` 오류가 발생할 수 있습니다. 프로덕션 환경에서는 지정을 권장합니다. 자세한 내용은 [문제 해결 가이드](../docs/guides/troubleshooting-guide.md#1-accessdenied-エラー)를 참조하십시오.
+> **참고**: `S3AccessPointName`을 생략하면 IAM 정책이 Alias 기반만 되어 `AccessDenied` 오류가 발생할 수 있습니다. 프로덕션 환경에서는 지정을 권장합니다. 자세한 내용은 [문제 해결 가이드](../../../docs/guides/troubleshooting-guide.md#1-accessdenied-エラー)를 참조하십시오.
 
 ## 구성 파라미터 목록
 
@@ -204,7 +204,7 @@ UC4는 다음 서비스를 사용합니다:
 | AWS X-Ray | 거의 모든 리전에서 사용 가능 |
 | CloudWatch EMF | 거의 모든 리전에서 사용 가능 |
 
-> 자세한 내용은 [리전 호환성 매트릭스](../docs/region-compatibility.md)를 참조하십시오.
+> 자세한 내용은 [리전 호환성 매트릭스](../../../docs/region-compatibility.md)를 참조하십시오.
 
 ## 참고 링크
 
@@ -229,8 +229,8 @@ UC4는 다음 서비스를 사용합니다:
 
 ### 프로젝트 내 가이드
 
-- [FlexClone 서버리스 패턴(일본어)](../docs/guides/flexclone-serverless-patterns.md) — FlexClone + Step Functions + S3AP에 의한 연속 프레임 처리 파이프라인, 멀티프로토콜 마운트, 산업별 유스케이스
-- [FlexClone Serverless Patterns (English)](../docs/guides/flexclone-serverless-patterns-en.md) — FlexClone + Step Functions + S3AP sequential frame processing pipeline
+- [FlexClone 서버리스 패턴(일본어)](../../../docs/guides/flexclone-serverless-patterns.md) — FlexClone + Step Functions + S3AP에 의한 연속 프레임 처리 파이프라인, 멀티프로토콜 마운트, 산업별 유스케이스
+- [FlexClone Serverless Patterns (English)](../../../docs/guides/flexclone-serverless-patterns-en.md) — FlexClone + Step Functions + S3AP sequential frame processing pipeline
 
 ## 검증된 환경
 
@@ -279,7 +279,7 @@ VFX 렌더링 워크플로에서 render input assets(텍스처, 지오메트리,
 
 - **[Dynamic FlexCache Render/EDA Workflow](../dynamic-flexcache-render-workflow/README.md)** — Step Functions에 의한 자동화
 - [FlexCache AnyCast / DR](../flexcache-anycast-dr/README.md) — 멀티 리전 렌더 팜
-- [산업·워크로드 매핑](../docs/industry-workload-mapping.md) — Pattern E: Media/VFX Render Farm
+- [산업·워크로드 매핑](../../../docs/industry-workload-mapping.md) — Pattern E: Media/VFX Render Farm
 
 ### 기대되는 효과
 
@@ -350,7 +350,7 @@ sam local invoke DiscoveryFunction \
 python3 -m pytest tests/ -v
 ```
 
-자세한 내용은 [로컬 테스트 퀵 스타트](../docs/local-testing-quick-start.md)를 참조하십시오.
+자세한 내용은 [로컬 테스트 퀵 스타트](../../../docs/local-testing-quick-start.md)를 참조하십시오.
 
 ---
 
@@ -396,7 +396,7 @@ VFX 렌더링 품질 검사의 출력 예시:
 
 ## S3AP Compatibility
 
-S3 Access Points for FSx for ONTAP의 호환성 제약, 문제 해결, 트리거 패턴에 대해서는 [S3AP Compatibility Notes](../docs/s3ap-compatibility-notes.md)를 참조하십시오.
+S3 Access Points for FSx for ONTAP의 호환성 제약, 문제 해결, 트리거 패턴에 대해서는 [S3AP Compatibility Notes](../../../docs/s3ap-compatibility-notes.md)를 참조하십시오.
 
 ---
 

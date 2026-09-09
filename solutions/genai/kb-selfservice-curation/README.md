@@ -126,7 +126,7 @@ graph TB
 - 引用分離: `[内部: ファイル名]` + `[Web: タイトル](URL)`
 - セキュリティ: Web 結果は非信頼データ、プロンプトインジェクション防御済み
 
-詳細: [docs/investigations/agentcore-web-search-fsxn-integration.md](../../docs/investigations/agentcore-web-search-fsxn-integration.md)
+詳細: [docs/investigations/agentcore-web-search-fsxn-integration.md](../../../docs/investigations/agentcore-web-search-fsxn-integration.md)
 
 ## セルフサービス運用モデル（民主化）
 
@@ -413,11 +413,11 @@ sam local invoke AutoSyncFunction --event events/auto-sync-event.json
 | 関連 | 関連ポイント |
 |---------|------------|
 | [PoC 前提条件チェックリスト](docs/poc-checklist.md) | デプロイ前の確認事項（S3 Vectors 制約・推論プロファイル等） |
-| [クリーンアップ runbook](../docs/uc29-uc30-cleanup-runbook.md) | 手動成果物を含む撤去手順（2UC 共通） |
+| [クリーンアップ runbook](../../../docs/uc29-uc30-cleanup-runbook.md) | 手動成果物を含む撤去手順（2UC 共通） |
 | [FC3 genai-rag-enterprise-files](../genai-rag-enterprise-files/) | 厳密な権限フィルタが必要な場合のカスタム RAG（Pattern A） |
-| [拡張パターン: Bedrock KB 統合](../docs/extension-patterns.md) | マネージド KB + S3 AP の汎用パターン |
+| [拡張パターン: Bedrock KB 統合](../../../docs/extension-patterns.md) | マネージド KB + S3 AP の汎用パターン |
 | [KB 作成スクリプト](../scripts/create_bedrock_kb.py) | KB / データソース作成（本UCのデプロイ前提） |
-| [業界・ワークロード マッピング](../docs/industry-workload-mapping.md) | UC 選択ガイド |
+| [業界・ワークロード マッピング](../../../docs/industry-workload-mapping.md) | UC 選択ガイド |
 
 ## 運用堅牢化（実装済み）
 

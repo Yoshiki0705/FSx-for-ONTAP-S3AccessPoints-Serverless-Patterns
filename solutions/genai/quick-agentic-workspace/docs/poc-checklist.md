@@ -33,4 +33,4 @@
 - [ ] QuickDataSourcePrincipal を Quick 接続専用ロールに限定（既定の root を本番で使わない）
 - [ ] 高リスク操作は `request_approval`（human-in-the-loop）を経由
 
-> クリーンアップ手順は [UC29/UC30 クリーンアップ runbook](../../docs/uc29-uc30-cleanup-runbook.md) を参照。
+> クリーンアップ手順は [UC29/UC30 クリーンアップ runbook](../../../../docs/uc29-uc30-cleanup-runbook.md) を参照。

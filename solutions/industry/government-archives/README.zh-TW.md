@@ -1,7 +1,7 @@
 # UC16：政府機關 — 公文數位典藏·FOIA 因應
 
 🌐 **Language / 言語**: [日本語](README.md) | [English](README.en.md) | [한국어](README.ko.md) | [简体中文](README.zh-CN.md) | 繁體中文 | [Français](README.fr.md) | [Deutsch](README.de.md) | [Español](README.es.md)
-📚 **文件**: [架構](docs/architecture.md) | [示範腳本](docs/demo-guide.md) | [疑難排解](../docs/phase7-troubleshooting.md)
+📚 **文件**: [架構](docs/architecture.md) | [示範腳本](docs/demo-guide.md) | [疑難排解](../../../docs/phase7-troubleshooting.md)
 
 ## 概述
 
@@ -83,7 +83,7 @@ FOIA 請求受理
 <!-- SCREENSHOT: phase7-uc16-s3-archives-uploaded.png
      內容：S3 AP 的 archives/ 前綴下的 PDF 文件清單
      遮罩：帳戶 ID、S3 AP ARN、文件名 -->
-![UC16：公文儲存確認](../docs/screenshots/masked/phase7/phase7-uc16-s3-archives-uploaded.png)
+![UC16：公文儲存確認](../../../docs/screenshots/masked/phase7/phase7-uc16-s3-archives-uploaded.png)
 
 ### 2. 遮蔽文件的檢視
 
@@ -93,7 +93,7 @@ FOIA 請求受理
 <!-- SCREENSHOT: phase7-uc16-redacted-text-preview.png
      內容：S3 主控台中的 redacted 文字預覽，[REDACTED] 標記可見
      遮罩：帳戶 ID、遮蔽目標文件名（僅顯示範例名） -->
-![UC16：遮蔽文件預覽](../docs/screenshots/masked/phase7/phase7-uc16-redacted-text-preview.png)
+![UC16：遮蔽文件預覽](../../../docs/screenshots/masked/phase7/phase7-uc16-redacted-text-preview.png)
 
 ### 3. 遮蔽中繼資料（sidecar JSON）
 
@@ -103,7 +103,7 @@ FOIA 請求受理
 <!-- SCREENSHOT: phase7-uc16-redaction-metadata-json.png
      內容：redaction-metadata/*.json 的格式化檢視
      遮罩：帳戶 ID、原文件名 -->
-![UC16：遮蔽中繼資料 JSON](../docs/screenshots/masked/phase7/phase7-uc16-redaction-metadata-json.png)
+![UC16：遮蔽中繼資料 JSON](../../../docs/screenshots/masked/phase7/phase7-uc16-redaction-metadata-json.png)
 
 ### 4. FOIA 期限提醒（SNS 郵件通知）
 
@@ -113,7 +113,7 @@ FOIA 負責人在期限前 3 個工作日收到的提醒郵件。
 <!-- SCREENSHOT: phase7-uc16-foia-reminder-email.png
      內容：在郵件用戶端中顯示 FOIA_DEADLINE_APPROACHING 郵件
      遮罩：收件者·寄件者郵件、request_id（僅顯示範例 ID） -->
-![UC16：FOIA 期限提醒郵件](../docs/screenshots/masked/phase7/phase7-uc16-foia-reminder-email.png)
+![UC16：FOIA 期限提醒郵件](../../../docs/screenshots/masked/phase7/phase7-uc16-foia-reminder-email.png)
 
 ### 5. NARA GRS 保存排程（DynamoDB Explorer）
 
@@ -123,7 +123,7 @@ FOIA 負責人在期限前 3 個工作日收到的提醒郵件。
 <!-- SCREENSHOT: phase7-uc16-dynamodb-retention.png
      內容：在 DynamoDB Explorer 中的 retention 資料表項目清單
      遮罩：帳戶 ID、document_key（僅範例名） -->
-![UC16：保存排程資料表](../docs/screenshots/masked/phase7/phase7-uc16-dynamodb-retention.png)
+![UC16：保存排程資料表](../../../docs/screenshots/masked/phase7/phase7-uc16-dynamodb-retention.png)
 
 
 ## Success Metrics
@@ -327,7 +327,7 @@ sam local invoke DiscoveryFunction \
 python3 -m pytest tests/ -v
 ```
 
-詳情請參閱 [本機測試快速入門](../docs/local-testing-quick-start.md)。
+詳情請參閱 [本機測試快速入門](../../../docs/local-testing-quick-start.md)。
 
 ---
 
@@ -382,7 +382,7 @@ python3 -m pytest tests/ -v
 
 ## S3AP Compatibility
 
-關於 S3 Access Points for FSx for ONTAP 的相容性限制、疑難排解、觸發模式，請參閱 [S3AP Compatibility Notes](../docs/s3ap-compatibility-notes.md)。
+關於 S3 Access Points for FSx for ONTAP 的相容性限制、疑難排解、觸發模式，請參閱 [S3AP Compatibility Notes](../../../docs/s3ap-compatibility-notes.md)。
 
 ---
 

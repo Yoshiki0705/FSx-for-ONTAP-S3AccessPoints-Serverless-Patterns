@@ -110,7 +110,7 @@ automotive-cae/
 - [manufacturing-analytics/](../manufacturing-analytics/README.md)
 - [semiconductor-eda/](../semiconductor-eda/README.md)
 - [Dynamic FlexCache Render Workflow](../dynamic-flexcache-render-workflow/README.md)
-- [Cartographie secteurs / charges de travail](../docs/industry-workload-mapping.md)
+- [Cartographie secteurs / charges de travail](../../../docs/industry-workload-mapping.md)
 
 
 ## Success Metrics
@@ -239,7 +239,7 @@ sam local invoke DiscoveryFunction \
 python3 -m pytest tests/ -v
 ```
 
-Pour plus de détails, consultez le [démarrage rapide des tests en local](../docs/local-testing-quick-start.md).
+Pour plus de détails, consultez le [démarrage rapide des tests en local](../../../docs/local-testing-quick-start.md).
 
 ---
 

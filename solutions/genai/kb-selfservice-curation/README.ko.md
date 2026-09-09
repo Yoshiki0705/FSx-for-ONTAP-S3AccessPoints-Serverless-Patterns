@@ -126,7 +126,7 @@ graph TB
 - 인용 분리: `[내부: 파일명]` + `[Web: 제목](URL)`
 - 보안: Web 결과는 비신뢰 데이터, 프롬프트 인젝션 방어 완료
 
-자세한 내용: [docs/investigations/agentcore-web-search-fsxn-integration.md](../../docs/investigations/agentcore-web-search-fsxn-integration.md)
+자세한 내용: [docs/investigations/agentcore-web-search-fsxn-integration.md](../../../docs/investigations/agentcore-web-search-fsxn-integration.md)
 
 ## 셀프서비스 운영 모델 (민주화)
 
@@ -413,11 +413,11 @@ sam local invoke AutoSyncFunction --event events/auto-sync-event.json
 | 관련 | 관련 포인트 |
 |---------|------------|
 | [PoC 전제조건 체크리스트](docs/poc-checklist.md) | 배포 전 확인 사항(S3 Vectors 제약·추론 프로파일 등) |
-| [클린업 runbook](../docs/uc29-uc30-cleanup-runbook.md) | 수동 성과물을 포함한 철거 절차(2UC 공통) |
+| [클린업 runbook](../../../docs/uc29-uc30-cleanup-runbook.md) | 수동 성과물을 포함한 철거 절차(2UC 공통) |
 | [FC3 genai-rag-enterprise-files](../genai-rag-enterprise-files/) | 엄격한 권한 필터가 필요한 경우의 커스텀 RAG(Pattern A) |
-| [확장 패턴: Bedrock KB 통합](../docs/extension-patterns.md) | 관리형 KB + S3 AP의 범용 패턴 |
+| [확장 패턴: Bedrock KB 통합](../../../docs/extension-patterns.md) | 관리형 KB + S3 AP의 범용 패턴 |
 | [KB 작성 스크립트](../scripts/create_bedrock_kb.py) | KB / 데이터 소스 작성(본 UC의 배포 전제) |
-| [업계·워크로드 매핑](../docs/industry-workload-mapping.md) | UC 선택 가이드 |
+| [업계·워크로드 매핑](../../../docs/industry-workload-mapping.md) | UC 선택 가이드 |
 
 ## 운영 견고화 (구현 완료)
 

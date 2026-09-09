@@ -136,7 +136,7 @@ sam deploy \
 
 배포 후 지정한 이메일 주소로 SNS 구독 확인 메일이 도착합니다.
 
-> **참고**: `S3AccessPointName`을 생략하면 IAM 정책이 Alias 기반 전용이 되어 `AccessDenied` 오류가 발생할 수 있습니다. 프로덕션 환경에서는 지정을 권장합니다. 자세한 내용은 [문제 해결 가이드](../docs/guides/troubleshooting-guide.md#1-accessdenied-エラー)를 참조하십시오.
+> **참고**: `S3AccessPointName`을 생략하면 IAM 정책이 Alias 기반 전용이 되어 `AccessDenied` 오류가 발생할 수 있습니다. 프로덕션 환경에서는 지정을 권장합니다. 자세한 내용은 [문제 해결 가이드](../../../docs/guides/troubleshooting-guide.md#1-accessdenied-エラー)를 참조하십시오.
 
 ## 설정 파라미터 목록
 
@@ -205,7 +205,7 @@ UC3은 다음 서비스를 사용합니다:
 | AWS X-Ray | 거의 모든 리전에서 이용 가능 |
 | CloudWatch EMF | 거의 모든 리전에서 이용 가능 |
 
-> 자세한 내용은 [리전 호환성 매트릭스](../docs/region-compatibility.md)를 참조하십시오.
+> 자세한 내용은 [리전 호환성 매트릭스](../../../docs/region-compatibility.md)를 참조하십시오.
 
 ## 참고 링크
 
@@ -313,7 +313,7 @@ sam local invoke DiscoveryFunction \
 python3 -m pytest tests/ -v
 ```
 
-자세한 내용은 [로컬 테스트 퀵 스타트](../docs/local-testing-quick-start.md)를 참조하십시오.
+자세한 내용은 [로컬 테스트 퀵 스타트](../../../docs/local-testing-quick-start.md)를 참조하십시오.
 
 ---
 
@@ -362,7 +362,7 @@ python3 -m pytest tests/ -v
 
 ## S3AP Compatibility
 
-S3 Access Points for FSx for ONTAP의 호환성 제약, 문제 해결, 트리거 패턴에 대해서는 [S3AP Compatibility Notes](../docs/s3ap-compatibility-notes.md)를 참조하십시오.
+S3 Access Points for FSx for ONTAP의 호환성 제약, 문제 해결, 트리거 패턴에 대해서는 [S3AP Compatibility Notes](../../../docs/s3ap-compatibility-notes.md)를 참조하십시오.
 
 ---
 

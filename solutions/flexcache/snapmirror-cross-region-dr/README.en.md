@@ -58,7 +58,7 @@ graph TB
 
 ## Prerequisites
 
-> 📐 **Design Guide**: For S3 AP directory design, performance characteristics, and PoC checklist, see [Design Considerations](../../docs/design-considerations-en.md).
+> 📐 **Design Guide**: For S3 AP directory design, performance characteristics, and PoC checklist, see [Design Considerations](../../../docs/design-considerations-en.md).
 
 - 2 FSx for ONTAP clusters in different regions
 - VPC Peering with Cluster/SVM Peering established

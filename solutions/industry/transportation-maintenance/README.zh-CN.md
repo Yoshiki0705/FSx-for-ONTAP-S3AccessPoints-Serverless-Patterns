@@ -96,7 +96,7 @@ graph LR
 
 ## 前提条件
 
-> **S3 AP NetworkOrigin 注意**：Discovery Lambda 部署在 VPC 内。若 S3 Access Point 的 NetworkOrigin 为 `Internet`，则无法经由 S3 Gateway VPC Endpoint 访问（因为不会路由到 FSx 数据平面）。请使用 NetworkOrigin=VPC 的 S3 AP，或配置经由 NAT Gateway 的访问。详情请参阅 [S3AP Compatibility Notes](../docs/s3ap-compatibility-notes.md)。
+> **S3 AP NetworkOrigin 注意**：Discovery Lambda 部署在 VPC 内。若 S3 Access Point 的 NetworkOrigin 为 `Internet`，则无法经由 S3 Gateway VPC Endpoint 访问（因为不会路由到 FSx 数据平面）。请使用 NetworkOrigin=VPC 的 S3 AP，或配置经由 NAT Gateway 的访问。详情请参阅 [S3AP Compatibility Notes](../../../docs/s3ap-compatibility-notes.md)。
 
 - AWS 账户与适当的 IAM 权限
 - FSx for ONTAP 文件系统（ONTAP 9.17.1P4D3 以上）
@@ -165,7 +165,7 @@ sam deploy \
 
 本模式（UC22）提供以 FSx for ONTAP S3 AP + AWS Bedrock 解决同类课题（设备巡检图像 + 维护文档分析）的架构。
 
-详细分析：[DAIS 2026 Agent Bricks 案例分析](../docs/investigations/dais2026-agent-bricks-industry-cases.md)
+详细分析：[DAIS 2026 Agent Bricks 案例分析](../../../docs/investigations/dais2026-agent-bricks-industry-cases.md)
 
 Sources:
 - [DAIS 2026 Session: AI Agents for the Frontline](https://www.databricks.com/dataaisummit/session/ai-agents-frontline-7-elevens-genai-maintenance-assistant)
@@ -175,7 +175,7 @@ Sources:
 
 ## S3AP Compatibility
 
-请参阅 [S3AP Compatibility Notes](../docs/s3ap-compatibility-notes.md)。
+请参阅 [S3AP Compatibility Notes](../../../docs/s3ap-compatibility-notes.md)。
 
 ---
 

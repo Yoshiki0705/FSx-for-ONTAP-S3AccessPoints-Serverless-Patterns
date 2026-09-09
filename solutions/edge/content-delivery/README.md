@@ -9,14 +9,14 @@ FSx for NetApp ONTAP を **Single Source of Truth（マスター）** として�
 **配信ベンダー非依存** のサーバーレスパターンです。
 
 統合メカニズム・各配信網の実現可否（CloudFront / Akamai / Fastly / Cloudflare / Bunny.net /
-Google Media CDN ほか）の技術比較は **[docs/cdn-comparison.md](../docs/cdn-comparison.md)** を参照してください。
+Google Media CDN ほか）の技術比較は **[docs/cdn-comparison.md](../../../docs/cdn-comparison.md)** を参照してください。
 
 > 本パターンは reference implementation（参照実装）です。配信ベンダーの選定や権利処理・地域制限・
 > コンプライアンスは導入先が判断します。
 
 > **TL;DR（30秒）**: ONTAP/NAS のマスターを動かさず、**承認済みの配信用成果物だけ**を CloudFront や
 > サードパーティ CDN から配信する。初手は検証リスク最小の `PUBLISH_PUSH`（M3）。SigV4 直引き（ORIGIN_PULL）は
-> [検証チェックリスト](../docs/cdn-origin-verification-checklist.md)で実測してから採用。
+> [検証チェックリスト](../../../docs/cdn-origin-verification-checklist.md)で実測してから採用。
 
 ## ビジネス成果と導入（Outcome / Adoption）
 
@@ -45,7 +45,7 @@ permission-aware フィルタ・承認証跡・PII マスクの動作を確認�
 - **最初に確認したい質問**: 「既存の NAS/ONTAP 資産を、コピーせずにエッジ配信へつなげたいか。配信は CloudFront か、
   既存契約の CDN（Akamai 等）か」
 - **PoC 成果物**: DemoMode デモ → 承認済みレンディションの配信マニフェスト →（任意）実機 SigV4 検証結果。
-- 配信網選定は [CDN 比較](../docs/cdn-comparison.md) を導入検討の会話でそのまま使用可能。
+- 配信網選定は [CDN 比較](../../../docs/cdn-comparison.md) を導入検討の会話でそのまま使用可能。
 
 ## 解決する課題
 
@@ -79,7 +79,7 @@ graph LR
 
 - **ORIGIN_PULL**: オブジェクトを複製せず、CDN が S3 AP を SigV4 で直接取得する前提の
   オリジン参照マニフェストを生成。CloudFront は OAC で対応（リファレンス実装）。
-  サードパーティ CDN の SigV4 オリジン署名は **要検証**（[比較ドキュメント](../docs/cdn-comparison.md)参照）。
+  サードパーティ CDN の SigV4 オリジン署名は **要検証**（[比較ドキュメント](../../../docs/cdn-comparison.md)参照）。
 - **PUBLISH_PUSH**: 承認済みレンディションを CDN 側 S3 互換ストアへ複製。オリジン認証問題を回避でき、
   CDN 非依存。検証リスクが最も低い初手。
 
@@ -160,7 +160,7 @@ DemoMode の確認は [docs/demo-guide.md](docs/demo-guide.md) を参照。
   冪等化（idempotency）を未実装**。HYBRID の重複排除が必要な場合は `shared/idempotency_checker.py` を
   publish 経路に組み込むこと。現状の動作確認は `POLLING` で行う。
 - `PUBLISH_PUSH` の外部ストアへの実 push はエンドポイント/バケット設定時のみ有効（DemoMode はスキップ記録）。
-- ORIGIN_PULL の SigV4 オリジン直引きはサードパーティ CDN で**要検証**（[比較ドキュメント](../docs/cdn-comparison.md) 4.1 参照）。
+- ORIGIN_PULL の SigV4 オリジン直引きはサードパーティ CDN で**要検証**（[比較ドキュメント](../../../docs/cdn-comparison.md) 4.1 参照）。
 
 ## 運用 / Runbook（Reliability/Ops）
 
@@ -170,7 +170,7 @@ DemoMode の確認は [docs/demo-guide.md](docs/demo-guide.md) を参照。
   - publish エラー → CloudWatch Logs `/aws/lambda/<stack>-publish` を確認。S3 AP 認可（IAM + AP policy +
     ONTAP ID）と外部ストア認証（Secrets Manager）を切り分け。
   - 外部 push 失敗 → `ExternalStoreSecretName` の認証情報・エンドポイント・バケットを確認。
-  - 配信境界の疑い（権限外配信）→ [インシデント対応 Playbook](../docs/incident-response-playbook.md)。
+  - 配信境界の疑い（権限外配信）→ [インシデント対応 Playbook](../../../docs/incident-response-playbook.md)。
 - **ロールバック**: 配信は承認済み成果物の publish のみ。誤公開時は配信先（CDN ストア/Distribution）から該当
   オブジェクトを除去し、`ApprovedPrefix` から取り下げて再 publish。
 - **外部ストア認証**: PUBLISH_PUSH で Akamai/R2/Fastly 等へ複製する場合、AWS 既定認証は通用しないため
@@ -188,11 +188,11 @@ DemoMode の確認は [docs/demo-guide.md](docs/demo-guide.md) を参照。
 
 ## 関連ドキュメント
 
-- [CDN/エッジ配信統合比較](../docs/cdn-comparison.md) / [English](../docs/cdn-comparison.en.md)
-- [ORIGIN_PULL SigV4 検証チェックリスト](../docs/cdn-origin-verification-checklist.md)（実機検証手順）
-- [代替アーキテクチャ比較](../docs/comparison-alternatives.md)
-- [S3AP 互換性ノート](../docs/s3ap-compatibility-notes.md)
-- [インシデント対応 Playbook](../docs/incident-response-playbook.md)（権限外配信・誤公開時の対応導線）
+- [CDN/エッジ配信統合比較](../../../docs/cdn-comparison.md) / [English](../../../docs/cdn-comparison.en.md)
+- [ORIGIN_PULL SigV4 検証チェックリスト](../../../docs/cdn-origin-verification-checklist.md)（実機検証手順）
+- [代替アーキテクチャ比較](../../../docs/comparison-alternatives.md)
+- [S3AP 互換性ノート](../../../docs/s3ap-compatibility-notes.md)
+- [インシデント対応 Playbook](../../../docs/incident-response-playbook.md)（権限外配信・誤公開時の対応導線）
 
 ---
 

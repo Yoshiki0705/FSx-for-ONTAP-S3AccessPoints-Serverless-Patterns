@@ -266,7 +266,7 @@ VOD 게시는 자동 판정에만 의존하지 않습니다. 패키지 **완전�
 - **경보**: `EnableCloudWatchAlarms=true` 로 Lambda 오류 / Step Functions 실패를 SNS 통지.
 - **장애 대응**: publish 실패 시 `/aws/lambda/<stack>-publish` 확인, S3 AP 인가(IAM + AP policy + ONTAP
   identity)와 소스 S3 읽기를 분리. 오배포 시 CloudFront 오리진에서 해당 객체 제거 후 재실행.
-  [인시던트 대응 Playbook](../../docs/incident-response-playbook.md) 참조.
+  [인시던트 대응 Playbook](../../../docs/incident-response-playbook.md) 참조.
 
 ## FAQ / 흔한 오해
 
@@ -288,7 +288,7 @@ VOD 게시는 자동 판정에만 의존하지 않습니다. 패키지 **완전�
 - Playlist(`.m3u8`)는 짧은 TTL, Segment(`.ts` / `.m4s`)는 긴 TTL.
 - 전달 읽기를 업무 볼륨과 분리하려면 **FlexCache** 볼륨(ONTAP 네이티브)을 CloudFront 오리진 소스로 고려.
 - **S3 AP 는 완전한 S3 버킷이 아닙니다** — S3 호환 액세스 경계. 버킷 레벨 기능(Presigned URL, Versioning,
-  Object Lock, Lifecycle, Static Website Hosting) 전제 금지. [../../docs/s3ap-compatibility-notes.md](../../docs/s3ap-compatibility-notes.md) 참조.
+  Object Lock, Lifecycle, Static Website Hosting) 전제 금지. [../../docs/s3ap-compatibility-notes.md](../../../docs/s3ap-compatibility-notes.md) 참조.
 
 ## 참조(AWS 공식 문서)
 
@@ -301,11 +301,11 @@ VOD 게시는 자동 판정에만 의존하지 않습니다. 패키지 **완전�
 
 ## 관련 문서
 
-- [S3AP 호환성 노트](../../docs/s3ap-compatibility-notes.md)
-- [S3AP 성능 고려사항](../../docs/s3ap-performance-considerations.md)
-- [비용 계산](../../docs/cost-calculator.md)
-- [대체 아키텍처 비교](../../docs/comparison-alternatives.md)
-- [인시던트 대응 Playbook](../../docs/incident-response-playbook.md)
+- [S3AP 호환성 노트](../../../docs/s3ap-compatibility-notes.md)
+- [S3AP 성능 고려사항](../../../docs/s3ap-performance-considerations.md)
+- [비용 계산](../../../docs/cost-calculator.md)
+- [대체 아키텍처 비교](../../../docs/comparison-alternatives.md)
+- [인시던트 대응 Playbook](../../../docs/incident-response-playbook.md)
 - [Content Edge Delivery 패턴](../content-delivery/README.md)
 - [Media/VFX 산업 패턴](../../industry/media-vfx/README.md)
 

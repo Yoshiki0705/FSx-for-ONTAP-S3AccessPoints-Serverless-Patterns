@@ -133,7 +133,7 @@ sam deploy \
 
 部署后，会向指定的电子邮件地址发送 SNS 订阅确认邮件。
 
-> **注意**：如果省略 `S3AccessPointName`，IAM 策略将仅基于 Alias，可能会发生 `AccessDenied` 错误。生产环境建议指定。详情请参阅[故障排除指南](../docs/guides/troubleshooting-guide.md#1-accessdenied-エラー)。
+> **注意**：如果省略 `S3AccessPointName`，IAM 策略将仅基于 Alias，可能会发生 `AccessDenied` 错误。生产环境建议指定。详情请参阅[故障排除指南](../../../docs/guides/troubleshooting-guide.md#1-accessdenied-エラー)。
 
 ## 配置参数一览
 
@@ -204,7 +204,7 @@ UC4 使用以下服务：
 | AWS X-Ray | 几乎所有区域均可使用 |
 | CloudWatch EMF | 几乎所有区域均可使用 |
 
-> 详情请参阅[区域兼容性矩阵](../docs/region-compatibility.md)。
+> 详情请参阅[区域兼容性矩阵](../../../docs/region-compatibility.md)。
 
 ## 参考链接
 
@@ -229,8 +229,8 @@ UC4 使用以下服务：
 
 ### 项目内指南
 
-- [FlexClone 无服务器模式（日语）](../docs/guides/flexclone-serverless-patterns.md) — 基于 FlexClone + Step Functions + S3AP 的连续帧处理管道、多协议挂载、行业用例
-- [FlexClone Serverless Patterns (English)](../docs/guides/flexclone-serverless-patterns-en.md) — FlexClone + Step Functions + S3AP sequential frame processing pipeline
+- [FlexClone 无服务器模式（日语）](../../../docs/guides/flexclone-serverless-patterns.md) — 基于 FlexClone + Step Functions + S3AP 的连续帧处理管道、多协议挂载、行业用例
+- [FlexClone Serverless Patterns (English)](../../../docs/guides/flexclone-serverless-patterns-en.md) — FlexClone + Step Functions + S3AP sequential frame processing pipeline
 
 ## 已验证环境
 
@@ -279,7 +279,7 @@ UC4 使用以下服务：
 
 - **[Dynamic FlexCache Render/EDA Workflow](../dynamic-flexcache-render-workflow/README.md)** — 基于 Step Functions 的自动化
 - [FlexCache AnyCast / DR](../flexcache-anycast-dr/README.md) — 多区域渲染农场
-- [行业·工作负载映射](../docs/industry-workload-mapping.md) — Pattern E: Media/VFX Render Farm
+- [行业·工作负载映射](../../../docs/industry-workload-mapping.md) — Pattern E: Media/VFX Render Farm
 
 ### 预期效果
 
@@ -350,7 +350,7 @@ sam local invoke DiscoveryFunction \
 python3 -m pytest tests/ -v
 ```
 
-详情请参阅[本地测试快速入门](../docs/local-testing-quick-start.md)。
+详情请参阅[本地测试快速入门](../../../docs/local-testing-quick-start.md)。
 
 ---
 
@@ -396,7 +396,7 @@ VFX 渲染质量检查的输出示例：
 
 ## S3AP Compatibility
 
-有关 S3 Access Points for FSx for ONTAP 的兼容性约束、故障排除和触发模式，请参阅 [S3AP Compatibility Notes](../docs/s3ap-compatibility-notes.md)。
+有关 S3 Access Points for FSx for ONTAP 的兼容性约束、故障排除和触发模式，请参阅 [S3AP Compatibility Notes](../../../docs/s3ap-compatibility-notes.md)。
 
 ---
 
