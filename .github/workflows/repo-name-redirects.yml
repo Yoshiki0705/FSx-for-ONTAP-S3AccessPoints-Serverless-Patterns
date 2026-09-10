@@ -54,11 +54,12 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ github.token }}
         run: python3 scripts/check_repo_name_redirects.py
-      - name: Verify the strings a sibling repository has registered against this one
-        # The Adoption Playbook publishes one line per string it depends on inside another
-        # repository. Nine name this repository, and nothing here read them, so the first
-        # reword of one would have surfaced in their CI rather than in the commit that
-        # caused it.
+      - name: Verify the strings sibling repositories have registered against this one
+        # Two repositories publish one line per string they depend on inside another
+        # repository, and nothing here read either, so the first reword of one would have
+        # surfaced in their CI rather than in the commit that caused it. Reading only the
+        # first was the same gap reopened: S3-Burst-on-ONTAP-Files published its contract
+        # after the reader landed and registered eight rows nobody looked at.
         #
         # `--fetch` because a runner has no sibling checkout. Without it the check skips,
         # and a gate that skips everywhere it runs automatically is not a gate. Exit 2 is
