@@ -540,11 +540,12 @@ drift:
 # there could not learn that two thirds of the library existed. Every other doc check here asks
 # whether a document is internally consistent; none asked whether it covers the tree it indexes.
 	$(PYTHON) -m pytest scripts/tests/test_check_selection_guide_coverage.py --tb=short -q
-# Strings another repository publishes guidance against. The Adoption Playbook registers
-# nine of them inside this repository and reads none of ours; until this existed, a reword
-# here surfaced as a failure in their CI, after the commit, with their guidance already
-# published against a sentence that had moved. Only the owner of a string can say whether a
-# change was a reword or a retraction, and the owner is here.
+# Strings other repositories publish guidance against. Two of them register strings inside
+# this repository; until this existed, a reword here surfaced as a failure in their CI,
+# after the commit, with their guidance already published against a sentence that had
+# moved. Only the owner of a string can say whether a change was a reword or a retraction,
+# and the owner is here. Every source is read on every run: handling one and stopping is
+# how the second citer's eight rows went unread after the first version landed.
 #
 # Skips without a sibling checkout, which is every runner -- so the network mode runs in
 # repo-name-redirects.yml, not here. The tests below are what runs unconditionally.
