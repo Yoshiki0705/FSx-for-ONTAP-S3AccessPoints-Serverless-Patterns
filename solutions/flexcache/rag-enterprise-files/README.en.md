@@ -131,8 +131,8 @@ genai-rag-enterprise-files/
 
 ## Related Links
 
-- [Dynamic FlexCache Render Workflow](../dynamic-flexcache-render-workflow/README.md)
-- [FlexCache AnyCast / DR](../flexcache-anycast-dr/README.md)
+- [Dynamic FlexCache Render Workflow](../dynamic-render-workflow/README.md)
+- [FlexCache AnyCast / DR](../anycast-dr/README.md)
 - [Industry & Workload Mapping](../../../docs/industry-workload-mapping.md)
 
 

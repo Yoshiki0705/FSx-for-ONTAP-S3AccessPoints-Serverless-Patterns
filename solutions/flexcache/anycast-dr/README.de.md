@@ -243,7 +243,7 @@ DynamoDB routing table updates, CloudWatch Logs, ONTAP REST API health check res
 
 - [Support-Matrix](../../../docs/support-matrix-fsx-ontap-flexcache-s3ap.md)
 - [Branchen-/Workload-Mapping](../../../docs/industry-workload-mapping.md)
-- [Dynamic FlexCache Render Workflow](../dynamic-flexcache-render-workflow/README.md)
+- [Dynamic FlexCache Render Workflow](../dynamic-render-workflow/README.md)
 - [NetApp FlexCache-Dokumentation](https://docs.netapp.com/us-en/ontap/flexcache/index.html)
 - [FSx for ONTAP-Dokumentation](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/)
 

@@ -277,8 +277,8 @@ UC4 使用以下服務：
 
 以任務為單位建立·刪除 FlexCache 的工作流程詳情請參閱：
 
-- **[Dynamic FlexCache Render/EDA Workflow](../dynamic-flexcache-render-workflow/README.md)** — 基於 Step Functions 的自動化
-- [FlexCache AnyCast / DR](../flexcache-anycast-dr/README.md) — 多區域渲染農場
+- **[Dynamic FlexCache Render/EDA Workflow](../../flexcache/dynamic-render-workflow/README.md)** — 基於 Step Functions 的自動化
+- [FlexCache AnyCast / DR](../../flexcache/anycast-dr/README.md) — 多區域渲染農場
 - [產業·工作負載對應](../../../docs/industry-workload-mapping.md) — Pattern E: Media/VFX Render Farm
 
 ### 預期效果

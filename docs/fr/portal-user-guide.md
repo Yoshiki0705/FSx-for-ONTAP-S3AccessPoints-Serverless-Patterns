@@ -251,9 +251,9 @@ R : Utilisez le Cognito Hosted UI ou demandez à votre administrateur de le réi
 | Document | Public | Objectif |
 |----------|--------|----------|
 | [Getting Started (Deploy)](../../solutions/amplify-portal/docs/GETTING-STARTED.md) | Administrateurs | Déployer le portail depuis zéro |
-| [Admin Demo Guide](admin-resource-management-demo.md) | Administrateurs stockage | Démo E2E des opérations d'administration |
-| [AI Features Quick Start](ai-features-quick-start.md) | Tous les utilisateurs | Essayer Bedrock, Rekognition, Athena |
+| [Admin Demo Guide](../en/admin-resource-management-demo.md) | Administrateurs stockage | Démo E2E des opérations d'administration |
+| [AI Features Quick Start](../en/ai-features-quick-start.md) | Tous les utilisateurs | Essayer Bedrock, Rekognition, Athena |
 | [Implementation Guide](../../solutions/amplify-portal/docs/IMPLEMENTATION.md) | Développeurs | Architecture et personnalisation |
-| [Authorization Model](portal-authorization-model.md) | Équipes sécurité | Groupes Cognito, IAM, accès au niveau fichier |
+| [Authorization Model](../en/portal-authorization-model.md) | Équipes sécurité | Groupes Cognito, IAM, accès au niveau fichier |
 | [Compliance Guide](portal-compliance-guide.md) | Sécurité/Conformité | Vérifier les contrôles réglementaires |
 | [Quick Reference](portal-quick-reference.md) | Tous les rôles | Aide-mémoire 1 page |

@@ -160,11 +160,11 @@ aws stepfunctions start-execution \
 
 ## 관련 링크
 
-- [FlexCache AnyCast / DR 패턴](../flexcache-anycast-dr/README.md)
+- [FlexCache AnyCast / DR 패턴](../anycast-dr/README.md)
 - [지원 매트릭스](../../../docs/support-matrix-fsx-ontap-flexcache-s3ap.md)
 - [업계·워크로드 매핑](../../../docs/industry-workload-mapping.md)
-- [media-vfx/](../media-vfx/README.md)
-- [semiconductor-eda/](../semiconductor-eda/README.md)
+- [media-vfx/](../../industry/media-vfx/README.md)
+- [semiconductor-eda/](../../industry/semiconductor-eda/README.md)
 
 ## Success Metrics
 

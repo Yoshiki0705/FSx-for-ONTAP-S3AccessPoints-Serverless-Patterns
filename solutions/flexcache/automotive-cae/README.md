@@ -107,9 +107,9 @@ automotive-cae/
 
 ## 関連リンク
 
-- [manufacturing-analytics/](../manufacturing-analytics/README.md)
-- [semiconductor-eda/](../semiconductor-eda/README.md)
-- [Dynamic FlexCache Render Workflow](../dynamic-flexcache-render-workflow/README.md)
+- [manufacturing-analytics/](../../industry/manufacturing-analytics/README.md)
+- [semiconductor-eda/](../../industry/semiconductor-eda/README.md)
+- [Dynamic FlexCache Render Workflow](../dynamic-render-workflow/README.md)
 - [業界・ワークロード マッピング](../../../docs/industry-workload-mapping.md)
 
 

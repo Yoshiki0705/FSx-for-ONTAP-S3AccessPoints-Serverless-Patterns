@@ -160,11 +160,11 @@ aws stepfunctions start-execution \
 
 ## Related Links
 
-- [FlexCache AnyCast / DR pattern](../flexcache-anycast-dr/README.md)
+- [FlexCache AnyCast / DR pattern](../anycast-dr/README.md)
 - [Support matrix](../../../docs/support-matrix-fsx-ontap-flexcache-s3ap.md)
 - [Industry / workload mapping](../../../docs/industry-workload-mapping.md)
-- [media-vfx/](../media-vfx/README.md)
-- [semiconductor-eda/](../semiconductor-eda/README.md)
+- [media-vfx/](../../industry/media-vfx/README.md)
+- [semiconductor-eda/](../../industry/semiconductor-eda/README.md)
 
 ## Success Metrics
 

@@ -364,8 +364,8 @@ graph TB
 
 ### 관련 패턴
 
-- [Dynamic FlexCache Render/EDA Workflow](../dynamic-flexcache-render-workflow/README.md) — 잡 단위의 FlexCache 동적 생성·삭제
-- [FlexCache AnyCast / DR](../flexcache-anycast-dr/README.md) — 멀티 리전 클라우드 버스트
+- [Dynamic FlexCache Render/EDA Workflow](../../flexcache/dynamic-render-workflow/README.md) — 잡 단위의 FlexCache 동적 생성·삭제
+- [FlexCache AnyCast / DR](../../flexcache/anycast-dr/README.md) — 멀티 리전 클라우드 버스트
 - [업계·워크로드 매핑](../../../docs/industry-workload-mapping.md) — Pattern D: EDA Cloud Burst
 
 

@@ -63,7 +63,7 @@ FSx for ONTAP (衛星影像儲存)
 
 以 2026-05-10 在 ap-northeast-1 實際確認運作時**一般職員日常操作的 UI**
 為中心進行展示。面向技術人員的主控台畫面（Step Functions 圖形等）請參見
-[docs/verification-results-phase7.md](../docs/verification-results-phase7.md)。
+`docs/verification-results-phase7.md` (not published)。
 
 ### 1. 衛星影像儲存（透過 FSx for ONTAP / S3 Access Point）
 

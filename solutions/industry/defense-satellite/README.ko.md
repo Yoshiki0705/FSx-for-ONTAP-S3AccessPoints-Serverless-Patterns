@@ -64,7 +64,7 @@ FSx for ONTAP (위성 이미지 저장)
 2026-05-10 에 ap-northeast-1 에서 실제로 가동을 확인했을 때의,
 **일반 직원이 일상적으로 조작하는 UI** 를 중심으로 게시한다. 기술자용 콘솔 화면
 (Step Functions 그래프 등)은
-[docs/verification-results-phase7.md](../docs/verification-results-phase7.md) 를 참조.
+`docs/verification-results-phase7.md` (not published) 를 참조.
 
 ### 1. 위성 이미지 저장 (FSx for ONTAP / S3 Access Point 경유)
 

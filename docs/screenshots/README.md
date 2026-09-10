@@ -170,7 +170,7 @@ UC15 (Defense / Satellite Imagery)、UC16 (Government / FOIA)、UC17 (Smart City
 | `phase7-uc17-s3-report.png` | UC17 Bedrock 生成の都市計画レポート（Markdown） |
 | `phase7-uc17-dynamodb-landuse-history.png` | UC17 DynamoDB LandUse History（時系列変化） |
 
-検証実施済み（2026-05-10）: 3 UC すべて Step Functions SUCCEEDED、Bedrock 実呼び出し確認、その後リソース削除。検証結果の詳細は [verification-results-phase7.md](../verification-results-phase7.md) 参照。
+検証実施済み（2026-05-10）: 3 UC すべて Step Functions SUCCEEDED、Bedrock 実呼び出し確認、その後リソース削除。検証結果の詳細は `verification-results-phase7.md`（未作成） 参照。
 
 ## 命名規則
 

@@ -66,7 +66,7 @@ FSx for ONTAP (almacenamiento de imágenes satelitales)
 Centrado en **la UI que el personal general utiliza en el día a día**, con base en una
 ejecución real verificada en ap-northeast-1 el 2026-05-10. Para las pantallas de consola
 orientadas a técnicos (gráficos de Step Functions, etc.), consulte
-[docs/verification-results-phase7.md](../docs/verification-results-phase7.md).
+`docs/verification-results-phase7.md` (not published).
 
 ### 1. Colocación de imágenes satelitales (vía FSx for ONTAP / S3 Access Point)
 

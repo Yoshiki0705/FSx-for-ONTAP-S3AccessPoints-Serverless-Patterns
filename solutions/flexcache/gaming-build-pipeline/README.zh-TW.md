@@ -110,9 +110,9 @@ gaming-build-pipeline/
 
 ## 相關連結
 
-- [media-vfx/](../media-vfx/README.md) — 算圖管線
-- [Dynamic FlexCache Render Workflow](../dynamic-flexcache-render-workflow/README.md)
-- [FlexCache AnyCast / DR](../flexcache-anycast-dr/README.md)
+- [media-vfx/](../../industry/media-vfx/README.md) — 算圖管線
+- [Dynamic FlexCache Render Workflow](../dynamic-render-workflow/README.md)
+- [FlexCache AnyCast / DR](../anycast-dr/README.md)
 - [產業·工作負載對應](../../../docs/industry-workload-mapping.md)
 
 

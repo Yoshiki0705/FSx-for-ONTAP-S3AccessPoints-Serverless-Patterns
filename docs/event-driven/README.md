@@ -87,13 +87,11 @@ aws sqs receive-message --queue-url <QUEUE_URL> --max-number-of-messages 5
 
 ### SQS キュー詳細（FPolicy イベント受信確認）
 
-![SQS Queue Detail](../screenshots/fpolicy-sqs-queue-detail.png)
 
 *FPolicy Server から送信されたメッセージが SQS キューに到達（Messages available: 4）*
 
 ### CloudWatch Logs（FPolicy Server イベント受信ログ）
 
-![CloudWatch Logs](../screenshots/fpolicy-cloudwatch-logs.png)
 
 *ECS Fargate 上の FPolicy Server が ONTAP からの NOTI_REQ を受信し、SQS に送信したログ*
 
@@ -106,7 +104,7 @@ aws sqs receive-message --queue-url <QUEUE_URL> --max-number-of-messages 5
 | [architecture-design.md](./architecture-design.md) | イベント駆動アーキテクチャ全体設計（Polling vs Kinesis vs Event-Driven 比較） |
 | [fpolicy-configuration-reference.md](./fpolicy-configuration-reference.md) | FPolicy 設定リファレンス（プロトコル別コマンド例、考慮点） |
 | [fpolicy-server-deployment-architecture.md](./fpolicy-server-deployment-architecture.md) | FPolicy Server デプロイ方式比較（Fargate vs EC2） |
-| [fpolicy-e2e-verification-report.md](./fpolicy-e2e-verification-report.md) | E2E 検証レポート（成功/失敗結果、発見した問題と対策） |
+| `fpolicy-e2e-verification-report.md`（未作成） | E2E 検証レポート（成功/失敗結果、発見した問題と対策） |
 | [migration-guide.md](./migration-guide.md) | ポーリング → イベント駆動への移行ガイド |
 
 ## 関連テンプレート

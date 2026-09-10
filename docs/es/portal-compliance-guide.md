@@ -174,7 +174,7 @@ Cuando se detecta un incidente de ransomware:
 | Documento | Propósito |
 |-----------|-----------|
 | [Guía del usuario](portal-user-guide.md) | Operaciones diarias del usuario |
-| [Modelo de autorización](portal-authorization-model.md) | Matriz completa de permisos |
-| [Guía de demostración admin](admin-resource-management-demo.md) | Operaciones de administración de almacenamiento |
+| [Modelo de autorización](../en/portal-authorization-model.md) | Matriz completa de permisos |
+| [Guía de demostración admin](../en/admin-resource-management-demo.md) | Operaciones de administración de almacenamiento |
 | [Playbook de respuesta a incidentes](../../docs/incident-response-playbook.md) | Procedimientos completos de respuesta a incidentes |
 | [Referencia rápida](portal-quick-reference.md) | Resumen de 1 página |

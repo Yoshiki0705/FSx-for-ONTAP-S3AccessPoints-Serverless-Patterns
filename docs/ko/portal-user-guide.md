@@ -249,9 +249,9 @@ A: Cognito Hosted UI를 사용하거나 관리자에게 재설정을 요청하�
 | 문서 | 대상 | 용도 |
 |------|------|------|
 | [Getting Started (Deploy)](../../solutions/amplify-portal/docs/GETTING-STARTED.md) | 관리자 | 포털을 처음부터 배포 |
-| [Admin Demo Guide](admin-resource-management-demo.md) | 스토리지 관리자 | 관리 작업 E2E 데모 |
-| [AI Features Quick Start](ai-features-quick-start.md) | 모든 사용자 | Bedrock, Rekognition, Athena 사용해보기 |
+| [Admin Demo Guide](../en/admin-resource-management-demo.md) | 스토리지 관리자 | 관리 작업 E2E 데모 |
+| [AI Features Quick Start](../en/ai-features-quick-start.md) | 모든 사용자 | Bedrock, Rekognition, Athena 사용해보기 |
 | [Implementation Guide](../../solutions/amplify-portal/docs/IMPLEMENTATION.md) | 개발자 | 아키텍처 및 커스터마이징 |
-| [Authorization Model](portal-authorization-model.md) | 보안 팀 | Cognito 그룹, IAM, 파일 수준 액세스 |
+| [Authorization Model](../en/portal-authorization-model.md) | 보안 팀 | Cognito 그룹, IAM, 파일 수준 액세스 |
 | [Compliance Guide](portal-compliance-guide.md) | 보안/컴플라이언스 | 규제 제어 검증 |
 | [Quick Reference](portal-quick-reference.md) | 모든 역할 | 1페이지 요약 시트 |

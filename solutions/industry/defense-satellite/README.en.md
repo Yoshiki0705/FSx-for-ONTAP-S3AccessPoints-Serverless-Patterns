@@ -64,7 +64,7 @@ FSx for ONTAP (satellite imagery storage)
 Focusing on **the UI general staff operate day-to-day**, based on a live run verified
 in ap-northeast-1 on 2026-05-10. For engineer-facing console screens (Step Functions
 graphs, etc.), see
-[docs/verification-results-phase7.md](../docs/verification-results-phase7.md).
+`docs/verification-results-phase7.md` (not published).
 
 ### 1. Satellite Imagery Placement (via FSx for ONTAP / S3 Access Point)
 

@@ -123,6 +123,6 @@
 |---------|-----------|
 | 一般使用者（日常任務） | [使用者指南](portal-user-guide.md) |
 | 安全 / 合規人員 | [合規指南](portal-compliance-guide.md) |
-| 儲存管理員 | [管理員示範指南](admin-resource-management-demo.md) |
+| 儲存管理員 | [管理員示範指南](../en/admin-resource-management-demo.md) |
 | IT 管理員（部署） | [入門指南](../../solutions/amplify-portal/docs/GETTING-STARTED.md) |
 | 開發者（客製化） | [實作指南](../../solutions/amplify-portal/docs/IMPLEMENTATION.md) |

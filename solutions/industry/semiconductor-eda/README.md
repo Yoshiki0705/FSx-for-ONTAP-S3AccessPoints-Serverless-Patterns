@@ -464,8 +464,8 @@ graph TB
 
 ### 関連パターン
 
-- [Dynamic FlexCache Render/EDA Workflow](../dynamic-flexcache-render-workflow/README.md) — ジョブ単位の FlexCache 動的作成・削除
-- [FlexCache AnyCast / DR](../flexcache-anycast-dr/README.md) — マルチリージョンクラウドバースト
+- [Dynamic FlexCache Render/EDA Workflow](../../flexcache/dynamic-render-workflow/README.md) — ジョブ単位の FlexCache 動的作成・削除
+- [FlexCache AnyCast / DR](../../flexcache/anycast-dr/README.md) — マルチリージョンクラウドバースト
 - [業界・ワークロード マッピング](../../../docs/industry-workload-mapping.md) — Pattern D: EDA Cloud Burst
 
 

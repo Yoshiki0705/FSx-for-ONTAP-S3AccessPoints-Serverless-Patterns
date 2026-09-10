@@ -174,7 +174,7 @@ Wenn ein Ransomware-Vorfall erkannt wird:
 | Dokument | Zweck |
 |----------|-------|
 | [Benutzerhandbuch](portal-user-guide.md) | Tägliche Benutzeroperationen |
-| [Autorisierungsmodell](portal-authorization-model.md) | Vollständige Berechtigungsmatrix |
-| [Admin-Demo-Leitfaden](admin-resource-management-demo.md) | Speicherverwaltungsoperationen |
+| [Autorisierungsmodell](../en/portal-authorization-model.md) | Vollständige Berechtigungsmatrix |
+| [Admin-Demo-Leitfaden](../en/admin-resource-management-demo.md) | Speicherverwaltungsoperationen |
 | [Incident-Response-Playbook](../../docs/incident-response-playbook.md) | Vollständige Incident-Response-Verfahren |
 | [Kurzreferenz](portal-quick-reference.md) | 1-Seiten-Zusammenfassung |

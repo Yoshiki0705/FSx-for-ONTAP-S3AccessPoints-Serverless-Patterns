@@ -98,7 +98,7 @@ life-sciences-research/
 
 ## 相關連結
 
-- [FlexCache AnyCast / DR](../flexcache-anycast-dr/README.md)
+- [FlexCache AnyCast / DR](../anycast-dr/README.md)
 - [產業·工作負載對應](../../../docs/industry-workload-mapping.md)
 - [支援矩陣](../../../docs/support-matrix-fsx-ontap-flexcache-s3ap.md)
 

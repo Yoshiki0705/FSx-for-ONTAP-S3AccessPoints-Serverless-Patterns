@@ -160,7 +160,7 @@ Se emiten las siguientes métricas en formato CloudWatch EMF:
 
 - [Diseño de la arquitectura basada en eventos](../../../docs/event-driven/architecture-design.md)
 - [Guía de migración](../../../docs/event-driven/migration-guide.md)
-- [UC11 Retail Catalog](../retail-catalog/README.md)
+- [UC11 Retail Catalog](../../industry/retail-catalog/README.md)
 
 ---
 
