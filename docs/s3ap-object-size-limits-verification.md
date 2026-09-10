@@ -170,8 +170,9 @@ RESULT=COMPLETE_FAILED
 2. **`UploadPart` に累積サイズのチェックはありません**。50 GiB + 1 バイト分の 11 パートすべてが受理され、1 バイトのテールパートも正常に登録されました。
 3. **拒否は `CompleteMultipartUpload` のみ**。全データ転送（590 秒）を終えた後に発覚します。事前チェックの手段はサービス側に用意されていません。
 4. **`CompleteMultipartUpload` のエラーに `MaxSizeAllowed` / `ProposedSize` が含まれません**。検証 1・2 の `PutObject` / `UploadPart` では返るため、API 間で一貫していません。
-5. **`CompleteMultipartUpload` 自体に時間がかかります**。成功ケースはアップロード完了が 538 秒、全体が 1095 秒なので、**組み立てだけで約 557 秒（9 分強）**を要しました。クライアントは十分に長い `read_timeout` を設定する必要があります（本検証では 1800 秒）。
-6. スループットは全パートで 95〜97 MiB/s と安定し、ファイルシステムのスループットキャパシティ 128 MBps（約 122 MiB/s）が律速でした。
+5. **`CompleteMultipartUpload` 自体に時間がかかります**。成功ケースはアップロード完了が 538 秒、全体が 1095 秒なので、**組み立てだけで約 557 秒（9 分強）**を要しました。本検証では `read_timeout` に 1800 秒を設定していましたが、**これは必要ではありませんでした。** [CompleteMultipartUpload のリファレンス](https://docs.aws.amazon.com/AmazonS3/latest/API/API_CompleteMultipartUpload.html) に、組み立て中は接続がタイムアウトしないよう Amazon S3 が定期的に空白文字を送ると書かれています。既定の読み取りタイムアウトで足ります。
+6. **200 OK は成功を意味しません。** 同リファレンスは、処理開始後に 200 OK のヘッダーが送られ、**最初の 200 OK の後にリクエストが失敗しうる**こと、エラー応答が 200 OK に埋め込まれうることを明記しています。**API を直接呼ぶ場合は本文を解析する実装が必要です。** AWS SDK（boto3 / botocore を含む）は埋め込まれたエラーを検出して設定どおりのエラー処理を適用します。本検証は boto3 経由なので、この処理は SDK 側で行われていました。
+7. スループットは全パートで 95〜97 MiB/s と安定し、ファイルシステムのスループットキャパシティ 128 MBps（約 122 MiB/s）が律速でした。
 
 ### 副次的な観測: ゼロ埋めデータはほぼ容量を消費しない
 
@@ -255,7 +256,7 @@ s3.put_object(Bucket="<ap-alias>", Key="probe.bin", Body=ZeroStream(size), Conte
 
 - **アップロード前にサイズを検証する**。50 GiB 超は転送完了後に失敗するため、クライアント側チェックが唯一の早期検出手段です。
 - 5 GiB 超は Multipart Upload が必須。パートサイズ上限も 5 GiB です。
-- `CompleteMultipartUpload` は 50 GiB で 9 分強かかる場合があります。`read_timeout` を長めに設定してください。
+- `CompleteMultipartUpload` は 50 GiB で 9 分強かかる場合がありますが、組み立て中は空白文字が送られるため既定の読み取りタイムアウトで足ります（[リファレンス](https://docs.aws.amazon.com/AmazonS3/latest/API/API_CompleteMultipartUpload.html)）。**代わりに、200 OK の本文にエラーが埋め込まれうる点に対応してください。** SDK を使えば SDK が処理します。
 - サーバーサイドでの大容量オブジェクト組み立て（`UploadPartCopy`）には依存しないでください。
 
 ---
