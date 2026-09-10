@@ -170,8 +170,9 @@ RESULT=COMPLETE_FAILED
 2. **`UploadPart` performs no cumulative size check.** All 11 parts totalling 50 GiB + 1 were accepted, including the 1-byte tail part.
 3. **Rejection happens only at `CompleteMultipartUpload`**, after the full transfer (590 s). No service-side pre-flight check exists.
 4. **The `CompleteMultipartUpload` error omits `MaxSizeAllowed` / `ProposedSize`**, which `PutObject` and `UploadPart` do return (Tests 1 and 2). The APIs are not consistent here.
-5. **`CompleteMultipartUpload` itself takes a long time.** In the success case uploads finished at 538 s while the whole run took 1095 s, so **assembly alone took about 557 s (over 9 minutes)**. Clients need a generous `read_timeout` (1800 s was used here).
-6. Throughput held steady at 95-97 MiB/s across all parts, bounded by the file system's 128 MBps throughput capacity (~122 MiB/s).
+5. **`CompleteMultipartUpload` itself takes a long time.** In the success case uploads finished at 538 s while the whole run took 1095 s, so **assembly alone took about 557 s (over 9 minutes)**. A `read_timeout` of 1800 s was set here, and **it was not necessary.** The [CompleteMultipartUpload reference](https://docs.aws.amazon.com/AmazonS3/latest/API/API_CompleteMultipartUpload.html) states that while processing is in progress Amazon S3 periodically sends white space characters to keep the connection from timing out. A default read timeout is enough.
+6. **A 200 OK does not mean success.** The same reference states that after processing begins a `200 OK` header is sent, that **the request can fail after that initial `200 OK`**, and that the error response may be embedded in the `200 OK` body. **Calling the API directly means parsing the body.** The AWS SDKs, boto3 and botocore included, detect the embedded error and apply error handling per your configuration. This run went through boto3, so that handling was the SDK's.
+7. Throughput held steady at 95-97 MiB/s across all parts, bounded by the file system's 128 MBps throughput capacity (~122 MiB/s).
 
 ### Side observation: zero-filled data consumes almost no capacity
 
@@ -255,7 +256,7 @@ s3.put_object(Bucket="<ap-alias>", Key="probe.bin", Body=ZeroStream(size), Conte
 
 - **Validate size before uploading.** Anything above 50 GiB fails only after the transfer completes, so a client-side check is the only early detection.
 - Multipart Upload is required above 5 GiB; the per-part limit is also 5 GiB.
-- `CompleteMultipartUpload` can take over 9 minutes for a 50 GiB object. Set a generous `read_timeout`.
+- `CompleteMultipartUpload` can take over 9 minutes for a 50 GiB object, but white space characters are sent during assembly, so a default read timeout is enough ([reference](https://docs.aws.amazon.com/AmazonS3/latest/API/API_CompleteMultipartUpload.html)). **Handle the embedded error in a 200 OK body instead.** An SDK handles it for you.
 - Do not rely on server-side assembly of large objects (`UploadPartCopy`).
 
 ---

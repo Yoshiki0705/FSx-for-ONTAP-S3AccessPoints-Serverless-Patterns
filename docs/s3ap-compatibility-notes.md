@@ -119,7 +119,7 @@ Extra   : {'ProposedSize': '5368709121', 'MaxSizeAllowed': '5368709120'}   ← P
 **実装上の推奨**:
 
 - **アップロード開始前にクライアント側で 50 GiB 以下であることを検証してください。** サービス側に事前チェックはなく、`CompleteMultipartUpload` のエラーには `MaxSizeAllowed` が含まれないため、超過は転送完了後にしか判明しません。
-- `CompleteMultipartUpload` 自体に時間がかかります（50 GiB で約 557 秒）。`read_timeout` を長めに設定してください（実測では 1800 秒を使用）。
+- `CompleteMultipartUpload` 自体に時間がかかります（50 GiB で約 557 秒）。ただし組み立て中は Amazon S3 が空白文字を送って接続を維持するため、**既定の読み取りタイムアウトで足ります**（[リファレンス](https://docs.aws.amazon.com/AmazonS3/latest/API/API_CompleteMultipartUpload.html)）。同リファレンスは **200 OK の本文にエラーが埋め込まれうる**ことも明記しており、API を直接呼ぶ場合は本文の解析が必要です（SDK は自動で処理します）。
 
 出典: [Access point compatibility](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/access-points-for-fsxn-object-api-support.html) / [Uploading objects (Amazon S3 User Guide)](https://docs.aws.amazon.com/AmazonS3/latest/userguide/upload-objects.html)
 

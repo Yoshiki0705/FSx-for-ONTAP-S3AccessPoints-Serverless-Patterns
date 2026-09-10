@@ -122,7 +122,7 @@ Extra   : {'ProposedSize': '5368709121', 'MaxSizeAllowed': '5368709120'}   <- Pu
 **Implementation recommendations**:
 
 - **Validate client-side that the object is 50 GiB or smaller before starting the upload.** There is no service-side pre-flight check, and the `CompleteMultipartUpload` error omits `MaxSizeAllowed`, so an overage is only discovered after the transfer finishes.
-- `CompleteMultipartUpload` itself is slow (about 557 s for 50 GiB). Set a generous `read_timeout` (1800 s was used in testing).
+- `CompleteMultipartUpload` itself is slow (about 557 s for 50 GiB), but Amazon S3 sends white space characters during assembly to hold the connection open, so **a default read timeout is enough** ([reference](https://docs.aws.amazon.com/AmazonS3/latest/API/API_CompleteMultipartUpload.html)). The same reference states that **an error can be embedded in the `200 OK` body**, so calling the API directly means parsing it; an SDK handles it.
 
 Sources: [Access point compatibility](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/access-points-for-fsxn-object-api-support.html) / [Uploading objects (Amazon S3 User Guide)](https://docs.aws.amazon.com/AmazonS3/latest/userguide/upload-objects.html)
 >
