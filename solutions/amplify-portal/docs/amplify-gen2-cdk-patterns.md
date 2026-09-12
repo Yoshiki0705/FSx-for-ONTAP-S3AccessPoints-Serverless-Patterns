@@ -95,6 +95,7 @@ npx ampx sandbox --once
 
 ## 関連リファレンス
 
+- [アプリの土台の選択肢](../../../docs/ja/scaffolding-and-backend-toolkit-choices.md) — Nx Plugin for AWS / AWS Blocks / Amplify Gen 2 の位置づけ、実測したリソース数と既定値、このリポジトリが Amplify Gen 2 を使っている理由
 - [Amplify Gen2: Add custom AWS resources](https://docs.amplify.aws/react/build-a-backend/add-aws-services/custom-resources/)
 - [CDK Conference Japan 2026 セッション一覧](https://qiita.com/issy929/items/f8c5abf9f2e327bec8da)
 - [builders.flash: Amplify Gen2 から始める CDK 入門](https://aws.amazon.com/jp/builders-flash/202411/cdk-introduction-with-amplify-gen2/)
