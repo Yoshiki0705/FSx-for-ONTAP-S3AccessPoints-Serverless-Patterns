@@ -164,7 +164,14 @@ const jsonObject = <T>(raw: string | undefined, variable: string, fallback: T): 
   try {
     return JSON.parse(raw) as T;
   } catch (error) {
-    throw new Error(`${variable} is not valid JSON: ${(error as Error).message}`);
+    // The parser's own error is rethrown with the variable's name prepended, rather
+    // than wrapped in a new one. `new Error(message, { cause })` is the usual way to
+    // keep the original, but the second argument needs ES2022 and this project targets
+    // ES2020; rethrowing keeps the position the parser reported and the stack with it.
+    if (error instanceof Error) {
+      error.message = `${variable} is not valid JSON: ${error.message}`;
+    }
+    throw error;
   }
 };
 
