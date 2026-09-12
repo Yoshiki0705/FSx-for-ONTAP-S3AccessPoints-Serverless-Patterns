@@ -66,6 +66,7 @@
 | [Cost Calculator](cost-calculator.md) | Estimate monthly costs |
 | [Comparison Alternatives](comparison-alternatives.md) | S3 AP vs EFS vs NFS vs DataSync + NFS Read Cache (FlexCache/KNFSD/File Cache) |
 | [App foundation choices (EN)](en/scaffolding-and-backend-toolkit-choices.md) / [アプリの土台の選択肢 (JA)](ja/scaffolding-and-backend-toolkit-choices.md) | Nx Plugin for AWS / AWS Blocks / Amplify Gen 2: measured resource counts and generated defaults for an equivalent starter, the fixed cost those defaults imply, how to choose, and why the portal is Amplify Gen 2 |
+| [Deploy verification and teardown (EN)](en/scaffolding-deploy-verification.md) / [デプロイ検証と撤収手順 (JA)](ja/scaffolding-deploy-verification.md) | Deploying those same three outputs to AWS: the pitfall register mapped to upstream sources, the teardown order for deletion-protected and `Retain` resources, and what was measured live |
 | [PoC Go/No-Go Template](poc-go-nogo-template.md) | PoC success criteria |
 | [Partner/SI Checklist](partner-si-delivery-checklist.md) | Customer delivery workflow |
 | [Pattern Selection Guide](pattern-selection-guide.md) | Customer situation → recommended UC |

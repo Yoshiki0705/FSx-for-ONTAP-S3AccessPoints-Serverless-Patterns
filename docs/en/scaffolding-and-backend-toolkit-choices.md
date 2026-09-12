@@ -252,11 +252,17 @@ How to get the same numbers on your own machine. **None of this deploys to AWS**
 
 ```bash
 # Nx Plugin for AWS
-#   `npm create @aws/nx-workspace` stalled with no output, so this goes through pnpm
+#   The numbers below were measured with this command (through pnpm), so it stays as-run.
+#   npm generates the workspace too, in a measured 45 seconds. `npm create` first prints
+#   `Need to install the following packages: @aws/create-nx-workspace / Ok to proceed? (y)`
+#   and then waits for an answer that a non-interactive shell never sends. The prompt is
+#   not visible in captured output, which is what makes it look like a stall:
+#     npm_config_yes=true npm create @aws/nx-workspace@1.0.0 -- research-board \
+#       --interactive=false --pm=npm --nxCloud=skip --skipGit --aiAgents=none
 npx --yes pnpm@10 create @aws/nx-workspace@1.0.0 research-board \
   --interactive=false --pm=pnpm --nxCloud=skip --skipGit --aiAgents=none
 cd research-board
-NX=node_modules/.bin/nx          # `npx pnpm` stalls on a version confirmation prompt
+NX=node_modules/.bin/nx          # `npx pnpm` waits on the same kind of prompt (install pnpm@12)
 $NX g @aws/nx-plugin:ts#website feedback-web --no-interactive
 $NX g @aws/nx-plugin:ts#website#auth --project=@research-board/feedback-web --no-interactive
 $NX g @aws/nx-plugin:ts#api feedback-api --framework=trpc --no-interactive

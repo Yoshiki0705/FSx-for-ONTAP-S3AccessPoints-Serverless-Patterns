@@ -237,11 +237,17 @@ Amplify Gen 2 側のトレードオフの詳細は
 
 ```bash
 # Nx Plugin for AWS
-#   npm 経由の `npm create @aws/nx-workspace` は出力なしで停止したため pnpm 経由で実行する
+#   下の数値はこのコマンド（pnpm 経由）で測ったものなので、そのまま残してある。
+#   npm 経由でも生成できる（実測 45 秒）。`npm create` は初回に
+#   `Need to install the following packages: @aws/create-nx-workspace / Ok to proceed? (y)`
+#   を出し、非対話では応答がないまま待ち続ける。出力が見えないため停止に見えるだけで、
+#   `npm_config_yes=true` を付けると完走する:
+#     npm_config_yes=true npm create @aws/nx-workspace@1.0.0 -- research-board \
+#       --interactive=false --pm=npm --nxCloud=skip --skipGit --aiAgents=none
 npx --yes pnpm@10 create @aws/nx-workspace@1.0.0 research-board \
   --interactive=false --pm=pnpm --nxCloud=skip --skipGit --aiAgents=none
 cd research-board
-NX=node_modules/.bin/nx          # `npx pnpm` はバージョン確認のプロンプトで停止する
+NX=node_modules/.bin/nx          # `npx pnpm` も同じ確認プロンプトで待つ（pnpm@12 の導入確認）
 $NX g @aws/nx-plugin:ts#website feedback-web --no-interactive
 $NX g @aws/nx-plugin:ts#website#auth --project=@research-board/feedback-web --no-interactive
 $NX g @aws/nx-plugin:ts#api feedback-api --framework=trpc --no-interactive
