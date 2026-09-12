@@ -14,7 +14,15 @@
 | AWS CLI | ✅ | 2.x | `aws --version` |
 | Amplify CLI | ✅ | 最新版 | `npx ampx --version` |
 | FSx for ONTAP | — | ONTAP 9.15+ | DemoMode なら不要。admin 機能に必要 |
+| S3 Access Point | — | — | 未作成なら [デプロイガイドの作成手順](../../../docs/ja/deployment-guide.md)（`aws fsx create-and-attach-s3-access-point`）。DemoMode では通常の S3 バケット名で代替 |
+| Bedrock モデルアクセス | — | — | AI 機能を使うときのみ。[AI 機能クイックスタート](../../../docs/ja/ai-features-quick-start.md)（`amazon.nova-lite-v1:0` の有効化） |
 | Docker | — | 24.x 以上 | `docker --version`（Nextcloud 利用時のみ） |
+
+> **リージョンは 1 つに揃える。** `portal-config.ts` の `region` は「デプロイ先」ではなく
+> 「参照先」を決めます。デプロイ先を決めるのは AWS 認証情報の側で、両者が食い違うと
+> Step Functions のエンドポイント・DynamoDB ゲートウェイエンドポイント・ONTAP VPC の AZ が
+> すべて別リージョンを指した構成が、エラーなく synth されデプロイされます。`backend.ts` は
+> この組み合わせを synth 時に拒否します。
 
 > **検証環境**: 本ガイドは Node.js 20.18.x / Amplify Gen2 1.x / Python 3.12 (Lambda) / ONTAP 9.18.1P3D1 / ap-northeast-1 で検証しています。
 
@@ -237,6 +245,25 @@ aws secretsmanager create-secret \
 cp amplify/portal-config.example.ts amplify/portal-config.ts
 ```
 
+値はファイルを編集して入れても、環境変数で渡してもかまいません。優先順位は
+**環境変数 > このファイルのリテラル > 機能オフ** です。CI から設定する場合や、リポジトリの
+コピーに値を書きたくない場合は環境変数を使います。
+
+```bash
+export AMPLIFY_PORTAL_VPC_ID=vpc-0123456789abcdef0
+export AMPLIFY_PORTAL_VPC_SUBNET_IDS=subnet-0123456789abcdef0
+export AMPLIFY_PORTAL_VPC_ROUTE_TABLE_IDS=rtb-0123456789abcdef0
+export ONTAP_MGMT_IP=10.0.0.10
+export ONTAP_SECRET_NAME=fsx-ontap-fsxadmin-credentials
+```
+
+> 2026-09-07 より前の `portal-config.example.ts` には環境変数を読む層がありませんでした。
+> このガイドとエラーメッセージが案内していた変数は、配布されていない側の設定ファイルだけが
+> 読んでいたため、`cp` した利用者の環境では**無視されていました**。共有 VPC に 2 台目の
+> sandbox を立てるときに設定する `AMPLIFY_PORTAL_DDB_GW_ENDPOINT_EXISTS=1` も効かず、
+> 防ぐはずだったルート衝突のロールバックがそのまま起きます。値を追加するときは変数も
+> 併せて用意してください。
+
 Step 1 で取得した値を入力:
 
 ```typescript
@@ -248,6 +275,10 @@ export const config: PortalConfig = {
   vpcId: "vpc-0123456789abcdef0",
   vpcSubnetIds: ["subnet-0123456789abcdef0"],
   vpcSecurityGroupIds: ["sg-0123456789abcdef0"],
+  // 省略すると `<region>a` と `<region>c` を仮定します。サブネットが別の AZ にある場合は
+  // 明示してください: aws ec2 describe-subnets --subnet-ids <id> \
+  //   --query "Subnets[].AvailabilityZone" --output text
+  vpcAvailabilityZones: ["ap-northeast-1a", "ap-northeast-1c"],
   // vpcId を設定する場合は必須。vpcSubnetIds に紐づくルートテーブルを指定します。
   // 未設定のまま vpcId を設定すると synth が失敗します（理由は後述）。
   vpcRouteTableIds: ["rtb-0123456789abcdef0"],
@@ -294,6 +325,16 @@ aws ec2 describe-route-tables \
 ```bash
 npm start
 ```
+
+`npm start` はデプロイの前に設定を検査します（`scripts/portal_preflight.py --check-config`）。
+リージョンが AWS セッションと一致しているか、`stateMachineArn` がまだプレースホルダのままか、
+VPC にサブネットとルートテーブルが揃っているか、ONTAP 接続が途中まで（アドレスだけ、
+シークレットだけ）になっていないかを見ます。デプロイ前に止めるのは、**失敗した sandbox が
+ロールバックしない**ためです。VPC Lambda が ENI を保持するので、後片付けに実測 28 分かかります。
+
+意図して先に進める場合は `AMPLIFY_PORTAL_SKIP_CONFIG_CHECK=1` を渡します。デプロイ後の検査
+（配信中のバンドルが指す pool、関数の VPC 配線、ゲートウェイエンドポイントの所有者）は
+`make portal-preflight` が引き続き担当します。
 
 初回は CloudFormation スタックを作成するため 3〜5 分かかります。`Deployment completed` と
 `http://localhost:5173` が表示されたら完了です。

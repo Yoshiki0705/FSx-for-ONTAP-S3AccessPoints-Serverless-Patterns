@@ -429,3 +429,163 @@ class TestHostedBinding:
 
         monkeypatch.setattr(preflight, "aws", explode)
         assert preflight.check_hosted_binding("ap-northeast-1", self.POOL, self.STACK).status == preflight.SKIP
+
+
+class TestConfigExpression:
+    """Reading a value out of the config object rather than out of the file."""
+
+    # The shape that broke the first version of the pre-deploy checks: the same key
+    # name appears in the interface and in the object, and the declaration comes
+    # first.
+    INTERFACE_THEN_OBJECT = (
+        "export interface PortalConfig {\n"
+        "  region: string;\n"
+        "  s3ApAlias: string;\n"
+        "}\n"
+        "\n"
+        "export const config: PortalConfig = {\n"
+        '  region: process.env.AMPLIFY_PORTAL_REGION || "ap-northeast-1",\n'
+        '  s3ApAlias: "myap-abc123-s3alias",\n'
+        "};\n"
+    )
+
+    def test_the_interface_declaration_is_not_mistaken_for_the_value(self) -> None:
+        assert preflight.config_default(self.INTERFACE_THEN_OBJECT, "region") == "ap-northeast-1"
+
+    def test_a_value_wrapped_onto_the_next_line_is_read_whole(self) -> None:
+        source = (
+            "export const config = {\n"
+            "  ontapSecretName:\n"
+            '    process.env.ONTAP_SECRET_NAME || "fsx-ontap-fsxadmin-credentials",\n'
+            "};\n"
+        )
+        assert preflight.config_default(source, "ontapSecretName") == "fsx-ontap-fsxadmin-credentials"
+
+    def test_a_helper_call_with_no_literal_does_not_borrow_the_next_entry(self) -> None:
+        source = (
+            "export const config = {\n"
+            "  vpcSubnetIds: idList(process.env.AMPLIFY_PORTAL_VPC_SUBNET_IDS),\n"
+            '  ontapSvmName: "svm01",\n'
+            "};\n"
+        )
+        assert preflight.config_default(source, "vpcSubnetIds") is None
+
+
+class TestEffectiveValues:
+    """The environment wins over the literal, as it does in the config itself."""
+
+    SOURCE = (
+        "export const config = {\n"
+        '  region: process.env.AMPLIFY_PORTAL_REGION || "ap-northeast-1",\n'
+        "  vpcRouteTableIds: idList(process.env.AMPLIFY_PORTAL_VPC_ROUTE_TABLE_IDS),\n"
+        '  vpcSubnetIds: idList(process.env.AMPLIFY_PORTAL_VPC_SUBNET_IDS, "subnet-aaa"),\n'
+        "};\n"
+    )
+
+    def test_literal_is_used_when_the_variable_is_unset(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.delenv("AMPLIFY_PORTAL_REGION", raising=False)
+        assert preflight.effective_scalar(self.SOURCE, "region") == ("ap-northeast-1", "portal-config.ts")
+
+    def test_variable_overrides_the_literal_and_is_named(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setenv("AMPLIFY_PORTAL_REGION", "us-east-1")
+        assert preflight.effective_scalar(self.SOURCE, "region") == ("us-east-1", "AMPLIFY_PORTAL_REGION")
+
+    def test_a_blank_variable_is_not_a_value(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setenv("AMPLIFY_PORTAL_REGION", "   ")
+        assert preflight.effective_scalar(self.SOURCE, "region")[0] == "ap-northeast-1"
+
+    def test_list_from_the_environment_is_split_and_trimmed(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setenv("AMPLIFY_PORTAL_VPC_ROUTE_TABLE_IDS", " rtb-a , rtb-b ")
+        values, origin = preflight.effective_list(self.SOURCE, "vpcRouteTableIds")
+        assert values == ["rtb-a", "rtb-b"]
+        assert origin == "AMPLIFY_PORTAL_VPC_ROUTE_TABLE_IDS"
+
+    def test_list_falls_back_to_the_literal_in_the_helper_call(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.delenv("AMPLIFY_PORTAL_VPC_SUBNET_IDS", raising=False)
+        assert preflight.effective_list(self.SOURCE, "vpcSubnetIds")[0] == ["subnet-aaa"]
+
+    def test_an_env_only_list_reads_as_empty_when_unset(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.delenv("AMPLIFY_PORTAL_VPC_ROUTE_TABLE_IDS", raising=False)
+        assert preflight.effective_list(self.SOURCE, "vpcRouteTableIds")[0] == []
+
+
+class TestCheckConfig:
+    """The checks that run before anything is deployed."""
+
+    def _config(self, **overrides: str) -> str:
+        values = {
+            "region": '"ap-northeast-1"',
+            "s3ApAlias": '""',
+            "stateMachineArn": '""',
+            "ontapMgmtIp": '""',
+            "ontapSecretName": '""',
+            "ontapSvmName": '""',
+            "vpcId": '""',
+            "vpcSubnetIds": "[]",
+            "vpcRouteTableIds": "[]",
+            "allowNoBlockExpiry": "false",
+        }
+        values.update(overrides)
+        body = "".join(f"  {key}: {value},\n" for key, value in values.items())
+        return "export const config = {\n" + body + "};\n"
+
+    def _verdict(self, results: list, name: str) -> str:
+        return next(r.status for r in results if r.name == name)
+
+    @pytest.fixture(autouse=True)
+    def _no_session_region(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        # Every test but the region ones runs without a session region, so a region
+        # on the developer's machine does not decide whether they pass.
+        monkeypatch.setattr(preflight, "session_region", lambda: None)
+
+    def test_a_placeholder_state_machine_arn_fails(self) -> None:
+        source = self._config(stateMachineArn='"arn:aws:states:ap-northeast-1:123456789012:stateMachine:placeholder"')
+        results = preflight.check_config(source)
+        assert self._verdict(results, "state machine") == preflight.FAIL
+
+    def test_an_empty_state_machine_arn_skips_rather_than_fails(self) -> None:
+        # Empty is a legible state: the resolver reports that processing is not
+        # configured. A placeholder is the one that deploys as though it were.
+        results = preflight.check_config(self._config())
+        assert self._verdict(results, "state machine") == preflight.SKIP
+
+    def test_a_real_looking_arn_passes(self) -> None:
+        source = self._config(stateMachineArn='"arn:aws:states:ap-northeast-1:210987654321:stateMachine:uc1"')
+        assert self._verdict(preflight.check_config(source), "state machine") == preflight.OK
+
+    def test_a_vpc_without_route_tables_fails(self) -> None:
+        source = self._config(vpcId='"vpc-abc"', vpcSubnetIds='["subnet-abc"]')
+        assert self._verdict(preflight.check_config(source), "VPC wiring") == preflight.FAIL
+
+    def test_allow_no_block_expiry_makes_that_deliberate(self) -> None:
+        source = self._config(vpcId='"vpc-abc"', vpcSubnetIds='["subnet-abc"]', allowNoBlockExpiry="true")
+        assert self._verdict(preflight.check_config(source), "VPC wiring") == preflight.OK
+
+    def test_a_vpc_without_subnets_fails(self) -> None:
+        source = self._config(vpcId='"vpc-abc"', vpcRouteTableIds='["rtb-abc"]')
+        assert self._verdict(preflight.check_config(source), "VPC wiring") == preflight.FAIL
+
+    def test_no_vpc_skips_because_the_admin_panels_are_optional(self) -> None:
+        assert self._verdict(preflight.check_config(self._config()), "VPC wiring") == preflight.SKIP
+
+    def test_a_half_configured_ontap_connection_fails(self) -> None:
+        source = self._config(ontapMgmtIp='"10.0.3.72"', ontapSvmName='"svm01"')
+        assert self._verdict(preflight.check_config(source), "ONTAP connection") == preflight.FAIL
+
+    def test_an_absent_ontap_connection_skips(self) -> None:
+        assert self._verdict(preflight.check_config(self._config()), "ONTAP connection") == preflight.SKIP
+
+    def test_a_complete_ontap_connection_passes(self) -> None:
+        source = self._config(ontapMgmtIp='"10.0.3.72"', ontapSecretName='"fsx-secret"', ontapSvmName='"svm01"')
+        assert self._verdict(preflight.check_config(source), "ONTAP connection") == preflight.OK
+
+    def test_a_region_disagreeing_with_the_session_fails(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setattr(preflight, "session_region", lambda: "us-east-1")
+        assert self._verdict(preflight.check_config(self._config()), "region") == preflight.FAIL
+
+    def test_a_matching_region_passes(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setattr(preflight, "session_region", lambda: "ap-northeast-1")
+        assert self._verdict(preflight.check_config(self._config()), "region") == preflight.OK
+
+    def test_no_session_region_skips_rather_than_guessing(self) -> None:
+        assert self._verdict(preflight.check_config(self._config()), "region") == preflight.SKIP

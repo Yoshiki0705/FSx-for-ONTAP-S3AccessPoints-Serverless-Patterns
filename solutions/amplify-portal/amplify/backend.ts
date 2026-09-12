@@ -26,7 +26,7 @@ import * as iam from "aws-cdk-lib/aws-iam";
 import * as lambda from "aws-cdk-lib/aws-lambda";
 import * as ec2 from "aws-cdk-lib/aws-ec2";
 import * as s3 from "aws-cdk-lib/aws-s3";
-import { AssetHashType, Aws, Duration, RemovalPolicy, Stack, Validations } from "aws-cdk-lib";
+import { AssetHashType, Aws, Duration, RemovalPolicy, Stack, Token, Validations } from "aws-cdk-lib";
 import * as dynamodb from "aws-cdk-lib/aws-dynamodb";
 import * as cloudwatch from "aws-cdk-lib/aws-cloudwatch";
 import * as cloudwatchActions from "aws-cdk-lib/aws-cloudwatch-actions";
@@ -235,11 +235,55 @@ const dataStack = Stack.of(api);
 // When vpcId is configured, Lambda functions that call ONTAP REST API
 // will be deployed inside the VPC with access to the management LIF.
 // This is required for: Resource Management, Data Protection, ARP/AI Response.
+// --- config.region has to be the region this is being deployed into ----------
+//
+// `config.region` is not where the backend goes: the sandbox deploys to whichever
+// region the AWS credentials resolve to. What the config region decides is which
+// region the *references* name -- the Step Functions endpoint and signing region
+// above, the DynamoDB gateway endpoint's service name, and the availability zones
+// below. Left disagreeing, all of that synthesises and deploys cleanly while
+// pointing at another region, and the first symptom is a call that cannot reach a
+// state machine that exists.
+//
+// Checked here rather than in preflight because preflight runs against a
+// deployment that already exists, and this is a mistake worth refusing to build.
+// Skipped rather than guessed when the region cannot be determined at synth: the
+// stack's region is a token in an environment-agnostic synth, and no value is not
+// the same thing as a disagreeing value.
+const synthRegion = Token.isUnresolved(dataStack.region)
+  ? process.env.AWS_REGION || process.env.AWS_DEFAULT_REGION || process.env.CDK_DEFAULT_REGION || ""
+  : dataStack.region;
+
+if (synthRegion && synthRegion !== config.region) {
+  throw new Error(
+    `portal-config.ts sets region: "${config.region}", but this backend is being deployed ` +
+      `to ${synthRegion}.\n\n` +
+      "  Everything derived from the config region would point at the other region: the\n" +
+      "  Step Functions endpoint and its signing region, the DynamoDB gateway endpoint,\n" +
+      "  and the availability zones of the ONTAP VPC. That synthesises and deploys\n" +
+      "  without error, and shows up later as calls that cannot reach resources which\n" +
+      "  do exist.\n\n" +
+      `  Either set region: "${synthRegion}" in portal-config.ts, or point your AWS\n` +
+      `  credentials at ${config.region} (AWS_REGION, or the profile's region).`
+  );
+}
+
 const vpcConfig = config.vpcId
   ? {
       vpc: ec2.Vpc.fromVpcAttributes(dataStack, "OntapVpc", {
         vpcId: config.vpcId,
-        availabilityZones: [`${config.region}a`, `${config.region}c`],
+        // Only used to resolve subnet selection, since the subnets below are named
+        // explicitly. The default covers the common two-AZ FSx for ONTAP layout in a
+        // region whose zones are suffixed `a` and `c`; set `vpcAvailabilityZones` when
+        // the subnets live anywhere else, which is most easily read off the subnets
+        // themselves:
+        //
+        //   aws ec2 describe-subnets --subnet-ids <id> \
+        //     --query "Subnets[].AvailabilityZone" --output text
+        availabilityZones:
+          config.vpcAvailabilityZones && config.vpcAvailabilityZones.length > 0
+            ? config.vpcAvailabilityZones
+            : [`${config.region}a`, `${config.region}c`],
       }),
       securityGroups: config.vpcSecurityGroupIds.map((sgId, idx) =>
         ec2.SecurityGroup.fromSecurityGroupId(dataStack, `OntapSg${idx}`, sgId)
@@ -456,6 +500,27 @@ sfnDataSource.grantPrincipal.addToPrincipalPolicy(
     resources: [config.stateMachineResourceScope],
   })
 );
+
+// The state machine the `startProcessing` resolver targets.
+//
+// An AppSync JS resolver cannot read `portal-config.ts`, so `start-processing.js`
+// carried the ARN as a literal -- and the literal named account 123456789012.
+// The config field was applied to the IAM scope above and to nothing else, so the
+// permission was correct while the target was a placeholder, and the mutation
+// failed the same way in every environment including this one.
+//
+// A property override rather than assigning `EnvironmentVariables` wholesale, so a
+// variable added elsewhere is not dropped without an error.
+//
+// Set only when the config names one. AppSync rejects an empty value, and absent is
+// the state the resolver checks for: it answers "not configured" rather than calling
+// StartExecution against an ARN in somebody else's account.
+if (config.stateMachineArn) {
+  dataResources.cfnResources.cfnGraphqlApi.addPropertyOverride(
+    "EnvironmentVariables.STATE_MACHINE_ARN",
+    config.stateMachineArn
+  );
+}
 
 // --- Lambda Data Source for ListFiles ---
 const listFilesRole = new iam.Role(dataStack, "ListFilesLambdaRole", {
