@@ -12,6 +12,21 @@
  *   export AMPLIFY_PORTAL_S3AP_ALIAS=my-s3-access-point01-abc123-s3alias
  *   export AMPLIFY_PORTAL_SFN_ARN=arn:aws:states:ap-northeast-1:123456789012:stateMachine:my-workflow
  *
+ * Override order: environment variable > the literal in this file > off.
+ *
+ * The environment layer is part of this file rather than something the deployment
+ * provides, which is why it is written out below for every value that has a variable.
+ * It was absent until 2026-09-07: every variable named in this header, in the setup
+ * guide and in the error messages `backend.ts` raises was read only by the copy of this
+ * config that had never been distributed. So `AMPLIFY_PORTAL_DDB_GW_ENDPOINT_EXISTS=1`,
+ * which the guide tells you to set when standing up a second sandbox in a shared VPC,
+ * was ignored -- and the deployment it was meant to prevent is one that creates
+ * everything else before failing on a route table that already holds the route.
+ *
+ * If you add a value here, give it a variable too. A configuration that can only be
+ * changed by editing a file cannot be set by CI, and the instructions that say
+ * otherwise are in three places.
+ *
  * UPLOAD TAB (Storage Browser):
  *   The Upload tab uses Storage Browser for S3, which requires frontend-side config
  *   in src/portal-settings.ts. Set region, accountId, and s3ApAlias there.
@@ -57,6 +72,9 @@ export interface PortalConfig {
   vpcId: string;
   vpcSubnetIds: string[];
   vpcSecurityGroupIds: string[];
+  // Availability zones of `vpcSubnetIds`. Omit to assume `<region>a` and `<region>c`,
+  // which is the layout FSx for ONTAP creates in most regions but not a rule.
+  vpcAvailabilityZones?: string[];
   // Required whenever vpcId is set. See the assignment below for why.
   vpcRouteTableIds: string[];
   // True when another stack already routes DynamoDB in those route tables. A
@@ -100,11 +118,69 @@ export interface PortalConfig {
   ontapVolumeName: string;
 }
 
+/**
+ * Parse a comma-separated list of AWS resource IDs from the environment.
+ *
+ * Entries are trimmed before empties are dropped. Filtering on truthiness alone lets a
+ * whitespace-only value through as a one-element list, which then looks like a
+ * configured resource ID: the synth-time guard in backend.ts is satisfied and the
+ * failure surfaces later as an opaque CloudFormation error about an ID that does not
+ * exist.
+ */
+const idList = (raw: string | undefined, fallback: string[] = []): string[] => {
+  const supplied = (raw ?? "")
+    .split(",")
+    .map((entry) => entry.trim())
+    .filter(Boolean);
+  return supplied.length > 0 ? supplied : fallback;
+};
+
+/**
+ * Read the MFA mode from an environment variable, refusing anything else.
+ *
+ * Raised rather than defaulted, because the values differ only in a word: `REQUIRE`,
+ * `required` and `ON` are all things somebody would write meaning `REQUIRED`, and any of
+ * them silently falling back to `OPTIONAL` would leave a deployment believing MFA is
+ * enforced when each user is choosing for themselves.
+ */
+const mfaMode = (raw: string | undefined): "OFF" | "OPTIONAL" | "REQUIRED" => {
+  if (raw === undefined || raw === "") return "OPTIONAL";
+  if (raw === "OFF" || raw === "OPTIONAL" || raw === "REQUIRED") return raw;
+  throw new Error(
+    `AMPLIFY_PORTAL_MFA is "${raw}", which is not a mode. Use OFF, OPTIONAL or REQUIRED. ` +
+      "Left to fall back, a misspelling would read as OPTIONAL, which means each user " +
+      "decides for themselves."
+  );
+};
+
+/**
+ * Parse a JSON object from the environment, naming the variable when it will not parse.
+ *
+ * A malformed value would otherwise surface as `SyntaxError: Unexpected token` with
+ * nothing to say which variable produced it.
+ */
+const jsonObject = <T>(raw: string | undefined, variable: string, fallback: T): T => {
+  if (raw === undefined || raw.trim() === "") return fallback;
+  try {
+    return JSON.parse(raw) as T;
+  } catch (error) {
+    throw new Error(`${variable} is not valid JSON: ${(error as Error).message}`);
+  }
+};
+
 export const config: PortalConfig = {
   // ─── Required ───────────────────────────────────────────────────────────
 
-  /** AWS Region where your FSx for ONTAP and Step Functions are deployed */
-  region: "ap-northeast-1",
+  /**
+   * AWS Region where your FSx for ONTAP and Step Functions are deployed.
+   *
+   * Must be the region your AWS credentials deploy into. It is not what decides where
+   * the backend goes -- the credentials are -- so a disagreement produces a deployment
+   * whose Step Functions endpoint, DynamoDB gateway endpoint and availability zones all
+   * name another region while synthesising cleanly. `backend.ts` refuses that rather
+   * than building it.
+   */
+  region: process.env.AMPLIFY_PORTAL_REGION || "ap-northeast-1",
 
   /**
    * S3 Access Point alias for FSx for ONTAP volume.
@@ -114,18 +190,25 @@ export const config: PortalConfig = {
    * For DemoMode (no FSx for ONTAP): use a regular S3 bucket name.
    * Leave empty to show "No files" in the Files tab.
    */
-  s3ApAlias: "",
+  s3ApAlias: process.env.AMPLIFY_PORTAL_S3AP_ALIAS || "",
 
   /**
-   * Step Functions state machine ARN.
+   * Step Functions state machine ARN, for the `startProcessing` mutation.
+   *
    * Find this in: AWS Console → Step Functions → State Machines
    *
    * If you haven't deployed a UC pattern yet, create a test machine:
    *   make sfn-test-create
    * Then paste the ARN here.
+   *
+   * Empty means processing is not configured, and the mutation says so. This used to
+   * hold a placeholder ARN naming account 123456789012, which was worse than empty in
+   * both directions: it deployed as though the feature were configured, and the resolver
+   * ignored this field entirely in favour of a literal of its own. Publishing it to the
+   * resolver as an AppSync environment variable is what made the field the single
+   * source; leaving it empty is now a legible state rather than a broken one.
    */
-  stateMachineArn:
-    "arn:aws:states:ap-northeast-1:123456789012:stateMachine:placeholder",
+  stateMachineArn: process.env.AMPLIFY_PORTAL_SFN_ARN || "",
 
   // ─── Optional (defaults work for sandbox) ──────────────────────────────
 
@@ -134,7 +217,7 @@ export const config: PortalConfig = {
    * Sandbox: "*" (all state machines)
    * Production: restrict to specific ARN pattern
    */
-  stateMachineResourceScope: "*",
+  stateMachineResourceScope: process.env.AMPLIFY_PORTAL_SFN_SCOPE || "*",
 
   /**
    * IAM scope for S3 AP access.
@@ -177,7 +260,11 @@ export const config: PortalConfig = {
    * See interface definition above for examples.
    * Empty = disabled (all users share the default s3ApAlias).
    */
-  groupApMapping: {},
+  groupApMapping: jsonObject(
+    process.env.AMPLIFY_PORTAL_GROUP_AP_MAPPING,
+    "AMPLIFY_PORTAL_GROUP_AP_MAPPING",
+    {} as Record<string, string>
+  ),
 
   /**
    * Path prefixes per Cognito group, independent of the access point routing.
@@ -195,7 +282,19 @@ export const config: PortalConfig = {
    *     "team-a": ["teams/a/", "shared/"],
    *     "partner-acme": ["exchange/acme/"],
    *   },
+   *
+   * Left undefined when the variable is unset, rather than defaulting to `{}`. The two
+   * are not the same thing: `backend.ts` derives the prefixes from `groupApMapping` only
+   * when this is undefined, and `{}` would read as "prefixes configured, none of them
+   * restricting anything".
    */
+  groupPathPrefixes: process.env.AMPLIFY_PORTAL_GROUP_PATH_PREFIXES
+    ? jsonObject(
+        process.env.AMPLIFY_PORTAL_GROUP_PATH_PREFIXES,
+        "AMPLIFY_PORTAL_GROUP_PATH_PREFIXES",
+        {} as Record<string, string[]>
+      )
+    : undefined,
 
   /**
    * How accounts are created, and what signing in requires.
@@ -217,8 +316,11 @@ export const config: PortalConfig = {
      *
      * Set it to true only for a deployment that wants open registration — a public
      * demo being the case that does.
+     *
+     * Closed unless the variable is exactly "true", so an unset or misspelled value
+     * leaves registration closed. Opening it is the decision that needs saying out loud.
      */
-    selfSignUpEnabled: false,
+    selfSignUpEnabled: process.env.AMPLIFY_PORTAL_SELF_SIGN_UP === "true",
 
     /**
      * Multi-factor authentication: "OFF", "OPTIONAL" or "REQUIRED".
@@ -227,7 +329,7 @@ export const config: PortalConfig = {
      * for everyone who does not go looking for it. Use "REQUIRED" when MFA needs to
      * be true of every session rather than available.
      */
-    mfa: "OPTIONAL",
+    mfa: mfaMode(process.env.AMPLIFY_PORTAL_MFA),
   },
 
   /**
@@ -254,8 +356,10 @@ export const config: PortalConfig = {
    * Setting it to false makes `fileMutation` and `folderMutation` accept any signed-in
    * user, which means any of them can delete anything. Only useful for a demo where
    * nobody is going to be granted roles at all.
+   *
+   * On unless the variable is exactly "false", so a typo lands on the restrictive side.
    */
-  enforceRoles: true,
+  enforceRoles: process.env.AMPLIFY_PORTAL_ENFORCE_ROLES !== "false",
 
   /**
    * Limits applied to a caller holding the `external` scope, whatever their role.
@@ -274,7 +378,7 @@ export const config: PortalConfig = {
      * data an outside member can reach is cleared for that, and note the calls are
      * billed per token.
      */
-    aiEnabled: false,
+    aiEnabled: process.env.AMPLIFY_PORTAL_EXTERNAL_AI_ENABLED === "true",
 
     /**
      * Whether outside members may mint share links (presigned URLs and QR codes),
@@ -293,7 +397,11 @@ export const config: PortalConfig = {
      *     "storage-admin": true,
      *   },
      */
-    shareLinksByRole: {},
+    shareLinksByRole: jsonObject(
+      process.env.AMPLIFY_PORTAL_EXTERNAL_SHARE_LINKS_BY_ROLE,
+      "AMPLIFY_PORTAL_EXTERNAL_SHARE_LINKS_BY_ROLE",
+      {} as Record<string, boolean>
+    ),
   },
 
   /**
@@ -301,7 +409,7 @@ export const config: PortalConfig = {
    * Find in: AWS Console → Bedrock → Knowledge Bases → ID column
    * Leave empty to disable full-text search.
    */
-  bedrockKbId: "",
+  bedrockKbId: process.env.AMPLIFY_PORTAL_BEDROCK_KB_ID || "",
 
   /**
    * Bedrock Guardrail ID and version for PII detection/masking.
@@ -312,8 +420,8 @@ export const config: PortalConfig = {
    *   - PII: ANONYMIZE for EMAIL, PHONE; BLOCK for SSN, CREDIT_CARD
    *   - Content: BLOCK SEXUAL/VIOLENCE at HIGH strength
    */
-  bedrockGuardrailId: "",
-  bedrockGuardrailVersion: "DRAFT",
+  bedrockGuardrailId: process.env.AMPLIFY_PORTAL_BEDROCK_GUARDRAIL_ID || "",
+  bedrockGuardrailVersion: process.env.AMPLIFY_PORTAL_BEDROCK_GUARDRAIL_VERSION || "DRAFT",
 
   // ─── VPC & ONTAP (required for Admin/DataProtection/ARP features) ──────
 
@@ -323,9 +431,22 @@ export const config: PortalConfig = {
    *         --query "FileSystems[0].{VpcId:VpcId,SubnetIds:SubnetIds}"
    * Leave empty to deploy without VPC (admin panels show "ONTAP connection required").
    */
-  vpcId: "",
-  vpcSubnetIds: [],
-  vpcSecurityGroupIds: [],
+  vpcId: (process.env.AMPLIFY_PORTAL_VPC_ID || "").trim(),
+  vpcSubnetIds: idList(process.env.AMPLIFY_PORTAL_VPC_SUBNET_IDS),
+  vpcSecurityGroupIds: idList(process.env.AMPLIFY_PORTAL_VPC_SG_IDS),
+
+  /**
+   * Availability zones of the subnets above.
+   *
+   * Omitted, `backend.ts` assumes `<region>a` and `<region>c`. That is the layout FSx
+   * for ONTAP creates in most regions, and it is only used to resolve subnet selection
+   * -- the subnets themselves are named explicitly above -- but it is an assumption
+   * rather than a rule, so set it when your subnets are anywhere else:
+   *
+   *   aws ec2 describe-subnets --subnet-ids <id> \
+   *     --query "Subnets[].AvailabilityZone" --output text
+   */
+  vpcAvailabilityZones: idList(process.env.AMPLIFY_PORTAL_VPC_AVAILABILITY_ZONES),
 
   /**
    * Route tables associated with vpcSubnetIds. Required whenever vpcId is set.
@@ -347,7 +468,7 @@ export const config: PortalConfig = {
    * Deploying with vpcId set and this empty is refused, because the result looks
    * complete while expiry does not run. Set allowNoBlockExpiry to accept that.
    */
-  vpcRouteTableIds: [],
+  vpcRouteTableIds: idList(process.env.AMPLIFY_PORTAL_VPC_ROUTE_TABLE_IDS),
 
   /**
    * Set true when a DynamoDB gateway endpoint already routes the route tables
@@ -360,8 +481,12 @@ export const config: PortalConfig = {
    * Leaving it false where one exists fails the data stack at create time with
    * "already has a route with destination-prefix-list-id", and rolls the stack
    * back after roughly two minutes of successful resource creation.
+   *
+   * Keep the expression in a form `scripts/portal_preflight.py` recognises (`=== "1"`,
+   * `!== "0"`, or a bare literal). Replaced with a helper call, that check reports SKIP
+   * and a wrong value goes undetected until the rollback.
    */
-  dynamoDbGatewayEndpointExists: false,
+  dynamoDbGatewayEndpointExists: process.env.AMPLIFY_PORTAL_DDB_GW_ENDPOINT_EXISTS === "1",
 
   /**
    * Data platforms above the SVM layer that the control plane cannot report.
@@ -409,10 +534,10 @@ export const config: PortalConfig = {
    *   discoveryAccounts: ["111122223333"],
    *   discoveryRoleName: "PortalDiscoveryReader",
    */
-  discoveryRegions: [],
-  discoveryAccounts: [],
-  discoveryRoleName: "",
-  allowNoBlockExpiry: false,
+  discoveryRegions: idList(process.env.AMPLIFY_PORTAL_DISCOVERY_REGIONS),
+  discoveryAccounts: idList(process.env.AMPLIFY_PORTAL_DISCOVERY_ACCOUNTS),
+  discoveryRoleName: (process.env.AMPLIFY_PORTAL_DISCOVERY_ROLE_NAME || "").trim(),
+  allowNoBlockExpiry: process.env.AMPLIFY_PORTAL_ALLOW_NO_BLOCK_EXPIRY === "1",
 
   /**
    * Bucket used by the S3 Object Lock panel in Data Protection.
@@ -420,7 +545,7 @@ export const config: PortalConfig = {
    * Left empty, the panel reports that no bucket is configured rather than
    * failing — the handler already treats an empty value as "feature off".
    */
-  s3ObjectLockBucket: "",
+  s3ObjectLockBucket: process.env.S3_OBJECT_LOCK_BUCKET || "",
 
   /**
    * Expiry applied to a containment block when the caller does not name one.
@@ -429,7 +554,7 @@ export const config: PortalConfig = {
    * requested is an expiry that gets forgotten, and a block nobody remembers is
    * indistinguishable from an outage.
    */
-  defaultBlockTtlHours: 24,
+  defaultBlockTtlHours: Number(process.env.PORTAL_DEFAULT_BLOCK_TTL_HOURS || "24"),
 
   /**
    * Longest expiry a single request may ask for. 0 removes the ceiling.
@@ -449,7 +574,7 @@ export const config: PortalConfig = {
    * block that did not name its own expiry would be refused for exceeding a
    * limit the caller never set.
    */
-  maxBlockTtlHours: 24 * 30,
+  maxBlockTtlHours: Number(process.env.PORTAL_MAX_BLOCK_TTL_HOURS || String(24 * 30)),
 
   /**
    * How often the sweep looks for blocks whose expiry has passed.
@@ -459,7 +584,7 @@ export const config: PortalConfig = {
    * period of both sweep alarms, so raising it slows detection of a sweep that
    * has stopped running.
    */
-  blockSweepIntervalMinutes: 15,
+  blockSweepIntervalMinutes: Number(process.env.PORTAL_BLOCK_SWEEP_INTERVAL_MINUTES || "15"),
 
   /**
    * Address to notify when the containment sweep fails or stops running.
@@ -468,14 +593,14 @@ export const config: PortalConfig = {
    * SNS topic has no subscriber so nothing reaches a person. Blocks not expiring
    * is a silent condition, which is the reason the alarms exist at all.
    */
-  alarmEmail: "",
+  alarmEmail: (process.env.PORTAL_ALARM_EMAIL || "").trim(),
 
   /**
    * ONTAP management LIF IP address.
    * Find: aws fsx describe-file-systems --file-system-ids <fs-id> \
    *         --query "FileSystems[0].OntapConfiguration.Endpoints.Management.IpAddresses[0]"
    */
-  ontapMgmtIp: "",
+  ontapMgmtIp: process.env.ONTAP_MGMT_IP || "",
 
   /**
    * Secrets Manager secret containing ONTAP credentials.
@@ -498,11 +623,11 @@ export const config: PortalConfig = {
    * that stage reports SKIP rather than passing, because a pair that authenticates
    * against the wrong cluster is indistinguishable from a correct one until it is tried.
    */
-  ontapSecretName: "",
+  ontapSecretName: process.env.ONTAP_SECRET_NAME || "",
 
   /** SVM name (default SVM for operations) */
-  ontapSvmName: "",
+  ontapSvmName: process.env.ONTAP_SVM_NAME || "",
 
   /** Default volume name for snapshot/lock operations */
-  ontapVolumeName: "",
+  ontapVolumeName: process.env.ONTAP_VOLUME_NAME || "",
 };

@@ -23,6 +23,14 @@ asserting that a command exited zero. Run before handing a URL to anyone:
 
 Exit codes: 0 all checks pass, 1 at least one check failed, 2 could not run.
 
+Before the first deployment there is no deployed state to compare against, which is
+also when the config is most likely to be wrong. ``--check-config`` -- and the
+default when ``amplify_outputs.json`` does not exist yet -- checks the config on its
+own instead of reporting that it could not run: the region against the one your AWS
+session will deploy into, a state machine ARN that is still a placeholder, a VPC with
+no subnets or no route tables, and an ONTAP connection configured halfway. Offline
+apart from reading the CLI's configured region.
+
 ``--print-sandbox-identifier`` reports which sandbox the outputs file points at,
 so the wrappers that run ``ampx sandbox`` can name it explicitly instead of
 letting the CLI default to one named after the OS user. Without that, running
@@ -39,6 +47,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import re
 import subprocess
 import sys
@@ -104,8 +113,22 @@ def config_default(source: str, key: str) -> str | None:
     The config reads environment variables with a literal fallback, e.g.
     ``vpcId: (process.env.X || "vpc-abc").trim()``. Only the literal is read
     here; an override in the environment is reported separately by the caller.
+
+    Read out of the key's own expression rather than by scanning forward from the
+    key, because a long fallback is wrapped onto the next line:
+
+        ontapSecretName:
+          process.env.ONTAP_SECRET_NAME || "fsx-ontap-fsxadmin-credentials",
+
+    A single-line pattern reported that as unset. Scanning across lines without a
+    bound is worse than reporting nothing: for a key whose value holds no string
+    literal at all -- ``vpcSubnetIds: idList(process.env.X),`` -- it runs on into
+    the next entries and returns some other key's value as this one's.
     """
-    match = re.search(rf'^\s*{re.escape(key)}:.*?"([^"]*)"', source, re.MULTILINE)
+    expr = config_expression(source, key)
+    if expr is None:
+        return None
+    match = re.search(r'"([^"]*)"', expr)
     return match.group(1) if match else None
 
 
@@ -124,6 +147,81 @@ def config_bool(source: str, key: str) -> bool | None:
     if '=== "1"' in expr or expr.strip() == "false":
         return False
     return None
+
+
+def config_body(source: str) -> str:
+    """Return the source from the config object onwards.
+
+    The same key names appear twice in the file: once in the ``PortalConfig``
+    interface as ``region: string;`` and once in the object as an assignment.
+    Searching the whole file finds the declaration first, and a pattern that spans
+    lines then runs from there to the first line-final comma it meets -- which is
+    inside some later entry, whose value it returns as this key's. Measured while
+    adding these checks: the region read back as an access point alias.
+    """
+    marker = source.find("export const config")
+    return source[marker:] if marker != -1 else source
+
+
+def config_expression(source: str, key: str) -> str | None:
+    """Return the raw right-hand side of a config assignment, or None.
+
+    Bounded twice: to the config object rather than the whole file, and to text
+    without a ``;`` ending at the first line-final comma. So a value wrapped onto
+    following lines is read whole, while a value that is only a helper call --
+    ``vpcSubnetIds: idList(process.env.X),`` -- cannot reach into the entries after
+    it and return one of their literals.
+    """
+    match = re.search(rf"^\s*{re.escape(key)}:\s*([^;]*?),\s*$", config_body(source), re.MULTILINE | re.DOTALL)
+    return match.group(1) if match else None
+
+
+def config_env_var(source: str, key: str) -> str | None:
+    """Return the environment variable a config key reads, if it reads one.
+
+    Taken from the expression rather than a table here, so a key added to the
+    config is covered without editing this file -- the table is the thing that
+    goes stale, and a key missing from it reads as "no variable" rather than as
+    an omission.
+    """
+    expr = config_expression(source, key)
+    if not expr:
+        return None
+    match = re.search(r"process\.env\.([A-Z0-9_]+)", expr)
+    return match.group(1) if match else None
+
+
+def effective_scalar(source: str, key: str) -> tuple[str | None, str]:
+    """Return a scalar config value as it will be at synth, and where it came from.
+
+    The environment wins over the literal, matching the config itself. Reading
+    only the literal would report the file's value as the deployment's, which is
+    wrong in exactly the case somebody has reached for a variable.
+    """
+    variable = config_env_var(source, key)
+    if variable:
+        from_env = os.environ.get(variable)
+        if from_env is not None and from_env.strip() != "":
+            return from_env.strip(), variable
+    return config_default(source, key), "portal-config.ts"
+
+
+def effective_list(source: str, key: str) -> tuple[list[str] | None, str]:
+    """Return a list config value as it will be at synth, and where it came from.
+
+    Covers both shapes the config uses: an array literal, and ``idList`` around
+    an environment variable with an optional literal fallback.
+    """
+    variable = config_env_var(source, key)
+    if variable:
+        from_env = os.environ.get(variable)
+        if from_env is not None and from_env.strip() != "":
+            return [entry.strip() for entry in from_env.split(",") if entry.strip()], variable
+
+    expr = config_expression(source, key)
+    if expr is None:
+        return None, "portal-config.ts"
+    return re.findall(r'"([^"]*)"', expr), "portal-config.ts"
 
 
 def load_outputs() -> dict:
@@ -570,6 +668,149 @@ def check_hosted_binding(region: str, pool_id: str, stack: str | None) -> Result
     return Result("hosted bundle", OK, f"{url} was built against this pool")
 
 
+# An ARN carrying one of these is a value nobody set. The example config used to
+# ship a state machine ARN naming 123456789012, which deploys and grants cleanly
+# and fails when somebody presses the button.
+PLACEHOLDER_MARKERS = ("123456789012", ":placeholder", "amplify-portal-test-workflow")
+
+
+def session_region() -> str | None:
+    """Return the region the AWS CLI would use, without calling AWS.
+
+    Environment first, then the profile, matching the CLI's own order. Returns
+    None when neither says anything, in which case the comparison is skipped --
+    no value is not the same thing as a disagreeing value.
+    """
+    for variable in ("AWS_REGION", "AWS_DEFAULT_REGION"):
+        value = os.environ.get(variable, "").strip()
+        if value:
+            return value
+    try:
+        return aws("configure", "get", "region").strip() or None
+    except RuntimeError:
+        return None
+
+
+def check_config(source: str) -> list[Result]:
+    """Check the config alone, before anything is deployed from it.
+
+    Separate from the checks above because those compare deployed state against
+    the files, which cannot run before the first deployment -- and the first
+    deployment is when the config is most likely to be wrong. Everything here is
+    offline apart from reading the CLI's configured region.
+
+    What it looks for is the failure that survives a deploy: a value nobody set
+    that is nonetheless well-formed. An unset value mostly turns a feature off and
+    says so, and the two synth guards in ``backend.ts`` refuse the combinations
+    that would deploy as complete. A placeholder ARN does neither.
+    """
+    results: list[Result] = []
+
+    region, region_origin = effective_scalar(source, "region")
+    session = session_region()
+    if not region:
+        results.append(Result("region", FAIL, "region is unset", "Set region in portal-config.ts."))
+    elif session and session != region:
+        results.append(
+            Result(
+                "region",
+                FAIL,
+                f"config says {region} ({region_origin}), your AWS session is {session}",
+                f"The backend deploys to {session} while the Step Functions endpoint, the "
+                f"DynamoDB gateway endpoint and the ONTAP VPC's availability zones would all "
+                f"name {region}. Set one of them to match the other; backend.ts refuses this "
+                f"combination rather than building it.",
+            )
+        )
+    elif session:
+        results.append(Result("region", OK, f"{region}, matching your AWS session"))
+    else:
+        results.append(Result("region", SKIP, f"{region} ({region_origin}); no region on the AWS session to compare"))
+
+    arn, arn_origin = effective_scalar(source, "stateMachineArn")
+    marker = next((m for m in PLACEHOLDER_MARKERS if arn and m in arn), None)
+    if marker:
+        results.append(
+            Result(
+                "state machine",
+                FAIL,
+                f"stateMachineArn contains the placeholder {marker!r} ({arn_origin})",
+                "startProcessing would call StartExecution against a state machine in another "
+                "account. Set it to a state machine you own, or leave it empty -- empty reports "
+                "that processing is not configured, which a placeholder does not.",
+            )
+        )
+    elif not arn:
+        results.append(
+            Result("state machine", SKIP, "not configured; startProcessing reports that rather than failing")
+        )
+    else:
+        results.append(Result("state machine", OK, f"{arn} ({arn_origin})"))
+
+    alias, alias_origin = effective_scalar(source, "s3ApAlias")
+    if not alias:
+        results.append(Result("file source", SKIP, "s3ApAlias is empty; the Files tab shows no files"))
+    else:
+        results.append(Result("file source", OK, f"{alias} ({alias_origin})"))
+
+    ontap = {key: effective_scalar(source, key)[0] or "" for key in ("ontapMgmtIp", "ontapSecretName", "ontapSvmName")}
+    if not any(ontap.values()):
+        results.append(
+            Result("ONTAP connection", SKIP, "not configured; the admin panels report that a connection is required")
+        )
+    else:
+        missing = [key for key, value in ontap.items() if not value]
+        if missing:
+            results.append(
+                Result(
+                    "ONTAP connection",
+                    FAIL,
+                    f"partially configured: {', '.join(missing)} unset",
+                    "An address without a credential, or a credential without an SVM, deploys "
+                    "and then fails per call. Set all three, and make the secret the one for the "
+                    "same file system as the address -- `make ontap-preflight FS_ID=<id>` checks "
+                    "that pair without authenticating, because pairing one cluster's address with "
+                    "another's credential locks fsxadmin out rather than merely failing.",
+                )
+            )
+        else:
+            results.append(Result("ONTAP connection", OK, f"{ontap['ontapMgmtIp']} / {ontap['ontapSvmName']}"))
+
+    vpc_id, vpc_origin = effective_scalar(source, "vpcId")
+    if not vpc_id:
+        results.append(Result("VPC wiring", SKIP, "vpcId is empty; the ONTAP-facing functions deploy outside a VPC"))
+    else:
+        subnets, _ = effective_list(source, "vpcSubnetIds")
+        route_tables, _ = effective_list(source, "vpcRouteTableIds")
+        allow_no_expiry = config_bool(source, "allowNoBlockExpiry")
+        if not subnets:
+            results.append(
+                Result(
+                    "VPC wiring",
+                    FAIL,
+                    f"{vpc_id} ({vpc_origin}) with no subnets",
+                    "A function with a VPC and no subnet cannot be placed. Set vpcSubnetIds to "
+                    "the subnets carrying the FSx for ONTAP ENIs.",
+                )
+            )
+        elif not route_tables and not allow_no_expiry:
+            results.append(
+                Result(
+                    "VPC wiring",
+                    FAIL,
+                    f"{vpc_id} ({vpc_origin}) with no route tables",
+                    "backend.ts refuses this: without a DynamoDB gateway endpoint the containment "
+                    "ledger is unreachable, so blocks are placed on the cluster and never expire. "
+                    "Set vpcRouteTableIds, or set allowNoBlockExpiry to accept it deliberately.",
+                )
+            )
+        else:
+            detail = f"{vpc_id}, {len(subnets)} subnet(s), {len(route_tables)} route table(s)"
+            results.append(Result("VPC wiring", OK, detail))
+
+    return results
+
+
 def print_sandbox_identifier(region_hint: str) -> int:
     """Print the identifier of the sandbox the outputs file points at.
 
@@ -613,6 +854,18 @@ def print_sandbox_identifier(region_hint: str) -> int:
     return 0
 
 
+def report(results: list[Result]) -> None:
+    """Print one line per check, and the remedy for anything that did not pass."""
+    marks = {OK: "ok  ", FAIL: "FAIL", SKIP: "skip"}
+    for result in results:
+        print(f"[{marks[result.status]}] {result.name}: {result.detail}")
+        if result.remedy and result.status != OK:
+            for line in result.remedy.split(". "):
+                if line.strip():
+                    print(f"         {line.strip().rstrip('.')}.")
+    print()
+
+
 def main() -> int:
     """Run every check and report. Returns the process exit code."""
     parser = argparse.ArgumentParser(description=__doc__)
@@ -622,6 +875,11 @@ def main() -> int:
         action="store_true",
         help="print the sandbox identifier the outputs file points at, and exit",
     )
+    parser.add_argument(
+        "--check-config",
+        action="store_true",
+        help="check portal-config.ts alone, without comparing it to a deployment",
+    )
     args = parser.parse_args()
 
     if args.print_sandbox_identifier:
@@ -630,7 +888,34 @@ def main() -> int:
     config_src = read_config_text()
     if not config_src:
         print(f"cannot read {CONFIG_PATH}", file=sys.stderr)
+        print(
+            "  Copy the example and fill it in:\n"
+            "    cd solutions/amplify-portal && cp amplify/portal-config.example.ts "
+            "amplify/portal-config.ts",
+            file=sys.stderr,
+        )
         return 2
+
+    # Before the first deployment there is nothing to compare the files against, and
+    # that is when the config is most likely to be wrong. Reporting "could not run"
+    # there left the checks useful only to whoever already had a working deployment.
+    if args.check_config or not OUTPUTS_PATH.exists():
+        results = check_config(config_src)
+        report(results)
+        failed = [r for r in results if r.status == FAIL]
+        if failed:
+            print(f"{len(failed)} check(s) failed. Fix the config before deploying.")
+            return 1
+        if args.check_config:
+            print(
+                "Config checks passed. Deployed state is not covered here; run without --check-config after deploying."
+            )
+        else:
+            print(
+                f"Config checks passed. {OUTPUTS_PATH.name} does not exist yet, so nothing was "
+                "compared against a deployment -- run this again after `make sandbox`."
+            )
+        return 0
 
     outputs_result, stack = check_outputs_pool(args.region)
     results = [outputs_result]
@@ -647,16 +932,9 @@ def main() -> int:
     if pool_for_binding:
         results.append(check_hosted_binding(args.region, pool_for_binding, stack))
 
-    marks = {OK: "ok  ", FAIL: "FAIL", SKIP: "skip"}
-    for result in results:
-        print(f"[{marks[result.status]}] {result.name}: {result.detail}")
-        if result.remedy and result.status != OK:
-            for line in result.remedy.split(". "):
-                if line.strip():
-                    print(f"         {line.strip().rstrip('.')}.")
+    report(results)
 
     failed = [r for r in results if r.status == FAIL]
-    print()
     if failed:
         print(f"{len(failed)} check(s) failed. Do not hand out the URL yet.")
         return 1

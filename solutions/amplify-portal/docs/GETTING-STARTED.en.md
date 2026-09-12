@@ -14,7 +14,15 @@
 | AWS CLI | ✅ | 2.x | `aws --version` |
 | Amplify CLI | ✅ | latest | `npx ampx --version` |
 | FSx for ONTAP | — | ONTAP 9.15+ | Not needed for DemoMode. Required for admin features |
+| S3 Access Point | — | — | If you have none, see [the deployment guide](../../../docs/en/deployment-guide.md) (`aws fsx create-and-attach-s3-access-point`). DemoMode takes a regular S3 bucket name instead |
+| Bedrock model access | — | — | Only for the AI features. See [the AI quick start](../../../docs/en/ai-features-quick-start.md) (enable `amazon.nova-lite-v1:0`) |
 | Docker | — | 24.x or later | `docker --version` (only when using Nextcloud) |
+
+> **Keep the region in one place.** `region` in `portal-config.ts` does not decide where the
+> backend goes -- your AWS credentials do. It decides what the deployment *refers to*, so a
+> disagreement produces a configuration whose Step Functions endpoint, DynamoDB gateway
+> endpoint and ONTAP VPC availability zones all name another region, and it synthesises and
+> deploys without an error. `backend.ts` refuses that combination at synth.
 
 > **Verified environment**: this guide was verified on Node.js 20.18.x / Amplify Gen2 1.x / Python 3.12 (Lambda) / ONTAP 9.18.1P3D1 / ap-northeast-1.
 
@@ -241,6 +249,25 @@ aws secretsmanager create-secret \
 cp amplify/portal-config.example.ts amplify/portal-config.ts
 ```
 
+Values can be edited into the file or passed as environment variables. The order is
+**environment variable > the literal in the file > feature off**. Use the variables when
+setting this from CI, or when you would rather not write values into a copy of the repository.
+
+```bash
+export AMPLIFY_PORTAL_VPC_ID=vpc-0123456789abcdef0
+export AMPLIFY_PORTAL_VPC_SUBNET_IDS=subnet-0123456789abcdef0
+export AMPLIFY_PORTAL_VPC_ROUTE_TABLE_IDS=rtb-0123456789abcdef0
+export ONTAP_MGMT_IP=10.0.0.10
+export ONTAP_SECRET_NAME=fsx-ontap-fsxadmin-credentials
+```
+
+> Before 2026-09-07, `portal-config.example.ts` had no environment layer at all. Every variable
+> named in this guide and in the error messages was read only by the config that had never been
+> distributed, so on a copied config they were **ignored**. That included
+> `AMPLIFY_PORTAL_DDB_GW_ENDPOINT_EXISTS=1`, which this guide tells you to set for a second
+> sandbox in a shared VPC -- so the route collision it exists to prevent happened anyway. If you
+> add a value, give it a variable too.
+
 Fill in the values obtained in Step 1:
 
 ```typescript
@@ -252,6 +279,10 @@ export const config: PortalConfig = {
   vpcId: "vpc-0123456789abcdef0",
   vpcSubnetIds: ["subnet-0123456789abcdef0"],
   vpcSecurityGroupIds: ["sg-0123456789abcdef0"],
+  // Omitted, `<region>a` and `<region>c` are assumed. Name them when the subnets are
+  // elsewhere: aws ec2 describe-subnets --subnet-ids <id> \
+  //   --query "Subnets[].AvailabilityZone" --output text
+  vpcAvailabilityZones: ["ap-northeast-1a", "ap-northeast-1c"],
   // Required when vpcId is set. Give the route tables associated with vpcSubnetIds.
   // Setting vpcId without these makes synth fail; the reason is below.
   vpcRouteTableIds: ["rtb-0123456789abcdef0"],
@@ -298,6 +329,18 @@ aws ec2 describe-route-tables \
 ```bash
 npm start
 ```
+
+`npm start` checks the config before deploying from it
+(`scripts/portal_preflight.py --check-config`): whether the region matches your AWS session,
+whether `stateMachineArn` is still a placeholder, whether a VPC has both subnets and route
+tables, and whether the ONTAP connection is configured halfway -- an address with no
+credential, or a credential with no SVM. It stops before the deploy because **a failed
+sandbox does not roll back**: VPC Lambdas hold their ENIs, and clearing one out was measured
+at 28 minutes.
+
+Pass `AMPLIFY_PORTAL_SKIP_CONFIG_CHECK=1` to go ahead deliberately. The checks against a
+deployment -- which pool the published bundle names, whether the functions are in the VPC,
+who owns the gateway endpoint -- remain `make portal-preflight`.
 
 The first run takes 3-5 minutes because the CloudFormation stack is created.
 It is done once `Deployment completed` and `http://localhost:5173` are shown.

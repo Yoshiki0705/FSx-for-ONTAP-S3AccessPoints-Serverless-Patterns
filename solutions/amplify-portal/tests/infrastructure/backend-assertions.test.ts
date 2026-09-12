@@ -305,12 +305,17 @@ describe("portal-config.example.ts covers what backend.ts reads", () => {
 
   it("gives the block expiry fields values, not just types", () => {
     // A declared-but-unassigned field is the same failure with extra steps.
+    //
+    // The value may be a bare number or the fallback inside an environment lookup
+    // (`Number(process.env.X || "24")`), which is what the example carries since it
+    // gained the environment layer. Either way a digit has to appear; what this rules
+    // out is a field left as a type or assigned an empty string.
     for (const field of [
       "defaultBlockTtlHours",
       "maxBlockTtlHours",
       "blockSweepIntervalMinutes",
     ]) {
-      expect(exampleSource).toMatch(new RegExp(`^\\s{2}${field}:\\s*\\d`, "m"));
+      expect(exampleSource).toMatch(new RegExp(`^\\s{2}${field}:\\s*[^,\\n]*"?\\d`, "m"));
     }
   });
 });
@@ -790,18 +795,29 @@ describe("Two-axis portal authorization", () => {
     // Registration closed, roles enforced, no AI and no share links for outside members.
     // These were the permissive values, on a compatibility argument that no longer holds:
     // nothing downstream depends on this repository, so the default is now the safe one.
-    expect(exampleSource).toMatch(/enforceRoles: true/);
-    expect(exampleSource).toMatch(/selfSignUpEnabled: false/);
-    // `{}` denies every role, since a role absent from the map is denied.
-    expect(exampleSource).toMatch(/shareLinksByRole: \{\}/);
-    expect(exampleSource).toMatch(/aiEnabled: false/);
+    //
+    // Matched on the polarity of the expression rather than on a literal, because the
+    // example reads the environment with the restrictive value as its fallback. The
+    // polarity is the property: `!== "false"` defaults on, `=== "true"` defaults off, so
+    // an unset or misspelled variable lands on the restrictive side in every case. What
+    // an unset environment actually resolves to is asserted in `config-defaults.test.ts`.
+    expect(exampleSource).toMatch(/enforceRoles: (true|process\.env\.\w+ !== "false")/);
+    expect(exampleSource).toMatch(
+      /selfSignUpEnabled: (false|process\.env\.\w+ === "true")/,
+    );
+    // A role absent from the map is denied, so an empty map denies every role.
+    expect(exampleSource).toMatch(/shareLinksByRole: (\{\}|jsonObject\()/);
+    expect(exampleSource).toMatch(/aiEnabled: (false|process\.env\.\w+ === "true")/);
   });
 
   it("keeps MFA at the mode that shipped, and says what it means", () => {
     // Not raised to REQUIRED with the others. Requiring MFA changes what every user has
     // to carry to sign in, which is an organisation's decision rather than a default --
     // unlike the others, where the restrictive value costs a deployment nothing.
-    expect(exampleSource).toMatch(/mfa: "OPTIONAL"/);
+    expect(exampleSource).toMatch(/mfa: ("OPTIONAL"|mfaMode\(process\.env\.\w+\))/);
+    // Whichever shape, an absent value has to reach OPTIONAL rather than a stricter mode
+    // nobody asked for or a looser one that reads as MFA being off.
+    expect(exampleSource).toMatch(/=== ""\) return "OPTIONAL"|mfa: "OPTIONAL"/);
     // "OPTIONAL" is easy to read as a control that is in place. It is not.
     expect(exampleSource.toLowerCase()).toMatch(/each user decides/);
   });
@@ -817,18 +833,19 @@ describe("Two-axis portal authorization", () => {
     expect(exampleSource.toLowerCase()).toMatch(/open registration/);
   });
 
-  // The polarity of the environment parsing -- that both variables need the word which
-  // leaves the restrictive state, so a misspelling fails closed -- is not asserted here.
-  // It lives in `amplify/portal-config.ts`, which is gitignored and which CI replaces with
-  // the example, so a source assertion about it would pass locally and fail in CI. The
-  // consequence is asserted instead, in `config-defaults.test.ts`, by loading the
-  // configuration: unset and misspelled both resolve to the restrictive value.
-
   it("leaves the path prefixes unset rather than empty", () => {
     // `{}` and absent are not the same: `backend.ts` falls back to deriving the
     // prefixes only when this is undefined, and `{}` would read as "prefixes
     // configured, none of them restricting anything".
-    expect(exampleSource).not.toMatch(/^\s*groupPathPrefixes:/m);
+    //
+    // The field may be absent from the object, or present as a ternary whose unset branch
+    // is `undefined`. What must not appear is a branch that hands `backend.ts` an empty
+    // map, so the assertion is on the fallback rather than on the field's presence.
+    const assignment = exampleSource.match(/^\s{2}groupPathPrefixes:([\s\S]*?),\n\n/m);
+    if (assignment) {
+      expect(assignment[0]).toMatch(/:\s*undefined,/);
+    }
+    // Either way the documented example of the populated shape stays in the comment.
     expect(exampleSource).toMatch(/\*\s+groupPathPrefixes: \{/);
   });
 });

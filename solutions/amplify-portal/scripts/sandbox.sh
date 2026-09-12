@@ -29,6 +29,24 @@ cd "$(dirname "$0")/.."
 
 PREFLIGHT="../../scripts/portal_preflight.py"
 
+# Check the config before deploying from it.
+#
+# Offline apart from reading the CLI's configured region, and it only fails on
+# combinations that either cannot work or deploy while broken: a region that is not
+# the one being deployed into, a state machine ARN still naming the example account,
+# a VPC with no subnets or no route tables, an ONTAP connection configured halfway.
+#
+# A gate rather than a warning. The deploy it prevents is not a fast one to
+# discover: a sandbox that fails partway does not roll back, and VPC Lambdas hold
+# their ENIs for around 30 minutes on the way out.
+if [ "${AMPLIFY_PORTAL_SKIP_CONFIG_CHECK:-}" != "1" ]; then
+  if ! python3 "$PREFLIGHT" --check-config; then
+    echo "✖ portal-config.ts has a problem that would deploy badly. Fix it, or set" >&2
+    echo "  AMPLIFY_PORTAL_SKIP_CONFIG_CHECK=1 to deploy anyway." >&2
+    exit 1
+  fi
+fi
+
 IDENTIFIER="${AMPLIFY_PORTAL_SANDBOX_IDENTIFIER:-}"
 SOURCE="AMPLIFY_PORTAL_SANDBOX_IDENTIFIER"
 
