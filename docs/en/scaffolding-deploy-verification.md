@@ -546,3 +546,5 @@ CMK was the one for the alarm topic.
 
 - [App foundation choices](scaffolding-and-backend-toolkit-choices.md) — how the three compare, the measurements up to synth, and fixed costs
 - [Portal verification results](../../solutions/amplify-portal/docs/verification-results.en.md) — the record the verification categories come from
+- [portal-sandbox-lifecycle](../agent/portal-sandbox-lifecycle.md) — the same log-group survival recorded for this repository's own portal (the precedent for P10)
+- [IaC governance patterns](../../solutions/amplify-portal/docs/iac-governance-patterns.en.md) — why cdk-nag is run as a baseline comparison, and the drift-detection layer

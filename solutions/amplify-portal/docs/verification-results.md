@@ -482,3 +482,4 @@ iPhone (Safari) をトンネル経由で接続して確認しました。**閲�
 | [ONTAP 接続ガイド](ONTAP-CONNECTION-GUIDE.md) | VPC / シークレット / 管理 LIF の設定 |
 | [AppSync 認可のトラブルシューティング](TROUBLESHOOTING-APPSYNC-AUTH.md) | グループ認可が失敗する場合 |
 | [書き込み操作の検証計画](write-verification-plan.md) | 未実行の書き込み操作の前提・手順・影響・戻し方 |
+| [スキャフォールディング生成物のデプロイ検証と撤収手順](../../../docs/ja/scaffolding-deploy-verification.md) | Nx Plugin for AWS / AWS Blocks を**この表と同じ検証区分**で実機確認した記録。区分の定義はこのファイルが持つ |
