@@ -193,6 +193,10 @@ Three things worth keeping straight:
   the AWS documentation). The Nx Plugin output names `PLUS` in order to enable features such
   as threat protection; the difference is $5/month at 1,000 MAU and $50/month at 10,000.
   It can be lowered if the requirements allow.
+- **Nx's `MfaConfiguration: ON` costs procedure rather than money.** It is required, so the very
+  first sign-in demands TOTP enrollment. The path exercised live, and what it takes to walk it,
+  are in
+  [Deploy verification and teardown](scaffolding-deploy-verification.md#p14-deactivating-deletion-protection-takes-more-than-one-flag).
 
 ## Choosing
 

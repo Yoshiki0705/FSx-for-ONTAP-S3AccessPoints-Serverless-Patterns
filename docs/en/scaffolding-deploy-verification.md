@@ -59,11 +59,18 @@ can be skipped; it means **this document does not need to supply new evidence fo
 | P10 | Log groups outside the template survive, with retention set to never expire | **Documented + two upstream issues** (the surviving count is this document's measurement) | [Lambda logs](https://docs.aws.amazon.com/lambda/latest/dg/monitoring-cloudwatchlogs.html) / [aws-cdk #26553](https://github.com/aws/aws-cdk/issues/26553) / [aws-cdk #24815](https://github.com/aws/aws-cdk/issues/24815) |
 | P11 | `npm create` waits indefinitely in a non-interactive shell | **npm's default behaviour** (the isolation is this document's measurement; the similar upstream PR is a different cause) | [npm config `yes`](https://docs.npmjs.com/cli/v11/using-npm/config#yes) / [nx-plugin-for-aws #1193](https://github.com/awslabs/nx-plugin-for-aws/pull/1193) |
 | P12 | Hotswap introduces drift into the stack | **Documented** | [cdk deploy](https://docs.aws.amazon.com/cdk/v2/guide/ref-cli-cmd-deploy.html) (`--hotswap`) |
+| P13 | A KMS key deleted by CloudFormation enters a 30-day wait that cannot be shortened afterwards | **The default is documented** (the refusal to shorten is this document's measurement) | [Deleting keys](https://docs.aws.amazon.com/kms/latest/cryptographic-details/key-deletion.html) |
+| P14 | `UpdateUserPool` does not accept a single flag; omitted settings reset to defaults | **Warned about on a dedicated page** | [Updating user pool and app client configuration](https://docs.aws.amazon.com/cognito/latest/developerguide/cognito-user-pool-updating.html) |
 
-**No AWS Support case was opened.** None of the twelve is a gap in service behaviour: each is
+**No AWS Support case was opened.** None of the fourteen is a gap in service behaviour: each is
 either behaviour the public documentation states, or already has an open issue on the tooling
 side (CDK CLI or the Nx plugin). Nothing remains unexplained as service behaviour, so there is
 nothing to ask about.
+
+**"Documented" in that table does not mean it was avoided.** P13 and P14 were both walked into
+while tearing all three outputs down, and only turned out to be known on re-reading the public
+documentation. **The error was in the teardown procedure**, so [Teardown](#teardown) below has
+been corrected against the measurement.
 
 ## The pitfall register
 
@@ -115,6 +122,23 @@ So **only another express deploy can recover a broken express stack.** The recom
 therefore to change the target to `--express --rollback`; the remedy of dropping `--express` and
 switching to `deploy` does not apply to a stack that express has already updated.
 
+**The recommendation itself was confirmed live** (2026-09-13). The generated target with
+`--rollback` appended,
+
+```
+cdk deploy --require-approval=never "research-board-infra-sandbox/**" --express --rollback
+```
+
+created 2 stacks and 86 resources in 317 seconds. Every resource carried this line during the
+deploy:
+
+```
+Resource operation completed using Express Mode. It may continue becoming available in the background.
+```
+
+**CloudFormation itself says on every line that "completed" is not "available".** Automation
+that runs a check immediately afterwards is not reading that line.
+
 ### P2. `cdk destroy --express` carries the same property
 
 `cdk destroy` also takes `--express`, with the same "does not wait for stabilization, does not
@@ -146,9 +170,20 @@ Sources: [Deletion protection](https://docs.aws.amazon.com/help-panel/cognito/la
 and UpdateUserPool's
 [deletionProtection](https://docs.aws.amazon.com/sdk-for-kotlin/api/latest/cognitoidentityprovider/aws.sdk.kotlin.services.cognitoidentityprovider.model/-update-user-pool-request/deletion-protection.html).
 
-**Where it applies**: Nx creates one with `DeletionProtection: ACTIVE`. Because the error is
-named `InvalidParameterException`, it **reads as a problem with how the parameters were
-written**, which is the part that catches you.
+**Where it applies**: Nx creates one with `DeletionProtection: ACTIVE`. The response reproduced
+live (2026-09-13):
+
+```
+An error occurred (InvalidParameterException) when calling the DeleteUserPool operation:
+The user pool cannot be deleted because deletion protection is activated.
+Deletion protection must be inactivated first.
+```
+
+**The message is accurate; only the name misleads.** `InvalidParameterException` reads as a
+problem with how the parameters were written, so going by the name alone sends you to inspect
+the arguments.
+
+**And deactivating the protection is not a one-flag operation.** That becomes P14.
 
 ### P5. KMS deletion waits a minimum of 7 days, but the waiting period is not billed
 
@@ -169,8 +204,9 @@ Source: [AWS Key Management Service pricing](https://aws.amazon.com/kms/pricing/
 deletion is scheduled. (2) cancelling during the window bills as though it was never scheduled.
 **Deciding to keep the key brings the cost back too.**
 
-**Where it applies**: four in Nx (all with automatic rotation on), one in AWS Blocks
-(production preset).
+**Where it applies**: four in Nx (all with automatic rotation on, and `Retain`, so you schedule
+them yourself), one in AWS Blocks (production preset — not `Retain`, so CloudFormation schedules
+it → P13).
 
 ### P6. The order WAF web ACL deletion requires
 
@@ -207,16 +243,28 @@ wrong teardown command. Either teardown leaves the other one's resources alone.
 [DeletionPolicy attribute](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-attribute-deletionpolicy.html)).
 The behaviour itself is documented; what **this document adds is the count per output**.
 
-Counted from the synthesized templates — resources a stack deletion does not remove (measured
-2026-09-07):
+Counted from the synthesized templates — resources a stack deletion does not remove:
 
 | Output | Count | Breakdown |
 |---|---|---|
 | AWS Blocks (sandbox preset) | **0** | — |
-| AWS Blocks (production preset) | 9 | DynamoDB 4 (deletion protection + Retain), KMS 1, CDK bucket-deployment custom resources 4 (Retain) |
+| AWS Blocks (production preset) | 8 | DynamoDB 4 (deletion protection + Retain), CDK bucket-deployment custom resources 4 (Retain) |
 | Nx Plugin for AWS | 9 | Cognito user pool 1 (deletion protection + Retain), DynamoDB 1 (same), IAM roles 2 (Retain), KMS 4 (Retain), log group 1 (Retain) |
 
 **Only the AWS Blocks sandbox preset is at 0**, which makes it the easiest one to try first.
+
+**The production preset count was corrected from 9 to 8 by this verification.** One KMS key was
+previously counted as retained; recounting `DeletionPolicy` in the template shows Retain covers
+only the 4 DynamoDB tables and the 4 CDKBucketDeployment resources, not the KMS key.
+CloudFormation's own responses during teardown agree.
+
+| CloudFormation status | Meaning | Measured |
+|---|---|---|
+| `DELETE_SKIPPED` | `Retain`, so it was not touched | 8 during the Nx teardown |
+| `DELETE_COMPLETE` | Actually deleted. For KMS, "deletion was scheduled" | The Blocks production KMS key |
+
+**Reading `DELETE_COMPLETE` as "gone" is wrong for KMS**, where it only entered a 30-day
+wait (→ P13).
 
 ### P9. Treating preview as preview
 
@@ -240,6 +288,21 @@ to the Lambda functions behind CDK / Blocks custom-resource providers
 <!-- allow:not-a-claim: the following describes our own measurement, not an assertion about a vendor gap -->
 The template declared four log groups (the application handler plus three internal to Blocks),
 and those went with the stack deletion. The five that stayed do not appear in the template.
+
+**All three outputs behaved the same way** (measured 2026-09-12 to 13). Declared groups carry a
+retention; undeclared ones were never-expire without exception.
+
+| Output | Declared (removed) | Undeclared, surviving | Declared, surviving |
+|---|---|---|---|
+| Blocks (sandbox preset) | 4 (365 days) | **5** (never expire) | 0 |
+| Blocks (production preset) | 4 (365 days) | **8** (never expire) | 0 |
+| Nx Plugin for AWS | 4 (30-365 days) | **6** (never expire) | 1 (the `Retain` API access log, 365 days) |
+
+The production preset has three more than the sandbox because static hosting adds a CloudFront
+route-store Lambda and another bucket deployment. The six left by Nx include
+`CustomCrossRegionExportReader`, which exists to read the us-east-1 web ACL across regions.
+**The more the configuration grows, the more custom resources it has, and the more log groups
+survive.**
 
 **Both halves are on record upstream.**
 
@@ -321,6 +384,58 @@ later updates the same stack through the `npm run deploy` path starts from a dri
 **Sandbox and production are not meant to share a stack** (source:
 [Best practices for AWS Blocks](https://docs.aws.amazon.com/blocks/latest/devguide/best-practices.html)).
 
+### P13. The KMS waiting period CloudFormation sets is fixed
+
+`PendingWindowInDays` ranges from 7 to 30 days and **defaults to 30** (source:
+[Deleting keys](https://docs.aws.amazon.com/kms/latest/cryptographic-details/key-deletion.html)).
+CloudFormation calls that API with the default when it deletes a KMS key, so the wait is 30 days.
+
+**Trying to shorten it afterwards is refused** (measured 2026-09-13).
+
+```
+$ aws kms schedule-key-deletion --key-id <id> --pending-window-in-days 7
+An error occurred (KMSInvalidStateException) ... is pending deletion.
+```
+
+Shortening it means `CancelKeyDeletion` followed by rescheduling, and cancelling bills "as though
+it was never scheduled for deletion" (the pricing page in P5). **A pending key is free, so
+leaving the 30 days alone is the cheaper option.**
+
+**How it catches you**: reading `--pending-window-in-days 7` in a teardown procedure as something
+you can apply to every surviving key. **It only works on keys left behind by `Retain`** — the
+ones you schedule yourself — and not on keys CloudFormation already deleted.
+[Teardown](#teardown) below reflects that split.
+
+### P14. Deactivating deletion protection takes more than one flag
+
+Sending only `aws cognito-idp update-user-pool --deletion-protection INACTIVE` fails. Measured
+2026-09-13, it was refused in two stages:
+
+```
+first:  All attributes in AttributesRequireVerificationBeforeUpdate must exist in AutoVerifiedAttributes
+second: SMS configuration is required when phone_number is selected for auto verification
+        (after re-supplying AutoVerifiedAttributes and retrying)
+```
+
+**The cause is that `UpdateUserPool` replaces the whole configuration.** The dedicated AWS page
+puts it this way:
+
+> When you submit an update request with just one parameter, Amazon Cognito sets that
+> parameter to the value of your choosing and sets all others to a default value. This can
+> reset configurations including your attribute schema, your Lambda triggers, and your email
+> and SMS message configuration.
+
+Source: [Updating user pool and app client configuration](https://docs.aws.amazon.com/cognito/latest/developerguide/cognito-user-pool-updating.html).
+
+The user pool Nx generates has both `email` and `phone_number` in `AutoVerifiedAttributes`, and
+`phone_number` requires an SMS configuration, so **it only went through when all three were
+restored together**.
+
+**There is an ordering constraint on top of that.** The SNS caller role that the SMS
+configuration references is **one of the two IAM roles left behind by `Retain`**. Deleting the
+IAM roles first removes the very path used to deactivate the protection. **Delete the user pool
+before the IAM roles.**
+
 ## Teardown
 
 **The order matters.** Remove protection → delete the stack → delete what is left, one by one.
@@ -336,16 +451,25 @@ later updates the same stack through the `npm run deploy` path starts from a dri
 aws dynamodb update-table --table-name <name> --no-deletion-protection-enabled
 aws dynamodb delete-table --table-name <name>
 
-# 3. Cognito: set deletion protection to Inactive, then delete (P4)
-aws cognito-idp update-user-pool --user-pool-id <id> --deletion-protection INACTIVE
+# 3. Cognito: one flag is not enough to deactivate the protection (P14).
+#    UpdateUserPool replaces the whole configuration, so re-send what you are omitting.
+#    Do this before the IAM roles (step 5): the SMS config references a retained role.
+aws cognito-idp update-user-pool --user-pool-id <id> \
+  --deletion-protection INACTIVE \
+  --auto-verified-attributes email phone_number \
+  --user-attribute-update-settings 'AttributesRequireVerificationBeforeUpdate=phone_number,email' \
+  --sms-configuration "SnsCallerArn=<sms-role-arn>,ExternalId=<external-id>"
+#    ^ read those three values from describe-user-pool first; they differ per configuration
 aws cognito-idp delete-user-pool --user-pool-id <id>
 
-# 4. KMS: schedule with the 7-day minimum window (P5; billing stops when it is scheduled)
+# 4. KMS: schedule only the keys left behind by Retain, with the 7-day minimum (P5)
+#    Keys CloudFormation deleted are already scheduled at 30 days and cannot be
+#    shortened (P13). A pending key is free, so leave those alone.
 aws kms schedule-key-deletion --key-id <id> --pending-window-in-days 7
 
 # 5. Delete the IAM roles, log groups and S3 buckets left behind
 aws logs delete-log-group --log-group-name <name>
-aws iam delete-role --role-name <name>          # delete inline policies first
+aws iam delete-role --role-name <name>          # detach and delete its policies first
 
 # 6. Sweep the log groups outside the template (P10; step 1 does not remove them)
 aws logs describe-log-groups --log-group-name-prefix "/aws/lambda/<stack-name>" \
@@ -361,15 +485,20 @@ Deploying and tearing down on the same day leaves mostly time-prorated line item
 
 | Item | Unit price | Same-day teardown |
 |---|---|---|
-| WAF web ACL + rules (Nx: 3 ACLs + 6 rules) | $21 / month (prorated hourly) | about $0.12 for 4 hours |
+| WAF web ACL + rules (Nx: 3 ACLs + 6 rules) | $21 / month (prorated hourly) | about $0.04 for the 1.5 hours actually measured |
 | KMS CMK (Nx 4 + Blocks 1) | $1 / month each | stops when scheduled for deletion (P5) |
-| Cognito MAU | Plus $0.020 / MAU | as many test users as you create; effectively zero for 1-2 |
+| Cognito MAU | Plus $0.020 / MAU | one user was created for the verification |
 | Lambda / API Gateway / DynamoDB / CloudFront / S3 | usage-based | cents at verification scale |
 
 The unit prices and retrieval date are in the
 [fixed-cost section of the comparison](scaffolding-and-backend-toolkit-choices.md#the-fixed-cost-difference)
 (AWS Price List API, ap-northeast-1, retrieved 2026-09-07). **A same-day teardown should total
 under $1**; $45 a month is the figure for leaving it running.
+
+Having run all three, **most of the wall time was deploy waiting** (1,228 s for Blocks
+production, 317 s for Nx, and 225 s and 292 s for the teardowns). Blocks production is the long
+one because DynamoDB builds its GSIs one at a time, so the shape of the waiting matters more than
+the resource-count difference (117 against 86).
 
 ## Measured results
 
@@ -382,8 +511,20 @@ environment), Node.js v26.4.0, npm 11.17.0.
 | Output | Category | Deploy | Operations confirmed | Teardown | Date |
 |---|---|---|---|---|---|
 | AWS Blocks (sandbox preset) | **Live E2E** | `npm run sandbox`. **83 resources** (matching the 83 measured at synth) | Over JSON-RPC: `authApi.setAuthState` (signUp / signIn), `api.createTodo` (write), `api.listTodos` (read). Persistence to DynamoDB confirmed from the response | `npm run sandbox:destroy`, 86 seconds. The stack, four DynamoDB tables and S3 went; **five log groups stayed** (P10). Removed by hand and confirmed at 0 | 2026-09-12 |
-| AWS Blocks (production preset) | — | Not done | — | — | — |
-| Nx Plugin for AWS | — | Not done | — | — | — |
+| AWS Blocks (production preset) | **Live E2E** | `npm run deploy`, 1,228 seconds. **117 resources** (matching the 117 measured at synth). About 10 minutes of that is waiting for DynamoDB to build its GSIs one at a time | Over JSON-RPC: signUp / signIn / `createTodo` (write) / `listTodos` read through both GSIs (`byPriority`, `byTitle`) — all five operations 200. **CloudFront delivery, the production preset's differentiator, also 200** | `npm run destroy`, 225 seconds. The 3 S3 buckets went; **4 DynamoDB tables (deletion protection + Retain) and 8 log groups stayed**. The KMS key reported `DELETE_COMPLETE` but had only entered a 30-day wait (P13). Removed by hand and confirmed at 0 | 2026-09-13 |
+| Nx Plugin for AWS | **Live E2E** (data layer not exercised) | `deploy-sandbox` with `--rollback` appended, 317 seconds. **2 stacks, 86 resources** (Application 81 + the us-east-1 web ACL 5, matching synth) | Cognito user pool (**MFA is required by default**, so a TOTP device was enrolled) → identity pool → temporary credentials → SigV4 → `GET /echo` on the `AWS_IAM` tRPC API returned 200 with `{"result":{"data":{"message":"..."}}}`. **The generated output has no procedure that reads or writes DynamoDB, so the table is created but never exercised** | `destroy-sandbox`, 292 seconds, 8 × `DELETE_SKIPPED`. **The user pool, 1 DynamoDB table, 4 KMS keys, 2 IAM roles and 7 log groups stayed.** Removed in P14's order and confirmed at 0 (KMS scheduled at 7 days) | 2026-09-13 |
+
+**Why the Nx row carries a qualifier**: the generated API has only `echo`, with no procedure that
+reads or writes DynamoDB. The auth and API path were exercised live, but **the data layer got as
+far as "deployed", not "worked".** Exercising it means a person writing the procedure — the same
+point as "the generated output is not a working application yet" in the comparison.
+
+The measured defaults were also confirmed on the live resources. The Nx user pool reports
+`UserPoolTier=PLUS`, `MfaConfiguration=ON` and `DeletionProtection=ACTIVE`. **Because MFA is
+required, the very first sign-in demands TOTP enrollment.** All 4 DynamoDB tables in Blocks
+(production preset) have deletion protection on, and only `todos` and `live-connections` have
+PITR. **Encryption is with the AWS-managed key** (`KeyManager=AWS`); the only customer-managed
+CMK was the one for the alarm topic.
 
 ## Sources
 
@@ -391,7 +532,7 @@ environment), Node.js v26.4.0, npm 11.17.0.
 - [CloudFormation express mode](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/cloudformation-express-mode.html) / [DeletionPolicy attribute](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-attribute-deletionpolicy.html)
 - [AWS Blocks CLI reference](https://docs.aws.amazon.com/blocks/latest/devguide/cli-reference.html) / [concepts](https://docs.aws.amazon.com/blocks/latest/devguide/concepts.html) / [best practices](https://docs.aws.amazon.com/blocks/latest/devguide/best-practices.html) / [getting started](https://docs.aws.amazon.com/blocks/latest/devguide/getting-started.html)
 - [DynamoDB: Using deletion protection](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/WorkingWithTables.Basics.html)
-- [Cognito: Deletion protection](https://docs.aws.amazon.com/help-panel/cognito/latest/console/hp-deletion-protection.html)
+- [Cognito: Deletion protection](https://docs.aws.amazon.com/help-panel/cognito/latest/console/hp-deletion-protection.html) / [Updating user pool and app client configuration](https://docs.aws.amazon.com/cognito/latest/developerguide/cognito-user-pool-updating.html) — `UpdateUserPool`'s replace semantics
 - [KMS: Deleting keys](https://docs.aws.amazon.com/kms/latest/cryptographic-details/key-deletion.html) / [KMS pricing](https://aws.amazon.com/kms/pricing/)
 - [WAF: DeleteWebACL](https://docs.aws.amazon.com/waf/latest/APIReference/API_DeleteWebACL.html)
 - [Lambda logs in CloudWatch](https://docs.aws.amazon.com/lambda/latest/dg/monitoring-cloudwatchlogs.html)
