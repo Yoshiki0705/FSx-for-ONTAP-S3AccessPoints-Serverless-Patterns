@@ -190,6 +190,15 @@ Layer 6: Drift Detection (cdk diff, CloudFormation)
 
 Why IaC grows more important in an era where AI writes the code: **the easier it becomes to write code, the more important it becomes to validate the code that was written**.
 
+## Related documents
+
+- [App foundation choices](../../../docs/en/scaffolding-and-backend-toolkit-choices.md) —
+  Nx Plugin for AWS, AWS Blocks and Amplify Gen 2 compared. **It cites this document for why
+  cdk-nag is run as a baseline comparison**
+- [Deploy verification and teardown](../../../docs/en/scaffolding-deploy-verification.md) — the
+  record of deploying all three live and taking them down, where the generated defaults
+  (deletion protection, `Retain`, WAF, CMKs) are what the teardown has to deal with
+
 ## References
 
 - CDK Conference Japan 2026 keynote: "IaC in the Agentic World"

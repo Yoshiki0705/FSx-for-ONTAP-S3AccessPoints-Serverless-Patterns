@@ -498,3 +498,4 @@ covers whether operations succeed; this one covers dimensions.
 | [ONTAP Connection Guide](ONTAP-CONNECTION-GUIDE.en.md) | VPC, secret and management LIF configuration |
 | [AppSync Authorization Troubleshooting](TROUBLESHOOTING-APPSYNC-AUTH.en.md) | When group authorization fails |
 | [Write Verification Plan](write-verification-plan.en.md) | Prerequisites, procedure, impact and rollback for the writes not yet run |
+| [Deploying the scaffolded output, verifying it, and taking it down](../../../docs/en/scaffolding-deploy-verification.md) | Nx Plugin for AWS and AWS Blocks verified live under **the same categories as this table**. This file owns the definitions |
