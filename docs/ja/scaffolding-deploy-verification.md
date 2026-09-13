@@ -54,10 +54,16 @@ synth までの実測なので、この文書はその先（デプロイ・実�
 | P10 | テンプレート外のロググループが残り、保持期間が無期限 | **文書化済み + 上流 issue 2 件**（残存件数はこの文書の実測） | [Lambda logs](https://docs.aws.amazon.com/lambda/latest/dg/monitoring-cloudwatchlogs.html) / [aws-cdk #26553](https://github.com/aws/aws-cdk/issues/26553) / [aws-cdk #24815](https://github.com/aws/aws-cdk/issues/24815) |
 | P11 | `npm create` が非対話シェルで停止する | **npm の既定動作**（切り分けはこの文書の実測。上流の類似 PR は別原因） | [npm-config `yes`](https://docs.npmjs.com/cli/v11/using-npm/config#yes) / [nx-plugin-for-aws #1193](https://github.com/awslabs/nx-plugin-for-aws/pull/1193) |
 | P12 | hotswap がスタックにドリフトを持ち込む | **文書化済み** | [cdk deploy](https://docs.aws.amazon.com/cdk/v2/guide/ref-cli-cmd-deploy.html)（`--hotswap`） |
+| P13 | CloudFormation が削除する KMS 鍵は 30 日の待機に入り、後から短縮できない | **既定値は文書化済み**（短縮の拒否はこの文書の実測） | [Deleting keys](https://docs.aws.amazon.com/kms/latest/cryptographic-details/key-deletion.html) |
+| P14 | `UpdateUserPool` はフラグ 1 つでは通らず、省略した設定が既定値に戻る | **専用のページで警告されている** | [Updating user pool and app client configuration](https://docs.aws.amazon.com/cognito/latest/developerguide/cognito-user-pool-updating.html) |
 
-**AWS Support への問い合わせは行っていない。** 上の 12 件はいずれもサービス側の挙動の欠落ではなく、
+**AWS Support への問い合わせは行っていない。** 上の 14 件はいずれもサービス側の挙動の欠落ではなく、
 公開ドキュメントに記載のある挙動か、ツール側（CDK CLI / Nx プラグイン）に既存の issue が立っている
 ものだった。サービス挙動として未説明のものが残っていないため、問い合わせる対象がない。
+
+**この表の「文書化済み」は、踏まなかったことを意味しない。** P13 と P14 は 3 者すべてを実際に撤収する
+過程で踏み、公開ドキュメントを読み直して既知だと分かったものである。**撤収手順の側に誤りが残っていた**
+ため、下の[撤収手順](#撤収手順)を実測に合わせて直した。
 
 ## 罠の登録簿
 
@@ -105,6 +111,21 @@ express である必要がある。実測（2026-09-12）では次の 2 つが�
 target を `--express --rollback` に変えることで、`--express` を落として `deploy` に切り替える
 手当ては、既に express で更新済みのスタックには適用できない。
 
+**推奨の側も実機で確認した**（2026-09-13）。生成された target に `--rollback` を足した
+
+```
+cdk deploy --require-approval=never "research-board-infra-sandbox/**" --express --rollback
+```
+
+で 2 スタック 86 リソースが 317 秒で作成された。デプロイ中の各リソースには次の行が付く。
+
+```
+Resource operation completed using Express Mode. It may continue becoming available in the background.
+```
+
+**「完了」が「利用可能」ではないことを CloudFormation 自身が毎行で言っている。** 直後に動作確認を
+走らせる自動化は、この行を読んでいない。
+
 ### P2. `cdk destroy --express` にも存在する同じ性質
 
 `cdk destroy` にも `--express` があり、同じ「安定化を待たない・自動ロールバックしない」性質と、
@@ -134,8 +155,18 @@ target を `--express --rollback` に変えることで、`--express` を落と�
 および UpdateUserPool の
 [deletionProtection](https://docs.aws.amazon.com/sdk-for-kotlin/api/latest/cognitoidentityprovider/aws.sdk.kotlin.services.cognitoidentityprovider.model/-update-user-pool-request/deletion-protection.html)。
 
-**該当**: Nx が `DeletionProtection: ACTIVE` で 1 本作る。エラー名が
-`InvalidParameterException` なので、**パラメータの書き方の問題に見える**のが踏みどころ。
+**該当**: Nx が `DeletionProtection: ACTIVE` で 1 本作る。実機で再現した応答（2026-09-13）:
+
+```
+An error occurred (InvalidParameterException) when calling the DeleteUserPool operation:
+The user pool cannot be deleted because deletion protection is activated.
+Deletion protection must be inactivated first.
+```
+
+**本文は正確で、紛らわしいのは名前だけ**だった。`InvalidParameterException` はパラメータの
+書き方の問題に見えるため、名前だけを見て引数を疑うと遠回りになる。
+
+**そして保護を外す側が 1 フラグでは済まない。** これが P14 になる。
 
 ### P5. KMS の削除は最短 7 日の待機。ただし待機中は課金されない
 
@@ -154,7 +185,8 @@ target を `--express --rollback` に変えることで、`--express` を落と�
 **踏み方 2 つ**: (1) 「7 日間課金される」と誤って見積る。削除を予定した時点で課金は止まる。
 (2) 待機中に取り消すと、予定しなかったものとして課金される。**残す判断をするなら費用も戻る。**
 
-**該当**: Nx 4 本（すべて自動ローテーション有効）、AWS Blocks（production preset）1 本。
+**該当**: Nx 4 本（すべて自動ローテーション有効、`Retain` なので手で予定する）、
+AWS Blocks（production preset）1 本（`Retain` ではないので CloudFormation が予定する → P13）。
 
 ### P6. WAF Web ACL の削除順序
 
@@ -188,15 +220,26 @@ target を `--express --rollback` に変えることで、`--express` を落と�
 [DeletionPolicy attribute](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-attribute-deletionpolicy.html)）。
 挙動そのものは文書化済みで、**この文書が足すのは生成物ごとの件数**である。
 
-synth 済みテンプレートから数えた、スタック削除では消えないリソース（2026-09-07 実測）:
+synth 済みテンプレートから数えた、スタック削除では消えないリソース:
 
 | 構成 | 件数 | 内訳 |
 |---|---|---|
 | AWS Blocks（sandbox preset） | **0** | — |
-| AWS Blocks（production preset） | 9 | DynamoDB 4（削除保護 + Retain）、KMS 1、CDK バケットデプロイのカスタムリソース 4（Retain） |
+| AWS Blocks（production preset） | 8 | DynamoDB 4（削除保護 + Retain）、CDK バケットデプロイのカスタムリソース 4（Retain） |
 | Nx Plugin for AWS | 9 | Cognito User Pool 1（削除保護 + Retain）、DynamoDB 1（同）、IAM ロール 2（Retain）、KMS 4（Retain）、ロググループ 1（Retain） |
 
 **AWS Blocks の sandbox preset だけが 0 件**なので、最初に確認するならこれが最も戻しやすい。
+
+**production preset の件数はこの検証で 9 から 8 に訂正した。** 以前は KMS 鍵 1 本を Retain に
+数えていたが、テンプレートの `DeletionPolicy` を数え直すと Retain は DynamoDB 4 と
+CDKBucketDeployment 4 だけで、KMS 鍵は含まれていない。撤収時の CloudFormation の応答も一致する。
+
+| CloudFormation の状態 | 意味 | 実測 |
+|---|---|---|
+| `DELETE_SKIPPED` | `Retain` なので触っていない | Nx の撤収で 8 件 |
+| `DELETE_COMPLETE` | 実際に削除した。KMS では「削除を予定した」 | Blocks production の KMS 鍵 |
+
+**`DELETE_COMPLETE` を見て「消えた」と読むと、KMS では 30 日の待機に入っただけである**（→ P13）。
 
 ### P9. preview であることの扱い
 
@@ -220,6 +263,20 @@ AWS Blocks は preview で、公式ドキュメントは Block ID（コンスト
 <!-- allow:not-a-claim: 以下は自分で実測した観測の記述で、ベンダーの機能欠落の主張ではない -->
 テンプレートが宣言していたロググループは 4 件（アプリの handler と Blocks 内部の 3 つ）で、
 これらはスタック削除で消えている。残った 5 件はテンプレートに現れない。
+
+**残る 3 構成すべてで同じ形だった**（2026-09-12〜13 実測）。宣言済みは保持期間が設定され、
+無宣言は例外なく無期限だった。
+
+| 構成 | 宣言済み（消える） | 無宣言で残る | 宣言済みで残る |
+|---|---|---|---|
+| Blocks（sandbox preset） | 4（365 日） | **5**（無期限） | 0 |
+| Blocks（production preset） | 4（365 日） | **8**（無期限） | 0 |
+| Nx Plugin for AWS | 4（30〜365 日） | **6**（無期限） | 1（`Retain` の API アクセスログ、365 日） |
+
+production preset が sandbox より 3 件多いのは、静的配信を足すぶんの CloudFront ルートストア用
+Lambda とバケットデプロイが増えるため。Nx で残る 6 件には
+`CustomCrossRegionExportReader`（us-east-1 の Web ACL をクロスリージョン参照するためのもの）が
+含まれる。**構成が増えるほどカスタムリソースが増え、残るロググループも増える。**
 
 **両方の要素が上流に記載されている。**
 
@@ -295,6 +352,54 @@ CDK CLI は `--hotswap` について、CloudFormation を経由せず直接リ�
 production はスタックを共有しない**のが前提（出典:
 [Best practices for AWS Blocks](https://docs.aws.amazon.com/blocks/latest/devguide/best-practices.html)）。
 
+### P13. CloudFormation が予定した KMS の待機期間の固定
+
+`PendingWindowInDays` は 7〜30 日で**既定 30 日**（出典:
+[Deleting keys](https://docs.aws.amazon.com/kms/latest/cryptographic-details/key-deletion.html)）。
+CloudFormation が KMS 鍵を削除するときはこの API を既定で呼ぶため、待機は 30 日になる。
+
+**後から短縮しようとすると拒否される**（実測 2026-09-13）。
+
+```
+$ aws kms schedule-key-deletion --key-id <id> --pending-window-in-days 7
+An error occurred (KMSInvalidStateException) ... is pending deletion.
+```
+
+短縮するには `CancelKeyDeletion` で取り消してから予定し直すことになるが、取り消しは
+「予定しなかったものとして課金される」（P5 の料金ページ）。**待機中の鍵は無料なので、
+30 日のまま置くほうが安い。**
+
+**踏み方**: 撤収手順に `--pending-window-in-days 7` と書いてあるのを、残った鍵すべてに
+適用できると読む。**これが効くのは `Retain` で残った鍵（自分で予定する側）だけ**で、
+CloudFormation が削除した鍵には効かない。下の[撤収手順](#撤収手順)はこの区別を反映している。
+
+### P14. 削除保護の解除が 1 フラグでは通らないこと
+
+`aws cognito-idp update-user-pool --deletion-protection INACTIVE` だけを送ると失敗する。
+実測（2026-09-13）では 2 段階で拒否された。
+
+```
+1回目: All attributes in AttributesRequireVerificationBeforeUpdate must exist in AutoVerifiedAttributes
+2回目: SMS configuration is required when phone_number is selected for auto verification
+   （AutoVerifiedAttributes を戻したうえで再送したとき）
+```
+
+**原因は `UpdateUserPool` が全置換であること。** AWS の専用ページがこう書いている。
+
+> When you submit an update request with just one parameter, Amazon Cognito sets that
+> parameter to the value of your choosing and sets all others to a default value. This can
+> reset configurations including your attribute schema, your Lambda triggers, and your email
+> and SMS message configuration.
+
+出典: [Updating user pool and app client configuration](https://docs.aws.amazon.com/cognito/latest/developerguide/cognito-user-pool-updating.html)。
+
+Nx が生成する User Pool は `AutoVerifiedAttributes` に `email` と `phone_number` を持ち、
+`phone_number` は SMS 設定を要求するので、**通ったのは 3 つを同時に戻したとき**だった。
+
+**さらに順序の制約がある。** その SMS 設定が参照する SNS caller ロールは、**`Retain` で残る
+2 本の IAM ロールのうちの 1 本**である。IAM ロールを先に消すと、削除保護を外す経路そのものが
+失われる。**User Pool を消してから IAM ロールを消す。**
+
 ## 撤収手順
 
 **順序が意味を持つ。** 保護を外す → スタックを削除 → 残ったものを個別に削除。
@@ -310,16 +415,25 @@ production はスタックを共有しない**のが前提（出典:
 aws dynamodb update-table --table-name <name> --no-deletion-protection-enabled
 aws dynamodb delete-table --table-name <name>
 
-# 3. Cognito: 削除保護を Inactive にしてから削除（P4）
-aws cognito-idp update-user-pool --user-pool-id <id> --deletion-protection INACTIVE
+# 3. Cognito: 削除保護の解除は 1 フラグでは通らない（P14）。
+#    UpdateUserPool は全置換なので、省略した設定を一緒に送り直す。
+#    IAM ロール（手順 5）より先に消す。SMS 設定が残存ロールを参照している。
+aws cognito-idp update-user-pool --user-pool-id <id> \
+  --deletion-protection INACTIVE \
+  --auto-verified-attributes email phone_number \
+  --user-attribute-update-settings 'AttributesRequireVerificationBeforeUpdate=phone_number,email' \
+  --sms-configuration "SnsCallerArn=<sms-role-arn>,ExternalId=<external-id>"
+#    ↑ 3 つの値は先に describe-user-pool で読む（構成によって異なる）
 aws cognito-idp delete-user-pool --user-pool-id <id>
 
-# 4. KMS: 待機期間を最短の 7 日にして予定（P5。予定した時点で課金は止まる）
+# 4. KMS: Retain で残った鍵だけを、最短の 7 日で予定する（P5）
+#    CloudFormation が削除した鍵は既に 30 日で予定済みで、短縮できない（P13）。
+#    待機中は課金されないので、そのまま置く。
 aws kms schedule-key-deletion --key-id <id> --pending-window-in-days 7
 
 # 5. 残った IAM ロール・ロググループ・S3 バケットを削除
 aws logs delete-log-group --log-group-name <name>
-aws iam delete-role --role-name <name>          # インラインポリシーを先に削除
+aws iam delete-role --role-name <name>          # インラインポリシーとアタッチを先に外す
 
 # 6. テンプレート外のロググループを走査（P10。手順 1 では消えない）
 aws logs describe-log-groups --log-group-name-prefix "/aws/lambda/<stack-name>" \
@@ -334,14 +448,18 @@ aws logs describe-log-groups --log-group-name-prefix "/aws/lambda/<stack-name>" 
 
 | 項目 | 単価 | 同日撤収時の目安 |
 |---|---|---|
-| WAF Web ACL + ルール（Nx: 3 ACL + 6 ルール） | $21 / 月（時間按分） | 4 時間で約 $0.12 |
+| WAF Web ACL + ルール（Nx: 3 ACL + 6 ルール） | $21 / 月（時間按分） | 実測の稼働 1.5 時間で約 $0.04 |
 | KMS CMK（Nx 4 + Blocks 1） | $1 / 月 / 本 | 削除予定にした時点で停止（P5） |
-| Cognito MAU | Plus $0.020 / MAU | 検証ユーザー数分。1〜2 人なら実質ゼロ |
+| Cognito MAU | Plus $0.020 / MAU | 検証で作ったのは 1 ユーザー |
 | Lambda / API Gateway / DynamoDB / CloudFront / S3 | 従量 | 検証規模では数セント |
 
 単価の出典と取得日は [比較ドキュメントの固定費の節](scaffolding-and-backend-toolkit-choices.md#固定費の差)
 にある（AWS Price List API、ap-northeast-1、2026-09-07 取得）。**同日撤収なら合計 $1 未満**の
 見込みで、月額 $45 は放置した場合の数字である。
+
+実際に 3 構成を回した結果、**時間の大半はデプロイの待ちだった**（Blocks production が 1,228 秒、
+Nx が 317 秒、撤収が 225 秒と 292 秒）。Blocks production が長いのは DynamoDB の GSI を 1 本ずつ
+作るためで、リソース数の差（117 対 86）よりも待ちの構造が効いている。
 
 ## 実測結果
 
@@ -353,8 +471,18 @@ npm 11.17.0。
 | 構成 | 区分 | デプロイ | 確認した操作 | 撤収 | 実施日 |
 |---|---|---|---|---|---|
 | AWS Blocks（sandbox preset） | **実機 E2E** | `npm run sandbox`。**リソース 83 件**（synth 実測の 83 と一致） | JSON-RPC で `authApi.setAuthState`（signUp / signIn）、`api.createTodo`（書き込み）、`api.listTodos`（読み取り）。DynamoDB に永続化されたことを応答で確認 | `npm run sandbox:destroy` 86 秒。スタック・DynamoDB 4 本・S3 は消え、**ロググループ 5 件が残った**（P10）。手で削除して 0 件を確認 | 2026-09-12 |
-| AWS Blocks（production preset） | — | 未実施 | — | — | — |
-| Nx Plugin for AWS | — | 未実施 | — | — | — |
+| AWS Blocks（production preset） | **実機 E2E** | `npm run deploy` 1,228 秒。**リソース 117 件**（synth 実測の 117 と一致）。うち約 10 分は DynamoDB の GSI が 1 本ずつ作られる待ち | JSON-RPC で signUp / signIn / `createTodo`（書き込み）/ `listTodos` を 2 つの GSI（`byPriority`・`byTitle`）で読み取り、5 操作すべて 200。**production preset の差分である CloudFront 配信も 200** | `npm run destroy` 225 秒。S3 3 本は消え、**DynamoDB 4 本（削除保護 + Retain）とロググループ 8 件が残った**。KMS 鍵は `DELETE_COMPLETE` だが実際は 30 日の待機に入っただけ（P13）。手で削除して 0 件を確認 | 2026-09-13 |
+| Nx Plugin for AWS | **実機 E2E**（データ層は未通過） | `deploy-sandbox` に `--rollback` を足して 317 秒。**2 スタック 86 リソース**（Application 81 + us-east-1 の Web ACL 5、synth 実測と一致） | Cognito User Pool（**MFA が既定で必須**なので TOTP を登録）→ Identity Pool → 一時認証情報 → SigV4 署名 → `AWS_IAM` の tRPC API に `GET /echo` で 200、`{"result":{"data":{"message":"..."}}}` を確認。**生成物に DynamoDB を読み書きする手続きがないため、テーブルは作られるが通っていない** | `destroy-sandbox` 292 秒、`DELETE_SKIPPED` 8 件。**User Pool・DynamoDB 1 本・KMS 4 本・IAM ロール 2 本・ロググループ 7 件が残った**。P14 の順序で削除して 0 件を確認（KMS は 7 日で予定） | 2026-09-13 |
+
+**Nx の区分に注釈が付く理由**: 生成直後の API は `echo` だけで、DynamoDB を読み書きする手続きが
+ない。認証と API の経路は実機で通ったが、**データ層は「デプロイされた」までで「動いた」ではない。**
+通すには人が手続きを書く（比較ドキュメントの「生成直後は動くアプリではない」と同じ話）。
+
+実測した既定値も生きたリソースで確認した。Nx の User Pool は `UserPoolTier=PLUS`、
+`MfaConfiguration=ON`、`DeletionProtection=ACTIVE`。**MFA が必須なので、最初のサインインが
+TOTP の登録を要求する。** Blocks（production preset）の DynamoDB 4 本はすべて削除保護が有効で、
+`todos` と `live-connections` だけ PITR 有効。**暗号化は AWS 管理キー**（`KeyManager=AWS`）で、
+顧客管理 CMK は alarm topic 用の 1 本だけだった。
 
 ## 出典一覧
 
@@ -362,7 +490,7 @@ npm 11.17.0。
 - [CloudFormation express mode](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/cloudformation-express-mode.html) / [DeletionPolicy attribute](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-attribute-deletionpolicy.html)
 - [AWS Blocks CLI reference](https://docs.aws.amazon.com/blocks/latest/devguide/cli-reference.html) / [concepts](https://docs.aws.amazon.com/blocks/latest/devguide/concepts.html) / [best practices](https://docs.aws.amazon.com/blocks/latest/devguide/best-practices.html) / [getting started](https://docs.aws.amazon.com/blocks/latest/devguide/getting-started.html)
 - [DynamoDB: Using deletion protection](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/WorkingWithTables.Basics.html)
-- [Cognito: Deletion protection](https://docs.aws.amazon.com/help-panel/cognito/latest/console/hp-deletion-protection.html)
+- [Cognito: Deletion protection](https://docs.aws.amazon.com/help-panel/cognito/latest/console/hp-deletion-protection.html) / [Updating user pool and app client configuration](https://docs.aws.amazon.com/cognito/latest/developerguide/cognito-user-pool-updating.html) — `UpdateUserPool` の全置換セマンティクス
 - [KMS: Deleting keys](https://docs.aws.amazon.com/kms/latest/cryptographic-details/key-deletion.html) / [KMS pricing](https://aws.amazon.com/kms/pricing/)
 - [WAF: DeleteWebACL](https://docs.aws.amazon.com/waf/latest/APIReference/API_DeleteWebACL.html)
 - [Lambda logs in CloudWatch](https://docs.aws.amazon.com/lambda/latest/dg/monitoring-cloudwatchlogs.html)
