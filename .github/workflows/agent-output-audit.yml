@@ -140,27 +140,20 @@ jobs:
           fi
           echo "✅ Naming check passed"
 
-      - name: "Check: Vendor neutrality (changed .md only)"
-        if: steps.changes.outputs.md_count > 0
-        run: |
-          FAIL=0
-          PATTERN='最強|game-changer|ゲームチェンジャー|競合ツール|優位性|より優れ|is better than|is superior to'
-          while IFS= read -r file; do
-            [ -z "$file" ] && continue
-            [ ! -f "$file" ] && continue
-            HITS=$(grep -nE "$PATTERN" "$file" || true)
-            if [ -n "$HITS" ]; then
-              echo "::error file=$file::Vendor neutrality violation"
-              echo "$HITS" | head -5
-              FAIL=1
-            fi
-          done < /tmp/changed_md.txt
-
-          if [ "$FAIL" -eq 1 ]; then
-            echo "❌ Neutrality check failed"
-            exit 1
-          fi
-          echo "✅ Neutrality check passed"
+      # The rule was a `grep` inlined here. Inlined, it could not be tested: nothing
+      # asserted that a document it should refuse actually fails, so the gate's
+      # correctness rested on reading the pattern. It also scanned `.md` only, the
+      # same restriction that let a naming violation sit in a shell comment and a
+      # Python comment indefinitely -- see the naming step above.
+      #
+      # It now lives in `scripts/check_neutral_wording.py`, with tests asserting both
+      # directions and a reason printed beside each finding. `make drift` runs the
+      # same script, so local and CI cannot disagree about what the rule is.
+      #
+      # Whole tree, not just the changed files. Wording already published is already
+      # published, and a file nobody touched is where one survives.
+      - name: "Check: Vendor neutrality (whole tree)"
+        run: python3 scripts/check_neutral_wording.py
 
       - name: "Check: Public-output leak (changed text files)"
         if: steps.changes.outputs.text_count > 0

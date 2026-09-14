@@ -12,7 +12,7 @@ CloudFormation/SAM template sharing the Python modules in `shared/`.
 **Two pillars**: `solutions/` (S3 AP data processing) + `operations/` (file system operational
 optimization).
 
-**Test coverage**: ~5,000 Python tests across 298 files + ~495 vitest tests across 34 files.
+**Test coverage**: ~5,000 Python tests across 302 files + ~495 vitest tests across 34 files.
 
 > ファイル数は `make drift` がツリーと照合するので古くなれば fail する。テスト総数は 3 系統の
 > 合計なので概数。誰も保守しない厳密な数値より丸めた数値のほうがよい。
@@ -260,7 +260,7 @@ python3 -m pytest solutions/sap/erp-adjacent/tests/ -v
    の網羅、action インベントリと action-parameter 契約、i18n（manifest が要求する翻訳の存在・
    全 8 言語の構造 parity・生成されたスイッチャ）、陳腐化ルール、テーマトークン、画像とリンクの
    解決、samconfig 例、env var 契約、Lambda ランタイム版の一致（`PY_VERSION` と全テンプレート
-   / CDK / requires-python / CI マトリクス）
+   / CDK / requires-python / CI マトリクス）、ベンダー中立性（CI と同じスクリプトを呼ぶ）
 5. `make security-cfn` — テンプレートを触ったとき。cfn-guard は暗号化・公開アクセス・
    最小権限・SageMaker 分離を見る（cfn-lint はテンプレートの妥当性しか見ない）
 

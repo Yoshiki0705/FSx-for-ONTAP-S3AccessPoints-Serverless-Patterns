@@ -27,26 +27,47 @@ import re
 import sys
 from pathlib import Path
 
-# UC directories to scan
-UC_DIRS = [
-    "solutions/industry/legal-compliance",
-    "solutions/industry/financial-idp",
-    "solutions/industry/manufacturing-analytics",
-    "solutions/industry/media-vfx",
-    "solutions/industry/healthcare-dicom",
-    "solutions/industry/semiconductor-eda",
-    "solutions/industry/genomics-pipeline",
-    "solutions/industry/energy-seismic",
-    "solutions/industry/autonomous-driving",
-    "solutions/industry/construction-bim",
-    "solutions/industry/retail-catalog",
-    "solutions/industry/logistics-ocr",
-    "solutions/industry/education-research",
-    "solutions/industry/insurance-claims",
-    "solutions/industry/defense-satellite",
-    "solutions/industry/government-archives",
-    "solutions/industry/smart-city-geospatial",
-]
+#: Where pattern templates live. Both families are scanned under each glob:
+#: `template.yaml` is the SAM source, `template-deploy.yaml` the raw CloudFormation
+#: variant for the second deploy path.
+PATTERN_GLOBS = (
+    "solutions/*/*/template.yaml",
+    "solutions/*/*/template-deploy.yaml",
+    "operations/*/template.yaml",
+    "operations/*/template-deploy.yaml",
+)
+
+#: Paths that match a glob above but are not pattern templates. Empty today, and kept
+#: as the one place an exclusion would be recorded together with its reason.
+EXCLUDED: frozenset[str] = frozenset()
+
+
+def discover_templates(project_root: Path) -> list[Path]:
+    """Find every pattern template, derived from the tree rather than listed.
+
+    This was a hand-kept list of 17 directories, checked only for
+    `template-deploy.yaml`. The tree holds 52 `template.yaml` and 28
+    `template-deploy.yaml`, so **35 pattern directories went unscanned and no
+    `template.yaml` was scanned at all** -- while the run still printed "Scanned 17
+    templates" and a tick, because a missing file was skipped without a word.
+
+    A list is the wrong shape here. Adding a pattern is a routine act and nothing
+    reminds the author to extend a constant inside a checker, so the covered set
+    falls behind the tree silently. Deriving it means a new pattern is covered by
+    the commit that creates it.
+
+    Both families are scanned because the policy can differ between them:
+    `check_template_consistency.py` compares parameter names and function logical
+    IDs across the pair, not policy resources, so the raw variant could carry a
+    bucket-form-only policy while the SAM source is correct.
+    """
+    found: dict[Path, None] = {}
+    for glob_pattern in PATTERN_GLOBS:
+        for path in sorted(project_root.glob(glob_pattern)):
+            if path.relative_to(project_root).as_posix() in EXCLUDED:
+                continue
+            found.setdefault(path, None)
+    return list(found)
 
 
 def check_template(template_path: Path) -> list[str]:
@@ -157,22 +178,25 @@ def main() -> int:
     """Main entry point."""
     project_root = Path(__file__).parent.parent
     total_issues = 0
-    templates_checked = 0
+    templates = discover_templates(project_root)
 
-    for uc_dir in UC_DIRS:
-        template = project_root / uc_dir / "template-deploy.yaml"
-        if not template.exists():
-            continue
-        templates_checked += 1
+    # An empty set means the globs stopped fitting the tree. Reported as a failure
+    # rather than a clean run over nothing, which is what the hand-kept list did.
+    if not templates:
+        print("❌ No pattern templates matched. PATTERN_GLOBS no longer fits the tree.")
+        print(f"   Globs: {', '.join(PATTERN_GLOBS)}")
+        return 1
+
+    for template in templates:
         issues = check_template(template)
         if issues:
-            print(f"{uc_dir}/template-deploy.yaml:")
+            print(f"{template.relative_to(project_root).as_posix()}:")
             for issue in issues:
                 print(issue)
                 total_issues += 1
 
     print()
-    print(f"Scanned {templates_checked} templates.")
+    print(f"Scanned {len(templates)} templates.")
     if total_issues == 0:
         print("✅ All S3AP write policies have correct dual-format (alias + ARN).")
         return 0
