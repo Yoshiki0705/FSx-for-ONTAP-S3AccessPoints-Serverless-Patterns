@@ -349,3 +349,5 @@ CDK アプリなので既存の CDK スタックに埋め込める。Nx Plugin �
 - [IaC ガバナンスパターン](../../solutions/amplify-portal/docs/iac-governance-patterns.md) — cdk-nag をゲートにできない理由、alpha モジュール方針
 - [ポータルの Getting Started](../../solutions/amplify-portal/docs/GETTING-STARTED.md) — 他環境でのデプロイ手順
 - [PoC から本番への移行](portal-poc-to-production.md) — sandbox 構成を本番に寄せる手順
+- [同じ 4 機能を 3 つの土台で実装した記録](portal-parity-four-features.md) — この文書はスターターを測ったもので、あちらは同じ 4 機能を 3 者で実装し AWS 上で動かした記録
+- [4 機能の先へ](portal-parity-next-steps.md) — 段階ごとに何が新しく必要になるか
