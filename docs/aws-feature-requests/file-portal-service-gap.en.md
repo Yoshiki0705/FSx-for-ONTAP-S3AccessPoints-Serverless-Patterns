@@ -32,8 +32,8 @@ Compared current Amplify Gen2 File Portal capabilities against 15 representative
 
 **Comparison targets**:
 
-| Category | Service | Key differentiator |
-|----------|---------|-------------------|
+| Category | Service | Notable capabilities |
+|----------|---------|----------------------|
 | Enterprise | Box Enterprise Advanced | AI Agent (GA Apr 2026), governance, retention, AI Studio |
 | Enterprise | SharePoint Online (M365) | Copilot (Jul 2026), document library AI, Power Automate |
 | Enterprise | Google Drive (Workspace) | Gemini integration (2026), AI file organization, real-time co-editing |

@@ -27,7 +27,8 @@
 	portal-demo-user portal-hosting portal-hosting-url \
 	portal-basic-auth portal-basic-auth-off \
 	check-evidence evidence-baseline support-inquiry support-inquiry-draft \
-	support-inquiry-file support-inquiry-list
+	support-inquiry-file support-inquiry-list \
+	preflight smoke cleanup-retained cleanup-stacks
 
 # Target Python version — must match the Lambda runtime in the SAM templates
 # (`Runtime: python3.13`). Declared once here so `install`, the interpreter
@@ -94,6 +95,10 @@ help:
 	@echo "  make security      — Run bandit security scan"
 	@echo "  make drift         — Docs/code drift, i18n coverage, portal action contracts (offline)"
 	@echo "  make ontap-preflight — Name the broken link in the portal's ONTAP chain (calls AWS)"
+	@echo "  make preflight     — Validate the environment before deploying (PROFILE=quick-start|production|demo|fpolicy)"
+	@echo "  make smoke STACK=… — List, read and write against a deployed stack's access point (calls AWS)"
+	@echo "  make cleanup-retained — Report what a stack deletion left behind (ARGS='--stack-prefix … [--apply]')"
+	@echo "  make cleanup-stacks — Repair a stack stuck in DELETE_FAILED (calls AWS)"
 	@echo "  make propose-cleanup — Report the backlog, then what is standing and its cost (read-only)"
 	@echo "  make discover-s3ap — Inventory S3 access points from the FSx API (read-only)"
 	@echo "  make check-group-ap-tags — Report groupApMapping vs access point tags (read-only)"
@@ -233,6 +238,56 @@ lint-cfn:
 # that changes state.
 propose-cleanup:
 	$(PYTHON) scripts/propose_cleanup.py $(ARGS)
+
+# Pre-deployment environment validation. The script has existed since the first
+# deployment guide and had no target, so every document that calls for it spells the
+# path out and the four profiles are discoverable only by reading the file.
+#
+# Profiles: quick-start (tools, credentials, region) | production (adds VPC endpoint
+# conflicts, the ONTAP S3 server check, security-group egress, secrets) |
+# demo (DemoMode, no FSx for ONTAP) | fpolicy (ECR image, inbound rules, SVM UUID).
+# Exit 75 means a tool is missing, 78 that the environment is not ready — distinct
+# from 1 so a pipeline can tell "install something" from "fix the configuration".
+#
+#   make preflight                                  # quick-start
+#   make preflight PROFILE=production VPC=vpc-0123456789abcdef0
+preflight:
+	./shared/scripts/preflight-check.sh --profile $(or $(PROFILE),quick-start) \
+		$(if $(VPC),--vpc $(VPC),) $(if $(REGION),--region $(REGION),) $(ARGS)
+
+# List, read and write against a deployed stack's access point, and report which
+# step failed. Reads the access point from the stack, so a stack name is enough.
+#
+# This answers a question the test suites cannot. A local run passed the upload
+# round-trip against a mock that starts empty, on a build whose IAM policy could not
+# have reached the access point at all: a policy naming it in the bucket form
+# deploys, reports CREATE_COMPLETE and refuses list, get and put alike.
+#
+#   make smoke STACK=fsxn-s3ap-legal-compliance
+#   make smoke STACK=... ARGS='--list-prefix reports/ --read-only'
+smoke:
+	@test -n "$(STACK)" || { echo "STACK is required: make smoke STACK=<stack-name>"; exit 2; }
+	$(PYTHON) scripts/smoke_deployed_pattern.py --stack $(STACK) $(ARGS)
+
+# What a stack deletion left behind: log groups the functions created outside the
+# template, tables held by deletion protection, user pools on Retain. Reports by
+# default and changes nothing; --apply removes them, and is refused while a stack
+# matching the prefix still exists.
+#
+# Never touches FSx for ONTAP volumes, SnapLock or WORM data, S3 buckets or secrets.
+# A retention lock is not a leftover, and its period cannot be shortened afterwards.
+#
+#   make cleanup-retained ARGS='--stack-prefix fsxn-s3ap-uc1'
+#   make cleanup-retained ARGS='--stack-prefix fsxn-s3ap-uc1 --apply'
+cleanup-retained:
+	$(PYTHON) scripts/cleanup_retained_resources.py $(ARGS)
+
+# Repair a stack stuck in DELETE_FAILED by removing the blocker first (Athena
+# workgroup, non-empty bucket, ECR image, Lambda@Edge replica, VPC ENI) and retrying.
+# Existing script; exposed here so the teardown path is discoverable from `make help`
+# rather than from three runbooks.
+cleanup-stacks:
+	./scripts/cleanup_stacks.sh $(ARGS)
 
 # Inventory of FSx for ONTAP S3 access points, derived from the FSx API rather
 # than a hand-kept list, so a deleted or MISCONFIGURED access point cannot keep
@@ -615,6 +670,14 @@ drift:
 # source and on a selective read passed off as documentation.
 	$(PYTHON) -m pytest scripts/tests/test_check_evidence_claims.py scripts/tests/test_aws_support_inquiry.py --tb=short -q
 	$(PYTHON) scripts/check_evidence_claims.py
+# Vendor-versus wording. The same script CI runs, so the two cannot disagree about
+# what the rule is -- it used to be a grep inlined in the workflow, which meant the
+# rule existed only where it could not be tested and did not run locally at all.
+# Its own tests run first, and assert both directions: a ranking phrase fails, a
+# trade-off written symmetrically passes, and a word list narrowed to nothing fails
+# rather than reporting a tick over an empty scan.
+	$(PYTHON) -m pytest scripts/tests/test_check_neutral_wording.py --tb=short -q
+	$(PYTHON) scripts/check_neutral_wording.py
 # Text half only. The OCR half reads 463 tracked images and takes ~8 minutes, which
 # does not belong in a check run before every commit, but the text half takes seconds
 # and is the half that catches an identifier pasted into a source file or a fixture.
