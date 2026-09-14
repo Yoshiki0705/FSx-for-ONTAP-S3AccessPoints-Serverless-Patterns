@@ -506,3 +506,4 @@ TOTP の登録を要求する。** Blocks（production preset）の DynamoDB 4 �
 - [ポータルの検証結果](../../solutions/amplify-portal/docs/verification-results.md) — 検証区分の元になっている記録
 - [portal-sandbox-lifecycle](../agent/portal-sandbox-lifecycle.md) — 同じロググループ残存をこのリポジトリのポータルで記録したもの（P10 の先例）
 - [IaC ガバナンスパターン](../../solutions/amplify-portal/docs/iac-governance-patterns.md) — cdk-nag をベースライン比較として運用する理由、ドリフト検出の層
+- [同じ 4 機能を 3 つの土台で実装した記録](portal-parity-four-features.md) — この文書の撤収手順が対象にしているスタックで、実際に 4 機能を動かした記録
