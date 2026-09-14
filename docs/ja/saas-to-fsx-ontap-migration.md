@@ -1,8 +1,10 @@
-# SaaS / クラウドストレージから FSx for ONTAP への移行とデータ連携
+# SaaS・オンプレミスのファイルサーバー・他クラウドのストレージから FSx for ONTAP への移行とデータ連携
 
 🌐 **Language / 言語**: 日本語 | [English](../en/saas-to-fsx-ontap-migration.md)
 
-Box、Dropbox、OneDrive、Google Drive、Wasabi などから Amazon FSx for NetApp ONTAP へデータを移す、あるいは移さずに連携する手段の整理。どの経路が使えてどれが使えないか、そして「インフラチームが中央で一括実行できるか」を判定基準とともにまとめます。
+Box、Dropbox、OneDrive、Google Drive のようなコラボレーション SaaS、オンプレミスの Windows ファイルサーバーや NAS、Wasabi・Azure Blob Storage・Google Cloud Storage のような AWS 以外のクラウドストレージから Amazon FSx for NetApp ONTAP へデータを移す、あるいは移さずに連携する手段の整理。どの経路が使えてどれが使えないか、そして「インフラチームが中央で一括実行できるか」を判定基準とともにまとめます。
+
+**移行元の種別は判定軸そのものではありません。** SaaS・オンプレ・他クラウドという区分より、**ストレージエンドポイントを公開しているか**（後述の「決定軸」）が経路を決めます。オンプレの NAS と Wasabi は前者で同じ群に入り、Box とは別の群になります。
 
 ## 結論
 
@@ -17,8 +19,12 @@ Box、Dropbox、OneDrive、Google Drive、Wasabi などから Amazon FSx for Net
 ## 対象読者
 
 - FSx for ONTAP をファイル基盤として採用し、既存の SaaS からデータを寄せたいインフラ・ストレージ担当
+- **オンプレミスのファイルサーバー / NAS をクラウドへ移す、あるいは移したうえで利用を広げたい方**
+- **AWS 以外のクラウドのファイル / オブジェクトストレージから移す方**
 - 「一括移行ツールがないので利用者にやらせるしかないのか」を判断したい方
 - 移行はせず、検索と AI 連携だけを横断させたい方
+
+> **移行方式そのものの判断について**: どの方式を採るか（一括カットオーバー / 段階移行 / 併走）の決定木は [FSx for ONTAP Adoption Playbook — 移行方式の決定木](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/blob/main/docs/ja/reference/decision-trees/migration-method.md) にあります。本文書は**経路として何が使えるか**と、**決めた結果をこのリポジトリのどのパラメータに入れるか**を扱います。
 
 ## 目的の 3 分類
 
@@ -30,7 +36,7 @@ Box、Dropbox、OneDrive、Google Drive、Wasabi などから Amazon FSx for Net
 | ② 継続同期・ハイブリッド共存 | なし | SaaS 側の機能か商用ツール |
 | ③ 検索・AI 連携のみ（バイトを動かさない） | **Bedrock Knowledge Bases のマネージドコネクタ** | あり |
 
-③ を見落として ① を検討してしまうケースが多いため、先に ③ で足りるかを確認してください。詳細は[後述](#-検索ai-連携のみならバイトを動かさない選択肢がある)。
+③ を見落として ① を検討してしまうケースが多いため、先に ③ で足りるかを確認してください。詳細は後述の「③ 検索・AI 連携のみの場合」にあります。
 
 ## 決定軸 — ストレージエンドポイントの公開有無
 
@@ -236,6 +242,41 @@ S3 AP 経由では投入できません。NFS / SMB マウント経由にして�
 **Q. 移行中に移行元を止める必要がありますか。**
 差分同期を繰り返して最終差分だけを停止時間内に収めるのが一般的です。ただし群 B では API のレート制限が差分同期の所要時間を支配するため、**停止時間の見積もりはレート制限の実測から逆算**してください。カタログ上の値ではなく実測です。
 
+## 今の構成の値と、このリポジトリのパラメータの対応
+
+経路が決まったあと、**手元の環境について既に知っている値を、どのパラメータに入れるか**の対応です。値は推測せず AWS から引いてください（各行の「値の調べ方」）。
+
+パターンごとの設定は `samconfig.toml.example` をコピーして埋めます。パラメータ名はパターン間で共通です（括弧内は宣言しているパターン数）。
+
+| 今の構成で持っている値 | 入れるパラメータ | 値の調べ方 |
+|---|---|---|
+| 移行先の共有をどの Access Point で見せるか | `S3AccessPointAlias`（44）と `S3AccessPointName`（36）。**両方**入れる | `make discover-s3ap`。テンプレートは IAM の Resource にバケット形式と Access Point 形式の両方を書き、後者は名前から組み立てます |
+| ONTAP の管理 LIF の IP | `OntapManagementIp`（31） | `aws fsx describe-file-systems --query "FileSystems[].OntapConfiguration.Endpoints.Management.IpAddresses"` |
+| ONTAP の資格情報（既存の Secrets Manager シークレット） | `OntapSecretName`（35） | `aws secretsmanager list-secrets --query "SecretList[].Name"`。**シークレットは触られません**（撤収時も対象外） |
+| 移行先の SVM | `SvmUuid`（24） | `aws fsx describe-storage-virtual-machines --query "StorageVirtualMachines[].StorageVirtualMachineId"` |
+| Lambda を置く VPC とサブネット | `VpcId`（29）、`PrivateSubnetIds`（28） | `aws ec2 describe-subnets --filters Name=vpc-id,Values=<vpc-id>` |
+| すでに VPC Endpoint がある | `EnableVpcEndpoints=false`（26）。**既存があるのに `true` にすると衝突します** | [VPC Endpoint 競合マトリクス](deployment-guide.md#vpc-endpoint-競合マトリクス) |
+| ルートテーブル（Gateway Endpoint 用） | `PrivateRouteTableIds`（25）、`EnableS3GatewayEndpoint`（16） | `aws ec2 describe-route-tables --filters Name=vpc-id,Values=<vpc-id>` |
+| 処理結果を NFS / SMB の利用者にも見せたいか | `OutputDestination`（23）。`FSXN_S3AP` なら FSx for ONTAP へ書き戻し、`STANDARD_S3` なら新しいバケット | 下記「書き込み先の選択」の判断結果 |
+| 書き戻し先の Access Point（`FSXN_S3AP` のとき） | `OutputS3APAlias`（12）、`OutputS3APName`（12）、`OutputS3APPrefix`（12） | `make discover-s3ap` |
+| 移行が段階的で FPolicy を後で足す | `TriggerMode`（31）。`POLLING` / `EVENT_DRIVEN` / `HYBRID` | 併走期間は `HYBRID`、切替後は `EVENT_DRIVEN` |
+| 棚卸しで分かったファイル数 | `MapConcurrency`（24）、`LambdaTimeout`（24）、`LambdaMemorySize`（24） | 大量小ファイルは並列度を上げる。DataSync 側も同じ理由で分割が要ります |
+| 監査保持の要件 | `LogRetentionInDays`（10）。コンプライアンス用途は `2557`（7 年） | 社内規程 |
+| 通知の宛先 | `NotificationEmail`（49） | 運用チームのアドレス |
+| まだ FSx for ONTAP が無い | `DemoMode=true`（10）。通常の S3 バケットで代替 | [デモモードガイド](../demo-mode-guide.md) |
+
+ポータル（Amplify Gen2）を使う場合の設定は別で、[`portal-config.example.ts`](../../solutions/amplify-portal/amplify/portal-config.example.ts) に**全項目の値を調べる CLI コマンドと、対応する `AMPLIFY_PORTAL_*` 環境変数**が書かれています。移行に関係するのは次の 3 つです。
+
+| 今の構成で持っている値 | 入れる項目 |
+|---|---|
+| AD のグループと共有の対応 | `groupApMapping`（グループ名 → Access Point エイリアス） |
+| 既に DynamoDB の Gateway Endpoint がある | `dynamoDbGatewayEndpointExists`（**所有スタックを消すと現役スタックの VPC Lambda が DynamoDB へ到達できなくなります**） |
+| 移行元と移行先を併走させる期間の役割 | `enforceRoles`、`externalDefaults.shareLinksByRole` |
+
+> **オンプレミスからの移行に固有の補足**: NTFS ACL をそのまま運べるのはオンプレ Windows ファイルサーバーからの経路だけで、SaaS からは対応物がありません（[権限モデルに対応物がない](#1-権限モデルに対応物がない)）。ACL を保持する手順は [SMB ACL 移行ガイド](../smb-acl-migration-backup-operators.md) にあります。
+>
+> AD 参加 SVM の S3 Access Point では、**`HeadBucket` の成功が到達性の証拠になりません**。S3 レイヤのメタデータしか見ないため、後続の `ListObjectsV2` / `GetObject` / `PutObject` が `AccessDenied` になる状態でも成功します（2026-08-26 実測）。**ローカル SMB ユーザーに解決される identity は DC を必要としません**（DC 0 台の AD 参加 SVM で全操作成功を実測）。ドメインアカウントを固定した場合の DC 要否は、到達可能な DC が検証環境に無く**未確認**です。事前チェックには `shared/ad_health_check.py` を使ってください（DC 0 台のときフィールドごと省略される挙動が実装されています）。
+
 ## 段階的な導入ステップ
 
 | Step | 内容 | 完了の判定 |
@@ -272,4 +313,5 @@ S3 AP 経由では投入できません。NFS / SMB マウント経由にして�
 | [代替手段の比較](../comparison-alternatives.md) | S3 AP / EFS / NFS / DataSync の選択 |
 | [ファイルポータル UI の選択ガイド](../file-portal-amplify-gen2.md) | Amplify Gen2 / Nextcloud / 自作の比較 |
 | [SaaS ギャップ分析](../aws-feature-requests/file-portal-service-gap.md) | 15 SaaS の機能比較（本文書は移行経路側の続き） |
+| [はじめに読む](start-here.md) | 前提の確認 → パラメータ → デプロイ → 動作確認 → 撤収の順序 |
 | [デプロイガイド](deployment-guide.md) | FSx for ONTAP と S3 AP の構築手順 |

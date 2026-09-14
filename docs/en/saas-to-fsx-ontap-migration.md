@@ -1,8 +1,10 @@
-# Migrating and integrating SaaS / cloud storage with FSx for ONTAP
+# Migrating and integrating SaaS, on-premises file servers and other clouds with FSx for ONTAP
 
 🌐 **Language / 言語**: [日本語](../ja/saas-to-fsx-ontap-migration.md) | English
 
-How to move data into Amazon FSx for NetApp ONTAP from Box, Dropbox, OneDrive, Google Drive, Wasabi and similar services — or integrate without moving it. Which routes work, which do not, and whether an infrastructure team can execute centrally, with the criterion that decides it.
+How to move data into Amazon FSx for NetApp ONTAP from collaboration SaaS such as Box, Dropbox, OneDrive and Google Drive; from on-premises Windows file servers and NAS; and from non-AWS cloud storage such as Wasabi, Azure Blob Storage and Google Cloud Storage — or integrate without moving it. Which routes work, which do not, and whether an infrastructure team can execute centrally, with the criterion that decides it.
+
+**The kind of source is not the deciding axis.** What decides the route is **whether the source exposes a storage endpoint** (the "deciding axis" section below), not whether it is SaaS, on-premises or another cloud. An on-premises NAS and Wasabi both do, which puts them in the same group and in a different one from Box.
 
 ## Conclusion
 
@@ -17,8 +19,12 @@ Three points.
 ## Who this is for
 
 - Infrastructure and storage owners adopting FSx for ONTAP as a file platform who want to consolidate data from existing SaaS
+- **Anyone moving an on-premises file server or NAS to the cloud, or widening its use after the move**
+- **Anyone moving from file or object storage in another cloud**
 - Anyone deciding whether "there is no bulk tool, so users have to do it themselves" is actually true
 - Anyone who wants search and AI across both, without migrating
+
+> **On choosing the migration method itself**: the decision tree for which method to use — a single cutover, a phased move, or running both — is in the [FSx for ONTAP Adoption Playbook](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/blob/main/docs/ja/reference/decision-trees/migration-method.md) (Japanese). This document covers **which routes are available** and **which parameter in this repository each decision lands in**.
 
 ## First, separate the three goals
 
@@ -30,7 +36,7 @@ They are easy to conflate, and conflating them leads to picking the wrong mechan
 | ② Continuous sync / hybrid coexistence | None | SaaS-side feature or a commercial tool |
 | ③ Search and AI integration only (bytes stay put) | **Bedrock Knowledge Bases managed connectors** | Available |
 
-③ is frequently overlooked, sending people straight to ①. Check whether ③ is sufficient first — see [below](#-if-you-only-need-search-and-ai-you-do-not-have-to-move-the-bytes).
+③ is frequently overlooked, sending people straight to ①. Check whether ③ is sufficient first — see the section below on needing only search and AI.
 
 ## The deciding axis — does the source expose a storage endpoint
 
@@ -236,6 +242,41 @@ It is a record-oriented integration service with no FSx for ONTAP destination. I
 **Q. Do we have to freeze the source during migration?**
 The usual approach is repeated differential syncs until the final delta fits inside the outage window. For group B, however, the API rate limit dominates how long a differential sync takes, so **derive the outage estimate from measured rate limits**, not from catalogue figures.
 
+## What your current setup already knows, and which parameter it goes into
+
+Once the route is settled, this is **where the values you already know about your environment belong**. Read them out of AWS rather than guessing — the third column says how.
+
+Per-pattern configuration is a copy of `samconfig.toml.example` with the values filled in. The parameter names are shared across patterns; the count in brackets is how many declare each one.
+
+| What your setup already has | The parameter it goes into | How to find the value |
+|---|---|---|
+| Which access point exposes the destination share | `S3AccessPointAlias` (44) **and** `S3AccessPointName` (36). Set both | `make discover-s3ap`. The templates name the access point in both the bucket form and the access-point form, and the name is what the second one is built from |
+| The ONTAP management LIF address | `OntapManagementIp` (31) | `aws fsx describe-file-systems --query "FileSystems[].OntapConfiguration.Endpoints.Management.IpAddresses"` |
+| ONTAP credentials in an existing secret | `OntapSecretName` (35) | `aws secretsmanager list-secrets --query "SecretList[].Name"`. **Secrets are never touched**, including at teardown |
+| The destination SVM | `SvmUuid` (24) | `aws fsx describe-storage-virtual-machines --query "StorageVirtualMachines[].StorageVirtualMachineId"` |
+| The VPC and subnets the functions run in | `VpcId` (29), `PrivateSubnetIds` (28) | `aws ec2 describe-subnets --filters Name=vpc-id,Values=<vpc-id>` |
+| VPC endpoints that already exist | `EnableVpcEndpoints=false` (26). **Leaving it `true` alongside existing ones collides** | [VPC endpoint conflict matrix](deployment-guide.md#vpc-endpoint-conflict-matrix) |
+| Route tables, for the gateway endpoint | `PrivateRouteTableIds` (25), `EnableS3GatewayEndpoint` (16) | `aws ec2 describe-route-tables --filters Name=vpc-id,Values=<vpc-id>` |
+| Whether NFS / SMB users should see the results | `OutputDestination` (23). `FSXN_S3AP` writes back to FSx for ONTAP; `STANDARD_S3` writes to a new bucket | the outcome of "choosing the write path" above |
+| The access point to write back to, for `FSXN_S3AP` | `OutputS3APAlias` (12), `OutputS3APName` (12), `OutputS3APPrefix` (12) | `make discover-s3ap` |
+| A phased migration that adds FPolicy later | `TriggerMode` (31): `POLLING`, `EVENT_DRIVEN` or `HYBRID` | `HYBRID` while both run, `EVENT_DRIVEN` after the cutover |
+| The file count from the inventory | `MapConcurrency` (24), `LambdaTimeout` (24), `LambdaMemorySize` (24) | Many small files need more concurrency. DataSync needs splitting for the same reason |
+| An audit retention requirement | `LogRetentionInDays` (10). `2557` (seven years) for compliance use | your own policy |
+| Where notifications go | `NotificationEmail` (49) | the operations team's address |
+| No FSx for ONTAP file system yet | `DemoMode=true` (10), which substitutes a regular S3 bucket | [demo mode guide](../demo-mode-guide.en.md) |
+
+The portal (Amplify Gen2) is configured separately, and [`portal-config.example.ts`](../../solutions/amplify-portal/amplify/portal-config.example.ts) carries **the CLI command that finds each value and the matching `AMPLIFY_PORTAL_*` variable**. Three entries bear on a migration.
+
+| What your setup already has | The entry it goes into |
+|---|---|
+| The mapping from AD groups to shares | `groupApMapping` (group name → access point alias) |
+| An existing DynamoDB gateway endpoint | `dynamoDbGatewayEndpointExists` (**deleting the stack that owns it leaves the standing stack's VPC functions unable to reach DynamoDB**) |
+| Roles for the period when source and destination both run | `enforceRoles`, `externalDefaults.shareLinksByRole` |
+
+> **Specific to migrating from on-premises**: NTFS ACLs carry over only on the route from an on-premises Windows file server. SaaS has no counterpart ([the permission model has no counterpart](#1-the-permission-model-has-no-counterpart)), and the procedure for preserving them is in the [SMB ACL migration guide](../smb-acl-migration-backup-operators.en.md).
+>
+> On an AD-joined SVM's access point, **`HeadBucket` succeeding is not evidence of reachability.** It reads only S3-layer metadata, so it succeeds while `ListObjectsV2`, `GetObject` and `PutObject` return `AccessDenied` (measured 2026-08-26). **An identity that resolves to a local SMB user needs no domain controller** — measured on an AD-joined SVM with zero DCs, where every operation succeeded. Whether a fixed domain account needs one is **unverified**: no reachable DC existed in the test environment. Use `shared/ad_health_check.py` for the pre-check; it implements the zero-DC case, where the field is omitted rather than returned empty.
+
 ## Phased adoption steps
 
 | Step | Content | Done when |
@@ -272,4 +313,5 @@ Stated plainly.
 | [Comparison of alternatives](../comparison-alternatives.md) (Japanese) | Choosing between S3 AP / EFS / NFS / DataSync |
 | [File portal UI selection guide](../file-portal-amplify-gen2.en.md) | Amplify Gen2 / Nextcloud / custom build comparison |
 | [SaaS gap analysis](../aws-feature-requests/file-portal-service-gap.en.md) | Feature comparison across 15 SaaS (this document continues it on the migration side) |
+| [Start here](start-here.md) | The order: prerequisites, parameters, deploy, verify, tear down |
 | [Deployment guide](deployment-guide.md) | Building FSx for ONTAP and S3 AP |

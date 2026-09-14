@@ -19,6 +19,8 @@
 
 ## はじめる
 
+初めての方は **[はじめに読む — 前提の確認から撤収までの順序](docs/ja/start-here.md)**（[English](docs/en/start-here.md)）から。前提の確認 → パラメータ → デプロイ → 動作確認 → 撤収の 5 段を、各段で読むものと打つコマンドだけで示しています。目的が決まっている場合は下の表から直接進んでください。
+
 | やりたいこと | ガイド | 所要時間 |
 |---|---|---|
 | FSx なしでデモを試す | [Demo Mode Guide](docs/demo-mode-guide.md) | 5 分 |
@@ -271,6 +273,7 @@ dev.to では**シリーズを 2 つに分けています**。読者が違うた
 
 | リポジトリ | 概要 |
 |---|---|
+| [FSx-for-ONTAP-Adoption-Playbook](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook) | **判断の場所。** ストレージ方式・移行方式・監視経路の決定木。このリポジトリは「FSx for ONTAP に決まったあと」を扱うので、まだ決まっていない場合はこちらから |
 | [FSx-for-ONTAP-Observability-integrations](https://github.com/Yoshiki0705/FSx-for-ONTAP-Observability-integrations) | 可観測性統合 (ARP/AI 自動対応、メトリクス、アラート) |
 | [FSx-for-ONTAP-Agentic-Access-Aware-RAG](https://github.com/Yoshiki0705/FSx-for-ONTAP-Agentic-Access-Aware-RAG) | アクセス制御対応の Agentic RAG（CDK + Amazon Bedrock） |
 | [FSx-for-ONTAP-Lakehouse-Integrations](https://github.com/Yoshiki0705/FSx-for-ONTAP-Lakehouse-Integrations) | Lakehouse 統合（Databricks, Snowflake, Athena, Glue, EMR） |
