@@ -44,7 +44,7 @@ make discover-s3ap                       # every S3 Access Point in the account,
 make discover-s3ap REGIONS=us-east-1     # another region
 ```
 
-`make discover-s3ap` derives the list from the FSx API rather than a hand-kept file, so a deleted or `MISCONFIGURED` access point cannot keep looking correct in a config.
+`make discover-s3ap` derives the list from the FSx API rather than a hand-kept file, so the lifecycle state of each access point is read at the time you look.
 
 | What you need | Where it is |
 |---|---|
@@ -98,12 +98,12 @@ make cleanup-retained ARGS='--stack-prefix fsxn-s3ap-uc1 --apply' # remove it
 
 A successful stack deletion still leaves **log groups** (the functions create them on first invocation, so they are not in the template), **tables held by deletion protection**, and **user pools on `Retain`**. `make cleanup-retained` reports why each survived and what removing it costs, and changes nothing by default. `--apply` is refused while a stack matching the prefix still exists.
 
-**Never touched**: FSx for ONTAP volumes, SVMs and file systems; SnapLock and WORM data; S3 buckets and Object Lock; Secrets Manager. A retention lock is not a leftover — it is behaving as configured, and its period cannot be shortened afterwards.
+**Never touched**: FSx for ONTAP volumes, SVMs and file systems; SnapLock and WORM data; S3 buckets and Object Lock; Secrets Manager. A retention lock is not a leftover — it is behaving as configured [E-008].
 
 - The whole procedure: [portal cleanup guide](../../solutions/amplify-portal/docs/cleanup-guide.en.md)
 - What cannot be deleted, and why: [deployment guide](deployment-guide.md), "Rollback and cleanup"
 
-> **Note on irreversible operations**: creating a SnapLock volume, creating a SnapLock audit-log volume, locking a snapshot, and S3 Object Lock in `COMPLIANCE` mode cannot be undone. An audit-log volume **blocks deletion of its parent file system for at least six months, and the AWS API has no field for that retention period**. A verification account is the worst place to put one.
+> **Note on irreversible operations**: creating a SnapLock volume, creating a SnapLock audit-log volume, locking a snapshot, and S3 Object Lock in `COMPLIANCE` mode cannot be undone. An audit-log volume **blocks deletion of the volume, the SVM and the file system until its retention period expires, and the minimum is six months** [E-008]. A verification account is the worst place to put one. Details in [SnapLock pitfalls](../agent/pitfalls-snaplock.md).
 
 ## Before taking it to production
 

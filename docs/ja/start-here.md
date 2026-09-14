@@ -30,7 +30,7 @@ make preflight PROFILE=production VPC=vpc-0123456789abcdef0     # 加えて VPC 
 
 プロファイルは 4 つ（`quick-start` / `production` / `demo` / `fpolicy`）。終了コードは **75 がツール不足、78 が環境の未準備**で、いずれも 1 とは区別されます。「何をインストールするか」と「何を直すか」は別の作業なので分けてあります。
 
-FSx for ONTAP をまだ持っていない場合は、この段を飛ばして [デモモードガイド](../demo-mode-guide.md)（通常の S3 バケットで代替）に進めます。
+FSx for ONTAP のファイルシステムを用意する前に試す場合は、この段を飛ばして [デモモードガイド](../demo-mode-guide.md) に進めます。DemoMode は通常の S3 バケットで代替します。
 
 - 前提条件の一覧: [デプロイガイド — 前提条件](deployment-guide.md#前提条件)
 - 手元の環境が満たしているかの確認手順: [同 — 既存リソース ID の取得方法](deployment-guide.md#パラメータマッピング)
@@ -98,12 +98,12 @@ make cleanup-retained ARGS='--stack-prefix fsxn-s3ap-uc1 --apply' # 実際に消
 
 スタックの削除が成功しても、**ロググループ（関数が初回呼び出しで作るのでテンプレートに存在しません）、削除保護つきのテーブル、`Retain` の User Pool** は残ります。`make cleanup-retained` はそれぞれについて「なぜ生き残ったか」と「消すと何が失われるか」を出し、既定では何も変更しません。`--apply` は、その prefix に一致するスタックがまだ存在する間は拒否されます。
 
-**触らないもの**: FSx for ONTAP のボリューム / SVM / ファイルシステム、SnapLock と WORM のデータ、S3 バケットと Object Lock、Secrets Manager。保持ロックは残骸ではなく設定どおり動いているもので、期間は後から短縮できません。
+**触らないもの**: FSx for ONTAP のボリューム / SVM / ファイルシステム、SnapLock と WORM のデータ、S3 バケットと Object Lock、Secrets Manager。保持ロックは残骸ではなく設定どおり動いている状態です [E-008]。
 
 - 手順の全体: [ポータルのクリーンアップガイド](../../solutions/amplify-portal/docs/cleanup-guide.md)
-- 削除できない条件: [デプロイガイド — ロールバック・クリーンアップ](deployment-guide.md#ロールバッククリーンアップ)
+- 削除できない条件: [デプロイガイド](deployment-guide.md) の「ロールバック・クリーンアップ」
 
-> **不可逆操作に関する補足**: SnapLock ボリュームの作成、SnapLock 監査ログボリュームの作成、スナップショットのロック、S3 Object Lock の `COMPLIANCE` は、いずれも取り消せません。監査ログボリュームは**親のファイルシステムの削除を最短 6 か月ブロックし、AWS API には保持期間を指定するフィールドがありません**。検証環境こそ置いてはいけない場所です。
+> **不可逆操作に関する補足**: SnapLock ボリュームの作成、SnapLock 監査ログボリュームの作成、スナップショットのロック、S3 Object Lock の `COMPLIANCE` は、いずれも取り消せません。**監査ログボリュームはボリューム・SVM・ファイルシステムの削除を保持期間が満了するまでブロックし、最短は 6 か月です** [E-008]。検証環境こそ置いてはいけない場所です。詳細は [SnapLock の罠](../agent/pitfalls-snaplock.md)。
 
 ## 本番に持っていく前に
 
