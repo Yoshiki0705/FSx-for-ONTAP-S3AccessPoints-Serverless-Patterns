@@ -846,9 +846,7 @@ EN: dict[str, str] = {
     # The three foundation figures. Column 1 and the inventory box carry most of
     # these strings, and they are the part the figures are read for, so each keeps
     # the counts rather than paraphrasing them.
-    "ファイルポータルの構成要素 — Amplify Gen 2 で組んだ場合": (
-        "File Portal Components — Composed on Amplify Gen 2"
-    ),
+    "ファイルポータルの構成要素 — Amplify Gen 2 で組んだ場合": ("File Portal Components — Composed on Amplify Gen 2"),
     "ファイルポータルの構成要素 — AWS Blocks (production preset) で組んだ場合": (
         "File Portal Components — Composed on AWS Blocks (production preset)"
     ),
@@ -860,9 +858,7 @@ EN: dict[str, str] = {
     "Amazon Cognito<br>(PLUS / MFA 必須)": "Amazon Cognito<br>(PLUS / MFA required)",
     "Amazon S3<br>(静的サイト)": "Amazon S3<br>(static site)",
     "AWS Lambda<br>(13 関数)": "AWS Lambda<br>(13 functions)",
-    "Amazon DynamoDB<br>(4 テーブル: 業務 2 / 認証 2)": (
-        "Amazon DynamoDB<br>(4 tables: 2 application / 2 auth)"
-    ),
+    "Amazon DynamoDB<br>(4 テーブル: 業務 2 / 認証 2)": ("Amazon DynamoDB<br>(4 tables: 2 application / 2 auth)"),
     "AWS Key Management Service<br>(4 鍵 / ローテーション有効)": (
         "AWS Key Management Service<br>(4 keys / rotation enabled)"
     ),
@@ -1357,8 +1353,7 @@ def part7_amplify() -> Diagram:
             Node("appsync", "AWS AppSync<br>(GraphQL API)", 0, 2, icon=APPSYNC),
             Node(
                 "defaults",
-                "既定で作られる境界・鍵<br>AWS WAF: 0<br>"
-                "カスタマー管理 AWS KMS: 0<br>削除保護: なし",
+                "既定で作られる境界・鍵<br>AWS WAF: 0<br>カスタマー管理 AWS KMS: 0<br>削除保護: なし",
                 2,
                 2,
                 BOX,
@@ -1406,8 +1401,7 @@ def part7_blocks() -> Diagram:
             Node("apigw", "Amazon API Gateway<br>(JSON-RPC)", 0, 2, icon=APIGW),
             Node(
                 "defaults",
-                "既定で作られる境界・鍵<br>AWS WAF: 0<br>"
-                "カスタマー管理 AWS KMS: 1<br>削除保護: 4 テーブル",
+                "既定で作られる境界・鍵<br>AWS WAF: 0<br>カスタマー管理 AWS KMS: 1<br>削除保護: 4 テーブル",
                 2,
                 2,
                 BOX,
