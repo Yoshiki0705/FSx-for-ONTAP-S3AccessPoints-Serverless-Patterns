@@ -46,6 +46,19 @@ Only the colours differ — layout, labels, and notes match across both. Each fi
 | Group A, two routes | For sources with a storage endpoint: DataSync direct, or two-hop via Amazon S3 | [View](images/saas-migration-group-a-routes-en.svg) | [View](images/saas-migration-group-a-routes-en-dark.svg) |
 | Group B, central execution | A migration worker calling admin APIs, partitioned by Step Functions | [View](images/saas-migration-group-b-worker-en.svg) | [View](images/saas-migration-group-b-worker-en-dark.svg) |
 
+## Part 7 — App foundation choices
+
+The three foundations matched to one scope: web, auth, API and a table. **The column
+skeleton is shared deliberately, so the difference reads as what was added.** The numbers
+come from [App foundation choices](en/scaffolding-and-backend-toolkit-choices.md) and
+[Deploy verification and teardown](en/scaffolding-deploy-verification.md).
+
+| Figure | Contents | Light (default) | Dark |
+|----|------|:---:|:---:|
+| Composed on Amplify Gen 2 | The foundation this portal actually runs on. Zero perimeter resources by default | [View](images/part7-foundation-amplify-en.svg) | [View](images/part7-foundation-amplify-en-dark.svg) |
+| Composed on AWS Blocks | No Amazon Cognito; auth moves into the tables. One CMK | [View](images/part7-foundation-blocks-en.svg) | [View](images/part7-foundation-blocks-en-dark.svg) |
+| Composed on Nx Plugin for AWS | Two AWS WAF web ACLs on the path, one in us-east-1, four CMKs | [View](images/part7-foundation-nx-en.svg) | [View](images/part7-foundation-nx-en-dark.svg) |
+
 ## File formats and naming
 
 | Use | Path | Notes |
