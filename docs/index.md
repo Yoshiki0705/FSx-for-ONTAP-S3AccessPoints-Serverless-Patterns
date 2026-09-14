@@ -8,6 +8,7 @@
 
 | やりたいこと | 行き先 |
 |---|---|
+| **初めて触る（前提の確認 → パラメータ → デプロイ → 動作確認 → 撤収）** | [はじめに読む](ja/start-here.md) / [EN](en/start-here.md) |
 | **どのパターンを deploy するか決める** | [パターン選択ガイド](pattern-selection-guide.md) / [EN](pattern-selection-guide.en.md) |
 | FSx for ONTAP なしで試す | [Demo Mode ガイド](demo-mode-guide.md) |
 | **仕様・上限値・設計判断の根拠を知る** | [Adoption Playbook](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook) — [ナビゲーション](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/blob/main/docs/ja/navigation.md) / [決定ツリー 8 本](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/tree/main/docs/ja/reference/decision-trees) |
@@ -79,6 +80,7 @@
 
 | Document | Purpose |
 |----------|---------|
+| [はじめに読む (JA)](ja/start-here.md) / [Start here (EN)](en/start-here.md) | 5 段の順序と、各段で読むもの・打つコマンド。`make preflight` / `make smoke` / `make cleanup-retained` の位置づけを含む |
 | [Customization Guide](customization-guide.md) | Adapt patterns to your workload |
 | [Incident Response Playbook](incident-response-playbook.md) | Security incident handling |
 | [S3AP Compatibility Notes](s3ap-compatibility-notes.md) | Known constraints + workarounds |
@@ -135,13 +137,13 @@
 
 ### 5. 移行する
 
-既存のファイルサーバーや SaaS から持ってくる。
+既存のファイルサーバー、SaaS、AWS 以外のクラウドストレージから持ってくる。
 
 | Document | Purpose |
 |----------|---------|
 | [SMB ACL Migration via Backup Operators](smb-acl-migration-backup-operators.md) | Windows file server → FSx for ONTAP with ACLs the copy account cannot read (`SeBackupPrivilege`/`SeRestorePrivilege`, robocopy `/B`, DataSync) |
-| [SaaS → FSx for ONTAP 移行と連携 (JA)](ja/saas-to-fsx-ontap-migration.md) | Box / Dropbox / OneDrive / Google Drive / Wasabi 等からの移行。DataSync が扱える群と扱えない群の判定、コラボレーション SaaS のテナント単位 管理者 API、権限・ネイティブ形式・付随データの写像、Nextcloud の `urn:oid` 罠、Bedrock KB による非移行の連携 |
-| [SaaS → FSx for ONTAP migration and integration (EN)](en/saas-to-fsx-ontap-migration.md) | English version: the group test for DataSync coverage, tenant-wide admin APIs, the three mappings, and the no-migration path |
+| [SaaS・オンプレ・他クラウド → FSx for ONTAP 移行と連携 (JA)](ja/saas-to-fsx-ontap-migration.md) | コラボレーション SaaS、オンプレの Windows ファイルサーバー / NAS、AWS 以外のクラウドストレージからの移行。**今の構成の値をどのパラメータに入れるかの対応表**。DataSync が扱える群と扱えない群の判定、コラボレーション SaaS のテナント単位 管理者 API、権限・ネイティブ形式・付随データの写像、Nextcloud の `urn:oid` 罠、Bedrock KB による非移行の連携 |
+| [Migration and integration from SaaS, on-premises and other clouds (EN)](en/saas-to-fsx-ontap-migration.md) | English version: the group test for DataSync coverage, tenant-wide admin APIs, the three mappings, the no-migration path, and **which parameter each existing value goes into** |
 
 ### 6. つなぐ
 
