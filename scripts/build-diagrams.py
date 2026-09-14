@@ -72,6 +72,10 @@ RDS = "Arch_Amazon-RDS_64.svg"
 QUICK = "Arch_Amazon-Quick_64.svg"
 EVENTBRIDGE = "Arch_Amazon-EventBridge_64.svg"
 CLIENT = "Res_Client_48_Light.svg"
+CLOUDFRONT = "Arch_Amazon-CloudFront_64.svg"
+APIGW = "Arch_Amazon-API-Gateway_64.svg"
+WAF = "Arch_AWS-WAF_64.svg"
+KMS = "Arch_AWS-Key-Management-Service_64.svg"
 # The 07312026 package renamed this asset: the generation the hand-authored Part 1
 # figures embedded called it `Res_Traditional-server_48_Light`.
 SERVER = "Res_Server_48_Light.svg"
@@ -838,6 +842,60 @@ def part3_agent_teams() -> Diagram:
 # fails the build when a string is missing or still contains CJK, so a label added
 # to a spec cannot ship without its English counterpart.
 EN: dict[str, str] = {
+    # ---- Part 7 ---------------------------------------------------------------
+    # The three foundation figures. Column 1 and the inventory box carry most of
+    # these strings, and they are the part the figures are read for, so each keeps
+    # the counts rather than paraphrasing them.
+    "ファイルポータルの構成要素 — Amplify Gen 2 で組んだ場合": ("File Portal Components — Composed on Amplify Gen 2"),
+    "ファイルポータルの構成要素 — AWS Blocks (production preset) で組んだ場合": (
+        "File Portal Components — Composed on AWS Blocks (production preset)"
+    ),
+    "ファイルポータルの構成要素 — Nx Plugin for AWS で組んだ場合": (
+        "File Portal Components — Composed on Nx Plugin for AWS"
+    ),
+    "AWS Amplify<br>(Gen2 / ホスティング)": "AWS Amplify<br>(Gen2 / hosting)",
+    "Amazon Cognito<br>(既定: ESSENTIALS)": "Amazon Cognito<br>(default: ESSENTIALS)",
+    "Amazon Cognito<br>(PLUS / MFA 必須)": "Amazon Cognito<br>(PLUS / MFA required)",
+    "Amazon S3<br>(静的サイト)": "Amazon S3<br>(static site)",
+    "AWS Lambda<br>(13 関数)": "AWS Lambda<br>(13 functions)",
+    "Amazon DynamoDB<br>(4 テーブル: 業務 2 / 認証 2)": ("Amazon DynamoDB<br>(4 tables: 2 application / 2 auth)"),
+    "AWS Key Management Service<br>(4 鍵 / ローテーション有効)": (
+        "AWS Key Management Service<br>(4 keys / rotation enabled)"
+    ),
+    "既定で作られる境界・鍵<br>AWS WAF: 0<br>カスタマー管理 AWS KMS: 0<br>削除保護: なし": (
+        "Perimeter and keys created by default<br>AWS WAF: 0<br>"
+        "Customer managed AWS KMS: 0<br>Deletion protection: none"
+    ),
+    "既定で作られる境界・鍵<br>AWS WAF: 0<br>カスタマー管理 AWS KMS: 1<br>削除保護: 4 テーブル": (
+        "Perimeter and keys created by default<br>AWS WAF: 0<br>"
+        "Customer managed AWS KMS: 1<br>Deletion protection: 4 tables"
+    ),
+    "既定で作られる境界・鍵<br>AWS WAF: 3 (計 6 ルール)<br>カスタマー管理 AWS KMS: 4<br>削除保護: User Pool + テーブル": (
+        "Perimeter and keys created by default<br>AWS WAF: 3 (6 rules total)<br>"
+        "Customer managed AWS KMS: 4<br>Deletion protection: user pool + table"
+    ),
+    "NFS / SMB クライアント": "NFS / SMB clients",
+    "認証 + 業務データ": "auth + application data",
+    "認可の検証": "authorization check",
+    "保管時の暗号化": "encryption at rest",
+    "実測と構成の区別": "What was measured, and what was composed",
+    "各生成物の既定構成は実際にデプロイして数えたもの。S3 Access Point より下のデータ経路はこのポータルの実構成。両者を接続した図であり、Amplify Gen 2 以外でポータルを実装したわけではない": (
+        "Each output's default configuration was counted from an actual deployment. "
+        "The data path below the access point is this portal's real configuration. "
+        "The figure joins the two; the portal itself has only ever run on Amplify Gen 2"
+    ),
+    "スコープの揃え方": "How the scope was matched",
+    "3 図は同一スコープ（Web + 認証 + API + テーブル）で揃えている。このポータルの実装はこれより大きく、AI 処理と監査の経路は Part 1 の図にある": (
+        "All three figures are matched to one scope: web, auth, API and a table. This "
+        "portal's implementation is larger than that; its AI processing and audit paths "
+        "are in the Part 1 figures"
+    ),
+    "公式アイコンの不在": "No official icon exists",
+    "AWS Blocks と Nx Plugin for AWS には構成図用の公式アイコンが 2026-09 時点で無い。どちらも生成時に動くツールであり実行時の構成要素ではないため、図には生成された AWS リソースだけを置いている": (
+        "AWS Blocks and Nx Plugin for AWS have no official architecture icon as of "
+        "2026-09. Both run at generation time rather than at runtime, so these figures "
+        "draw only the AWS resources they generate"
+    ),
     # ---- Part 1 ---------------------------------------------------------------
     # Wording carried over from the published EN figures, so a reader who saw the
     # earlier export finds the same terms.
@@ -1242,6 +1300,197 @@ def saas_group_b_worker() -> Diagram:
     )
 
 
+# --- Part 7 --------------------------------------------------------------------
+# The same portal composed on each of the three scaffolders, so the difference in
+# components is readable at a glance. The three share a deliberate skeleton: the
+# request path runs down column 0, what the foundation adds sits in column 1, and
+# the defaults that never touch the data path are an inventory box on the right.
+#
+# What is measured and what is composed differ here, and the note says so. The
+# generated defaults (column 1 and the inventory box) come from deploying each
+# starter; the access point and file system tail comes from this repository's own
+# portal. Only Amplify Gen 2 has actually carried the portal — the other two are
+# compositions, not deployments.
+PART7_NOTES = [
+    (
+        "実測と構成の区別",
+        "各生成物の既定構成は実際にデプロイして数えたもの。"
+        "S3 Access Point より下のデータ経路はこのポータルの実構成。"
+        "両者を接続した図であり、Amplify Gen 2 以外でポータルを実装したわけではない",
+    ),
+    (
+        "スコープの揃え方",
+        "3 図は同一スコープ（Web + 認証 + API + テーブル）で揃えている。"
+        "このポータルの実装はこれより大きく、AI 処理と監査の経路は Part 1 の図にある",
+    ),
+    (
+        "公式アイコンの不在",
+        "AWS Blocks と Nx Plugin for AWS には構成図用の公式アイコンが 2026-09 時点で無い。"
+        "どちらも生成時に動くツールであり実行時の構成要素ではないため、"
+        "図には生成された AWS リソースだけを置いている",
+    ),
+]
+
+PORTAL_TAIL_LABEL = "NFS / SMB クライアント"
+
+
+def part7_amplify() -> Diagram:
+    """The portal as it actually runs: Amplify Gen 2.
+
+    This is the only one of the three that has carried the portal, and it is the
+    baseline the other two are read against. The inventory box on the right is
+    empty of perimeter resources on purpose -- that absence is the figure's claim.
+    """
+    return Diagram(
+        id="part7-foundation-amplify",
+        name="Part7 Amplify Gen2",
+        title="ファイルポータルの構成要素 — Amplify Gen 2 で組んだ場合",
+        grid=Grid(col_pitch=330, row_pitch=165, box_w=280),
+        nodes=[
+            Node("browser", "Web ブラウザ", 0, 0, RESOURCE, icon=USERS),
+            Node("amplify", "AWS Amplify<br>(Gen2 / ホスティング)", 0, 1, icon=AMPLIFY),
+            Node("cognito", "Amazon Cognito<br>(既定: ESSENTIALS)", 1, 1, icon=COGNITO),
+            Node("appsync", "AWS AppSync<br>(GraphQL API)", 0, 2, icon=APPSYNC),
+            Node(
+                "defaults",
+                "既定で作られる境界・鍵<br>AWS WAF: 0<br>カスタマー管理 AWS KMS: 0<br>削除保護: なし",
+                2,
+                2,
+                BOX,
+                w=300,
+                h=118,
+                fill=GREEN,
+            ),
+            Node("lambda", "AWS Lambda", 0, 3, icon=LAMBDA),
+            Node("dynamodb", "Amazon DynamoDB", 1, 3, icon=DYNAMODB),
+            Node("s3ap", "Amazon S3 Access Point<br>(Internet origin)", 0, 4, RESOURCE, icon=S3AP),
+            Node("fsxn", "Amazon FSx for<br>NetApp ONTAP", 0, 5, icon=FSXN),
+            Node("clients", PORTAL_TAIL_LABEL, 0, 6, RESOURCE, icon=SERVER),
+        ],
+        edges=[
+            Edge("browser", "amplify"),
+            Edge("amplify", "cognito"),
+            Edge("amplify", "appsync"),
+            Edge("appsync", "lambda"),
+            Edge("lambda", "dynamodb"),
+            Edge("lambda", "s3ap", "GetObject / PutObject", at=-0.5, dy=23),
+            Edge("s3ap", "fsxn"),
+            Edge("fsxn", "clients", "NFS / SMB"),
+        ],
+        groups=[Group("aws_cloud", "AWS Cloud", (0, 1), (1, 5))],
+        notes=PART7_NOTES,
+    )
+
+
+def part7_blocks() -> Diagram:
+    """The same portal composed on AWS Blocks (production preset).
+
+    The absence of Amazon Cognito is the difference to read: Blocks ships its own
+    auth on DynamoDB and JWTs, so authentication moves from a managed service into
+    two of the four tables.
+    """
+    return Diagram(
+        id="part7-foundation-blocks",
+        name="Part7 AWS Blocks",
+        title="ファイルポータルの構成要素 — AWS Blocks (production preset) で組んだ場合",
+        grid=Grid(col_pitch=330, row_pitch=165, box_w=280),
+        nodes=[
+            Node("browser", "Web ブラウザ", 0, 0, RESOURCE, icon=USERS),
+            Node("cloudfront", "Amazon CloudFront", 0, 1, icon=CLOUDFRONT),
+            Node("s3_site", "Amazon S3<br>(静的サイト)", 1, 1, icon=S3),
+            Node("apigw", "Amazon API Gateway<br>(JSON-RPC)", 0, 2, icon=APIGW),
+            Node(
+                "defaults",
+                "既定で作られる境界・鍵<br>AWS WAF: 0<br>カスタマー管理 AWS KMS: 1<br>削除保護: 4 テーブル",
+                2,
+                2,
+                BOX,
+                w=300,
+                h=118,
+                fill=YELLOW,
+            ),
+            Node("lambda", "AWS Lambda<br>(13 関数)", 0, 3, icon=LAMBDA),
+            Node(
+                "dynamodb",
+                "Amazon DynamoDB<br>(4 テーブル: 業務 2 / 認証 2)",
+                1,
+                3,
+                icon=DYNAMODB,
+            ),
+            Node("s3ap", "Amazon S3 Access Point<br>(Internet origin)", 0, 4, RESOURCE, icon=S3AP),
+            Node("fsxn", "Amazon FSx for<br>NetApp ONTAP", 0, 5, icon=FSXN),
+            Node("clients", PORTAL_TAIL_LABEL, 0, 6, RESOURCE, icon=SERVER),
+        ],
+        edges=[
+            Edge("browser", "cloudfront"),
+            Edge("cloudfront", "s3_site"),
+            Edge("cloudfront", "apigw"),
+            Edge("apigw", "lambda"),
+            Edge("lambda", "dynamodb", "認証 + 業務データ", at=-0.5, dy=10),
+            Edge("lambda", "s3ap", "GetObject / PutObject", at=-0.5, dy=45),
+            Edge("s3ap", "fsxn"),
+            Edge("fsxn", "clients", "NFS / SMB"),
+        ],
+        groups=[Group("aws_cloud", "AWS Cloud", (0, 1), (1, 5))],
+        notes=PART7_NOTES,
+    )
+
+
+def part7_nx() -> Diagram:
+    """The same portal composed on Nx Plugin for AWS.
+
+    Two web ACLs sit on the request path and a third is in us-east-1, which is why
+    this figure carries the tallest column 1. The perimeter is what the reader is
+    meant to count here -- it is also the whole of the fixed-cost difference.
+    """
+    return Diagram(
+        id="part7-foundation-nx",
+        name="Part7 Nx Plugin for AWS",
+        title="ファイルポータルの構成要素 — Nx Plugin for AWS で組んだ場合",
+        grid=Grid(col_pitch=350, row_pitch=165, box_w=290),
+        nodes=[
+            Node("browser", "Web ブラウザ", 0, 0, RESOURCE, icon=USERS),
+            Node("cloudfront", "Amazon CloudFront", 0, 1, icon=CLOUDFRONT),
+            Node("waf_cf", "AWS WAF<br>(CLOUDFRONT / us-east-1)", 1, 1, icon=WAF),
+            Node("apigw", "Amazon API Gateway<br>(tRPC)", 0, 2, icon=APIGW),
+            Node("waf_api", "AWS WAF<br>(REGIONAL)", 1, 2, icon=WAF),
+            Node(
+                "defaults",
+                "既定で作られる境界・鍵<br>AWS WAF: 3 (計 6 ルール)<br>"
+                "カスタマー管理 AWS KMS: 4<br>削除保護: User Pool + テーブル",
+                2,
+                2,
+                BOX,
+                w=320,
+                h=118,
+                fill=RED,
+            ),
+            Node("lambda", "AWS Lambda", 0, 3, icon=LAMBDA),
+            Node("cognito", "Amazon Cognito<br>(PLUS / MFA 必須)", 1, 3, icon=COGNITO),
+            Node("dynamodb", "Amazon DynamoDB", 0, 4, icon=DYNAMODB),
+            Node("kms", "AWS Key Management Service<br>(4 鍵 / ローテーション有効)", 1, 4, icon=KMS),
+            Node("s3ap", "Amazon S3 Access Point<br>(Internet origin)", 0, 5, RESOURCE, icon=S3AP),
+            Node("fsxn", "Amazon FSx for<br>NetApp ONTAP", 0, 6, icon=FSXN),
+            Node("clients", PORTAL_TAIL_LABEL, 0, 7, RESOURCE, icon=SERVER),
+        ],
+        edges=[
+            Edge("browser", "cloudfront"),
+            Edge("cloudfront", "waf_cf"),
+            Edge("cloudfront", "apigw"),
+            Edge("apigw", "waf_api"),
+            Edge("apigw", "lambda"),
+            Edge("lambda", "cognito", "認可の検証", at=-0.5, dy=10),
+            Edge("lambda", "dynamodb"),
+            Edge("dynamodb", "kms", "保管時の暗号化", at=-0.5, dy=10),
+            Edge("dynamodb", "s3ap"),
+            Edge("s3ap", "fsxn"),
+            Edge("fsxn", "clients", "NFS / SMB"),
+        ],
+        groups=[Group("aws_cloud", "AWS Cloud", (0, 1), (1, 6))],
+        notes=PART7_NOTES,
+    )
+
+
 DIAGRAMS = [
     part1_overview,
     part1_nextcloud,
@@ -1258,6 +1507,9 @@ DIAGRAMS = [
     part3_agentchat,
     part3_semantic_search,
     part3_agent_teams,
+    part7_amplify,
+    part7_blocks,
+    part7_nx,
 ]
 
 
