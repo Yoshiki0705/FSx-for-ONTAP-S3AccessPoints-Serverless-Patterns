@@ -345,16 +345,16 @@ nx sync                                   # 依存を追加したら必須（T3�
 NX_TUI=false CI=true nx run @<project>/infra:deploy-sandbox --args="--rollback"
 ```
 
-撤収は[デプロイ検証と撤収手順](scaffolding-deploy-verification.md#撤収手順)にある。**Nx の
+後片付けは[デプロイ検証と後片付けの手順](scaffolding-deploy-verification.md#後片付けの手順)にある。**Nx の
 生成物は User Pool と DynamoDB に削除保護を、KMS 鍵に `Retain` を付けるため、スタックを消しても
-残る。** 検証環境として立てたなら、その日のうちに撤収まで通しておくとよい。
+残る。** 検証環境として立てたなら、その日のうちに後片付けまで通しておくとよい。
 
 ## 関連ドキュメント
 
 - [フルスタック AWS アプリの土台の選択肢](scaffolding-and-backend-toolkit-choices.md) —
   スターター同士の比較、生成される既定値の差、固定費
-- [スキャフォールディング生成物のデプロイ検証と撤収手順](scaffolding-deploy-verification.md) —
-  削除保護・`Retain`・express モードの固着を含む撤収の実務
+- [スキャフォールディング生成物のデプロイ検証と後片付けの手順](scaffolding-deploy-verification.md) —
+  削除保護・`Retain`・express モードの固着を含む後片付けの実務
 - [拡張の段階](portal-parity-next-steps.md) — 4 機能の先に足すものと、その前提
 - [FSx for ONTAP の管理インターフェースの整理](fsx-ontap-management-interfaces.md) —
   管理面に何が到達できるか

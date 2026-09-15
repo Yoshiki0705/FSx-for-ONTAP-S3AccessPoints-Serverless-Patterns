@@ -181,7 +181,7 @@ sandbox と production で 83 と 117 に分かれる。
   1,000 MAU では月 $5、10,000 MAU では月 $50 の差になる。要件次第で下げられる。
 - **Nx の `MfaConfiguration: ON` は費用ではなく手順に効く。** 必須なので最初のサインインが
   TOTP の登録を要求する。実機で確認した経路と、そこで踏んだ箇所は
-  [デプロイ検証と撤収手順](scaffolding-deploy-verification.md#p14-削除保護の解除が-1-フラグでは通らないこと)
+  [デプロイ検証と後片付けの手順](scaffolding-deploy-verification.md#p14-削除保護の解除が-1-フラグでは通らないこと)
   にある。
 
 ## 選び方

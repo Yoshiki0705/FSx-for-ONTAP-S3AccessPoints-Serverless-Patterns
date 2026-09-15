@@ -1,13 +1,13 @@
-# スキャフォールディング生成物のデプロイ検証と撤収手順
+# スキャフォールディング生成物のデプロイ検証と後片付けの手順
 
 > 🌐 **Language / 言語**: 日本語 | [English](../en/scaffolding-deploy-verification.md)
 
 対象は [アプリの土台の選択肢](scaffolding-and-backend-toolkit-choices.md) で比較した 3 つの生成物を、
-**実際に AWS へデプロイして確認し、確認したら撤収する**作業。比較ドキュメントの数値はローカル
-synth までの実測なので、この文書はその先（デプロイ・実機動作・撤収）を担当する。
+**実際に AWS へデプロイして確認し、確認したら削除する**作業。比較ドキュメントの数値はローカル
+synth までの実測なので、この文書はその先（デプロイ・実機動作・後片付け）を担当する。
 
 **先に読む理由**: 生成物には削除保護と `Retain` が既定で入っており、スタックを削除しても消えない
-リソースが残る。件数と種類は下の[撤収手順](#撤収手順)にあり、**デプロイ前に読む前提**で置いてある。
+リソースが残る。件数と種類は下の[後片付けの手順](#後片付けの手順)にあり、**デプロイ前に読む前提**で置いてある。
 
 **この文書は発見の報告ではない。** 踏んだ箇所はいずれも上流の資料に対応するものがあり、下の
 [既知性のマッピング](#既知性のマッピング)で 1 件ずつ突き合わせている。新規の主張として書くと、
@@ -48,7 +48,7 @@ synth までの実測なので、この文書はその先（デプロイ・実�
 | P4 | Cognito の削除保護が `InvalidParameterException` を返す | **文書化済み** | [Deletion protection](https://docs.aws.amazon.com/help-panel/cognito/latest/console/hp-deletion-protection.html) |
 | P5 | KMS は削除予定中は課金されず、取り消すと遡って課金される | **文書化済み** | [KMS pricing](https://aws.amazon.com/kms/pricing/) |
 | P6 | Web ACL は関連付けを外さないと `WAFAssociatedItemException` | **文書化済み** | [DeleteWebACL](https://docs.aws.amazon.com/waf/latest/APIReference/API_DeleteWebACL.html) |
-| P7 | Blocks の sandbox と production でコマンドと撤収経路が別 | **文書化済み** | [CLI reference](https://docs.aws.amazon.com/blocks/latest/devguide/cli-reference.html) |
+| P7 | Blocks の sandbox と production でコマンドと後片付けの経路が別 | **文書化済み** | [CLI reference](https://docs.aws.amazon.com/blocks/latest/devguide/cli-reference.html) |
 | P8 | `Retain` のリソースがスタック削除後に残る | **文書化済み**（数量はこの文書の実測） | [DeletionPolicy](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-attribute-deletionpolicy.html) |
 | P9 | Block ID の変更が stateful Block のデータ損失になる | **文書化済み** | [AWS Blocks concepts](https://docs.aws.amazon.com/blocks/latest/devguide/concepts.html) |
 | P10 | テンプレート外のロググループが残り、保持期間が無期限 | **文書化済み + 上流 issue 2 件**（残存件数はこの文書の実測） | [Lambda logs](https://docs.aws.amazon.com/lambda/latest/dg/monitoring-cloudwatchlogs.html) / [aws-cdk #26553](https://github.com/aws/aws-cdk/issues/26553) / [aws-cdk #24815](https://github.com/aws/aws-cdk/issues/24815) |
@@ -62,9 +62,9 @@ synth までの実測なので、この文書はその先（デプロイ・実�
 公開ドキュメントに記載のある挙動か、ツール側（CDK CLI / Nx プラグイン）に既存の issue が立っている
 ものだった。サービス挙動として未説明のものが残っていないため、問い合わせる対象がない。
 
-**この表の「文書化済み」は、踏まなかったことを意味しない。** P13 と P14 は 3 者すべてを実際に撤収する
-過程で踏み、公開ドキュメントを読み直して既知だと分かったものである。**撤収手順の側に誤りが残っていた**
-ため、下の[撤収手順](#撤収手順)を実測に合わせて直した。
+**この表の「文書化済み」は、踏まなかったことを意味しない。** P13 と P14 は 3 者すべてを実際に削除する
+過程で踏み、公開ドキュメントを読み直して既知だと分かったものである。**後片付けの手順の側に誤りが残っていた**
+ため、下の[後片付けの手順](#後片付けの手順)を実測に合わせて直した。
 
 ## 罠の登録簿
 
@@ -130,9 +130,9 @@ Resource operation completed using Express Mode. It may continue becoming availa
 ### P2. `cdk destroy --express` にも存在する同じ性質
 
 `cdk destroy` にも `--express` があり、同じ「安定化を待たない・自動ロールバックしない」性質と、
-**本番のスタック撤収には推奨しない**という記述がある（出典:
+**本番のスタック削除には推奨しない**という記述がある（出典:
 [cdk destroy](https://docs.aws.amazon.com/cdk/v2/guide/ref-cli-cmd-destroy.html)）。
-生成された `destroy-sandbox` は `--express` を付けていないので、撤収側は既定で安全側にある。
+生成された `destroy-sandbox` は `--express` を付けていないので、後片付け側は既定で安全側にある。
 
 ### P3. DynamoDB の削除保護の強さ
 
@@ -200,7 +200,7 @@ AWS Blocks（production preset）1 本（`Retain` ではないので CloudFormat
 
 ### P7. AWS Blocks の sandbox と production のコマンドと性質の差
 
-| コマンド | 何をするか | 撤収 |
+| コマンド | 何をするか | 後片付け |
 |---|---|---|
 | `npm run dev` | ローカル実装。AWS アカウント不要 | 不要 |
 | `npm run sandbox` | Lambda の hot-swap による短命なデプロイ。開発者ごとに分離 | `npm run sandbox:destroy` |
@@ -212,7 +212,7 @@ AWS Blocks（production preset）1 本（`Retain` ではないので CloudFormat
 用意することを挙げている（出典:
 [Best practices for AWS Blocks](https://docs.aws.amazon.com/blocks/latest/devguide/best-practices.html)）。
 
-**踏み方**: `sandbox` と `deploy` を同じものと考えて撤収コマンドを間違える。片方の撤収は
+**踏み方**: `sandbox` と `deploy` を同じものと考えて削除コマンドを間違える。片方の削除は
 もう片方のリソースに触らない。
 
 ### P8. スタック削除後に残る `DeletionPolicy: Retain` のリソース
@@ -233,7 +233,7 @@ synth 済みテンプレートから数えた、スタック削除では消え�
 
 **production preset の件数はこの検証で 9 から 8 に訂正した。** 以前は KMS 鍵 1 本を Retain に
 数えていたが、テンプレートの `DeletionPolicy` を数え直すと Retain は DynamoDB 4 と
-CDKBucketDeployment 4 だけで、KMS 鍵は含まれていない。撤収時の CloudFormation の応答も一致する。
+CDKBucketDeployment 4 だけで、KMS 鍵は含まれていない。削除時の CloudFormation の応答も一致する。
 
 | CloudFormation の状態 | 意味 | 実測 |
 |---|---|---|
@@ -255,7 +255,7 @@ AWS Blocks は preview で、公式ドキュメントは Block ID（コンスト
 **上の表はテンプレートを数えたもので、それでは足りないことが実測で判明した。**
 
 実測 2026-09-12、AWS Blocks（sandbox preset）を ap-northeast-1 にデプロイして
-`npm run sandbox:destroy` で撤収したところ、スタック・DynamoDB 4 本・S3 バケットはすべて消えた
+`npm run sandbox:destroy` で削除したところ、スタック・DynamoDB 4 本・S3 バケットはすべて消えた
 一方で、**ロググループが 5 件残った**。いずれも `retentionInDays` が未設定（無期限）で、
 内訳は CDK / Blocks のカスタムリソースプロバイダ用 Lambda のもの
 （`BlocksGsiProviderframework` 2 件、`BlocksSecretProviderframework`、
@@ -297,7 +297,7 @@ CloudFormation の外で作られるリソースを原理的に見られない�
 同じ形はこのリポジトリのポータルでも記録されていて、そちらでは 101 件のうち 92 件（9.0 MB）が
 対応する Lambda を伴わない状態で残っていた（[portal-sandbox-lifecycle](../agent/portal-sandbox-lifecycle.md)）。
 
-**対策**: 撤収の最後に、スタック名を接頭辞にしてロググループを走査する。
+**対策**: 後片付けの最後に、スタック名を接頭辞にしてロググループを走査する。
 
 ```bash
 aws logs describe-log-groups --log-group-name-prefix "/aws/lambda/<stack-name>" \
@@ -370,9 +370,9 @@ An error occurred (KMSInvalidStateException) ... is pending deletion.
 「予定しなかったものとして課金される」（P5 の料金ページ）。**待機中の鍵は無料なので、
 30 日のまま置くほうが安い。**
 
-**踏み方**: 撤収手順に `--pending-window-in-days 7` と書いてあるのを、残った鍵すべてに
+**踏み方**: 後片付けの手順に `--pending-window-in-days 7` と書いてあるのを、残った鍵すべてに
 適用できると読む。**これが効くのは `Retain` で残った鍵（自分で予定する側）だけ**で、
-CloudFormation が削除した鍵には効かない。下の[撤収手順](#撤収手順)はこの区別を反映している。
+CloudFormation が削除した鍵には効かない。下の[後片付けの手順](#後片付けの手順)はこの区別を反映している。
 
 ### P14. 削除保護の解除が 1 フラグでは通らないこと
 
@@ -424,7 +424,7 @@ Nx が生成する User Pool は `AutoVerifiedAttributes` に `email` と `phone
 実際にずれていたのは取り方だった。**エラーは出ず、少ない数が正常に返る。**
 「件数が想定より少ない」は、読み間違いより先にページングを疑う。
 
-## 撤収手順
+## 後片付けの手順
 
 **順序が意味を持つ。** 保護を外す → スタックを削除 → 残ったものを個別に削除。
 
@@ -468,9 +468,9 @@ aws logs describe-log-groups --log-group-name-prefix "/aws/lambda/<stack-name>" 
 
 ## 費用の見積り
 
-同日にデプロイして撤収する場合、時間按分される項目が主になる。
+同日にデプロイして削除する場合、時間按分される項目が主になる。
 
-| 項目 | 単価 | 同日撤収時の目安 |
+| 項目 | 単価 | 同日削除時の目安 |
 |---|---|---|
 | WAF Web ACL + ルール（Nx: 3 ACL + 6 ルール） | $21 / 月（時間按分） | 実測の稼働 1.5 時間で約 $0.04 |
 | KMS CMK（Nx 4 + Blocks 1） | $1 / 月 / 本 | 削除予定にした時点で停止（P5） |
@@ -478,11 +478,11 @@ aws logs describe-log-groups --log-group-name-prefix "/aws/lambda/<stack-name>" 
 | Lambda / API Gateway / DynamoDB / CloudFront / S3 | 従量 | 検証規模では数セント |
 
 単価の出典と取得日は [比較ドキュメントの固定費の節](scaffolding-and-backend-toolkit-choices.md#固定費の差)
-にある（AWS Price List API、ap-northeast-1、2026-09-07 取得）。**同日撤収なら合計 $1 未満**の
+にある（AWS Price List API、ap-northeast-1、2026-09-07 取得）。**同日削除なら合計 $1 未満**の
 見込みで、月額 $45 は放置した場合の数字である。
 
 実際に 3 構成を回した結果、**時間の大半はデプロイの待ちだった**（Blocks production が 1,228 秒、
-Nx が 317 秒、撤収が 225 秒と 292 秒）。Blocks production が長いのは DynamoDB の GSI を 1 本ずつ
+Nx が 317 秒、削除が 225 秒と 292 秒）。Blocks production が長いのは DynamoDB の GSI を 1 本ずつ
 作るためで、リソース数の差（117 対 86）よりも待ちの構造が効いている。
 
 ## 実測結果
@@ -492,7 +492,7 @@ Nx が 317 秒、撤収が 225 秒と 292 秒）。Blocks production が長い�
 環境: ap-northeast-1、アカウントは検証用（FSx for ONTAP の検証環境と同居）、Node.js v26.4.0、
 npm 11.17.0。
 
-| 構成 | 区分 | デプロイ | 確認した操作 | 撤収 | 実施日 |
+| 構成 | 区分 | デプロイ | 確認した操作 | 後片付け | 実施日 |
 |---|---|---|---|---|---|
 | AWS Blocks（sandbox preset） | **実機 E2E** | `npm run sandbox`。**リソース 83 件**（synth 実測の 83 と一致） | JSON-RPC で `authApi.setAuthState`（signUp / signIn）、`api.createTodo`（書き込み）、`api.listTodos`（読み取り）。DynamoDB に永続化されたことを応答で確認 | `npm run sandbox:destroy` 86 秒。スタック・DynamoDB 4 本・S3 は消え、**ロググループ 5 件が残った**（P10）。手で削除して 0 件を確認 | 2026-09-12 |
 | AWS Blocks（production preset） | **実機 E2E** | `npm run deploy` 1,228 秒。**リソース 117 件**（synth 実測の 117 と一致）。うち約 10 分は DynamoDB の GSI が 1 本ずつ作られる待ち | JSON-RPC で signUp / signIn / `createTodo`（書き込み）/ `listTodos` を 2 つの GSI（`byPriority`・`byTitle`）で読み取り、5 操作すべて 200。**production preset の差分である CloudFront 配信も 200** | `npm run destroy` 225 秒。S3 3 本は消え、**DynamoDB 4 本（削除保護 + Retain）とロググループ 8 件が残った**。KMS 鍵は `DELETE_COMPLETE` だが実際は 30 日の待機に入っただけ（P13）。手で削除して 0 件を確認 | 2026-09-13 |
@@ -531,4 +531,4 @@ TOTP の登録を要求する。** Blocks（production preset）の DynamoDB 4 �
 - [ポータルの検証結果](../../solutions/amplify-portal/docs/verification-results.md) — 検証区分の元になっている記録
 - [portal-sandbox-lifecycle](../agent/portal-sandbox-lifecycle.md) — 同じロググループ残存をこのリポジトリのポータルで記録したもの（P10 の先例）
 - [IaC ガバナンスパターン](../../solutions/amplify-portal/docs/iac-governance-patterns.md) — cdk-nag をベースライン比較として運用する理由、ドリフト検出の層
-- [同じ 4 機能を 3 つの土台で実装した記録](portal-parity-four-features.md) — この文書の撤収手順が対象にしているスタックで、実際に 4 機能を動かした記録
+- [同じ 4 機能を 3 つの土台で実装した記録](portal-parity-four-features.md) — この文書の後片付けの手順が対象にしているスタックで、実際に 4 機能を動かした記録
