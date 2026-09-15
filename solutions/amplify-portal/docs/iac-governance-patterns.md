@@ -195,8 +195,8 @@ AI がコードを書く時代に IaC が重要性を増す理由: **コード�
 - [アプリの土台の選択肢](../../../docs/ja/scaffolding-and-backend-toolkit-choices.md) —
   Nx Plugin for AWS / AWS Blocks / Amplify Gen 2 の比較。**cdk-nag をベースライン比較として
   運用する理由を、この文書から参照している**
-- [デプロイ検証と撤収手順](../../../docs/ja/scaffolding-deploy-verification.md) — 3 者を実機で
-  デプロイして撤収した記録。生成物の既定値（削除保護・`Retain`・WAF・CMK）が撤収に効く形
+- [デプロイ検証と後片付けの手順](../../../docs/ja/scaffolding-deploy-verification.md) — 3 者を実機で
+  デプロイして削除した記録。生成物の既定値（削除保護・`Retain`・WAF・CMK）が後片付けに効く形
 
 ## 参考
 

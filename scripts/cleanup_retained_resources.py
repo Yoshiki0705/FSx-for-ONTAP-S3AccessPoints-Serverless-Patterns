@@ -423,7 +423,7 @@ def main(argv: list[str] | None = None) -> int:
     if report.failed:
         print(
             "  A failure here is usually a dependency that has to go first. "
-            "docs/ja/scaffolding-deploy-verification.md#撤収手順 has the order."
+            "docs/ja/scaffolding-deploy-verification.md#後片付けの手順 has the order."
         )
         return EXIT_FOUND_OR_FAILED
     print("  Confirm by state rather than by this output: re-run without --apply.")

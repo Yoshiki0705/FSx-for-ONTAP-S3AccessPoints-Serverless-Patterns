@@ -51,7 +51,7 @@
 同一スコープ（Web + 認証 + API + テーブル）で 3 者を揃えた図。**列の骨格を共通にしてあるので、
 差分は「何が増えたか」で読める。** 数値の出どころは
 [アプリの土台の選択肢](ja/scaffolding-and-backend-toolkit-choices.md) と
-[デプロイ検証と撤収手順](ja/scaffolding-deploy-verification.md)。
+[デプロイ検証と後片付けの手順](ja/scaffolding-deploy-verification.md)。
 
 | 図 | 内容 | ライト（既定） | ダーク |
 |----|------|:---:|:---:|
