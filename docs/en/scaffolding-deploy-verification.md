@@ -61,8 +61,9 @@ can be skipped; it means **this document does not need to supply new evidence fo
 | P12 | Hotswap introduces drift into the stack | **Documented** | [cdk deploy](https://docs.aws.amazon.com/cdk/v2/guide/ref-cli-cmd-deploy.html) (`--hotswap`) |
 | P13 | A KMS key deleted by CloudFormation enters a 30-day wait that cannot be shortened afterwards | **The default is documented** (the refusal to shorten is this document's measurement) | [Deleting keys](https://docs.aws.amazon.com/kms/latest/cryptographic-details/key-deletion.html) |
 | P14 | `UpdateUserPool` does not accept a single flag; omitted settings reset to defaults | **Warned about on a dedicated page** | [Updating user pool and app client configuration](https://docs.aws.amazon.com/cognito/latest/developerguide/cognito-user-pool-updating.html) |
+| P15 | `describe-stack-events` returns pages, so the first page alone under-reports a count | **Documented** (the under-count is this document's measurement) | [DescribeStackEvents](https://docs.aws.amazon.com/AWSCloudFormation/latest/APIReference/API_DescribeStackEvents.html) |
 
-**No AWS Support case was opened.** None of the fourteen is a gap in service behaviour: each is
+**No AWS Support case was opened.** None of the fifteen is a gap in service behaviour: each is
 either behaviour the public documentation states, or already has an open issue on the tooling
 side (CDK CLI or the Nx plugin). Nothing remains unexplained as service behaviour, so there is
 nothing to ask about.
@@ -436,6 +437,30 @@ configuration references is **one of the two IAM roles left behind by `Retain`**
 IAM roles first removes the very path used to deactivate the protection. **Delete the user pool
 before the IAM roles.**
 
+### P15. Under-counting from an API that returns pages
+`DescribeStackEvents` returns pages through `NextToken` (source:
+[DescribeStackEvents](https://docs.aws.amazon.com/AWSCloudFormation/latest/APIReference/API_DescribeStackEvents.html)).
+Read only the first page and **you get the most recent events while the older ones drop silently.**
+This produced a real under-count while verifying P8's figures (measured 2026-09-15).
+
+```
+# first page only (--no-paginate) -> 6 DELETE_SKIPPED
+# every page                      -> 9 DELETE_SKIPPED
+```
+
+Events for a deleted stack stay available for **90 days after the deletion** (source:
+[ListStacks](https://docs.aws.amazon.com/AWSCloudFormation/latest/APIReference/API_ListStacks.html)),
+but **the name will not resolve — the stack ID (ARN) is required** (source: the `StackName`
+parameter of the same DescribeStackEvents page: "Deleted stacks: You must specify the unique stack
+ID"). Fetching that ID from `list-stacks` needs its own care: `--query` is applied per page, so a
+page with no match yields `None`, and putting that straight into a variable corrupts the ID. Pass
+`--no-paginate` or pick the value with `grep '^arn:'`.
+
+**How it bites**: when a count disagrees, the instinct is to re-examine the counting — a misread
+`DeletionPolicy`. What was actually off was the fetching. **No error is raised; the short number
+comes back looking normal.** A count that is lower than expected is a pagination question before
+it is a reading question.
+
 ## Teardown
 
 **The order matters.** Remove protection → delete the stack → delete what is left, one by one.
@@ -535,6 +560,7 @@ CMK was the one for the alarm topic.
 - [Cognito: Deletion protection](https://docs.aws.amazon.com/help-panel/cognito/latest/console/hp-deletion-protection.html) / [Updating user pool and app client configuration](https://docs.aws.amazon.com/cognito/latest/developerguide/cognito-user-pool-updating.html) — `UpdateUserPool`'s replace semantics
 - [KMS: Deleting keys](https://docs.aws.amazon.com/kms/latest/cryptographic-details/key-deletion.html) / [KMS pricing](https://aws.amazon.com/kms/pricing/)
 - [WAF: DeleteWebACL](https://docs.aws.amazon.com/waf/latest/APIReference/API_DeleteWebACL.html)
+- [CloudFormation: DescribeStackEvents](https://docs.aws.amazon.com/AWSCloudFormation/latest/APIReference/API_DescribeStackEvents.html) / [ListStacks](https://docs.aws.amazon.com/AWSCloudFormation/latest/APIReference/API_ListStacks.html) — pagination, and the 90 days a deleted stack stays readable
 - [Lambda logs in CloudWatch](https://docs.aws.amazon.com/lambda/latest/dg/monitoring-cloudwatchlogs.html)
 - [npm config: `yes`](https://docs.npmjs.com/cli/v11/using-npm/config#yes) — auto-answering `npm create`'s confirmation prompt
 - Upstream issues / PRs: [nx-plugin-for-aws #1265](https://github.com/awslabs/nx-plugin-for-aws/issues/1265) (the express target), [#1193](https://github.com/awslabs/nx-plugin-for-aws/pull/1193) (advisory-fetch latency), [#1228](https://github.com/awslabs/nx-plugin-for-aws/pull/1228) (npm 11 prerequisite), [aws-cdk-cli #1931](https://github.com/aws/aws-cdk-cli/issues/1931), [aws-cdk #26553](https://github.com/aws/aws-cdk/issues/26553), [aws-cdk #24815](https://github.com/aws/aws-cdk/issues/24815)
