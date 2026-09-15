@@ -56,8 +56,9 @@ synth までの実測なので、この文書はその先（デプロイ・実�
 | P12 | hotswap がスタックにドリフトを持ち込む | **文書化済み** | [cdk deploy](https://docs.aws.amazon.com/cdk/v2/guide/ref-cli-cmd-deploy.html)（`--hotswap`） |
 | P13 | CloudFormation が削除する KMS 鍵は 30 日の待機に入り、後から短縮できない | **既定値は文書化済み**（短縮の拒否はこの文書の実測） | [Deleting keys](https://docs.aws.amazon.com/kms/latest/cryptographic-details/key-deletion.html) |
 | P14 | `UpdateUserPool` はフラグ 1 つでは通らず、省略した設定が既定値に戻る | **専用のページで警告されている** | [Updating user pool and app client configuration](https://docs.aws.amazon.com/cognito/latest/developerguide/cognito-user-pool-updating.html) |
+| P15 | `describe-stack-events` はページ単位で返すので、1 ページ目だけでは件数が少なく出る | **文書化済み**（過少計上の実例はこの文書の実測） | [DescribeStackEvents](https://docs.aws.amazon.com/AWSCloudFormation/latest/APIReference/API_DescribeStackEvents.html) |
 
-**AWS Support への問い合わせは行っていない。** 上の 14 件はいずれもサービス側の挙動の欠落ではなく、
+**AWS Support への問い合わせは行っていない。** 上の 15 件はいずれもサービス側の挙動の欠落ではなく、
 公開ドキュメントに記載のある挙動か、ツール側（CDK CLI / Nx プラグイン）に既存の issue が立っている
 ものだった。サービス挙動として未説明のものが残っていないため、問い合わせる対象がない。
 
@@ -400,6 +401,29 @@ Nx が生成する User Pool は `AutoVerifiedAttributes` に `email` と `phone
 2 本の IAM ロールのうちの 1 本**である。IAM ロールを先に消すと、削除保護を外す経路そのものが
 失われる。**User Pool を消してから IAM ロールを消す。**
 
+### P15. ページ単位で返る API で件数を数えるときの過少計上
+`DescribeStackEvents` は `NextToken` でページを返す（出典:
+[DescribeStackEvents](https://docs.aws.amazon.com/AWSCloudFormation/latest/APIReference/API_DescribeStackEvents.html)）。
+1 ページ目だけを読むと、**新しいイベントだけが入り、古いイベントは黙って落ちる。**
+上の P8 の件数を検証する過程で実際に過少に数えた（実測 2026-09-15）。
+
+```
+# 1 ページ目だけ（--no-paginate）→ DELETE_SKIPPED 6 件
+# 全ページ                       → DELETE_SKIPPED 9 件
+```
+
+削除済みスタックのイベントは**スタック削除から 90 日は引ける**が（出典:
+[ListStacks](https://docs.aws.amazon.com/AWSCloudFormation/latest/APIReference/API_ListStacks.html)）、
+**名前では引けず ID（ARN）が必須**である（出典: 同 DescribeStackEvents の `StackName`。
+"Deleted stacks: You must specify the unique stack ID"）。その ID を `list-stacks` から
+取り出すときにも注意が要る。`--query` はページごとに適用されるので、一致がないページは
+`None` を返し、そのまま変数に入れると ID が壊れる。`--no-paginate` を付けるか、
+`grep '^arn:'` で拾う。
+
+**踏み方**: 件数が合わないとき、数え方（`DeletionPolicy` の読み違い）を疑って調べ直す。
+実際にずれていたのは取り方だった。**エラーは出ず、少ない数が正常に返る。**
+「件数が想定より少ない」は、読み間違いより先にページングを疑う。
+
 ## 撤収手順
 
 **順序が意味を持つ。** 保護を外す → スタックを削除 → 残ったものを個別に削除。
@@ -493,6 +517,7 @@ TOTP の登録を要求する。** Blocks（production preset）の DynamoDB 4 �
 - [Cognito: Deletion protection](https://docs.aws.amazon.com/help-panel/cognito/latest/console/hp-deletion-protection.html) / [Updating user pool and app client configuration](https://docs.aws.amazon.com/cognito/latest/developerguide/cognito-user-pool-updating.html) — `UpdateUserPool` の全置換セマンティクス
 - [KMS: Deleting keys](https://docs.aws.amazon.com/kms/latest/cryptographic-details/key-deletion.html) / [KMS pricing](https://aws.amazon.com/kms/pricing/)
 - [WAF: DeleteWebACL](https://docs.aws.amazon.com/waf/latest/APIReference/API_DeleteWebACL.html)
+- [CloudFormation: DescribeStackEvents](https://docs.aws.amazon.com/AWSCloudFormation/latest/APIReference/API_DescribeStackEvents.html) / [ListStacks](https://docs.aws.amazon.com/AWSCloudFormation/latest/APIReference/API_ListStacks.html) — ページングと、削除済みスタックの 90 日
 - [Lambda logs in CloudWatch](https://docs.aws.amazon.com/lambda/latest/dg/monitoring-cloudwatchlogs.html)
 - [npm config: `yes`](https://docs.npmjs.com/cli/v11/using-npm/config#yes) — `npm create` の確認プロンプトの自動応答
 - 上流の issue / PR: [nx-plugin-for-aws #1265](https://github.com/awslabs/nx-plugin-for-aws/issues/1265)（express target）、[#1193](https://github.com/awslabs/nx-plugin-for-aws/pull/1193)（advisory 取得の遅延）、[#1228](https://github.com/awslabs/nx-plugin-for-aws/pull/1228)（npm 11 前提）、[aws-cdk-cli #1931](https://github.com/aws/aws-cdk-cli/issues/1931)、[aws-cdk #26553](https://github.com/aws/aws-cdk/issues/26553)、[aws-cdk #24815](https://github.com/aws/aws-cdk/issues/24815)
