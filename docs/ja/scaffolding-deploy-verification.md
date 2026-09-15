@@ -236,7 +236,7 @@ CDKBucketDeployment 4 だけで、KMS 鍵は含まれていない。撤収時の
 
 | CloudFormation の状態 | 意味 | 実測 |
 |---|---|---|
-| `DELETE_SKIPPED` | `Retain` なので触っていない | Nx の撤収で 8 件 |
+| `DELETE_SKIPPED` | `Retain` なので触っていない | Nx 9 件、Blocks production 8 件、Blocks sandbox 0 件。3 構成すべてで上の synth の件数と一致した（削除済みスタックの `describe-stack-events` で確認） |
 | `DELETE_COMPLETE` | 実際に削除した。KMS では「削除を予定した」 | Blocks production の KMS 鍵 |
 
 **`DELETE_COMPLETE` を見て「消えた」と読むと、KMS では 30 日の待機に入っただけである**（→ P13）。
@@ -472,7 +472,7 @@ npm 11.17.0。
 |---|---|---|---|---|---|
 | AWS Blocks（sandbox preset） | **実機 E2E** | `npm run sandbox`。**リソース 83 件**（synth 実測の 83 と一致） | JSON-RPC で `authApi.setAuthState`（signUp / signIn）、`api.createTodo`（書き込み）、`api.listTodos`（読み取り）。DynamoDB に永続化されたことを応答で確認 | `npm run sandbox:destroy` 86 秒。スタック・DynamoDB 4 本・S3 は消え、**ロググループ 5 件が残った**（P10）。手で削除して 0 件を確認 | 2026-09-12 |
 | AWS Blocks（production preset） | **実機 E2E** | `npm run deploy` 1,228 秒。**リソース 117 件**（synth 実測の 117 と一致）。うち約 10 分は DynamoDB の GSI が 1 本ずつ作られる待ち | JSON-RPC で signUp / signIn / `createTodo`（書き込み）/ `listTodos` を 2 つの GSI（`byPriority`・`byTitle`）で読み取り、5 操作すべて 200。**production preset の差分である CloudFront 配信も 200** | `npm run destroy` 225 秒。S3 3 本は消え、**DynamoDB 4 本（削除保護 + Retain）とロググループ 8 件が残った**。KMS 鍵は `DELETE_COMPLETE` だが実際は 30 日の待機に入っただけ（P13）。手で削除して 0 件を確認 | 2026-09-13 |
-| Nx Plugin for AWS | **実機 E2E**（データ層は未通過） | `deploy-sandbox` に `--rollback` を足して 317 秒。**2 スタック 86 リソース**（Application 81 + us-east-1 の Web ACL 5、synth 実測と一致） | Cognito User Pool（**MFA が既定で必須**なので TOTP を登録）→ Identity Pool → 一時認証情報 → SigV4 署名 → `AWS_IAM` の tRPC API に `GET /echo` で 200、`{"result":{"data":{"message":"..."}}}` を確認。**生成物に DynamoDB を読み書きする手続きがないため、テーブルは作られるが通っていない** | `destroy-sandbox` 292 秒、`DELETE_SKIPPED` 8 件。**User Pool・DynamoDB 1 本・KMS 4 本・IAM ロール 2 本・ロググループ 7 件が残った**。P14 の順序で削除して 0 件を確認（KMS は 7 日で予定） | 2026-09-13 |
+| Nx Plugin for AWS | **実機 E2E**（データ層は未通過） | `deploy-sandbox` に `--rollback` を足して 317 秒。**2 スタック 86 リソース**（Application 81 + us-east-1 の Web ACL 5、synth 実測と一致） | Cognito User Pool（**MFA が既定で必須**なので TOTP を登録）→ Identity Pool → 一時認証情報 → SigV4 署名 → `AWS_IAM` の tRPC API に `GET /echo` で 200、`{"result":{"data":{"message":"..."}}}` を確認。**生成物に DynamoDB を読み書きする手続きがないため、テーブルは作られるが通っていない** | `destroy-sandbox` 292 秒、`DELETE_SKIPPED` 9 件（synth の 9 と一致）。**User Pool・DynamoDB 1 本・KMS 4 本・IAM ロール 2 本・ロググループ 7 件が残った**。P14 の順序で削除して 0 件を確認（KMS は 7 日で予定） | 2026-09-13 |
 
 **Nx の区分に注釈が付く理由**: 生成直後の API は `echo` だけで、DynamoDB を読み書きする手続きが
 ない。認証と API の経路は実機で通ったが、**データ層は「デプロイされた」までで「動いた」ではない。**
