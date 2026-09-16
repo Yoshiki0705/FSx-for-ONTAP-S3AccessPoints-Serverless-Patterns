@@ -1,9 +1,9 @@
-"""The preflight has to name the stage that broke, not merely fail.
+"""The preflight has to name the phase that broke, not merely fail.
 
-The defect it exists for: every stage below passed -- the file system was AVAILABLE, the
+The defect it exists for: every phase below passed -- the file system was AVAILABLE, the
 SVM and volume existed under exactly the configured names, the secret was readable -- and
 the portal still showed "Volume 'vol1' not found on SVM 'fsxsvm01'" with advice about
-subnets. So the case worth testing hardest is the one where stages 1 to 5 pass and 6
+subnets. So the case worth testing hardest is the one where phases 1 to 5 pass and 6
 fails: a tool that reported "something is wrong" would have been no better than the UI.
 
 The AWS calls are replaced with recorded responses. This is not a claim that the real
@@ -97,12 +97,12 @@ class FakeAws:
 
 
 def healthy(auth_response: dict | None = None, file_system_id: str = "fs-0123456789abcdef0") -> FakeAws:
-    """Every AWS-side stage passing. The auth stage answers with whatever is passed.
+    """Every AWS-side phase passing. The auth phase answers with whatever is passed.
 
     `file_system_id` has to match what the caller passes to `run_checks`, because the
-    pairing stage compares the secret's tag against it. A helper named `healthy` that left
-    one stage unstubbed would make every test using it assert on a failure it did not
-    intend, which is what happened when the pairing stage was added.
+    pairing phase compares the secret's tag against it. A helper named `healthy` that left
+    one phase unstubbed would make every test using it assert on a failure it did not
+    intend, which is what happened when the pairing phase was added.
     """
     responses: dict[tuple[str, str], object] = {
         ("fsx", "describe-file-systems"): FS_AVAILABLE,
@@ -123,13 +123,13 @@ def healthy(auth_response: dict | None = None, file_system_id: str = "fs-0123456
     return FakeAws(responses)
 
 
-def outcomes(stages) -> dict[str, Outcome]:
-    return {stage.name: stage.outcome for stage in stages}
+def outcomes(phases) -> dict[str, Outcome]:
+    return {phase.name: phase.outcome for phase in phases}
 
 
 class TestTheCaseItWasWrittenFor:
     def test_it_reports_the_credentials_when_everything_else_is_correct(self):
-        """Stages 1-5 pass; ONTAP refuses the password. Exactly what happened."""
+        """Phases 1-5 pass; ONTAP refuses the password. Exactly what happened."""
         aws = healthy(
             {
                 "volumes": [],
@@ -138,46 +138,46 @@ class TestTheCaseItWasWrittenFor:
                 "errorStatus": 401,
             }
         )
-        stages = run_checks(aws, CONFIG, "fs-0123456789abcdef0", "ResourceMgmtFunction")
+        phases = run_checks(aws, CONFIG, "fs-0123456789abcdef0", "ResourceMgmtFunction")
 
-        assert outcomes(stages) == {
+        assert outcomes(phases) == {
             "configuration": Outcome.OK,
             "file system": Outcome.OK,
             "SVM": Outcome.OK,
             "volume": Outcome.OK,
             "secret": Outcome.OK,
             # The secret is for the right cluster and its password is still wrong: the
-            # pairing stage narrows what "unauthorized" can mean, it does not replace
-            # the one stage that actually tries the credentials.
+            # pairing phase narrows what "unauthorized" can mean, it does not replace
+            # the one phase that actually tries the credentials.
             "secret pairing": Outcome.OK,
             "ONTAP auth": Outcome.FAIL,
         }
 
-        text = report(stages)
+        text = report(phases)
         # The two commands, because doing only the first leaves the portal broken.
         assert "aws fsx update-file-system" in text
         assert "aws secretsmanager put-secret-value" in text
         # And it must not send the reader to the network, which is what the UI did.
         assert "security group" not in text.split("ONTAP auth")[1]
 
-    def test_a_passing_volume_stage_is_what_makes_that_conclusion_available(self):
+    def test_a_passing_volume_phase_is_what_makes_that_conclusion_available(self):
         """The volume the portal blamed is confirmed present, by name and state."""
-        stage = check_volume(healthy(), "svm-0123456789abcdef0", "vol1")
-        assert stage.outcome is Outcome.OK
-        assert stage.facts["Lifecycle"] == "CREATED"
+        phase = check_volume(healthy(), "svm-0123456789abcdef0", "vol1")
+        assert phase.outcome is Outcome.OK
+        assert phase.facts["Lifecycle"] == "CREATED"
 
 
 class TestStagesAreDistinguished:
     def test_a_wrong_volume_name_lists_the_ones_that_exist(self):
-        stage = check_volume(healthy(), "svm-0123456789abcdef0", "vol2")
-        assert stage.outcome is Outcome.FAIL
+        phase = check_volume(healthy(), "svm-0123456789abcdef0", "vol2")
+        assert phase.outcome is Outcome.FAIL
         # Listing them turns "not found" into a correction the reader can apply.
-        assert "vol1" in stage.detail
+        assert "vol1" in phase.detail
 
     def test_a_wrong_svm_name_lists_the_ones_that_exist(self):
-        stage, svm_id = check_svm(healthy(), "fs-0123456789abcdef0", "svm-typo")
-        assert stage.outcome is Outcome.FAIL
-        assert "fsxsvm01" in stage.detail
+        phase, svm_id = check_svm(healthy(), "fs-0123456789abcdef0", "svm-typo")
+        assert phase.outcome is Outcome.FAIL
+        assert "fsxsvm01" in phase.detail
         assert svm_id == ""
 
     def test_a_misconfigured_svm_is_named_rather_than_called_healthy(self):
@@ -197,13 +197,13 @@ class TestStagesAreDistinguished:
                 }
             }
         )
-        stage, _ = check_svm(aws, "fs-1", "fsxsvm01")
-        assert stage.outcome is Outcome.FAIL
-        assert "domain controller" in stage.detail
+        phase, _ = check_svm(aws, "fs-1", "fsxsvm01")
+        assert phase.outcome is Outcome.FAIL
+        assert "domain controller" in phase.detail
 
     def test_a_stale_management_ip_is_not_left_to_look_like_a_firewall(self):
         """The configured address belonging to a previous file system times out."""
-        stages = run_checks(
+        phases = run_checks(
             FakeAws(
                 {
                     ("fsx", "describe-file-systems"): FS_AVAILABLE,
@@ -214,9 +214,9 @@ class TestStagesAreDistinguished:
             "fs-0123456789abcdef0",
             None,
         )
-        fs_stage = next(s for s in stages if s.name == "file system")
-        assert fs_stage.outcome is Outcome.FAIL
-        assert "10.0.1.10" in fs_stage.detail
+        fs_phase = next(s for s in phases if s.name == "file system")
+        assert fs_phase.outcome is Outcome.FAIL
+        assert "10.0.1.10" in fs_phase.detail
 
     def test_whitespace_in_the_password_is_reported_because_nothing_else_shows_it(self):
         aws = FakeAws(
@@ -226,9 +226,9 @@ class TestStagesAreDistinguished:
                 }
             }
         )
-        stage = check_secret(aws, "some-secret")
-        assert stage.outcome is Outcome.FAIL
-        assert "whitespace" in stage.detail
+        phase = check_secret(aws, "some-secret")
+        assert phase.outcome is Outcome.FAIL
+        assert "whitespace" in phase.detail
 
     def test_the_password_is_never_printed(self):
         aws = FakeAws(
@@ -238,53 +238,53 @@ class TestStagesAreDistinguished:
                 }
             }
         )
-        stage = check_secret(aws, "some-secret")
-        assert stage.outcome is Outcome.OK
-        assert "Pa55w0rd-do-not-log" not in report([stage])
+        phase = check_secret(aws, "some-secret")
+        assert phase.outcome is Outcome.OK
+        assert "Pa55w0rd-do-not-log" not in report([phase])
         # The length is shown, since a trailing newline is otherwise invisible.
-        assert stage.facts["passwordLength"] == "19"
+        assert phase.facts["passwordLength"] == "19"
 
 
 class TestItDoesNotOverclaim:
-    def test_the_unchecked_stage_says_so_and_does_not_fail_the_run(self):
-        """A green run that skipped stage 6 must not read as "the portal will work"."""
-        stages = run_checks(healthy(), CONFIG, "fs-0123456789abcdef0", None)
-        auth = next(s for s in stages if s.name == "ONTAP auth")
+    def test_the_unchecked_phase_says_so_and_does_not_fail_the_run(self):
+        """A green run that skipped phase 6 must not read as "the portal will work"."""
+        phases = run_checks(healthy(), CONFIG, "fs-0123456789abcdef0", None)
+        auth = next(s for s in phases if s.name == "ONTAP auth")
         assert auth.outcome is Outcome.SKIP
         assert "--via-lambda" in auth.detail
 
-        text = report(stages)
+        text = report(phases)
         assert "Not everything was checked" in text
-        assert "Every stage passed" not in text
+        assert "Every phase passed" not in text
 
     def test_missing_configuration_stops_rather_than_reporting_five_symptoms(self):
-        stages = run_checks(healthy(), {}, "fs-0123456789abcdef0", None)
-        assert len(stages) == 1
-        assert stages[0].outcome is Outcome.FAIL
-        assert "DemoMode" in stages[0].detail
+        phases = run_checks(healthy(), {}, "fs-0123456789abcdef0", None)
+        assert len(phases) == 1
+        assert phases[0].outcome is Outcome.FAIL
+        assert "DemoMode" in phases[0].detail
 
     def test_an_uninvokable_function_is_a_skip_not_a_verdict_on_ontap(self):
         aws = FakeAws({("lambda", "invoke"): (255, "", "AccessDeniedException")})
-        stage = check_ontap_auth(aws, "SomeFunction")
-        assert stage.outcome is Outcome.SKIP
+        phase = check_ontap_auth(aws, "SomeFunction")
+        assert phase.outcome is Outcome.SKIP
 
     def test_a_response_without_a_class_is_passed_through_verbatim(self):
         """An older deployment. Repeating ONTAP's words beats inventing a cause."""
         aws = healthy({"volumes": [], "error": "User is not authorized."})
-        stage = check_ontap_auth(aws, "SomeFunction")
-        assert stage.outcome is Outcome.FAIL
-        assert "User is not authorized." in stage.detail
-        assert "older deployment" in stage.facts["errorClass"]
+        phase = check_ontap_auth(aws, "SomeFunction")
+        assert phase.outcome is Outcome.FAIL
+        assert "User is not authorized." in phase.detail
+        assert "older deployment" in phase.facts["errorClass"]
 
     def test_a_successful_call_is_reported_as_success(self):
         aws = healthy({"volumes": [{"name": "vol1"}]})
-        stage = check_ontap_auth(aws, "SomeFunction")
-        assert stage.outcome is Outcome.OK
-        assert stage.facts["volumes"] == "1"
+        phase = check_ontap_auth(aws, "SomeFunction")
+        assert phase.outcome is Outcome.OK
+        assert phase.facts["volumes"] == "1"
 
-    def test_every_stage_passing_says_exactly_that(self):
-        stages = run_checks(healthy({"volumes": [{"name": "vol1"}]}, file_system_id="fs-1"), CONFIG, "fs-1", "Fn")
-        assert "Every stage passed" in report(stages)
+    def test_every_phase_passing_says_exactly_that(self):
+        phases = run_checks(healthy({"volumes": [{"name": "vol1"}]}, file_system_id="fs-1"), CONFIG, "fs-1", "Fn")
+        assert "Every phase passed" in report(phases)
 
 
 class TestConfigParsing:
@@ -305,9 +305,9 @@ class TestConfigParsing:
         parsed = parse_portal_config(
             'ontapMgmtIp: "",\nontapSecretName: "s",\nontapVolumeName: "v",\nontapSvmName: "m",'
         )
-        stage = check_configuration(parsed)
-        assert stage.outcome is Outcome.FAIL
-        assert "ontapMgmtIp" in stage.detail
+        phase = check_configuration(parsed)
+        assert phase.outcome is Outcome.FAIL
+        assert "ontapMgmtIp" in phase.detail
 
 
 @pytest.mark.parametrize(
@@ -322,9 +322,9 @@ class TestConfigParsing:
 def test_each_class_gets_its_own_advice(error_class: str, expected_phrase: str):
     """Five classes exist so that five different next steps can be given."""
     aws = healthy({"error": "something", "errorClass": error_class})
-    stage = check_ontap_auth(aws, "SomeFunction")
-    assert stage.outcome is Outcome.FAIL
-    assert expected_phrase in stage.detail
+    phase = check_ontap_auth(aws, "SomeFunction")
+    assert phase.outcome is Outcome.FAIL
+    assert expected_phrase in phase.detail
 
 
 class TestItReadsTheRealConfigShape:
@@ -375,36 +375,36 @@ class TestItReadsTheRealConfigShape:
         example = _portal_amplify_dir() / "portal-config.example.ts"
         parsed = parse_portal_config(example.read_text(encoding="utf-8"))
 
-        # Found, so the pattern still matches the file. Empty, so stage 1 must fail.
+        # Found, so the pattern still matches the file. Empty, so phase 1 must fail.
         assert set(parsed) == set(CONFIG), f"the parser no longer finds all four: {sorted(parsed)}"
-        stage = check_configuration(parsed)
-        assert stage.outcome is Outcome.FAIL
+        phase = check_configuration(parsed)
+        assert phase.outcome is Outcome.FAIL
         for key in CONFIG:
-            assert key in stage.detail
+            assert key in phase.detail
 
     @pytest.mark.skipif(
         not (_portal_amplify_dir() / "portal-config.ts").exists(),
         reason="portal-config.ts is gitignored; present only on a machine with a deployment",
     )
     def test_a_real_config_reports_configured(self):
-        """Where a deployment's own config exists, stage 1 should pass on it."""
+        """Where a deployment's own config exists, phase 1 should pass on it."""
         parsed = parse_portal_config((_portal_amplify_dir() / "portal-config.ts").read_text(encoding="utf-8"))
         assert check_configuration(parsed).outcome is Outcome.OK
 
 
 class TestSecretPairing:
-    """Stage 6: is the secret for the same file system the management IP resolves to.
+    """Phase 6: is the secret for the same file system the management IP resolves to.
 
-    The gap it closes is narrow and expensive. Stage 5 proves the secret is readable and
+    The gap it closes is narrow and expensive. Phase 5 proves the secret is readable and
     well formed; it cannot prove whose password it holds. An account with two file systems
     has two `fsxadmin` accounts with two passwords, and pairing one cluster's address with
-    the other's credentials passes stages 1 to 5 unchanged.
+    the other's credentials passes phases 1 to 5 unchanged.
 
     What makes it expensive rather than merely wrong: ONTAP answers a bad password with
     `6691623 "User is not authorized."`, and `fsxadmin` is measured at
     `max-failed-login-attempts=5` with `lockout-duration=0`. Five attempts take the
     cluster's administrative credential out of service, and waiting does not restore it.
-    So the stage must reach its verdict **without authenticating** -- verifying by trying
+    So the phase must reach its verdict **without authenticating** -- verifying by trying
     would spend attempts against the same counter it exists to protect.
     """
 
@@ -418,7 +418,7 @@ class TestSecretPairing:
             body["Tags"] = tags
         return body
 
-    def stage(self, aws):
+    def phase(self, aws):
         from check_ontap_connection import check_secret_belongs_to_file_system
 
         return check_secret_belongs_to_file_system(aws, "some-secret", self.FS)
@@ -427,7 +427,7 @@ class TestSecretPairing:
         aws = FakeAws(
             {("secretsmanager", "describe-secret"): self.described(tags=[{"Key": "FileSystemId", "Value": self.FS}])}
         )
-        result = self.stage(aws)
+        result = self.phase(aws)
         assert result.outcome is Outcome.OK
         assert result.facts["secretClaims"] == self.FS
 
@@ -436,7 +436,7 @@ class TestSecretPairing:
         aws = FakeAws(
             {("secretsmanager", "describe-secret"): self.described(tags=[{"Key": "FileSystemId", "Value": self.FS}])}
         )
-        self.stage(aws)
+        self.phase(aws)
         for call in aws.calls:
             assert "get-secret-value" not in call, "must not read the password"
             assert "invoke" not in call, "must not ask a Lambda to authenticate"
@@ -452,7 +452,7 @@ class TestSecretPairing:
                 ("fsx", "describe-file-systems"): FS_AVAILABLE,
             }
         )
-        result = self.stage(aws)
+        result = self.phase(aws)
         assert result.outcome is Outcome.FAIL
         assert self.OTHER in result.detail
         # The reader has to be told not to retry, because retrying is what locks it out.
@@ -472,7 +472,7 @@ class TestSecretPairing:
                 ("fsx", "describe-file-systems"): (254, "", "FileSystemNotFound"),
             }
         )
-        result = self.stage(aws)
+        result = self.phase(aws)
         assert result.outcome is Outcome.FAIL
         assert "stale" in result.detail.lower()
 
@@ -484,7 +484,7 @@ class TestSecretPairing:
                 )
             }
         )
-        result = self.stage(aws)
+        result = self.phase(aws)
         assert result.outcome is Outcome.OK
         assert "description" in result.detail
 
@@ -493,25 +493,25 @@ class TestSecretPairing:
         aws = FakeAws(
             {("secretsmanager", "describe-secret"): self.described(description=f"moved from {self.OTHER} to {self.FS}")}
         )
-        assert self.stage(aws).outcome is Outcome.SKIP
+        assert self.phase(aws).outcome is Outcome.SKIP
 
     def test_no_link_at_all_is_skip_not_pass(self):
         """An unverifiable pair reported as verified is how the mismatch survived."""
         aws = FakeAws({("secretsmanager", "describe-secret"): self.described(tags=[])})
-        result = self.stage(aws)
+        result = self.phase(aws)
         assert result.outcome is Outcome.SKIP
         # And it says how to make it checkable next time.
         assert "tag-resource" in result.detail
 
     def test_an_undescribable_secret_fails(self):
         aws = FakeAws({("secretsmanager", "describe-secret"): (254, "", "AccessDeniedException")})
-        assert self.stage(aws).outcome is Outcome.FAIL
+        assert self.phase(aws).outcome is Outcome.FAIL
 
 
 class TestConfigParsingSpansStatements:
     """A value the formatter wrapped must not read as absent.
 
-    It did. Stage 1 then said "set ontapSecretName" about a value that was set, sending
+    It did. Phase 1 then said "set ontapSecretName" about a value that was set, sending
     the reader to add what was already there. An unparseable value and a missing one are
     different problems and must not produce the same sentence.
     """

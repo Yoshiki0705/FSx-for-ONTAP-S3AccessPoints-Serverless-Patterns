@@ -72,13 +72,13 @@ After signing in, this. Getting here means you are set up.
 
 ---
 
-## Hands on — three stages
+## Hands on — three phases
 
-**Do not start with a new feature.** The three stages below widen the blast radius and add
-gates in this order. Stage 1 shows you the loop from edit to screen; stage 3 shows the loop for
+**Do not start with a new feature.** The three phases below widen the blast radius and add
+gates in this order. Phase 1 shows you the loop from edit to screen; phase 3 shows the loop for
 adding a new ONTAP operation.
 
-### Stage 1 (10 minutes) — change one string on screen
+### Phase 1 (10 minutes) — change one string on screen
 
 **Purpose**: experience the edit → screen → gate loop with a change that cannot break anything.
 
@@ -133,7 +133,7 @@ make drift   # eight-language coverage, and the hardcoded-string check
 > Product names, technical terms (ONTAP, FlexCache, SnapLock, S3 AP) and SQL literals are **not
 > translated**.
 
-### Stage 2 (30 minutes) — add a read-only row to an existing panel
+### Phase 2 (30 minutes) — add a read-only row to an existing panel
 
 **Purpose**: surface a value the ONTAP response already carries but the screen does not show.
 No handler change, so no backend redeploy.
@@ -164,7 +164,7 @@ devtools → Network → the `adminQuery` response is the quickest route.
 Three steps:
 
 1. Add the field to the `interface`, **under the name the handler actually returns**
-2. Add a heading (`<th>`) with `t("...")`. Put the string in `ja.ts` as in stage 1
+2. Add a heading (`<th>`) with `t("...")`. Put the string in `ja.ts` as in phase 1
 3. Add the value (`<td>`). For bytes, reuse the existing `toGiB()`
 
 ```bash
@@ -178,7 +178,7 @@ cd ../.. && make drift
 > An `interface` is only a declaration, so TypeScript cannot check that the handler returns that
 > name.
 
-### Stage 3 (1 hour) — add one ONTAP operation
+### Phase 3 (1 hour) — add one ONTAP operation
 
 **Purpose**: go around the whole loop, backend to UI. From here you cross **a boundary types do
 not reach**, so the order matters. Skip a step and you get a button that renders and fails on
