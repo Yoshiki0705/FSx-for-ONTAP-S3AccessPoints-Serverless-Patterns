@@ -1,4 +1,4 @@
-# はじめての 1 回を、前提の確認から撤収まで通す順序
+# はじめての 1 回を、前提の確認から後片付けまで通す順序
 
 🌐 **Language / 言語**: 日本語 | [English](../en/start-here.md)
 
@@ -84,7 +84,7 @@ make smoke STACK=... ARGS='--list-prefix reports/ --read-only'
 - Step Functions の実行と結果確認: [デプロイガイド — 動作確認](../guides/deployment-guide.md#5-動作確認)
 - ポータルを配る前の確認: `make portal-preflight`（**開けることはサインインできる証拠ではありません**）
 
-## 第 5 段 — 撤収
+## 第 5 段 — 後片付け
 
 **検証環境を残したままにしないでください。** 特に NAT Gateway と Interface VPC Endpoint は使っていなくても課金されます。
 

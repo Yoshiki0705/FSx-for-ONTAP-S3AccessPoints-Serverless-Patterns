@@ -252,7 +252,7 @@ S3 AP 経由では投入できません。NFS / SMB マウント経由にして�
 |---|---|---|
 | 移行先の共有をどの Access Point で見せるか | `S3AccessPointAlias`（44）と `S3AccessPointName`（36）。**両方**入れる | `make discover-s3ap`。テンプレートは IAM の Resource にバケット形式と Access Point 形式の両方を書き、後者は名前から組み立てます |
 | ONTAP の管理 LIF の IP | `OntapManagementIp`（31） | `aws fsx describe-file-systems --query "FileSystems[].OntapConfiguration.Endpoints.Management.IpAddresses"` |
-| ONTAP の資格情報（既存の Secrets Manager シークレット） | `OntapSecretName`（35） | `aws secretsmanager list-secrets --query "SecretList[].Name"`。**シークレットは触られません**（撤収時も対象外） |
+| ONTAP の資格情報（既存の Secrets Manager シークレット） | `OntapSecretName`（35） | `aws secretsmanager list-secrets --query "SecretList[].Name"`。**シークレットは触られません**（削除時も対象外） |
 | 移行先の SVM | `SvmUuid`（24） | `aws fsx describe-storage-virtual-machines --query "StorageVirtualMachines[].StorageVirtualMachineId"` |
 | Lambda を置く VPC とサブネット | `VpcId`（29）、`PrivateSubnetIds`（28） | `aws ec2 describe-subnets --filters Name=vpc-id,Values=<vpc-id>` |
 | すでに VPC Endpoint がある | `EnableVpcEndpoints=false`（26）。**既存があるのに `true` にすると衝突します** | [VPC Endpoint 競合マトリクス](deployment-guide.md#vpc-endpoint-競合マトリクス) |
@@ -313,5 +313,5 @@ S3 AP 経由では投入できません。NFS / SMB マウント経由にして�
 | [代替手段の比較](../comparison-alternatives.md) | S3 AP / EFS / NFS / DataSync の選択 |
 | [ファイルポータル UI の選択ガイド](../file-portal-amplify-gen2.md) | Amplify Gen2 / Nextcloud / 自作の比較 |
 | [SaaS ギャップ分析](../aws-feature-requests/file-portal-service-gap.md) | 15 SaaS の機能比較（本文書は移行経路側の続き） |
-| [はじめに読む](start-here.md) | 前提の確認 → パラメータ → デプロイ → 動作確認 → 撤収の順序 |
+| [はじめに読む](start-here.md) | 前提の確認 → パラメータ → デプロイ → 動作確認 → 後片付けの順序 |
 | [デプロイガイド](deployment-guide.md) | FSx for ONTAP と S3 AP の構築手順 |

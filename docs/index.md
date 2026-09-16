@@ -8,7 +8,7 @@
 
 | やりたいこと | 行き先 |
 |---|---|
-| **初めて触る（前提の確認 → パラメータ → デプロイ → 動作確認 → 撤収）** | [はじめに読む](ja/start-here.md) / [EN](en/start-here.md) |
+| **初めて触る（前提の確認 → パラメータ → デプロイ → 動作確認 → 後片付け）** | [はじめに読む](ja/start-here.md) / [EN](en/start-here.md) |
 | **どのパターンを deploy するか決める** | [パターン選択ガイド](pattern-selection-guide.md) / [EN](pattern-selection-guide.en.md) |
 | FSx for ONTAP なしで試す | [Demo Mode ガイド](demo-mode-guide.md) |
 | **仕様・上限値・設計判断の根拠を知る** | [Adoption Playbook](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook) — [ナビゲーション](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/blob/main/docs/ja/navigation.md) / [決定ツリー 8 本](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/tree/main/docs/ja/reference/decision-trees) |
