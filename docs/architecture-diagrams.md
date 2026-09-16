@@ -46,16 +46,16 @@
 | 群 A の 2 経路 | ストレージエンドポイントを持つ移行元の、DataSync 直行と S3 経由 2 段 | [表示](images/saas-migration-group-a-routes.svg) | [表示](images/saas-migration-group-a-routes-dark.svg) |
 | 群 B の中央実行構成 | 管理者 API を呼ぶ移行ワーカーを Step Functions で分割実行する | [表示](images/saas-migration-group-b-worker.svg) | [表示](images/saas-migration-group-b-worker-dark.svg) |
 
-## Part 7 — アプリの土台の選択肢
+## Part 7 — アプリの構築ツールの選択肢
 
 同一スコープ（Web + 認証 + API + テーブル）で 3 者を揃えた図。**列の骨格を共通にしてあるので、
 差分は「何が増えたか」で読める。** 数値の出どころは
-[アプリの土台の選択肢](ja/scaffolding-and-backend-toolkit-choices.md) と
+[アプリの構築ツールの選択肢](ja/scaffolding-and-backend-toolkit-choices.md) と
 [デプロイ検証と後片付けの手順](ja/scaffolding-deploy-verification.md)。
 
 | 図 | 内容 | ライト（既定） | ダーク |
 |----|------|:---:|:---:|
-| Amplify Gen 2 で組んだ場合 | このポータルが実際に動いている土台。境界リソースは既定で 0 | [表示](images/part7-foundation-amplify.svg) | [表示](images/part7-foundation-amplify-dark.svg) |
+| Amplify Gen 2 で組んだ場合 | このポータルが実際に動いている構築ツール。境界リソースは既定で 0 | [表示](images/part7-foundation-amplify.svg) | [表示](images/part7-foundation-amplify-dark.svg) |
 | AWS Blocks で組んだ場合 | Amazon Cognito を使わず認証がテーブルに入る。CMK 1 本 | [表示](images/part7-foundation-blocks.svg) | [表示](images/part7-foundation-blocks-dark.svg) |
 | Nx Plugin for AWS で組んだ場合 | 経路上に AWS WAF 2 本、us-east-1 に 1 本、CMK 4 本 | [表示](images/part7-foundation-nx.svg) | [表示](images/part7-foundation-nx-dark.svg) |
 

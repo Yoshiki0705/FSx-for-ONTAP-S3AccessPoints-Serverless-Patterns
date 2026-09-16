@@ -1,4 +1,4 @@
-# フルスタック AWS アプリの土台の選択肢 — Nx Plugin for AWS / AWS Blocks / Amplify Gen 2
+# フルスタック AWS アプリの構築ツールの選択肢 — Nx Plugin for AWS / AWS Blocks / Amplify Gen 2
 
 > 🌐 **Language / 言語**: 日本語 | [English](../en/scaffolding-and-backend-toolkit-choices.md)
 
@@ -11,7 +11,7 @@
 - **このリポジトリは Amplify Gen 2 を採用している。** ファイルポータル
   （`solutions/amplify-portal/`）が sandbox と Hosting で動いており、この文書はそれを
   「正式なデプロイパターンの 1 つ」として位置づけ、選定理由と乗り換えの条件を記録する。
-- 同等の初期構成を 3 通りで作り、ローカル synth までを実測した（2026-09-07、AWS へのデプロイなし）。
+- 同等の初期構成を 3 通りで作り、ローカルでのテンプレート生成（`synth`）までを実測した（2026-09-07、AWS へのデプロイなし）。
   スターターの CloudFormation リソース数は **Amplify Gen 2: 79 / AWS Blocks: 83（sandbox
   preset）・117（production preset）/ Nx Plugin for AWS: 86**。桁は同じで、**差が出るのは
   リソース数ではなく既定値**。
@@ -34,7 +34,7 @@
 本番運用の実績比較（3 つのうち本番相当の運用実績があるのは、このリポジトリでは Amplify Gen 2
 だけ）。AWS Blocks の GA 後の仕様（本文の測定は preview 時点）。
 
-**対象読者**: これから AWS 上にフルスタックアプリの土台を選ぶ人。すでにどれかを使っていて、
+**対象読者**: これから AWS 上にフルスタックアプリの構築ツールを選ぶ人。すでにどれかを使っていて、
 別のものに移る判断材料が欲しい人。このリポジトリのポータルがなぜ Amplify Gen 2 なのかを
 知りたい人。
 
@@ -349,5 +349,5 @@ CDK アプリなので既存の CDK スタックに埋め込める。Nx Plugin �
 - [IaC ガバナンスパターン](../../solutions/amplify-portal/docs/iac-governance-patterns.md) — cdk-nag をゲートにできない理由、alpha モジュール方針
 - [ポータルの Getting Started](../../solutions/amplify-portal/docs/GETTING-STARTED.md) — 他環境でのデプロイ手順
 - [PoC から本番への移行](portal-poc-to-production.md) — sandbox 構成を本番に寄せる手順
-- [同じ 4 機能を 3 つの土台で実装した記録](portal-parity-four-features.md) — この文書はスターターを測ったもので、あちらは同じ 4 機能を 3 者で実装し AWS 上で動かした記録
-- [4 機能の先へ](portal-parity-next-steps.md) — 段階ごとに何が新しく必要になるか
+- [同じ 4 機能を 3 つの構築ツールで実装した記録](portal-parity-four-features.md) — この文書はスターターを測ったもので、あちらは同じ 4 機能を 3 者で実装し AWS 上で動かした記録
+- [4 機能の先へ](portal-parity-next-steps.md) — フェーズごとに何が新しく必要になるか

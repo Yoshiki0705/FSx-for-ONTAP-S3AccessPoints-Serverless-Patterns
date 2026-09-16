@@ -1,19 +1,19 @@
-# 同じ 4 機能を 3 つの土台で実装した記録 — Amplify Gen 2 / AWS Blocks / Nx Plugin for AWS
+# 同じ 4 機能を 3 つの構築ツールで実装した記録 — Amplify Gen 2 / AWS Blocks / Nx Plugin for AWS
 
 > 🌐 **Language / 言語**: 日本語 | [English](../en/portal-parity-four-features.md)
 
 ## TL;DR
 
-- [土台の選択肢](scaffolding-and-backend-toolkit-choices.md)はスターターを生成して **ローカルの
-  synth まで**を測ったものだった。この文書はその続きで、**同じ 4 機能（サインイン / 一覧 /
-  読み取り / アップロード）を 3 つの土台で実装し、同一の Amazon FSx for NetApp ONTAP S3 Access
+- [構築ツールの選択肢](scaffolding-and-backend-toolkit-choices.md)はスターターを生成して **ローカルの
+  テンプレート生成（`synth`）まで**を測ったものだった。この文書はその続きで、**同じ 4 機能（サインイン / 一覧 /
+  読み取り / アップロード）を 3 つの構築ツールで実装し、同一の Amazon FSx for NetApp ONTAP S3 Access
   Point に対して AWS 上で動かした**記録である。
 - 4 機能は 3 者すべてで動いた。**一覧は 13 オブジェクト、読み取りは 1,615 バイト /
   `text/markdown; charset=utf-8`、アップロードは 24 バイトが往復**し、3 者で一致した。
 - **S3 Access Point への到達方法は 3 者で同じ**だった。標準の S3 SDK にエイリアスをバケット名として
-  渡すだけで、エンドポイントの上書きも VPC への接続も要らない。土台によって変わるのは到達方法では
+  渡すだけで、エンドポイントの上書きも VPC への接続も要らない。構築ツールによって変わるのは到達方法では
   なく、**権限の書き方と、その権限をどこに書くか**である。
-- **同じ不正入力が、土台によって別の層で拒否された。** `../escape.txt` は Nx の生成物では AWS WAF が
+- **同じ不正入力が、構築ツールによって別の層で拒否された。** `../escape.txt` は Nx の生成物では AWS WAF が
   Lambda に届く前に 403 で止め（WebACL の `BlockedRequests` で確認）、AWS Blocks では自分で書いた
   手続きに届いてドメインエラーになった。どちらも拒否だが、**障害調査のときに見えるものが違う**。
 - 実測: デプロイは **AWS Blocks 318 秒 / 82 リソース**、**Nx Plugin for AWS 307 秒 / 100 リソース**。
@@ -28,11 +28,11 @@
 
 **書かないこと**: どれが優れているかの結論。性能測定（スループットもレイテンシも測っていない）。
 4 機能より広い範囲の比較（ONTAP の管理操作・AI 処理・8 言語 UI・ARP/WORM はこの比較の対象外で、
-[次に足すもの](#4-機能から先へ進む段階)に前提だけを書いた）。AWS Blocks の GA 後の仕様
+[次に足すもの](#4-機能から先へ進むフェーズ)に前提だけを書いた）。AWS Blocks の GA 後の仕様
 （測定は preview 時点）。
 
 **対象読者**: FSx for ONTAP のボリュームをブラウザから見せる仕組みを作ろうとしていて、
-土台を決めかねている人。すでにどれかで作っていて、他の土台なら何が違ったのかを知りたい人。
+構築ツールを決めかねている人。すでにどれかで作っていて、他の構築ツールなら何が違ったのかを知りたい人。
 
 ## 固定した 4 機能
 
@@ -40,7 +40,7 @@
 
 | 機能 | API 名 | 何をするか |
 |---|---|---|
-| サインイン | （土台の認証機構） | 認証を通す |
+| サインイン | （構築ツールの認証機構） | 認証を通す |
 | 一覧 | `listFiles(prefix)` | prefix 配下のオブジェクトを一覧する |
 | 読み取り | `readFile(path)` | 1 オブジェクトの中身を取得する |
 | アップロード | `uploadFile(name, text)` | 1 オブジェクトを書き込む |
@@ -48,7 +48,7 @@
 補助として `describeTarget()` を置き、既定の prefix と書き込み先を返すようにした。
 
 **4 つに絞った理由**: このリポジトリのポータルは 180 を超える操作を持つ。それを 3 通りに移植すると、
-比べているものが「土台の差」ではなく「私が書いた量」になる。4 機能なら、どの土台でも同じ深さまで
+比べているものが「構築ツールの差」ではなく「私が書いた量」になる。4 機能なら、どの構築ツールでも同じ深さまで
 書ききれる。
 
 ## 共通の検証対象
@@ -60,7 +60,7 @@
 | Access Point | Internet origin（VPC 接続なし） |
 | 一覧の対象 | `reports/2026/05/10/` — **13 オブジェクト** |
 | 読み取りの対象 | `compliance-report-<uuid>.md` — **1,615 バイト**、`text/markdown; charset=utf-8` |
-| 書き込み先 | `portal-parity/{blocks,nx,amplify}/` に土台ごとに分離 |
+| 書き込み先 | `portal-parity/{blocks,nx,amplify}/` に構築ツールごとに分離 |
 | 書き込んだもの | `note-2026-09-14.txt` — **24 バイト** |
 
 `Content-Type` はアプリが付けたものではなく、FSx for ONTAP のボリューム上のオブジェクトが
@@ -248,7 +248,7 @@ Lambda に到達する前に落ちる。
 **Amplify Gen 2 を並べていない理由**: 比較に使ったのはこのリポジトリで動いているポータルで、
 4 機能より広い機能を持つ。同じ 4 機能だけの Amplify アプリを別に作れば数値は出るが、それは
 「このポータルの実測」ではなくなる。スターター同士の比較は
-[土台の選択肢](scaffolding-and-backend-toolkit-choices.md#実測)にある。
+[構築ツールの選択肢](scaffolding-and-backend-toolkit-choices.md#実測)にある。
 
 **AWS Blocks が 82 で、同じ preset のスターターが 117 だったこと**について。差は preset ではなく
 **使ったブロックの数**から来る。この実装では `AuthBasic` と外部参照の `FileBucket` だけを使い、
@@ -313,10 +313,10 @@ TS6059 / TS6307 で失敗した。エラーが指すのは自分が書いたフ�
 コンポーネントが自前で状態を持つため、DOM 上の入力要素にファイルを設定しただけでは
 アップロードが始まらない。表のオーバーフローメニューの項目を先に押して初期化する必要がある。
 
-## 4 機能から先へ進む段階
+## 4 機能から先へ進むフェーズ
 
 この 4 機能は最小の実用単位で、実際のポータルに必要なものはこの先にある。
-段階ごとの前提を[拡張の段階](portal-parity-next-steps.md)にまとめた。
+フェーズごとの前提を[拡張のフェーズ](portal-parity-next-steps.md)にまとめた。
 
 ## 再現手順
 
@@ -351,10 +351,10 @@ NX_TUI=false CI=true nx run @<project>/infra:deploy-sandbox --args="--rollback"
 
 ## 関連ドキュメント
 
-- [フルスタック AWS アプリの土台の選択肢](scaffolding-and-backend-toolkit-choices.md) —
+- [フルスタック AWS アプリの構築ツールの選択肢](scaffolding-and-backend-toolkit-choices.md) —
   スターター同士の比較、生成される既定値の差、固定費
-- [スキャフォールディング生成物のデプロイ検証と後片付けの手順](scaffolding-deploy-verification.md) —
+- [構築ツールの生成物のデプロイ検証と後片付けの手順](scaffolding-deploy-verification.md) —
   削除保護・`Retain`・express モードの固着を含む後片付けの実務
-- [拡張の段階](portal-parity-next-steps.md) — 4 機能の先に足すものと、その前提
+- [拡張のフェーズ](portal-parity-next-steps.md) — 4 機能の先に足すものと、その前提
 - [FSx for ONTAP の管理インターフェースの整理](fsx-ontap-management-interfaces.md) —
   管理面に何が到達できるか

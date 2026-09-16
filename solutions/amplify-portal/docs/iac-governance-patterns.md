@@ -192,7 +192,7 @@ AI がコードを書く時代に IaC が重要性を増す理由: **コード�
 
 ## 関連ドキュメント
 
-- [アプリの土台の選択肢](../../../docs/ja/scaffolding-and-backend-toolkit-choices.md) —
+- [アプリの構築ツールの選択肢](../../../docs/ja/scaffolding-and-backend-toolkit-choices.md) —
   Nx Plugin for AWS / AWS Blocks / Amplify Gen 2 の比較。**cdk-nag をベースライン比較として
   運用する理由を、この文書から参照している**
 - [デプロイ検証と後片付けの手順](../../../docs/ja/scaffolding-deploy-verification.md) — 3 者を実機で

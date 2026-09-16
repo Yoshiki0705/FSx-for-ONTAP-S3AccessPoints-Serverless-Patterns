@@ -1,10 +1,10 @@
-# スキャフォールディング生成物のデプロイ検証と後片付けの手順
+# 構築ツールの生成物のデプロイ検証と後片付けの手順
 
 > 🌐 **Language / 言語**: 日本語 | [English](../en/scaffolding-deploy-verification.md)
 
-対象は [アプリの土台の選択肢](scaffolding-and-backend-toolkit-choices.md) で比較した 3 つの生成物を、
+対象は [アプリの構築ツールの選択肢](scaffolding-and-backend-toolkit-choices.md) で比較した 3 つの生成物を、
 **実際に AWS へデプロイして確認し、確認したら削除する**作業。比較ドキュメントの数値はローカル
-synth までの実測なので、この文書はその先（デプロイ・実機動作・後片付け）を担当する。
+テンプレート生成（`synth`）までの実測なので、この文書はその先（デプロイ・実機動作・後片付け）を担当する。
 
 **先に読む理由**: 生成物には削除保護と `Retain` が既定で入っており、スタックを削除しても消えない
 リソースが残る。件数と種類は下の[後片付けの手順](#後片付けの手順)にあり、**デプロイ前に読む前提**で置いてある。
@@ -290,7 +290,7 @@ Lambda とバケットデプロイが増えるため。Nx で残る 6 件には
   `s3.Bucket` の `autoDeleteObjects` が作るロググループが Never expire で残ることを報告している。
   今回残った 5 件のうち `CustomS3AutoDeleteObjects` は #24815 と同一のもの。
 
-**踏み方**: 「テンプレートを読めば何が残るか分かる」という前提が崩れる。**synth ベースの棚卸しは、
+**踏み方**: 「テンプレートを読めば何が残るか分かる」という前提が崩れる。**テンプレートの静的解析（`synth`）ベースの棚卸しは、
 CloudFormation の外で作られるリソースを原理的に見られない。**
 
 <!-- allow:not-a-claim: ポータル側の既存記録の要約で、新たな主張ではない -->
@@ -527,8 +527,8 @@ TOTP の登録を要求する。** Blocks（production preset）の DynamoDB 4 �
 
 ## 関連ドキュメント
 
-- [アプリの土台の選択肢](scaffolding-and-backend-toolkit-choices.md) — 3 者の位置づけ、synth までの実測、固定費
+- [アプリの構築ツールの選択肢](scaffolding-and-backend-toolkit-choices.md) — 3 者の位置づけ、synth までの実測、固定費
 - [ポータルの検証結果](../../solutions/amplify-portal/docs/verification-results.md) — 検証区分の元になっている記録
 - [portal-sandbox-lifecycle](../agent/portal-sandbox-lifecycle.md) — 同じロググループ残存をこのリポジトリのポータルで記録したもの（P10 の先例）
 - [IaC ガバナンスパターン](../../solutions/amplify-portal/docs/iac-governance-patterns.md) — cdk-nag をベースライン比較として運用する理由、ドリフト検出の層
-- [同じ 4 機能を 3 つの土台で実装した記録](portal-parity-four-features.md) — この文書の後片付けの手順が対象にしているスタックで、実際に 4 機能を動かした記録
+- [同じ 4 機能を 3 つの構築ツールで実装した記録](portal-parity-four-features.md) — この文書の後片付けの手順が対象にしているスタックで、実際に 4 機能を動かした記録

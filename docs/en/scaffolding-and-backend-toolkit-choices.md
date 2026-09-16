@@ -369,4 +369,4 @@ This repository does not use it for production-grade purposes.
 - [Portal Getting Started](../../solutions/amplify-portal/docs/GETTING-STARTED.en.md) — deploying into another environment
 - [PoC to production](portal-poc-to-production.md) — moving a sandbox configuration toward production
 - [The same four features on three foundations](portal-parity-four-features.md) — this document measures the starters; that one implements the same four features on all three and runs them on AWS
-- [Beyond the four features](portal-parity-next-steps.md) — what each further stage requires
+- [Beyond the four features](portal-parity-next-steps.md) — what each further phase requires
