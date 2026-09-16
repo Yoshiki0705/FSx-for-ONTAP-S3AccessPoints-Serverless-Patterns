@@ -56,7 +56,7 @@ can be skipped; it means **this document does not need to supply new evidence fo
 | P7 | Blocks sandbox and production have separate commands and teardown paths | **Documented** | [CLI reference](https://docs.aws.amazon.com/blocks/latest/devguide/cli-reference.html) |
 | P8 | `Retain` resources survive a stack deletion | **Documented** (the counts are this document's measurement) | [DeletionPolicy](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-attribute-deletionpolicy.html) |
 | P9 | Changing a Block ID destroys data in a stateful Block | **Documented** | [AWS Blocks concepts](https://docs.aws.amazon.com/blocks/latest/devguide/concepts.html) |
-| P10 | Log groups outside the template survive, with retention set to never expire | **Documented + two upstream issues** (the surviving count is this document's measurement) | [Lambda logs](https://docs.aws.amazon.com/lambda/latest/dg/monitoring-cloudwatchlogs.html) / [aws-cdk #26553](https://github.com/aws/aws-cdk/issues/26553) / [aws-cdk #24815](https://github.com/aws/aws-cdk/issues/24815) |
+| P10 | Log groups outside the template survive, with retention set to never expire | **Documented + upstream issues, two of them open** (the surviving count is this document's measurement) | [Lambda logs](https://docs.aws.amazon.com/lambda/latest/dg/monitoring-cloudwatchlogs.html) / [aws-cdk #26553](https://github.com/aws/aws-cdk/issues/26553) / [aws-cdk #24815](https://github.com/aws/aws-cdk/issues/24815) |
 | P11 | `npm create` waits indefinitely in a non-interactive shell | **npm's default behaviour** (the isolation is this document's measurement; the similar upstream PR is a different cause) | [npm config `yes`](https://docs.npmjs.com/cli/v11/using-npm/config#yes) / [nx-plugin-for-aws #1193](https://github.com/awslabs/nx-plugin-for-aws/pull/1193) |
 | P12 | Hotswap introduces drift into the stack | **Documented** | [cdk deploy](https://docs.aws.amazon.com/cdk/v2/guide/ref-cli-cmd-deploy.html) (`--hotswap`) |
 | P13 | A KMS key deleted by CloudFormation enters a 30-day wait that cannot be shortened afterwards | **The default is documented** (the refusal to shorten is this document's measurement) | [Deleting keys](https://docs.aws.amazon.com/kms/latest/cryptographic-details/key-deletion.html) |
@@ -254,6 +254,13 @@ Counted from the synthesized templates — resources a stack deletion does not r
 
 **Only the AWS Blocks sandbox preset is at 0**, which makes it the easiest one to try first.
 
+**Those eight and nine are the generator's defaults, not an AWS constraint.** The generated code
+is what applies `Retain` and deletion protection, so anything that may go can be released on the
+generating side (`RemovalPolicy.DESTROY` in CDK; the deletion-protection properties on DynamoDB
+and Cognito set to false). Defaults leaning towards keeping data is a production-shaped choice;
+it conflicts with intent only when the deployment is a test. **The KMS waiting period is the one
+thing that cannot be avoided** (see P5 and P13).
+
 **The production preset count was corrected from 9 to 8 by this verification.** One KMS key was
 previously counted as retained; recounting `DeletionPolicy` in the template shows Retain covers
 only the 4 DynamoDB tables and the 4 CDKBucketDeployment resources, not the KMS key.
@@ -310,11 +317,28 @@ survive.**
 - **The never-expire part**: the Lambda documentation states that the log group is created on
   the function's first execution and that its retention is set to never expire (source:
   [Lambda logs in CloudWatch](https://docs.aws.amazon.com/lambda/latest/dg/monitoring-cloudwatchlogs.html)).
-- **The CDK custom-resource part**: [aws/aws-cdk #26553](https://github.com/aws/aws-cdk/issues/26553)
-  is open as a request to make CustomResourceProvider log groups removable and configurable,
-  and [aws/aws-cdk #24815](https://github.com/aws/aws-cdk/issues/24815) reports that the log
-  group created by `s3.Bucket`'s `autoDeleteObjects` stays on Never expire. Of the five that
-  stayed here, `CustomS3AutoDeleteObjects` is the same one as in #24815.
+- **The part CDK does not declare**: the `CustomResourceProvider` base class declares exactly
+  two resources, `AWS::IAM::Role` and `AWS::Lambda::Function`, and no `AWS::Logs::LogGroup`
+  (source: [custom-resource-provider-base.ts](https://github.com/aws/aws-cdk/blob/main/packages/aws-cdk-lib/core/lib/custom-resource-provider/custom-resource-provider-base.ts),
+  read in full on main, 2026-09-16). Every provider built on that base has the same shape.
+
+**No released version fixes this** (checked 2026-09-16). Upstream:
+
+| Issue | Subject | State |
+|---|---|---|
+| [aws-cdk #26553](https://github.com/aws/aws-cdk/issues/26553) | Destroy the CustomResourceProvider log group when the stack is deleted | **OPEN** (opened 2023-07-28, last updated 2026-01-13) |
+| [aws-cdk #23909](https://github.com/aws/aws-cdk/issues/23909) | A global `logRetentionDays` setting | **OPEN** (`p2` / `feature-request`, last updated 2025-05-07) |
+| [aws-cdk #24815](https://github.com/aws/aws-cdk/issues/24815) | `autoDeleteObjects` log group on Never expire | **CLOSED as completed (2024-06-19), but the fix was reverted** |
+
+**Read #24815 as closed and it looks like a shipped fix.** The closing comment from an AWS
+maintainer says the PR was reverted for a number of issues, that this is a general issue across
+all custom resources, and that tracking moved to #23909. **Closed is not shipped.** An earlier
+revision of this document cited that issue alone, which read as though the fix had landed.
+
+**Your own functions are a different case.** A Lambda you write can declare its log group in the
+template, so it does not survive — that is what the "declared" column above shows going away on
+all three. What survives belongs to CDK's internal custom resources, and there is no route to
+declare those from your own code. Whether an escape hatch could reach them was not tried here.
 
 **How it catches you**: the assumption that reading the template tells you what will be left
 breaks. **A synth-based inventory structurally cannot see resources created outside
@@ -563,7 +587,7 @@ CMK was the one for the alarm topic.
 - [CloudFormation: DescribeStackEvents](https://docs.aws.amazon.com/AWSCloudFormation/latest/APIReference/API_DescribeStackEvents.html) / [ListStacks](https://docs.aws.amazon.com/AWSCloudFormation/latest/APIReference/API_ListStacks.html) — pagination, and the 90 days a deleted stack stays readable
 - [Lambda logs in CloudWatch](https://docs.aws.amazon.com/lambda/latest/dg/monitoring-cloudwatchlogs.html)
 - [npm config: `yes`](https://docs.npmjs.com/cli/v11/using-npm/config#yes) — auto-answering `npm create`'s confirmation prompt
-- Upstream issues / PRs: [nx-plugin-for-aws #1265](https://github.com/awslabs/nx-plugin-for-aws/issues/1265) (the express target), [#1193](https://github.com/awslabs/nx-plugin-for-aws/pull/1193) (advisory-fetch latency), [#1228](https://github.com/awslabs/nx-plugin-for-aws/pull/1228) (npm 11 prerequisite), [aws-cdk-cli #1931](https://github.com/aws/aws-cdk-cli/issues/1931), [aws-cdk #26553](https://github.com/aws/aws-cdk/issues/26553), [aws-cdk #24815](https://github.com/aws/aws-cdk/issues/24815)
+- Upstream issues / PRs: [nx-plugin-for-aws #1265](https://github.com/awslabs/nx-plugin-for-aws/issues/1265) (the express target), [#1193](https://github.com/awslabs/nx-plugin-for-aws/pull/1193) (advisory-fetch latency), [#1228](https://github.com/awslabs/nx-plugin-for-aws/pull/1228) (npm 11 prerequisite), [aws-cdk-cli #1931](https://github.com/aws/aws-cdk-cli/issues/1931), [aws-cdk #26553](https://github.com/aws/aws-cdk/issues/26553), [aws-cdk #23909](https://github.com/aws/aws-cdk/issues/23909), [aws-cdk #24815](https://github.com/aws/aws-cdk/issues/24815) (closed, but the fix was reverted)
 - The generated output itself: `packages/infra/project.json` (Nx target definitions), `aws-blocks/index.cdk.ts` and `package.json` (Blocks commands and presets)
 
 > Content is summarized and restructured for readability.
