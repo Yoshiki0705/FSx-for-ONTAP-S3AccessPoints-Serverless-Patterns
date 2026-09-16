@@ -118,16 +118,16 @@ make ontap-preflight FS_ID=<fs-id> LAMBDA=<ResourceMgmtFunction の名前>
 
 ### 最初に実行する `make ontap-preflight`
 
-ONTAP パネルにデータが出ないとき、原因は 6 つの段のどれかにある。**画面のメッセージから逆算しないこと**（後述の理由により、以前のポータルは違う段を指していた）。次のコマンドが 6 段を順に検査し、壊れている段を名指しする。
+ONTAP パネルにデータが出ないとき、原因は 6 つの段のどれかにある。**画面のメッセージから逆算しないこと**（後述の理由により、以前のポータルは違う段を指していた）。次のコマンドが 6 フェーズを順に検査し、壊れている段を名指しする。
 
 ```bash
-# 段 1・5（設定とシークレット）
+# フェーズ 1・5（設定とシークレット）
 make ontap-preflight
 
-# 段 2〜4 を追加（ファイルシステム / SVM / ボリュームの実在確認）
+# フェーズ 2〜4 を追加（ファイルシステム / SVM / ボリュームの実在確認）
 make ontap-preflight FS_ID=fs-0123456789abcdef0
 
-# 段 6 を追加（ONTAP が認証情報を受け付けるか）
+# フェーズ 6 を追加（ONTAP が認証情報を受け付けるか）
 make ontap-preflight FS_ID=fs-0123456789abcdef0 LAMBDA=<ResourceMgmtFunction の名前>
 ```
 
@@ -140,7 +140,7 @@ make ontap-preflight FS_ID=fs-0123456789abcdef0 LAMBDA=<ResourceMgmtFunction の
 | 5 | シークレットが読めて JSON で、パスワードに前後の空白がないか | Secrets Manager |
 | 6 | **ONTAP が認証情報を受け付けるか** | 下の HTTP 401 の節 |
 
-段 6 だけは手元の端末から検査できない。管理 LIF はプライベートなので、`LAMBDA=` でデプロイ済み関数に代理で呼ばせる。指定しない場合、段 6 は PASS ではなく **SKIP** と表示される。実際に壊れていた段を一度も試さずに全段グリーンと出すほうが、何も出さないより悪いため。
+フェーズ 6 だけは手元の端末から検査できない。管理 LIF はプライベートなので、`LAMBDA=` でデプロイ済み関数に代理で呼ばせる。指定しない場合、フェーズ 6 は PASS ではなく **SKIP** と表示される。実際に壊れていたフェーズを一度も試さずに全フェーズグリーンと出すほうが、何も出さないより悪いため。
 
 #### 実際の画面表示
 
@@ -152,11 +152,11 @@ make ontap-preflight FS_ID=fs-0123456789abcdef0 LAMBDA=<ResourceMgmtFunction の
 
 ![認証情報が拒否されたときの表示（ダークテーマ）](screenshots/portal-ontap-credentials-rejected-dark.png)
 
-パスワードを揃えたあとの同じパネル。preflight が全段 PASS になり、スナップショットが一覧される:
+パスワードを揃えたあとの同じパネル。preflight が全フェーズ PASS になり、スナップショットが一覧される:
 
 ![復旧後のスナップショット一覧](screenshots/portal-snapshots-recovered.png)
 
-> **なぜこの順序が重要か**: 検証環境で実際に起きた事象は「段 1〜5 がすべて PASS し、段 6 だけが FAIL」だった。`aws fsx describe-volumes` はボリュームを CREATED として返し、リクエストは TLS でクラスタに到達していた。原因は Secrets Manager と ONTAP のパスワード不一致である。にもかかわらずポータルは「📡 ONTAP 接続が必要」という見出しで VPC・サブネット・セキュリティグループの確認を促していた。**間違った層を名指しすることは、何も言わないより高くつく。読者はそれを信じるからである。**
+> **なぜこの順序が重要か**: 検証環境で実際に起きた事象は「フェーズ 1〜5 がすべて PASS し、フェーズ 6 だけが FAIL」だった。`aws fsx describe-volumes` はボリュームを CREATED として返し、リクエストは TLS でクラスタに到達していた。原因は Secrets Manager と ONTAP のパスワード不一致である。にもかかわらずポータルは「📡 ONTAP 接続が必要」という見出しで VPC・サブネット・セキュリティグループの確認を促していた。**間違った層を名指しすることは、何も言わないより高くつく。読者はそれを信じるからである。**
 >
 > 現在は各パネルが原因を 5 クラス（`NOT_CONFIGURED` / `UNREACHABLE` / `CREDENTIALS_REJECTED` / `NOT_FOUND` / `ONTAP_ERROR`）に分類して表示し、認証情報が拒否された場合は「ネットワークを調べる必要はない」と明示する。分類は `shared/ontap_diagnosis.py` にある。
 

@@ -200,7 +200,7 @@ This maps one to one onto the user guide's
 |--------------------|-------------|-------------|
 | Cannot sign in; the button does nothing | Whether the URL is `https://` | A LAN `http://` address was handed out → [what the URL actually is](#what-the-url-actually-is) |
 | Cannot sign in; it says the password is wrong | `UserStatus` from `aws cognito-idp admin-get-user --user-pool-id "$POOL" --username <user>` | Still `FORCE_CHANGE_PASSWORD` → set it again with `--permanent` |
-| A message about ONTAP | `make ontap-preflight FS_ID=<fs-id> LAMBDA=<function-name>` | One of six stages → [ONTAP connection guide](ONTAP-CONNECTION-GUIDE.en.md#start-with-make-ontap-preflight) |
+| A message about ONTAP | `make ontap-preflight FS_ID=<fs-id> LAMBDA=<function-name>` | One of six phases → [ONTAP connection guide](ONTAP-CONNECTION-GUIDE.en.md#start-with-make-ontap-preflight) |
 | The screen is cut off and I cannot reach a button | Ask which screen and which button | **A defect.** Nothing should scroll sideways at phone widths → [verification steps](../../../docs/en/portal-mobile-guide.md#what-has-been-verified) |
 | I cannot see files, or only some of them | Permissions, or the S3 Access Point's scope | [Authorization model](../../../docs/en/portal-authorization-model.md) |
 
@@ -357,7 +357,7 @@ opening each one's own console.
 
 After deploying, before handing anything to a user:
 
-- [ ] `make ontap-preflight FS_ID=<fs-id> LAMBDA=<function-name>` reports **all six stages PASS** (a SKIP from omitting `LAMBDA=` is not a PASS)
+- [ ] `make ontap-preflight FS_ID=<fs-id> LAMBDA=<function-name>` reports **all six phases PASS** (a SKIP from omitting `LAMBDA=` is not a PASS)
 - [ ] There is a permanent `https://` URL, and you are not about to hand out a tunnel URL
 - [ ] The user's account exists and its `UserStatus` is `CONFIRMED`
 - [ ] Only the people who need it are in `storage-admin`

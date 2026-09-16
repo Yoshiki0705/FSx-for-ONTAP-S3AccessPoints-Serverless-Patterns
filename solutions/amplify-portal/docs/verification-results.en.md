@@ -39,7 +39,7 @@ This document records **how far each portal feature has been verified against a 
 | SMB share encryption toggle | ON / OFF switching and state reflection | Same guide, Scenario 6 |
 | Export policy create / delete | Policy creation, rule addition, deletion | Same guide, Scenario 7 |
 | ONTAP failure classification | On a real environment whose credentials were refused, confirmed the UI shows `CREDENTIALS_REJECTED`, HTTP 401 and the ONTAP error code. After bringing the two passwords into agreement, confirmed the same panel lists 13 snapshots (both states captured as screenshots) | [ONTAP connection guide](ONTAP-CONNECTION-GUIDE.en.md#what-the-screen-shows) |
-| `make ontap-preflight` | All six stages run against a real environment: stages 1-5 PASS and stage 6 FAIL before the repair, every stage PASS after. Verified on **the case it exists for** — only stage 6 failing | Same guide |
+| `make ontap-preflight` | All six phases run against a real environment: phases 1-5 PASS and phase 6 FAIL before the repair, every phase PASS after. Verified on **the case it exists for** — only stage 6 failing | Same guide |
 
 ### Added 2026-08-14 (write paths, ONTAP 9.18.1P3D1)
 

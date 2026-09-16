@@ -29,7 +29,7 @@ broke, so the reader spends their time on the right layer.
     5. secret          it exists, is JSON, and carries a username and a password
     6. ONTAP auth      ONTAP accepts those credentials
 
-Stage 6 is the one that was wrong and the one hardest to check: the management LIF is
+Phase 6 is the one that was wrong and the one hardest to check: the management LIF is
 private, so a laptop outside the VPC cannot reach it. Rather than skip it, `--via-lambda`
 asks the deployed function -- which is inside the VPC -- to make the call, and reads the
 class back out of its answer. That is how the original diagnosis was actually made.
@@ -45,11 +45,11 @@ Usage
         --svm fsxsvm01 --volume vol1 \
         --secret fsx-ontap-fsxadmin-credentials
 
-    # Include stage 6 by asking the deployed function to make the call
+    # Include phase 6 by asking the deployed function to make the call
     python3 scripts/check_ontap_connection.py --config <path> \
         --via-lambda amplify-...-ResourceMgmtFunction...
 
-Exit status is 1 if any stage failed, so it can gate a deploy. Stages that could not be
+Exit status is 1 if any phase failed, so it can gate a deploy. Phases that could not be
 attempted -- no credentials, no --via-lambda -- are reported as SKIP and do not fail.
 """
 
@@ -76,7 +76,7 @@ class Outcome(str, Enum):
 
 
 @dataclass
-class Stage:
+class Phase:
     """One link in the chain, and what it turned out to be."""
 
     name: str
@@ -131,7 +131,7 @@ def parse_portal_config(text: str) -> dict[str, str]:
     one is set here, pass --mgmt-ip and the rest to say so.
 
     The statement, not the line. A long value wrapped across lines by the formatter used
-    to read as absent, and stage 1 then said "set ontapSecretName" about a value that was
+    to read as absent, and phase 1 then said "set ontapSecretName" about a value that was
     set -- sending the reader to add what was already there. An unparseable value and a
     missing one are different problems and must not produce the same sentence.
     """
@@ -144,11 +144,11 @@ def parse_portal_config(text: str) -> dict[str, str]:
     return found
 
 
-def check_configuration(config: dict[str, str]) -> Stage:
-    """Stage 1: were the four values supplied at all."""
+def check_configuration(config: dict[str, str]) -> Phase:
+    """Phase 1: were the four values supplied at all."""
     missing = [key for key in _CONFIG_KEYS if not config.get(key)]
     if missing:
-        return Stage(
+        return Phase(
             name="configuration",
             outcome=Outcome.FAIL,
             detail=(
@@ -158,7 +158,7 @@ def check_configuration(config: dict[str, str]) -> Stage:
             ),
             facts={key: config.get(key, "") for key in _CONFIG_KEYS},
         )
-    return Stage(
+    return Phase(
         name="configuration",
         outcome=Outcome.OK,
         detail="All four values are set.",
@@ -166,8 +166,8 @@ def check_configuration(config: dict[str, str]) -> Stage:
     )
 
 
-def check_file_system(aws: Aws, file_system_id: str, mgmt_ip: str) -> tuple[Stage, dict]:
-    """Stage 2: the file system exists, is AVAILABLE, and owns that management IP."""
+def check_file_system(aws: Aws, file_system_id: str, mgmt_ip: str) -> tuple[Phase, dict]:
+    """Phase 2: the file system exists, is AVAILABLE, and owns that management IP."""
     code, out, err = aws.run(
         "fsx",
         "describe-file-systems",
@@ -178,7 +178,7 @@ def check_file_system(aws: Aws, file_system_id: str, mgmt_ip: str) -> tuple[Stag
     )
     if code != 0:
         return (
-            Stage(
+            Phase(
                 name="file system",
                 outcome=Outcome.FAIL,
                 detail=(
@@ -193,7 +193,7 @@ def check_file_system(aws: Aws, file_system_id: str, mgmt_ip: str) -> tuple[Stag
     systems = json.loads(out or "{}").get("FileSystems", [])
     if not systems:
         return (
-            Stage(
+            Phase(
                 name="file system",
                 outcome=Outcome.FAIL,
                 detail=f"No file system {file_system_id} in this account and region.",
@@ -214,7 +214,7 @@ def check_file_system(aws: Aws, file_system_id: str, mgmt_ip: str) -> tuple[Stag
 
     if lifecycle != "AVAILABLE":
         return (
-            Stage(
+            Phase(
                 name="file system",
                 outcome=Outcome.FAIL,
                 detail=(
@@ -227,10 +227,10 @@ def check_file_system(aws: Aws, file_system_id: str, mgmt_ip: str) -> tuple[Stag
         )
 
     if mgmt_ip and actual_ip and mgmt_ip != actual_ip:
-        # This one is worth its own stage. A management IP left over from a previous
+        # This one is worth its own phase. A management IP left over from a previous
         # file system produces a timeout, which reads as a security group problem.
         return (
-            Stage(
+            Phase(
                 name="file system",
                 outcome=Outcome.FAIL,
                 detail=(
@@ -244,7 +244,7 @@ def check_file_system(aws: Aws, file_system_id: str, mgmt_ip: str) -> tuple[Stag
         )
 
     return (
-        Stage(
+        Phase(
             name="file system",
             outcome=Outcome.OK,
             detail="AVAILABLE, and the configured management IP is its own.",
@@ -254,8 +254,8 @@ def check_file_system(aws: Aws, file_system_id: str, mgmt_ip: str) -> tuple[Stag
     )
 
 
-def check_svm(aws: Aws, file_system_id: str, svm_name: str) -> tuple[Stage, str]:
-    """Stage 3: an SVM of that name on that file system. Returns its ID when found."""
+def check_svm(aws: Aws, file_system_id: str, svm_name: str) -> tuple[Phase, str]:
+    """Phase 3: an SVM of that name on that file system. Returns its ID when found."""
     code, out, err = aws.run(
         "fsx",
         "describe-storage-virtual-machines",
@@ -266,7 +266,7 @@ def check_svm(aws: Aws, file_system_id: str, svm_name: str) -> tuple[Stage, str]
     )
     if code != 0:
         return (
-            Stage(
+            Phase(
                 name="SVM",
                 outcome=Outcome.FAIL,
                 detail="describe-storage-virtual-machines failed.",
@@ -279,7 +279,7 @@ def check_svm(aws: Aws, file_system_id: str, svm_name: str) -> tuple[Stage, str]
     names = {svm.get("Name", ""): svm for svm in svms}
     if svm_name not in names:
         return (
-            Stage(
+            Phase(
                 name="SVM",
                 outcome=Outcome.FAIL,
                 detail=(
@@ -300,7 +300,7 @@ def check_svm(aws: Aws, file_system_id: str, svm_name: str) -> tuple[Stage, str]
         # MISCONFIGURED is usually Active Directory, and it is worth naming because the
         # SVM still answers for everything that does not need the domain.
         return (
-            Stage(
+            Phase(
                 name="SVM",
                 outcome=Outcome.FAIL,
                 detail=(
@@ -313,15 +313,15 @@ def check_svm(aws: Aws, file_system_id: str, svm_name: str) -> tuple[Stage, str]
             svm_id,
         )
     return (
-        Stage(name="SVM", outcome=Outcome.OK, detail=f"{svm_name} is {lifecycle}.", facts=facts),
+        Phase(name="SVM", outcome=Outcome.OK, detail=f"{svm_name} is {lifecycle}.", facts=facts),
         svm_id,
     )
 
 
-def check_volume(aws: Aws, svm_id: str, volume_name: str) -> Stage:
-    """Stage 4: a volume of that name on that SVM.
+def check_volume(aws: Aws, svm_id: str, volume_name: str) -> Phase:
+    """Phase 4: a volume of that name on that SVM.
 
-    This is the stage the portal used to blame for every failure, which is why it is
+    This is the phase the portal used to blame for every failure, which is why it is
     worth checking separately: when it passes, a "volume not found" from the portal is
     known to be about something else.
     """
@@ -334,7 +334,7 @@ def check_volume(aws: Aws, svm_id: str, volume_name: str) -> Stage:
         "json",
     )
     if code != 0:
-        return Stage(
+        return Phase(
             name="volume",
             outcome=Outcome.FAIL,
             detail="describe-volumes failed.",
@@ -344,7 +344,7 @@ def check_volume(aws: Aws, svm_id: str, volume_name: str) -> Stage:
     volumes = json.loads(out or "{}").get("Volumes", [])
     names = {volume.get("Name", ""): volume for volume in volumes}
     if volume_name not in names:
-        return Stage(
+        return Phase(
             name="volume",
             outcome=Outcome.FAIL,
             detail=(
@@ -356,7 +356,7 @@ def check_volume(aws: Aws, svm_id: str, volume_name: str) -> Stage:
         )
 
     volume = names[volume_name]
-    return Stage(
+    return Phase(
         name="volume",
         outcome=Outcome.OK,
         detail=f"{volume_name} is {volume.get('Lifecycle', '')}.",
@@ -368,16 +368,16 @@ def check_volume(aws: Aws, svm_id: str, volume_name: str) -> Stage:
     )
 
 
-def check_secret(aws: Aws, secret_name: str) -> Stage:
-    """Stage 5: the secret is readable, is JSON, and has both fields.
+def check_secret(aws: Aws, secret_name: str) -> Phase:
+    """Phase 5: the secret is readable, is JSON, and has both fields.
 
     The password itself is never printed. Its length is, because a secret written with
-    a trailing newline by a shell heredoc is a real and invisible cause of stage 6
+    a trailing newline by a shell heredoc is a real and invisible cause of phase 6
     failing, and the length is what shows it.
     """
     code, out, err = aws.run("secretsmanager", "get-secret-value", "--secret-id", secret_name, "--output", "json")
     if code != 0:
-        return Stage(
+        return Phase(
             name="secret",
             outcome=Outcome.FAIL,
             detail=(
@@ -390,14 +390,14 @@ def check_secret(aws: Aws, secret_name: str) -> Stage:
     try:
         payload = json.loads(json.loads(out or "{}").get("SecretString", ""))
     except (ValueError, TypeError):
-        return Stage(
+        return Phase(
             name="secret",
             outcome=Outcome.FAIL,
             detail=('The secret is not JSON. The portal expects {"username": "fsxadmin", "password": "..."}.'),
         )
 
     if not isinstance(payload, dict) or not payload.get("password"):
-        return Stage(
+        return Phase(
             name="secret",
             outcome=Outcome.FAIL,
             detail=('The secret has no "password". The portal expects {"username": "fsxadmin", "password": "..."}.'),
@@ -409,7 +409,7 @@ def check_secret(aws: Aws, secret_name: str) -> Stage:
         "passwordLength": str(len(password)),
     }
     if password != password.strip():
-        return Stage(
+        return Phase(
             name="secret",
             outcome=Outcome.FAIL,
             detail=(
@@ -420,7 +420,7 @@ def check_secret(aws: Aws, secret_name: str) -> Stage:
             facts=facts,
         )
 
-    return Stage(
+    return Phase(
         name="secret",
         outcome=Outcome.OK,
         detail="Readable, JSON, and carries a username and password.",
@@ -432,13 +432,13 @@ def check_secret_belongs_to_file_system(
     aws: Aws,
     secret_name: str,
     file_system_id: str,
-) -> Stage:
+) -> Phase:
     """Whether the secret is for the file system the management IP resolves to.
 
-    The gap this closes: stage 5 establishes that the secret is readable, is JSON and
+    The gap this closes: phase 5 establishes that the secret is readable, is JSON and
     carries a password. It cannot tell whose password. An account with two file systems
     has two `fsxadmin` accounts with two passwords, and a configuration pairing one
-    cluster's address with the other's credentials passes every stage up to the last one.
+    cluster's address with the other's credentials passes every phase up to the last one.
 
     Which matters more than a wrong answer would, because of how ONTAP refuses. The reply
     to a wrong password is `6691623 "User is not authorized."`, and `fsxadmin` is measured
@@ -460,7 +460,7 @@ def check_secret_belongs_to_file_system(
         file_system_id: The file system the management IP belongs to.
 
     Returns:
-        The stage. FAIL when the secret names a different file system, or one that no
+        The phase. FAIL when the secret names a different file system, or one that no
         longer exists.
     """
     code, out, err = aws.run(
@@ -472,7 +472,7 @@ def check_secret_belongs_to_file_system(
         "json",
     )
     if code != 0:
-        return Stage(
+        return Phase(
             name="secret pairing",
             outcome=Outcome.FAIL,
             detail=(
@@ -485,7 +485,7 @@ def check_secret_belongs_to_file_system(
     try:
         described = json.loads(out or "{}")
     except ValueError:
-        return Stage(
+        return Phase(
             name="secret pairing",
             outcome=Outcome.FAIL,
             detail="describe-secret did not return JSON.",
@@ -509,12 +509,12 @@ def check_secret_belongs_to_file_system(
     }
 
     if not claimed:
-        return Stage(
+        return Phase(
             name="secret pairing",
             outcome=Outcome.SKIP,
             detail=(
                 "Cannot verify: the secret has no FileSystemId tag and its description "
-                "names no file system. Tag it so this stage can check the pair -- "
+                "names no file system. Tag it so this phase can check the pair -- "
                 f"`aws secretsmanager tag-resource --secret-id {secret_name} "
                 f"--tags Key=FileSystemId,Value={file_system_id}`. Until then, a pair "
                 "that authenticates against the wrong cluster looks correct here."
@@ -523,7 +523,7 @@ def check_secret_belongs_to_file_system(
         )
 
     if claimed == file_system_id:
-        return Stage(
+        return Phase(
             name="secret pairing",
             outcome=Outcome.OK,
             detail=f"The secret names the same file system, per {source}.",
@@ -540,7 +540,7 @@ def check_secret_belongs_to_file_system(
         "json",
     )
     if exists_code != 0:
-        return Stage(
+        return Phase(
             name="secret pairing",
             outcome=Outcome.FAIL,
             detail=(
@@ -552,7 +552,7 @@ def check_secret_belongs_to_file_system(
             facts=facts,
         )
 
-    return Stage(
+    return Phase(
         name="secret pairing",
         outcome=Outcome.FAIL,
         detail=(
@@ -567,8 +567,8 @@ def check_secret_belongs_to_file_system(
     )
 
 
-def check_ontap_auth(aws: Aws, function_name: str) -> Stage:
-    """Stage 6: does ONTAP accept the credentials.
+def check_ontap_auth(aws: Aws, function_name: str) -> Phase:
+    """Phase 6: does ONTAP accept the credentials.
 
     Asked through the deployed function because the management LIF is private. The
     function's answer now carries a class (see shared/ontap_diagnosis.py), so this reads
@@ -587,7 +587,7 @@ def check_ontap_auth(aws: Aws, function_name: str) -> Stage:
         "/dev/stdout",
     )
     if code != 0:
-        return Stage(
+        return Phase(
             name="ONTAP auth",
             outcome=Outcome.SKIP,
             detail=f"Could not invoke {function_name}. Check the name and invoke permission.",
@@ -600,7 +600,7 @@ def check_ontap_auth(aws: Aws, function_name: str) -> Stage:
         decoder = json.JSONDecoder()
         response, _ = decoder.raw_decode(out.lstrip())
     except ValueError:
-        return Stage(
+        return Phase(
             name="ONTAP auth",
             outcome=Outcome.SKIP,
             detail="The function's response could not be parsed.",
@@ -608,7 +608,7 @@ def check_ontap_auth(aws: Aws, function_name: str) -> Stage:
         )
 
     if not isinstance(response, dict):
-        return Stage(
+        return Phase(
             name="ONTAP auth",
             outcome=Outcome.SKIP,
             detail="The function returned something other than an object.",
@@ -616,7 +616,7 @@ def check_ontap_auth(aws: Aws, function_name: str) -> Stage:
 
     error = response.get("error")
     if not error:
-        return Stage(
+        return Phase(
             name="ONTAP auth",
             outcome=Outcome.OK,
             detail="ONTAP accepted the credentials and answered.",
@@ -640,12 +640,12 @@ def check_ontap_auth(aws: Aws, function_name: str) -> Stage:
         ),
         "NOT_CONFIGURED": ("The function has no management IP or secret name. It was deployed without them."),
         "NOT_FOUND": (
-            "ONTAP answered and does not have what the configuration names. Stages 3 and 4 "
+            "ONTAP answered and does not have what the configuration names. Phases 3 and 4 "
             "checked the AWS side, so this points at a name the cluster sees differently."
         ),
     }.get(error_class, f"ONTAP reported: {error}")
 
-    return Stage(
+    return Phase(
         name="ONTAP auth",
         outcome=Outcome.FAIL,
         detail=advice,
@@ -661,11 +661,11 @@ def derive_file_system_from_outputs(aws: Aws) -> tuple[str, str]:
     """Resolve the file system the portal actually serves files from.
 
     The management IP is not a file system ID, so this check used to skip its
-    three decisive stages unless the operator passed ``--file-system-id`` -- which
+    three decisive phases unless the operator passed ``--file-system-id`` -- which
     asks them to already know the answer. Nothing then compared the management
     target against the storage the portal shows, and a portal whose file browser
     read one file system while its management panels addressed another passed
-    every stage. Measured 2026-08-28.
+    every phase. Measured 2026-08-28.
 
     The chain is derivable without ONTAP credentials: the S3 access point alias in
     ``amplify_outputs.json`` names an attachment, the attachment names a volume,
@@ -732,7 +732,7 @@ def derive_file_system_from_outputs(aws: Aws) -> tuple[str, str]:
         f"The file browser reads {alias}, attached to volume {volume_name} on "
         f"{file_system_id}"
         + (f" under SVM {svm_name}. " if svm_name else ". ")
-        + "Derived from the outputs, so the stages below compare the management "
+        + "Derived from the outputs, so the phases below compare the management "
         "target against the storage the portal shows."
     )
 
@@ -742,25 +742,25 @@ def run_checks(
     config: dict[str, str],
     file_system_id: str,
     via_lambda: str | None,
-) -> list[Stage]:
+) -> list[Phase]:
     """Walk the chain, stopping where continuing would only produce noise."""
-    stages = [check_configuration(config)]
-    if stages[-1].outcome is Outcome.FAIL:
+    phases = [check_configuration(config)]
+    if phases[-1].outcome is Outcome.FAIL:
         # Nothing downstream can be attempted, and reporting five more failures would
         # bury the one that matters.
-        return stages
+        return phases
 
     derived_note = ""
     if not file_system_id:
         file_system_id, derived_note = derive_file_system_from_outputs(aws)
 
     if not file_system_id:
-        stages.append(
-            Stage(
+        phases.append(
+            Phase(
                 name="file system",
                 outcome=Outcome.SKIP,
                 detail=(
-                    "Pass --file-system-id to check stages 2 to 4. The portal's config "
+                    "Pass --file-system-id to check phases 2 to 4. The portal's config "
                     "holds a management IP, not a file system ID, and it could not be "
                     f"derived: {derived_note}"
                 ),
@@ -768,31 +768,31 @@ def run_checks(
         )
     else:
         if derived_note:
-            stages.append(
-                Stage(
+            phases.append(
+                Phase(
                     name="file system under the portal",
                     outcome=Outcome.OK,
                     detail=derived_note,
                 )
             )
-        fs_stage, _ = check_file_system(aws, file_system_id, config["ontapMgmtIp"])
-        stages.append(fs_stage)
-        if fs_stage.outcome is Outcome.OK:
-            svm_stage, svm_id = check_svm(aws, file_system_id, config["ontapSvmName"])
-            stages.append(svm_stage)
+        fs_phase, _ = check_file_system(aws, file_system_id, config["ontapMgmtIp"])
+        phases.append(fs_phase)
+        if fs_phase.outcome is Outcome.OK:
+            svm_phase, svm_id = check_svm(aws, file_system_id, config["ontapSvmName"])
+            phases.append(svm_phase)
             if svm_id:
-                stages.append(check_volume(aws, svm_id, config["ontapVolumeName"]))
+                phases.append(check_volume(aws, svm_id, config["ontapVolumeName"]))
 
-    stages.append(check_secret(aws, config["ontapSecretName"]))
+    phases.append(check_secret(aws, config["ontapSecretName"]))
 
     # After the secret is known to be well formed, before anything authenticates. This
-    # is the stage that would have caught pairing one cluster's address with another's
-    # password -- a configuration every earlier stage passes.
+    # is the phase that would have caught pairing one cluster's address with another's
+    # password -- a configuration every earlier phase passes.
     if file_system_id:
-        stages.append(check_secret_belongs_to_file_system(aws, config["ontapSecretName"], file_system_id))
+        phases.append(check_secret_belongs_to_file_system(aws, config["ontapSecretName"], file_system_id))
     else:
-        stages.append(
-            Stage(
+        phases.append(
+            Phase(
                 name="secret pairing",
                 outcome=Outcome.SKIP,
                 detail=(
@@ -805,49 +805,49 @@ def run_checks(
         )
 
     if via_lambda:
-        stages.append(check_ontap_auth(aws, via_lambda))
+        phases.append(check_ontap_auth(aws, via_lambda))
     else:
-        stages.append(
-            Stage(
+        phases.append(
+            Phase(
                 name="ONTAP auth",
                 outcome=Outcome.SKIP,
                 detail=(
                     "Not checked. The management LIF is private, so this has to be asked "
                     "from inside the VPC: pass --via-lambda <function-name> to have the "
-                    "deployed function make the call. Every stage above can pass while this "
+                    "deployed function make the call. Every phase above can pass while this "
                     "one fails -- that is the case this script was written for."
                 ),
             )
         )
-    return stages
+    return phases
 
 
 _MARKS = {Outcome.OK: "PASS", Outcome.FAIL: "FAIL", Outcome.SKIP: "SKIP"}
 
 
-def report(stages: list[Stage]) -> str:
-    """The stages, in order, with the failures' advice."""
+def report(phases: list[Phase]) -> str:
+    """The phases, in order, with the failures' advice."""
     lines = ["ONTAP connection preflight", ""]
-    for index, stage in enumerate(stages, start=1):
-        lines.append(f"  {index}. [{_MARKS[stage.outcome]}] {stage.name}")
-        for key, value in stage.facts.items():
+    for index, phase in enumerate(phases, start=1):
+        lines.append(f"  {index}. [{_MARKS[phase.outcome]}] {phase.name}")
+        for key, value in phase.facts.items():
             lines.append(f"        {key}: {value}")
-        if stage.outcome is not Outcome.OK:
-            for line in stage.detail.splitlines():
+        if phase.outcome is not Outcome.OK:
+            for line in phase.detail.splitlines():
                 lines.append(f"        {line}")
         else:
-            lines.append(f"        {stage.detail}")
+            lines.append(f"        {phase.detail}")
         lines.append("")
 
-    failed = [stage for stage in stages if stage.outcome is Outcome.FAIL]
-    skipped = [stage for stage in stages if stage.outcome is Outcome.SKIP]
+    failed = [phase for phase in phases if phase.outcome is Outcome.FAIL]
+    skipped = [phase for phase in phases if phase.outcome is Outcome.SKIP]
     if failed:
-        lines.append(f"{len(failed)} stage(s) failed: " + ", ".join(s.name for s in failed))
+        lines.append(f"{len(failed)} phase(s) failed: " + ", ".join(s.name for s in failed))
         lines.append("Fix the earliest one first; the later ones may be its symptoms.")
     elif skipped:
         lines.append("No failures. Not everything was checked: " + ", ".join(s.name for s in skipped) + ".")
     else:
-        lines.append("Every stage passed. The ONTAP panels have what they need.")
+        lines.append("Every phase passed. The ONTAP panels have what they need.")
     return "\n".join(lines)
 
 
@@ -858,8 +858,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--secret", default="")
     parser.add_argument("--volume", default="")
     parser.add_argument("--svm", default="")
-    parser.add_argument("--file-system-id", default="", help="enables stages 2 to 4")
-    parser.add_argument("--via-lambda", default="", help="function to ask for stage 6")
+    parser.add_argument("--file-system-id", default="", help="enables phases 2 to 4")
+    parser.add_argument("--via-lambda", default="", help="function to ask for phase 6")
     parser.add_argument("--region", default="")
     args = parser.parse_args(argv)
 
@@ -881,9 +881,9 @@ def main(argv: list[str] | None = None) -> int:
         if value:
             config[key] = value
 
-    stages = run_checks(Aws(args.region or None), config, args.file_system_id, args.via_lambda or None)
-    print(report(stages))
-    return 1 if any(stage.outcome is Outcome.FAIL for stage in stages) else 0
+    phases = run_checks(Aws(args.region or None), config, args.file_system_id, args.via_lambda or None)
+    print(report(phases))
+    return 1 if any(phase.outcome is Outcome.FAIL for phase in phases) else 0
 
 
 if __name__ == "__main__":
