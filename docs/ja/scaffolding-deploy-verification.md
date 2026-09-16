@@ -51,7 +51,7 @@
 | P7 | Blocks の sandbox と production でコマンドと後片付けの経路が別 | **文書化済み** | [CLI reference](https://docs.aws.amazon.com/blocks/latest/devguide/cli-reference.html) |
 | P8 | `Retain` のリソースがスタック削除後に残る | **文書化済み**（数量はこの文書の実測） | [DeletionPolicy](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-attribute-deletionpolicy.html) |
 | P9 | Block ID の変更が stateful Block のデータ損失になる | **文書化済み** | [AWS Blocks concepts](https://docs.aws.amazon.com/blocks/latest/devguide/concepts.html) |
-| P10 | テンプレート外のロググループが残り、保持期間が無期限 | **文書化済み + 上流 issue 2 件**（残存件数はこの文書の実測） | [Lambda logs](https://docs.aws.amazon.com/lambda/latest/dg/monitoring-cloudwatchlogs.html) / [aws-cdk #26553](https://github.com/aws/aws-cdk/issues/26553) / [aws-cdk #24815](https://github.com/aws/aws-cdk/issues/24815) |
+| P10 | テンプレート外のロググループが残り、保持期間が無期限 | **文書化済み + 上流 issue（うち OPEN 2 件）**（残存件数はこの文書の実測） | [Lambda logs](https://docs.aws.amazon.com/lambda/latest/dg/monitoring-cloudwatchlogs.html) / [aws-cdk #26553](https://github.com/aws/aws-cdk/issues/26553) / [aws-cdk #24815](https://github.com/aws/aws-cdk/issues/24815) |
 | P11 | `npm create` が非対話シェルで停止する | **npm の既定動作**（切り分けはこの文書の実測。上流の類似 PR は別原因） | [npm-config `yes`](https://docs.npmjs.com/cli/v11/using-npm/config#yes) / [nx-plugin-for-aws #1193](https://github.com/awslabs/nx-plugin-for-aws/pull/1193) |
 | P12 | hotswap がスタックにドリフトを持ち込む | **文書化済み** | [cdk deploy](https://docs.aws.amazon.com/cdk/v2/guide/ref-cli-cmd-deploy.html)（`--hotswap`） |
 | P13 | CloudFormation が削除する KMS 鍵は 30 日の待機に入り、後から短縮できない | **既定値は文書化済み**（短縮の拒否はこの文書の実測） | [Deleting keys](https://docs.aws.amazon.com/kms/latest/cryptographic-details/key-deletion.html) |
@@ -231,6 +231,12 @@ synth 済みテンプレートから数えた、スタック削除では消え�
 
 **AWS Blocks の sandbox preset だけが 0 件**なので、最初に確認するならこれが最も戻しやすい。
 
+**この 8 件・9 件は生成物の既定値であって、AWS 側の制約ではない。** `Retain` も削除保護も
+生成されたコードが付けているので、消えてよいものは生成コード側で外せる（CDK なら
+`RemovalPolicy.DESTROY`、DynamoDB と Cognito の削除保護は該当プロパティを false にする）。
+既定が保持側に寄っているのは本番を想定した設計で、検証用に使うときだけ意図と噛み合わない。
+**回避不能なのは KMS の待機期間だけである**（→ P5、P13）。
+
 **production preset の件数はこの検証で 9 から 8 に訂正した。** 以前は KMS 鍵 1 本を Retain に
 数えていたが、テンプレートの `DeletionPolicy` を数え直すと Retain は DynamoDB 4 と
 CDKBucketDeployment 4 だけで、KMS 鍵は含まれていない。削除時の CloudFormation の応答も一致する。
@@ -284,11 +290,28 @@ Lambda とバケットデプロイが増えるため。Nx で残る 6 件には
 - **無期限になること**: Lambda のドキュメントが、関数の初回実行時にロググループが作られ、
   その保持期間は無期限になると書いている（出典:
   [Lambda logs in CloudWatch](https://docs.aws.amazon.com/lambda/latest/dg/monitoring-cloudwatchlogs.html)）。
-- **CDK のカスタムリソースの分**: [aws/aws-cdk #26553](https://github.com/aws/aws-cdk/issues/26553)
-  が CustomResourceProvider のロググループを削除・設定できるようにする要望として立っており、
-  [aws/aws-cdk #24815](https://github.com/aws/aws-cdk/issues/24815) が
-  `s3.Bucket` の `autoDeleteObjects` が作るロググループが Never expire で残ることを報告している。
-  今回残った 5 件のうち `CustomS3AutoDeleteObjects` は #24815 と同一のもの。
+- **CDK 側が宣言しないこと**: `CustomResourceProvider` の基底クラスが宣言するのは
+  `AWS::IAM::Role` と `AWS::Lambda::Function` の 2 つだけで、`AWS::Logs::LogGroup` を含まない
+  （出典: [custom-resource-provider-base.ts](https://github.com/aws/aws-cdk/blob/main/packages/aws-cdk-lib/core/lib/custom-resource-provider/custom-resource-provider-base.ts)、
+  main を全文で確認、2026-09-16）。この基底を使うプロバイダはすべて同じ形になる。
+
+**修正された版は存在しない**（2026-09-16 に確認）。上流の状態は次のとおり。
+
+| issue | 内容 | 状態 |
+|---|---|---|
+| [aws-cdk #26553](https://github.com/aws/aws-cdk/issues/26553) | CustomResourceProvider のロググループをスタック削除時に消す要望 | **OPEN**（2023-07-28 起票、最終更新 2026-01-13） |
+| [aws-cdk #23909](https://github.com/aws/aws-cdk/issues/23909) | `logRetentionDays` を全体設定として持つ要望 | **OPEN**（`p2` / `feature-request`、最終更新 2025-05-07） |
+| [aws-cdk #24815](https://github.com/aws/aws-cdk/issues/24815) | `autoDeleteObjects` のロググループが Never expire | **CLOSED（completed、2024-06-19）だが修正は revert 済み** |
+
+**#24815 をクローズ済みとだけ見ると、修正が入ったと読める。** クローズ時のコメントで AWS の
+メンテナが、修正 PR は複数の問題により revert したこと、これはすべてのカスタムリソースに
+共通の問題であること、追跡を #23909 に移すことを述べている。**クローズは出荷の証拠ではない。**
+以前の版はこの issue だけを引いていたので、修正済みに読める記述だった。
+
+**自分の関数とは扱いが違う。** 自分で書く Lambda はテンプレートでロググループを宣言できるので
+残らない（上の表で「宣言済み」が全構成で消えているのがそれ）。残るのは CDK 内部の
+カスタムリソースのぶんで、これは自分のコードから宣言する経路がない。エスケープハッチで
+迂回できるかはここでは試していない。
 
 **踏み方**: 「テンプレートを読めば何が残るか分かる」という前提が崩れる。**テンプレートの静的解析（`synth`）ベースの棚卸しは、
 CloudFormation の外で作られるリソースを原理的に見られない。**
@@ -520,7 +543,7 @@ TOTP の登録を要求する。** Blocks（production preset）の DynamoDB 4 �
 - [CloudFormation: DescribeStackEvents](https://docs.aws.amazon.com/AWSCloudFormation/latest/APIReference/API_DescribeStackEvents.html) / [ListStacks](https://docs.aws.amazon.com/AWSCloudFormation/latest/APIReference/API_ListStacks.html) — ページングと、削除済みスタックの 90 日
 - [Lambda logs in CloudWatch](https://docs.aws.amazon.com/lambda/latest/dg/monitoring-cloudwatchlogs.html)
 - [npm config: `yes`](https://docs.npmjs.com/cli/v11/using-npm/config#yes) — `npm create` の確認プロンプトの自動応答
-- 上流の issue / PR: [nx-plugin-for-aws #1265](https://github.com/awslabs/nx-plugin-for-aws/issues/1265)（express target）、[#1193](https://github.com/awslabs/nx-plugin-for-aws/pull/1193)（advisory 取得の遅延）、[#1228](https://github.com/awslabs/nx-plugin-for-aws/pull/1228)（npm 11 前提）、[aws-cdk-cli #1931](https://github.com/aws/aws-cdk-cli/issues/1931)、[aws-cdk #26553](https://github.com/aws/aws-cdk/issues/26553)、[aws-cdk #24815](https://github.com/aws/aws-cdk/issues/24815)
+- 上流の issue / PR: [nx-plugin-for-aws #1265](https://github.com/awslabs/nx-plugin-for-aws/issues/1265)（express target）、[#1193](https://github.com/awslabs/nx-plugin-for-aws/pull/1193)（advisory 取得の遅延）、[#1228](https://github.com/awslabs/nx-plugin-for-aws/pull/1228)（npm 11 前提）、[aws-cdk-cli #1931](https://github.com/aws/aws-cdk-cli/issues/1931)、[aws-cdk #26553](https://github.com/aws/aws-cdk/issues/26553)、[aws-cdk #23909](https://github.com/aws/aws-cdk/issues/23909)、[aws-cdk #24815](https://github.com/aws/aws-cdk/issues/24815)（クローズ済みだが修正は revert）
 - 生成物そのもの: `packages/infra/project.json`（Nx の target 定義）、`aws-blocks/index.cdk.ts` と `package.json`（Blocks のコマンドと preset）
 
 > 内容は理解しやすさのために要約・再構成している。

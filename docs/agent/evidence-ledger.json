@@ -332,6 +332,61 @@
         "status": "not-applicable",
         "where": "documented behaviour, not a gap"
       }
+    },
+    {
+      "id": "E-010",
+      "claim": "AWS CDK does not declare a CloudWatch log group for the Lambda function behind a CustomResourceProvider, so the log group is created implicitly at first invocation with never-expire retention and survives the stack deletion. There is no released version in which this is fixed.",
+      "subject": "AWS",
+      "tier": "documented",
+      "premise": true,
+      "sources": [
+        {
+          "url": "https://docs.aws.amazon.com/lambda/latest/dg/monitoring-cloudwatchlogs.html",
+          "read": "full",
+          "retrieved": "2026-09-16",
+          "says": "A function's log group is created on its first invocation when it does not already exist, and the default retention for a log group created that way is Never expire. Nothing states that the log group is owned by whatever created the function."
+        },
+        {
+          "url": "https://github.com/aws/aws-cdk/blob/main/packages/aws-cdk-lib/core/lib/custom-resource-provider/custom-resource-provider-base.ts",
+          "read": "full",
+          "retrieved": "2026-09-16",
+          "says": "The provider base declares exactly two resources, AWS::IAM::Role and AWS::Lambda::Function. No AWS::Logs::LogGroup appears, and no retention is set, so every provider built on it leaves its log group outside CloudFormation."
+        },
+        {
+          "url": "https://github.com/aws/aws-cdk/issues/26553",
+          "read": "full",
+          "retrieved": "2026-09-16",
+          "says": "Open feature request titled 'CustomResourceProvider should destroy log group when stack deleted'. Opened 2023-07-28, last updated 2026-01-13, still open, which is itself the statement that the behaviour is unchanged."
+        },
+        {
+          "url": "https://github.com/aws/aws-cdk/issues/24815",
+          "read": "full",
+          "retrieved": "2026-09-16",
+          "says": "Closed as completed on 2024-06-19, but the closing comment from an AWS maintainer says the PR that fixed it was reverted for a number of issues, that this is a general issue across all custom resources, and that tracking moved to #23909. A closed issue here does not mean a shipped fix."
+        },
+        {
+          "url": "https://github.com/aws/aws-cdk/issues/23909",
+          "read": "full",
+          "retrieved": "2026-09-16",
+          "says": "Open feature request 'core: add global logRetentionDays setting', opened 2023-01-30, last updated 2025-05-07, labelled p2 / feature-request / effort/medium. This is where the reverted fix's tracking was moved."
+        }
+      ],
+      "observation": "Measured 2026-09-12 to 2026-09-13 across three generated outputs. After the stack deletion, log groups remained on every one and none had retention set: AWS Blocks sandbox preset 5, Blocks production preset 8, Nx Plugin for AWS 6 undeclared plus 1 declared with Retain. Log groups the template did declare were deleted with the stack in all three. The residue therefore tracks whether the log group is declared, not which generator produced it.",
+      "why_not_documented_is_not_absent": "Both halves are stated positively rather than inferred from silence: Lambda documents the implicit creation and the never-expire default, and the CDK source read in full shows the two resources the provider declares. What is NOT established is whether an escape hatch inside the generated project could declare the log group for a provider it does not own; not attempted here. The earlier revision of the deploy-verification document cited #24815 alone, which reads as though a fix had landed.",
+      "appears_in": [
+        "docs/ja/scaffolding-deploy-verification.md",
+        "docs/en/scaffolding-deploy-verification.md"
+      ],
+      "claim_ja": "AWS CDK は CustomResourceProvider の Lambda 関数に対して CloudWatch ロググループを宣言しません。そのためロググループは初回実行時に暗黙に作られ、保持期間は無期限で、スタック削除後も残ります。これが修正された released 版は存在しません。",
+      "observation_ja": "2026-09-12〜13 に 3 つの生成物で実測しました。スタック削除後にロググループが残り、いずれも保持期間が未設定でした。AWS Blocks の sandbox preset で 5 件、production preset で 8 件、Nx Plugin for AWS で無宣言 6 件と Retain 付き宣言済み 1 件です。テンプレートが宣言していたロググループは 3 構成すべてでスタックとともに消えました。残るかどうかを決めるのは生成物の種類ではなく、宣言の有無です。",
+      "support_inquiry": {
+        "status": "not-needed",
+        "topic": "Nothing to ask AWS Support. Lambda's documentation states the implicit creation and the never-expire default, and the CDK source shows what the provider declares. CDK's primary channel is its GitHub repository, not Support, and two feature requests are already open there."
+      },
+      "feature_request": {
+        "status": "filed",
+        "where": "https://github.com/aws/aws-cdk/issues/26553 and https://github.com/aws/aws-cdk/issues/23909 -- both open upstream, filed by others. Nothing filed from here yet; the per-output residue counts measured above are not in either issue and would be the contribution to make."
+      }
     }
   ]
 }
