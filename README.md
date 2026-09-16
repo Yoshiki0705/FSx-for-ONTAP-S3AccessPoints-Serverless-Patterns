@@ -256,18 +256,18 @@ dev.to では**シリーズを 2 つに分けています**。読者が違うた
 
 #### シリーズ 2: FSx for ONTAP File Portal（ファイルポータル）
 
-**準備中です。** 記事構成と出典の対応は
-[ファイルポータル記事シリーズの計画 (JA)](docs/devto-file-portal-series.md) /
-[EN](docs/devto-file-portal-series.en.md) にあります。
+全 7 回。記事と出典の対応は [ファイルポータル記事シリーズ (JA)](docs/devto-file-portal-series.md) / [EN](docs/devto-file-portal-series.en.md) にあります。
 
-| # | 予定テーマ | 出典となるリポジトリ内ドキュメント |
+| トピック | 日本語 | English |
 |---|---|---|
-| 1 | そもそも作る必要があるか（Transfer Family web apps / Nextcloud / Amplify Gen2 / 作らない選択） | [UI の選択肢](docs/file-portal-amplify-gen2.md) |
-| 2 | 認可を二層で設計する（Cognito × S3 AP × ONTAP） | [認可設計](docs/ja/portal-authorization-design.md) |
-| 3 | Amplify Gen2 で踏んだ制約 | [Gen2 + CDK 設計判断](solutions/amplify-portal/docs/amplify-gen2-cdk-patterns.md) |
-| 4 | 8 言語 UI を型で守る | [ポータル i18n](docs/agent/portal-i18n.md) |
-| 5 | 一度も動いたことがなかった機能をどう見つけたか | [検証結果](solutions/amplify-portal/docs/verification-results.md) |
-| 6 | 利用者に渡す（スマートフォン・引き渡し・一次対応） | [引き渡しガイド](solutions/amplify-portal/docs/portal-handover-guide.md) |
+| ブラウザからの到達 | [Hatena](https://hakobiya.hatenablog.com/entry/fsxn-file-portal-1-browser-access) | [dev.to](https://dev.to/aws-builders/adding-a-file-portal-to-fsx-for-ontap-s3-access-points-choosing-between-amplify-gen2-and-887) |
+| ランサムウェア対応と WORM 保持 | [Hatena](https://hakobiya.hatenablog.com/entry/fsxn-file-portal-2-ransomware-worm) | [dev.to](https://dev.to/aws-builders/embedding-storage-operations-into-a-file-portal-from-arpai-incident-response-to-regulatory-1oih) |
+| AI エージェント統合 | [Hatena](https://hakobiya.hatenablog.com/entry/fsxn-file-portal-3-ai-agent-mcp) | [dev.to](https://dev.to/aws-builders/embedding-ai-agents-into-a-file-portal-from-agentcore-mcp-to-multi-agent-teams-part-3-19m1) |
+| 運用操作の委譲と記録 | [Hatena](https://hakobiya.hatenablog.com/entry/fsxn-file-portal-4-storage-operations) | [dev.to](https://dev.to/aws-builders/putting-fsx-for-ontap-operations-on-a-file-portal-on-aws-182-actions-and-the-design-of-425g) |
+| 実機で止められたもの | [Hatena](https://hakobiya.hatenablog.com/entry/fsxn-file-portal-5-what-only-the-cluster-tells-you) | [dev.to](https://dev.to/aws-builders/what-i-learned-driving-fsx-for-ontap-from-a-file-portal-on-aws-flexgroup-creation-capacity-3gkd) |
+| ONTAP 機能の到達範囲 | [Hatena](https://hakobiya.hatenablog.com/entry/fsxn-file-portal-6-outside-the-portal) | [dev.to](https://dev.to/aws-builders/what-i-left-off-the-file-portal-on-aws-how-far-fsx-for-ontap-features-reach-and-the-work-handed-hk8) |
+| 構築ツールの比較 | [Hatena](https://hakobiya.hatenablog.com/entry/fsxn-file-portal-7-nx-blocks-amplify-gen2) | [dev.to](https://dev.to/aws-builders/what-a-stack-deletion-leaves-behind-nx-plugin-for-aws-10-aws-blocks-and-amplify-gen-2-compared-10fg) |
+
 
 ### 関連リポジトリ
 

@@ -173,6 +173,8 @@ Détails : [S3AP Compatibility Notes](docs/s3ap-compatibility-notes.en.md) | [Co
 
 ### Série d'articles
 
+#### Série 1 : FSx for ONTAP S3 Access Points (bibliothèque de patterns serverless)
+
 | Sujet | Japonais | Anglais |
 |---|---|---|
 | Présentation des 42 patterns | [Hatena](https://hakobiya.hatenablog.com/entry/fsxn-s3ap-serverless-part1-introduction) | [dev.to](https://dev.to/aws-builders/industry-specific-serverless-automation-patterns-with-fsx-for-ontap-s3-access-points-3e0a) |
@@ -181,6 +183,21 @@ Détails : [S3AP Compatibility Notes](docs/s3ap-compatibility-notes.en.md) | [Co
 | FPolicy événementiel | [Hatena](https://hakobiya.hatenablog.com/entry/fsxn-s3ap-serverless-part4-event-driven-fpolicy) | [dev.to](https://dev.to/aws-builders/fpolicy-event-driven-pipeline-multi-account-stacksets-and-cost-optimization-fsx-for-ontap-s3-5bd6) |
 | 28 patterns sectoriels | [Hatena](https://hakobiya.hatenablog.com/entry/fsxn-s3ap-serverless-part5-field-ready-28-patterns) | [dev.to](https://dev.to/aws-builders/from-serverless-patterns-to-field-ready-reference-architecture-fsx-for-ontap-s3-access-points-dhj) |
 | Intégration GenAI | [Hatena](https://hakobiya.hatenablog.com/entry/fsxn-s3ap-serverless-part6-genai-42-patterns) | — |
+
+#### Série 2 : FSx for ONTAP File Portal (portail de fichiers)
+
+Sept parties. La correspondance entre article et document source se trouve dans [Série d'articles portail de fichiers (EN)](docs/devto-file-portal-series.en.md) / [JA](docs/devto-file-portal-series.md).
+
+| Sujet | Japonais | Anglais |
+|---|---|---|
+| Accès depuis le navigateur | [Hatena](https://hakobiya.hatenablog.com/entry/fsxn-file-portal-1-browser-access) | [dev.to](https://dev.to/aws-builders/adding-a-file-portal-to-fsx-for-ontap-s3-access-points-choosing-between-amplify-gen2-and-887) |
+| Réponse aux rançongiciels et rétention WORM | [Hatena](https://hakobiya.hatenablog.com/entry/fsxn-file-portal-2-ransomware-worm) | [dev.to](https://dev.to/aws-builders/embedding-storage-operations-into-a-file-portal-from-arpai-incident-response-to-regulatory-1oih) |
+| Intégration d'agents IA | [Hatena](https://hakobiya.hatenablog.com/entry/fsxn-file-portal-3-ai-agent-mcp) | [dev.to](https://dev.to/aws-builders/embedding-ai-agents-into-a-file-portal-from-agentcore-mcp-to-multi-agent-teams-part-3-19m1) |
+| Délégation des opérations de stockage | [Hatena](https://hakobiya.hatenablog.com/entry/fsxn-file-portal-4-storage-operations) | [dev.to](https://dev.to/aws-builders/putting-fsx-for-ontap-operations-on-a-file-portal-on-aws-182-actions-and-the-design-of-425g) |
+| Ce que le cluster a refusé | [Hatena](https://hakobiya.hatenablog.com/entry/fsxn-file-portal-5-what-only-the-cluster-tells-you) | [dev.to](https://dev.to/aws-builders/what-i-learned-driving-fsx-for-ontap-from-a-file-portal-on-aws-flexgroup-creation-capacity-3gkd) |
+| Portée des fonctionnalités ONTAP | [Hatena](https://hakobiya.hatenablog.com/entry/fsxn-file-portal-6-outside-the-portal) | [dev.to](https://dev.to/aws-builders/what-i-left-off-the-file-portal-on-aws-how-far-fsx-for-ontap-features-reach-and-the-work-handed-hk8) |
+| Comparaison des outils de génération de projet | [Hatena](https://hakobiya.hatenablog.com/entry/fsxn-file-portal-7-nx-blocks-amplify-gen2) | [dev.to](https://dev.to/aws-builders/what-a-stack-deletion-leaves-behind-nx-plugin-for-aws-10-aws-blocks-and-amplify-gen-2-compared-10fg) |
+
 
 ### Dépôts associés
 

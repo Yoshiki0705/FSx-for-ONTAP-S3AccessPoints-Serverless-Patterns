@@ -1,34 +1,44 @@
-# File portal article series plan
+# File portal article series
 
 🌐 **Language / 言語**: [日本語](devto-file-portal-series.md) | English
 
-The shape of the file portal series on dev.to. It is a **separate series** from the S3 AP
-serverless patterns; the reasoning and the naming rules are in
+The file portal series runs to seven parts: the English versions on dev.to, the Japanese
+versions on Hatena Blog. It is a **separate series** from the S3 AP serverless patterns; the
+reasoning and the naming rules are in
 [the series structure and tagging policy](./devto-series-cleanup-guide.en.md).
 
-- Series name (EN): `FSx for ONTAP File Portal`
-- Series name (JA): `FSx for ONTAP ファイルポータル`
-- Tags: `aws`, `amplify`, `fsxforontap`, plus one article-specific tag
+- Series name (dev.to): `FSx for ONTAP File Portal`
+- Tags: `aws`, `fsxforontap`, plus up to two article-specific tags
 
-## Status
+## Published articles
 
-**Parts 1 to 3 are published.** The three articles that had been in the S3 AP series were
-moved into this one on 2026-08-15 (their `series` and `tags` changed to the definitions
-above). The dev.to widget now reads `FSx for ONTAP File Portal (3 Part Series)`.
+| # | Theme | Japanese | English |
+|---|---|---|---|
+| 1 | Browser access (Amplify Gen 2 or Nextcloud) | [Hatena](https://hakobiya.hatenablog.com/entry/fsxn-file-portal-1-browser-access) | [dev.to](https://dev.to/aws-builders/adding-a-file-portal-to-fsx-for-ontap-s3-access-points-choosing-between-amplify-gen2-and-887) |
+| 2 | Ransomware response and WORM retention (ARP/AI, SnapLock, audit logs) | [Hatena](https://hakobiya.hatenablog.com/entry/fsxn-file-portal-2-ransomware-worm) | [dev.to](https://dev.to/aws-builders/embedding-storage-operations-into-a-file-portal-from-arpai-incident-response-to-regulatory-1oih) |
+| 3 | AI agent integration (AgentCore over MCP, with a human approving) | [Hatena](https://hakobiya.hatenablog.com/entry/fsxn-file-portal-3-ai-agent-mcp) | [dev.to](https://dev.to/aws-builders/embedding-ai-agents-into-a-file-portal-from-agentcore-mcp-to-multi-agent-teams-part-3-19m1) |
+| 4 | Delegating storage operations (182 actions, the buttons I disabled) | [Hatena](https://hakobiya.hatenablog.com/entry/fsxn-file-portal-4-storage-operations) | [dev.to](https://dev.to/aws-builders/putting-fsx-for-ontap-operations-on-a-file-portal-on-aws-182-actions-and-the-design-of-425g) |
+| 5 | What the cluster refused (FlexGroup creation, capacity rebalancing) | [Hatena](https://hakobiya.hatenablog.com/entry/fsxn-file-portal-5-what-only-the-cluster-tells-you) | [dev.to](https://dev.to/aws-builders/what-i-learned-driving-fsx-for-ontap-from-a-file-portal-on-aws-flexgroup-creation-capacity-3gkd) |
+| 6 | How far ONTAP features reach (qtree, quota, FlexClone measured) | [Hatena](https://hakobiya.hatenablog.com/entry/fsxn-file-portal-6-outside-the-portal) | [dev.to](https://dev.to/aws-builders/what-i-left-off-the-file-portal-on-aws-how-far-fsx-for-ontap-features-reach-and-the-work-handed-hk8) |
+| 7 | Comparing the scaffolding tools (Nx Plugin for AWS 1.0 / AWS Blocks / Amplify Gen 2) | [Hatena](https://hakobiya.hatenablog.com/entry/fsxn-file-portal-7-nx-blocks-amplify-gen2) | [dev.to](https://dev.to/aws-builders/what-a-stack-deletion-leaves-behind-nx-plugin-for-aws-10-aws-blocks-and-amplify-gen-2-compared-10fg) |
 
-| # | Article | Status |
-|---|---|---|
-| 1 | [Adding a File Portal to FSx for ONTAP S3 Access Points](https://dev.to/aws-builders/adding-a-file-portal-to-fsx-for-ontap-s3-access-points-choosing-between-amplify-gen2-and-887) | Published (EN); Japanese version on Hatena Blog |
-| 2 | [Embedding Storage Operations into a File Portal](https://dev.to/aws-builders/embedding-storage-operations-into-a-file-portal-from-arpai-incident-response-to-regulatory-1oih) | Published (EN); Japanese version on Hatena Blog |
-| 3 | [Embedding AI Agents into a File Portal](https://dev.to/aws-builders/embedding-ai-agents-into-a-file-portal-from-agentcore-mcp-to-multi-agent-teams-part-3-19m1) | Published (EN); Japanese version on Hatena Blog |
-| 4 | Putting ONTAP operations into the portal (174 actions) | **Drafted, not published.** The JA and EN drafts are `drafts/blog/article-file-portal-part4-draft{,.en}.md` (`drafts/` is gitignored, so they cannot be linked) |
+**The Japanese versions were not posted to dev.to.** The dev.to widget reads
+`FSx for ONTAP File Portal (7 Part Series)` across the seven English articles.
 
-**The Japanese series (`FSx for ONTAP ファイルポータル`) has no articles yet.** The Japanese
-versions of Parts 1 to 3 are on Hatena Blog and were not posted to dev.to. Starting the
-Japanese series there requires posting an article first.
+## Which document each article draws on
 
-The article plan below lists **candidate themes not yet written**. It does not correspond to
-the three published articles.
+Every article draws on documentation in this repository. The figures and the reproduction
+steps are more detailed on the source side than in the article.
+
+| # | Main sources |
+|---|---|
+| 1 | [UI options](./file-portal-amplify-gen2.en.md), [the gap between portal and service](./aws-feature-requests/file-portal-service-gap.en.md) |
+| 2 | [ARP/AI and EMS pitfalls](./agent/pitfalls-arp-ems.md), [SnapLock pitfalls](./agent/pitfalls-snaplock.md) |
+| 3 | [GenAI and edge pitfalls](./agent/pitfalls-genai-edge.md) |
+| 4 | [Authorization design](./en/portal-authorization-design.md), [authorization model](./en/portal-authorization-model.md) |
+| 5 | [FlexGroup pitfalls](./agent/pitfalls-flexgroup.md), [volume lifecycle pitfalls](./agent/pitfalls-volume-lifecycle.md) |
+| 6 | [S3 AP and ONTAP pitfalls](./agent/pitfalls-s3ap-ontap.md), [beyond the four features](./en/portal-parity-next-steps.md) |
+| 7 | [App foundation choices](./en/scaffolding-and-backend-toolkit-choices.md), [deploy verification and teardown](./en/scaffolding-deploy-verification.md), [the same four features on three foundations](./en/portal-parity-four-features.md) |
 
 ## Why it is a separate series
 
@@ -39,22 +49,10 @@ reachability from a phone, and whether to build a portal at all. The only overla
 S3 AP as the data path, so combining them leaves half of the series irrelevant to either
 reader.
 
-## Article plan
-
-Each article draws on documentation already in the repository. Anything that needs writing
-from scratch is marked as such.
-
-| # | Theme | Main sources | Article tag |
-|---|---|---|---|
-| 1 | **Do you need to build one?** — Transfer Family web apps, Nextcloud, Amplify Gen2 and the option of no frontend, and how to choose | [file-portal-amplify-gen2.en.md](./file-portal-amplify-gen2.en.md), [file-portal-service-gap.en.md](./aws-feature-requests/file-portal-service-gap.en.md) | `architecture` |
-| 2 | **Authorization in two layers** — Cognito groups against the S3 AP and ONTAP sides, and the audit trail that connects them | [portal-authorization-design.md](./en/portal-authorization-design.md), [s3ap-authorization-model.en.md](./s3ap-authorization-model.en.md) | `cognito` |
-| 3 | **What Amplify Gen2 constrains** — cross-stack data sources, running cdk-nag, sandbox hotswap, the shared Python layer | [amplify-gen2-cdk-patterns.en.md](../solutions/amplify-portal/docs/amplify-gen2-cdk-patterns.en.md), [portal-cdk-quality-gates.md](./agent/portal-cdk-quality-gates.md) | `cdk` |
-| 4 | **Holding eight languages with the type system** — `ja.ts` as the source of the type, failing the build on hardcoded strings, theme tokens | [portal-i18n.md](./agent/portal-i18n.md), [CONTRIBUTING-UI.en.md](../solutions/amplify-portal/docs/CONTRIBUTING-UI.en.md) | `i18n` |
-| 5 | **Finding the features that had never worked** — the defects live verification turned up (presign defaulting to SigV2, FlexGroup creation against a tiering-enabled aggregate, the rebalance runtime bounds) and the gates that stop them recurring | [verification-results.en.md](../solutions/amplify-portal/docs/verification-results.en.md), [flexgroup-rebalance-verification.en.md](../solutions/amplify-portal/docs/flexgroup-rebalance-verification.en.md) | `testing` |
-| 6 | **Handing it over** — reachability from a phone, what to explain at handover, first-line support | [portal-user-guide.md](./en/portal-user-guide.md), [portal-handover-guide.en.md](../solutions/amplify-portal/docs/portal-handover-guide.en.md), [portal-mobile-guide.md](./en/portal-mobile-guide.md) | `webdev` |
-
 ## When publishing
 
+- **The published article is the source of truth for wording.** Where an article settles on a
+  term (the phase axis is "Phase", not "Stage"), bring the repository documents to match
 - **Use the masked screenshots in `docs/screenshots/`.** To capture new ones, follow
   [the capture and replacement workflow](./screenshots/SCREENSHOT_ADDITION_WORKFLOW.md)
 - Any performance or cost figure carries its conditions: Region, ONTAP version, configuration
@@ -62,3 +60,5 @@ from scratch is marked as such.
   it recurring**. A list of defects on its own does not help the reader
 - Other services and products are options suited to different contexts, not opponents. No
   superiority claims
+- The part count ("seven parts") is embedded across the series. Adding one means updating the
+  body and the description of every existing article too

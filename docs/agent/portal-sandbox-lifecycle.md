@@ -188,7 +188,7 @@ aws appsync list-graphql-apis --query "graphqlApis[].[apiId,name]" --output text
 aws dynamodb list-tables --query "TableNames[]" --output text | tr '\t' '\n' | grep -- '-NONE$'
 ```
 
-## スキャフォールディング生成物でも同じ形が出ること
+## 構築ツールの生成物でも同じ形が出ること
 
 上のロググループの話（テンプレートに現れない Lambda のロググループが retention 無期限で残る）は
 このポータル固有ではない。Nx Plugin for AWS と AWS Blocks の生成物を実機でデプロイして削除した
@@ -197,5 +197,5 @@ aws dynamodb list-tables --query "TableNames[]" --output text | tr '\t' '\n' | g
 [デプロイ検証と後片付けの手順](../ja/scaffolding-deploy-verification.md)の P10 にある。
 
 **synth ベースの棚卸しでは原理的に見えない**という点が共通で、対策も同じ（スタック名を接頭辞に
-してロググループを走査する）。土台の選択肢そのものの比較は
-[アプリの土台の選択肢](../ja/scaffolding-and-backend-toolkit-choices.md)。
+してロググループを走査する）。構築ツールの選択肢そのものの比較は
+[アプリの構築ツールの選択肢](../ja/scaffolding-and-backend-toolkit-choices.md)。

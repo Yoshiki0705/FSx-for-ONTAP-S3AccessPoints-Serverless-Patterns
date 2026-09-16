@@ -33,7 +33,7 @@ captures, the pitfalls, and how to reproduce it.
 **Not covered**: which one is better. Performance (neither throughput nor latency was measured).
 Anything beyond the four features — ONTAP management operations, AI processing, the eight-language
 UI and ARP/WORM are outside this comparison, and only their prerequisites are recorded in
-[the stages beyond](#the-stages-beyond-the-four-features). AWS Blocks behaviour after GA (the
+[the phases beyond](#the-phases-beyond-the-four-features). AWS Blocks behaviour after GA (the
 measurements are from preview).
 
 **Audience**: anyone building browser access to an FSx for ONTAP volume and still choosing a
@@ -329,10 +329,10 @@ through the breadcrumb rather than by reloading.
 The component drives its own state, so setting files on the input element in the DOM does not
 start an upload. The action in the table's overflow menu has to be triggered first.
 
-## The stages beyond the four features
+## The phases beyond the four features
 
 These four are the smallest useful unit; what a real portal needs starts after them. The
-prerequisites for each stage are in [the stages beyond](portal-parity-next-steps.md).
+prerequisites for each phase are in [the phases beyond](portal-parity-next-steps.md).
 
 ## Reproducing it
 
@@ -374,7 +374,7 @@ stack.** If it was stood up as a check, take it through teardown the same day.
 - [Deploy verification and teardown for generated
   scaffolding](scaffolding-deploy-verification.md) — the practicalities of teardown, including
   deletion protection, `Retain` and the stickiness of express mode
-- [The stages beyond](portal-parity-next-steps.md) — what to add after the four features, and what
-  each stage assumes
+- [The phases beyond](portal-parity-next-steps.md) — what to add after the four features, and what
+  each phase assumes
 - [FSx for ONTAP management
   interfaces](fsx-ontap-management-interfaces.md) — what can actually reach the management plane

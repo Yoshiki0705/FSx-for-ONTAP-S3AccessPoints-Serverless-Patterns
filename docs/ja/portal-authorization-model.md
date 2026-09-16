@@ -158,7 +158,7 @@ precedence を Amplify の既定（`ALL_PORTAL_GROUPS` の添字）に任せら�
 > **セキュリティに関する補足**: 2 つのグループが同じ precedence を持つと
 > `cognito:preferred_role` は**設定されません**。その場合 Identity Pool は
 > `AmbiguousRoleResolution`（= authenticated ロール）に落ちるので、両グループの全員が
-> 自分の付与ではなく読み取り専用の既定を得ます。`directS3Problems()` が synth で止めます。
+> 自分の付与ではなく読み取り専用の既定を得ます。`directS3Problems()` がテンプレート生成（`synth`）の時点で止めます。
 
 外部利用者にファイルを渡してもらう経路は、アップロードタブではなく**アップロードリンク**
 （`createUploadLink`）です。こちらは AppSync 経由なのでプレフィックスが効きます。
