@@ -1,0 +1,18 @@
+{
+  "contract_schema": "knowledge-quality/adoption-contract/v1",
+  "hub_repository": "Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook",
+  "hub_revision": "2c4bdb369eb47d800078132a847a195a4063dbc8",
+  "profile": "cross-repository-quality-v1",
+  "validator_artifacts": [
+    {
+      "path": "tools/check_cross_repo.py",
+      "sha256": "fd33f8c3f1383c4e7037697e9d3a9c54ef5b679cf8c5af86998499b5095b2303"
+    },
+    {
+      "path": "tools/check_inbound_probes.py",
+      "sha256": "305906131d645ab5df36ff2a622fe927858b32865776604f403c5803e593f7f1"
+    }
+  ],
+  "rule_index": "docs/ja/reference/cross-repo-index.md#引用表",
+  "repository_overrides": "knowledge-quality/repository-overrides.json"
+}

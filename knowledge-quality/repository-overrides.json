@@ -1,0 +1,65 @@
+{
+  "schema": "knowledge-quality/repository-overrides/v1",
+  "overrides": [
+    {
+      "category": "scan-root",
+      "value": "docs",
+      "reason": "Bilingual documentation tree (docs/ja primary, docs/en translation) plus per-topic subdirectories; the primary surface for the naming, neutrality, and public-output audit in this repository."
+    },
+    {
+      "category": "scan-root",
+      "value": "solutions",
+      "reason": "Per-use-case solution directories (S3 Access Point serverless patterns); the main body of the reference architecture prose and its bilingual READMEs live here."
+    },
+    {
+      "category": "scan-root",
+      "value": "scripts",
+      "reason": "Python helpers and this repository's own evidence gate; comments and messages are subject to the naming and neutrality rules."
+    },
+    {
+      "category": "scan-root",
+      "value": "security",
+      "reason": "Security configuration and guard rules; prose in these files is in scope for naming and neutrality."
+    },
+    {
+      "category": "scan-root",
+      "value": "shared",
+      "reason": "Shared Lambda and cross-stack code referenced by multiple solutions; in scope for naming and neutrality."
+    },
+    {
+      "category": "scan-root",
+      "value": "infrastructure",
+      "reason": "Baseline network and infrastructure templates whose descriptions and comments carry service names; in scope for the naming rule."
+    },
+    {
+      "category": "scan-root",
+      "value": "operations",
+      "reason": "Operational runbooks and procedures written as prose; in scope for naming, neutrality, and public-output safety."
+    },
+    {
+      "category": "exclusion",
+      "value": ".private",
+      "reason": "Gitignored. Holds review provenance and support-case references that must never reach public output; excluded from the public-facing audit surface by design."
+    },
+    {
+      "category": "exclusion",
+      "value": "benchmarks",
+      "reason": "Holds raw benchmark run data whose environment metadata is verified separately by this repository's own evidence gate, not by the cross-repo naming/neutrality audit."
+    },
+    {
+      "category": "exclusion",
+      "value": "test-data",
+      "reason": "Fixture and sample payload data, not human-facing prose; outside the naming/neutrality audit surface."
+    },
+    {
+      "category": "localization-tier",
+      "value": "bilingual-ja-primary",
+      "reason": "Japanese under docs/ja is authoritative; docs/en is the translation and must keep matching section structure. Same tier model as the Hub, declared here as this repository's own configuration rather than copied rule text."
+    },
+    {
+      "category": "repository-rule",
+      "value": "evidence-ledger-path=docs/agent/evidence-ledger.json",
+      "reason": "This repository keeps its vendor-capability-absence claims in docs/agent/evidence-ledger.json, enforced by scripts/check_evidence_claims.py. Records the repository-specific location so the adoption contract knows where this repository's evidence discipline lives; not a Hub rule body."
+    }
+  ]
+}
