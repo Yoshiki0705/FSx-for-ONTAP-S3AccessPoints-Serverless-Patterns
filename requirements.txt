@@ -1,6 +1,6 @@
 # Runtime dependencies — pinned for deployment reproducibility
 boto3==1.43.98
-urllib3==2.7.0
+urllib3==2.8.0
 # jsonschema: shared/lambdas/fpolicy_engine が遅延 import で使う（arm64 / python3.13）。
 #
 # 以前は「4.18+ は rpds-py を要求し ARM64 ビルドに問題がある」ため 4.17.x に固定して
