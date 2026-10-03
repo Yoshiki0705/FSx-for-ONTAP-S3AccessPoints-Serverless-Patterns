@@ -58,6 +58,8 @@
 
 ## 検証 1: 単一 `PutObject` の上限
 
+単一 `PutObject` は 5 GiB（5,368,709,120 バイト）まで受け付け、1 バイト超えると Content-Length の時点で 400 `EntityTooLarge` で拒否されました。
+
 ### 手順
 
 Content-Length を明示した上でゼロ埋めストリームを渡し、S3 側が上限判定を行うかを確認します。
@@ -86,6 +88,8 @@ RESULT=CLIENT_ERROR elapsed=2.7s
 ---
 
 ## 検証 2: `UploadPart`（マルチパートの 1 パート）の上限
+
+`UploadPart` の 1 パートの上限も 5 GiB（5,368,709,120 バイト）で、超過は Content-Length の時点で拒否されました。
 
 ### 結果
 
@@ -127,6 +131,8 @@ RESULT=CLIENT_ERROR elapsed=2.7s
 ---
 
 ## 検証 4: オブジェクト全体の上限 = 50 GiB（マルチパートアップロード）
+
+オブジェクト全体は 50 GiB（53,687,091,200 バイト）まで組み立てられ、1 バイト超えると、全パートの転送が終わった後に `CompleteMultipartUpload` が 400 `EntityTooLarge` で拒否しました。
 
 ### 実施方法
 

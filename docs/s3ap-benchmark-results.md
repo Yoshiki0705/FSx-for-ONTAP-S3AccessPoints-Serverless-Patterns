@@ -6,6 +6,13 @@
 
 FSx for ONTAP S3 Access Points 経由の各 S3 API 操作のレイテンシとスループットを実測した結果です。
 
+主な結果は次の 4 点です。いずれも ap-northeast-1 の Single-AZ（First-generation）の FSx for ONTAP と、NetworkOrigin=Internet の S3 Access Point での計測値で、サービスの上限値ではありません。各計測の環境は、それぞれの節の「計測環境」にあります。
+
+- 1 MB の GetObject を 128 MBps 構成・インターネット経由で並列に実行すると、concurrency=10 が tail latency の大幅悪化前の実用的な上限として観測され、concurrency=25 以上では P99 が 1 秒を超えました（`s3ap-bench-2026-05-23-001`）
+- Throughput Capacity を 128 MBps から 256 MBps にすると、1 MB・concurrency=20 の P99 は 981 ms から 481 ms に下がりました。512 MBps の効果は、クライアント側の帯域（~100 Mbps）が律速になり、インターネット経由の計測では見えませんでした（2026-05-25）
+- VPC 外の Lambda から計測すると、1 MB・concurrency=10 の P50 は 175 ms から 73 ms に下がりました（128 MBps、2026-05-25）
+- 202 bytes の小ファイルでは、P50 は 256 MBps と 512 MBps でほぼ同じでした（concurrency ≤25 で ~57-60 ms、2026-06-06）
+
 ## 計測環境
 
 | 項目 | 値 |
@@ -99,9 +106,9 @@ FSx for ONTAP S3 Access Points 経由の各 S3 API 操作のレイテンシと�
 **観察**:
 - 並列度を上げると個々のレイテンシは増加するが、合計スループットは向上
 - concurrency=10 で P90=230ms、concurrency=25 で P90=471ms、concurrency=50 で P90=907ms
-- **concurrency=25 以上では P99 が 1 秒を超える** — FSx 128 MBps の throughput 飽和 + キューイング遅延
+- concurrency=25 以上では P99 が 1 秒を超える（FSx 128 MBps の throughput 飽和 + キューイング遅延）
 - concurrency=50 では最大 2.2 秒 — Lambda timeout 設計に注意が必要
-- **FSx Throughput Capacity が並列性能のボトルネック** — この 1 MB オブジェクト / FSx 128 MBps 構成のテストでは、concurrency=10 が tail latency の大幅悪化前の実用的な上限として観測されました。concurrency=25 以上では顕著な遅延増加が見られます
+- FSx Throughput Capacity が並列性能のボトルネックになる。この 1 MB オブジェクト / FSx 128 MBps 構成のテストでは、concurrency=10 が tail latency の大幅悪化前の実用的な上限として観測されました。concurrency=25 以上では顕著な遅延増加が見られます
 - 高並列処理が必要な場合は FSx Throughput Capacity の増加が必要（256 MBps 以上を推奨）
 
 > **表記注**: 本ドキュメントでは MB/s（メガバイト毎秒）を使用しています。AWS コンソールの FSx Throughput Capacity 表記 (MBps) と同義です。測定値 138 MB/s が 128 MBps 構成を若干超えて見えるのは、FSx の短時間バースト機能、測定の丸め誤差、および throughput 計算方法（elapsed time ベース）の差異によるものです。持続的なスループットは provisioned capacity を超えません。
@@ -119,7 +126,7 @@ FSx for ONTAP S3 Access Points 経由の各 S3 API 操作のレイテンシと�
 | bytes=0-1048575 | 1 MB | 54.5 ms | 55.5 ms | 45.3 ms | 64.2 ms |
 
 **観察**:
-- ✅ **Range GET はサポートされている**（FSx for ONTAP S3 AP で動作確認済み）
+- Range GET は動作する（FSx for ONTAP S3 AP で動作確認済み）
 - 部分読み取りのレイテンシは全体読み取りと同等（接続オーバーヘッドが支配的）
 - 大ファイルのヘッダーのみ読み取り（DICOM, GDS, SEG-Y 等）に有効
 
@@ -171,6 +178,8 @@ FSx for ONTAP S3 Access Points 経由の各 S3 API 操作のレイテンシと�
 
 ## サーバーレスパイプラインへの設計指針
 
+上の計測値から導いた、Lambda メモリ、Step Functions Map の並列度、コストの目安です。
+
 ### Lambda メモリ別の推奨
 
 | ファイルサイズ | 推奨 Lambda メモリ | 理由 |
@@ -204,11 +213,11 @@ FSx for ONTAP S3 Access Points 経由の各 S3 API 操作のレイテンシと�
 
 ## 制約と注意事項
 
-1. **インターネット経由の計測**: VPC 内 Lambda からはレイテンシが 30-50% 低下する可能性
-2. **FSx Throughput 依存**: 本計測の FSx は低スループット構成。高スループット構成ではさらに高速
-3. **同時アクセス**: 単一クライアントからの逐次アクセス。並列アクセスでは FSx スループット上限に注意
-4. **初回アクセス**: 最初のリクエストは接続確立のため若干遅い（cold start 的な挙動）
-5. **S3AP 固有**: 通常の S3 バケットとは異なるレイテンシ特性（FSx データプレーン経由）
+1. インターネット経由の計測。VPC 内 Lambda からはレイテンシが 30-50% 低下する可能性
+2. FSx Throughput 依存。本計測の FSx は低スループット構成。高スループット構成ではさらに高速
+3. 同時アクセス。単一クライアントからの逐次アクセス。並列アクセスでは FSx スループット上限に注意
+4. 初回アクセス。最初のリクエストは接続確立のため若干遅い（cold start 的な挙動）
+5. S3AP 固有。通常の S3 バケットとは異なるレイテンシ特性（FSx データプレーン経由）
 
 > **免責事項**: 本ドキュメントに記載されたベンチマーク結果およびコスト数値はテスト環境での実測値であり、サービスレベル保証ではありません。本番環境での採用前に、お客様自身の AWS アカウント・リージョン・FSx for ONTAP 構成・ワークロードプロファイルで検証してください。
 
@@ -217,6 +226,8 @@ FSx for ONTAP S3 Access Points 経由の各 S3 API 操作のレイテンシと�
 ---
 
 ## 次回ベンチマーク計画
+
+次回の計測で何を測るかと、比較のために固定する条件です。
 
 ### 測定目的別の整理
 
@@ -294,6 +305,8 @@ FSx throughput capacity を 128 MBps → 256 MBps に変更した際、以下の
 
 ## Benchmark Run ID Convention
 
+各計測を結果表と結び付けるための ID の命名規則、記録する固定条件、紐づけのルールです。
+
 ### 命名規則
 
 ```
@@ -306,7 +319,7 @@ s3ap-bench-{YYYY-MM-DD}-{seq}
 
 ### 固定条件テンプレート
 
-各ベンチマーク実行時に以下を記録する:
+各ベンチマーク実行時に、次の項目を記録する。
 
 ```
 benchmark_run_id: s3ap-bench-YYYY-MM-DD-NNN
@@ -335,6 +348,8 @@ Concurrent NFS/SMB workload: [None / Light / Production-level] (共有スルー�
 ---
 
 ## Hypothesis: FSx Throughput Capacity と Practical Concurrency Point の関係
+
+検証前に立てた仮説と、2026-06-06 の追加検証の結果です。
 
 ### 仮説（検証前）
 
@@ -384,11 +399,13 @@ Concurrent NFS/SMB workload: [None / Light / Production-level] (共有スルー�
 **Analysis**: 
 - 128→256 MBps: 1 MB @ concurrency=20 の P99 が 981ms → 481ms に改善（51% 改善）
 - 256→512 MBps: 改善が限定的。concurrency=20 で 481ms → 738ms（悪化）。これはインターネット経由テストのクライアント側帯域制限が支配的になったことを示す
-- **結論**: インターネット経由テストでは 256 MBps 以上の FSx 帯域増加の効果が見えにくい。VPC 内 Lambda テストが必要
+- 結論として、インターネット経由テストでは 256 MBps 以上の FSx 帯域増加の効果が見えにくい。VPC 内 Lambda テストが必要
 
 ---
 
 ## Concurrency Benchmark Results (2026-05-25)
+
+128 MBps 構成で、ファイルサイズ（1 KB / 100 KB / 1 MB）ごとに並列度を変えて GetObject を計測した結果です。
 
 ### 計測環境
 
@@ -407,6 +424,8 @@ Concurrent NFS/SMB workload: [None / Light / Production-level] (共有スルー�
 > **重要**: 本ベンチマーク結果はインターネット経由のテスト環境での実測値であり、サービスレベル保証ではありません。sizing reference として使用してください。
 
 ### GetObject — Concurrency 別レイテンシ
+
+ファイルサイズごとの表です。
 
 #### 1 KB ファイル
 
@@ -466,6 +485,8 @@ Concurrent NFS/SMB workload: [None / Light / Production-level] (共有スルー�
 
 ## 256 MBps Benchmark Results (2026-05-25)
 
+Throughput Capacity を 256 MBps に変え、128 MBps テストと同じ条件で 1 MB の GetObject を計測した結果です。
+
 ### 計測環境
 
 | 項目 | 値 |
@@ -488,6 +509,8 @@ Concurrent NFS/SMB workload: [None / Light / Production-level] (共有スルー�
 
 ## 512 MBps Benchmark Results (2026-05-25)
 
+Throughput Capacity を 512 MBps に変え、同じ条件で 1 MB の GetObject を計測した結果です。
+
 ### 計測環境
 
 | 項目 | 値 |
@@ -509,6 +532,8 @@ Concurrent NFS/SMB workload: [None / Light / Production-level] (共有スルー�
 ---
 
 ## 比較分析: 128 vs 256 vs 512 MBps
+
+3 構成の 1 MB GetObject を P50 と P99 で比べます。
 
 ### 1 MB GetObject P50 比較
 
@@ -578,10 +603,10 @@ Concurrent NFS/SMB workload: [None / Light / Production-level] (共有スルー�
 
 ### 分析
 
-1. **P50 は Lambda から大幅に改善**: concurrency=10 で 175ms → 73ms（58% 改善）
-2. **P99 は Lambda でも高い**: concurrency=20 で 1,318 ms。これは S3 AP データプレーンの内部キューイングによるもの
-3. **concurrency=50 でも P50 は 128 ms**: Lambda の並列スレッドは S3 AP に対して効率的に動作
-4. **ボトルネックは S3 AP データプレーン**: Lambda ネットワーク帯域ではなく、FSx for ONTAP 側の処理能力が制限要因
+1. P50 は Lambda から大幅に改善。concurrency=10 で 175ms → 73ms（58% 改善）
+2. P99 は Lambda でも高い。concurrency=20 で 1,318 ms。これは S3 AP データプレーンの内部キューイングによるもの
+3. concurrency=50 でも P50 は 128 ms。Lambda の並列スレッドは S3 AP に対して効率的に動作
+4. ボトルネックは S3 AP データプレーン。Lambda ネットワーク帯域ではなく、FSx for ONTAP 側の処理能力が制限要因
 
 ### Sizing Guidance（Lambda 実行時）
 
@@ -596,6 +621,8 @@ Concurrent NFS/SMB workload: [None / Light / Production-level] (共有スルー�
 ---
 
 ## 小ファイル Throughput 比較 (2026-06-06)
+
+202 bytes のファイルで、256 MBps と 512 MBps の GetObject を比べた結果です。
 
 ### 計測環境
 
@@ -645,11 +672,11 @@ Concurrent NFS/SMB workload: [None / Light / Production-level] (共有スルー�
 | 50 | 257.9 ms | 246.1 ms | ≈同等 |
 
 **結論（小ファイル）**:
-1. **P50 は throughput capacity に依存しない**: 256 MBps と 512 MBps で P50 はほぼ同一（~57-60 ms @ concurrency ≤25）
-2. **小ファイルのボトルネックは接続オーバーヘッド**: ファイル転送時間ではなく TLS ハンドシェイク + S3 AP ルーティングが支配的
-3. **concurrency=50 で P50 が ~250 ms に増加**: S3 AP データプレーンのリクエストキューイングが発生
-4. **P99 は 256 MBps の方が安定**: 512 MBps で P99 が高い（690-747 ms）のはサンプリングノイズの可能性
-5. **Throughput capacity の増加は大ファイル転送でのみ効果を発揮**: 小ファイル処理ではコスト効果なし
+1. P50 は throughput capacity に依存しない。256 MBps と 512 MBps で P50 はほぼ同一（~57-60 ms @ concurrency ≤25）
+2. 小ファイルのボトルネックは接続オーバーヘッド。ファイル転送時間ではなく TLS ハンドシェイク + S3 AP ルーティングが支配的
+3. concurrency=50 で P50 が ~250 ms に増加。S3 AP データプレーンのリクエストキューイングが発生
+4. P99 は 256 MBps の方が安定。512 MBps で P99 が高い（690-747 ms）のはサンプリングノイズの可能性
+5. Throughput capacity の増加は大ファイル転送でのみ効果を発揮。小ファイル処理ではコスト効果なし
 
 > **Sizing insight**: 小ファイル中心のワークロード（メタデータ読み取り、JSON manifest、ログエントリ）では、128 MBps で十分。Throughput capacity 増加は 1 MB 以上のファイルを並列処理する場合に有効。
 

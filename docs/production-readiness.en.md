@@ -10,11 +10,14 @@ This document defines a staged maturity model from PoC to production. It clarifi
 
 ### Field-Ready Baseline
 
-Phase 13 is not a final destination but a practical baseline for:
-- **Informed evaluation** — Information needed for evaluation is available
-- **Governed experimentation** — Controlled experimentation is possible
-- **Structured delivery** — A structured delivery path exists
-- **Production-readiness planning** — Materials for production planning are available
+Phase 13 is not a final destination but a practical baseline for four uses.
+
+| Use | What is in place |
+|-----|------------------|
+| Informed evaluation | Information needed for evaluation is available |
+| Governed experimentation | Controlled experimentation is possible |
+| Structured delivery | A structured delivery path exists |
+| Production-readiness planning | Materials for production planning are available |
 
 See [Exit Criteria](#exit-criterialevel-completion-conditions) for completion conditions at each level.
 
@@ -28,9 +31,18 @@ Sandbox    →    Scheduled    →    Monitored    →    Production
 (Manual)        (Periodic)       (Observability)    (Production ops)
 ```
 
+| Level | Stage | Purpose (summary) | Time required |
+|-------|-------|-------------------|---------------|
+| 1 | Sandbox (manual execution) | Verify the pattern, file access via S3 AP, and AI/ML output quality | 1-2 hours |
+| 2 | Scheduled (periodic execution) | Automated execution via EventBridge Scheduler and continuous processing with real data | 1-2 days |
+| 3 | Monitored (with observability) | Establish observability, visualize performance and cost, detect failures early | 3-5 days |
+| 4 | Production (production operations) | Multi-account, CI/CD, DR, compliance support, SLO operations | 2-4 weeks |
+
 ---
 
 ## Level 1: Sandbox (Manual Execution)
+
+The stage where you confirm, by running it by hand, that the pattern and file access via S3 AP work.
 
 ### Purpose
 - Verify pattern operation
@@ -59,6 +71,8 @@ Sandbox    →    Scheduled    →    Monitored    →    Production
 
 ## Level 2: Scheduled (Periodic Execution)
 
+The stage where EventBridge Scheduler runs the pattern periodically and processing continues on real data.
+
 ### Purpose
 - Automated execution via EventBridge Scheduler
 - Continuous processing with real data
@@ -85,6 +99,8 @@ Sandbox    →    Scheduled    →    Monitored    →    Production
 ---
 
 ## Level 3: Monitored (With Observability)
+
+The stage where metrics, traces and alarms are in place so that failures are detected early.
 
 ### Purpose
 - Establish comprehensive observability
@@ -114,6 +130,8 @@ Sandbox    →    Scheduled    →    Monitored    →    Production
 ---
 
 ## Level 4: Production (Production Operations)
+
+The stage where the pattern runs in production with multi-account deployment, CI/CD, DR and SLOs.
 
 ### Purpose
 - Multi-account support
@@ -163,6 +181,8 @@ Sandbox    →    Scheduled    →    Monitored    →    Production
 
 ## Exit Criteria (Level Completion Conditions)
 
+The conditions to meet before moving to the next level, for each transition.
+
 ### Level 1 → Level 2 Transition Conditions
 - [ ] CloudFormation deployment succeeded and manual execution produced expected results
 - [ ] ListObjectsV2 / GetObject via S3 AP operated normally
@@ -184,6 +204,8 @@ Sandbox    →    Scheduled    →    Monitored    →    Production
 
 ### Operational Notes (Level 3 and above)
 
+Events to plan for when operating at Level 3 or above.
+
 #### S3 AP Impact During FSx Throughput Capacity Changes
 
 When changing FSx for ONTAP throughput capacity, **S3 Access Points may become temporarily unavailable** (observed in Phase 14).
@@ -202,6 +224,8 @@ When changing FSx for ONTAP throughput capacity, **S3 Access Points may become t
 - Configure CloudWatch Alarm for S3 AP health checks to detect recovery
 
 ## Level Checklist Matrix
+
+How each level maps to CI/CD badges and verification states.
 
 ### CI/CD Badge Correspondence
 

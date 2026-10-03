@@ -225,7 +225,7 @@ max `PT1H`、20 GiB）と `zz_sl_s3ap`（fsxsvm02、compliance、min `PT0S` / de
 
 ### 2026-08-17 に追加（マウント管理: `mountVolume` / `unmountVolume` / `getVolumeMountInfo`）
 
-**拒否された削除が残す「online だが未マウント」の状態を、ポータルから戻せるようにしました。**
+拒否された削除が残す「online だが未マウント」の状態を、ポータルから戻せるようにしました。
 `bringVolumeOnline` が offline を戻す一方、junction を戻す手段が無かったためです。
 
 | 機能 | 確認内容 |
@@ -274,7 +274,7 @@ max `PT1H`、20 GiB）と `zz_sl_s3ap`（fsxsvm02、compliance、min `PT0S` / de
 | **D. 共有環境に影響が及ぶ** | LIF の無効化、プロトコルサービスの無効化、DNS 更新、SnapMirror の break / resync、ARP 封じ込め系 6 件 | 経路・セッション・レプリケーションを切ります。対象と時間帯を決めてから実施します |
 | **E. ONTAP 非依存** | エージェント / チーム / セッション、ポータル設定、サムネイル | Bedrock・DynamoDB・S3 側の話で、実機 ONTAP の検証対象ではありません |
 
-> **ドキュメント調査で先に見つけた 2 件は、実測でどちらも前提が変わりました**（実行前の予想を
+> ドキュメント調査で先に見つけた 2 件は、実測でどちらも前提が変わりました（実行前の予想を
 > 残すのは、次に同じ資料を読む人が同じ結論に至るためです）
 >
 > - 予想: **QoS は使用中のポリシーを削除できないので一巡が完了しない**（CLI リファレンス）。
@@ -394,7 +394,7 @@ sandbox は `sandbox delete` で残骸を作らないよう一律で上書きし
 ### 判明した制約 2: 2 つの sandbox は同一 VPC で共存できない
 
 同じ VPC・同じルートテーブルに 2 つ目の sandbox を作ると、DynamoDB ゲートウェイエンドポイントが
-衝突します:
+衝突し、次のエラーになります。
 
 ```
 route table rtb-... already has a route with destination-prefix-list-id pl-...

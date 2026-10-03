@@ -6,6 +6,13 @@
 
 Measured latency and throughput results for each S3 API operation via FSx for ONTAP S3 Access Points.
 
+Four main results follow. All were measured on a Single-AZ (First-generation) FSx for ONTAP file system in ap-northeast-1 through an S3 Access Point with NetworkOrigin=Internet, and none is a service limit. The environment of each measurement is in the "Test Environment" part of its section.
+
+- Running 1 MB GetObject concurrently over the Internet against 128 MBps, concurrency=10 was observed as the practical upper limit before significant tail latency degradation, and P99 exceeded 1 second at concurrency=25 and above (`s3ap-bench-2026-05-23-001`)
+- Raising Throughput Capacity from 128 MBps to 256 MBps lowered P99 for 1 MB at concurrency=20 from 981 ms to 481 ms. The effect of 512 MBps was not visible over the Internet, because client-side bandwidth (~100 Mbps) became the limit (2026-05-25)
+- Measured from a VPC-external Lambda, P50 for 1 MB at concurrency=10 dropped from 175 ms to 73 ms (128 MBps, 2026-05-25)
+- For 202-byte files, P50 was nearly identical at 256 MBps and 512 MBps (~57-60 ms at concurrency ≤25, 2026-06-06)
+
 ## Test Environment
 
 | Item | Value |
@@ -99,9 +106,9 @@ Concurrent access to 1 MB files:
 **Observations**:
 - Increasing concurrency raises individual latency but improves aggregate throughput
 - concurrency=10: P90=230ms, concurrency=25: P90=471ms, concurrency=50: P90=907ms
-- **At concurrency=25+, P99 exceeds 1 second** — FSx 128 MBps throughput saturation + queuing delay
+- At concurrency=25+, P99 exceeds 1 second (FSx 128 MBps throughput saturation + queuing delay)
 - At concurrency=50, maximum reaches 2.2 seconds — Lambda timeout design requires attention
-- **FSx Throughput Capacity is the bottleneck for concurrent performance** — In this test with 1 MB objects / FSx 128 MBps configuration, concurrency=10 was observed as the practical upper limit before significant tail latency degradation. Noticeable latency increases appear at concurrency=25+
+- FSx Throughput Capacity is the bottleneck for concurrent performance. In this test with 1 MB objects / FSx 128 MBps configuration, concurrency=10 was observed as the practical upper limit before significant tail latency degradation. Noticeable latency increases appear at concurrency=25+
 - For high-concurrency processing, increase FSx Throughput Capacity (256 MBps or higher recommended)
 
 > **Notation note**: This document uses MB/s (megabytes per second). This is synonymous with the FSx Throughput Capacity notation (MBps) in the AWS Console. The measured value of 138 MB/s appearing to slightly exceed the 128 MBps configuration is due to FSx's short-duration burst capability, measurement rounding, and differences in throughput calculation methods (elapsed-time based). Sustained throughput does not exceed provisioned capacity.
@@ -119,7 +126,7 @@ Partial reads from a 5 MB file:
 | bytes=0-1048575 | 1 MB | 54.5 ms | 55.5 ms | 45.3 ms | 64.2 ms |
 
 **Observations**:
-- ✅ **Range GET is supported** (confirmed working on FSx for ONTAP S3 AP)
+- Range GET works (confirmed working on FSx for ONTAP S3 AP)
 - Partial read latency is comparable to full reads (connection overhead dominant)
 - Effective for reading only headers of large files (DICOM, GDS, SEG-Y, etc.)
 
@@ -171,6 +178,8 @@ Partial reads from a 5 MB file:
 
 ## Design Guidelines for Serverless Pipelines
 
+Guidance derived from the measurements above: Lambda memory, Step Functions Map concurrency, and cost.
+
 ### Recommendations by Lambda Memory
 
 | File Size | Recommended Lambda Memory | Rationale |
@@ -204,11 +213,11 @@ Partial reads from a 5 MB file:
 
 ## Constraints and Notes
 
-1. **Measured via Internet**: Latency from VPC-internal Lambda may be 30-50% lower
-2. **FSx Throughput dependent**: This measurement used a low-throughput FSx configuration. Higher throughput configurations will be faster
-3. **Concurrent access**: Sequential access from a single client. For parallel access, be aware of FSx throughput limits
-4. **First access**: The first request is slightly slower due to connection establishment (cold-start-like behavior)
-5. **S3AP-specific**: Different latency characteristics from regular S3 buckets (routed via FSx data plane)
+1. Measured via Internet: Latency from VPC-internal Lambda may be 30-50% lower
+2. FSx Throughput dependent: This measurement used a low-throughput FSx configuration. Higher throughput configurations will be faster
+3. Concurrent access: Sequential access from a single client. For parallel access, be aware of FSx throughput limits
+4. First access: The first request is slightly slower due to connection establishment (cold-start-like behavior)
+5. S3AP-specific: Different latency characteristics from regular S3 buckets (routed via FSx data plane)
 
 > **Disclaimer**: The benchmark results and cost figures in this document are measured values from a test environment and do not constitute a service-level guarantee. Validate in your own AWS account, region, FSx for ONTAP configuration, and workload profile before production adoption.
 
@@ -217,6 +226,8 @@ Partial reads from a 5 MB file:
 ---
 
 ## Next Benchmark Plan
+
+What the next run measures, and the conditions held fixed so its results compare.
 
 ### Organized by Measurement Objective
 
@@ -294,6 +305,8 @@ When changing FSx throughput capacity from 128 MBps → 256 MBps, the following 
 
 ## Benchmark Run ID Convention
 
+The naming rule for the IDs that tie each run to its result tables, the fixed conditions to record, and the linking rules.
+
 ### Naming Convention
 
 ```
@@ -335,6 +348,8 @@ Concurrent NFS/SMB workload: [None / Light / Production-level] (impact on shared
 ---
 
 ## Hypothesis: FSx Throughput Capacity and Practical Concurrency Point Relationship
+
+The hypothesis stated before validation, and the results of the additional validation on 2026-06-06.
 
 ### Hypothesis (Pre-validation)
 
@@ -384,11 +399,13 @@ Concurrent NFS/SMB workload: [None / Light / Production-level] (impact on shared
 **Analysis**:
 - 128→256 MBps: P99 for 1 MB at concurrency=20 improved from 981ms → 481ms (51% improvement)
 - 256→512 MBps: Limited improvement. At concurrency=20, 481ms → 738ms (degradation). This indicates that client-side bandwidth limits of Internet-path testing became dominant
-- **Conclusion**: In Internet-path testing, the effect of increasing FSx bandwidth beyond 256 MBps is difficult to observe. VPC-internal Lambda testing is needed
+- In conclusion, in Internet-path testing the effect of increasing FSx bandwidth beyond 256 MBps is difficult to observe. VPC-internal Lambda testing is needed
 
 ---
 
 ## Concurrency Benchmark Results (2026-05-25)
+
+GetObject measured at 128 MBps, varying concurrency for each file size (1 KB / 100 KB / 1 MB).
 
 ### Test Environment
 
@@ -407,6 +424,8 @@ Concurrent NFS/SMB workload: [None / Light / Production-level] (impact on shared
 > **Important**: These benchmark results are measured values from an Internet-path test environment and do not constitute a service-level guarantee. Use them as a sizing reference.
 
 ### GetObject — Latency by Concurrency
+
+One table per file size.
 
 #### 1 KB file
 
@@ -466,6 +485,8 @@ Concurrent NFS/SMB workload: [None / Light / Production-level] (impact on shared
 
 ## 256 MBps Benchmark Results (2026-05-25)
 
+1 MB GetObject measured with Throughput Capacity at 256 MBps, under the same conditions as the 128 MBps test.
+
 ### Test Environment
 
 | Item | Value |
@@ -488,6 +509,8 @@ Concurrent NFS/SMB workload: [None / Light / Production-level] (impact on shared
 
 ## 512 MBps Benchmark Results (2026-05-25)
 
+1 MB GetObject measured with Throughput Capacity at 512 MBps, under the same conditions.
+
 ### Test Environment
 
 | Item | Value |
@@ -509,6 +532,8 @@ Concurrent NFS/SMB workload: [None / Light / Production-level] (impact on shared
 ---
 
 ## Comparative Analysis: 128 vs 256 vs 512 MBps
+
+The three configurations compared on 1 MB GetObject, by P50 and by P99.
 
 ### 1 MB GetObject P50 Comparison
 
@@ -578,10 +603,10 @@ Concurrent NFS/SMB workload: [None / Light / Production-level] (impact on shared
 
 ### Analysis
 
-1. **P50 improves substantially from Lambda**: 175ms → 73ms at concurrency=10 (58% improvement)
-2. **P99 remains high even from Lambda**: 1,318 ms at concurrency=20. This is caused by internal queuing in the S3 AP data plane
-3. **P50 stays at 128 ms even at concurrency=50**: Lambda's parallel threads operate efficiently against the S3 AP
-4. **The bottleneck is the S3 AP data plane**: The limiting factor is FSx for ONTAP-side processing capacity, not Lambda network bandwidth
+1. P50 improves substantially from Lambda: 175ms → 73ms at concurrency=10 (58% improvement)
+2. P99 remains high even from Lambda: 1,318 ms at concurrency=20. This is caused by internal queuing in the S3 AP data plane
+3. P50 stays at 128 ms even at concurrency=50: Lambda's parallel threads operate efficiently against the S3 AP
+4. The bottleneck is the S3 AP data plane: The limiting factor is FSx for ONTAP-side processing capacity, not Lambda network bandwidth
 
 ### Sizing Guidance (Lambda Execution)
 
@@ -596,6 +621,8 @@ Concurrent NFS/SMB workload: [None / Light / Production-level] (impact on shared
 ---
 
 ## Small File Throughput Comparison (2026-06-06)
+
+GetObject on a 202-byte file, compared between 256 MBps and 512 MBps.
 
 ### Test Environment
 
@@ -645,11 +672,11 @@ Concurrent NFS/SMB workload: [None / Light / Production-level] (impact on shared
 | 50 | 257.9 ms | 246.1 ms | ≈comparable |
 
 **Conclusion (small files)**:
-1. **P50 does not depend on throughput capacity**: P50 is nearly identical between 256 MBps and 512 MBps (~57-60 ms at concurrency ≤25)
-2. **The bottleneck for small files is connection overhead**: TLS handshake + S3 AP routing dominates, not file transfer time
-3. **P50 increases to ~250 ms at concurrency=50**: Request queuing occurs in the S3 AP data plane
-4. **P99 is more stable at 256 MBps**: The higher P99 at 512 MBps (690-747 ms) may be sampling noise
-5. **Increasing throughput capacity is only effective for large file transfers**: No cost benefit for small file processing
+1. P50 does not depend on throughput capacity: P50 is nearly identical between 256 MBps and 512 MBps (~57-60 ms at concurrency ≤25)
+2. The bottleneck for small files is connection overhead: TLS handshake + S3 AP routing dominates, not file transfer time
+3. P50 increases to ~250 ms at concurrency=50: Request queuing occurs in the S3 AP data plane
+4. P99 is more stable at 256 MBps: The higher P99 at 512 MBps (690-747 ms) may be sampling noise
+5. Increasing throughput capacity is only effective for large file transfers: No cost benefit for small file processing
 
 > **Sizing insight**: For small-file-centric workloads (metadata reads, JSON manifests, log entries), 128 MBps is sufficient. Increasing throughput capacity is effective when processing files of 1 MB or larger in parallel.
 
