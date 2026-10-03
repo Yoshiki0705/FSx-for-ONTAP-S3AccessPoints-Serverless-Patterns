@@ -399,7 +399,7 @@ The hypothesis stated before validation, and the results of the additional valid
 **Analysis**:
 - 128→256 MBps: P99 for 1 MB at concurrency=20 improved from 981ms → 481ms (51% improvement)
 - 256→512 MBps: Limited improvement. At concurrency=20, 481ms → 738ms (degradation). This indicates that client-side bandwidth limits of Internet-path testing became dominant
-- In conclusion, in Internet-path testing the effect of increasing FSx bandwidth beyond 256 MBps is difficult to observe. VPC-internal Lambda testing is needed
+- Internet-path testing makes the effect of increasing FSx bandwidth beyond 256 MBps difficult to observe. VPC-internal Lambda testing is needed
 
 ---
 

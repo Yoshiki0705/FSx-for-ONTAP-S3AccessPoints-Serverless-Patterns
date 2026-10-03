@@ -399,7 +399,7 @@ Concurrent NFS/SMB workload: [None / Light / Production-level] (共有スルー�
 **Analysis**: 
 - 128→256 MBps: 1 MB @ concurrency=20 の P99 が 981ms → 481ms に改善（51% 改善）
 - 256→512 MBps: 改善が限定的。concurrency=20 で 481ms → 738ms（悪化）。これはインターネット経由テストのクライアント側帯域制限が支配的になったことを示す
-- 結論として、インターネット経由テストでは 256 MBps 以上の FSx 帯域増加の効果が見えにくい。VPC 内 Lambda テストが必要
+- インターネット経由テストでは、256 MBps 以上の FSx 帯域増加の効果が見えにくい。VPC 内 Lambda テストが必要
 
 ---
 
