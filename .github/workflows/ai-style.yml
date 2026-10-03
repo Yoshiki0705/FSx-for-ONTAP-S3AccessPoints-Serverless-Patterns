@@ -1,0 +1,44 @@
+name: AI-style writing check
+# Writing-style signals for Japanese and English Markdown prose. The detector in
+# tools/ai_style_rules.py is vendored byte-identical from the Adoption Playbook,
+# which defines the rules and the fail tier (D1, D2, D5, D14). The other six
+# languages are out of scope, and first-person articles keep the author's voice.
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  ai-style:
+    name: "AI-style writing check (ja/en)"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.13"
+      - name: Check every rule's examples
+        run: python3 tools/ai_style_rules.py --selftest
+      # Standard library unittest, so the step does not depend on pytest being
+      # installed. test.yaml also collects these files through pytest.
+      - name: Run the detector tests
+        run: python3 -m unittest -v scripts/tests/test_ai_style_rules.py scripts/tests/test_ai_style_strong_fixtures.py
+      # Report-only until the fail-tier findings in scope reach zero; a later
+      # commit adds --fail. Without it the step prints counts and exits 0.
+      - name: Scan ja/en Markdown (report-only)
+        run: >-
+          python3 tools/ai_style_rules.py . --summary
+          --exclude '*.ko.md' --exclude '*-ko.md' --exclude '*/ko/*'
+          --exclude '*.zh-CN.md' --exclude '*-zh-CN.md' --exclude '*/zh-CN/*'
+          --exclude '*.zh-TW.md' --exclude '*-zh-TW.md' --exclude '*/zh-TW/*'
+          --exclude '*.fr.md' --exclude '*-fr.md' --exclude '*/fr/*'
+          --exclude '*.de.md' --exclude '*-de.md' --exclude '*/de/*'
+          --exclude '*.es.md' --exclude '*-es.md' --exclude '*/es/*'
+          --exclude 'docs/article-*' --exclude 'docs/devto-*'
