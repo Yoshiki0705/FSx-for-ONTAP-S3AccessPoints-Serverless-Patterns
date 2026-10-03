@@ -84,15 +84,15 @@
 | 10000 events / 30 min | ~500 bytes | ~5 MB | < 10 MB |
 | 100000 events / 2 hours | ~500 bytes | ~50 MB | < 100 MB |
 
-> Persistent Store ボリュームは最低 2 GB を推奨（ONTAP 要件）。上記シナリオでは推定上十分な余裕がありますが、実際の Persistent Store 使用量は live FPolicy replay で検証が必要です。
+> Persistent Store ボリュームは最低 2 GB を推奨（ONTAP 要件、未確認）。上記シナリオでは推定上十分な余裕がありますが、実際の Persistent Store 使用量は live FPolicy replay で検証が必要です。
 
 ## Analysis
 
 1. **Zero message loss**: SQS Standard queue handles 10,000 events without any loss
 2. **Throughput scales with warm connections**: 188 eps (cold start) → 464 eps (warm, sustained)
-3. **Consumer can keep up**: 341 msgs/sec drain rate exceeds typical FPolicy event generation rate
-4. **SLO implications**: At 464 eps injection rate, a 30-min downtime accumulates ~835,000 events. With 341 msgs/sec drain rate (single consumer), full drain takes ~41 minutes. Lambda auto-scaling (10+ concurrent consumers) reduces this to < 5 minutes.
-5. **Backpressure**: SQS provides natural backpressure via VisibilityTimeout. No message loss even under burst.
+3. **Consumer can keep up**: 341 msgs/sec drain rate exceeds typical FPolicy event generation rate（未確認）
+4. **SLO implications**: At 464 eps injection rate, a 30-min downtime accumulates ~835,000 events. With 341 msgs/sec drain rate (single consumer), full drain takes ~41 minutes. Lambda auto-scaling (10+ concurrent consumers) reduces this to < 5 minutes（未確認）.
+5. **Backpressure**: SQS provides natural backpressure via VisibilityTimeout（未確認）. No message loss even under burst.
 
 ## SLO Threshold Validation
 
@@ -107,7 +107,7 @@
 ## Conclusions
 
 1. **SQS は Replay Storm に対して十分な耐性を持つ**: 10,000 イベントの一括投入でもメッセージロスなし
-2. **Lambda auto-scaling により drain 時間は短縮可能**: 単一コンシューマーで 341 msgs/sec、10 並列で ~3,400 msgs/sec
+2. **Lambda auto-scaling により drain 時間は短縮可能**: 単一コンシューマーで 341 msgs/sec、10 並列で ~3,400 msgs/sec（未確認）
 3. **Persistent Store サイジングは推定値**: シミュレーションイベントのペイロードサイズに基づく推定。30 分ダウンタイムで ~5 MB、2 時間でも ~50 MB。実際の ONTAP Persistent Store サイジングは live FPolicy replay で検証が必要
 4. **SLO 閾値は妥当**: 全メトリクスが閾値を大幅にクリア
 
@@ -116,6 +116,6 @@
 - テストは SQS 直接投入によるシミュレーション（実際の FPolicy TCP サーバーリプレイではない）
 - 実際の FPolicy リプレイでは TCP バックプレッシャーにより異なるバースト特性の可能性あり
 - Out-of-order distance (OOD) は未計測（イベントタイムスタンプ相関が必要）
-- ONTAP Persistent Store の実使用量は未計測（ONTAP CLI アクセスが必要）
+- ONTAP Persistent Store の実使用量は未計測（ONTAP CLI アクセスが必要）（再検証: #444）
 
 > **Governance Caveat**: これらの結果は特定のテスト環境からの sizing reference であり、service limit ではありません。本番環境では導入先固有のワークロードプロファイルで検証してください。

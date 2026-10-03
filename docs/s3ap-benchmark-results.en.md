@@ -213,7 +213,7 @@ Guidance derived from the measurements above: Lambda memory, Step Functions Map 
 
 ## Constraints and Notes
 
-1. Measured via Internet: Latency from VPC-internal Lambda may be 30-50% lower
+1. Measured via Internet: Latency from VPC-internal Lambda may be 30-50% lower (unverified) (re-verification: #443)
 2. FSx Throughput dependent: This measurement used a low-throughput FSx configuration. Higher throughput configurations will be faster
 3. Concurrent access: Sequential access from a single client. For parallel access, be aware of FSx throughput limits
 4. First access: The first request is slightly slower due to connection establishment (cold-start-like behavior)

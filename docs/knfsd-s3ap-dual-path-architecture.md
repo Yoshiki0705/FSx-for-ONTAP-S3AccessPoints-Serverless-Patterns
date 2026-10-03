@@ -27,7 +27,7 @@
 
 ### スループット実測値
 
-> **テスト環境の注記**: 以下は m6gd.xlarge (237 GB NVMe single drive) での測定結果です。本番推奨の im4gn.16xlarge (30 TB NVMe RAID) や i3en.24xlarge (60 TB) では、L2 NVMe の帯域が数倍〜10倍に向上することが期待されます（im4gn の sequential read: 最大 ~8 GB/s）。
+> **テスト環境の注記**: 以下は m6gd.xlarge (237 GB NVMe single drive) での測定結果です。本番推奨の im4gn.16xlarge (30 TB NVMe RAID) や i3en.24xlarge (60 TB) では、L2 NVMe の帯域が数倍〜10倍に向上することが期待されます（im4gn の sequential read: 最大 ~8 GB/s、未確認）（再検証: #442）。
 
 | Operation | Throughput | 条件 |
 |-----------|-----------|------|
@@ -232,7 +232,7 @@ Step Functions:
 
 VFX スタジオがクラウドバーストレンダリングを実施。オンプレミスの NFS ストレージに格納されたテクスチャ・シーンデータを KNFSD でキャッシュし、レンダリング結果を AI で品質チェックする。
 
-> **実績**: Wētā FX (Avatar: The Way of Water) および ILM が KNFSD の前身プロジェクトを本番利用。
+> **実績**: Wētā FX (Avatar: The Way of Water) および ILM が KNFSD の前身プロジェクトを本番利用（出典未記載、未確認）。
 
 #### KNFSD の価値
 
@@ -378,7 +378,7 @@ VFX スタジオがクラウドバーストレンダリングを実施。オン�
 | マーケットデータを数千コアが同時読取り | L1 (RAM) キャッシュで sub-ms 配信 |
 | 規制要件（FRTB）で計算ウィンドウが厳格 | Auto Scaling で計算開始時に帯域確保 |
 | オンプレミスのリスクエンジンとのハイブリッド | WAN 越しキャッシュでマーケットデータ共有 |
-| 日中再計算（Intraday VaR）のレイテンシ要件 | i7ie インスタンスで NVMe レイテンシ 65% 削減 |
+| 日中再計算（Intraday VaR）のレイテンシ要件 | i7ie インスタンスで NVMe レイテンシ 65% 削減（未確認） |
 
 #### S3 AP の価値
 
@@ -577,7 +577,7 @@ FSx Provisioned Throughput: 1,024 MBps (読取り)
 | 大量小ファイル（EDA tech files） | i8g.16xlarge | 最新 NVMe、小ファイル IOPS 最適 |
 | 大ファイルシーケンシャル（GDS/EXR） | im4gn.16xlarge | 高スループット、コスト効率最高 |
 | 超大容量 working set（VFX 全アセット） | i3en.24xlarge | 60 TB NVMe キャッシュ |
-| レイテンシ重視（金融シミュレーション） | i7ie.48xlarge | 65% 低 NVMe レイテンシ |
+| レイテンシ重視（金融シミュレーション） | i7ie.48xlarge | 65% 低 NVMe レイテンシ（未確認） |
 
 ---
 
@@ -715,7 +715,7 @@ VPC:
 
 ### Q: Preview 状態の KNFSD の本番利用
 
-AWS は Preview 中の SLA を保証していません。PoC/開発環境での評価を推奨し、GA 後に本番適用を計画してください。ただし Wētā FX/ILM は前身プロジェクトを本番利用しており、技術的な成熟度は高いです。
+AWS は Preview 中の SLA を保証していません。PoC/開発環境での評価を推奨し、GA 後に本番適用を計画してください。ただし Wētā FX/ILM は前身プロジェクトを本番利用しており（未確認）、技術的な成熟度は高いと考えられます。
 
 ### Q: KNFSD での書込みの扱い
 

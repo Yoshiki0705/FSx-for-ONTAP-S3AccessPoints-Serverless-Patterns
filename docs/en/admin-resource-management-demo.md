@@ -304,7 +304,7 @@ Each scenario lists the panel to open, the action, and what to confirm on screen
    - Deletion executes 3-step automation: unmount → offline → delete
    - Success toast confirms removal
 
-> **Note**: FlexCache shares the parent volume's throughput budget. Recommended cache size is 10-20% of origin. Use for read-heavy workloads (EDA/CAD, build pipelines, AI inference) — not as a write target.
+> **Note**: FlexCache shares the parent volume's throughput budget. Recommended cache size is 10-20% of origin (unverified). Use for read-heavy workloads (EDA/CAD, build pipelines, AI inference) — not as a write target.
 
 > **Multi-FS indicator**: The panel header shows which FSx for ONTAP management IP the operations target, useful when multiple file systems are accessible.
 

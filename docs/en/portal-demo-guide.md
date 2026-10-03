@@ -122,7 +122,7 @@ The Upload tab uses Storage Browser for S3 to upload and manage files directly f
 
 Click the S3 AP alias to browse folders. Drag-and-drop to upload, click a file to download.
 
-> **Uploaded files are immediately visible via NFS/SMB** — ONTAP's strong consistency ensures the latest data is visible across all protocols immediately after write.
+> **Uploaded files are immediately visible via NFS/SMB** — ONTAP's strong consistency ensures the latest data is visible across all protocols immediately after write (unverified).
 
 ---
 
@@ -219,7 +219,7 @@ Preview PDF and DOCX files directly in the browser without downloading.
 | Images | Presigned URL popover (existing) | 🖼️ |
 | Other | Download link | 📄 |
 
-> Click the 📕 or 📝 icon next to a file to open the inline preview. PDF renders natively; DOCX layout accuracy is approximately 70-80%. For XLSX/PPTX, download and open locally (Phase 2 will add server-side conversion).
+> Click the 📕 or 📝 icon next to a file to open the inline preview. PDF renders natively; DOCX layout accuracy is approximately 70-80% (unverified). For XLSX/PPTX, download and open locally (Phase 2 will add server-side conversion).
 
 #### FlexClone Restore (FC7 pattern)
 

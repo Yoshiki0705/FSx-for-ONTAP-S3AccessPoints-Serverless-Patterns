@@ -302,7 +302,7 @@ Share links use presigned URLs with a time-to-live you choose (5 min, 15 min, or
 
 ### Files uploaded via NFS/SMB not showing
 
-They should appear immediately (ONTAP guarantees cross-protocol strong consistency). Try refreshing the file list. If still missing, the file may be in a subfolder — check the path.
+They should appear immediately (ONTAP guarantees cross-protocol strong consistency; unverified, re-verification: #447). Try refreshing the file list. If still missing, the file may be in a subfolder — check the path.
 
 ### Using the portal on mobile
 

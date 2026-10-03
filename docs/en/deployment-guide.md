@@ -371,7 +371,7 @@ aws cloudformation create-stack \
 
 ## Cost Estimates
 
-Fixed costs, per-execution charges, and monthly estimates by usage profile, in that order.
+Fixed costs, per-execution charges, and monthly estimates by usage profile, in that order. Unit prices are approximations with no retrieval date or region stated (unverified).
 
 ### Fixed Costs (per stack, monthly)
 

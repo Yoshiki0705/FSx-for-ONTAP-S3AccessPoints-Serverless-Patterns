@@ -27,7 +27,7 @@ This is a design guide for a Dual-Path architecture that optimizes read-intensiv
 
 ### Measured Throughput
 
-> **Test environment note**: These numbers come from m6gd.xlarge (237 GB NVMe, single drive). On the production-recommended im4gn.16xlarge (30 TB NVMe RAID) or i3en.24xlarge (60 TB), L2 NVMe bandwidth is expected to be several times to ~10x higher (im4gn sequential read: up to ~8 GB/s).
+> **Test environment note**: These numbers come from m6gd.xlarge (237 GB NVMe, single drive). On the production-recommended im4gn.16xlarge (30 TB NVMe RAID) or i3en.24xlarge (60 TB), L2 NVMe bandwidth is expected to be several times to ~10x higher (im4gn sequential read: up to ~8 GB/s, unverified) (re-verification: #442).
 
 | Operation | Throughput | Condition |
 |-----------|-----------|-----------|
@@ -233,7 +233,7 @@ Step Functions:
 
 A VFX studio runs cloud burst rendering. Textures and scene data stored on on-premises NFS storage are cached by KNFSD, and rendered output is quality-checked with AI.
 
-> **Track record**: Wētā FX (Avatar: The Way of Water) and ILM used the predecessor project of KNFSD in production.
+> **Track record**: Wētā FX (Avatar: The Way of Water) and ILM used the predecessor project of KNFSD in production (no source cited, unverified).
 
 #### KNFSD Value
 
@@ -379,7 +379,7 @@ Daily Value at Risk (VaR) / CVA / stress test calculations burst-run Monte Carlo
 | Thousands of cores reading market data concurrently | Sub-ms delivery from the L1 (RAM) cache |
 | Strict calculation windows driven by regulation (FRTB) | Auto Scaling secures bandwidth at calculation start |
 | Hybrid with an on-premises risk engine | Market data shared through the cache over WAN |
-| Latency requirements for intraday VaR recalculation | i7ie instances reduce NVMe latency by 65% |
+| Latency requirements for intraday VaR recalculation | i7ie instances reduce NVMe latency by 65% (unverified) |
 
 #### S3 AP Value
 
@@ -578,7 +578,7 @@ FSx Provisioned Throughput: 1,024 MBps (read)
 | Many small files (EDA tech files) | i8g.16xlarge | Latest NVMe, optimized for small-file IOPS |
 | Large sequential files (GDS/EXR) | im4gn.16xlarge | High throughput, strong cost efficiency |
 | Very large working set (all VFX assets) | i3en.24xlarge | 60 TB NVMe cache |
-| Latency-sensitive (financial simulation) | i7ie.48xlarge | 65% lower NVMe latency |
+| Latency-sensitive (financial simulation) | i7ie.48xlarge | 65% lower NVMe latency (unverified) |
 
 ---
 
@@ -716,7 +716,7 @@ No. KNFSD accelerates NFS reads, while serverless AI/ML processing and event-dri
 
 ### Q: Is it acceptable to use KNFSD in production while it is in Preview?
 
-AWS does not guarantee an SLA during Preview. We recommend evaluating in PoC/development environments and planning production adoption after GA. That said, Wētā FX and ILM ran the predecessor project in production, so technical maturity is high.
+AWS does not guarantee an SLA during Preview. We recommend evaluating in PoC/development environments and planning production adoption after GA. That said, Wētā FX and ILM ran the predecessor project in production (unverified), which suggests high technical maturity.
 
 ### Q: Does KNFSD cache writes as well?
 
