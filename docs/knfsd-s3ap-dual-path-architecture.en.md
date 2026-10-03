@@ -172,9 +172,9 @@ This is a design guide for a Dual-Path architecture that optimizes read-intensiv
 
 ## Use Case Deep Dive
 
-### 1. Semiconductor EDA — DRC/LVS Burst Verification + AI Yield Analysis
+For each of seven industries: the scenario, the reads KNFSD serves, the serverless processing S3 AP serves, and a reference configuration.
 
-#### Scenario
+### 1. Semiconductor EDA — DRC/LVS Burst Verification + AI Yield Analysis
 
 The design verification phase just before tapeout. Thousands of design rule check (DRC) and Layout vs Schematic (LVS) jobs run in parallel in a short window, and results are analyzed with AI to surface yield risk early.
 
@@ -231,8 +231,6 @@ Step Functions:
 
 ### 2. VFX Rendering — Texture Cache + AI Render Quality Validation
 
-#### Scenario
-
 A VFX studio runs cloud burst rendering. Textures and scene data stored on on-premises NFS storage are cached by KNFSD, and rendered output is quality-checked with AI.
 
 > **Track record**: Wētā FX (Avatar: The Way of Water) and ILM used the predecessor project of KNFSD in production.
@@ -280,8 +278,6 @@ A VFX studio runs cloud burst rendering. Textures and scene data stored on on-pr
 
 ### 3. Automotive CAE Simulation — Mesh Data Reads + AI Result Comparison
 
-#### Scenario
-
 Crash, aerodynamics, and NVH simulations read large mesh datasets and run hundreds of variants in parallel. Results are compared with AI to automatically suggest design optimization directions.
 
 #### KNFSD Value
@@ -299,8 +295,6 @@ Crash, aerodynamics, and NVH simulations read large mesh datasets and run hundre
 ---
 
 ### 4. Life Sciences / Genomics — Reference Database Cache + AI Variant Classification
-
-#### Scenario
 
 A whole genome sequencing (WGS) pipeline burst-processes FASTQ → BAM → VCF conversion for thousands of samples. The reference genome (hg38: ~3.1 GB) and annotation databases (dbSNP, ClinVar, gnomAD: tens of GB combined) are cached by KNFSD, and variant call results are classified for pathogenicity with AI.
 
@@ -365,8 +359,6 @@ A whole genome sequencing (WGS) pipeline burst-processes FASTQ → BAM → VCF c
 ---
 
 ### 5. Financial Services / Risk Calculation — Market Data Cache + Automated VaR Reports
-
-#### Scenario
 
 Daily Value at Risk (VaR) / CVA / stress test calculations burst-run Monte Carlo simulations across tens of thousands of scenarios. Market data (historical rates, volatility surfaces, yield curves) is cached by KNFSD, and results feed AI anomaly detection and automated regulatory report generation.
 
@@ -433,8 +425,6 @@ Daily Value at Risk (VaR) / CVA / stress test calculations burst-run Monte Carlo
 
 ### 6. Weather Forecasting / Climate Science — Observation Data Cache + AI Forecast Post-Processing
 
-#### Scenario
-
 Ensemble runs of numerical weather prediction (NWP) models (WRF, HARMONIE, GFS, and others). Observation data (radiosonde, satellite, radar) plus initial and boundary condition data are cached by KNFSD, and forecast output is post-processed with AI (bias correction, extreme weather detection, renewable energy output prediction).
 
 #### Workload Characteristics
@@ -496,8 +486,6 @@ Ensemble runs of numerical weather prediction (NWP) models (WRF, HARMONIE, GFS, 
 
 ### 7. Energy / Seismic Exploration — SEG-Y Data Cache + AI Interpretation Support
 
-#### Scenario
-
 3D seismic survey data acquired in oil and gas exploration (SEG-Y format, tens of TB to PB) is burst-processed in the cloud. Pre-stack and post-stack processing of reflection seismic data, reverse time migration (RTM), and full waveform inversion (FWI) run in parallel, and subsurface structure is interpreted automatically with AI.
 
 #### Workload Characteristics
@@ -553,6 +541,8 @@ Ensemble runs of numerical weather prediction (NWP) models (WRF, HARMONIE, GFS, 
 
 ## Throughput Design
 
+KNFSD, S3 AP and direct NFS/SMB access share the same FSx for ONTAP throughput; this section shows how to estimate bandwidth on that basis and how to choose instances.
+
 ### Bandwidth Sharing Model
 
 KNFSD, S3 AP, and direct NFS/SMB access all share the same provisioned throughput on FSx for ONTAP. KNFSD cache hits, however, substantially reduce effective FSx bandwidth consumption.
@@ -594,6 +584,8 @@ FSx Provisioned Throughput: 1,024 MBps (read)
 
 ## Observability Integration
 
+A design that brings KNFSD and S3 AP / Lambda metrics into one dashboard and one alert chain.
+
 ### Unified Dashboard Design
 
 Monitor KNFSD's 70+ metrics alongside S3 AP and Lambda metrics on a single dashboard:
@@ -626,9 +618,11 @@ KNFSD cache_hit_ratio < 80%
 
 ## Cost Optimization
 
+Combining KNFSD with Spot, saving FSx throughput, and a decision flow for whether to adopt KNFSD.
+
 ### Combining KNFSD with Spot
 
-KNFSD's largest cost contribution is **making it practical to run compute nodes on Spot**:
+KNFSD's largest cost contribution is making it practical to run compute nodes on Spot.
 
 | Configuration | Compute cost/month | Reason |
 |--------------|:---:|--------|
@@ -666,6 +660,8 @@ graph TD
 ---
 
 ## Deployment Considerations
+
+How to split the IaC, the network design, and a phased adoption path.
 
 ### Separating the IaC
 
@@ -710,23 +706,29 @@ VPC:
 
 ## FAQ / Common Misconceptions
 
-**Q: Is KNFSD a replacement for FlexCache?**
-A: Not a full replacement — they suit different situations. FlexCache is ONTAP-native, with strengths in write caching and integration with data protection. KNFSD is open source, with strengths in consolidating multiple sources, elastic scaling, and cost optimization. For write-heavy workloads or a single ONTAP source, FlexCache fits; for read-intensive bursts or multiple sources, KNFSD fits.
+### Q: Is KNFSD a replacement for FlexCache?
 
-**Q: Does using KNFSD make S3 AP unnecessary?**
-A: No. KNFSD accelerates NFS reads, while serverless AI/ML processing and event-driven pipelines need S3 AP. The two address different needs: "fast NFS reads" and "serverless processing."
+Not a full replacement — they suit different situations. FlexCache is ONTAP-native, with strengths in write caching and integration with data protection. KNFSD is open source, with strengths in consolidating multiple sources, elastic scaling, and cost optimization. For write-heavy workloads or a single ONTAP source, FlexCache fits; for read-intensive bursts or multiple sources, KNFSD fits.
 
-**Q: Is it acceptable to use KNFSD in production while it is in Preview?**
-A: AWS does not guarantee an SLA during Preview. We recommend evaluating in PoC/development environments and planning production adoption after GA. That said, Wētā FX and ILM ran the predecessor project in production, so technical maturity is high.
+### Q: Does using KNFSD make S3 AP unnecessary?
 
-**Q: Does KNFSD cache writes as well?**
-A: Writes are write-through (written back to the source immediately) or write-around (written directly to the source). The written data itself is not cached. If you need a write cache, consider FlexCache.
+No. KNFSD accelerates NFS reads, while serverless AI/ML processing and event-driven pipelines need S3 AP. The two address different needs: "fast NFS reads" and "serverless processing."
 
-**Q: Isn't simply raising the FSx for ONTAP throughput capacity enough?**
-A: For small steady-state workloads, increasing throughput is sufficient. However, if any of the following applies — (1) bursts need bandwidth beyond the FSx maximum, (2) Spot usage requires cache durability, (3) multiple sources must be consolidated — KNFSD is the better fit.
+### Q: Is it acceptable to use KNFSD in production while it is in Preview?
 
-**Q: How does this differ from Amazon File Cache?**
-A: Amazon File Cache is a Lustre-compatible managed cache and requires a Lustre client (a Linux kernel module). KNFSD speaks standard NFS, so existing NFS workflows can be used without modification.
+AWS does not guarantee an SLA during Preview. We recommend evaluating in PoC/development environments and planning production adoption after GA. That said, Wētā FX and ILM ran the predecessor project in production, so technical maturity is high.
+
+### Q: Does KNFSD cache writes as well?
+
+Writes are write-through (written back to the source immediately) or write-around (written directly to the source). The written data itself is not cached. If you need a write cache, consider FlexCache.
+
+### Q: Isn't simply raising the FSx for ONTAP throughput capacity enough?
+
+For small steady-state workloads, increasing throughput is sufficient. However, if any of the following applies — (1) bursts need bandwidth beyond the FSx maximum, (2) Spot usage requires cache durability, (3) multiple sources must be consolidated — KNFSD is the better fit.
+
+### Q: How does this differ from Amazon File Cache?
+
+Amazon File Cache is a Lustre-compatible managed cache and requires a Lustre client (a Linux kernel module). KNFSD speaks standard NFS, so existing NFS workflows can be used without modification.
 
 ---
 

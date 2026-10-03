@@ -18,8 +18,11 @@ Amazon FSx for NetApp ONTAP の S3 Access Point は **二段階認可モデル**
 | **Layer 2: ファイルシステム側の権限** | AP に固定した ID（UNIX / Windows ユーザー）が持つファイル権限 | **mode bits / ACL** |
 
 > **Evidence**: 本ドキュメントの実測値はすべて `ap-northeast-1` / ONTAP `9.18.1P3D1` のものです。所見ごとに同一セッションのコントロールを取っています。
-> - **2026-08-17 / 08-18**: Layer 1 の評価順序、条件キー、`NotPrincipal`、ポリシーサイズ、Layer 2 の対測定、監査の主体。手順と全結果は [S3 Access Point の権限設計 — 評価順序と、絞り込みを担う 2 つの層](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/blob/main/docs/ja/domains/security-governance/notes/access-point-authorization-layers.md) にあります。
-> - **2026-08-18 / 08-19（本リポジトリで追加測定）**: NTFS ボリュームでの Layer 1 評価、AP ポリシーが受理するアクション 20 件、SLAG が拒否を引き起こす原因、AD 参加 SVM での監査主体、UNIX identity の AP への IAM プリンシパル適用。
+>
+> | 測定日 | 範囲 |
+> |---|---|
+> | 2026-08-17 / 08-18 | Layer 1 の評価順序、条件キー、`NotPrincipal`、ポリシーサイズ、Layer 2 の対測定、監査の主体。手順と全結果は [S3 Access Point の権限設計 — 評価順序と、絞り込みを担う 2 つの層](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/blob/main/docs/ja/domains/security-governance/notes/access-point-authorization-layers.md) にあります |
+> | 2026-08-18 / 08-19（本リポジトリで追加測定） | NTFS ボリュームでの Layer 1 評価、AP ポリシーが受理するアクション 20 件、SLAG が拒否を引き起こす原因、AD 参加 SVM での監査主体、UNIX identity の AP への IAM プリンシパル適用 |
 
 ## 認可フロー
 
@@ -58,6 +61,8 @@ Amazon FSx for NetApp ONTAP の S3 Access Point は **二段階認可モデル**
 ```
 
 ## Layer 1: AWS-side Authorization
+
+Layer 1 では、呼び出し元のプリンシパルと `s3:` のアクションを IAM が評価し、絞り込みは明示的な `Deny` が担います。評価されるポリシー、明示的な拒否による絞り込み、条件キーとポリシーサイズの実測、AP ポリシーで使えないアクション、ARN の形式、クロスアカウントでの扱いの順に示します。
 
 ### 評価されるポリシー
 
@@ -163,7 +168,7 @@ Amazon FSx for NetApp ONTAP の S3 Access Point は **二段階認可モデル**
 
 ### AP ポリシーで使えないアクション
 
-**20 アクションを 1 つずつ単独で適用して判定しました。**
+20 アクションを 1 つずつ単独で適用して判定しました。
 
 | 判定 | アクション |
 |---|---|
@@ -185,7 +190,7 @@ Amazon FSx for NetApp ONTAP の S3 Access Point は **二段階認可モデル**
 
 ### IAM ポリシーの ARN 形式
 
-S3 Access Points for FSx for ONTAP では、通常の S3 バケット ARN とは異なる形式を使用します:
+S3 Access Points for FSx for ONTAP では、通常の S3 バケット ARN とは異なる、次の形式を使用します。
 
 ```json
 {
@@ -215,9 +220,11 @@ S3 Access Points for FSx for ONTAP では、通常の S3 バケット ARN とは
 
 ## Layer 2: File-system-side Authorization
 
+Layer 2 では、AP に固定した ID（UNIX / Windows ユーザー）のファイル権限が評価され、絞り込みは mode bits / ACL が担います。
+
 ### ファイルシステム ID の役割
 
-S3 Access Point 作成時に指定するファイルシステム ID が、すべての S3 API リクエストの認可に使用されます:
+S3 Access Point 作成時に指定するファイルシステム ID が、すべての S3 API リクエストの認可に使用されます。
 
 - **読み取り専用ユーザー** を関連付けた場合 → 読み取りリクエストのみ認可、書き込みはブロック
 - **読み書きユーザー** を関連付けた場合 → 読み取り・書き込みの両方が認可
@@ -362,7 +369,7 @@ UNIX ボリュームに監査 ACE を付ける経路として SLAG（storage-lev
 
 ## 本プロジェクトでの適用
 
-本リポジトリの各パターンでは、以下の設計を採用しています:
+本リポジトリの各パターンでは、次の設計を採用しています。
 
 | コンポーネント | Layer 1 設計 | Layer 2 設計 |
 |--------------|-------------|-------------|

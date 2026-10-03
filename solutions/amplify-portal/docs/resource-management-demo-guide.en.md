@@ -27,6 +27,8 @@ No error dialog appears. For connection setup, start with the
 
 ## Demo scenarios
 
+Fourteen scenarios, from checking the panel list to qtrees and quotas. Each lists the operation, the ONTAP REST API it calls, and what on screen counts as success.
+
 ### Scenario 1: Check the panel list
 
 1. Open `Admin → Resource management` in the left menu
@@ -61,7 +63,7 @@ not appearing under the default scope is correct -- switching is how you see it.
 
 ONTAP REST: `/protocols/cifs/local-users`, `/protocols/cifs/local-groups`
 
-**Create a user**
+#### Create a user
 
 1. On the `👤 Users` tab, choose `+ Create user`
 2. Enter user name, password, full name and description
@@ -73,7 +75,7 @@ Success criterion: the row appears with a `Member of` column and a `State`
 > **Security note**: the password is never written to the Lambda log.
 > The audit log records only the user name and the operator.
 
-**Create a group and manage members**
+#### Create a group and manage members
 
 1. On the `👥 Groups` tab, choose `+ Create group`
 2. Enter group name and description, then `Create`
@@ -85,7 +87,7 @@ Success criterion: `✅ Group created` appears and the count increases.
 Member names may include the domain (`DEMO\alice`). On delete the name is
 URL-encoded as a path segment.
 
-**Delete**
+#### Delete
 
 `Delete user` / `Delete group` operate by SID. The SVM UUID is resolved automatically.
 
@@ -112,7 +114,7 @@ Success criterion: the direction renders as `Windows → UNIX` and rows are orde
 Leaving the replacement empty means, per ONTAP's definition, an explicit denial of the
 mapping for that user. The list shows it as `" " (deny)`.
 
-**Moving the evaluation order (index)**
+#### Moving the evaluation order (index)
 
 `Edit` rewrites the pattern and the replacement. Changing the evaluation order is a
 separate button.
@@ -150,7 +152,7 @@ constituents ONTAP chose, and it differs between clusters (measured at 50 GB on 
 validation file system). A smaller request is refused inside the ONTAP job, and the message
 carries the floor for that file system.
 
-**Resize**
+#### Resize
 
 A cache is not fixed at the size it was created with. `Resize` on the row opens the panel.
 
@@ -168,7 +170,7 @@ Success criterion: a FlexGroup resize continues as an ONTAP job, so right after
 `The resize was accepted` the listing can still show the old size (measured: both growing
 and shrinking ran past 10s). The panel re-reads once more after 20 seconds.
 
-**Write modes**
+#### Write modes
 
 A FlexCache is not read-only. Writes at the cache are served, and ONTAP keeps the cache
 and the origin coherent in either mode. What differs is where the write is acknowledged.
@@ -186,7 +188,7 @@ the cache**.
 Success criterion: every row always carries a `✍️ write-around` or `✍️ write-back` badge,
 and the listing reflects a switch.
 
-**Delete**
+#### Delete
 
 The row's `Delete` → `Really delete?` → `Execute` is two-step by design.
 The first click does not delete. ONTAP refuses to delete a cache with write-back
@@ -210,7 +212,7 @@ Success criterion: the row shows parent volume, parent snapshot, size and used s
 > **Security style note**: the clone's security style and export policy are inherited
 > from the parent volume. They cannot be set at creation, so the portal does not send them.
 
-**Split**
+#### Split
 
 Clicking `Split` starts the split after confirmation, and the row changes to
 `Splitting n%`.
@@ -347,7 +349,7 @@ ONTAP REST: `/cluster/peers`, `/network/ip/interfaces?services=intercluster_core
 The AWS Management Console has no surface for this. Until now it required the ONTAP
 CLI or hand-written REST calls.
 
-**Check the prerequisites**
+#### Check the prerequisites
 
 1. Open the `🌐 intercluster LIF` tab
 2. Confirm at least one LIF is in `up` state
@@ -355,7 +357,7 @@ CLI or hand-written REST calls.
 3. In the security group, allow TCP 11104, 11105 and ICMP between the intercluster
    LIFs of both clusters
 
-**Create on one side**
+#### Create on one side
 
 1. On the `🔗 Cluster peers` tab choose `+ Create cluster peer`
 2. Enter the remote cluster's intercluster LIF addresses, comma-separated
@@ -364,7 +366,7 @@ CLI or hand-written REST calls.
 Success criterion: the generated passphrase appears at the top of the panel.
 **It is shown once only.** Once dismissed it cannot be shown again.
 
-**Accept on the remote side**
+#### Accept on the remote side
 
 1. Open the `🔗 Cluster peers` tab in the remote cluster's portal
 2. Click `Accept` on the row, enter the same passphrase and choose `Execute`
@@ -372,7 +374,7 @@ Success criterion: the generated passphrase appears at the top of the panel.
 Success criterion: the state moves from `pending` to `available` and authentication
 becomes `ok`.
 
-**Delete**
+#### Delete
 
 `Delete` → confirm → `Execute`. Dependent SVM peers and replication relationships must
 be removed first; ONTAP rejects the delete while they exist.
@@ -421,20 +423,20 @@ There are four tabs.
 > The panel shows a note to the same effect. Cluster name and ONTAP version
 > (`/cluster`) are still available.
 
-**Enable or disable a LIF**
+#### Enable or disable a LIF
 
 Use `Enable` / `Disable` on the row. Disabling requires confirmation.
 
 > **Path note**: disabling a management or data LIF cuts that path. Disabling the
 > management LIF the portal itself uses makes further operations impossible.
 
-**Enable or disable a protocol service**
+#### Enable or disable a protocol service
 
 The state of NFS, CIFS and S3 is shown and can be toggled. Disabling requires
 confirmation. The CIFS `Detail` column shows the AD domain name; empty means the SVM
 is not AD-joined.
 
-**Update DNS**
+#### Update DNS
 
 Enter domains and servers comma-separated, then `Apply`.
 
@@ -442,7 +444,7 @@ Enter domains and servers comma-separated, then `Apply`.
 > here. A wrong value breaks SMB, and on an AD-joined SVM it also makes S3 Access Point
 > data operations return `AccessDenied`.
 
-**Jobs**
+#### Jobs
 
 FlexCache creation, FlexClone split, SnapMirror transfers and peering all run as
 asynchronous jobs. Their progress and failure reasons appear on this tab.
@@ -453,7 +455,7 @@ asynchronous jobs. Their progress and failure reasons appear on this tab.
 
 Separate from resource management, these are available from the files view.
 
-**Folder favourites**
+#### Folder favourites
 
 1. Click ☆ on any folder row (it becomes ★)
 2. Open `Favourites` in the left menu
@@ -463,7 +465,7 @@ Separate from resource management, these are available from the files view.
 Clicking the same favourite again returns to that folder even if you had navigated
 elsewhere.
 
-**ZIP download**
+#### ZIP download
 
 1. Enter any folder (nothing is shown at the root)
 2. Click `📦 Download as ZIP` in the header
@@ -472,7 +474,7 @@ elsewhere.
 Success criterion: when a limit (file count or total size) is exceeded, an error is
 returned without building the ZIP.
 
-**File tags**
+#### File tags
 
 1. Click 🏷️ on a file row to open the editor
 2. Enter a tag name and press `+`
@@ -481,7 +483,7 @@ returned without building the ZIP.
 Success criterion: the row badge refreshes immediately after adding. Tags are stored
 per user.
 
-**Share link**
+#### Share link
 
 1. Click 🔗 on a file row
 2. Choose the expiry (5 minutes / 15 minutes / 1 hour)
@@ -489,12 +491,12 @@ per user.
 
 Success criterion: the labels render in the currently selected language (8 supported).
 
-**Inline PDF / Office preview**
+#### Inline PDF / Office preview
 
 Clicking the file name renders a preview inside the portal using a presigned URL.
 PDFs use an iframe; Office documents are rendered client-side.
 
-**Snapshot comparison**
+#### Snapshot comparison
 
 1. Click `🔍 Compare with snapshot` in the header
 2. Enter the clone's S3 AP alias (visible in the `📸 Restore from Snapshot` job result)
