@@ -64,6 +64,14 @@ unknown fragment as the top of the page, so the citing side never learns the lin
 `make drift` does not cover heading style; check it yourself when adding or rewriting a Japanese
 document.
 
+### Prose style
+
+Japanese and English prose is judged against the Adoption Playbook's
+[writing-quality criteria](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/blob/main/docs/agent/writing-quality.md).
+The rules are defined there and not restated here. The check runs in
+[`.github/workflows/ai-style.yml`](.github/workflows/ai-style.yml) through `tools/ai_style_rules.py`,
+a byte-identical copy of the Playbook's detector; change the rules upstream, not in the copy.
+
 ## What We Accept
 
 - Bug fixes with reproduction steps
