@@ -193,6 +193,8 @@ Requires VPC, subnets, Security Groups, and additional compute (ECS Fargate / EC
 
 ## Parameter Mapping
 
+This section maps the resources of your existing FSx for ONTAP environment to the template parameters, with how to obtain each value.
+
 ### Common Parameters (All Tier 2 Industry Patterns)
 
 | Your Existing Resource | Template Parameter | How to Obtain |
@@ -232,21 +234,14 @@ Most patterns support `DemoMode=true` which accepts a regular S3 bucket name ins
 
 ## VPC Endpoint Conflict Matrix
 
-When deploying multiple stacks in the same VPC, VPC Endpoints can conflict. Understanding the two types is critical:
+When deploying multiple stacks in the same VPC, VPC Endpoints can conflict.
+The resolution is to set the disable parameter to `false` on the second and later stacks and share the existing endpoint.
+How the conflict arises depends on the endpoint type.
 
-### Gateway Endpoints (S3, DynamoDB)
-
-- Attached to **route tables**, not subnets
-- **No PrivateDNS conflict** — only route-table association conflicts
-- **Conflict scenario**: Two stacks both create `AWS::EC2::VPCEndpoint` for S3 Gateway targeting the same route tables → CloudFormation error
-- **Resolution**: Set `EnableS3GatewayEndpoint=false` on the second stack (one per VPC is sufficient)
-
-### Interface Endpoints (Secrets Manager, STS, Logs, Bedrock, etc.)
-
-- Attached to **subnets** with ENIs
-- **PrivateDNS conflict**: Only one Interface Endpoint per service per VPC can enable `PrivateDnsEnabled=true`
-- **Conflict scenario**: Stack A creates `com.amazonaws.region.secretsmanager` with PrivateDNS; Stack B attempts the same → `InvalidParameter: already exists`
-- **Resolution**: Set `EnableVpcEndpoints=false` on subsequent stacks; share the existing endpoint
+| Type | Attached to | Cause of conflict | Conflict example | Resolution |
+|------|-------------|-------------------|------------------|------------|
+| Gateway Endpoints (S3, DynamoDB) | Route tables, not subnets | Only route-table association conflicts (no PrivateDNS conflict) | Two stacks both create `AWS::EC2::VPCEndpoint` for S3 Gateway targeting the same route tables → CloudFormation error | Set `EnableS3GatewayEndpoint=false` on the second stack (one per VPC is sufficient) |
+| Interface Endpoints (Secrets Manager, STS, Logs, Bedrock, etc.) | Subnets, with ENIs | Only one Interface Endpoint per service per VPC can enable `PrivateDnsEnabled=true` | Stack A creates `com.amazonaws.region.secretsmanager` with PrivateDNS; Stack B attempts the same → `InvalidParameter: already exists` | Set `EnableVpcEndpoints=false` on subsequent stacks; share the existing endpoint |
 
 ### Conflict Resolution Matrix
 
@@ -263,13 +258,15 @@ When deploying multiple stacks in the same VPC, VPC Endpoints can conflict. Unde
 
 ### Recommended Strategy
 
-1. **First stack**: Deploy with `EnableVpcEndpoints=true` and `EnableS3GatewayEndpoint=true`
-2. **Subsequent stacks** in the same VPC: Deploy with both set to `false`
-3. **Alternative**: Pre-create all needed VPC Endpoints separately, then deploy all stacks with `EnableVpcEndpoints=false`
+1. Deploy the first stack with `EnableVpcEndpoints=true` and `EnableS3GatewayEndpoint=true`
+2. Deploy subsequent stacks in the same VPC with both set to `false`
+3. Alternatively, pre-create all needed VPC Endpoints separately, then deploy all stacks with `EnableVpcEndpoints=false`
 
 ---
 
 ## Verified Deployment Paths
+
+These are the five paths, in the order of the commands you run: paths A to C from the decision flow at the top, plus a multi-pattern deployment into one VPC (D) and FPolicy event-driven (E).
 
 ### Path A: Single Pattern Quick Start (Recommended for first deployment)
 
@@ -374,6 +371,8 @@ aws cloudformation create-stack \
 
 ## Cost Estimates
 
+Fixed costs, per-execution charges, and monthly estimates by usage profile, in that order.
+
 ### Fixed Costs (per stack, monthly)
 
 | Component | Cost | Notes |
@@ -423,6 +422,8 @@ VPC Endpoint creation is the primary bottleneck (~5-8 minutes for Interface Endp
 
 ## Day 2 Operations
 
+Checks right after deployment, the metrics to monitor continuously, and the items to review monthly.
+
 ### Immediate Post-Deploy Verification
 
 ```bash
@@ -470,6 +471,8 @@ cat /tmp/output.json | jq .
 ---
 
 ## Rollback and Cleanup
+
+How to roll back a failed deployment, delete a stack completely, and the order for removing several stacks.
 
 ### Rollback a Failed Deployment
 
@@ -547,14 +550,13 @@ aws fsx describe-file-systems --file-system-ids fs-XXXXXXXXX \
 
 S3 Access Points support two user types: `UNIX` (default) and `WINDOWS`. The WINDOWS type maps file ownership and ACLs to Active Directory identities, enabling Windows-native access control on FSx for ONTAP volumes exposed via S3 AP.
 
-**Prerequisites for WINDOWS-type S3 AP creation:**
+Creating a WINDOWS-type S3 AP has two prerequisites.
 
-1. **SVM must be joined to an Active Directory domain** — attempting to create a WINDOWS-type S3 AP on an SVM that is not AD-joined will fail immediately.
-2. **AD environment must be reachable** — the SVM needs DNS resolution and network connectivity to the AD domain controllers (ports 53, 88, 389, 445).
+1. The SVM must be joined to an Active Directory domain. Attempting to create a WINDOWS-type S3 AP on an SVM that is not AD-joined will fail immediately.
+2. The AD environment must be reachable. The SVM needs DNS resolution and network connectivity to the AD domain controllers (ports 53, 88, 389, 445).
 
-**Critical: WindowsUser.Name must NOT include the domain prefix**
-
-When creating or using a WINDOWS-type S3 Access Point, specify the username only:
+`WindowsUser.Name` **must not include the domain prefix**.
+When creating or using a WINDOWS-type S3 Access Point, specify the username only.
 
 ```bash
 # CORRECT — username only
@@ -573,9 +575,7 @@ aws fsx create-and-attach-s3-access-point \
 
 The AD domain prefix (`DOMAIN\username`) is accepted at the CLI/API level without error and the access point reaches `AVAILABLE`, but every subsequent data operation returns **503 ServiceUnavailable** — `HeadBucket`, ListObjects, GetObject and PutObject alike. This is a known behavior, not a transient error, and the status is 503 rather than `AccessDenied`: looking for a 403 sends you to the IAM policy, the access point policy and the ACLs, none of which are the cause. `HeadBucket` failing is also what distinguishes this from an unreachable AD DC, where `HeadBucket` succeeds. A **CIFS server name** prefix (`CIFSSRV\username`) was measured working.
 
-**Setting up the AD environment:**
-
-Use the included infrastructure template and join script:
+Set up the AD environment with the included infrastructure template and join script.
 
 ```bash
 # 1. Deploy AD + test EC2 instances
@@ -600,6 +600,8 @@ See [infrastructure/demo-ad-environment.yaml](../../infrastructure/demo-ad-envir
 ---
 
 ## Troubleshooting
+
+A table from error message to cause and fix, cases where a run succeeds with an empty result, and connection debugging steps.
 
 ### Common Deployment Errors
 
@@ -650,6 +652,8 @@ aws ec2 describe-security-groups --group-ids <SG-ID> \
 ---
 
 ## CI/CD Integration
+
+An example deployment from GitHub Actions, and how to use change sets for production updates.
 
 ### GitHub Actions Example
 

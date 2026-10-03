@@ -8,7 +8,8 @@
 
 AD-joined SVMs require Active Directory Domain Controller (AD DC) connectivity for **all** S3 Access Point data operations. Without it, ListObjectsV2, GetObject, and PutObject fail with `AccessDenied` — even though HeadBucket succeeds. This document explains the prerequisites, recommended architecture patterns, and troubleshooting steps.
 
-**Key findings verified in production** (July 2026):
+Four findings were verified in production in July 2026.
+
 - HeadBucket is NOT a reliable health check (S3-layer metadata only)
 - Internet-origin AP + VPC-external Lambda is the recommended data-access pattern
 - Same-account S3 AP resource policy (`put_access_point_policy`) is NOT required
@@ -28,10 +29,11 @@ AD-joined SVMs require Active Directory Domain Controller (AD DC) connectivity f
 | ONTAP admin credentials in Secrets Manager | `fsxn/admin` secret (created during stack deploy) |
 | IAM permissions for S3 AP operations | See [Same-Account AP Resource Policy](#same-account-ap-resource-policy) |
 
-**Glossary**:
-- **AD-joined SVM**: A Storage Virtual Machine with CIFS/SMB protocol enabled and connected to an Active Directory domain
-- **S3 AP**: S3 Access Point — an S3-compatible interface to FSx for ONTAP volumes
-- **Internet-origin AP**: An S3 AP accessible from anywhere with valid IAM credentials (no VPC binding)
+| Term | Meaning |
+|------|---------|
+| AD-joined SVM | A Storage Virtual Machine with CIFS/SMB protocol enabled and connected to an Active Directory domain |
+| S3 AP | S3 Access Point, an S3-compatible interface to FSx for ONTAP volumes |
+| Internet-origin AP | An S3 AP accessible from anywhere with valid IAM credentials (no VPC binding) |
 
 ---
 
@@ -102,6 +104,8 @@ curl -sku "$CREDS" \
 ---
 
 ## AD DC Reachability Requirement
+
+On an AD-joined SVM (CIFS enabled), S3 AP data operations need AD DC connectivity regardless of the volume's security style or the access point's user type. This section covers why, how to tell the symptoms apart, how to decide whether an SVM is AD-joined, and the network connectivity required.
 
 ### Why AD DC Is Required
 
@@ -221,6 +225,8 @@ FsxToAdSecurityGroupRule:
 
 ## Internet-Origin AP + VPC-External Lambda Pattern
 
+For S3 AP data access, the recommended pattern is an Internet-origin AP with a VPC-external Lambda ($0 per month and low complexity in the table below). This section compares it with the other two patterns and shows how to split Lambda functions inside and outside the VPC.
+
 ### Decision Matrix: Choosing a Network Pattern
 
 | Pattern | Monthly Cost | Complexity | When to Use |
@@ -267,6 +273,8 @@ If you also need ONTAP REST API access (management LIF is VPC-internal):
 ---
 
 ## Same-Account AP Resource Policy
+
+For same-account access, no S3 AP resource policy is needed; the IAM identity policy is enough. This section also lists when a resource policy is needed and gives a CloudFormation example.
 
 ### Key Finding
 
@@ -347,6 +355,8 @@ S3ApDataReaderRole:
 ---
 
 ## Pre-Flight Health Check
+
+Three ways to confirm AD DC reachability before S3 AP data operations: Python, shell, and Step Functions.
 
 ### Programmatic Check (Python — for Lambda/Step Functions)
 
@@ -435,6 +445,8 @@ Add the AD DC check as the **first state** in any workflow that uses S3 AP data 
 ---
 
 ## Monitoring and Alerting
+
+A setup that checks AD DC reachability on a schedule and detects failures with a CloudWatch custom metric and alarm.
 
 ### Proactive AD DC Health Monitoring
 
@@ -525,6 +537,8 @@ AdDcReachabilityAlarm:
 
 ## Troubleshooting
 
+Narrow the symptom down with the decision flowchart, then go to the cause and fix for that symptom.
+
 ### Decision Flowchart
 
 ```mermaid
@@ -587,7 +601,7 @@ That third column is the point. A check added for diagnosis must not become a
 new source of failure: stopping an entire workflow because the ONTAP API
 hiccupped is a bigger harm than the problem being prevented.
 
-**The SVM can be given by name or by UUID.**
+The SVM can be given by name or by UUID.
 
 ```python
 from shared.ad_health_check import preflight_ad_dc_reachability
@@ -646,18 +660,19 @@ not carry the diagnosis.
 
 ### Symptom: AccessDenied Despite Correct IAM Policy
 
-**Checklist** (check in order):
-1. ✅ IAM ARN uses S3 AP format: `arn:aws:s3:<region>:<account>:accesspoint/<name>/object/*`
-2. ✅ `WindowsUser.Name` is username only (e.g., `Admin`) — no `DOMAIN\` prefix
-3. ✅ AD DC is reachable (run Quick Start Validation above)
-4. ✅ File-system identity has permissions on the target path
-5. ✅ Volume is mounted (has junction path) and online
+Check these five points in order.
+
+1. IAM ARN uses S3 AP format: `arn:aws:s3:<region>:<account>:accesspoint/<name>/object/*`
+2. `WindowsUser.Name` is username only (e.g., `Admin`) — no `DOMAIN\` prefix
+3. AD DC is reachable (run Quick Start Validation above)
+4. File-system identity has permissions on the target path
+5. Volume is mounted (has junction path) and online
 
 ### Symptom: ONTAP reports `RESULT_ERROR_SECD_IN_DISCOVERY`
 
 **Root Cause**: SVM cannot discover AD Domain Controllers via DNS.
 
-**Resolution**: Verify DNS configuration on the SVM resolves the AD domain name:
+**Resolution**: Verify with this command that the SVM's DNS configuration resolves the AD domain name.
 ```bash
 curl -sku user:pass "https://<mgmt-ip>/api/name-services/dns?svm.name=<svm>&fields=servers,domains"
 # Ensure "servers" contains the AD DC DNS IPs
@@ -666,6 +681,8 @@ curl -sku user:pass "https://<mgmt-ip>/api/name-services/dns?svm.name=<svm>&fiel
 ---
 
 ## FAQ
+
+Short answers to six frequently asked questions.
 
 ### Q: Do pure UNIX SVMs (no CIFS) need AD DC?
 
@@ -726,11 +743,11 @@ here.
 
 The run found two implementation bugs, both fixed:
 
-1. **Reachability was judged on the count alone.** A non-empty `discovered_servers`
+1. Reachability was judged on the count alone. A non-empty `discovered_servers`
    set `dc_reachable=True`. On a live cluster the healthy state still leaves
    `ms_ldap` at `undetermined`, and entries persist after DCs stop answering, so
    counting misses the failure this check exists to catch.
-2. **CIFS enabled was treated as AD-joined.** A real workgroup SVM produced the
+2. CIFS enabled was treated as AD-joined. A real workgroup SVM produced the
    contradictory `is_ad_joined=True, ad_domain=None`, which also made the DC check
    that followed it meaningless.
 

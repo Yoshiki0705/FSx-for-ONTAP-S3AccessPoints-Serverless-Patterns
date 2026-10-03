@@ -8,7 +8,8 @@
 
 AD参加SVM では、全ての S3 Access Point データ操作に Active Directory Domain Controller (AD DC) への接続が必須。AD DC に到達不能な場合、ListObjectsV2/GetObject/PutObject は `AccessDenied` で失敗する（HeadBucket は成功 = 偽陽性）。本ドキュメントでは前提条件、推奨アーキテクチャパターン、トラブルシューティング手順を説明する。
 
-**本番環境で検証済みの知見** (2026年7月):
+2026 年 7 月に本番環境で検証した知見は次の 4 点です。
+
 - HeadBucket は信頼できるヘルスチェックではない（S3層メタデータのみ）
 - Internet-origin AP + VPC外Lambda がデータアクセスの推奨パターン
 - 同一アカウントの S3 AP リソースポリシー (`put_access_point_policy`) は不要
@@ -28,10 +29,11 @@ AD参加SVM では、全ての S3 Access Point データ操作に Active Directo
 | Secrets Manager の ONTAP 管理者認証情報 | `fsxn/admin` シークレット（スタックデプロイ時に作成） |
 | S3 AP 操作用の IAM 権限 | [同一アカウント AP リソースポリシー](#同一アカウント-ap-リソースポリシー)を参照 |
 
-**用語**:
-- **AD参加SVM**: CIFS/SMB プロトコルが有効化され、Active Directory ドメインに接続された Storage Virtual Machine
-- **S3 AP**: S3 Access Point — FSx for ONTAP ボリュームへの S3 互換インターフェース
-- **Internet-origin AP**: 有効な IAM 認証情報があればどこからでもアクセス可能な S3 AP（VPC バインディングなし）
+| 用語 | 意味 |
+|------|------|
+| AD参加SVM | CIFS/SMB プロトコルが有効化され、Active Directory ドメインに接続された Storage Virtual Machine |
+| S3 AP | S3 Access Point。FSx for ONTAP ボリュームへの S3 互換インターフェース |
+| Internet-origin AP | 有効な IAM 認証情報があればどこからでもアクセス可能な S3 AP（VPC バインディングなし） |
 
 ---
 
@@ -96,6 +98,8 @@ curl -sku "$CREDS" \
 ---
 
 ## AD DC 到達性要件
+
+AD 参加 SVM（CIFS 有効）では、ボリュームのセキュリティスタイルや S3 AP のユーザータイプにかかわらず、S3 AP のデータ操作に AD DC への接続が必要です。理由、症状の見分け方、AD 参加かどうかの判定、必要なネットワーク接続の順に示します。
 
 ### AD DC が必要な理由
 
@@ -198,6 +202,8 @@ FsxToAdSecurityGroupRule:
 
 ## Internet-Origin AP + VPC外Lambda パターン
 
+S3 AP のデータアクセスには、Internet-origin AP と VPC 外 Lambda の組み合わせを推奨します（下の表で月額 $0、複雑度は低）。他の 2 パターンとの比較と、Lambda を VPC の内外に分ける構成を示します。
+
 ### ネットワークパターン選択マトリクス
 
 | パターン | 月額コスト | 複雑度 | 使用ケース |
@@ -240,6 +246,8 @@ graph LR
 ---
 
 ## 同一アカウント AP リソースポリシー
+
+同一アカウントのアクセスでは S3 AP リソースポリシーは不要で、IAM アイデンティティポリシーだけで足ります。リソースポリシーが必要になるケースと、CloudFormation の例も示します。
 
 ### 重要な知見
 
@@ -316,6 +324,8 @@ S3ApDataReaderRole:
 
 ## Pre-Flight ヘルスチェック
 
+S3 AP のデータ操作の前に AD DC 到達性を確かめる方法を、Python、シェル、Step Functions の 3 通りで示します。
+
 ### プログラムチェック（Python — Lambda/Step Functions 用）
 
 ```python
@@ -378,6 +388,8 @@ AD参加SVM で S3 AP データ操作を使うワークフローの**最初の�
 ---
 
 ## モニタリングとアラート
+
+AD DC の到達性を定期的に確かめ、CloudWatch のカスタムメトリクスとアラームで検知する構成を示します。
 
 ### EventBridge Schedule + Lambda による定期ヘルスチェック
 
@@ -470,6 +482,8 @@ AdDcReachabilityAlarm:
 
 ## トラブルシューティング
 
+判断フローチャートで症状を絞り込み、症状ごとの原因と対処に進みます。
+
 ### 判断フローチャート
 
 ```mermaid
@@ -527,7 +541,7 @@ curl -sku user:pass \
 
 3 つ目の列が重要です。診断のために足した処理が新しい障害要因になってはいけません。ONTAP API の一時的な失敗でワークフロー全体を止めるのは、防ごうとしている問題より大きい害になります。
 
-**SVM は名前でも UUID でも指定できます。**
+SVM は名前でも UUID でも指定できます。
 
 ```python
 from shared.ad_health_check import preflight_ad_dc_reachability
@@ -562,18 +576,19 @@ logger.info("AD DC pre-flight: %s", status.message)
 
 ### 症状: 正しい IAM ポリシーなのに AccessDenied
 
-**チェックリスト**（順に確認）:
-1. ✅ IAM ARN が S3 AP 形式: `arn:aws:s3:<region>:<account>:accesspoint/<name>/object/*`
-2. ✅ `WindowsUser.Name` はユーザー名のみ（例: `Admin`）— `DOMAIN\` プレフィックスなし
-3. ✅ AD DC に到達可能（上記クイックスタート検証を実行）
-4. ✅ ファイルシステム ID に対象パスへのパーミッションがある
-5. ✅ ボリュームがマウント済み（ジャンクションパスあり）でオンライン
+次の 5 点を順に確認します。
+
+1. IAM ARN が S3 AP 形式: `arn:aws:s3:<region>:<account>:accesspoint/<name>/object/*`
+2. `WindowsUser.Name` はユーザー名のみ（例: `Admin`）— `DOMAIN\` プレフィックスなし
+3. AD DC に到達可能（上記クイックスタート検証を実行）
+4. ファイルシステム ID に対象パスへのパーミッションがある
+5. ボリュームがマウント済み（ジャンクションパスあり）でオンライン
 
 ### 症状: ONTAP による `RESULT_ERROR_SECD_IN_DISCOVERY` の報告
 
 **原因**: SVM が DNS 経由で AD ドメインコントローラーを検出できない。
 
-**解決策**: SVM の DNS 設定が AD ドメイン名を解決できるか確認する:
+**解決策**: SVM の DNS 設定が AD ドメイン名を解決できるかを、次のコマンドで確認する。
 ```bash
 curl -sku user:pass "https://<mgmt-ip>/api/name-services/dns?svm.name=<svm>&fields=servers,domains"
 # "servers" に AD DC の DNS IP が含まれていることを確認
@@ -583,37 +598,39 @@ curl -sku user:pass "https://<mgmt-ip>/api/name-services/dns?svm.name=<svm>&fiel
 
 ## FAQ
 
-### Q: 純粋な UNIX SVM（CIFS なし）に AD DC は必要？
+よく受ける 6 つの質問への短い回答です。
+
+### Q: 純粋な UNIX SVM（CIFS なし）での AD DC の要否
 
 不要。SVM に CIFS サービスが有効化されていなければ、S3 AP 操作に AD は不要。本リポジトリのほとんどのパターンは純粋な UNIX SVM を対象としている。
 
-### Q: HeadBucket をヘルスチェックに使える？
+### Q: HeadBucket のヘルスチェック利用の可否
 
 **使えない。** HeadBucket は S3 層のメタデータしか検証しないため、AD DC の状態にかかわらず常に成功します。代わりに以下を使用:
 - `ListObjectsV2`（`MaxKeys=1`）— データプレーンヘルスチェック
 - ONTAP API `GET /protocols/cifs/domains?fields=discovered_servers` — インフラチェック
 - `shared/ad_health_check.py` → `check_ad_dc_reachability()` — プログラムチェック
 
-### Q: 同一アカウントアクセスに `put_access_point_policy` は必要？
+### Q: 同一アカウントアクセスでの `put_access_point_policy` の要否
 
 不要。同一アカウントでは IAM アイデンティティポリシーで十分。AP リソースポリシーが必要になるのは、クロスアカウントアクセスの場合と、**その AP を呼ぶすべての主体**に条件や拒否を効かせたい場合。
 
 **逆に、AP ポリシーを付けても呼び出し元を絞れるわけではありません。** 同一アカウントでは identity-based ポリシーと AP ポリシーが結合して評価されるため、AP ポリシーの `Allow` を狭くしても、identity-based 側で許可されている主体はそのまま通ります。絞るには明示的な `Deny` が必要です（[S3 AP 認可モデル](../s3ap-authorization-model.md#layer-1-で絞る--明示的な拒否)）。
 
-### Q: Internet-origin S3 AP が VPC Lambda から動作しない理由は？
+### Q: Internet-origin S3 AP が VPC Lambda から動作しない理由
 
 VPC Lambda のトラフィックは VPC ネットワーキングを経由する。Internet-origin S3 AP エンドポイントは S3 Gateway VPC Endpoint を通過**しない**。以下のいずれかが必要:
 - NAT Gateway（$32+/月）— 動作するがコスト高
 - `VpcConfig` なし（VPC外）— **推奨**、追加コスト $0
 
-### Q: ワークフロー実行中に AD DC が到達不能になったら？
+### Q: ワークフロー実行中に AD DC が到達不能になった場合
 
 S3 AP のデータ操作は **即座に** AccessDenied で失敗します（ONTAP 層でのタイムアウトやリトライはありません）。Step Functions ワークフローには次を含めてください:
 - 一時障害に対する指数バックオフ付き `Retry`（`BackoffRate: 2.0`）
 - `AdDcUnreachableError` を捕捉する `Catch`（SNS で運用者へ通知）
 - 事前検知のための監視アラーム（[モニタリングとアラート](#モニタリングとアラート)を参照）
 
-### Q: ONTAP 管理 IP はどこで確認する？
+### Q: ONTAP 管理 IP の確認場所
 
 AWS Console → Amazon FSx → ファイルシステム → ファイルシステム選択 → 管理タブ → 管理エンドポイント。または CLI:
 ```bash
@@ -639,8 +656,8 @@ aws fsx describe-file-systems --file-system-ids fs-XXXXX \
 
 この検証で 2 つの実装バグが判明し、修正しました。
 
-1. **到達性を件数だけで判定していた** — `discovered_servers` が空でなければ `dc_reachable=True` としていました。実機では正常時も `ms_ldap` が `undetermined` であり、DC が落ちてもエントリは残り得ます。件数判定では、このチェックが検出するために作られた障害を見逃します
-2. **CIFS 有効を AD 参加と同一視していた** — 実在するワークグループ SVM に対し `is_ad_joined=True, ad_domain=None` という矛盾した結果を返し、後続の DC チェックも無意味になっていました
+1. 到達性を件数だけで判定していた。`discovered_servers` が空でなければ `dc_reachable=True` としていました。実機では正常時も `ms_ldap` が `undetermined` であり、DC が落ちてもエントリは残り得ます。件数判定では、このチェックが検出するために作られた障害を見逃します
+2. CIFS 有効を AD 参加と同一視していた。実在するワークグループ SVM に対し `is_ad_joined=True, ad_domain=None` という矛盾した結果を返し、後続の DC チェックも無意味になっていました
 
 検証は既存リソースを変更せず、デプロイ済み Lambda のロール・サブネット・セキュリティグループを再利用した一時的な関数から実施し、確認後に削除しています。クラスタへの操作は GET のみです。
 

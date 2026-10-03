@@ -10,7 +10,9 @@
 
 **Admin > Resources** セクションは、ONTAP System Manager 相当のストレージ管理をファイルポータルの Web UI から提供します。すべての操作は VPC 内 Lambda 経由で ONTAP REST API を呼び出して実行されます。
 
-**アーキテクチャ**: ブラウザ → AppSync（Cognito 認証）→ Lambda（VPC）→ ONTAP REST API（管理 LIF）
+このガイドは、パネル一覧（参照用）、27 のデモシナリオ（手順）、アーキテクチャに関する補足、2026-07-26 の検証結果（16 パネルすべて ✅）の順に並んでいます。デモの準備にはクイックスタートとシナリオを、本番構成の判断にはアーキテクチャに関する補足を読んでください。
+
+リクエストの経路は、ブラウザ → AppSync（Cognito 認証）→ Lambda（VPC）→ ONTAP REST API（管理 LIF）です。
 
 ## 前提条件
 
@@ -60,6 +62,8 @@ aws fsx describe-storage-virtual-machines \
 
 ## パネル一覧
 
+パネルは Storage、Access Control、Data Protection の 3 カテゴリに分かれます。各パネルが呼ぶ ONTAP REST エンドポイントを併記します。
+
 ### Storage カテゴリ
 
 | パネル | 説明 | ONTAP REST エンドポイント |
@@ -93,6 +97,8 @@ aws fsx describe-storage-virtual-machines \
 | **FlexCache** | キャッシュボリュームの作成（非同期）・一覧・削除（3 段階自動）、write-back の切り替え、オリジンの可視化 | `/storage/flexcache/flexcaches` |
 
 ## デモシナリオ
+
+各シナリオは、開くパネル、操作、確認する表示の順に書いています。シナリオ 18 以降はダッシュボード、ファイル操作、AI 機能、通知の追加シナリオです。
 
 ### シナリオ 1: ボリュームのライフサイクル
 
@@ -158,9 +164,9 @@ aws fsx describe-storage-virtual-machines \
 ### シナリオ 8: Lock パネルのインライン管理
 
 1. **Data Protection > Lock** を開く
-2. **SnapLock タブ**: インラインのボリューム一覧を確認（SnapLock ボリュームがなければ空）
-3. **S3 Object Lock タブ**: ONTAP 接続エラーなしで描画されることを確認
-4. **Tamperproof タブ**: Snapshot ロックが有効なら、インラインのロックフォームを確認
+2. **SnapLock** タブで、インラインのボリューム一覧を確認（SnapLock ボリュームがなければ空）
+3. **S3 Object Lock** タブが、ONTAP 接続エラーなしで描画されることを確認
+4. **Tamperproof** タブで、Snapshot ロックが有効なら次の要素を持つインラインのロックフォームを確認
    - Snapshot 選択ドロップダウン（未ロックのもの）
    - 保持期間ドロップダウン（1 日 〜 5 年）
    - ロックボタン
@@ -191,11 +197,11 @@ aws fsx describe-storage-virtual-machines \
 
 1. **Admin > Resources > Vscan** を開く
 2. Vscan が未設定のため、5 ステップのセットアップ案内が表示される:
-   - **Step 1**: ベンダー選択表（6 ベンダー、ライセンスリンク付き）
-   - **Step 2**: NetApp Antivirus Connector のダウンロードボタン
-   - **Step 3**: EC2 構成図と AWS Blog / GitHub リンク
-   - **Step 4**: ONTAP CLI コマンド（scanner-pool、policy、enable）
-   - **Step 5**: このパネルに戻って確認
+   1. ベンダー選択表（6 ベンダー、ライセンスリンク付き）
+   2. NetApp Antivirus Connector のダウンロードボタン
+   3. EC2 構成図と AWS Blog / GitHub リンク
+   4. ONTAP CLI コマンド（scanner-pool、policy、enable）
+   5. このパネルに戻って確認
 3. ベンダーリンクをクリック → 正しい外部ページが開くことを確認
 4. Antivirus Connector のダウンロードボタン → mysupport.netapp.com が開くことを確認
 5. 本番で Vscan を設定した後は、オンアクセスポリシーの詳細が表示される
@@ -209,16 +215,16 @@ aws fsx describe-storage-virtual-machines \
    - ソースパスのバッジ: `📦 svm01:vol_production`
    - 矢印: `→`
    - 宛先パスのバッジ: `🪞 svm01_dr:vol_production_mirror`
-3. 各関係に表示される情報:
-   - **ヘルスバッジ**: 正常（緑）/ 異常（赤）
-   - **状態バッジ**（色分け）:
-     - ✅ 同期中 (snapmirrored) — 緑
-     - 🔴 ブレーク済み (broken_off) — 赤
-     - 🔄 転送中 (transferring) — 青
-     - ⏸️ 一時停止 (quiesced/paused) — グレー
-     - ⚪ 未初期化 (uninitialized) — 白
-   - **ラグ時間** と RPO 警告: ラグに "hour" または "day" が含まれる場合、赤太字で `⚠️ RPO` を表示
-   - **ポリシー**: 例 MirrorAllSnapshots、Asynchronous
+3. 各関係には、ヘルスバッジ（正常は緑、異常は赤）、状態バッジ、ラグ時間、ポリシー（例 MirrorAllSnapshots、Asynchronous）が表示される。ラグに "hour" または "day" が含まれる場合は、赤太字で `⚠️ RPO` を表示する。状態バッジの色分けは次のとおり。
+
+   | 状態バッジ | ONTAP の状態 | 色 |
+   |---|---|---|
+   | ✅ 同期中 | snapmirrored | 緑 |
+   | 🔴 ブレーク済み | broken_off | 赤 |
+   | 🔄 転送中 | transferring | 青 |
+   | ⏸️ 一時停止 | quiesced/paused | グレー |
+   | ⚪ 未初期化 | uninitialized | 白 |
+
 4. **操作ボタン**（状態に応じて変化）:
    - `snapmirrored`: [🔄 同期] [⏸️ 一時停止] [⚡ ブレーク] [🗑️ 削除]
    - `broken_off`: [🔁 再同期] [🗑️ 削除]
@@ -239,12 +245,12 @@ aws fsx describe-storage-virtual-machines \
 ### シナリオ 13: Local Users — SMB ユーザー / グループ管理
 
 1. **Admin > Resources > Local Users** を開く
-2. **Users タブ**:
+2. **Users** タブで次を操作する。
    - SMB ローカルユーザーの一覧（名前、フルネーム、無効状態）を確認
    - **+ Create User** → 名前、パスワード（複雑さ要件を満たすもの）、フルネームを入力
    - 作成 → 一覧にユーザーが表示される
    - **Delete** → 確認 → ユーザーが削除される
-3. **Groups タブ**:
+3. **Groups** タブで次を操作する。
    - メンバー数付きのローカルグループ一覧を確認
    - グループカードをクリック → メンバーを展開表示
    - **+ Add Member** → ユーザーを選択 → 追加
@@ -273,13 +279,17 @@ aws fsx describe-storage-virtual-machines \
    - FlexCache の役割（リモートボリュームのキャッシュ。読み取りを高速化し、書き込みも 2 つのモードで受け付ける）
    - 代表的なユースケース（EDA/CAD、ビルドパイプライン、AI 推論データ）
    - NetApp FlexCache ドキュメントと AWS FSx for ONTAP ボリューム管理へのリンク
-3. **+ FlexCache 作成** → 作成フォームが開く:
-   - **キャッシュ名**（必須）: 例 `flexcache_eda_tokyo`
-   - **オリジンボリューム名**（必須）: 既存ボリュームの datalist ドロップダウン
-   - **オリジン SVM**（任意）: 同一 SVM 内キャッシュなら空欄
-   - **サイズ (GiB)**: 既定 100、ヒントは「オリジンの 10% 推奨」
-   - **ジャンクションパス**: `/<cache_name>` が自動入力
-   - **プリポピュレートパス**: 事前ウォームするパスをカンマ区切りで指定（例: `/data/models/, /cache/datasets/`）
+3. **+ FlexCache 作成** → 次の項目を持つ作成フォームが開く。
+
+   | 項目 | 必須 | 入力内容 |
+   |---|---|---|
+   | キャッシュ名 | 必須 | 例 `flexcache_eda_tokyo` |
+   | オリジンボリューム名 | 必須 | 既存ボリュームの datalist ドロップダウン |
+   | オリジン SVM | 任意 | 同一 SVM 内キャッシュなら空欄 |
+   | サイズ (GiB) | - | 既定 100、ヒントは「オリジンの 10% 推奨」 |
+   | ジャンクションパス | - | `/<cache_name>` が自動入力 |
+   | プリポピュレートパス | - | 事前ウォームするパスをカンマ区切りで指定（例: `/data/models/, /cache/datasets/`） |
+
 4. 入力後 **作成**:
    - 非同期リクエスト中はスピナーと「作成中...」を表示
    - 成功トースト: 「FlexCache を作成しました（バックグラウンドで構築中）」
@@ -301,9 +311,9 @@ aws fsx describe-storage-virtual-machines \
 ### シナリオ 16: FPolicy — ファイルアクセス監査の設定
 
 1. **Admin > Resources > FPolicy** を開く
-2. **Policies タブ**: 有効 / 無効、優先度、エンジン、イベントを確認
-3. **Events タブ**: 設定済みイベント（プロトコル、監視対象操作: open/close/read/write/delete/rename）を確認
-4. **Status タブ**: 外部エンジンの接続状態（connected/disconnected）を確認
+2. **Policies** タブで、有効 / 無効、優先度、エンジン、イベントを確認
+3. **Events** タブで、設定済みイベント（プロトコル、監視対象操作: open/close/read/write/delete/rename）を確認
+4. **Status** タブで、外部エンジンの接続状態（connected/disconnected）を確認
 5. DemoMode で 3 タブ構成がエラーなく描画されること（空リスト表示）を確認
 
 ### シナリオ 17: Athena SQL — NAS データの分析
@@ -318,159 +328,23 @@ aws fsx describe-storage-virtual-machines \
 
 > **Athena の前提条件**: S3 AP のファイルをカタログ化する Glue Crawler が設定済みである必要があります。Glue テーブルがなければカタログブラウザーは空で、その旨を表示します。ポータルの Athena パネルはクエリインターフェースであり、Glue Crawler やテーブルを作成するものではありません。
 
-**このパネルの意義**: AWS Athena コンソールを別に開かずに、ストレージ管理者やデータエンジニアがポータルから直接 SQL を実行できます。代表的な用途:
+このパネルを使うと、AWS Athena コンソールを別に開かずに、ストレージ管理者やデータエンジニアがポータルから直接 SQL を実行できます。代表的な用途は次の 3 つです。
 - 「1 GB を超えるファイルはどれか」（キャパシティプランニング）
 - 「直近 7 日間に変更されたのは何か」（変更追跡）
 - 「engineering/ フォルダーのデータ量はどれくらいか」（プロジェクト規模の把握）
 
-## アーキテクチャに関する補足
-
-### CloudFormation テンプレートサイズの最適化
-
-ポータルは CloudFormation テンプレートを 1MB 未満に保つため、**汎用ディスパッチパターン**を採用しています:
-
-```
-57 個の個別 GraphQL 操作 → 8 個の汎用ディスパッチエンドポイント
-```
-
-| エンドポイント | データソース | 操作数 |
-|---------------|-------------|--------|
-| `adminQuery` / `adminMutation` | ResourceMgmtLambda | 管理操作 48 件 |
-| `arpQuery` / `arpMutation` | ArpResponseLambda | ARP 操作 7 件 |
-| `protectionQuery` / `protectionMutation` | ListSnapshotsLambda | 保護操作 9 件 |
-| `fileQuery` / `fileMutation` | ListFilesLambda | ファイル操作 6 件 |
-
-各ディスパッチリゾルバは `action` パラメータで Lambda ハンドラー内の既存のアクション分岐にルーティングします。
-
-### VPC の分割アーキテクチャ
-
-| Lambda の種類 | VPC | 目的 |
-|--------------|-----|------|
-| ListFiles, GetPresignedUrl, SearchFiles | **VPC なし** | インターネットオリジンの S3 AP アクセス |
-| ResourceMgmt, ArpResponse, ListSnapshots | **VPC 内** | ONTAP 管理 LIF（TCP/443） |
-| AskAboutFile, DetectLabels, Textract, Comprehend | **VPC なし** | AWS の AI サービス |
-
-### IaC の設定
-
-VPC / ONTAP の設定はすべて `amplify/portal-config.ts` にあります:
-
-```typescript
-export const config: PortalConfig = {
-  // ... S3 AP の設定 ...
-  vpcId: process.env.AMPLIFY_PORTAL_VPC_ID || "",
-  vpcSubnetIds: (process.env.AMPLIFY_PORTAL_VPC_SUBNET_IDS || "").split(",").filter(Boolean),
-  vpcSecurityGroupIds: (process.env.AMPLIFY_PORTAL_VPC_SG_IDS || "").split(",").filter(Boolean),
-  // vpcId を設定する場合は必須 — 下記参照。
-  vpcRouteTableIds: (process.env.AMPLIFY_PORTAL_VPC_ROUTE_TABLE_IDS || "").split(",").filter(Boolean),
-};
-```
-
-`vpcId` が空の場合、Lambda は VPC なしでデプロイされます（管理パネルは「ONTAP 接続が必要です」と穏当に表示）。
-
-#### VPC を使う場合 `vpcRouteTableIds` は必須
-
-Lambda のサブネットに関連付けられたルートテーブルを指定します。これにより DynamoDB のゲートウェイエンドポイントが作成され、VPC 内の関数が封じ込めブロックの台帳に到達できるようになります。`vpcId` が設定されているのに未指定だと **synth が実行を拒否する**ため、後回しにはできません。
-
-`portal-config.ts` は gitignore 済みで、素の値を受け取る `portal-config.example.ts` からコピーします。上記の `AMPLIFY_PORTAL_*` 環境変数は参照実装での読み取り方であり、自身の `portal-config.ts` が同じ配線をしている場合にのみ効きます。フィールドを直接設定する方法は常に機能します。
-
-Lambda の ENI はパブリック IP を持たないため、デフォルトルートがインターネットゲートウェイのサブネットでは関数から一切外部に出られません。Secrets Manager はインターフェースエンドポイントで到達できますが、DynamoDB は追加しない限り経路がありません。ゲートウェイエンドポイントには時間課金もデータ処理料金もかかりません。
-
-**未設定のまま運用した場合**: 封じ込めは動作しますが、何も期限切れになりません。ブロックはクラスターに設定され、定期スイープはそれを認識しません（台帳への書き込みが失敗するため）。レスポンスは `expiryTracked: false` を返し、ブロックが自動解除されるかのように装うことはしません。ただし、この状態はレスポンスを読んだ人にしか見えません。
-
-サブネットのルートテーブルは次のように調べます:
-
-```bash
-aws ec2 describe-route-tables \
-  --filters "Name=association.subnet-id,Values=<your-subnet-id>" \
-  --query "RouteTables[].RouteTableId" --output text
-```
-
-サブネットに明示的な関連付けがない場合、VPC のメインルートテーブルが使われます:
-
-```bash
-aws ec2 describe-route-tables \
-  --filters "Name=vpc-id,Values=<your-vpc-id>" "Name=association.main,Values=true" \
-  --query "RouteTables[].RouteTableId" --output text
-```
-
-## 検証結果（2026-07-26）
-
-| パネル | 状態 | 備考 |
-|-------|------|------|
-| Volumes | ✅ | 9 ボリューム（clone01, cachevol01, ds_migtoaws_bk, ...） |
-| Export Policies | ✅ | 2 ポリシー（default, fsx-root-volume-policy）、作成 / 削除が動作 |
-| QoS Policies | ✅ | API は動作、ポリシー未設定（空状態を表示） |
-| SMB Shares | ✅ | 4 共有（c$, cachevol01, ipc$, testshare01）、暗号化トグルが動作 |
-| Storage Efficiency | ✅ | 9 ボリュームで 1.21x、17.7% 削減 |
-| Snapshot Admin | ✅ | ポリシー一覧、改ざん防止状態の照会が可能 |
-| ARP/AI Admin | ✅ | 9 ボリューム、すべて無効、一括有効化が可能 |
-| SnapLock | ✅ | 全ボリューム non_snaplock（WORM 未設定） |
-| Qtrees | ✅ | 検索フィルター付き VolumeSelector、先頭を自動選択 |
-| Quotas | ✅ | VolumeSelector 連携、クォータルール一覧 |
-| Lock パネル | ✅ | 3 タブ: SnapLock（インライン一覧）、S3 Object Lock（ONTAP 非依存）、Tamperproof（インラインロックフォーム） |
-| Snapshots（Data Protection） | ✅ | hourly/weekly/daily をロックボタン付きで表示 |
-| ARP/AI Status | ✅ | vol1 は disabled、対応アクションが利用可能 |
-| FlexCache | ✅ | 作成 / 一覧 / 削除を E2E 検証、3 段階削除（アンマウント → オフライン → 削除）、段階的再取得 |
-| SnapMirror | ✅ | 状態バッジ付き一覧、操作ボタン（同期 / ブレーク / 再同期 / 一時停止 / 再開 / 削除）、転送履歴 |
-| File Explorer | ✅ | S3 AP から 29 ディレクトリ（ai-outputs, contracts, dicom, ...） |
-
-## スクリーンショット
-
-| ファイル | 説明 |
-|---------|------|
-| `docs/screenshots/file-explorer-directories.png` | FSx for ONTAP S3 AP のディレクトリを表示する File Explorer |
-| `docs/screenshots/resource-management-overview.png` | Resource Management のカード一覧（Storage/Access/Protection/AI、全体） |
-| `docs/screenshots/volumes-panel.png` | ONTAP の実データを表示する Volume Manager（ボリュームタイプ、実データ / Snapshot / 予約超過に分けた使用率、FlexGroup 行のリバランス操作） |
-| `docs/screenshots/volume-rebalance-panel.png` | FlexGroup の容量リバランス（状態、ボリューム全体と最も偏ったコンスティチュエントの偏り、コンスティチュエント別使用量、下限 30 分の最大実行時間） |
-| `docs/screenshots/storage-efficiency-panel.png` | Storage Efficiency ダッシュボード |
-| `docs/screenshots/08-arp-admin-panel-en.png` | 9 ボリュームの ARP/AI 管理 |
-| `docs/screenshots/snapshots-version-history.png` | hourly/weekly/daily の Snapshot 履歴（SVM → ボリュームのスコープバー、容量との関係の補足付き） |
-| `docs/screenshots/snapshot-lock-confirm.png` | Snapshot ロックの確認ダイアログ（保持期間の指定と不可逆である旨の明示） |
-| `docs/screenshots/quota-manager.png` | ボリュームセレクターとルール表付きの Quota Manager |
-| `docs/screenshots/quota-create-form.png` | クォータ作成フォーム（種別、対象、上限） |
-| `solutions/amplify-portal/docs/screenshots/smb-shares-panel.png` | 暗号化トグル + CA 情報 + 削除ボタン付きの SMB Shares |
-| `solutions/amplify-portal/docs/screenshots/export-policy-panel.png` | ポリシー作成 / 削除操作付きの Export Policy |
-| `solutions/amplify-portal/docs/screenshots/lock-panel-snaplock.png` | Lock パネルの SnapLock タブ（インライン一覧） |
-| `solutions/amplify-portal/docs/screenshots/lock-panel-tamperproof.png` | Lock パネルの Tamperproof タブ（インラインロックフォーム） |
-| `solutions/amplify-portal/docs/screenshots/lock-panel-s3objectlock.png` | Lock パネルの S3 Object Lock タブ（ONTAP 非依存） |
-| `solutions/amplify-portal/docs/screenshots/qtree-volume-selector.png` | VolumeSelector 検索 / フィルター付きの Qtree パネル |
-| `docs/screenshots/vscan-setup-guidance.png` | 6 ベンダー比較表付き Vscan 5 ステップ案内 |
-| `docs/screenshots/flexclone-manager.png` | クローン一覧と作成フォーム付きの FlexClone パネル（分割の使いどころと、クローンが親の容量に与える影響のガイド付き） |
-| `docs/screenshots/snapmirror-status.png` | 状態バッジ、RPO 警告、操作ボタン付きの SnapMirror 関係 |
-| `docs/screenshots/snapmirror-create-form.png` | SnapMirror 新規作成フォーム（SVM ピア選択、前提条件、作成される関係のプレビュー） |
-| `docs/screenshots/local-user-manager.png` | Local User Manager（Users タブの CRUD 操作） |
-| `docs/screenshots/name-mapping-manager.png` | 方向セレクターと作成フォーム付きの Name Mapping ルール |
-| `docs/screenshots/flexcache-manager.png` | 作成フォーム（オリジン datalist、プリポピュレートパス）とキャッシュ一覧 |
-| `docs/screenshots/flexcache-create-success.png` | FlexCache 作成成功トーストと段階的再取得の表示 |
-| `docs/screenshots/flexcache-delete-confirm.png` | FlexCache のインライン削除確認（「本当に削除？ [実行] [取消]」） |
-| `docs/screenshots/snapmirror-transfers.png` | SnapMirror 転送履歴の展開（success/failed、サイズ、所要時間） |
-| `docs/screenshots/athena-query-panel.png` | 案内テキストと SHOW TABLES 既定値付きの Athena SQL パネル |
-| `docs/screenshots/athena-query-panel-expanded.png` | クエリ例を展開した Athena SQL パネル |
-| `solutions/amplify-portal/docs/screenshots/storage-dashboard.png` | Storage Health ダッシュボード（容量、ARP、ロック、効率の 4 カード） |
-| `solutions/amplify-portal/docs/screenshots/ai-processing-ready.png` | AI Processing ページ（正常、エラーなし） |
-| `solutions/amplify-portal/docs/screenshots/lock-panel-s3objectlock-config.png` | バケット一覧付き S3 Object Lock 設定フォーム |
-
-## トラブルシューティング
-
-| 症状 | 原因 | 対処 |
-|------|------|------|
-| 「ONTAP 接続が必要です」 | Lambda が VPC 内にない | `AMPLIFY_PORTAL_VPC_ID/SUBNET_IDS/SG_IDS` を設定 |
-| 「User is not authorized」 | fsxadmin のパスワード不一致、**またはアカウントのロックアウト**（同一メッセージ。`lockout-duration=0` なので待っても戻らない。同じ資格情報で再試行しない） | `aws fsx update-file-system --ontap-configuration '{"FsxAdminPassword":"..."}'` でリセットし、シークレットも更新 |
-| 「Execution timed out」 | VPC エンドポイント不足または SG でブロック | Lambda の SG から 443 で到達できる Secrets Manager VPC エンドポイントを用意 |
-| 「Volume not found」 | SVM 名の誤り | `aws fsx describe-storage-virtual-machines` の結果と `ONTAP_SVM_NAME` が一致するか確認 |
-| テンプレートが 1MB 超 | リゾルバが多すぎる | 汎用ディスパッチパターンで解決済み |
-| File Explorer にファイルが出ない | S3 AP エイリアスの誤り | `portal-config.ts` のエイリアスが `aws fsx describe-storage-virtual-machines --query ...S3AccessPoints` と一致するか確認 |
-
-## 追加シナリオ
-
 ### シナリオ 18: Storage Health ダッシュボード
 
 1. **Admin > Resources** を開く
-2. 概要の上部にある **4 つのサマリーカード** を確認:
-   - 💾 Volumes（件数 + 平均容量 %）
-   - 🛡️ ARP Protected（件数 + 脅威の表示）
-   - 🔐 Locked Snapshots（改ざん防止の件数）
-   - 📊 Storage Efficiency（削減率 + 削減 %）
+2. 概要の上部にある 4 つのサマリーカードを確認する。
+
+   | カード | 表示内容 |
+   |---|---|
+   | 💾 Volumes | 件数 + 平均容量 % |
+   | 🛡️ ARP Protected | 件数 + 脅威の表示 |
+   | 🔐 Locked Snapshots | 改ざん防止の件数 |
+   | 📊 Storage Efficiency | 削減率 + 削減 % |
+
 3. カードをクリックすると該当パネルに直接遷移
 4. 容量が 85% を超えると、カードに黄色の警告表示が出る
 
@@ -487,11 +361,15 @@ aws ec2 describe-route-tables \
 ### シナリオ 20: インシデントのライフサイクル（ARP 封じ込め）
 
 1. **Data Protection > ARP/AI** を開く
-2. **Incident Response** セクションの状態バッジを確認:
-   - 🔴 検知済み（脅威検出時）
-   - 🟠 封じ込め完了（封じ込め実行後）
-   - 🟡 調査中（調査中）
-   - 🟢 解決済み（解決済み）
+2. **Incident Response** セクションの状態バッジを確認する。
+
+   | 状態バッジ | 表示される時点 |
+   |---|---|
+   | 🔴 検知済み | 脅威検出時 |
+   | 🟠 封じ込め完了 | 封じ込め実行後 |
+   | 🟡 調査中 | 調査中 |
+   | 🟢 解決済み | 解決済み |
+
 3. **脅威封じ込め** を実行 → バッジが「封じ込め完了」に遷移
 4. **→ 調査開始** → バッジが「調査中」に遷移
 5. **→ 解決** → バッジが「解決済み」に遷移
@@ -571,6 +449,146 @@ aws ec2 describe-route-tables \
 > **セキュリティに関する補足**: 受信箱はまず Cognito グループのパス境界（`GROUP_PATH_PREFIXES`）で絞られ、その後に自分の監視対象で絞られます。監視は自分のレコードなので `/` も登録できますが、それでグループ境界の外が見えることはありません。`storage-admin` は境界を迂回します。単一テナント構成（`GROUP_PATH_PREFIXES` 未設定）では全イベントが見えます。ファイル一覧と同じ境界です。
 
 > **アーキテクチャ**: FPolicy サーバー（または Transfer Family）→ EventBridge → 通知ブリッジ Lambda → `FileNotification` テーブル → ポータル。ポータルは ONTAP にイベントを出させる側ではなく、届いたものを読む側です。FPolicy 自体の構成は [event-driven/fpolicy パターン](../../solutions/event-driven/fpolicy/) を参照してください。
+
+## アーキテクチャに関する補足
+
+テンプレートサイズを抑える仕組み、Lambda の VPC 配置、VPC / ONTAP 設定の置き場所を説明します。
+
+### CloudFormation テンプレートサイズの最適化
+
+ポータルは CloudFormation テンプレートを 1MB 未満に保つため、汎用ディスパッチパターンを採用しています。
+
+```
+57 個の個別 GraphQL 操作 → 8 個の汎用ディスパッチエンドポイント
+```
+
+| エンドポイント | データソース | 操作数 |
+|---------------|-------------|--------|
+| `adminQuery` / `adminMutation` | ResourceMgmtLambda | 管理操作 48 件 |
+| `arpQuery` / `arpMutation` | ArpResponseLambda | ARP 操作 7 件 |
+| `protectionQuery` / `protectionMutation` | ListSnapshotsLambda | 保護操作 9 件 |
+| `fileQuery` / `fileMutation` | ListFilesLambda | ファイル操作 6 件 |
+
+各ディスパッチリゾルバは `action` パラメータで Lambda ハンドラー内の既存のアクション分岐にルーティングします。
+
+### VPC の分割アーキテクチャ
+
+| Lambda の種類 | VPC | 目的 |
+|--------------|-----|------|
+| ListFiles, GetPresignedUrl, SearchFiles | **VPC なし** | インターネットオリジンの S3 AP アクセス |
+| ResourceMgmt, ArpResponse, ListSnapshots | **VPC 内** | ONTAP 管理 LIF（TCP/443） |
+| AskAboutFile, DetectLabels, Textract, Comprehend | **VPC なし** | AWS の AI サービス |
+
+### IaC の設定
+
+VPC / ONTAP の設定はすべて `amplify/portal-config.ts` にあります。
+
+```typescript
+export const config: PortalConfig = {
+  // ... S3 AP の設定 ...
+  vpcId: process.env.AMPLIFY_PORTAL_VPC_ID || "",
+  vpcSubnetIds: (process.env.AMPLIFY_PORTAL_VPC_SUBNET_IDS || "").split(",").filter(Boolean),
+  vpcSecurityGroupIds: (process.env.AMPLIFY_PORTAL_VPC_SG_IDS || "").split(",").filter(Boolean),
+  // vpcId を設定する場合は必須 — 下記参照。
+  vpcRouteTableIds: (process.env.AMPLIFY_PORTAL_VPC_ROUTE_TABLE_IDS || "").split(",").filter(Boolean),
+};
+```
+
+`vpcId` が空の場合、Lambda は VPC なしでデプロイされます（管理パネルは「ONTAP 接続が必要です」と穏当に表示）。
+
+#### VPC を使う場合 `vpcRouteTableIds` は必須
+
+Lambda のサブネットに関連付けられたルートテーブルを指定します。これにより DynamoDB のゲートウェイエンドポイントが作成され、VPC 内の関数が封じ込めブロックの台帳に到達できるようになります。`vpcId` が設定されているのに未指定だと **synth が実行を拒否する**ため、後回しにはできません。
+
+`portal-config.ts` は gitignore 済みで、素の値を受け取る `portal-config.example.ts` からコピーします。上記の `AMPLIFY_PORTAL_*` 環境変数は参照実装での読み取り方であり、自身の `portal-config.ts` が同じ配線をしている場合にのみ効きます。フィールドを直接設定する方法は常に機能します。
+
+Lambda の ENI はパブリック IP を持たないため、デフォルトルートがインターネットゲートウェイのサブネットでは関数から一切外部に出られません。Secrets Manager はインターフェースエンドポイントで到達できますが、DynamoDB は追加しない限り経路がありません。ゲートウェイエンドポイントには時間課金もデータ処理料金もかかりません。
+
+未設定のまま運用すると、封じ込めは動作しますが、何も期限切れになりません。ブロックはクラスターに設定され、定期スイープはそれを認識しません（台帳への書き込みが失敗するため）。レスポンスは `expiryTracked: false` を返し、ブロックが自動解除されるかのように装うことはしません。ただし、この状態はレスポンスを読んだ人にしか見えません。
+
+サブネットのルートテーブルは次のコマンドで調べます。
+
+```bash
+aws ec2 describe-route-tables \
+  --filters "Name=association.subnet-id,Values=<your-subnet-id>" \
+  --query "RouteTables[].RouteTableId" --output text
+```
+
+サブネットに明示的な関連付けがない場合、VPC のメインルートテーブルが使われます。メインルートテーブルは次のコマンドで調べます。
+
+```bash
+aws ec2 describe-route-tables \
+  --filters "Name=vpc-id,Values=<your-vpc-id>" "Name=association.main,Values=true" \
+  --query "RouteTables[].RouteTableId" --output text
+```
+
+## 検証結果（2026-07-26）
+
+| パネル | 状態 | 備考 |
+|-------|------|------|
+| Volumes | ✅ | 9 ボリューム（clone01, cachevol01, ds_migtoaws_bk, ...） |
+| Export Policies | ✅ | 2 ポリシー（default, fsx-root-volume-policy）、作成 / 削除が動作 |
+| QoS Policies | ✅ | API は動作、ポリシー未設定（空状態を表示） |
+| SMB Shares | ✅ | 4 共有（c$, cachevol01, ipc$, testshare01）、暗号化トグルが動作 |
+| Storage Efficiency | ✅ | 9 ボリュームで 1.21x、17.7% 削減 |
+| Snapshot Admin | ✅ | ポリシー一覧、改ざん防止状態の照会が可能 |
+| ARP/AI Admin | ✅ | 9 ボリューム、すべて無効、一括有効化が可能 |
+| SnapLock | ✅ | 全ボリューム non_snaplock（WORM 未設定） |
+| Qtrees | ✅ | 検索フィルター付き VolumeSelector、先頭を自動選択 |
+| Quotas | ✅ | VolumeSelector 連携、クォータルール一覧 |
+| Lock パネル | ✅ | 3 タブ: SnapLock（インライン一覧）、S3 Object Lock（ONTAP 非依存）、Tamperproof（インラインロックフォーム） |
+| Snapshots（Data Protection） | ✅ | hourly/weekly/daily をロックボタン付きで表示 |
+| ARP/AI Status | ✅ | vol1 は disabled、対応アクションが利用可能 |
+| FlexCache | ✅ | 作成 / 一覧 / 削除を E2E 検証、3 段階削除（アンマウント → オフライン → 削除）、段階的再取得 |
+| SnapMirror | ✅ | 状態バッジ付き一覧、操作ボタン（同期 / ブレーク / 再同期 / 一時停止 / 再開 / 削除）、転送履歴 |
+| File Explorer | ✅ | S3 AP から 29 ディレクトリ（ai-outputs, contracts, dicom, ...） |
+
+## スクリーンショット
+
+| ファイル | 説明 |
+|---------|------|
+| `docs/screenshots/file-explorer-directories.png` | FSx for ONTAP S3 AP のディレクトリを表示する File Explorer |
+| `docs/screenshots/resource-management-overview.png` | Resource Management のカード一覧（Storage/Access/Protection/AI、全体） |
+| `docs/screenshots/volumes-panel.png` | ONTAP の実データを表示する Volume Manager（ボリュームタイプ、実データ / Snapshot / 予約超過に分けた使用率、FlexGroup 行のリバランス操作） |
+| `docs/screenshots/volume-rebalance-panel.png` | FlexGroup の容量リバランス（状態、ボリューム全体と最も偏ったコンスティチュエントの偏り、コンスティチュエント別使用量、下限 30 分の最大実行時間） |
+| `docs/screenshots/storage-efficiency-panel.png` | Storage Efficiency ダッシュボード |
+| `docs/screenshots/08-arp-admin-panel-en.png` | 9 ボリュームの ARP/AI 管理 |
+| `docs/screenshots/snapshots-version-history.png` | hourly/weekly/daily の Snapshot 履歴（SVM → ボリュームのスコープバー、容量との関係の補足付き） |
+| `docs/screenshots/snapshot-lock-confirm.png` | Snapshot ロックの確認ダイアログ（保持期間の指定と不可逆である旨の明示） |
+| `docs/screenshots/quota-manager.png` | ボリュームセレクターとルール表付きの Quota Manager |
+| `docs/screenshots/quota-create-form.png` | クォータ作成フォーム（種別、対象、上限） |
+| `solutions/amplify-portal/docs/screenshots/smb-shares-panel.png` | 暗号化トグル + CA 情報 + 削除ボタン付きの SMB Shares |
+| `solutions/amplify-portal/docs/screenshots/export-policy-panel.png` | ポリシー作成 / 削除操作付きの Export Policy |
+| `solutions/amplify-portal/docs/screenshots/lock-panel-snaplock.png` | Lock パネルの SnapLock タブ（インライン一覧） |
+| `solutions/amplify-portal/docs/screenshots/lock-panel-tamperproof.png` | Lock パネルの Tamperproof タブ（インラインロックフォーム） |
+| `solutions/amplify-portal/docs/screenshots/lock-panel-s3objectlock.png` | Lock パネルの S3 Object Lock タブ（ONTAP 非依存） |
+| `solutions/amplify-portal/docs/screenshots/qtree-volume-selector.png` | VolumeSelector 検索 / フィルター付きの Qtree パネル |
+| `docs/screenshots/vscan-setup-guidance.png` | 6 ベンダー比較表付き Vscan 5 ステップ案内 |
+| `docs/screenshots/flexclone-manager.png` | クローン一覧と作成フォーム付きの FlexClone パネル（分割の使いどころと、クローンが親の容量に与える影響のガイド付き） |
+| `docs/screenshots/snapmirror-status.png` | 状態バッジ、RPO 警告、操作ボタン付きの SnapMirror 関係 |
+| `docs/screenshots/snapmirror-create-form.png` | SnapMirror 新規作成フォーム（SVM ピア選択、前提条件、作成される関係のプレビュー） |
+| `docs/screenshots/local-user-manager.png` | Local User Manager（Users タブの CRUD 操作） |
+| `docs/screenshots/name-mapping-manager.png` | 方向セレクターと作成フォーム付きの Name Mapping ルール |
+| `docs/screenshots/flexcache-manager.png` | 作成フォーム（オリジン datalist、プリポピュレートパス）とキャッシュ一覧 |
+| `docs/screenshots/flexcache-create-success.png` | FlexCache 作成成功トーストと段階的再取得の表示 |
+| `docs/screenshots/flexcache-delete-confirm.png` | FlexCache のインライン削除確認（「本当に削除？ [実行] [取消]」） |
+| `docs/screenshots/snapmirror-transfers.png` | SnapMirror 転送履歴の展開（success/failed、サイズ、所要時間） |
+| `docs/screenshots/athena-query-panel.png` | 案内テキストと SHOW TABLES 既定値付きの Athena SQL パネル |
+| `docs/screenshots/athena-query-panel-expanded.png` | クエリ例を展開した Athena SQL パネル |
+| `solutions/amplify-portal/docs/screenshots/storage-dashboard.png` | Storage Health ダッシュボード（容量、ARP、ロック、効率の 4 カード） |
+| `solutions/amplify-portal/docs/screenshots/ai-processing-ready.png` | AI Processing ページ（正常、エラーなし） |
+| `solutions/amplify-portal/docs/screenshots/lock-panel-s3objectlock-config.png` | バケット一覧付き S3 Object Lock 設定フォーム |
+
+## トラブルシューティング
+
+| 症状 | 原因 | 対処 |
+|------|------|------|
+| 「ONTAP 接続が必要です」 | Lambda が VPC 内にない | `AMPLIFY_PORTAL_VPC_ID/SUBNET_IDS/SG_IDS` を設定 |
+| 「User is not authorized」 | fsxadmin のパスワード不一致、**またはアカウントのロックアウト**（同一メッセージ。`lockout-duration=0` なので待っても戻らない。同じ資格情報で再試行しない） | `aws fsx update-file-system --ontap-configuration '{"FsxAdminPassword":"..."}'` でリセットし、シークレットも更新 |
+| 「Execution timed out」 | VPC エンドポイント不足または SG でブロック | Lambda の SG から 443 で到達できる Secrets Manager VPC エンドポイントを用意 |
+| 「Volume not found」 | SVM 名の誤り | `aws fsx describe-storage-virtual-machines` の結果と `ONTAP_SVM_NAME` が一致するか確認 |
+| テンプレートが 1MB 超 | リゾルバが多すぎる | 汎用ディスパッチパターンで解決済み |
+| File Explorer にファイルが出ない | S3 AP エイリアスの誤り | `portal-config.ts` のエイリアスが `aws fsx describe-storage-virtual-machines --query ...S3AccessPoints` と一致するか確認 |
 
 ## 関連ドキュメント
 

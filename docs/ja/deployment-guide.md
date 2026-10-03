@@ -60,7 +60,7 @@ FSx for ONTAP は既にデプロイ済みですか？
 
 ### デプロイに必要な最小 IAM 権限
 
-`cloudformation create-stack` / `sam deploy` を実行する IAM プリンシパルには以下が必要です：
+`cloudformation create-stack` / `sam deploy` を実行する IAM プリンシパルに必要な権限は次のとおりです。
 
 ```json
 {
@@ -190,6 +190,8 @@ VPC、サブネット、Security Group に加え、追加コンピュート（EC
 
 ## パラメータマッピング
 
+既存の FSx for ONTAP 環境のリソースと、テンプレートのパラメータの対応、および各値の取得方法を示します。
+
 ### 共通パラメータ（全 Tier 2 Industry パターン）
 
 | 既存リソース | テンプレートパラメータ | 取得方法 |
@@ -220,7 +222,7 @@ VPC、サブネット、Security Group に加え、追加コンピュート（EC
 
 ### DemoMode — FSx for ONTAP なしでの動作確認
 
-多くのパターンは `DemoMode=true` をサポートしており、S3 AP エイリアスの代わりに通常の S3 バケット名を受け付け、ONTAP API 呼び出しをスキップします。以下の用途に利用できます：
+多くのパターンは `DemoMode=true` をサポートしており、S3 AP エイリアスの代わりに通常の S3 バケット名を受け付け、ONTAP API 呼び出しをスキップします。用途は次の 3 つです。
 - FSx for ONTAP なしでの機能検証
 - パートナーデモンストレーション
 - CI/CD パイプラインテスト
@@ -229,21 +231,14 @@ VPC、サブネット、Security Group に加え、追加コンピュート（EC
 
 ## VPC Endpoint 競合マトリクス
 
-同一 VPC に複数のスタックをデプロイする場合、VPC Endpoint が競合する可能性があります。2 種類のエンドポイントの違いを理解することが重要です。
+同一 VPC に複数のスタックをデプロイすると、VPC Endpoint が競合することがあります。
+解決策は、2 番目以降のスタックで無効化パラメータを `false` にし、既存のエンドポイントを共有することです。
+競合の起き方はエンドポイントの種類で異なります。
 
-### Gateway Endpoint（S3、DynamoDB）
-
-- **ルートテーブル**に関連付け（サブネットではない）
-- **PrivateDNS 競合なし** — ルートテーブル関連付けの重複のみ問題
-- **競合シナリオ**: 2 つのスタックが同じルートテーブルに対して S3 Gateway の `AWS::EC2::VPCEndpoint` を作成 → CloudFormation エラー
-- **解決策**: 2 番目のスタックで `EnableS3GatewayEndpoint=false` を設定（VPC あたり 1 つで十分）
-
-### Interface Endpoint（Secrets Manager、STS、Logs、Bedrock 等）
-
-- **サブネット**に ENI として配置
-- **PrivateDNS 競合**: 同一サービスの Interface Endpoint は VPC あたり 1 つのみ `PrivateDnsEnabled=true` にできる
-- **競合シナリオ**: スタック A が `com.amazonaws.region.secretsmanager` を PrivateDNS 付きで作成 → スタック B が同じものを作成しようとして `InvalidParameter: already exists` エラー
-- **解決策**: 後続スタックで `EnableVpcEndpoints=false` を設定し、既存エンドポイントを共有
+| 種類 | 関連付け先 | 競合の原因 | 競合の例 | 解決策 |
+|------|----------|----------|---------|-------|
+| Gateway Endpoint（S3、DynamoDB） | ルートテーブル（サブネットではない） | ルートテーブル関連付けの重複のみ（PrivateDNS の競合はない） | 2 つのスタックが同じルートテーブルに対して S3 Gateway の `AWS::EC2::VPCEndpoint` を作成 → CloudFormation エラー | 2 番目のスタックで `EnableS3GatewayEndpoint=false` を設定（VPC あたり 1 つで十分） |
+| Interface Endpoint（Secrets Manager、STS、Logs、Bedrock 等） | サブネット（ENI として配置） | 同一サービスの Interface Endpoint は VPC あたり 1 つのみ `PrivateDnsEnabled=true` にできる | スタック A が `com.amazonaws.region.secretsmanager` を PrivateDNS 付きで作成 → スタック B が同じものを作成しようとして `InvalidParameter: already exists` エラー | 後続スタックで `EnableVpcEndpoints=false` を設定し、既存エンドポイントを共有 |
 
 ### 競合解決マトリクス
 
@@ -260,17 +255,19 @@ VPC、サブネット、Security Group に加え、追加コンピュート（EC
 
 ### 推奨戦略
 
-1. **最初のスタック**: `EnableVpcEndpoints=true` かつ `EnableS3GatewayEndpoint=true` でデプロイ
-2. **同一 VPC への後続スタック**: 両方を `false` に設定してデプロイ
-3. **代替案**: 必要な VPC Endpoint を全て事前に個別作成し、全スタックで `EnableVpcEndpoints=false` にする
+1. 最初のスタックは `EnableVpcEndpoints=true` かつ `EnableS3GatewayEndpoint=true` でデプロイする
+2. 同一 VPC への後続スタックは、両方を `false` に設定してデプロイする
+3. 代替案として、必要な VPC Endpoint を全て事前に個別作成し、全スタックで `EnableVpcEndpoints=false` にする方法もある
 
 ---
 
 ## 検証済みデプロイパス
 
+冒頭の判断フローのパス A〜C に、同一 VPC へのマルチパターン（D）と FPolicy イベント駆動（E）を加えた 5 つのパスを、実行するコマンドの順に示します。
+
 ### パス A: 単一パターン Quick Start（初回デプロイ推奨）
 
-最もシンプルなパスは SAM CLI のインタラクティブな `--guided` モードで、各パラメータを対話的に入力できます：
+最もシンプルなパスは SAM CLI のインタラクティブな `--guided` モードで、各パラメータを対話的に入力できます。
 
 ```bash
 # 1. プリフライトチェック実行
@@ -284,7 +281,7 @@ sam deploy --guided
 # Tip: SAM は入力内容を samconfig.toml に保存し、次回以降のデプロイで再利用
 ```
 
-初回の `--guided` デプロイ後、以降の更新は以下だけで完了します：
+初回の `--guided` デプロイ後、以降の更新は次の 1 行で完了します。
 ```bash
 sam build && sam deploy
 ```
@@ -371,6 +368,8 @@ aws cloudformation create-stack \
 
 ## コスト見積もり
 
+固定費、実行ごとの従量課金、利用プロファイル別の月額目安の順に示します。
+
 ### 固定費（スタックあたり、月額）
 
 | コンポーネント | 費用 | 備考 |
@@ -420,6 +419,8 @@ Interface Endpoint の作成が主なボトルネックです（約 5-8 分）�
 
 ## Day 2 運用
 
+デプロイ直後の確認、常時監視するメトリクス、月次の見直し項目を示します。
+
 ### デプロイ直後の検証手順
 
 ```bash
@@ -468,6 +469,8 @@ cat /tmp/output.json | jq .
 
 ## ロールバック・クリーンアップ
 
+失敗したデプロイの戻し方、スタックの完全削除、複数スタックを消す順序を示します。
+
 ### 失敗したデプロイのロールバック
 
 ```bash
@@ -501,7 +504,7 @@ aws cloudformation list-stacks --stack-status-filter DELETE_FAILED \
 
 ### マルチスタックデプロイのクリーンアップ順序
 
-デプロイの逆順でスタックを削除します：
+スタックはデプロイの逆順に削除します。
 1. アプリケーションスタック（UC パターン、FPolicy コンシューマ）
 2. FPolicy Event-Driven スタック（デプロイ済みの場合）
 3. VPC Endpoints を所有するスタック（最後 — 他のスタックが依存）
@@ -544,14 +547,13 @@ aws fsx describe-file-systems --file-system-ids fs-XXXXXXXXX \
 
 S3 Access Point は `UNIX`（デフォルト）と `WINDOWS` の 2 つのユーザータイプをサポートしています。WINDOWS タイプは、FSx for ONTAP ボリュームのファイル所有権と ACL を Active Directory アイデンティティにマッピングし、S3 AP 経由で Windows ネイティブのアクセス制御を実現します。
 
-**WINDOWS タイプ S3 AP 作成の前提条件:**
+WINDOWS タイプの S3 AP を作成する前提条件は 2 つあります。
 
-1. **SVM が Active Directory ドメインに参加済みであること** — AD 未参加の SVM で WINDOWS タイプの S3 AP を作成しようとすると即座にエラーになります。
-2. **AD 環境に到達可能であること** — SVM から AD ドメインコントローラーへの DNS 解決とネットワーク接続（ポート 53, 88, 389, 445）が必要です。
+1. SVM が Active Directory ドメインに参加済みであること。AD 未参加の SVM で WINDOWS タイプの S3 AP を作成しようとすると即座にエラーになります。
+2. AD 環境に到達可能であること。SVM から AD ドメインコントローラーへの DNS 解決とネットワーク接続（ポート 53, 88, 389, 445）が必要です。
 
-**重要: WindowsUser.Name にドメインプレフィクスを含めてはいけない**
-
-WINDOWS タイプの S3 Access Point を作成・使用する際は、ユーザー名のみを指定してください：
+`WindowsUser.Name` には**ドメインプレフィクスを含めてはいけません**。
+WINDOWS タイプの S3 Access Point を作成・使用する際は、ユーザー名のみを指定します。
 
 ```bash
 # 正しい — ユーザー名のみ
@@ -570,9 +572,7 @@ aws fsx create-and-attach-s3-access-point \
 
 AD ドメインプレフィクス（`DOMAIN\username`）は CLI/API レベルではエラーなく受け入れられ、Access Point も `AVAILABLE` に到達しますが、後続のすべてのデータ操作が **503 ServiceUnavailable** を返します（`HeadBucket`・ListObjects・GetObject・PutObject のいずれも）。これは一時的なエラーではなく既知の動作で、**`AccessDenied` ではありません** — 403 を探すと IAM ポリシー・AP ポリシー・ACL を調べに行きますが、どれも原因ではありません。`HeadBucket` も失敗することが、AD DC 到達不能（`HeadBucket` は成功する）との判別点です。**CIFS サーバー名**の接頭辞（`CIFSSRV\username`）は実測で正常動作します。
 
-**AD 環境のセットアップ:**
-
-付属のインフラテンプレートとジョインスクリプトを使用します：
+AD 環境は、付属のインフラテンプレートとジョインスクリプトでセットアップします。
 
 ```bash
 # 1. AD + テスト EC2 インスタンスのデプロイ
@@ -597,6 +597,8 @@ aws fsx create-and-attach-s3-access-point ...
 ---
 
 ## トラブルシューティング
+
+エラーメッセージから原因と対処を引く表、エラーなしで結果が空になる事例、接続のデバッグ手順を示します。
 
 ### よくあるデプロイエラー
 
@@ -646,6 +648,8 @@ aws ec2 describe-security-groups --group-ids <SG-ID> \
 
 ## CI/CD 統合
 
+GitHub Actions からのデプロイ例と、本番更新でチェンジセットを使う手順を示します。
+
 ### GitHub Actions 例
 
 自分のリポジトリに置く例。**このリポジトリ自身は CI からデプロイしない**
@@ -692,7 +696,7 @@ jobs:
 
 ### 本番更新にはチェンジセットを使用
 
-既にデプロイ済みのスタックを更新する場合は、`create-stack` ではなくチェンジセットを使用します：
+既にデプロイ済みのスタックを更新する場合は、`create-stack` ではなくチェンジセットを使用します。
 
 ```bash
 # チェンジセット作成（適用前に変更をプレビュー）
