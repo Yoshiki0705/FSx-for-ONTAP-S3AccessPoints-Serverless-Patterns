@@ -1,6 +1,7 @@
 # トラブルシューティング手順書
 
 本ドキュメントでは、FSx for ONTAP S3 AP Serverless Patterns で発生しうるエラーと対処法を説明します。
+1〜4 と 6〜10 の節は、症状、原因、確認方法、対処法の順です。エラーメッセージから節を選び、症状が一致するかを先に確かめてください。
 
 ## 目次
 
@@ -11,10 +12,17 @@
 5. [その他のよくあるエラー](#5-その他のよくあるエラー)
 6. [Lambda VPC 内実行時の S3 AP タイムアウト](#6-lambda-vpc-内実行時の-s3-ap-タイムアウト)
 7. [同一 VPC に複数スタックデプロイ時の S3 Gateway Endpoint 競合](#7-同一-vpc-に複数スタックデプロイ時の-s3-gateway-endpoint-競合)
+8. [S3AP ConnectionClosedError](#8-s3ap-connectionclosederrorphase-13-発見)
+9. [FPolicy Protobuf モード切り替え](#9-fpolicy-protobuf-モード切り替えphase-13-発見)
+10. [fsxadmin 認証エラー "User is not authorized"](#10-fsxadmin-認証エラー-user-is-not-authorizedphase-13-発見)
+11. [FlexCache 関連のトラブルシューティング](#11-flexcache-関連のトラブルシューティング)
+12. [ログ収集テンプレート](#ログ収集テンプレート)
 
 ---
 
 ## 1. AccessDenied エラー
+
+S3 Access Point へのデータ操作が `AccessDenied` で失敗する場合です。原因は AWS 側（Layer 1）とファイルシステム側（Layer 2）のどちらにもありえます。
 
 ### 症状
 
@@ -35,6 +43,8 @@ To tell them apart, call HeadBucket on the same Access Point. ...
 > 生成しています。
 
 ### 原因と対処法
+
+考えられる原因は 5 つです（原因 2-b を含む）。原因 2-b はファイルシステム側（Layer 2）、それ以外は AWS 側（Layer 1）です。
 
 #### 原因 1: IAM ロールの権限不足
 
@@ -128,7 +138,7 @@ aws s3control get-access-point \
 
 #### 原因 4: S3AccessPointName パラメータ未指定による ARN ベース権限不足
 
-> **UC6 デプロイ検証（2026-05-09）で発見された問題**
+> UC6 デプロイ検証（2026-05-09）で発見された問題です。
 
 **症状**: IAM ポリシーが S3 AP Alias ベースのみで構成され、ARN ベースの権限が不足している場合に `AccessDenied` が発生する。
 
@@ -144,7 +154,7 @@ aws iam get-role-policy \
 
 ポリシーに `arn:aws:s3:<region>:<account-id>:accesspoint/<ap-name>` 形式のリソースが含まれていない場合、この問題に該当する。
 
-**対処法**: CloudFormation テンプレートの `S3AccessPointName` パラメータに S3 AP の名前（Alias ではなく作成時に指定した名前）を指定してスタックを更新する:
+**対処法**: CloudFormation テンプレートの `S3AccessPointName` パラメータに S3 AP の名前（Alias ではなく作成時に指定した名前）を指定して、次のコマンドでスタックを更新する。
 
 ```bash
 aws cloudformation deploy \
@@ -163,6 +173,8 @@ aws cloudformation deploy \
 
 ## 2. VPC Endpoint 到達不能
 
+VPC 内の Lambda から AWS のエンドポイントに接続できず、接続タイムアウトになる場合です。
+
 ### 症状
 
 Lambda 関数のログに以下のようなエラーが出力される:
@@ -173,6 +185,8 @@ botocore.exceptions.EndpointConnectionError: Could not connect to the endpoint U
 ```
 
 ### 原因と対処法
+
+考えられる原因は 3 つです。
 
 #### 原因 1: VPC Endpoint が作成されていない
 
@@ -239,6 +253,8 @@ aws ec2 describe-route-tables \
 
 ## 3. ONTAP API タイムアウト
 
+Lambda から ONTAP REST API への呼び出しがタイムアウトまたはリトライ上限に達する場合です。
+
 ### 症状
 
 Lambda 関数のログに以下のようなエラーが出力される:
@@ -249,6 +265,8 @@ OntapClientError: Max retries exceeded for GET /storage/volumes
 ```
 
 ### 原因と対処法
+
+考えられる原因は 3 つです。
 
 #### 原因 1: ONTAP 管理 IP への接続不可
 
@@ -286,6 +304,8 @@ aws secretsmanager describe-secret \
 
 ## 4. Athena クエリ失敗
 
+Athena Analysis Lambda のクエリが、テーブル未検出やメタストアのエラーで失敗する場合です。
+
 ### 症状
 
 Athena Analysis Lambda のログに以下のようなエラーが出力される:
@@ -297,6 +317,8 @@ InvalidRequestException: Query has not yet finished
 ```
 
 ### 原因と対処法
+
+考えられる原因は 3 つです。
 
 #### 原因 1: Glue Data Catalog テーブルが存在しない
 
@@ -333,6 +355,8 @@ aws athena get-work-group \
 ---
 
 ## 5. その他のよくあるエラー
+
+Lambda のメモリ不足とタイムアウト、AI サービスのエラー、CloudFormation のデプロイ失敗です。
 
 ### Lambda メモリ不足
 
@@ -383,7 +407,7 @@ aws cloudformation describe-stack-events \
 
 ## 6. Lambda VPC 内実行時の S3 AP タイムアウト
 
-> **UC1 デプロイ検証（2026-05-03）で発見された問題**
+> UC1 デプロイ検証（2026-05-03）で発見された問題です。
 
 ### 症状
 
@@ -423,6 +447,8 @@ nslookup <your-ap-alias>-ext-s3alias.s3.amazonaws.com
 
 ### 対処法
 
+対処法は、PoC / デモ環境向け（A）と本番環境向け（B）の 2 つです。
+
 #### 対処法 A: PoC / デモ環境向け（推奨）
 
 Lambda の `VpcConfig` を削除し、VPC 外で実行する。S3 AP の network origin が `internet` であれば、VPC 外 Lambda から問題なくアクセス可能。
@@ -438,9 +464,9 @@ Lambda の `VpcConfig` を削除し、VPC 外で実行する。S3 AP の network
 
 #### 対処法 B: 本番環境向け
 
-1. **S3 Gateway Endpoint にルートテーブルを関連付ける**:
+1. S3 Gateway Endpoint にルートテーブルを関連付ける。
 
-   CloudFormation テンプレートの `S3GatewayEndpoint` リソースに `RouteTableIds` を追加:
+   CloudFormation テンプレートの `S3GatewayEndpoint` リソースに、次のように `RouteTableIds` を追加する。
 
    ```yaml
    S3GatewayEndpoint:
@@ -453,11 +479,11 @@ Lambda の `VpcConfig` を削除し、VPC 外で実行する。S3 AP の network
          - !Ref PrivateRouteTableId
    ```
 
-2. **VPC DNS 解決の確認**:
+2. VPC の DNS 解決を確認する。
    - VPC の `enableDnsSupport` と `enableDnsHostnames` が `true` であることを確認
    - S3 AP の DNS 名が VPC 内から正しく解決されることを確認
 
-3. **必要に応じて Interface VPC Endpoints を有効化**:
+3. 必要に応じて Interface VPC Endpoints を有効化する。
    - `EnableVpcEndpoints=true` でデプロイし、Secrets Manager / FSx / CloudWatch / SNS 用の Interface Endpoints を作成
 
 ### 関連パラメータ
@@ -471,7 +497,7 @@ Lambda の `VpcConfig` を削除し、VPC 外で実行する。S3 AP の network
 
 ## 7. 同一 VPC に複数スタックデプロイ時の S3 Gateway Endpoint 競合
 
-> **UC2-UC5 デプロイ検証（2026-05-02）で発見された問題**
+> UC2-UC5 デプロイ検証（2026-05-02）で発見された問題です。
 
 ### 症状
 
@@ -489,7 +515,7 @@ with destination-prefix-list-id pl-xxxxx (Service: Ec2, Status Code: 400)"
 
 ### 対処法
 
-`EnableS3GatewayEndpoint` パラメータを `false` に設定して、S3 Gateway Endpoint の作成をスキップする:
+`EnableS3GatewayEndpoint` パラメータを `false` に設定して、S3 Gateway Endpoint の作成をスキップする。
 
 ```bash
 # 2 番目以降のスタックでは S3 Gateway Endpoint を無効化
@@ -515,37 +541,186 @@ aws cloudformation create-stack \
 
 ---
 
-## ログ収集テンプレート
+## 8. S3AP ConnectionClosedError（Phase 13 発見）
 
-問題報告時に以下の情報を収集してください:
+### 症状
+
+VPC 外 Lambda から Internet-origin S3 Access Point に `ListObjectsV2` を実行すると、`AccessDenied` ではなく `ConnectionClosedError` が返る。
+
+```
+ConnectionClosedError: Connection was closed before we received a valid response from endpoint URL:
+"https://xxx-ext-s3alias.s3.ap-northeast-1.amazonaws.com/?list-type=2&prefix=_health%2F&max-keys=1"
+```
+
+または `ReadTimeoutError`（20秒以上応答なし）。
+
+### 原因
+
+原因は次のいずれか、またはその組み合わせです。
+
+1. S3AP リソースポリシーが未設定で、Lambda 実行ロールが S3AP リソースポリシーで Allow されていない
+2. S3AP attachment の Lifecycle が AVAILABLE でない。`CREATED` 状態ではデータプレーンが応答しない
+3. S3AP が紐づく ONTAP ボリュームが offline/restricted 状態
+
+### 確認手順
 
 ```bash
-# 1. スタック情報
-aws cloudformation describe-stacks \
-  --stack-name <your-stack-name> \
+# 1. S3AP リソースポリシー確認
+aws s3control get-access-point-policy \
+  --account-id <ACCOUNT_ID> \
+  --name <S3AP_NAME> \
   --region ap-northeast-1
 
-# 2. Lambda 関数のエラーログ（直近 1 時間）
-aws logs filter-log-events \
-  --log-group-name "/aws/lambda/<your-function-name>" \
-  --filter-pattern "ERROR" \
-  --start-time $(date -d '1 hour ago' +%s000) \
-  --region ap-northeast-1
+# 2. S3AP attachment Lifecycle 確認
+aws fsx describe-s3-access-point-attachments \
+  --region ap-northeast-1 \
+  --query 'S3AccessPointAttachments[?Name==`<S3AP_NAME>`].Lifecycle'
 
-# 3. Step Functions 実行履歴
-aws stepfunctions get-execution-history \
-  --execution-arn <your-execution-arn> \
-  --region ap-northeast-1
-
-# 4. VPC Endpoint の状態
-aws ec2 describe-vpc-endpoints \
-  --filters "Name=vpc-id,Values=<your-vpc-id>" \
-  --region ap-northeast-1
+# 3. ボリューム状態確認
+aws fsx describe-volumes \
+  --volume-ids <VOLUME_ID> \
+  --region ap-northeast-1 \
+  --query 'Volumes[0].Lifecycle'
 ```
+
+### 解決策
+
+```bash
+# S3AP リソースポリシーに Lambda ロールを追加
+aws s3control put-access-point-policy \
+  --account-id <ACCOUNT_ID> \
+  --name <S3AP_NAME> \
+  --region ap-northeast-1 \
+  --policy '{
+    "Version": "2012-10-17",
+    "Statement": [{
+      "Effect": "Allow",
+      "Principal": {"AWS": "arn:aws:iam::<ACCOUNT_ID>:role/<LAMBDA_ROLE_NAME>"},
+      "Action": ["s3:ListBucket", "s3:GetObject"],
+      "Resource": [
+        "arn:aws:s3:ap-northeast-1:<ACCOUNT_ID>:accesspoint/<S3AP_NAME>",
+        "arn:aws:s3:ap-northeast-1:<ACCOUNT_ID>:accesspoint/<S3AP_NAME>/object/*"
+      ]
+    }]
+  }'
+```
+
+### 重要な注意点
+
+- FSx for ONTAP S3AP は通常の S3 とは異なるデータプレーンを使用する
+- 認証/認可エラーが `AccessDenied` ではなく `ConnectionClosedError` として表面化する場合がある
+- **同一アカウントでは IAM identity-based policy と S3AP resource policy は結合して評価される**（どちらかが許可すれば通る）。resource policy が無いことは原因にならない。原因になるのは resource policy 側の明示的な `Deny`。クロスアカウントの場合のみ両方が必要（[認可モデル](../s3ap-authorization-model.md)）
+- S3AP attachment の Lifecycle が `AVAILABLE` であることを必ず確認する
 
 ---
 
-## FlexCache 関連のトラブルシューティング
+## 9. FPolicy Protobuf モード切り替え（Phase 13 発見）
+
+### 症状
+
+ONTAP CLI で FPolicy external engine の format を protobuf に変更しようとすると `invalid argument "-format"` エラーが発生する。
+
+```
+FsxId01234567890abc:> fpolicy policy external-engine modify -vserver FSxN_OnPre -engine-name my_engine -format protobuf
+Error: invalid argument "-format"
+```
+
+### 原因
+
+ONTAP 9.17.1 では、FPolicy external engine の `format` フィールドは **REST API でのみ変更可能**。CLI には `-format` パラメータが実装されていない。
+
+### 解決策
+
+REST API の PATCH メソッドを使用する。
+
+```bash
+# 1. FPolicy ポリシーを無効化
+fpolicy disable -vserver <SVM_NAME> -policy-name <POLICY_NAME>
+
+# 2. REST API で format を変更
+curl -sk -X PATCH \
+  -u "fsxadmin:<PASSWORD>" \
+  -H "Content-Type: application/json" \
+  -d '{"format": "protobuf"}' \
+  "https://<FS_MGMT_IP>/api/protocols/fpolicy/<SVM_UUID>/engines/<ENGINE_NAME>"
+
+# 3. FPolicy ポリシーを再有効化
+fpolicy enable -vserver <SVM_NAME> -policy-name <POLICY_NAME> -sequence-number 1
+```
+
+### 重要な注意点
+
+- `<FS_MGMT_IP>` はファイルシステム管理 IP（SVM 管理 IP ではない）
+- format 変更は FPolicy disable 中にのみ可能
+- Keep-alive interval (PT2M) は XML/protobuf 共通
+- Buffer サイズ: recv=256KB, send=1MB（ProtobufFrameReader の max_message_size は 1MB 以上に設定）
+
+---
+
+## 10. fsxadmin 認証エラー "User is not authorized"（Phase 13 発見）
+
+### 症状
+
+ONTAP REST API に fsxadmin で認証すると `6691623: User is not authorized` エラーが返る。
+
+### 原因
+
+原因は次のいずれかです。
+
+1. SVM 管理 IP に接続している。fsxadmin はファイルシステム管理 IP でのみ認証可能
+2. パスワードが不正で、Secrets Manager のパスワードと ONTAP 側が一致していない
+3. パスワードに特殊文字があり、シェル経由で渡す際にエスケープの問題が起きる
+4. アカウントがロックアウトされている。実測（2026-08-26、ONTAP 9.18.1P3D1）では
+   `fsxadmin` は `max-failed-login-attempts=5` / **`lockout-duration=0`**。5 回失敗すると
+   以降は正しいパスワードでも同じメッセージを返し、**待っても回復しません**
+
+> **メッセージから原因は読み取れません。** 上の 4 つはすべて `6691623` と同一の文言になります。
+> 特に 2 と 4 の区別がつかないため、「パスワードを直して再試行 → 同じエラー → まだパスワードが
+> 違うのだろう」という誤った推論に入りやすく、実際に一度、ロックアウト中の応答を
+> 「`fsxadmin` に認可されていないエンドポイント」として記録しかけました
+> （解除後は同じ資格情報で全エンドポイントが 200）。**同じ資格情報で繰り返し試さないこと。**
+> `lockout-duration=0` なので、復旧手段はパスワードリセット（下記）だけです。
+
+### 確認手順
+
+```bash
+# ファイルシステム管理 IP を確認（これを使う）
+aws fsx describe-file-systems --file-system-ids <FS_ID> \
+  --query 'FileSystems[0].OntapConfiguration.Endpoints.Management.IpAddresses[0]'
+
+# SVM 管理 IP（これは fsxadmin では使えない）
+aws fsx describe-storage-virtual-machines \
+  --query 'StorageVirtualMachines[0].Endpoints.Management.IpAddresses[0]'
+```
+
+### 解決策
+
+```python
+# Python で安全にパスワードリセット + Secrets Manager 更新
+import boto3, json, secrets, string
+
+chars = string.ascii_letters + string.digits + "!@"
+new_password = "".join(secrets.choice(chars) for _ in range(20))
+
+fsx = boto3.client("fsx", region_name="ap-northeast-1")
+fsx.update_file_system(FileSystemId="fs-xxx", OntapConfiguration={"FsxAdminPassword": new_password})
+
+sm = boto3.client("secretsmanager", region_name="ap-northeast-1")
+sm.put_secret_value(
+    SecretId="fsx-ontap-fsxadmin-credentials",
+    SecretString=json.dumps({"username": "fsxadmin", "password": new_password}),
+)
+```
+
+### 重要な注意点
+
+- シェルスクリプトでパスワードを扱う場合、特殊文字のエスケープ問題が発生しやすい
+- Python boto3 で直接操作するのが最も安全
+- パスワードリセット後、反映に 30-60 秒かかる場合がある
+
+---
+
+## 11. FlexCache 関連のトラブルシューティング
 
 ### FlexCache 作成失敗
 
@@ -635,179 +810,30 @@ fields @timestamp, @message
 
 ---
 
-## 7. S3AP ConnectionClosedError（Phase 13 発見）
+## ログ収集テンプレート
 
-### 症状
-
-VPC 外 Lambda から Internet-origin S3 Access Point に `ListObjectsV2` を実行すると、`AccessDenied` ではなく `ConnectionClosedError` が返る。
-
-```
-ConnectionClosedError: Connection was closed before we received a valid response from endpoint URL:
-"https://xxx-ext-s3alias.s3.ap-northeast-1.amazonaws.com/?list-type=2&prefix=_health%2F&max-keys=1"
-```
-
-または `ReadTimeoutError`（20秒以上応答なし）。
-
-### 原因
-
-以下のいずれか（または複合）:
-
-1. **S3AP リソースポリシー未設定**: Lambda 実行ロールが S3AP リソースポリシーで Allow されていない
-2. **S3AP attachment Lifecycle が AVAILABLE でない**: `CREATED` 状態ではデータプレーンが応答しない
-3. **ONTAP ボリュームがオフライン**: S3AP が紐づくボリュームが offline/restricted 状態
-
-### 確認手順
+問題報告時に、次のコマンドで情報を収集してください。
 
 ```bash
-# 1. S3AP リソースポリシー確認
-aws s3control get-access-point-policy \
-  --account-id <ACCOUNT_ID> \
-  --name <S3AP_NAME> \
+# 1. スタック情報
+aws cloudformation describe-stacks \
+  --stack-name <your-stack-name> \
   --region ap-northeast-1
 
-# 2. S3AP attachment Lifecycle 確認
-aws fsx describe-s3-access-point-attachments \
-  --region ap-northeast-1 \
-  --query 'S3AccessPointAttachments[?Name==`<S3AP_NAME>`].Lifecycle'
+# 2. Lambda 関数のエラーログ（直近 1 時間）
+aws logs filter-log-events \
+  --log-group-name "/aws/lambda/<your-function-name>" \
+  --filter-pattern "ERROR" \
+  --start-time $(date -d '1 hour ago' +%s000) \
+  --region ap-northeast-1
 
-# 3. ボリューム状態確認
-aws fsx describe-volumes \
-  --volume-ids <VOLUME_ID> \
-  --region ap-northeast-1 \
-  --query 'Volumes[0].Lifecycle'
+# 3. Step Functions 実行履歴
+aws stepfunctions get-execution-history \
+  --execution-arn <your-execution-arn> \
+  --region ap-northeast-1
+
+# 4. VPC Endpoint の状態
+aws ec2 describe-vpc-endpoints \
+  --filters "Name=vpc-id,Values=<your-vpc-id>" \
+  --region ap-northeast-1
 ```
-
-### 解決策
-
-```bash
-# S3AP リソースポリシーに Lambda ロールを追加
-aws s3control put-access-point-policy \
-  --account-id <ACCOUNT_ID> \
-  --name <S3AP_NAME> \
-  --region ap-northeast-1 \
-  --policy '{
-    "Version": "2012-10-17",
-    "Statement": [{
-      "Effect": "Allow",
-      "Principal": {"AWS": "arn:aws:iam::<ACCOUNT_ID>:role/<LAMBDA_ROLE_NAME>"},
-      "Action": ["s3:ListBucket", "s3:GetObject"],
-      "Resource": [
-        "arn:aws:s3:ap-northeast-1:<ACCOUNT_ID>:accesspoint/<S3AP_NAME>",
-        "arn:aws:s3:ap-northeast-1:<ACCOUNT_ID>:accesspoint/<S3AP_NAME>/object/*"
-      ]
-    }]
-  }'
-```
-
-### 重要な注意点
-
-- FSx for ONTAP S3AP は通常の S3 とは異なるデータプレーンを使用する
-- 認証/認可エラーが `AccessDenied` ではなく `ConnectionClosedError` として表面化する場合がある
-- **同一アカウントでは IAM identity-based policy と S3AP resource policy は結合して評価される**（どちらかが許可すれば通る）。resource policy が無いことは原因にならない。原因になるのは resource policy 側の明示的な `Deny`。クロスアカウントの場合のみ両方が必要（[認可モデル](../s3ap-authorization-model.md)）
-- S3AP attachment の Lifecycle が `AVAILABLE` であることを必ず確認する
-
-
----
-
-## 8. FPolicy Protobuf モード切り替え（Phase 13 発見）
-
-### 症状
-
-ONTAP CLI で FPolicy external engine の format を protobuf に変更しようとすると `invalid argument "-format"` エラーが発生する。
-
-```
-FsxId01234567890abc:> fpolicy policy external-engine modify -vserver FSxN_OnPre -engine-name my_engine -format protobuf
-Error: invalid argument "-format"
-```
-
-### 原因
-
-ONTAP 9.17.1 では、FPolicy external engine の `format` フィールドは **REST API でのみ変更可能**。CLI には `-format` パラメータが実装されていない。
-
-### 解決策
-
-REST API の PATCH メソッドを使用する：
-
-```bash
-# 1. FPolicy ポリシーを無効化
-fpolicy disable -vserver <SVM_NAME> -policy-name <POLICY_NAME>
-
-# 2. REST API で format を変更
-curl -sk -X PATCH \
-  -u "fsxadmin:<PASSWORD>" \
-  -H "Content-Type: application/json" \
-  -d '{"format": "protobuf"}' \
-  "https://<FS_MGMT_IP>/api/protocols/fpolicy/<SVM_UUID>/engines/<ENGINE_NAME>"
-
-# 3. FPolicy ポリシーを再有効化
-fpolicy enable -vserver <SVM_NAME> -policy-name <POLICY_NAME> -sequence-number 1
-```
-
-### 重要な注意点
-
-- `<FS_MGMT_IP>` はファイルシステム管理 IP（SVM 管理 IP ではない）
-- format 変更は FPolicy disable 中にのみ可能
-- Keep-alive interval (PT2M) は XML/protobuf 共通
-- Buffer サイズ: recv=256KB, send=1MB（ProtobufFrameReader の max_message_size は 1MB 以上に設定）
-
----
-
-## 9. fsxadmin 認証エラー "User is not authorized"（Phase 13 発見）
-
-### 症状
-
-ONTAP REST API に fsxadmin で認証すると `6691623: User is not authorized` エラーが返る。
-
-### 原因
-
-以下のいずれか：
-1. **SVM 管理 IP に接続している** — fsxadmin はファイルシステム管理 IP でのみ認証可能
-2. **パスワードが不正** — Secrets Manager のパスワードと ONTAP 側が不一致
-3. **パスワードに特殊文字** — シェル経由で渡す際にエスケープ問題
-4. **アカウントがロックアウトされている** — 実測（2026-08-26、ONTAP 9.18.1P3D1）では
-   `fsxadmin` は `max-failed-login-attempts=5` / **`lockout-duration=0`**。5 回失敗すると
-   以降は正しいパスワードでも同じメッセージを返し、**待っても回復しません**
-
-> **メッセージから原因は読み取れません。** 上の 4 つはすべて `6691623` と同一の文言になります。
-> 特に 2 と 4 の区別がつかないため、「パスワードを直して再試行 → 同じエラー → まだパスワードが
-> 違うのだろう」という誤った推論に入りやすく、実際に一度、ロックアウト中の応答を
-> 「`fsxadmin` に認可されていないエンドポイント」として記録しかけました
-> （解除後は同じ資格情報で全エンドポイントが 200）。**同じ資格情報で繰り返し試さないこと。**
-> `lockout-duration=0` なので、復旧手段はパスワードリセット（下記）だけです。
-
-### 確認手順
-
-```bash
-# ファイルシステム管理 IP を確認（これを使う）
-aws fsx describe-file-systems --file-system-ids <FS_ID> \
-  --query 'FileSystems[0].OntapConfiguration.Endpoints.Management.IpAddresses[0]'
-
-# SVM 管理 IP（これは fsxadmin では使えない）
-aws fsx describe-storage-virtual-machines \
-  --query 'StorageVirtualMachines[0].Endpoints.Management.IpAddresses[0]'
-```
-
-### 解決策
-
-```python
-# Python で安全にパスワードリセット + Secrets Manager 更新
-import boto3, json, secrets, string
-
-chars = string.ascii_letters + string.digits + "!@"
-new_password = "".join(secrets.choice(chars) for _ in range(20))
-
-fsx = boto3.client("fsx", region_name="ap-northeast-1")
-fsx.update_file_system(FileSystemId="fs-xxx", OntapConfiguration={"FsxAdminPassword": new_password})
-
-sm = boto3.client("secretsmanager", region_name="ap-northeast-1")
-sm.put_secret_value(
-    SecretId="fsx-ontap-fsxadmin-credentials",
-    SecretString=json.dumps({"username": "fsxadmin", "password": new_password}),
-)
-```
-
-### 重要な注意点
-
-- シェルスクリプトでパスワードを扱う場合、特殊文字のエスケープ問題が発生しやすい
-- Python boto3 で直接操作するのが最も安全
-- パスワードリセット後、反映に 30-60 秒かかる場合がある
