@@ -165,7 +165,7 @@ AgentCore / MCP / ワークショップ教材との接続。
 |----------|---------|
 | [SnapLock Audit Log Retention FR (JA)](aws-feature-requests/snaplock-audit-log-retention.md) | SL-1〜SL-3: 監査ログ保持期間の指定手段、無言で失敗する `DeleteVolume`、`AuditLogVolume` の表示と実態の不一致 |
 | [SnapLock Audit Log Retention FR (EN)](aws-feature-requests/snaplock-audit-log-retention.en.md) | English version of SL-1 to SL-3 |
-| [SaaS Gap Analysis (JA)](aws-feature-requests/file-portal-service-gap.md) | 15 SaaS 比較, AI エージェント動向, プロトコルアクセシビリティ, ペルソナレビュー |
+| [SaaS Gap Analysis (JA)](aws-feature-requests/file-portal-service-gap.md) | 15 SaaS 比較, AI エージェント動向, プロトコルアクセシビリティ |
 | [SaaS Gap Analysis (EN)](aws-feature-requests/file-portal-service-gap.en.md) | English version of gap matrix + feature requests |
 | [Lambda / HealthOmics S3 AP Gaps (JA)](aws-feature-requests/lambda-healthomics-s3ap-gaps.md) | FR-5/6/7: Lambda セルフマネージドコードストレージ・AWS HealthOmics と FSx for ONTAP S3 AP の統合ギャップ、AWS Support 提出用テキスト |
 | [Lambda / HealthOmics S3 AP Gaps (EN)](aws-feature-requests/lambda-healthomics-s3ap-gaps.en.md) | English version: integration assessment, requested behavior, workaround architectures |
