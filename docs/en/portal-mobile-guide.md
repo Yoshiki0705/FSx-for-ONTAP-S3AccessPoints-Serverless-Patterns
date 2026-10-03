@@ -278,6 +278,8 @@ Choose **📸 Snapshots** from the menu. This is how you recover a file you dele
 
 ## 9. Changing the display
 
+Both the display language and the theme (light / dark) are switched from buttons at the top of the screen.
+
 ### Language
 
 Tap **🌐** at the top for eight languages.
@@ -322,39 +324,20 @@ Use ☀️ 🌙 🖥️ at the top.
 
 ## When something goes wrong
 
-**Q: I cannot sign in. Tapping "Sign in" does nothing.**
-A: Check that the URL starts with `https://`. Over `http://` the browser withholds features sign-in
-needs. If it still fails, check the password and ask your administrator about the account.
+Look up the symptom to find what to do.
 
-**Q: There is no menu.**
-A: Tap **☰** at the top left. The menu starts hidden on a phone.
-
-**Q: The list looks empty.**
-A: The buttons above it stack vertically, so the file list is below them. Scroll down.
-
-**Q: The last row is hidden behind the bottom of the screen.**
-A: The browser's address bar is over it. Scroll down a little and the address bar shrinks.
-
-**Q: I want to see the first-run notice again.**
-A: If you closed it with "Don't show again" ticked, it will not return in that browser. Open the portal
-in another browser, or in private browsing, and it appears again.
-
-**Q: I tapped a file name and it downloaded instead of previewing.**
-A: That type has no preview. Images, PDFs and text open in place; anything else downloads.
-
-**Q: I cannot find the share, rename or delete actions for a file.**
-A: Tap **⋮** on its row. A sheet appears at the bottom of the screen.
-
-**Q: A panel says "ONTAP connection required", or that ONTAP refused the credentials.**
-A: The storage connection is at fault and you cannot fix it from here. Pass the heading and the
-contents of "Error details" to your administrator — the wording tells them which layer to look at.
-
-**Q: The screen is cut off on the right and I cannot reach a button.**
-A: That is a defect. Report which screen and which button. At phone widths nothing should scroll
-sideways.
-
-**Q: The text is small.**
-A: Pinch to zoom. Input fields are at least 16px, so tapping one does not zoom on its own.
+| Symptom | What to do |
+|---------|------------|
+| I cannot sign in. Tapping "Sign in" does nothing | Check that the URL starts with `https://`. Over `http://` the browser withholds features sign-in needs. If it still fails, check the password and ask your administrator about the account |
+| There is no menu | Tap **☰** at the top left. The menu starts hidden on a phone |
+| The list looks empty | The buttons above it stack vertically, so the file list is below them. Scroll down |
+| The last row is hidden behind the bottom of the screen | The browser's address bar is over it. Scroll down a little and the address bar shrinks |
+| I want to see the first-run notice again | If you closed it with "Don't show again" ticked, it will not return in that browser. Open the portal in another browser, or in private browsing, and it appears again |
+| I tapped a file name and it downloaded instead of previewing | That type has no preview. Images, PDFs and text open in place; anything else downloads |
+| I cannot find the share, rename or delete actions for a file | Tap **⋮** on its row. A sheet appears at the bottom of the screen |
+| A panel says "ONTAP connection required", or that ONTAP refused the credentials | The storage connection is at fault, and only your administrator can fix it. Pass the heading and the contents of "Error details" to your administrator; the wording tells them which layer to look at |
+| The screen is cut off on the right and I cannot reach a button | That is a defect. Report which screen and which button. At phone widths nothing should scroll sideways |
+| The text is small | Pinch to zoom. Input fields are at least 16px, so tapping one does not zoom on its own |
 
 ### What to include when you report something
 

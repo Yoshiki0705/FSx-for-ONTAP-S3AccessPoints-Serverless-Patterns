@@ -12,6 +12,8 @@ This portal delivers a file management experience similar to Box, Google Drive, 
 
 ## Environment Setup (~15 minutes)
 
+Check the prerequisites, then run the setup steps from top to bottom.
+
 ### Prerequisites
 
 - FSx for ONTAP file system (ONTAP 9.14.1+)
@@ -56,6 +58,8 @@ make dev
 ---
 
 ## Demo Flow
+
+Twelve steps from login to the language switcher, in the order of the portal's tabs.
 
 ### 1. Login
 
@@ -166,6 +170,8 @@ Responsive design ensures usability on tablets and smartphones.
 
 ### 10. New Features: Favorites / Version History / Audit Trail
 
+Favorites, version history and the audit trail, plus recent files, Office file preview and FlexClone restore.
+
 #### Favorites (★ tab)
 
 Bookmark files for quick access.
@@ -241,10 +247,13 @@ Navigate to **Data Protection → ARP/AI**.
 
 ![ARP/AI fallback (DemoMode)](../screenshots/portal-demo/portal-arp-status-fallback.png)
 
-When connected to ONTAP, displays:
-- **ARP State**: enabled / dry_run (learning) / paused / disabled
-- **Threat Level**: none 🟢 / low 🟡 / moderate 🟠 / high 🔴
-- **Auto-Snapshot**: Whether ARP creates immutable snapshots on threat detection
+When connected to ONTAP, the panel shows the following.
+
+| Item | Values shown |
+|------|--------------|
+| ARP State | enabled / dry_run (learning) / paused / disabled |
+| Threat Level | none 🟢 / low 🟡 / moderate 🟠 / high 🔴 |
+| Auto-Snapshot | Whether ARP creates immutable snapshots on threat detection |
 
 > ARP/AI uses machine learning to monitor file entropy, extension changes, and access patterns. When ransomware-like activity is detected, it creates a tamperproof snapshot automatically.
 
@@ -254,11 +263,14 @@ Navigate to **Data Protection → Lock**.
 
 ![Lock fallback (DemoMode)](../screenshots/portal-demo/portal-snaplock-status-fallback.png)
 
-When connected to ONTAP, displays:
-- **SnapLock Type**: Compliance (no override) / Enterprise (privileged delete) / Non-SnapLock
-- **Retention Policy**: Default / Min / Max periods
-- **Snapshot Locking**: Whether Tamperproof Snapshot is enabled on the volume
-- **S3 Object Lock**: Output bucket WORM configuration
+When connected to ONTAP, the panel shows the following.
+
+| Item | Values shown |
+|------|--------------|
+| SnapLock Type | Compliance (no override) / Enterprise (privileged delete) / Non-SnapLock |
+| Retention Policy | Default / Min / Max periods |
+| Snapshot Locking | Whether Tamperproof Snapshot is enabled on the volume |
+| S3 Object Lock | Output bucket WORM configuration |
 
 > Three layers of immutability: SnapLock (file-level WORM), Tamperproof Snapshot (recovery point protection), S3 Object Lock (AI output archival).
 
@@ -266,11 +278,15 @@ When connected to ONTAP, displays:
 
 Navigate to **Data Protection → Snapshots**.
 
-Each snapshot in the table shows a Lock column:
-- 🔐 = Locked (with expiry time displayed)
-- 🔓 = Unlocked (deletable)
+The Lock column in the snapshot table shows one of two states.
 
-For storage-admin users, a **🔒 Lock** button appears next to unlocked snapshots:
+| Lock column | State |
+|------|------|
+| 🔐 | Locked (with expiry time displayed) |
+| 🔓 | Unlocked (deletable) |
+
+For storage-admin users, a **🔒 Lock** button appears next to unlocked snapshots. To lock one:
+
 1. Click **🔒 Lock**
 2. Enter retention period (1-365 days)
 3. Confirm → snapshot becomes tamperproof until expiry
@@ -300,10 +316,12 @@ The portal supports 8 languages with instant switching via the dropdown in the t
 
 #### How it works
 
-1. **First visit**: The portal detects your browser language (`navigator.language`) and selects the closest match
-2. **Manual switch**: Click the language dropdown in the topbar and select any language
-3. **Persistence**: Your choice is saved to `localStorage` — next time you visit, the same language is used
-4. **Instant**: No page reload required — all labels update immediately
+| When | Behavior |
+|------|----------|
+| First visit | The portal detects your browser language (`navigator.language`) and selects the closest match |
+| Manual switch | Click the language dropdown in the topbar and select any language |
+| Persistence | Your choice is saved to `localStorage`; next time you visit, the same language is used |
+| Instant | No page reload required; all labels update immediately |
 
 #### Screenshots
 
@@ -386,7 +404,7 @@ performing a single operation during an incident works fine.
 
 ## Cleanup
 
-After the demo, delete resources in this order:
+After the demo, delete resources in this order.
 
 ```bash
 # 1. Amplify sandbox (Cognito, AppSync, Lambda, DynamoDB)
@@ -407,19 +425,24 @@ aws fsx detach-and-delete-s3-access-point \
 
 ## FAQ
 
-**Q: Files tab shows "No files"**
+### Q: Files tab shows "No files"
+
 A: `portal-config.ts` has empty `s3ApAlias`. Set it and re-run `make sandbox`.
 
-**Q: A downloaded file cannot be found on iPhone or iPad**
+### Q: A downloaded file cannot be found on iPhone or iPad
+
 A: Storage Browser downloads through a service worker. When it is not registered the component falls back to an in-memory blob, which leaves nothing in the download manager. `npm run copy-sw` places `public/amplify-storage-download/download-sw.js` (`npm start` and `npm run phone` run it for you). Once registered, the file goes to Safari's download location, by default Files → Downloads.
 
-**Q: Upload tab says it is not configured**
+### Q: Upload tab says it is not configured
+
 A: Set `s3ApAlias` in `amplify/portal-config.ts` and re-run `make sandbox`. The alias reaches the browser through `amplify_outputs.json`, and the same run provisions the IAM permissions.
 
-**Q: Process tab shows red banner**
+### Q: Process tab shows red banner
+
 A: Step Functions ARN not configured. Run `make sfn-test-create` and set the ARN in `portal-config.ts` and `start-processing.js`.
 
-**Q: Can I try without FSx for ONTAP?**
+### Q: Can I try without FSx for ONTAP?
+
 A: Yes. Set `s3ApAlias` to a regular S3 bucket name for DemoMode. NFS/SMB concurrent access won't be available, but all other features work.
 
 ---
