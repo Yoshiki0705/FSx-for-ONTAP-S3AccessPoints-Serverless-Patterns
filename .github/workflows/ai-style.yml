@@ -30,11 +30,13 @@ jobs:
       # installed. test.yaml also collects these files through pytest.
       - name: Run the detector tests
         run: python3 -m unittest -v scripts/tests/test_ai_style_rules.py scripts/tests/test_ai_style_strong_fixtures.py
-      # Report-only until the fail-tier findings in scope reach zero; a later
-      # commit adds --fail. Without it the step prints counts and exits 0.
-      - name: Scan ja/en Markdown (report-only)
+      # --fail exits 1 on any fail-tier finding; warnings are printed in the
+      # summary and do not fail the step.
+      # temporary: files held by another branch, tracked in #441. They are the
+      # last four lines of the command; delete them once that Issue is closed.
+      - name: Scan ja/en Markdown
         run: >-
-          python3 tools/ai_style_rules.py . --summary
+          python3 tools/ai_style_rules.py . --summary --fail
           --exclude '*.ko.md' --exclude '*-ko.md' --exclude '*/ko/*'
           --exclude '*.zh-CN.md' --exclude '*-zh-CN.md' --exclude '*/zh-CN/*'
           --exclude '*.zh-TW.md' --exclude '*-zh-TW.md' --exclude '*/zh-TW/*'
@@ -42,3 +44,7 @@ jobs:
           --exclude '*.de.md' --exclude '*-de.md' --exclude '*/de/*'
           --exclude '*.es.md' --exclude '*-es.md' --exclude '*/es/*'
           --exclude 'docs/article-*' --exclude 'docs/devto-*'
+          --exclude 'solutions/amplify-portal/docs/write-verification-plan.md'
+          --exclude 'solutions/amplify-portal/docs/write-verification-plan.en.md'
+          --exclude 'solutions/amplify-portal/docs/portal-tabs-guide.md'
+          --exclude 'docs/s3ap-compatibility-notes.md'
