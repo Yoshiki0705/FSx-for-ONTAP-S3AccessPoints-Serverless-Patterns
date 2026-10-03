@@ -53,7 +53,7 @@
 ### DataSync → S3 + Lambda を選ぶべき場合
 
 - ✅ S3 Event Notifications によるイベント駆動が必須
-- ✅ S3 の全機能（バージョニング、ライフサイクル、Presigned URL）が必要
+- ✅ S3 の全機能（バージョニング、ライフサイクル、Object Lock）が必要
 - ✅ データのコピーが許容される
 - ✅ FSx for ONTAP を使用していない
 

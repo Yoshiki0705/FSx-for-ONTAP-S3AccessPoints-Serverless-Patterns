@@ -288,7 +288,7 @@ Each row therefore means:
 | **Sharing, comments and other collaboration** | You build it | File operations and notifications implemented; comment and version-sharing UI not | Built-in | You build it | [Nextcloud: Sharing](https://docs.nextcloud.com/server/latest/user_manual/en/files/sharing.html) / [This repository](../solutions/amplify-portal/docs/portal-tabs-guide.en.md) |
 | **Mobile** | Responsive web | Responsive web ([measured at 390×844 under emulation](../solutions/amplify-portal/docs/verification-results.en.md)) | Native apps (iOS / Android) | Responsive web | [Nextcloud: Clients](https://nextcloud.com/clients/) / this repository |
 | **Language / framework** | TypeScript + React | Same, with an eight-language UI | PHP | Any | [This repository](../solutions/amplify-portal/docs/CONTRIBUTING-UI.en.md) |
-| **S3 AP presigned URL** | Works (listed as "Not supported" in the docs) | Same | Same | Same | [Measurement note in this repository](./s3ap-compatibility-notes.en.md#presigned-url-support) |
+| **S3 AP presigned URL** | Supported (documentation corrected 2026-09) | Same | Same | Same | [Note in this repository](./s3ap-compatibility-notes.en.md#presigned-url-support) |
 | **Infrastructure cost (rough)** | ~$5-10/month | Same | ~$50-100/month (EC2) | ~$5-20/month | **A rough figure, valid at the time of writing. No price list was consulted for it.** See [cost measurement](./en/cost-measurement.md) and estimate your own configuration with the [AWS Pricing Calculator](https://calculator.aws/) |
 
 > **About AD**: the authentication row above is about the person signing in to the portal.
@@ -558,7 +558,7 @@ solutions/amplify-portal/
 **External Storage via S3 AP**: Nextcloud's "External Storage" app supports S3-compatible backends. Configure with the S3 AP alias as the bucket, and Nextcloud presents FSx for ONTAP files in its native file browser.
 
 **S3 AP constraints with Nextcloud**:
-- Presigned URLs are listed as "Not supported" in AWS docs but actually work (they are client-side SigV4 calculations that execute as standard GetObject; [details](./s3ap-compatibility-notes.en.md#presigned-url-support)). However, production reliance is not recommended, so Nextcloud can also proxy file downloads through its server process for governance control
+- Presigned URLs were corrected to `Supported` in 2026-09 ([details](./s3ap-compatibility-notes.en.md#presigned-url-support)). Where revocation after issue or per-access records are required, Nextcloud can also proxy file downloads through its server process
 - `ListObjectsV2` pagination (max 1000 objects/request) is handled natively by Nextcloud's S3 backend
 - PutObject (5 GB per single PUT, up to 50 GB via multipart) enables file upload from Nextcloud UI to FSx for ONTAP
 
@@ -653,7 +653,7 @@ User click → Auth token (Cognito/LDAP/SAML)
 | Data residency (in-region) | Lambda proxy (no CDN for file content) | Server-side proxy | Lambda proxy |
 | Existing shared/ modules | `data_classification`, `lineage`, `human_review` work unchanged in backend Lambda | Same | Same |
 
-> **Governance note**: S3 AP Presigned URLs are listed as "Not supported" in AWS docs but actually work as standard GetObject requests with query-string signatures ([details](./s3ap-compatibility-notes.en.md#presigned-url-support)). However, AWS Support recommends against production reliance. For data governance, routing file content through a server-side component (Lambda or Nextcloud server) provides an enforceable data residency control layer.
+> **Governance note**: S3 AP Presigned URLs were corrected to `Supported` in 2026-09 ([details](./s3ap-compatibility-notes.en.md#presigned-url-support)). The capability is available, but a presigned URL cannot be revoked once issued and leaves no per-object access record in the application layer. Where data residency control or auditability matters, route file content through a server-side component (Lambda or Nextcloud server) instead. [E-007]
 
 > **Compliance note**: Processing result files carry `data_classification` labels (INTERNAL/CUI/PUBLIC, etc.). File portal UIs should surface these labels to users. The backend `shared/data_classification.py` module provides the classification logic.
 
@@ -741,7 +741,7 @@ A: Not directly. The frontend accesses data through S3 AP, which shares throughp
 A: Yes. The backend patterns are frontend-agnostic. You can run Nextcloud for file browsing immediately, then add an Amplify-based processing dashboard when custom UI needs arise.
 
 **Q: What about S3 AP Presigned URLs for direct download?**
-A: AWS documentation lists Presigned URLs as "Not supported", but they actually work — presigning is a client-side SigV4 calculation, and the resulting request is a standard GetObject which is supported ([verification and reasoning](./s3ap-compatibility-notes.en.md#presigned-url-support)). However, AWS Support recommends against production reliance. For data governance, you may choose to route content through a server-side proxy, but direct download via Presigned URL is technically possible.
+A: Yes. The compatibility table was corrected to `Presign — Supported` in 2026-09 ([history and reasoning](./s3ap-compatibility-notes.en.md#presigned-url-support)). Presigning is a client-side SigV4 calculation and the resulting request is a standard GetObject. Anyone holding the URL can use it, so keep expiry short; where revocation after issue or per-access records are required, route through a server-side proxy instead.
 
 **Q: Which approach works for regulated environments (FISC, HIPAA)?**
 A: All three can meet regulatory requirements when properly configured. Key controls (audit logging, encryption, access control) are in the backend layer which is shared. Frontend-specific considerations: Amplify Gen2 (Cognito SAML + WAF), Nextcloud (LDAP + WAF on ALB), Custom (depends on implementation).
@@ -755,7 +755,7 @@ A: Yes. DemoMode uses a regular S3 bucket. All three frontend options can connec
 
 - [Nextcloud External Storage Setup Guide](./nextcloud-external-storage-s3ap.en.md) — Step-by-step Nextcloud + FSx for ONTAP S3 AP configuration
 - [Comparison Alternatives (S3 AP vs EFS vs NFS)](./comparison-alternatives.md) — Backend architecture comparison
-- [S3AP Compatibility Notes](./s3ap-compatibility-notes.en.md) — Known constraints including Presigned URL limitation
+- [S3AP Compatibility Notes](./s3ap-compatibility-notes.en.md) — Known constraints, and the record of ones since resolved
 - [Demo Mode Guide](./demo-mode-guide.en.md) — Running without FSx for ONTAP
 - [Cost Calculator](./cost-calculator.md) — Full infrastructure cost estimation
 - [Pattern Selection Guide](./pattern-selection-guide.en.md) — Which UC pattern fits your workload

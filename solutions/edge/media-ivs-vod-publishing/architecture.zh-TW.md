@@ -67,7 +67,7 @@ Amazon IVS
 
 ## 限制（FSx for ONTAP S3 AP）
 
-- **不支援 Presigned URL** → 觀眾認證用 CloudFront 簽章 URL/Cookie。
+- **觀眾認證用 CloudFront 簽章 URL/Cookie**（Presigned URL 可用，但會繞過 CDN）。
 - 非完整 S3 儲存貯體：不支援 Object Versioning / Object Lock / Lifecycle / Static Website Hosting
   （按操作於 [../../docs/s3ap-compatibility-notes.md](../../../docs/s3ap-compatibility-notes.md) 核對）。
 - `PutObject` 最大 5 GB（更大用 multipart）。
@@ -228,9 +228,9 @@ Amazon IVS 的 EventBridge 事件為**盡力交付**——可能遺失、延遲�
 - **「IVS 能否直接錄製到 FSx for ONTAP S3 Access Point？」** 否。**AWS 服務團隊已確認不支援**（受支援的輸出目標為標準 Amazon S3 儲存貯體）。
   設定建立可達 `ACTIVE`（因 `bucketName` 僅依儲存貯體名稱格式驗證），但錄製時會出現 **「Recording Start Failure」**，不寫入 `ivs/v1/...` 物件。
   請使用標準 S3 儲存貯體（[direct-recording-experiment.md](direct-recording-experiment.md)）。
-- **「S3 Access Point 是 S3 儲存貯體的替代？」** 否——它是 S3 相容存取邊界。不支援 Presigned URL、Versioning、
+- **「S3 Access Point 是 S3 儲存貯體的替代？」** 否——它是 S3 相容存取邊界。不支援 Versioning、
   Object Lock、Lifecycle、Static Website Hosting。
-- **「能給觀眾 VOD 的 presigned URL 嗎？」** 否——使用 CloudFront 簽章 URL/Cookie。
+- **「能給觀眾 VOD 的 presigned URL 嗎？」** 技術上可以，但不建議（會繞過 CDN）——使用 CloudFront 簽章 URL/Cookie。
 - **「發佈會強制原 NFS/SMB 權限嗎？」** 否——分發不經過 ONTAP ACL。邊界為維運（僅發佈已審核）+ CloudFront 來源鎖定。
 - **「完整性分數高就能安全公開？」** 否——只檢查 HLS 套件是否完整。內容可否公開為另行的人工/AI 審核步驟。
 - **「需要 MediaConvert 嗎？」** 僅在需要轉碼/重新封裝/廣告時。本模式分發已編碼 HLS。

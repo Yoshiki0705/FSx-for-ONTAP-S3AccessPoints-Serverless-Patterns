@@ -42,7 +42,7 @@
 
 - **tail latency 重視**: オリジンフェッチのサイジングは平均ではなく **P95/P99（tail latency）** を主信号とする。
 - **S3AP ≠ フル S3 バケット**: S3 AP は S3 互換の「アクセス境界」であり、S3 バケットの全機能等価ではない
-  （Presigned URL 非対応等）。配信設計でバケット同等を前提にしない。
+  （Versioning / Object Lock / Lifecycle 非対応等）。配信設計でバケット同等を前提にしない。
 - **sample vs production**: デモ/サンプル実行のコストと本番見積もりを混同しない。本番は対象トラフィック量で
   各社最新料金により算出（[コスト試算](../../../../docs/cost-calculator.md) 参照）。
 
@@ -55,5 +55,5 @@
 
 - Block Public Access 強制（無効化不可）
 - オリジン認証は SigV4 必須
-- Presigned URL 非対応 → 視聴者トークンは CDN ネイティブ
+- 視聴者トークンは CDN ネイティブ（Presigned URL は使えるが CDN を経由しない）
 - PutObject 上限 5 GB（大容量はマルチパート）

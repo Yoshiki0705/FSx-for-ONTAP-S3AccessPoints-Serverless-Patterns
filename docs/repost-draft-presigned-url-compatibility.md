@@ -1,5 +1,11 @@
 # re:Post Draft: FSx for ONTAP S3 Access Points — Presigned URL Behavior Clarification
 
+> **Status, 2026-09**: superseded by the documentation correction. The compatibility table now
+> reads `Presign — Supported`, so the discrepancy this draft was written to clarify no longer
+> exists. Kept as the record of the clarification as it stood. If the re:Post post was published,
+> it needs the same correction added there -- that is a manual step outside this repository.
+
+
 > **投稿先**: https://repost.aws (Article or Question)
 > **カテゴリ**: Amazon FSx for ONTAP, Amazon S3
 > **タグ**: FSx for ONTAP, S3 Access Points, Presigned URLs

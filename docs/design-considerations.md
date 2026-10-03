@@ -225,7 +225,7 @@ FSx for ONTAP S3 AP は「S3 互換」だが「Amazon S3 と同一」ではな�
 | Object Lock / WORM | ❌ | SnapLock | コンプライアンス要件には SnapLock Compliance |
 | S3 Select | ❌ | Athena + Glue Data Catalog | 外部分析エンジンで処理 |
 | Server-Side Encryption (SSE-S3/KMS) | ❌ | NAE / NVE (ONTAP ボリューム暗号化) | at-rest は ONTAP 層で暗号化。in-transit は TLS |
-| Presigned URL | ⚠️ | — | 動作するケースあり（非公式）。本番依存は非推奨 |
+| Presigned URL | ✅ | — | 2026-09 の訂正で `Supported`。有効期限を短く設定する |
 | Cross-AP Copy | ❌ | DataSync / rsync | 異なる AP 間のコピーは不可 |
 
 **参考**: [Accessing data via S3 Access Points (AWS Docs)](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/accessing-data-via-s3-access-points.html)
@@ -363,7 +363,7 @@ FSx for ONTAP S3 AP を使用するサーバーレスパターンの PoC で確�
 - [ ] 条件付き書き込みへの依存有無を確認（Delta Lake / Iceberg 等）
 - [ ] S3 Event Notification への依存有無を確認（FPolicy 代替の要否）
 - [ ] Multipart Upload の要否を確認（ONTAP バージョン要件: 9.16.1+）
-- [ ] Presigned URL への依存有無を確認（本番非推奨）
+- [ ] Presigned URL の有効期限が要件に対して短く設定されているか確認
 
 ### セキュリティ
 

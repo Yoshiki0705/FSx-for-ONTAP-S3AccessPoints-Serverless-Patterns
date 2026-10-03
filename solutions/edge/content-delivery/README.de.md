@@ -136,7 +136,7 @@ Zur Verifizierung von DemoMode siehe [docs/demo-guide.md](docs/demo-guide.md).
   (durable) Nachverfolgung erforderlich ist, kann sie um eine Aufzeichnung in `shared/lineage.py` (DynamoDB) erweitert werden.
 - **Datenresidenz / geografische Beschränkungen**: Da CDNs global ausliefern, sollten Daten, für die eine
   Auslieferung außerhalb der Region nicht zulässig ist, von der Freigabe ausgeschlossen oder mit dem Geo-Blocking des CDN gesteuert werden.
-- **Zuschauer-Authentifizierung**: Da S3-Presigned-URLs nicht unterstützt werden, verwenden Sie CDN-native Token-Mechanismen.
+- **Zuschauer-Authentifizierung**: Verwenden Sie CDN-native Token-Mechanismen. Presigned URLs sind seit der Korrektur 2026-09 `Supported`, adressieren aber den Access Point direkt und umgehen damit das CDN.
 - **PII**: Client-IPs werden beim Zurückschreiben der Auslieferungsprotokolle maskiert (`RedactClientIp=true`).
 - **Least Privilege**: Publish/LogSync haben nur die notwendigen Actions auf dem Ziel-S3-AP. Die Auslieferungs-Lambdas
   laufen für den Internet-origin-S3-AP-Zugriff **außerhalb des VPC**.

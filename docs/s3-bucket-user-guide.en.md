@@ -145,7 +145,7 @@ File-system:    FSx CloudWatch metrics, ONTAP REST API, FPolicy audit logs
 | Can I use Lifecycle? | **No**. Use Snapshot/SnapMirror/auto-tiering |
 | Can I use Versioning? | **No**. ONTAP Snapshot is the alternative |
 | Can I use Object Lock? | **No**. SnapLock (Compliance/Enterprise) is the alternative |
-| Can I use Presigned URLs? | **Works** (listed as "Not supported" in docs, but succeeds as a signed GetObject request. The compatibility table classifies Presign as unsupported, so do not rely on it in production [E-007]) |
+| Can I use Presigned URLs? | **Yes** (the compatibility table was corrected to `Presign — Supported` in 2026-09; it works as a signed GetObject request). Anyone holding the URL can use it, so keep expiry short |
 | Can I also access via NFS/SMB? | **Yes**. Concurrent access to the same data is possible |
 | Should I use this as a data lake? | **Typically No**. Use as an integration boundary, route analysis output to standard S3 |
 | Can I use S3 Event Notifications? | **No**. Use EventBridge Scheduler. FPolicy applies only where writes arrive over NFS or SMB (a write through the access point raises no notification) |

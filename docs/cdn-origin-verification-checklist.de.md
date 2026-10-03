@@ -70,7 +70,7 @@ curl -sS -o /tmp/out.bin -w "%{http_code}\n" \
 ### 1.3 Negativprüfungen (Spezifikation rückbestätigen)
 
 - Ein unsignierter GET liefert **403/AccessDenied** (bestätigt die Durchsetzung von Block Public Access).
-- Presigned URLs sind nicht verfügbar (nicht erzeugbar/nicht unterstützt) → Zuschauer-Tokens über
+- Presigned URLs werden nicht an Zuschauer weitergegeben (seit der Korrektur 2026-09 `Supported`, die URL adressiert aber den Access Point direkt und umgeht das CDN) → Zuschauer-Tokens über
   CDN-native Mechanismen.
 
 ---

@@ -72,7 +72,7 @@ Amazon IVS
 
 ## 제약(FSx for ONTAP S3 AP)
 
-- **Presigned URL 미지원** → 시청자 인증은 CloudFront 서명 URL/쿠키 사용.
+- **시청자 인증은 CloudFront 서명 URL/쿠키 사용**(Presigned URL 은 동작하지만 CDN 을 우회).
 - 완전한 S3 버킷 아님: Object Versioning / Object Lock / Lifecycle / Static Website Hosting 미지원
   (작업별로 [../../docs/s3ap-compatibility-notes.md](../../../docs/s3ap-compatibility-notes.md) 확인).
 - `PutObject` 최대 5 GB(초과는 multipart).
@@ -242,9 +242,9 @@ Amazon IVS 의 EventBridge 이벤트는 **베스트에포트** 전달로 누락�
 - **"IVS 녹화를 FSx for ONTAP S3 Access Point 로 직접?"** 아니오. **AWS 서비스 팀이 비지원으로 확인**(지원되는 출력 대상은
   표준 Amazon S3 버킷). 설정 생성은 `ACTIVE` 가 되지만(`bucketName` 이 버킷 이름 형식으로만 검증됨), 녹화 시에는
   **"Recording Start Failure"** 로 `ivs/v1/...` 가 기록되지 않음. 표준 S3 버킷 경유 사용([direct-recording-experiment.md](direct-recording-experiment.md)).
-- **"S3 Access Point 는 S3 버킷 대체?"** 아니오 — S3 호환 접근 경계. Presigned URL, Versioning, Object Lock,
+- **"S3 Access Point 는 S3 버킷 대체?"** 아니오 — S3 호환 접근 경계. Versioning, Object Lock,
   Lifecycle, Static Website Hosting 미지원.
-- **"시청자에게 VOD presigned URL?"** 아니오 — CloudFront 서명 URL/쿠키 사용.
+- **"시청자에게 VOD presigned URL?"** 기술적으로는 가능하지만 권장하지 않음(CDN 우회) — CloudFront 서명 URL/쿠키 사용.
 - **"게시가 원래 NFS/SMB 권한을 강제?"** 아니오 — 전달은 ONTAP ACL 을 경유하지 않음. 경계는 운영(승인된 것만
   게시) + CloudFront 오리진 잠금.
 - **"완전성 스코어가 높으면 공개 안전?"** 아니오 — HLS 패키지 완비 여부만 확인. 콘텐츠 공개 가부는 별도의

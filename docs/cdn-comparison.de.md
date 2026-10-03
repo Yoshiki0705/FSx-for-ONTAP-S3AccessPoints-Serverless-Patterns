@@ -18,7 +18,7 @@ Anforderungen) und liegt beim Kunden.
 | Block Public Access erzwungen (nicht deaktivierbar) | Standardmäßig an, unveränderlich | Kein unauthentifizierter öffentlicher Origin; Origin-Auth erforderlich |
 | Origin-Auth ist SigV4 (IAM) | Anfragen durch IAM / AP-Policy bewertet | CDN muss Origin-Anfragen mit AWS SigV4 signieren |
 | Zweistufige Autorisierung (AWS + ONTAP) | IAM, dann ONTAP-Dateiidentität (UNIX UID / Windows AD) | Auslieferung auf das beschränkt, was die ONTAP-Identität lesen kann |
-| Presigned URLs nicht unterstützt | Offiziell nicht unterstützt | Zuschauer-Token-Auth kann keine S3-Presigned-URLs nutzen; CDN-native Tokens verwenden |
+| Presigned URLs unterstützt (korrigiert 2026-09) | Durch die öffentliche Dokumentation gedeckt | Für Zuschauer dennoch CDN-native Tokens: eine Presigned URL adressiert den Access Point direkt und umgeht damit das CDN |
 | NetworkOrigin (Internet/VPC, unveränderlich) | CDN greift aus managed/externem Netzwerk zu | CDN-Integration benötigt **Internet-Origin** |
 | Objektgrößenlimit 50 GB | Einzelnes PUT auf 5 GB begrenzt | Rückschreibvorgänge über 5 GB benötigen Multipart |
 
@@ -37,7 +37,7 @@ Anforderungen) und liegt beim Kunden.
 - **M4 — Selbstverwalteter SigV4-Signierungsproxy**: Einen Signierungs-Zwischendienst (Lambda Function URL /
   ALB) als Origin platzieren. Funktioniert mit fast jedem CDN; der Proxy wird zum Verfügbarkeits-/Skalierungspunkt.
 
-> Universelle Einschränkung: Zuschauer-Token-Auth kann keine S3-Presigned-URLs nutzen — CDN-native Tokens
+> Gilt für alle Mechanismen: Presigned URLs nicht an Zuschauer weitergeben — sie umgehen das CDN. CDN-native Tokens
 > verwenden. Öffentliche Auslieferung umgeht NFS/SMB-ACLs, daher nur freigegebene Renditions ausliefern
 > (siehe Abschnitt 4).
 
@@ -71,7 +71,7 @@ Anforderungen) und liegt beim Kunden.
    ACL-kontrollierte Masterdaten niemals direkt in die Auslieferungsschicht leiten.
 2. Master (ACL-kontrolliert, sensibel) von Auslieferungsartefakten (öffentlich/halböffentlich) trennen.
    M3 macht diese Trennung natürlich.
-3. Zuschauer-Auth über CDN-native Token-Mechanismen (keine S3-Presigned-URLs).
+3. Zuschauer-Auth über CDN-native Token-Mechanismen (keine S3-Presigned-URLs an Zuschauer: sie umgehen das CDN).
 4. Origin-Anmeldedaten mit minimalen Rechten; keine Langzeitschlüssel an der Edge; kurzlebige Anmeldedaten bevorzugen.
 5. Auslieferungslogs: Zuschauer-PII beim Zurückschreiben der Logs nach FSx berücksichtigen.
 6. **Freigabe-Nachvollziehbarkeit**: erfassen, welches Objekt von wem und wann für die öffentliche
@@ -93,7 +93,7 @@ Anforderungen) und liegt beim Kunden.
 | S3 AP als unauthentifizierten CDN-Origin freigeben? | **Nein** (BPA erzwungen) |
 | Direkt vom S3 AP über ein CDN ausliefern? | **Ja, bedingt** — M1/M2 mit SigV4; AP-alias-Signierung ist TBV |
 | Über ein CDN ohne SigV4 ausliefern? | **Ja** — M3 (Push) oder M4 (Signierungsproxy) |
-| S3-Presigned-URLs für Zuschauer nutzen? | **Nein** — CDN-native Tokens verwenden |
+| S3-Presigned-URLs für Zuschauer nutzen? | **Nein** — sie umgehen das CDN. CDN-native Tokens verwenden |
 | ONTAP-ACLs zur Auslieferungszeit erzwingen? | **Nein** — über „nur freigegebene Renditions" + Nachvollziehbarkeit sichergestellt |
 | Erster Schritt mit geringstem Verifizierungsrisiko? | **M3 (Push)** — vermeidet Origin-Auth, anbieterneutral, DemoMode-freundlich |
 

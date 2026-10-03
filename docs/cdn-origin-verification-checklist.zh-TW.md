@@ -65,7 +65,7 @@ curl -sS -o /tmp/out.bin -w "%{http_code}\n" \
 ### 1.3 負向確認（重申規範）
 
 - 無簽章 GET 應為 **403/AccessDenied**（確認 Block Public Access 強制）。
-- Presigned URL 不可用（無法產生/不支援）→ 觀眾權杖走 CDN 原生機制。
+- 不把 Presigned URL 交給觀眾（2026-09 更正後功能本身為 `Supported`，但 URL 直接指向存取點端點、會繞過 CDN）→ 觀眾權杖走 CDN 原生機制。
 
 ---
 

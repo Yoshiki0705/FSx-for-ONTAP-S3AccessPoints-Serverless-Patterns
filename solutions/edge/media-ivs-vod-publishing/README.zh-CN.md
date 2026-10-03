@@ -207,7 +207,7 @@ VOD 发布不仅依赖自动判定。基于包的**完整性信号**计算 publi
 
 - **permission-aware 摄取边界**：摄取仅限于指定录制前缀。公开分发不强制 ONTAP 文件权限，因此边界由"仅发布
   已审批"运营与 CloudFront 源锁定保障。
-- **观众认证**：FSx for ONTAP S3 AP **不支持** S3 Presigned URL — 使用 CloudFront 签名 URL/Cookie。
+- **观众认证**：受控 VOD 使用 CloudFront 签名 URL/Cookie。
 - **数据所在地**：IVS 频道、Recording Configuration、S3 位置须**同一区域**。CloudFront 为全球分发，不可跨区
   分发的数据应排除或用地域限制控制。
 - **最小权限**：Publish Lambda 仅对源 S3（读）和输出 S3 AP（写）具备必要 Action。为访问 Internet-origin S3 AP
@@ -261,9 +261,9 @@ VOD 发布不仅依赖自动判定。基于包的**完整性信号**计算 publi
 - **"IVS 能否直接录制到 FSx for ONTAP S3 AP？"** 否。**AWS 服务团队已确认不支持**。配置创建可达 `ACTIVE`
   （因 `bucketName` 仅按存储桶名称格式校验），但录制时会出现 **"Recording Start Failure"**，不写入 `ivs/v1/...` 对象。
   请使用标准 S3 存储桶（[direct-recording-experiment.md](direct-recording-experiment.md)）。
-- **"S3 AP 是完整 S3 存储桶吗？"** 否（不支持 Presigned URL / Versioning / Object Lock / Lifecycle /
+- **"S3 AP 是完整 S3 存储桶吗？"** 否（不支持 Versioning / Object Lock / Lifecycle /
   Static Website Hosting）。
-- **"能给观众 Presigned URL 吗？"** 否 → 使用 CloudFront 签名 URL / Cookie。
+- **"能给观众 Presigned URL 吗？"** 技术上可以，但不建议（会绕过 CDN）→ 使用 CloudFront 签名 URL / Cookie。
 - **"完整性分数高就能公开？"** 否。仅检查 HLS 包完整性；内容可否公开需另行人工/AI 审核。审核为 **opt-in 内置**
   （`EnableModeration=true` 运行 Rekognition，命中则阻止发布）。
 
@@ -273,7 +273,7 @@ VOD 发布不仅依赖自动判定。基于包的**完整性信号**计算 publi
   而非均值进行容量规划，并用高 CloudFront TTL / Origin Shield 减少源拉取。
 - Playlist（`.m3u8`）短 TTL，Segment（`.ts` / `.m4s`）长 TTL。
 - 若需将分发读取与业务卷隔离，可考虑用 **FlexCache** 卷（ONTAP 原生）作为 CloudFront 源。
-- **S3 AP 不是完整的 S3 存储桶** — 是 S3 兼容访问边界。勿假设桶级功能（Presigned URL、Versioning、
+- **S3 AP 不是完整的 S3 存储桶** — 是 S3 兼容访问边界。勿假设桶级功能（Versioning、
   Object Lock、Lifecycle、Static Website Hosting）可用。参见 [../../docs/s3ap-compatibility-notes.md](../../../docs/s3ap-compatibility-notes.md)。
 
 ## 参考（AWS 官方文档）

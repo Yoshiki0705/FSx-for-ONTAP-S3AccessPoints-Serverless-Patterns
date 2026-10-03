@@ -232,7 +232,7 @@ SaaS 各社が 2025-2026 年に急速に投入している AI 機能との比較
 
 | AWS 側の制約 | 制約の内容 | 当ポータルの現状 |
 |---|---|---|
-| S3 AP の Presigned URL が公式には未サポート | AWS の互換性テーブルは現時点でも `Presign — Not supported`。[NetApp KB](https://kb.netapp.com/Advice_and_Troubleshooting/Data_Storage_Software/ONTAP_OS/What_version_of_ONTAP_support_pre-signed_URLs_for_S3_bucket) は ONTAP レイヤーでの対応を v4 が 9.11.1 以降、v2 が 9.16.1 以降と記載。ドキュメント修正を要望として起票済みだが **未公開**（FR-7） | プレビュー・ダウンロード・共有リンクは presigned URL で実装済み。公開ドキュメントが更新されるまで本番では代替手段の設計が必要（[互換性ノート](../s3ap-compatibility-notes.md)） | [E-007]
+| ~~S3 AP の Presigned URL が公式には未サポート~~（解決済み） | 互換性テーブルは 2026-09 の訂正で `Presign — Supported` になった。[NetApp KB](https://kb.netapp.com/Advice_and_Troubleshooting/Data_Storage_Software/ONTAP_OS/What_version_of_ONTAP_support_pre-signed_URLs_for_S3_bucket) は ONTAP レイヤーでの対応を v4 が 9.11.1 以降、v2 が 9.16.1 以降と記載（FR-7 は解決） | プレビュー・ダウンロード・共有リンクは presigned URL で実装済み。代替手段の設計は不要になった（[互換性ノート](../s3ap-compatibility-notes.md)） | [E-007]
 | Amplify Storage が S3 AP 非対応 | コンポーネントが標準 S3 バケットのみサポート（FR-6、Open） | アップロードは Storage Browser for S3 で実装済み |
 | S3 AP コンテンツ向けのネイティブ検索/インデックスが無い | OpenSearch はデータコピーを要する | セマンティック検索を Bedrock KB で実装。全文一致検索は無い |
 | S3 AP がオブジェクトバージョニング非対応 | — | ファイル単位のバージョン履歴は無い。ボリューム単位の point-in-time 復旧は Snapshot + FlexClone |
@@ -271,7 +271,7 @@ SaaS 各社が 2025-2026 年に急速に投入している AI 機能との比較
 
 この単一の FR で、当ポータルが自前実装で埋めた 4 領域（プレビュー、ダウンロード、アップロード、共有リンク）が標準コンポーネントで満たされ、カスタムファイル管理コンポーネントが不要になる。
 
-**ワークアラウンド**: カスタム React コンポーネント（FileExplorer, FilePreview）が Lambda プロキシ経由で AP に対して S3 API を呼び出し。プレビューは presigned URL で動作していますが、公開されている互換性テーブルは現時点でも `Presign — Not supported` のままです。
+**ワークアラウンド**: カスタム React コンポーネント（FileExplorer, FilePreview）が Lambda プロキシ経由で AP に対して S3 API を呼び出し。プレビューは presigned URL で動作しており、互換性テーブルも 2026-09 の訂正で `Presign — Supported` になりました。
 
 ---
 
@@ -303,7 +303,7 @@ export const storage = defineStorage({
 
 **対象サービス**: Amazon FSx for ONTAP
 
-**現状**: Presigned URLs は FSx for ONTAP S3 AP の互換性テーブルで "Not supported" と記載されている（[Access point compatibility](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/access-points-for-fsxn-object-api-support.html)）。
+**解決（2026-09）**: 互換性テーブルは `Presign — Supported` に訂正されました（[Access point compatibility](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/access-points-for-fsxn-object-api-support.html)、2026-09-17 取得）。以下は訂正前の記録です。当時のテーブルは "Not supported" と記載していました。
 
 **しかし、実際には動作する**。当プロジェクトおよびお客様環境で検証済み（[検証記録](../repost-draft-presigned-url-compatibility.md), [互換性ノート](../s3ap-compatibility-notes.md#presigned-url-support)）。**動く理由は署名の仕組みから説明できます。**
 
@@ -318,7 +318,7 @@ export const storage = defineStorage({
 - 互換性テーブルの「Presign — Not supported」を「Presign — Works (client-side SigV4; executes as GetObject)」に修正してほしい
 - または注記として "Presigned URLs function correctly because they execute as standard GetObject requests. The service does not officially test presigned URL workflows." を追記してほしい
 
-**Production Guidance**: **互換性テーブルが契約で、そこには "Not supported" と書かれています。** 今日動くことは約束ではありません。リージョン間の整合性やサービスアップデート後の動作を保証する公開情報はないので、動作は実測として扱ってください。
+**Production Guidance（2026-09 更新）**: 互換性テーブルが `Supported` になったため、公開ドキュメントに裏付けのある機能として扱えます。Lambda プロキシへのフォールバックは、サポート状況のためではなく、発行後の取り消しや操作記録が要件になる場合の選択肢として残してください。
 
 **実装への影響**: Presigned URL が動作するため、以下は **今すぐ実装可能**:
 - ブラウザネイティブのファイルプレビュー（画像/PDF/動画）
@@ -480,7 +480,7 @@ Transfer Family は SFTP/FTPS エンドポイント経由で FSx for ONTAP S3 AP
 
 #### 12. Mobile Developer
 
-> **Mobile note**: Without Presigned URLs, mobile apps cannot use native image/video viewers for FSx for ONTAP content. Lambda proxy approach hits the 6MB synchronous response limit, making large file access impossible on mobile. FR-7 is prerequisite for any mobile file portal.
+> **Mobile note**: この依存は解消しました。FR-7 が 2026-09 のドキュメント訂正で解決し、presigned URL が公開ドキュメントに裏付けのある機能になったため、モバイルのネイティブ画像/動画ビューアへ直接 URL を渡せます。Lambda プロキシ経由だと同期レスポンスの 6 MB 上限に当たるため、大きいファイルはこちらの経路が必要でした。
 
 #### 13. Solutions Architect (Partner/SI)
 

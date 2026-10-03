@@ -65,7 +65,7 @@ curl -sS -o /tmp/out.bin -w "%{http_code}\n" \
 ### 1.3 네거티브 확인(사양 재확인)
 
 - 무서명 GET이 **403/AccessDenied**일 것(Block Public Access 강제 확인).
-- Presigned URL 사용 불가일 것(생성 불가/미지원) → 시청자 토큰은 CDN 네이티브 메커니즘으로.
+- Presigned URL을 시청자에게 전달하지 않을 것(2026-09 정정으로 기능 자체는 `Supported`이지만 액세스 포인트 엔드포인트를 직접 가리켜 CDN을 우회함) → 시청자 토큰은 CDN 네이티브 메커니즘으로.
 
 ---
 

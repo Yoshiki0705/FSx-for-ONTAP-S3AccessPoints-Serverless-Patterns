@@ -221,7 +221,7 @@ Vollständige Details in [validation-matrix.md](validation-matrix.md).
 - **Permission-aware Ingest-Grenze**: Ingest ist auf das konfigurierte Aufzeichnungspräfix beschränkt.
   Öffentliche Auslieferung erzwingt keine ONTAP-Dateiberechtigungen; die Grenze wird durch die Regel „nur
   Freigegebenes veröffentlichen" und die Sperrung des CloudFront-Origin sichergestellt.
-- **Zuschauer-Authentifizierung**: FSx for ONTAP S3 AP unterstützt **keine** S3-Presigned-URLs — CloudFront-eigene
+- **Zuschauer-Authentifizierung**: Für kontrolliertes VOD CloudFront-eigene
   signierte URLs/Cookies verwenden.
 - **Datenresidenz**: IVS-Kanal, Recording Configuration und S3-Standort müssen in **derselben Region** liegen.
   CloudFront ist global; Daten, die nicht außerhalb einer Region ausgeliefert werden dürfen, ausschließen oder
@@ -286,9 +286,9 @@ Diese sind **kombinierbar**, nicht exklusiv.
   dass dies nicht unterstützt wird**. Die Konfigurationserstellung erreicht `ACTIVE` (weil `bucketName` nur als
   bucket-namensförmige Zeichenfolge validiert wird), aber die Aufzeichnung schlägt fehl (**„Recording Start
   Failure"**, keine `ivs/v1/...`-Objekte). Einen Standard-S3-Bucket verwenden ([direct-recording-experiment.md](direct-recording-experiment.md)).
-- **„Ist ein S3 AP ein vollständiger S3-Bucket?"** Nein (kein Presigned URL / Versioning / Object Lock /
+- **„Ist ein S3 AP ein vollständiger S3-Bucket?"** Nein (kein Versioning / Object Lock /
   Lifecycle / Static Website Hosting).
-- **„Kann man Zuschauern eine Presigned URL geben?"** Nein → CloudFront-signierte URLs/Cookies verwenden.
+- **„Kann man Zuschauern eine Presigned URL geben?"** Technisch ja, aber nicht empfohlen — sie umgeht das CDN. CloudFront-signierte URLs/Cookies verwenden.
 - **„Bedeutet ein hoher Vollständigkeits-Score, dass Veröffentlichung sicher ist?"** Nein — geprüft wird
   nur die HLS-Paketvollständigkeit; die Inhaltsfreigabe ist ein separater menschlicher/KI-Moderationsschritt
   . Moderation ist **opt-in verfügbar** (`EnableModeration=true` führt Rekognition aus und blockiert die
@@ -302,7 +302,7 @@ Diese sind **kombinierbar**, nicht exklusiv.
 - Playlist (`.m3u8`): kurze TTL; Segmente (`.ts` / `.m4s`): lange TTL.
 - Zur Trennung der Auslieferungs-Lesevorgänge ein **FlexCache**-Volume (ONTAP-nativ) als CloudFront-Origin-Quelle erwägen.
 - **Ein S3 AP ist kein vollständiger S3-Bucket** — es ist eine S3-kompatible Zugriffsgrenze. Keine
-  Bucket-Funktionen (Presigned URL, Versioning, Object Lock, Lifecycle, Static Website Hosting) voraussetzen.
+  Bucket-Funktionen (Versioning, Object Lock, Lifecycle, Static Website Hosting) voraussetzen.
   Siehe [../../docs/s3ap-compatibility-notes.md](../../../docs/s3ap-compatibility-notes.md).
 
 ## Referenzen (offizielle AWS-Dokumentation)

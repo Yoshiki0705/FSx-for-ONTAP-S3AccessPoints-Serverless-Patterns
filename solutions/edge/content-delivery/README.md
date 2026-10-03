@@ -133,7 +133,7 @@ DemoMode の確認は [docs/demo-guide.md](docs/demo-guide.md) を参照。
   記録に拡張可能。
 - **データ所在地 / 地域制限**: CDN はグローバル配信のため、リージョン外配信が許容されないデータは
   承認対象から除外、または CDN の geo-blocking で制御する。
-- **視聴者認証**: S3 Presigned URL 非対応のため、CDN ネイティブのトークン機構を使用。
+- **視聴者認証**: CDN ネイティブのトークン機構を使用。Presigned URL は 2026-09 の訂正で `Supported` になったが、視聴者に渡すと AP エンドポイントを直接叩くため CDN を経由しない。
 - **PII**: 配信ログ書き戻し時にクライアント IP をマスク（`RedactClientIp=true`）。
 - **最小権限**: Publish/LogSync は対象 S3 AP の必要 Action のみ。配信用 Lambda は Internet-origin S3 AP
   アクセスのため **VPC 外**で実行。

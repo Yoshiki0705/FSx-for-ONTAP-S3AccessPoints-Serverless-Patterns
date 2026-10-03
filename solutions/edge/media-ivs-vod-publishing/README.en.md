@@ -227,7 +227,7 @@ Full detail is in [validation-matrix.md](validation-matrix.md).
 - **permission-aware ingest boundary**: ingestion is limited to the configured recording prefix.
   Public delivery does not enforce ONTAP file permissions, so the delivery boundary is ensured by
   the "publish only approved" operating rule and by locking down the CloudFront origin.
-- **Viewer authentication**: FSx for ONTAP S3 AP does **not** support S3 Presigned URLs — use
+- **Viewer authentication**: For controlled VOD, use
   CloudFront-native signed URLs / signed cookies for controlled VOD.
 - **Data residency**: IVS channel, Recording Configuration, and the S3 location must be in the
   **same region**. CloudFront is global; exclude data that must not be delivered outside a region,
@@ -300,9 +300,9 @@ These are composable, not mutually exclusive.
   not supported**. Config creation reaches `ACTIVE` (because `bucketName` is validated only as a
   bucket-name-shaped string), but recording-time writes fail (**"Recording Start Failure"**, no `ivs/v1/...`
   objects). Use a standard S3 bucket ([direct-recording-experiment.md](direct-recording-experiment.md)).
-- **"Is an S3 AP a full S3 bucket?"** No (no Presigned URL / Versioning / Object Lock / Lifecycle /
+- **"Is an S3 AP a full S3 bucket?"** No (no Versioning / Object Lock / Lifecycle /
   Static Website Hosting).
-- **"Can viewers get a presigned URL?"** No → use CloudFront signed URLs / cookies.
+- **"Can viewers get a presigned URL?"** Technically yes, but not recommended — it bypasses the CDN. Use CloudFront signed URLs / cookies.
 - **"Does a high completeness score mean it's safe to publish?"** No — it only checks the HLS
   package is complete; content clearance is a separate human/AI moderation step. Moderation is
   **available opt-in** (`EnableModeration=true` runs Rekognition and blocks publish when flagged).
@@ -315,7 +315,7 @@ These are composable, not mutually exclusive.
 - Playlist (`.m3u8`) uses short TTL; segments (`.ts` / `.m4s`) use long TTL.
 - To isolate delivery reads, consider a **FlexCache** volume (ONTAP-native) as the CloudFront-origin source.
 - **S3 AP is not a full S3 bucket** — it is an S3-compatible access boundary. Don't assume
-  bucket-level features (Presigned URL, Versioning, Object Lock, Lifecycle, Static Website Hosting).
+  bucket-level features (Versioning, Object Lock, Lifecycle, Static Website Hosting).
   See [../../docs/s3ap-compatibility-notes.md](../../../docs/s3ap-compatibility-notes.md).
 
 ## Source references (AWS official docs)

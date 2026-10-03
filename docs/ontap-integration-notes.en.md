@@ -186,7 +186,7 @@ OT environment-specific considerations:
 | Finding | Impact | Evidence | Request |
 |---------|--------|----------|---------|
 | S3 AP returns ServiceUnavailable during throughput changes | Operational risk | Phase 14 timeline | Documentation of behavior / availability improvement |
-| Presigned URL works but is unsupported | Customer confusion | AWS Support case | Documentation clarification |
+| ~~Presigned URL works but is unsupported~~ (resolved 2026-09; the table reads `Presign — Supported`) | Customer confusion | Verified on the published page (2026-09-17) | Done |
 | VPC-origin benchmark not conducted | Design gap | Phase 15 Next | Guidance needed |
 | FlexCache × S3 AP not supported | Feature gap | FC1 blocker | Roadmap consideration |
 | ListObjectsV2 high latency (30-80x vs native S3) | Performance constraint | Benchmark data | Optimization |

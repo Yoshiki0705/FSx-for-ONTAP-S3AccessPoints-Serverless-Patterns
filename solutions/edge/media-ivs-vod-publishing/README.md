@@ -227,7 +227,7 @@ publish-readiness の confidence を算出し、`shared/human_review.py` の閾�
 - **permission-aware な取り込み境界**: 取り込みは指定された録画プレフィックス配下に限定。公開配信は
   ONTAP のファイル権限を強制適用しないため、配信境界は「承認済みのみ公開」という運用と、CloudFront
   オリジンのロックダウンで担保する。
-- **視聴者認証**: FSx for ONTAP S3 AP は S3 Presigned URL **非対応**。制御された VOD では CloudFront
+- **視聴者認証**: 制御された VOD では CloudFront
   ネイティブの署名付き URL / 署名付き Cookie を使用する。
 - **データ所在地**: IVS チャンネル・Recording Configuration・S3 ロケーションは **同一リージョン**。
   CloudFront はグローバル配信のため、リージョン外配信が許容されないデータは対象から除外、または
@@ -296,9 +296,9 @@ publish-readiness の confidence を算出し、`shared/human_review.py` の閾�
 - **「IVS の録画先を直接 FSx for ONTAP S3 AP にできる？」** いいえ。**AWS サービスチームが非サポートと確認済み**。
   設定作成は `ACTIVE` になる（`bucketName` が bucket 名形式として検証されるだけ）が、録画時は **「Recording Start Failure」** で
   `ivs/v1/...` は書かれない。標準 S3 バケット経由を使用（[direct-recording-experiment.md](direct-recording-experiment.md)）。
-- **「S3 AP はフル S3 バケット？」** いいえ（Presigned URL / Versioning / Object Lock / Lifecycle /
+- **「S3 AP はフル S3 バケット？」** いいえ（Versioning / Object Lock / Lifecycle /
   Static Website Hosting は非対応）。
-- **「視聴者に Presigned URL を渡せる？」** いいえ → CloudFront 署名付き URL / Cookie を使用。
+- **「視聴者に Presigned URL を渡せる？」** 技術的には可能だが推奨しない（CDN を経由しないため）→ CloudFront 署名付き URL / Cookie を使用。
 - **「完全性スコアが高い＝公開してよい？」** いいえ。パッケージ完全性のチェックであり、内容の公開可否は
   別途の人手/AI モデレーションで判断する。モデレーションは **opt-in で搭載**（`EnableModeration=true` で
   Rekognition を実行し、フラグ時は publish をブロック）。
@@ -312,7 +312,7 @@ publish-readiness の confidence を算出し、`shared/human_review.py` の閾�
 - 配信読み取りを業務ボリュームから分離したい場合、**FlexCache** ボリューム（ONTAP ネイティブ）を
   CloudFront オリジンのソースにすることを検討します。
 - **S3 AP はフル S3 バケットではありません** — S3 互換のアクセス境界です。バケットレベル機能
-  （Presigned URL、Versioning、Object Lock、Lifecycle、Static Website Hosting）が使える前提にしないこと。
+  （Versioning、Object Lock、Lifecycle、Static Website Hosting）が使える前提にしないこと。
   [../../docs/s3ap-compatibility-notes.md](../../../docs/s3ap-compatibility-notes.md) を参照。
 
 ## 参照元（AWS 公式ドキュメント）

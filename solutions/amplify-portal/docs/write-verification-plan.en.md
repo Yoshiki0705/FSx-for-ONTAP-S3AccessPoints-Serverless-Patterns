@@ -207,10 +207,9 @@ to verify:
    client-side or explain
 
 **Upload links**: a presigned PUT URL has to name SigV4 explicitly (there is a boto3 path where
-presign defaults to v2, and ONTAP-side v2 support starts at 9.16.1). AWS's compatibility table
-lists presigned URLs as unsupported while they are observed working; AWS Support has submitted a
-documentation correction that is **not yet published**, so continue not to depend on it in
-production ([S3 AP compatibility notes](../../../docs/s3ap-compatibility-notes.en.md)).
+presign defaults to v2, and ONTAP-side v2 support starts at 9.16.1). AWS's compatibility table was
+corrected to `Presign — Supported` in 2026-09, so this can be treated as a capability the public
+documentation backs ([S3 AP compatibility notes](../../../docs/s3ap-compatibility-notes.en.md)).
 
 Measured: `createUploadLink` presigned with SigV2 against the global endpoint, so the PUT failed with 301
 (the signature covers `host`, so the redirect cannot be followed). Fixed by naming both

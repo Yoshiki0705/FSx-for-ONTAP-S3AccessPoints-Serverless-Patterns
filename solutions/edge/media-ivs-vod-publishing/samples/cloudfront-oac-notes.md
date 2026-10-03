@@ -44,7 +44,7 @@ AWS-side policy looks correct but CloudFront still receives 403s.
 
 - **Do not** let viewers reach the S3 Access Point directly. FSx for ONTAP S3 AP enforces
   Block Public Access and requires SigV4; expose only the CloudFront distribution to viewers.
-- **Presigned URLs are not supported** on FSx for ONTAP S3 AP — use CloudFront-native
+- **Do not hand presigned URLs to viewers** — they address the access point and bypass the CDN. Use CloudFront-native
   **signed URLs / signed cookies** for controlled/authenticated VOD.
 - For region-bound content, apply CloudFront **geo-restriction**.
 
