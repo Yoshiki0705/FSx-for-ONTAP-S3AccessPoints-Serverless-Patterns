@@ -90,9 +90,9 @@
 
 1. **Zero message loss**: SQS Standard queue handles 10,000 events without any loss
 2. **Throughput scales with warm connections**: 188 eps (cold start) → 464 eps (warm, sustained)
-3. **Consumer can keep up**: 341 msgs/sec drain rate exceeds typical FPolicy event generation rate（未確認）
-4. **SLO implications**: At 464 eps injection rate, a 30-min downtime accumulates ~835,000 events. With 341 msgs/sec drain rate (single consumer), full drain takes ~41 minutes. Lambda auto-scaling (10+ concurrent consumers) reduces this to < 5 minutes（未確認）.
-5. **Backpressure**: SQS provides natural backpressure via VisibilityTimeout（未確認）. No message loss even under burst.
+3. **Consumer can keep up**: 341 msgs/sec drain rate exceeds typical FPolicy event generation rate (unverified)
+4. **SLO implications**: At 464 eps injection rate, a 30-min downtime accumulates ~835,000 events. With 341 msgs/sec drain rate (single consumer), full drain takes ~41 minutes. Lambda auto-scaling (10+ concurrent consumers) reduces this to < 5 minutes (unverified).
+5. **Backpressure**: SQS provides natural backpressure via VisibilityTimeout (unverified). No message loss even under burst.
 
 ## SLO Threshold Validation
 

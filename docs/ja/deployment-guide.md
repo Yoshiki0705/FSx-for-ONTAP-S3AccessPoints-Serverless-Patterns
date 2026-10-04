@@ -547,7 +547,7 @@ aws fsx describe-file-systems --file-system-ids fs-XXXXXXXXX \
 
 S3 Access Point は `UNIX`（デフォルト）と `WINDOWS` の 2 つのユーザータイプをサポートしています。WINDOWS タイプは、FSx for ONTAP ボリュームのファイル所有権と ACL を Active Directory アイデンティティにマッピングし、S3 AP 経由で Windows ネイティブのアクセス制御を実現します。
 
-WINDOWS タイプの S3 AP を作成する前提条件は 2 つあります。
+WINDOWS タイプの S3 Access Points を作成する前提条件は 2 つあります。
 
 1. SVM が Active Directory ドメインに参加済みであること。AD 未参加の SVM で WINDOWS タイプの S3 AP を作成しようとすると即座にエラーになります。
 2. AD 環境に到達可能であること。SVM から AD ドメインコントローラーへの DNS 解決とネットワーク接続（ポート 53, 88, 389, 445）が必要です。

@@ -105,7 +105,7 @@ curl -sku "$CREDS" \
 
 ## AD DC Reachability Requirement
 
-On an AD-joined SVM (CIFS enabled), S3 AP data operations need AD DC connectivity regardless of the volume's security style or the access point's user type. This section covers why, how to tell the symptoms apart, how to decide whether an SVM is AD-joined, and the network connectivity required.
+On an AD-joined SVM (CIFS enabled), S3 Access Points data operations need AD DC connectivity regardless of the volume's security style or the access point's user type. This section covers why, how to tell the symptoms apart, how to decide whether an SVM is AD-joined, and the network connectivity required.
 
 ### Why AD DC Is Required
 
@@ -225,7 +225,7 @@ FsxToAdSecurityGroupRule:
 
 ## Internet-Origin AP + VPC-External Lambda Pattern
 
-For S3 AP data access, the recommended pattern is an Internet-origin AP with a VPC-external Lambda ($0 per month and low complexity in the table below). This section compares it with the other two patterns and shows how to split Lambda functions inside and outside the VPC.
+For S3 Access Points data access, the recommended pattern is an Internet-origin AP with a VPC-external Lambda ($0 per month and low complexity in the table below). This section compares it with the other two patterns and shows how to split Lambda functions inside and outside the VPC.
 
 ### Decision Matrix: Choosing a Network Pattern
 
@@ -274,7 +274,7 @@ If you also need ONTAP REST API access (management LIF is VPC-internal):
 
 ## Same-Account AP Resource Policy
 
-For same-account access, no S3 AP resource policy is needed; the IAM identity policy is enough. This section also lists when a resource policy is needed and gives a CloudFormation example.
+For same-account access, no S3 Access Points resource policy is needed; the IAM identity policy is enough. This section also lists when a resource policy is needed and gives a CloudFormation example.
 
 ### Key Finding
 
@@ -356,7 +356,7 @@ S3ApDataReaderRole:
 
 ## Pre-Flight Health Check
 
-Three ways to confirm AD DC reachability before S3 AP data operations: Python, shell, and Step Functions.
+Three ways to confirm AD DC reachability before S3 Access Points data operations: Python, shell, and Step Functions.
 
 ### Programmatic Check (Python — for Lambda/Step Functions)
 

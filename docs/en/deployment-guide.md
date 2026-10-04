@@ -550,7 +550,7 @@ aws fsx describe-file-systems --file-system-ids fs-XXXXXXXXX \
 
 S3 Access Points support two user types: `UNIX` (default) and `WINDOWS`. The WINDOWS type maps file ownership and ACLs to Active Directory identities, enabling Windows-native access control on FSx for ONTAP volumes exposed via S3 AP.
 
-Creating a WINDOWS-type S3 AP has two prerequisites.
+Creating a WINDOWS-type access point for S3 Access Points has two prerequisites.
 
 1. The SVM must be joined to an Active Directory domain. Attempting to create a WINDOWS-type S3 AP on an SVM that is not AD-joined will fail immediately.
 2. The AD environment must be reachable. The SVM needs DNS resolution and network connectivity to the AD domain controllers (ports 53, 88, 389, 445).

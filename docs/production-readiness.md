@@ -42,7 +42,7 @@ Sandbox    →    Scheduled    →    Monitored    →    Production
 
 ## Level 1: Sandbox（手動実行）
 
-手動実行で、パターンと S3 AP 経由のファイルアクセスが動くことを確かめる段階です。
+手動実行で、パターンと S3 Access Points 経由のファイルアクセスが動くことを確かめる段階です。
 
 ### 目的
 - パターンの動作確認

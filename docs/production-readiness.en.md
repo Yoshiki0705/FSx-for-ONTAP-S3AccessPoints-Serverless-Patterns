@@ -42,7 +42,7 @@ Sandbox    →    Scheduled    →    Monitored    →    Production
 
 ## Level 1: Sandbox (Manual Execution)
 
-The stage where you confirm, by running it by hand, that the pattern and file access via S3 AP work.
+The stage where you confirm, by running it by hand, that the pattern works and that file access via S3 Access Points works.
 
 ### Purpose
 - Verify pattern operation

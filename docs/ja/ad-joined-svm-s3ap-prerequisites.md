@@ -99,7 +99,7 @@ curl -sku "$CREDS" \
 
 ## AD DC 到達性要件
 
-AD 参加 SVM（CIFS 有効）では、ボリュームのセキュリティスタイルや S3 AP のユーザータイプにかかわらず、S3 AP のデータ操作に AD DC への接続が必要です。理由、症状の見分け方、AD 参加かどうかの判定、必要なネットワーク接続の順に示します。
+AD 参加 SVM（CIFS 有効）では、ボリュームのセキュリティスタイルや S3 Access Points のユーザータイプにかかわらず、S3 Access Points のデータ操作に AD DC への接続が必要です。理由、症状の見分け方、AD 参加かどうかの判定、必要なネットワーク接続の順に示します。
 
 ### AD DC が必要な理由
 
@@ -202,7 +202,7 @@ FsxToAdSecurityGroupRule:
 
 ## Internet-Origin AP + VPC外Lambda パターン
 
-S3 AP のデータアクセスには、Internet-origin AP と VPC 外 Lambda の組み合わせを推奨します（下の表で月額 $0、複雑度は低）。他の 2 パターンとの比較と、Lambda を VPC の内外に分ける構成を示します。
+S3 Access Points のデータアクセスには、Internet-origin AP と VPC 外 Lambda の組み合わせを推奨します（下の表で月額 $0、複雑度は低）。他の 2 パターンとの比較と、Lambda を VPC の内外に分ける構成を示します。
 
 ### ネットワークパターン選択マトリクス
 
@@ -247,7 +247,7 @@ graph LR
 
 ## 同一アカウント AP リソースポリシー
 
-同一アカウントのアクセスでは S3 AP リソースポリシーは不要で、IAM アイデンティティポリシーだけで足ります。リソースポリシーが必要になるケースと、CloudFormation の例も示します。
+同一アカウントのアクセスでは S3 Access Points リソースポリシーは不要で、IAM アイデンティティポリシーだけで足ります。リソースポリシーが必要になるケースと、CloudFormation の例も示します。
 
 ### 重要な知見
 
@@ -324,7 +324,7 @@ S3ApDataReaderRole:
 
 ## Pre-Flight ヘルスチェック
 
-S3 AP のデータ操作の前に AD DC 到達性を確かめる方法を、Python、シェル、Step Functions の 3 通りで示します。
+S3 Access Points のデータ操作の前に AD DC 到達性を確かめる方法を、Python、シェル、Step Functions の 3 通りで示します。
 
 ### プログラムチェック（Python — Lambda/Step Functions 用）
 

@@ -172,7 +172,7 @@ This is a design guide for a Dual-Path architecture that optimizes read-intensiv
 
 ## Use Case Deep Dive
 
-For each of seven industries: the scenario, the reads KNFSD serves, the serverless processing S3 AP serves, and a reference configuration.
+For each of seven industries: the scenario, the reads KNFSD serves, the serverless processing S3 Access Points serve, and a reference configuration.
 
 ### 1. Semiconductor EDA — DRC/LVS Burst Verification + AI Yield Analysis
 
@@ -541,7 +541,7 @@ Ensemble runs of numerical weather prediction (NWP) models (WRF, HARMONIE, GFS, 
 
 ## Throughput Design
 
-KNFSD, S3 AP and direct NFS/SMB access share the same FSx for ONTAP throughput; this section shows how to estimate bandwidth on that basis and how to choose instances.
+KNFSD, S3 Access Points and direct NFS/SMB access share the same FSx for ONTAP throughput; this section shows how to estimate bandwidth on that basis and how to choose instances.
 
 ### Bandwidth Sharing Model
 
@@ -584,7 +584,7 @@ FSx Provisioned Throughput: 1,024 MBps (read)
 
 ## Observability Integration
 
-A design that brings KNFSD and S3 AP / Lambda metrics into one dashboard and one alert chain.
+A design that brings KNFSD and S3 Access Points / Lambda metrics into one dashboard and one alert chain.
 
 ### Unified Dashboard Design
 

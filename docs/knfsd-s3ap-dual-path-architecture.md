@@ -171,7 +171,7 @@
 
 ## ユースケース Deep Dive
 
-7 つの業種ごとに、シナリオ、KNFSD が担う読取り、S3 AP が担うサーバーレス処理、参考構成を示します。
+7 つの業種ごとに、シナリオ、KNFSD が担う読取り、S3 Access Points が担うサーバーレス処理、参考構成を示します。
 
 ### 1. 半導体 EDA — DRC/LVS バースト検証 + AI 歩留まり分析
 
@@ -540,7 +540,7 @@ VFX スタジオがクラウドバーストレンダリングを実施。オン�
 
 ## スループット設計
 
-KNFSD、S3 AP、NFS/SMB 直接アクセスが同じ FSx for ONTAP の throughput を分け合う前提で、帯域の見積もり方とインスタンスの選び方を示します。
+KNFSD、S3 Access Points、NFS/SMB 直接アクセスが同じ FSx for ONTAP の throughput を分け合う前提で、帯域の見積もり方とインスタンスの選び方を示します。
 
 ### 帯域共有モデル
 
@@ -583,7 +583,7 @@ FSx Provisioned Throughput: 1,024 MBps (読取り)
 
 ## Observability 統合
 
-KNFSD と S3 AP / Lambda のメトリクスを 1 つのダッシュボードとアラートにまとめる設計です。
+KNFSD と S3 Access Points / Lambda のメトリクスを 1 つのダッシュボードとアラートにまとめる設計です。
 
 ### 統合ダッシュボード設計
 
