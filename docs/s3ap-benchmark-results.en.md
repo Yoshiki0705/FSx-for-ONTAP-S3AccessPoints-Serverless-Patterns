@@ -10,7 +10,7 @@ Four main results follow. All were measured on a Single-AZ (First-generation) FS
 
 - Running 1 MB GetObject concurrently over the Internet against 128 MBps, concurrency=10 was observed as the practical upper limit before significant tail latency degradation, and P99 exceeded 1 second at concurrency=25 and above (`s3ap-bench-2026-05-23-001`)
 - Raising Throughput Capacity from 128 MBps to 256 MBps lowered P99 for 1 MB at concurrency=20 from 981 ms to 481 ms. The effect of 512 MBps was not visible over the Internet, because client-side bandwidth (~100 Mbps) became the limit (2026-05-25)
-- P50 for 1 MB at concurrency=10 was 175 ms from a local client over the Internet and 73 ms from a VPC-external Lambda (128 MBps, 2026-05-25)
+- P50 for 1 MB at concurrency=10 was 175 ms from a local client over the Internet and 73 ms from a VPC-external Lambda (128 MBps, 2026-05-25, `s3ap-bench-2026-05-25-003` and `s3ap-bench-2026-05-25-006`)
 - For 202-byte files, P50 was nearly identical at 256 MBps and 512 MBps (~57-60 ms at concurrency ≤25, 2026-06-06)
 
 ## Test Environment

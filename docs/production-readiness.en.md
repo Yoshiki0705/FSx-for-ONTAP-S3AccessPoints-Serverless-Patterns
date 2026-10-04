@@ -33,7 +33,7 @@ Sandbox    →    Scheduled    →    Monitored    →    Production
 
 | Level | Stage | Purpose (summary) | Time required |
 |-------|-------|-------------------|---------------|
-| 1 | Sandbox (manual execution) | Verify the pattern, file access via S3 AP, and AI/ML output quality | 1-2 hours |
+| 1 | Sandbox (manual execution) | Verify the pattern, file access via S3 Access Points, and AI/ML output quality | 1-2 hours |
 | 2 | Scheduled (periodic execution) | Automated execution via EventBridge Scheduler and continuous processing with real data | 1-2 days |
 | 3 | Monitored (with observability) | Establish observability, visualize performance and cost, detect failures early | 3-5 days |
 | 4 | Production (production operations) | Multi-account, CI/CD, DR, compliance support, SLO operations | 2-4 weeks |

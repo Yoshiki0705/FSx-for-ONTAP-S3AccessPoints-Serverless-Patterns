@@ -33,7 +33,7 @@ Sandbox    →    Scheduled    →    Monitored    →    Production
 
 | Level | 段階 | 目的（要約） | 所要時間 |
 |-------|------|------|------|
-| 1 | Sandbox（手動実行） | パターンの動作、S3 AP 経由のファイルアクセス、AI/ML 出力品質の確認 | 1-2 時間 |
+| 1 | Sandbox（手動実行） | パターンの動作、S3 Access Points 経由のファイルアクセス、AI/ML 出力品質の確認 | 1-2 時間 |
 | 2 | Scheduled（定期実行） | EventBridge Scheduler による自動実行と、実データでの継続的な処理 | 1-2 日 |
 | 3 | Monitored（可観測性付き） | 可観測性の確立、性能とコストの可視化、障害の早期検知 | 3-5 日 |
 | 4 | Production（本番運用） | マルチアカウント、CI/CD、DR、コンプライアンス対応、SLO の運用 | 2-4 週間 |

@@ -10,7 +10,7 @@ FSx for ONTAP S3 Access Points 経由の各 S3 API 操作のレイテンシと�
 
 - 1 MB の GetObject を 128 MBps 構成・インターネット経由で並列に実行すると、concurrency=10 が tail latency の大幅悪化前の実用的な上限として観測され、concurrency=25 以上では P99 が 1 秒を超えました（`s3ap-bench-2026-05-23-001`）
 - Throughput Capacity を 128 MBps から 256 MBps にすると、1 MB・concurrency=20 の P99 は 981 ms から 481 ms に下がりました。512 MBps の効果は、クライアント側の帯域（~100 Mbps）が律速になり、インターネット経由の計測では見えませんでした（2026-05-25）
-- 1 MB・concurrency=10 の P50 は、インターネット経由のローカルクライアントで 175 ms、VPC 外の Lambda で 73 ms でした（128 MBps、2026-05-25）
+- 1 MB・concurrency=10 の P50 は、インターネット経由のローカルクライアントで 175 ms、VPC 外の Lambda で 73 ms でした（128 MBps、2026-05-25、`s3ap-bench-2026-05-25-003` と `s3ap-bench-2026-05-25-006`）
 - 202 bytes の小ファイルでは、P50 は 256 MBps と 512 MBps でほぼ同じでした（concurrency ≤25 で ~57-60 ms、2026-06-06）
 
 ## 計測環境
