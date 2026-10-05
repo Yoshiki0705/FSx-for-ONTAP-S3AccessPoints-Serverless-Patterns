@@ -4,21 +4,20 @@
 
 A guide for end users who have been invited to an already-deployed File Portal. This document assumes a portal administrator has completed deployment and created your account — you do not need AWS CLI access or deployment knowledge.
 
-**What this portal does**: Browse NAS files from your browser, trigger AI/ML analysis, view results, and check data protection status — all without VPN or SMB/NFS client setup.
+With this portal you can browse NAS files from your browser, trigger AI/ML analysis, view results, and check data protection status — all without VPN or SMB/NFS client setup.
 
 ---
 
 ## Getting Started
+
+Signing in, the portal layout, switching language, and using the portal on a phone, in that order.
 
 ### 1. Sign In
 
 1. Open the portal URL provided by your administrator
 2. Enter your email and password (provided or self-registered depending on configuration)
 3. If MFA is enabled, enter the TOTP code from your authenticator app
-4. On first login, the **Welcome Modal** guides you through 3 key capabilities:
-   - 📂 File Browsing — Navigate NAS files from your browser
-   - ⚡ AI Processing — Select files and trigger workflows
-   - 🔒 Data Protection — Snapshots, locks, and ransomware status
+4. On first login, the **Welcome Modal** guides you through 3 key capabilities: file browsing (navigate NAS files from your browser), AI processing (select files and trigger workflows), and data protection (snapshots, locks, and ransomware status)
 
 > **Tip**: Check "Don't show again" to skip the Welcome Modal on subsequent logins.
 
@@ -34,18 +33,63 @@ A guide for end users who have been invited to an already-deployed File Portal. 
 └───────────────┴─────────────────────────────────────────┘
 ```
 
-- **Left sidebar**: Navigation grouped into Browse, AI & Processing, Data Protection, Admin
-- **Main content**: Active section (changes when you click sidebar items)
-- **Right panel**: AI Assistant (appears when you select a file in All Files)
-- **Top bar**: Language switcher, user email, sign out
+| Area | Contents |
+|------|----------|
+| Left sidebar | Navigation grouped into Browse, AI & Processing, Data Protection, Admin |
+| Main content | Active section (changes when you click sidebar items) |
+| Right panel | AI Assistant (appears when you select a file in All Files) |
+| Top bar | Language switcher, user email, sign out |
 
 ### 3. Language
 
 Click the 🌐 language selector in the top bar to switch between 8 languages: 日本語, English, 한국어, 简体中文, 繁體中文, Français, Deutsch, Español. The switch is instant — no page reload.
 
+### 4. Using it on a phone
+
+> For a step-by-step walkthrough with a screenshot of every screen, see the
+> [phone walkthrough](portal-mobile-guide.md). This section is the summary.
+
+There is no separate app. Open the **same URL as on the desktop** in your phone's
+browser (verified in Safari on iOS and Chrome on Android).
+
+<img src="../../solutions/amplify-portal/docs/screenshots/portal-files-mobile-dark.png" alt="The file list on a phone, dark theme" width="300">
+
+The steps from signing in to opening a file:
+
+1. Open the URL your administrator gave you
+2. Sign in with your email and password, plus a TOTP code if MFA is on. Your password
+   manager's autofill works as usual
+3. Along the top edge you get **☰**, the theme control, the language control and sign
+   out (⏻). The sidebar starts hidden
+4. Tap **☰** to open the navigation over the content. Choosing a section closes it
+   again; to close it without choosing, tap the dimmed area
+5. To open a file, tap the icon on its row (📄 / 🖼️ / 📕 / 📝). The preview rises from
+   the bottom of the screen as a sheet; **✕** closes it
+6. To act on several files at once, tap the checkbox at the left of each row. The count
+   and the available actions appear above the list
+
+The table shows what differs from the desktop.
+
+| Item | On a phone |
+|------|-----------|
+| Sidebar | a drawer over the content, opened and closed with **☰** |
+| Size and Modified columns | dropped, there is not enough width; you can still sort by name |
+| Email address | hidden (sign out is the icon alone) |
+| File preview | a sheet from the bottom edge, up to 70% of the screen. A PDF is easier to read in landscape |
+| AI assistant panel | opens as a drawer from the right |
+
+> **About 🖥️ in the theme control**: it is not a "switch to desktop view" button. The
+> three choices are ☀️ light, 🌙 dark and 🖥️ **match the device**, and 🖥️ follows your
+> iOS or Android appearance setting, including its automatic switch at night.
+
+> **Data use**: downloading a folder as a ZIP transfers everything under it. On a
+> cellular connection, check how many files and how large they are first.
+
 ---
 
 ## Browse — Working with Files
+
+Four screens: browsing files, favorites, recent files, and upload.
 
 ### All Files
 
@@ -82,7 +126,8 @@ Shows your recently viewed, downloaded, or AI-queried files with relative timest
 
 ### Upload
 
-Drag-and-drop file upload powered by Storage Browser for S3. Also supports:
+Upload files by drag and drop, powered by Storage Browser for S3. The upload screen also supports the following.
+
 - Folder creation
 - File copy and delete
 - Multi-file upload (up to 50 GB per file)
@@ -90,6 +135,8 @@ Drag-and-drop file upload powered by Storage Browser for S3. Also supports:
 ---
 
 ## AI & Processing
+
+Starting AI/ML workflows, job history and SQL analytics, plus the AI agent, agent registry and file search when an administrator enables them.
 
 ### AI Processing
 
@@ -135,49 +182,57 @@ A natural-language AI chat interface for file operations. Uses Bedrock Converse 
 
 > This feature only appears when enabled by an admin in "AI Settings".
 
-**3 Modes**:
+There are three modes.
+
 | Mode | Purpose |
 |------|---------|
 | 🧠 KB Search | Semantic search over file contents via Knowledge Base |
 | 📁 File Ops | Directory listing, file search, read |
 | 🤖 Multi-Agent | All features (KB + File Ops + Safety) |
 
-**Key capabilities**:
+Key capabilities:
+
 - Card grid for one-click common tasks
-- 📎 Image attachment → AI analyzes image content
-- 📜 Chat history → Restore previous sessions
-- 📂 File sidebar → Shows NFS/SMB permissions of referenced files
-- Tool trace timeline → Visualizes which agent executed what
+- Image attachment (📎): the AI analyzes the image content
+- Chat history (📜): restore previous sessions
+- File sidebar (📂): shows NFS/SMB permissions of referenced files
+- Tool trace timeline: visualizes which agent executed what
 
 ### Agent Registry (Requires admin enablement)
 
 Create and manage custom agents and multi-agent teams.
 
-- **Agent Directory**: Card grid of registered agents (with search and filter)
-- **Agent Creator**: Set icon, name, system prompt, tools, category
-- **Team Creation**: Select multiple agents and assign roles (Supervisor/Collaborator/Reviewer)
+| Feature | What it does |
+|---------|--------------|
+| Agent Directory | Card grid of registered agents (with search and filter) |
+| Agent Creator | Set icon, name, system prompt, tools, category |
+| Team Creation | Select multiple agents and assign roles (Supervisor/Collaborator/Reviewer) |
 
 ### File Search (Requires admin enablement)
 
 Semantic search powered by Bedrock Knowledge Base, searching by meaning of file contents.
 
-- **Keyword mode**: Pattern matching on file names
-- **Semantic mode**: Vector search (requires KB setup)
+| Mode | How it searches |
+|------|-----------------|
+| Keyword mode | Pattern matching on file names |
+| Semantic mode | Vector search (requires KB setup) |
 
 ---
 
 ## Data Protection
 
+Screens for checking snapshots, locks (WORM) and ransomware protection status.
+
 ### Snapshots
 
 View volume snapshots — point-in-time copies of your data.
 
-- **List**: See all available snapshots with creation timestamps
-- **Restore**: Click "Restore" to create a FlexClone (instant, space-efficient copy) from any snapshot. The clone gets its own S3 Access Point and is available within seconds.
+The list shows all available snapshots with creation timestamps.
+Click "Restore" to create a FlexClone (instant, space-efficient copy) from any snapshot. The clone gets its own S3 Access Point and is available within seconds.
 
 ### Lock (WORM)
 
-View the immutability status of your data across three mechanisms:
+View the immutability status of your data across three mechanisms.
 
 | Tab | What it shows |
 |-----|--------------|
@@ -207,11 +262,7 @@ These sections are only visible/actionable if your account is in the `storage-ad
 
 ### Storage Dashboard
 
-The admin landing page. Four cards showing:
-- 💾 Volume count + average capacity utilization
-- 🛡️ ARP-protected volumes + active threats
-- 🔐 Locked (tamperproof) snapshots
-- 📊 Storage efficiency ratio
+The admin landing page. Four cards show the volume count and average capacity utilization, ARP-protected volumes and active threats, locked (tamperproof) snapshots, and the storage efficiency ratio.
 
 Click any card to drill into the detail panel.
 
@@ -235,69 +286,33 @@ Query CloudTrail S3 data events to answer "who accessed what, and when."
 
 ---
 
-### 4. Using it on a phone
-
-> 📱 **For a step-by-step walkthrough with a screenshot of every screen, see the
-> [phone walkthrough](portal-mobile-guide.md).** This section is the summary.
-
-There is no separate app. Open the **same URL as on the desktop** in your phone's
-browser (verified in Safari on iOS and Chrome on Android).
-
-<img src="../../solutions/amplify-portal/docs/screenshots/portal-files-mobile-dark.png" alt="The file list on a phone, dark theme" width="300">
-
-**Steps**
-
-1. Open the URL your administrator gave you
-2. Sign in with your email and password, plus a TOTP code if MFA is on. Your password
-   manager's autofill works as usual
-3. Along the top edge you get **☰**, the theme control, the language control and sign
-   out (⏻). The sidebar starts hidden
-4. Tap **☰** to open the navigation over the content. Choosing a section closes it
-   again; to close it without choosing, tap the dimmed area
-5. To open a file, tap the icon on its row (📄 / 🖼️ / 📕 / 📝). The preview rises from
-   the bottom of the screen as a sheet; **✕** closes it
-6. To act on several files at once, tap the checkbox at the left of each row. The count
-   and the available actions appear above the list
-
-**What differs from the desktop**
-
-| Item | On a phone |
-|------|-----------|
-| Sidebar | a drawer over the content, opened and closed with **☰** |
-| Size and Modified columns | dropped, there is not enough width; you can still sort by name |
-| Email address | hidden (sign out is the icon alone) |
-| File preview | a sheet from the bottom edge, up to 70% of the screen. A PDF is easier to read in landscape |
-| AI assistant panel | opens as a drawer from the right |
-
-> **About 🖥️ in the theme control**: it is not a "switch to desktop view" button. The
-> three choices are ☀️ light, 🌙 dark and 🖥️ **match the device**, and 🖥️ follows your
-> iOS or Android appearance setting, including its automatic switch at night.
-
-> **Data use**: downloading a folder as a ZIP transfers everything under it. On a
-> cellular connection, check how many files and how large they are first.
-
----
-
 ## Tips & FAQ
 
-**Q: I see "ONTAP Connection Required" in some panels.**
-A: The portal is in DemoMode or the administrator hasn't configured the VPC connection yet. File browsing and AI features still work — only ONTAP-specific panels (Snapshots, ARP, Lock) need the connection.
+### "ONTAP Connection Required" in some panels
 
-**Q: My AI processing button says "PHI — AI Blocked."**
-A: You're in a protected folder (`/dicom/`, `/phi/`, `/pii/`, etc.). This is intentional — files in these paths cannot be sent to AI services. Navigate to a non-protected folder to use AI features.
+The portal is in DemoMode or the administrator hasn't configured the VPC connection yet. File browsing and AI features still work — only ONTAP-specific panels (Snapshots, ARP, Lock) need the connection.
 
-**Q: Share links expire quickly.**
-A: Share links use presigned URLs with a time-to-live you choose (5 min, 15 min, or 1 hour). For longer-term sharing, ask your administrator about Nextcloud integration or adjust the TTL options.
+### AI processing button shows "PHI — AI Blocked"
 
-**Q: Files I uploaded via NFS/SMB aren't showing.**
-A: They should appear immediately (ONTAP guarantees cross-protocol strong consistency). Try refreshing the file list. If still missing, the file may be in a subfolder — check the path.
+You're in a protected folder (`/dicom/`, `/phi/`, `/pii/`, etc.). This is intentional — files in these paths cannot be sent to AI services. Navigate to a non-protected folder to use AI features.
 
-**Q: Can I use the portal on mobile?**
-A: Yes. The steps are under "4. Using it on a phone" in Getting started.
+### Share link expiry
 
-**Q: How do I change my password?**
-A: Use the Cognito Hosted UI or ask your administrator to reset it via:
-```
+Share links use presigned URLs with a time-to-live you choose (5 min, 15 min, or 1 hour). For longer-term sharing, ask your administrator about Nextcloud integration or adjust the TTL options.
+
+### Files uploaded via NFS/SMB not showing
+
+They should appear immediately (ONTAP guarantees cross-protocol strong consistency; unverified, re-verification: #447). Try refreshing the file list. If still missing, the file may be in a subfolder — check the path.
+
+### Using the portal on mobile
+
+Yes. The steps are under "4. Using it on a phone" in Getting started.
+
+### Changing your password
+
+Use the Cognito Hosted UI or ask your administrator to reset it with this command.
+
+```bash
 aws cognito-idp admin-set-user-password --user-pool-id <pool-id> --username <your-email> --password <new-password> --permanent
 ```
 

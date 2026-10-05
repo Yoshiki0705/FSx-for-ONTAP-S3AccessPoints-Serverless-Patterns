@@ -12,6 +12,8 @@ Box、Google Drive、SharePoint 等の SaaS ファイル管理と同等の体験
 
 ## デモ環境のセットアップ (約 15 分)
 
+前提条件を確認してから、セットアップ手順を上から順に実行します。
+
 ### 前提条件
 
 - FSx for ONTAP ファイルシステム (ONTAP 9.14.1+)
@@ -56,6 +58,8 @@ make dev
 ---
 
 ## デモフロー
+
+ログインから言語切り替えまでの 12 ステップを、ポータルのタブの順に操作します。
 
 ### 1. ログイン
 
@@ -118,7 +122,7 @@ Upload タブでは Storage Browser for S3 を使って、ブラウザからフ�
 
 S3 AP alias をクリックするとフォルダ一覧に遷移。ドラッグ＆ドロップでアップロード、ファイル選択でダウンロードが可能です。
 
-> **アップロードしたファイルは即座に NFS/SMB から参照可能** — ONTAP の strong consistency により、プロトコルを跨いでも書き込み直後に最新データが見えます。
+> **アップロードしたファイルは即座に NFS/SMB から参照可能** — ONTAP の strong consistency により、プロトコルを跨いでも書き込み直後に最新データが見えます（未確認）。
 
 ---
 
@@ -165,6 +169,8 @@ Athena + Glue Data Catalog を使って、NAS データに対して SQL クエ�
 ---
 
 ### 10. 新機能: お気に入り / バージョン履歴 / 監査証跡
+
+お気に入り、バージョン履歴、監査証跡に加え、最近のファイル、Office ファイルプレビュー、FlexClone 復元を確認します。
 
 #### お気に入り (★ タブ)
 
@@ -213,7 +219,7 @@ PDF と DOCX をダウンロードせずにブラウザ内でプレビューで�
 | 画像 | Presigned URL ポップオーバー（既存） | 🖼️ |
 | その他 | ダウンロードリンク | 📄 |
 
-> ファイル名横の 📕 / 📝 アイコンをクリックするとインラインプレビューが開きます。PDF はネイティブ表示、DOCX のレイアウト再現度は約 70-80% です。XLSX/PPTX は現時点ではダウンロードして開いてください（Phase 2 でサーバーサイド変換対応予定）。
+> ファイル名横の 📕 / 📝 アイコンをクリックするとインラインプレビューが開きます。PDF はネイティブ表示、DOCX のレイアウト再現度は約 70-80% です（未確認）。XLSX/PPTX は現時点ではダウンロードして開いてください（Phase 2 でサーバーサイド変換対応予定）。
 
 #### FlexClone 復元 (FC7 パターン)
 
@@ -241,10 +247,13 @@ PDF と DOCX をダウンロードせずにブラウザ内でプレビューで�
 
 ![ARP/AI フォールバック (DemoMode)](../screenshots/portal-demo/portal-arp-status-fallback.png)
 
-ONTAP 接続時に表示される情報:
-- **ARP 状態**: enabled / dry_run（学習中）/ paused / disabled
-- **脅威レベル**: none 🟢 / low 🟡 / moderate 🟠 / high 🔴
-- **自動 Snapshot**: 脅威検知時に不変 Snapshot を自動作成するかどうか
+ONTAP 接続時には次の情報が表示されます。
+
+| 項目 | 表示される値 |
+|------|------|
+| ARP 状態 | enabled / dry_run（学習中）/ paused / disabled |
+| 脅威レベル | none 🟢 / low 🟡 / moderate 🟠 / high 🔴 |
+| 自動 Snapshot | 脅威検知時に不変 Snapshot を自動作成するかどうか |
 
 > ARP/AI は機械学習でファイルエントロピー、拡張子変更、アクセスパターンを監視します。ランサムウェアのような活動を検知すると、改ざん不可な Snapshot を自動作成します。
 
@@ -254,11 +263,14 @@ ONTAP 接続時に表示される情報:
 
 ![Lock フォールバック (DemoMode)](../screenshots/portal-demo/portal-snaplock-status-fallback.png)
 
-ONTAP 接続時に表示される情報:
-- **SnapLock タイプ**: Compliance（削除不可）/ Enterprise（特権削除可）/ Non-SnapLock
-- **保持ポリシー**: Default / Min / Max 期間
-- **Snapshot Locking**: Tamperproof Snapshot がボリュームで有効かどうか
-- **S3 Object Lock**: 出力バケットの WORM 設定
+ONTAP 接続時には次の情報が表示されます。
+
+| 項目 | 表示される値 |
+|------|------|
+| SnapLock タイプ | Compliance（削除不可）/ Enterprise（特権削除可）/ Non-SnapLock |
+| 保持ポリシー | Default / Min / Max 期間 |
+| Snapshot Locking | Tamperproof Snapshot がボリュームで有効かどうか |
+| S3 Object Lock | 出力バケットの WORM 設定 |
 
 > 3 層の不変性を統合表示: SnapLock（ファイルレベル WORM）、Tamperproof Snapshot（リカバリポイント保護）、S3 Object Lock（AI 出力アーカイブ保護）。
 
@@ -266,11 +278,15 @@ ONTAP 接続時に表示される情報:
 
 **Data Protection → Snapshots** に移動。
 
-Snapshot テーブルの Lock 列:
-- 🔐 = ロック済み（有効期限表示）
-- 🔓 = 未ロック（削除可能）
+Snapshot テーブルの Lock 列は、次の 2 つの状態を示します。
 
-storage-admin ユーザーの場合、未ロック Snapshot の隣に **🔒 Lock** ボタンが表示されます:
+| Lock 列 | 状態 |
+|------|------|
+| 🔐 | ロック済み（有効期限表示） |
+| 🔓 | 未ロック（削除可能） |
+
+storage-admin ユーザーの場合、未ロック Snapshot の隣に **🔒 Lock** ボタンが表示されます。ロックの手順は次のとおりです。
+
 1. **🔒 Lock** をクリック
 2. 保持期間を入力（1-365 日）
 3. 確認 → 有効期限まで改ざん不可になる
@@ -300,10 +316,12 @@ storage-admin ユーザーの場合、未ロック Snapshot の隣に **🔒 Loc
 
 #### 動作の仕組み
 
-1. **初回アクセス**: ブラウザの言語設定（`navigator.language`）から最も近い言語を自動選択
-2. **手動切り替え**: トップバーの言語ドロップダウンをクリックして任意の言語を選択
-3. **永続化**: 選択は `localStorage` に保存され、次回訪問時にも同じ言語が適用
-4. **即時反映**: ページリロード不要 — 全ラベルが瞬時に更新
+| 場面 | 動作 |
+|------|------|
+| 初回アクセス | ブラウザの言語設定（`navigator.language`）から最も近い言語を自動選択 |
+| 手動切り替え | トップバーの言語ドロップダウンをクリックして任意の言語を選択 |
+| 永続化 | 選択は `localStorage` に保存され、次回訪問時にも同じ言語が適用 |
+| 即時反映 | ページリロード不要。全ラベルが瞬時に更新 |
 
 #### スクリーンショット
 
@@ -342,14 +360,14 @@ iPhone (Safari) で実際に操作して確認した手順です。画面は識�
 Upload タブで location（S3 AP）を開き、フォルダーに入ると、行の右端にダウンロードアイコンが出ます。
 狭い画面では列が省略され、この幅では更新日時・サイズ・ダウンロードだけが表示されます。
 
-### 2. Safari のアドレスバーにダウンロードマークが出る
+### 2. Safari のアドレスバーに出るダウンロードマーク
 
 ![アドレスバー左側のダウンロードインジケーター](../screenshots/portal-mobile/02-safari-download-indicator.png)
 
 アドレスバーの左に ⤓ が出れば、ブラウザがファイルとして受け取っています。ここに何も出ない場合は
 Service Worker が登録できていません（下記）。
 
-### 3. ⤓ をタップすると Downloads に入っている
+### 3. ⤓ のタップで見える Downloads 内のファイル
 
 ![Safari の Downloads 一覧](../screenshots/portal-mobile/03-safari-downloads-list.png)
 
@@ -361,7 +379,7 @@ Service Worker が登録できていません（下記）。
 > blob はブラウザにとって「ファイルのダウンロード」ではないので、iOS のダウンロードマネージャーに
 > 何も残りません。`npm run copy-sw` が Worker を配置します（`npm start` / `npm run phone` は自動実行）。
 
-### 管理操作もスマートフォンから届く（ただし表は窮屈）
+### スマートフォンから届く管理操作（ただし表は窮屈）
 
 ![スマートフォンでのボリューム管理画面](../screenshots/portal-mobile/04-admin-volumes-phone.png)
 
@@ -384,7 +402,7 @@ Service Worker が登録できていません（下記）。
 
 ## 環境削除
 
-デモ終了後は以下の順序で削除します:
+デモ終了後は、次の順序で削除します。
 
 ```bash
 # 1. Amplify sandbox (Cognito, AppSync, Lambda, DynamoDB)
@@ -405,19 +423,24 @@ aws fsx detach-and-delete-s3-access-point \
 
 ## よくある質問
 
-**Q: Files タブに "No files" と表示される**
+### Q: Files タブの "No files" 表示
+
 A: `portal-config.ts` の `s3ApAlias` が空。S3 AP alias を設定して `make sandbox` を再実行。
 
-**Q: ダウンロードしたファイルが iPhone / iPad で見つからない**
+### Q: iPhone / iPad で見つからないダウンロードファイル
+
 A: Storage Browser のダウンロードは Service Worker 経由で行われ、これが登録されていないとメモリ上の blob にフォールバックして、ダウンロードマネージャーに何も残りません。`npm run copy-sw` が `public/amplify-storage-download/download-sw.js` を配置します（`npm start` / `npm run phone` は自動実行）。登録後は Safari のダウンロード先（既定では ファイル アプリ → ダウンロード）に保存されます。
 
-**Q: Upload タブが「未設定」と表示される**
+### Q: Upload タブの「未設定」表示
+
 A: `amplify/portal-config.ts` の `s3ApAlias` を設定して `make sandbox` を再実行。alias は `amplify_outputs.json` 経由でブラウザに届き、IAM 権限も同時に設定されます。
 
-**Q: Process タブで赤いバナーが出る**
+### Q: Process タブの赤いバナー
+
 A: Step Functions ARN が未設定。`make sfn-test-create` でテスト用ワークフローを作成し、`portal-config.ts` と `start-processing.js` に ARN を設定。
 
-**Q: FSx for ONTAP がなくても試せる？**
+### Q: FSx for ONTAP なしでの試用
+
 A: はい。`s3ApAlias` に通常の S3 バケット名を設定すれば DemoMode で動作します。ただし NFS/SMB の同時アクセスは確認できません。
 
 ---

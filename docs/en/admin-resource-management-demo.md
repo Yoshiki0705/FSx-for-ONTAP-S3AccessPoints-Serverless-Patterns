@@ -10,7 +10,9 @@
 
 The **Admin > Resources** section provides ONTAP System Manager-equivalent storage administration through the File Portal web UI. All operations execute via ONTAP REST API through VPC-internal Lambda functions.
 
-**Architecture**: Browser → AppSync (Cognito auth) → Lambda (VPC) → ONTAP REST API (management LIF)
+This guide runs in this order: the panel list (reference), 27 demo scenarios (procedures), architecture notes, and the results verified on 2026-07-26 (all 16 panels ✅). To prepare a demo, read the quick start and the scenarios; to decide on a production setup, read the architecture notes.
+
+The request path is Browser → AppSync (Cognito auth) → Lambda (VPC) → ONTAP REST API (management LIF).
 
 ## Prerequisites
 
@@ -60,6 +62,8 @@ aws fsx describe-storage-virtual-machines \
 
 ## Panel Descriptions
 
+Panels fall into three categories: Storage, Access Control and Data Protection. Each row lists the ONTAP REST endpoint the panel calls.
+
 ### Storage Category
 
 | Panel | Description | ONTAP REST Endpoint |
@@ -93,6 +97,8 @@ aws fsx describe-storage-virtual-machines \
 | **FlexCache** | Cache volumes: create (async), list, delete (3-step auto), switch write mode, with origin visualization | `/storage/flexcache/flexcaches` |
 
 ## Demo Scenarios
+
+Each scenario lists the panel to open, the action, and what to confirm on screen. Scenarios 18 onward are additional scenarios for the dashboard, file operations, AI features and notifications.
 
 ### Scenario 1: Volume Lifecycle
 
@@ -158,9 +164,9 @@ aws fsx describe-storage-virtual-machines \
 ### Scenario 8: Lock Panel Inline Management
 
 1. Navigate to **Data Protection > Lock**
-2. **SnapLock tab**: Observe inline volume list (empty if no SnapLock volumes exist)
-3. **S3 Object Lock tab**: Confirm this tab renders without ONTAP connection errors
-4. **Tamperproof tab**: If snapshot locking is enabled, observe inline lock form with:
+2. On the **SnapLock** tab, observe the inline volume list (empty if no SnapLock volumes exist)
+3. Confirm the **S3 Object Lock** tab renders without ONTAP connection errors
+4. On the **Tamperproof** tab, if snapshot locking is enabled, observe the inline lock form with
    - Snapshot selector dropdown (unlocked snapshots)
    - Retention period dropdown (1 day → 5 years)
    - Lock button
@@ -191,11 +197,11 @@ aws fsx describe-storage-virtual-machines \
 
 1. Navigate to **Admin > Resources > Vscan**
 2. Since Vscan is not configured, the 5-step setup guidance displays:
-   - **Step 1**: Vendor selection table (6 vendors with license links)
-   - **Step 2**: NetApp Antivirus Connector download button
-   - **Step 3**: EC2 architecture diagram + AWS Blog/GitHub links
-   - **Step 4**: ONTAP CLI commands (scanner-pool, policy, enable)
-   - **Step 5**: Return to this panel to verify
+   1. Vendor selection table (6 vendors with license links)
+   2. NetApp Antivirus Connector download button
+   3. EC2 architecture diagram + AWS Blog/GitHub links
+   4. ONTAP CLI commands (scanner-pool, policy, enable)
+   5. Return to this panel to verify
 3. Click vendor links → verify they open correct external pages
 4. Click the Antivirus Connector download button → verify it opens mysupport.netapp.com
 5. After configuring Vscan (production), this panel shows on-access policy details
@@ -209,16 +215,16 @@ aws fsx describe-storage-virtual-machines \
    - Source path badge: `📦 svm01:vol_production`
    - Arrow: `→`
    - Destination path badge: `🪞 svm01_dr:vol_production_mirror`
-3. Each relationship shows:
-   - **Health badge**: 正常 (green) / 異常 (red)
-   - **State badge** with color coding:
-     - ✅ 同期中 (snapmirrored) — green
-     - 🔴 ブレーク済み (broken_off) — red
-     - 🔄 転送中 (transferring) — blue
-     - ⏸️ 一時停止 (quiesced/paused) — gray
-     - ⚪ 未初期化 (uninitialized) — white
-   - **Lag time** with RPO warning: if lag contains "hour" or "day", shows `⚠️ RPO` in red bold
-   - **Policy**: e.g., MirrorAllSnapshots, Asynchronous
+3. Each relationship shows a health badge (green when healthy, red when not), a state badge, the lag time, and the policy (e.g., MirrorAllSnapshots, Asynchronous). If the lag contains "hour" or "day", it shows `⚠️ RPO` in red bold. The state badges are color-coded as follows.
+
+   | State badge | ONTAP state | Color |
+   |---|---|---|
+   | ✅ 同期中 | snapmirrored | green |
+   | 🔴 ブレーク済み | broken_off | red |
+   | 🔄 転送中 | transferring | blue |
+   | ⏸️ 一時停止 | quiesced/paused | gray |
+   | ⚪ 未初期化 | uninitialized | white |
+
 4. **Action buttons** (context-sensitive per state):
    - `snapmirrored` state: [🔄 同期] [⏸️ 一時停止] [⚡ ブレーク] [🗑️ 削除]
    - `broken_off` state: [🔁 再同期] [🗑️ 削除]
@@ -239,12 +245,12 @@ aws fsx describe-storage-virtual-machines \
 ### Scenario 13: Local Users — SMB User/Group Management
 
 1. Navigate to **Admin > Resources > Local Users**
-2. **Users tab**:
+2. On the **Users** tab:
    - View list of SMB local users (name, full name, disabled status)
    - Click **+ Create User** → fill name, password (must meet complexity requirements), full name
    - Click Create → user appears in list
    - Click **Delete** → confirm → user removed
-3. **Groups tab**:
+3. On the **Groups** tab:
    - View list of local groups with member count
    - Click a group card → expand to see members
    - Click **+ Add Member** → select user → add
@@ -273,13 +279,17 @@ aws fsx describe-storage-virtual-machines \
    - Explanation of what FlexCache does (caching a remote volume: reads are accelerated, and writes are served in either of two modes)
    - Typical use cases (EDA/CAD, build pipelines, AI inference data)
    - Links to NetApp FlexCache docs and AWS FSx for ONTAP volume management
-3. Click **+ FlexCache 作成** → the creation form opens with:
-   - **キャッシュ名** (required): e.g., `flexcache_eda_tokyo`
-   - **オリジンボリューム名** (required): datalist dropdown of existing volumes
-   - **オリジン SVM** (optional): leave empty for same-SVM caching
-   - **サイズ (GiB)**: default 100, hint says "10% of origin recommended"
-   - **ジャンクションパス**: auto-fills as `/<cache_name>`
-   - **プリポピュレートパス**: comma-separated paths to pre-warm (e.g., `/data/models/, /cache/datasets/`)
+3. Click **+ FlexCache 作成** → the creation form opens with these fields.
+
+   | Field | Required | Input |
+   |---|---|---|
+   | キャッシュ名 | required | e.g., `flexcache_eda_tokyo` |
+   | オリジンボリューム名 | required | datalist dropdown of existing volumes |
+   | オリジン SVM | optional | leave empty for same-SVM caching |
+   | サイズ (GiB) | - | default 100, hint says "10% of origin recommended" |
+   | ジャンクションパス | - | auto-fills as `/<cache_name>` |
+   | プリポピュレートパス | - | comma-separated paths to pre-warm (e.g., `/data/models/, /cache/datasets/`) |
+
 4. Fill the form → click **作成**:
    - Button shows spinner + "作成中..." during async request
    - Success toast: "FlexCache を作成しました（バックグラウンドで構築中）"
@@ -294,16 +304,16 @@ aws fsx describe-storage-virtual-machines \
    - Deletion executes 3-step automation: unmount → offline → delete
    - Success toast confirms removal
 
-> **Note**: FlexCache shares the parent volume's throughput budget. Recommended cache size is 10-20% of origin. Use for read-heavy workloads (EDA/CAD, build pipelines, AI inference) — not as a write target.
+> **Note**: FlexCache shares the parent volume's throughput budget. Recommended cache size is 10-20% of origin (unverified). Use for read-heavy workloads (EDA/CAD, build pipelines, AI inference) — not as a write target.
 
 > **Multi-FS indicator**: The panel header shows which FSx for ONTAP management IP the operations target, useful when multiple file systems are accessible.
 
 ### Scenario 16: FPolicy — File Access Audit Configuration
 
 1. Navigate to **Admin > Resources > FPolicy**
-2. **Policies tab**: View policies with enabled/disabled state, priority, engine, events
-3. **Events tab**: View configured events (protocol, monitored operations: open/close/read/write/delete/rename)
-4. **Status tab**: View external engine connection state (connected/disconnected)
+2. On the **Policies** tab, view policies with enabled/disabled state, priority, engine, events
+3. On the **Events** tab, view configured events (protocol, monitored operations: open/close/read/write/delete/rename)
+4. On the **Status** tab, view external engine connection state (connected/disconnected)
 5. Verify the 3-tab structure renders without errors in DemoMode (empty lists displayed)
 
 ### Scenario 17: Athena SQL — NAS Data Analytics
@@ -318,16 +328,135 @@ aws fsx describe-storage-virtual-machines \
 
 > **Prerequisites for Athena**: A Glue Crawler must have been configured to catalog files from the S3 AP. Without a Glue table, the catalog browser is empty and says so. The portal's Athena panel is a query interface — it does not create Glue Crawlers or tables.
 
-**What this panel enables**: Rather than opening the AWS Athena console separately, storage administrators and data engineers can run SQL queries directly from the portal. Typical use cases:
+With this panel, storage administrators and data engineers can run SQL queries directly from the portal rather than opening the AWS Athena console separately. Three typical use cases:
 - "Which files are larger than 1 GB?" (capacity planning)
 - "What was modified in the last 7 days?" (change tracking)
 - "How much data is in the engineering/ folder?" (project sizing)
 
+### Scenario 18: Storage Health Dashboard
+
+1. Navigate to **Admin > Resources**
+2. Observe the 4 summary cards at the top of the overview.
+
+   | Card | Shows |
+   |---|---|
+   | 💾 Volumes | count + average capacity % |
+   | 🛡️ ARP Protected | count + threat indicator |
+   | 🔐 Locked Snapshots | tamperproof count |
+   | 📊 Storage Efficiency | ratio + savings % |
+
+3. Click any card to navigate directly to that panel
+4. If capacity > 85%, the card shows a yellow warning indicator
+
+### Scenario 19: Welcome Onboarding (First-Time User)
+
+1. Clear localStorage: `localStorage.removeItem('portal-welcome-dismissed')`
+2. Reload the page — a welcome modal appears with 3 steps
+3. Step 1: Browse files (S3 AP access explanation)
+4. Step 2: AI Processing (Bedrock/Rekognition/Textract)
+5. Step 3: Data Protection (Snapshots/SnapLock/ARP)
+6. Click "Get Started" — modal dismisses
+7. Check "Don't show again" → modal won't appear on next visit
+
+### Scenario 20: Incident Lifecycle (ARP Containment)
+
+1. Navigate to **Data Protection > ARP/AI**
+2. In the **Incident Response** section, observe the state badge.
+
+   | State badge | Shown |
+   |---|---|
+   | 🔴 検知済み | when threat is detected |
+   | 🟠 封じ込め完了 | after containment action |
+   | 🟡 調査中 | during investigation |
+   | 🟢 解決済み | resolved |
+
+3. Execute **脅威封じ込め** → badge transitions to 「封じ込め完了」
+4. Click **→ 調査開始** → badge transitions to 「調査中」
+5. Click **→ 解決** → badge transitions to 「解決済み」
+
+### Scenario 21: EMS Events (ONTAP Alerts)
+
+1. Navigate to **Admin > Resources > Cluster**
+2. Switch to the **Events** tab
+3. Observe recent EMS events: timestamp, severity (alert / error / emergency), message, node name
+4. Use for operational awareness: disk failures, aggregate warnings, HA takeover events
+
+> On FSx for ONTAP, `/cluster/nodes` and `/cluster/licensing/licenses` can legitimately return zero records, because AWS manages the cluster layer. An empty list on those tabs is not an error.
+
+### Scenario 22: File Lifecycle (Rename, Trash, Restore)
+
+1. Navigate to **Browse > All Files**
+2. Click **✏️** on a file row → edit the name → **Save**
+   - A name containing `/` is refused: this renames the file, it does not move it
+3. Click **🗑️** on the row → confirm → the file moves under the `.trash/` prefix
+   - On the S3 Access Point this copies the object and then deletes the original, so it takes a while for large files
+4. Click **🗑️ Trash** in the header → the contents of `.trash/` are listed
+5. Click **♻️** → the file returns to its original location
+6. Click **🗑️ Leave trash** to return to normal browsing
+
+### Scenario 23: Upload Link (Receiving a File from Outside the Portal)
+
+1. Open the folder the file should land in
+2. Click **📤 Upload link**
+3. Enter a file name (generated if left empty) and choose an expiry of 1 hour or 24 hours
+4. Click **Create link** → the destination key and the URL are shown
+5. Copy the URL and hand it to the sender
+
+> **Security note**: The URL is the credential. Until it expires, anyone holding it can write to that key. This is why the UI states the destination key and the expiry next to it.
+
+### Scenario 24: Running a Stored Agent or Team
+
+1. Navigate to **AI & Processing > Agent Directory**
+2. Click an agent card → review its tools and system prompt
+3. Click **💬 Use in chat** → AI Chat opens running that stored definition
+   - The running agent's name is shown as a badge and the mode pills are hidden
+4. If you are the creator, **✏️ Edit** appears → change name / description / system prompt / sharing → save
+   - Agents shared by other people show neither Edit nor Delete
+5. Choosing a team from **Multi-Agent Teams** runs its members and roles as a single supervisor turn
+   - An unreachable member does not stop the run; it is named in the response as `unavailableMembers`
+
+### Scenario 25: Document Text Extraction and Analysis
+
+1. Select a file in **Browse > All Files** (the AI panel opens on the right)
+2. Click **🔎 Analyze document**
+3. Click **Extract text** → review the Amazon Textract result (page count, block count, body text)
+   - For documents with no text layer, such as scanned PDFs, running this first is what lets the chat read them
+4. Choose an analysis type (entities / sentiment / PII detection / key phrases) and click **Run analysis**
+5. Both are refused for files in a regulated folder (`phi/`, `dicom/`, `pii/`, ...)
+   - These operations send the bytes to a managed service, which is what the guard is about
+
+### Scenario 26: Aborting a SnapMirror Transfer
+
+1. Navigate to **Admin > Resources > SnapMirror**
+2. Expand **▶ 転送履歴** on a relationship with a transfer in progress
+3. Rows whose state is transferring / queued / preparing / finalizing offer **⏹ Abort transfer**
+4. Click it → confirm (the prompt states that the delta is re-sent on the next update) → the transfer aborts
+5. Observe that row's state update
+
+### Scenario 27: Folder Watch and Event Notifications
+
+Prerequisite: enable **Folder Watch** under **Admin > Resources > AI settings** (off by default). Enabling it is the admin stating that FPolicy or Transfer Family is publishing to EventBridge.
+
+1. Open **Browse > Folder Watch** (🔔) in the sidebar
+   - With the toggle off, the item does not appear in the sidebar at all
+2. Enter the path to watch in **Folder (prefix)**, for example `engineering/cad/`
+3. Choose the events (create / modify / delete) and click **Add watch**
+   - A trailing slash is appended for you, so a prefix match cannot pull in a sibling folder
+4. The watch appears in the table. **Remove** deletes it
+5. **Received events** lists events under your registered prefixes, newest first
+6. With no events, the three conditions that have to hold are listed (FPolicy enabled, publishing to EventBridge, prefix matching)
+
+> **Security note**: the inbox is filtered first by the Cognito group path boundary (`GROUP_PATH_PREFIXES`), then narrowed by your own watches. A watch is your own record so you may register `/`, but that cannot reveal anything outside the group boundary. `storage-admin` bypasses the boundary. In a single-tenant deployment (no `GROUP_PATH_PREFIXES`) every event is visible, the same boundary as the file listing.
+
+> **Architecture**: FPolicy server (or Transfer Family) -> EventBridge -> notification bridge Lambda -> the `FileNotification` table -> the portal. The portal reads what arrived; it is not what makes ONTAP emit anything. For configuring FPolicy itself see the [event-driven/fpolicy pattern](../../solutions/event-driven/fpolicy/).
+
 ## Architecture Notes
+
+How the template size is kept down, where each Lambda runs relative to the VPC, and where the VPC/ONTAP settings live.
 
 ### CloudFormation Template Size Optimization
 
-The portal uses a **generic dispatch pattern** to keep the CloudFormation template under 1MB:
+The portal uses a generic dispatch pattern to keep the CloudFormation template under 1MB:
 
 ```
 57 individual GraphQL operations → 8 generic dispatch endpoints
@@ -375,7 +504,7 @@ Set this to the route tables associated with your Lambda subnets. It creates a D
 
 A Lambda ENI has no public IP, so a subnet whose default route is an internet gateway gives the function no egress at all. Interface endpoints cover Secrets Manager; DynamoDB has no path unless one is added. Gateway endpoints carry no hourly or data processing charge.
 
-**What happens if you leave it unset**: containment still works, but nothing expires. Blocks are placed on the cluster and the scheduled sweep never sees them, because the ledger write fails. The response reports `expiryTracked: false` rather than pretending the block will lift itself, so the condition is visible — but only to someone reading the response.
+If you leave it unset, containment still works, but nothing expires. Blocks are placed on the cluster and the scheduled sweep never sees them, because the ledger write fails. The response reports `expiryTracked: false` rather than pretending the block will lift itself, so the condition is visible — but only to someone reading the response.
 
 Find the route tables for your subnets with:
 
@@ -460,117 +589,6 @@ aws ec2 describe-route-tables \
 | "Volume not found" | Wrong SVM name | Verify `ONTAP_SVM_NAME` matches `aws fsx describe-storage-virtual-machines` |
 | Template > 1MB | Too many resolvers | Already solved via generic dispatch pattern |
 | No files in File Explorer | S3 AP alias incorrect | Verify alias in `portal-config.ts` matches `aws fsx describe-storage-virtual-machines --query ...S3AccessPoints` |
-
-## Additional Scenarios
-
-### Scenario 18: Storage Health Dashboard
-
-1. Navigate to **Admin > Resources**
-2. Observe the **4 summary cards** at the top of the overview:
-   - 💾 Volumes (count + average capacity %)
-   - 🛡️ ARP Protected (count + threat indicator)
-   - 🔐 Locked Snapshots (tamperproof count)
-   - 📊 Storage Efficiency (ratio + savings %)
-3. Click any card to navigate directly to that panel
-4. If capacity > 85%, the card shows a yellow warning indicator
-
-### Scenario 19: Welcome Onboarding (First-Time User)
-
-1. Clear localStorage: `localStorage.removeItem('portal-welcome-dismissed')`
-2. Reload the page — a welcome modal appears with 3 steps
-3. Step 1: Browse files (S3 AP access explanation)
-4. Step 2: AI Processing (Bedrock/Rekognition/Textract)
-5. Step 3: Data Protection (Snapshots/SnapLock/ARP)
-6. Click "Get Started" — modal dismisses
-7. Check "Don't show again" → modal won't appear on next visit
-
-### Scenario 20: Incident Lifecycle (ARP Containment)
-
-1. Navigate to **Data Protection > ARP/AI**
-2. In the **Incident Response** section, observe the state badge:
-   - 🔴 検知済み (when threat is detected)
-   - 🟠 封じ込め完了 (after containment action)
-   - 🟡 調査中 (during investigation)
-   - 🟢 解決済み (resolved)
-3. Execute **脅威封じ込め** → badge transitions to 「封じ込め完了」
-4. Click **→ 調査開始** → badge transitions to 「調査中」
-5. Click **→ 解決** → badge transitions to 「解決済み」
-
-### Scenario 21: EMS Events (ONTAP Alerts)
-
-1. Navigate to **Admin > Resources > Cluster**
-2. Switch to the **Events** tab
-3. Observe recent EMS events: timestamp, severity (alert / error / emergency), message, node name
-4. Use for operational awareness: disk failures, aggregate warnings, HA takeover events
-
-> On FSx for ONTAP, `/cluster/nodes` and `/cluster/licensing/licenses` can legitimately return zero records, because AWS manages the cluster layer. An empty list on those tabs is not an error.
-
-### Scenario 22: File Lifecycle (Rename, Trash, Restore)
-
-1. Navigate to **Browse > All Files**
-2. Click **✏️** on a file row → edit the name → **Save**
-   - A name containing `/` is refused: this renames the file, it does not move it
-3. Click **🗑️** on the row → confirm → the file moves under the `.trash/` prefix
-   - On the S3 Access Point this copies the object and then deletes the original, so it takes a while for large files
-4. Click **🗑️ Trash** in the header → the contents of `.trash/` are listed
-5. Click **♻️** → the file returns to its original location
-6. Click **🗑️ Leave trash** to return to normal browsing
-
-### Scenario 23: Upload Link (Receiving a File from Outside the Portal)
-
-1. Open the folder the file should land in
-2. Click **📤 Upload link**
-3. Enter a file name (generated if left empty) and choose an expiry of 1 hour or 24 hours
-4. Click **Create link** → the destination key and the URL are shown
-5. Copy the URL and hand it to the sender
-
-> **Security note**: The URL is the credential. Until it expires, anyone holding it can write to that key. This is why the UI states the destination key and the expiry next to it.
-
-### Scenario 24: Running a Stored Agent or Team
-
-1. Navigate to **AI & Processing > Agent Directory**
-2. Click an agent card → review its tools and system prompt
-3. Click **💬 Use in chat** → AI Chat opens running that stored definition
-   - The running agent's name is shown as a badge and the mode pills are hidden
-4. If you are the creator, **✏️ Edit** appears → change name / description / system prompt / sharing → save
-   - Agents shared by other people show neither Edit nor Delete
-5. Choosing a team from **Multi-Agent Teams** runs its members and roles as a single supervisor turn
-   - An unreachable member does not stop the run; it is named in the response as `unavailableMembers`
-
-### Scenario 25: Document Text Extraction and Analysis
-
-1. Select a file in **Browse > All Files** (the AI panel opens on the right)
-2. Click **🔎 Analyze document**
-3. Click **Extract text** → review the Amazon Textract result (page count, block count, body text)
-   - For documents with no text layer, such as scanned PDFs, running this first is what lets the chat read them
-4. Choose an analysis type (entities / sentiment / PII detection / key phrases) and click **Run analysis**
-5. Both are refused for files in a regulated folder (`phi/`, `dicom/`, `pii/`, ...)
-   - These operations send the bytes to a managed service, which is what the guard is about
-
-### Scenario 26: Aborting a SnapMirror Transfer
-
-1. Navigate to **Admin > Resources > SnapMirror**
-2. Expand **▶ 転送履歴** on a relationship with a transfer in progress
-3. Rows whose state is transferring / queued / preparing / finalizing offer **⏹ Abort transfer**
-4. Click it → confirm (the prompt states that the delta is re-sent on the next update) → the transfer aborts
-5. Observe that row's state update
-
-### Scenario 27: Folder Watch and Event Notifications
-
-Prerequisite: enable **Folder Watch** under **Admin > Resources > AI settings** (off by default). Enabling it is the admin stating that FPolicy or Transfer Family is publishing to EventBridge.
-
-1. Open **Browse > Folder Watch** (🔔) in the sidebar
-   - With the toggle off, the item does not appear in the sidebar at all
-2. Enter the path to watch in **Folder (prefix)**, for example `engineering/cad/`
-3. Choose the events (create / modify / delete) and click **Add watch**
-   - A trailing slash is appended for you, so a prefix match cannot pull in a sibling folder
-4. The watch appears in the table. **Remove** deletes it
-5. **Received events** lists events under your registered prefixes, newest first
-6. With no events, the three conditions that have to hold are listed (FPolicy enabled, publishing to EventBridge, prefix matching)
-
-> **Security note**: the inbox is filtered first by the Cognito group path boundary (`GROUP_PATH_PREFIXES`), then narrowed by your own watches. A watch is your own record so you may register `/`, but that cannot reveal anything outside the group boundary. `storage-admin` bypasses the boundary. In a single-tenant deployment (no `GROUP_PATH_PREFIXES`) every event is visible, the same boundary as the file listing.
-
-> **Architecture**: FPolicy server (or Transfer Family) -> EventBridge -> notification bridge Lambda -> the `FileNotification` table -> the portal. The portal reads what arrived; it is not what makes ONTAP emit anything. For configuring FPolicy itself see the [event-driven/fpolicy pattern](../../solutions/event-driven/fpolicy/).
 
 ## Related Documents
 

@@ -61,6 +61,8 @@ today (metadata JSONs, Bedrock reports — all well under 1 MB). But:
 
 ## 3. API Design
 
+New `OutputWriter` methods, their behavior per destination, whether `put_bytes` auto-promotes (it does not), and how multipart is delegated for FSx for ONTAP S3 Access Points.
+
 ### 3.1 New methods on `OutputWriter`
 
 ```python
@@ -164,7 +166,7 @@ data in an iterator form (rare, but possible) doesn't pay multipart overhead.
 
 ### 3.3 Does `put_bytes` need to auto-promote?
 
-**Decision: No, keep `put_bytes` as a thin wrapper over `put_object`.**
+Decision: no. Keep `put_bytes` as a thin wrapper over `put_object`.
 
 Rationale:
 - `put_bytes` signature takes `body: bytes` — caller already has the full
@@ -242,6 +244,8 @@ than `part_size × 2`, the buffering path in `put_stream` catches it and
 uses single-part `put_object`.
 
 ## 4. Implementation Plan
+
+The files that change, a sketch of `put_stream`, and the delegation path for FSx for ONTAP S3 Access Points.
 
 ### 4.1 File changes
 
@@ -356,6 +360,8 @@ transformation. **Option A works.**
 
 ## 5. Testing Strategy
 
+Three levels: unit tests with moto / MagicMock, integration tests, and live verification during the first use-case adoption.
+
 ### 5.1 Unit tests (moto / MagicMock)
 
 - **moto**: Covers `put_object` + `create_multipart_upload` /
@@ -422,6 +428,8 @@ sampled / synthetic data). But Phase 8 UC4 + potential Pattern B+C
 hybrid work (UC7/UC8) may adopt it.
 
 ## 8. Risks and Mitigations
+
+Five risks, each with its mitigation.
 
 ### 8.1 Risk: Multipart upload state leaks (orphaned uploads)
 
@@ -523,6 +531,8 @@ hybrid work (UC7/UC8) may adopt it.
 
 ## 12. Open Questions
 
+Four questions still open for this draft.
+
 ### Q12.1 — Priority of B-P8-3 vs B-P8-2?
 
 B-P8-2 (Pattern C hybrid) delivers customer value (FSXN_S3AP for 4
@@ -542,7 +552,7 @@ opportunistically before UC4 (media-vfx) migration as a prerequisite.
 
 Candidate names considered:
 
-- `put_stream` ✅ (chosen — clearest intent)
+- `put_stream` (chosen: clearest intent)
 - `put_chunked` (implementation-leaky)
 - `upload` (too broad, conflicts with AWS CLI `s3 cp` terminology)
 - `put_large` (misleading — handles small iterators too)

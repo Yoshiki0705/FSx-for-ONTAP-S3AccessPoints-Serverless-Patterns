@@ -86,10 +86,10 @@ python3 scripts/portal-probes/diagnose_vpc_egress.py --function ArpResponseFun
 
 `npx ampx sandbox` は `--identifier` を省略すると **OS のユーザー名から identifier を決める**。
 これは `amplify_outputs.json` が指している sandbox とは無関係なので、`demo` に対して作業する
-つもりの素の `npm start` が `yoshiki` sandbox の**新規作成**になる。identifier はディスク上の
+つもりの素の `npm start` が `<OS ユーザー名>` sandbox の**新規作成**になる。identifier はディスク上の
 どこにも記録されておらず、CLI の出力に出るまで分からない。
 
-**実測 2026-09-03**: `npm start` が `yoshiki` sandbox を作りに行き、auth スタックの Cognito
+**実測 2026-09-03**: `npm start` が `<OS ユーザー名>` sandbox を作りに行き、auth スタックの Cognito
 User Pool と data スタックの Lambda 約 25 個を作った後、上の route 衝突で
 `DynamoDbGatewayEndpoint` が `CREATE_FAILED` になった。
 

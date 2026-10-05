@@ -96,7 +96,7 @@ graph TD
 - ✅ `shared/ad_health_check.py` モジュール実装完了（14 テスト pass）
 - ✅ `scripts/demo-ad-join-svm.sh` に post-join 検証追加
 - ✅ `infrastructure/demo-ad-environment.yaml` に検証ガイダンス出力追加
-- ✅ `docs/en/` + `docs/ja/` ドキュメント作成（8ペルソナレビュー済み）
+- ✅ `docs/en/` + `docs/ja/` ドキュメント作成
 - ✅ discovery ハンドラ先頭に `preflight_ad_dc_reachability()` を統合 — 10 パターン
 
   対象の選び方を「WINDOWS identity type を使うパターン」から変えています。identity

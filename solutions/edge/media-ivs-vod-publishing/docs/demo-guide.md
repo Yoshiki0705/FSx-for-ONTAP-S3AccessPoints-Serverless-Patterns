@@ -141,10 +141,12 @@ sam deploy --template .aws-sam/build/template.yaml --stack-name <stack> \
     TriggerMode=EVENT_DRIVEN NotificationEmail=<email>"
 ```
 
-- **注意**: `S3AccessPointOutputAlias` は `^[a-z0-9-]+-ext-s3alias$` を要求（S3 AP alias 必須）。
+デプロイ時の注意点は 2 つある。
+
+- `S3AccessPointOutputAlias` は `^[a-z0-9-]+-ext-s3alias$` を要求（S3 AP alias 必須）。
   DemoMode でも publish は manifest を出力先へ書くため、**書き込み可能な実 FSx for ONTAP S3 AP**を
   出力に指定する（本検証では出力 manifest が FSx for ONTAP に着地）。
-- **注意**: `aws events put-events` の `Source=aws.ivs` は予約済みで拒否される
+- `aws events put-events` の `Source=aws.ivs` は予約済みで拒否される
   （`NotAuthorizedForSourceException`）。実経路の起動には**実 IVS 配信**が必要（イベントを偽装できない）。
 
 検証結果（実 IVS 配信 → 実 Recording End → デプロイ済み EventBridge ルール → Step Functions → Lambda）:
@@ -183,7 +185,7 @@ sam deploy --template .aws-sam/build/template.yaml --stack-name <stack> \
 
 ### C. 実施結果（実 AWS で検証済み）
 
-既存 FSx for ONTAP ファイルシステム上に**専用ボリューム + 専用 S3 アクセスポイント（internet-origin）**を
+既存 FSx for ONTAP ファイルシステム上に専用ボリューム + 専用 S3 アクセスポイント（internet-origin）を
 作成し、ffmpeg で生成した短尺 HLS を S3 API 経由でアップロード、CloudFront（OAC）から配信して再生を確認。
 
 検証コマンドと結果（値はマスキング）:

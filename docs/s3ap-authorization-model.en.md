@@ -18,8 +18,11 @@ Amazon FSx for NetApp ONTAP S3 Access Points use a **dual-layer authorization mo
 | **Layer 2: File-system-side permissions** | The file permissions held by the single identity pinned to the access point (UNIX / Windows user) | **mode bits / ACLs** |
 
 > **Evidence**: every measured value in this document comes from `ap-northeast-1` / ONTAP `9.18.1P3D1`, with a same-session control for each finding.
-> - **2026-08-17 / 08-18**: Layer 1 evaluation order, condition keys, `NotPrincipal`, policy size, the Layer 2 paired measurement, and the audit subject. Procedure and full results in [S3 Access Point permission design — evaluation order and the two layers that narrow access](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/blob/main/docs/en/domains/security-governance/notes/access-point-authorization-layers.md).
-> - **2026-08-18 / 08-19 (measured in this repository)**: Layer 1 evaluation on an NTFS volume, the 20 actions an access point policy accepts or rejects, the cause of the SLAG denial, the audit subject on an AD-joined SVM, and applying an IAM principal to a UNIX-identity access point.
+>
+> | Measured on | Scope |
+> |---|---|
+> | 2026-08-17 / 08-18 | Layer 1 evaluation order, condition keys, `NotPrincipal`, policy size, the Layer 2 paired measurement, and the audit subject. Procedure and full results in [S3 Access Point permission design — evaluation order and the two layers that narrow access](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/blob/main/docs/en/domains/security-governance/notes/access-point-authorization-layers.md) |
+> | 2026-08-18 / 08-19 (measured in this repository) | Layer 1 evaluation on an NTFS volume, the 20 actions an access point policy accepts or rejects, the cause of the SLAG denial, the audit subject on an AD-joined SVM, and applying an IAM principal to a UNIX-identity access point |
 
 ## Authorization Flow
 
@@ -59,6 +62,8 @@ Amazon FSx for NetApp ONTAP S3 Access Points use a **dual-layer authorization mo
 ```
 
 ## Layer 1: AWS-side Authorization
+
+At Layer 1, IAM evaluates the calling principal and the `s3:` action, and an explicit `Deny` is what narrows access. This section covers, in order, the policies evaluated, narrowing with an explicit deny, measured condition keys and policy size, the actions an access point policy cannot use, the ARN format, and cross-account use.
 
 ### Evaluated Policies
 
@@ -164,7 +169,7 @@ Two things follow. **The account ARN (`arn:aws:iam::<account>:root`) must be lis
 
 ### Actions that cannot be used in an access point policy
 
-**Twenty actions were applied one at a time to determine this.**
+Twenty actions were applied one at a time to determine this.
 
 | Verdict | Actions |
 |---|---|
@@ -215,6 +220,8 @@ S3 Access Points for FSx for ONTAP use a different ARN format from regular S3 bu
 **Confusing these drops a design option.** Teams tend to reach for a copy in order to share data with another account, but allowing the other account in the access point policy removes the need for one. Inverted, **an unintended share also takes only one access point policy.** To keep data inside the organization, a `Deny` on `aws:PrincipalOrgID` is the stop that was confirmed by measurement. Design patterns are in [Cross-account S3 AP](multi-account/cross-account-s3ap.md).
 
 ## Layer 2: File-system-side Authorization
+
+At Layer 2, the file permissions of the identity pinned to the access point (UNIX / Windows user) are evaluated, and mode bits / ACLs are what narrow access.
 
 ### Role of the File System ID
 

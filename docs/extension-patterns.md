@@ -6,9 +6,8 @@
 
 ## 1. Bedrock Knowledge Bases 統合 — RAG アプリケーション構築
 
-### 概要
-
 Amazon Bedrock Knowledge Bases を使用して、FSx for ONTAP 上のエンタープライズドキュメントから RAG（Retrieval-Augmented Generation）アプリケーションを構築するパターンです。S3 Access Points をデータソースとして Bedrock Knowledge Bases に接続し、自然言語による文書検索と回答生成を実現します。
+2026-05-02 に ap-northeast-1 で検証しました（この節の末尾の「検証結果」）。
 
 ### アーキテクチャ
 
@@ -43,10 +42,10 @@ graph LR
 
 ### 実装ガイダンス
 
-1. **S3 AP の準備**: ドキュメントが格納された FSx for ONTAP ボリュームに internet network origin の S3 AP を作成
-2. **Knowledge Base の作成**: Bedrock コンソールまたは API で Knowledge Base を作成し、S3 AP をデータソースとして設定
-3. **データ同期**: Knowledge Base のデータ同期を実行し、ドキュメントをインデックス化
-4. **アプリケーション統合**: `RetrieveAndGenerate` API を使用して RAG クエリを実行
+1. S3 AP の準備。ドキュメントが格納された FSx for ONTAP ボリュームに internet network origin の S3 AP を作成
+2. Knowledge Base の作成。Bedrock コンソールまたは API で Knowledge Base を作成し、S3 AP をデータソースとして設定
+3. データ同期。Knowledge Base のデータ同期を実行し、ドキュメントをインデックス化
+4. アプリケーション統合。`RetrieveAndGenerate` API を使用して RAG クエリを実行
 
 ### 注意事項
 
@@ -64,17 +63,19 @@ graph LR
 
 本プロジェクト（fsxn-s3ap-serverless-patterns）の共通モジュール（OntapClient、FsxHelper）は、**FSx-for-ONTAP-Agentic-Access-Aware-RAG** プロジェクトの検証済みパターンを継承・進化させたものです。
 
-元プロジェクトは、FSx for ONTAP + Amazon Bedrock を組み合わせた **権限ベース RAG（Permission-aware RAG）** システムで、以下の特徴を持ちます:
+元プロジェクトは、FSx for ONTAP + Amazon Bedrock を組み合わせた **権限ベース RAG（Permission-aware RAG）** システムで、次の特徴を持ちます。
 
-- **NTFS ACL / Active Directory SID に基づくアクセス制御**: ユーザーごとにアクセス可能なドキュメントのみを検索対象とする
-- **Bedrock Agents によるエージェント型 RAG**: 多段階推論、自動文書検索、コンテキスト最適化
-- **Bedrock Knowledge Bases によるマネージド RAG**: S3 AP をデータソースとしたドキュメントインデックス
-- **ベクトル DB 選択肢**: Aurora Serverless v2 (pgvector)、OpenSearch Serverless、S3 Vectors
-- **Next.js フロントエンド**: CloudFront + Lambda Function URL でデプロイ、8 言語対応
+| 特徴 | 内容 |
+|------|------|
+| NTFS ACL / Active Directory SID に基づくアクセス制御 | ユーザーごとにアクセス可能なドキュメントのみを検索対象とする |
+| Bedrock Agents によるエージェント型 RAG | 多段階推論、自動文書検索、コンテキスト最適化 |
+| Bedrock Knowledge Bases によるマネージド RAG | S3 AP をデータソースとしたドキュメントインデックス |
+| ベクトル DB 選択肢 | Aurora Serverless v2 (pgvector)、OpenSearch Serverless、S3 Vectors |
+| Next.js フロントエンド | CloudFront + Lambda Function URL でデプロイ、8 言語対応 |
 
 本プロジェクトの Bedrock Knowledge Bases 統合パターンを実装する際は、元プロジェクトの権限ベースアクセス制御の設計を参考にすることで、セキュアな RAG アプリケーションを構築できます。特に、DynamoDB ユーザーアクセステーブルによる AD SID マッピングと、検索時のフィルタリングロジックは、エンタープライズ環境での RAG 実装に不可欠な要素です。
 
-### ✅ 検証結果（2026-05-02）
+### 検証結果（2026-05-02）
 
 ap-northeast-1 環境で以下を検証済み:
 
@@ -88,9 +89,8 @@ ap-northeast-1 環境で以下を検証済み:
 
 ## 2. Transfer Family SFTP 統合 — 外部パートナーファイル交換
 
-### 概要
-
 AWS Transfer Family を使用して、外部パートナーとの SFTP ベースのファイル交換を FSx for ONTAP S3 Access Points 経由で実現するパターンです。パートナーが SFTP でアップロードしたファイルを、本プロジェクトのサーバーレスワークフローで自動処理できます。
+2026-05-02 に ap-northeast-1 で検証しました（この節の末尾の「検証結果」）。
 
 ### アーキテクチャ
 
@@ -128,16 +128,18 @@ graph LR
 
 ### 実装ガイダンス
 
-1. **Transfer Family サーバーの作成**: SFTP プロトコルで Transfer Family サーバーを作成
-2. **S3 AP の接続**: Transfer Family のストレージバックエンドとして S3 AP を設定
-3. **ユーザー管理**: Transfer Family のユーザーを作成し、S3 AP 上のディレクトリにマッピング
-4. **ワークフロー連携**: パートナーがアップロードしたファイルを EventBridge Scheduler + Step Functions で定期的に検出・処理
+1. Transfer Family サーバーの作成。SFTP プロトコルで Transfer Family サーバーを作成
+2. S3 AP の接続。Transfer Family のストレージバックエンドとして S3 AP を設定
+3. ユーザー管理。Transfer Family のユーザーを作成し、S3 AP 上のディレクトリにマッピング
+4. ワークフロー連携。パートナーがアップロードしたファイルを EventBridge Scheduler + Step Functions で定期的に検出・処理
 
 ### ユースケース例
 
-- **UC2 連携**: パートナーが SFTP で契約書をアップロード → IDP パイプラインで自動処理
-- **UC3 連携**: 工場からセンサーログを SFTP で送信 → 異常検出パイプラインで自動分析
-- **UC5 連携**: 医療機関から DICOM ファイルを SFTP で送信 → 匿名化パイプラインで自動処理
+| 連携 | 流れ |
+|------|------|
+| UC2 連携 | パートナーが SFTP で契約書をアップロード → IDP パイプラインで自動処理 |
+| UC3 連携 | 工場からセンサーログを SFTP で送信 → 異常検出パイプラインで自動分析 |
+| UC5 連携 | 医療機関から DICOM ファイルを SFTP で送信 → 匿名化パイプラインで自動処理 |
 
 ### 注意事項
 
@@ -148,8 +150,10 @@ graph LR
 ### 参考リンク
 
 - [AWS 公式チュートリアル: Transfer Family で SFTP](https://docs.aws.amazon.com/transfer/latest/userguide/fsx-s3-access-points.html)
+- [Transfer Family SFTP ブログ](https://aws.amazon.com/blogs/storage/secure-sftp-file-sharing-with-aws-transfer-family-amazon-fsx-for-netapp-ontap-and-s3-access-points/)
+- [Transfer Family 開発者ガイド](https://docs.aws.amazon.com/transfer/latest/userguide/what-is-aws-transfer-family.html)
 
-### ✅ 検証結果（2026-05-02）
+### 検証結果（2026-05-02）
 
 ap-northeast-1 環境で以下を検証済み:
 
@@ -160,16 +164,13 @@ ap-northeast-1 環境で以下を検証済み:
 - ファイルダウンロード（get）: S3 AP 経由で FSx for ONTAP から読み取り
 
 > **コスト注意**: SFTP サーバーは $0.30/時間。検証後に停止済み。
-- [Transfer Family SFTP ブログ](https://aws.amazon.com/blogs/storage/secure-sftp-file-sharing-with-aws-transfer-family-amazon-fsx-for-netapp-ontap-and-s3-access-points/)
-- [Transfer Family 開発者ガイド](https://docs.aws.amazon.com/transfer/latest/userguide/what-is-aws-transfer-family.html)
 
 ---
 
 ## 3. EMR Serverless Spark ジョブ — 大規模データ処理
 
-### 概要
-
 Amazon EMR Serverless を使用して、FSx for ONTAP S3 Access Points 上の大規模データセットを Apache Spark で処理するパターンです。本プロジェクトの Lambda ベースの処理では対応が難しい TB 規模のデータ処理に適しています。
+2026-05-02 に ap-northeast-1 で検証しました（この節の末尾の「検証結果」）。
 
 ### アーキテクチャ
 
@@ -199,16 +200,18 @@ graph LR
 
 ### 実装ガイダンス
 
-1. **EMR Serverless アプリケーションの作成**: Spark タイプの EMR Serverless アプリケーションを作成
-2. **Spark ジョブの作成**: S3 AP パスを入出力として指定する PySpark スクリプトを作成
-3. **ジョブ実行**: EMR Serverless API でジョブを送信
-4. **Step Functions 連携**: 既存のワークフローに EMR Serverless ジョブステップを追加
+1. EMR Serverless アプリケーションの作成。Spark タイプの EMR Serverless アプリケーションを作成
+2. Spark ジョブの作成。S3 AP パスを入出力として指定する PySpark スクリプトを作成
+3. ジョブ実行。EMR Serverless API でジョブを送信
+4. Step Functions 連携。既存のワークフローに EMR Serverless ジョブステップを追加
 
 ### ユースケース例
 
-- **UC3 拡張**: TB 規模のセンサーログを Spark で集計・異常検出
-- **UC1 拡張**: 大量の ACL データを Spark で横断分析
-- **クロス UC**: 複数ユースケースの出力データを統合分析
+| 拡張 | 内容 |
+|------|------|
+| UC3 拡張 | TB 規模のセンサーログを Spark で集計・異常検出 |
+| UC1 拡張 | 大量の ACL データを Spark で横断分析 |
+| クロス UC | 複数ユースケースの出力データを統合分析 |
 
 ### Lambda / Glue / EMR Serverless の比較
 
@@ -233,7 +236,7 @@ graph LR
 - [EMR Serverless 開発者ガイド](https://docs.aws.amazon.com/emr/latest/EMR-Serverless-UserGuide/emr-serverless.html)
 - [PySpark + S3 Access Points](https://spark.apache.org/docs/latest/cloud-integration.html)
 
-### ✅ 検証結果（2026-05-02）
+### 検証結果（2026-05-02）
 
 ap-northeast-1 環境で以下を検証済み:
 

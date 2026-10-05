@@ -1,0 +1,186 @@
+{
+  "renderer": "markdown-it 14.1.1 (html: true)",
+  "generated_by": "scripts/regenerate_ai_style_fixtures.mjs",
+  "cases": [
+    {
+      "id": "bracket-and-plain-in-one-line",
+      "markdown": "上は**「自分の構成」**で引く。次は**自分の構成**で引く。\n",
+      "literal_double_stars": 2
+    },
+    {
+      "id": "bracketed-after-particle",
+      "markdown": "設定は**「X」**で決まる。\n",
+      "literal_double_stars": 2
+    },
+    {
+      "id": "plain-after-particle",
+      "markdown": "次は**自分の構成**で引く。\n",
+      "literal_double_stars": 0
+    },
+    {
+      "id": "bold-inside-brackets",
+      "markdown": "「**X**」と書く。\n",
+      "literal_double_stars": 0
+    },
+    {
+      "id": "bold-before-period",
+      "markdown": "結論は**X**。\n",
+      "literal_double_stars": 0
+    },
+    {
+      "id": "bracketed-at-line-start",
+      "markdown": "**「X」**で決まる。\n",
+      "literal_double_stars": 2
+    },
+    {
+      "id": "bracketed-at-line-end",
+      "markdown": "決め手は**「X」**\n",
+      "literal_double_stars": 2
+    },
+    {
+      "id": "spaced-stars",
+      "markdown": "a ** b\n",
+      "literal_double_stars": 1
+    },
+    {
+      "id": "intraword-ascii",
+      "markdown": "a**b**c\n",
+      "literal_double_stars": 0
+    },
+    {
+      "id": "triple-stars",
+      "markdown": "***x***\n",
+      "literal_double_stars": 0
+    },
+    {
+      "id": "unbalanced-open",
+      "markdown": "**a*\n",
+      "literal_double_stars": 0
+    },
+    {
+      "id": "unbalanced-close",
+      "markdown": "*a**\n",
+      "literal_double_stars": 0
+    },
+    {
+      "id": "bold-across-lines",
+      "markdown": "これは**行を\nまたぐ**太字。\n",
+      "literal_double_stars": 0
+    },
+    {
+      "id": "list-item",
+      "markdown": "- 項目は**「X」**で書く。\n- 項目は**X**で書く。\n",
+      "literal_double_stars": 2
+    },
+    {
+      "id": "table-cell",
+      "markdown": "| 列 | 説明 |\n|---|---|\n| a | 値は**「X」**で決まる |\n| b | 値は**X**で決まる |\n",
+      "literal_double_stars": 2
+    },
+    {
+      "id": "heading",
+      "markdown": "## 見出しの**「X」**部分\n",
+      "literal_double_stars": 2
+    },
+    {
+      "id": "blockquote",
+      "markdown": "> 引用の**「X」**で止まる。\n",
+      "literal_double_stars": 2
+    },
+    {
+      "id": "code-span",
+      "markdown": "コードは `**x**` と書く。\n",
+      "literal_double_stars": 0
+    },
+    {
+      "id": "fenced-code",
+      "markdown": "```text\n**x** は**「X」**で\n```\n",
+      "literal_double_stars": 0
+    },
+    {
+      "id": "escaped-stars",
+      "markdown": "\\*\\*x\\*\\*\n",
+      "literal_double_stars": 2
+    },
+    {
+      "id": "bold-link",
+      "markdown": "**[a](https://example.com)**\n",
+      "literal_double_stars": 0
+    },
+    {
+      "id": "html-summary",
+      "markdown": "<summary>**x**</summary>\n",
+      "literal_double_stars": 2
+    },
+    {
+      "id": "html-comment",
+      "markdown": "<!-- **「X」**で -->\n本文。\n",
+      "literal_double_stars": 0
+    },
+    {
+      "id": "ideographic-space",
+      "markdown": "全角　**X**　空白\n",
+      "literal_double_stars": 0
+    },
+    {
+      "id": "arrow-symbol",
+      "markdown": "**→x**\n",
+      "literal_double_stars": 0
+    },
+    {
+      "id": "yen-between-letters",
+      "markdown": "x**¥**y\n",
+      "literal_double_stars": 2
+    },
+    {
+      "id": "fullwidth-plus",
+      "markdown": "値は**＋1**で増える。\n",
+      "literal_double_stars": 2
+    },
+    {
+      "id": "english-label",
+      "markdown": "**Note**: keep it short.\n",
+      "literal_double_stars": 0
+    },
+    {
+      "id": "emoji-adjacent",
+      "markdown": "完了は**✅**で示す。\n",
+      "literal_double_stars": 2
+    },
+    {
+      "id": "astral-emoji-adjacent",
+      "markdown": "印は**🚀**で示す。\n",
+      "literal_double_stars": 0
+    },
+    {
+      "id": "bold-parenthesis-after-particle",
+      "markdown": "値は**（既定）**で動く。\n",
+      "literal_double_stars": 2
+    },
+    {
+      "id": "lazy-continuation",
+      "markdown": "> 引用の**行\n続き**で終わる。\n",
+      "literal_double_stars": 0
+    },
+    {
+      "id": "nested-list",
+      "markdown": "- 外\n  - 内は**「X」**で\n",
+      "literal_double_stars": 2
+    },
+    {
+      "id": "indented-code",
+      "markdown": "段落。\n\n    **「X」**で\n",
+      "literal_double_stars": 0
+    },
+    {
+      "id": "thematic-break-stars",
+      "markdown": "前。\n\n***\n\n後。\n",
+      "literal_double_stars": 0
+    },
+    {
+      "id": "html-block-details",
+      "markdown": "<details>\n\n**「X」**で\n\n</details>\n",
+      "literal_double_stars": 2
+    }
+  ]
+}

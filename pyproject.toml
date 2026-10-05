@@ -85,6 +85,8 @@ ignore = [
 
 [tool.ruff.format]
 quote-style = "double"
+# Vendored byte-identical from the Adoption Playbook; reformatting would break the identity.
+exclude = ["tools/ai_style_rules.py"]
 
 # Pytest configuration lives in pytest.ini, not here. A [tool.pytest.ini_options]
 # block used to duplicate it, but pytest.ini takes precedence whenever it exists,

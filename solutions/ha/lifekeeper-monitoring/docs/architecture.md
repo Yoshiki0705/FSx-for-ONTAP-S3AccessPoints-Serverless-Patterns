@@ -64,6 +64,8 @@ Amazon Bedrock による根本原因分析 (Root Cause Analysis) とヘルスス
 
 ## コンポーネント詳細
 
+HA クラスタ層、共有ストレージ層、サーバーレス分析層の構成要素と、LifeKeeper の位置付けと特徴です。
+
 ### 1. HA クラスタ層 (SIOS LifeKeeper + EC2)
 
 | コンポーネント | 役割 |
@@ -127,11 +129,13 @@ SIOS Technology 社が提供する Linux/Windows 向け HA クラスタリング
 
 ### 主な特徴
 
-- **アプリケーション認識型**: Recovery Kit により SAP S/4HANA、Oracle DB、NFS、IP 等を直接監視
-- **クロス AZ フェイルオーバー**: 単一 AWS リージョン内で 2 AZ 間のフェイルオーバー
-- **VIP 管理**: Elastic IP / Secondary IP による仮想 IP フェイルオーバー
-- **通信パス冗長**: 複数経路のハートビートでスプリットブレイン防止
-- **99.99% 可用性実績**: Astro Malaysia 社事例（SAP + Oracle on AWS）
+| 特徴 | 内容 |
+|------|------|
+| アプリケーション認識型 | Recovery Kit により SAP S/4HANA、Oracle DB、NFS、IP 等を直接監視 |
+| クロス AZ フェイルオーバー | 単一 AWS リージョン内で 2 AZ 間のフェイルオーバー |
+| VIP 管理 | Elastic IP / Secondary IP による仮想 IP フェイルオーバー |
+| 通信パス冗長 | 複数経路のハートビートでスプリットブレイン防止 |
+| 99.99% 可用性実績 | Astro Malaysia 社事例（SAP + Oracle on AWS） |
 
 ### FSx for ONTAP 共有ディスク対応 (LifeKeeper V10 以降)
 
@@ -167,6 +171,8 @@ LifeKeeper V10.0.1 以降、Amazon FSx for NetApp ONTAP を共有ディスクと
 
 ## FSx for ONTAP + LifeKeeper の組み合わせの価値
 
+ストレージ、アプリケーション、分析の 3 層で HA を分担する理由と、典型的なユースケースです。
+
 ### この組み合わせを選ぶ理由
 
 | レイヤー | 提供する HA | 担当 |
@@ -177,20 +183,21 @@ LifeKeeper V10.0.1 以降、Amazon FSx for NetApp ONTAP を共有ディスクと
 
 従来の HA 構成では、ログ分析のためにクラスタノードに追加のエージェントを導入したり、NFS マウントを追加してログサーバーに転送する必要があった。これは HA 構成自体の複雑性を増し、潜在的な障害点を追加する。
 
-**FSx for ONTAP S3 Access Points** を使うことで:
+FSx for ONTAP S3 Access Points を使うと、次の 5 点が得られる。
 
-1. **非侵入**: EC2 ノードに追加ソフトウェア不要
-2. **HA 影響なし**: ログ分析が HA クラスタの I/O に影響しない
-3. **既存ログの再利用**: LifeKeeper が標準的に出力するログをそのまま分析
-4. **リアルタイム**: FPolicy イベント駆動で即時検知可能
-5. **AI 分析**: Bedrock による根本原因の自動特定
+
+1. 非侵入。EC2 ノードに追加ソフトウェア不要
+2. HA 影響なし。ログ分析が HA クラスタの I/O に影響しない
+3. 既存ログの再利用。LifeKeeper が標準的に出力するログをそのまま分析
+4. リアルタイム。FPolicy イベント駆動で即時検知可能
+5. AI 分析。Bedrock による根本原因の自動特定
 
 ### 典型的なユースケース
 
-1. **SAP on AWS + LifeKeeper**: SAP Central Instance の HA 構成で、SAP ログ + LifeKeeper イベントを統合分析
-2. **Oracle on AWS + LifeKeeper**: Oracle DB のフェイルオーバー履歴とストレージ I/O パターンを相関分析
-3. **カスタムアプリケーション**: 独自 Recovery Kit で保護されたアプリのヘルストレンド分析
-4. **マルチクラスタ運用**: 複数の LifeKeeper クラスタの健全性を一元的にダッシュボード化
+1. SAP on AWS + LifeKeeper。SAP Central Instance の HA 構成で、SAP ログ + LifeKeeper イベントを統合分析
+2. Oracle on AWS + LifeKeeper。Oracle DB のフェイルオーバー履歴とストレージ I/O パターンを相関分析
+3. カスタムアプリケーション。独自 Recovery Kit で保護されたアプリのヘルストレンド分析
+4. マルチクラスタ運用。複数の LifeKeeper クラスタの健全性を一元的にダッシュボード化
 
 ---
 
@@ -221,6 +228,8 @@ LifeKeeper V10.0.1 以降、Amazon FSx for NetApp ONTAP を共有ディスクと
 
 ## セキュリティ設計
 
+IAM の最小権限、ネットワーク分離、データ分類の 3 点です。
+
 ### IAM 最小権限
 
 | Lambda | 権限 |
@@ -245,6 +254,8 @@ LifeKeeper V10.0.1 以降、Amazon FSx for NetApp ONTAP を共有ディスクと
 
 ## 運用設計
 
+ヘルススコアの読み方と、環境ごとのアラートレベルの設定です。
+
 ### ヘルススコアの解釈
 
 | スコア | レベル | 意味 |
@@ -256,9 +267,11 @@ LifeKeeper V10.0.1 以降、Amazon FSx for NetApp ONTAP を共有ディスクと
 
 ### アラートレベル設定
 
-- **本番環境**: `FailoverAlertSeverity=HIGH` — フェイルオーバー発生時に即座に通知
-- **検証環境**: `FailoverAlertSeverity=CRITICAL` — 重大障害のみ通知
-- **開発環境**: アラート無効化推奨
+| 環境 | 設定 |
+|------|------|
+| 本番環境 | `FailoverAlertSeverity=HIGH` — フェイルオーバー発生時に即座に通知 |
+| 検証環境 | `FailoverAlertSeverity=CRITICAL` — 重大障害のみ通知 |
+| 開発環境 | アラート無効化推奨 |
 
 ### 監視頻度の目安
 
@@ -280,7 +293,7 @@ LifeKeeper V10.0.1 以降、Amazon FSx for NetApp ONTAP を共有ディスクと
 | Step Functions | $0.10-1.00 | 状態遷移数に依存 |
 | Bedrock (Nova Pro) | $1.00-10.00 | フェイルオーバー分析回数に依存 |
 | SNS | $0.01 | 通知回数に依存 |
-| **合計** | **$2-20/月** | HA クラスタ本体のコストの 1% 未満 |
+| **合計** | **$2-20/月** | HA クラスタ本体のコストの 1% 未満（未確認） |
 
 > **注意**: FSx for ONTAP ファイルシステム自体のコスト (Multi-AZ, 128+ MBps) は別途発生する。
 > このパターンが追加するコストは分析層のみ。
@@ -289,10 +302,10 @@ LifeKeeper V10.0.1 以降、Amazon FSx for NetApp ONTAP を共有ディスクと
 
 ## 制約事項
 
-1. **LifeKeeper ログ形式**: 本パターンはキーワードベースの分類を行う。LifeKeeper のバージョンによりログ形式が異なる場合、分類ロジックの調整が必要
-2. **リアルタイム性**: ポーリング間隔 (デフォルト 5 分) がフェイルオーバー検知の遅延となる。即時性が必要な場合は FPolicy イベント駆動 (EVENT_DRIVEN/HYBRID) を使用
-3. **S3 AP 制約**: FSx for ONTAP S3 Access Points の標準制約が適用される（オブジェクト上限 50 GB / 単一 PutObject は 5 GB、サポート操作に制限あり）
-4. **Bedrock リージョン**: Bedrock モデルの利用可能リージョンに制約あり
+1. LifeKeeper ログ形式。本パターンはキーワードベースの分類を行う。LifeKeeper のバージョンによりログ形式が異なる場合、分類ロジックの調整が必要
+2. リアルタイム性。ポーリング間隔 (デフォルト 5 分) がフェイルオーバー検知の遅延となる。即時性が必要な場合は FPolicy イベント駆動 (EVENT_DRIVEN/HYBRID) を使用
+3. S3 AP 制約。FSx for ONTAP S3 Access Points の標準制約が適用される（オブジェクト上限 50 GB / 単一 PutObject は 5 GB、サポート操作に制限あり）
+4. Bedrock リージョン。Bedrock モデルの利用可能リージョンに制約あり
 
 ---
 

@@ -10,11 +10,14 @@
 
 ### Field-Ready Baseline
 
-Phase 13 は最終到達点ではなく、以下のための実用的なベースラインです:
-- **Informed evaluation** — 評価に必要な情報が揃っている
-- **Governed experimentation** — 統制された試行錯誤が可能
-- **Structured delivery** — 構造化されたデリバリーパスがある
-- **Production-readiness planning** — 本番化計画の材料が揃っている
+Phase 13 は最終到達点ではなく、次の 4 つのための実用的なベースラインです。
+
+| 用途 | 揃っているもの |
+|------|------|
+| Informed evaluation | 評価に必要な情報が揃っている |
+| Governed experimentation | 統制された試行錯誤が可能 |
+| Structured delivery | 構造化されたデリバリーパスがある |
+| Production-readiness planning | 本番化計画の材料が揃っている |
 
 各レベルの完了条件は [Exit Criteria](#exit-criteria各レベル完了条件) を参照してください。
 
@@ -28,9 +31,18 @@ Sandbox    →    Scheduled    →    Monitored    →    Production
 (手動実行)      (定期実行)        (可観測性付き)     (本番運用)
 ```
 
+| Level | 段階 | 目的（要約） | 所要時間 |
+|-------|------|------|------|
+| 1 | Sandbox（手動実行） | パターンの動作、S3 Access Points 経由のファイルアクセス、AI/ML 出力品質の確認 | 1-2 時間 |
+| 2 | Scheduled（定期実行） | EventBridge Scheduler による自動実行と、実データでの継続的な処理 | 1-2 日 |
+| 3 | Monitored（可観測性付き） | 可観測性の確立、性能とコストの可視化、障害の早期検知 | 3-5 日 |
+| 4 | Production（本番運用） | マルチアカウント、CI/CD、DR、コンプライアンス対応、SLO の運用 | 2-4 週間 |
+
 ---
 
 ## Level 1: Sandbox（手動実行）
+
+手動実行で、パターンと S3 Access Points 経由のファイルアクセスが動くことを確かめる段階です。
 
 ### 目的
 - パターンの動作確認
@@ -59,6 +71,8 @@ Sandbox    →    Scheduled    →    Monitored    →    Production
 
 ## Level 2: Scheduled（定期実行）
 
+EventBridge Scheduler で定期実行し、実データで処理を続ける段階です。
+
 ### 目的
 - EventBridge Scheduler による自動実行
 - 実データでの継続的な処理
@@ -85,6 +99,8 @@ Sandbox    →    Scheduled    →    Monitored    →    Production
 ---
 
 ## Level 3: Monitored（可観測性付き）
+
+メトリクス、トレース、アラームを揃え、障害を早く検知できるようにする段階です。
 
 ### 目的
 - 包括的な可観測性の確立
@@ -114,6 +130,8 @@ Sandbox    →    Scheduled    →    Monitored    →    Production
 ---
 
 ## Level 4: Production（本番運用）
+
+マルチアカウント、CI/CD、DR、SLO を備えて本番で運用する段階です。
 
 ### 目的
 - マルチアカウント対応
@@ -163,6 +181,8 @@ Sandbox    →    Scheduled    →    Monitored    →    Production
 
 ## Exit Criteria（各レベル完了条件）
 
+次のレベルへ移る前に満たす条件を、移行ごとに示します。
+
 ### Level 1 → Level 2 への移行条件
 - [ ] CloudFormation デプロイが成功し、手動実行で期待結果が得られた
 - [ ] S3 AP 経由の ListObjectsV2 / GetObject が正常動作した
@@ -184,6 +204,8 @@ Sandbox    →    Scheduled    →    Monitored    →    Production
 
 ### 運用上の注意事項（Level 3 以上）
 
+Level 3 以上で運用するときに、計画に入れておく事象です。
+
 #### FSx Throughput Capacity 変更時の S3 AP 影響
 
 FSx for ONTAP の throughput capacity を変更すると、**S3 Access Points が一時的に利用不可**になる場合があります（Phase 14 で観測）。
@@ -202,6 +224,8 @@ FSx for ONTAP の throughput capacity を変更すると、**S3 Access Points �
 - CloudWatch Alarm で S3 AP ヘルスチェックを設定し、復旧を検知する
 
 ## Level 別チェックマトリクス
+
+各 Level と、CI/CD バッジや検証状態の対応です。
 
 ### CI/CD バッジとの対応
 

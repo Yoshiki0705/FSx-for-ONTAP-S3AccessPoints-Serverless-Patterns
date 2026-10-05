@@ -309,6 +309,8 @@ permission — the audit path must not be able to amend the record it reports.
 
 ## Feature-Level Authorization Matrix
 
+For each portal section, which group can call each feature and the AppSync authorization that enforces it.
+
 ### Browse Section (All authenticated users)
 
 | Feature | Auth Level | AppSync Operation |
@@ -403,14 +405,14 @@ aws cognito-idp create-group \
 
 ## Security Design Principles
 
-1. **Defense in depth**: AppSync rejects unauthorized calls even if frontend UI is bypassed
-2. **Least privilege**: Read operations are broadly available; write operations require explicit group membership
-3. **Owner scoping**: Personal data (favorites, history, tags) uses Amplify's `allow.owner()` — users see only their own
-4. **Audit trail**: All admin actions include `userId` in the Lambda payload → logged in CloudTrail
-5. **Protected accounts**: Even storage-admins cannot block `fsxadmin`/`administrator` (safety valve in `ontap_response.py`)
-6. **Confirmation gates**: Destructive operations require explicit `confirm: true` in the Lambda payload, not only a dialog in the browser. This covers `deleteVolume`, `deleteExportPolicy`, `deleteCifsShare`, the SnapMirror `break`/`resync`/`delete` paths, the Vscan and FPolicy policy deletes, cluster-peer delete, and every ARP containment action (`blockSmbUser`, `blockNfsIp`, `containThreat`, `disconnectSessions`). Unblocking is deliberately **not** gated — it restores access, and a confirmation step on the way out of a mistaken block only delays recovery.
-7. **Input is validated for both SQL and request paths**: the values that reach the audit-log Athena query (`fileKeyPrefix`, `startDate`, `endDate`, `eventType`, `maxResults`) are pattern-checked and then rendered as literals with single quotes doubled. LIKE metacharacters (`%`, `_`) are escaped as well, so a prefix is not interpreted as a wildcard. ONTAP request paths percent-encode caller-supplied names, and `_ontap_request` refuses any path containing a `..` segment or a control character. That check lives in the one function all 110-plus actions pass through rather than in each action.
-8. **Expiry and the sweep**: a block carries an expiry, 24 hours by default, and a scheduled sweep lifts blocks whose expiry has passed. The operator can choose 1 hour to 7 days, or indefinite, at the point of blocking. Over the API the ceiling is 30 days by default (`maxBlockTtlHours`; 0 removes it), which is a point where the instrument should change rather than a number that is safe — a deny rule covers one SVM, so a principal that must stay locked out for longer should be disabled in the directory instead. Exceeding the ceiling is refused, never clamped. ONTAP name-mapping and export-policy rules carry no timestamp, so expiry is tracked in a portal-side ledger (DynamoDB) and the sweep only considers rows in that ledger — a block placed outside the portal is reported as "Not portal-managed" and never lifted automatically. See the [containment boundary](../../solutions/amplify-portal/docs/resource-management-demo-guide.en.md) for what this means operationally.
+1. AppSync rejects unauthorized calls even if the frontend UI is bypassed (defense in depth).
+2. Read operations are broadly available; write operations require explicit group membership (least privilege).
+3. Personal data (favorites, history, tags) uses Amplify's `allow.owner()`, so users see only their own (owner scoping).
+4. All admin actions include `userId` in the Lambda payload and are logged in CloudTrail (audit trail).
+5. Even storage-admins cannot block `fsxadmin`/`administrator` (protected accounts; safety valve in `ontap_response.py`).
+6. As a confirmation gate, destructive operations require explicit `confirm: true` in the Lambda payload, not only a dialog in the browser. This covers `deleteVolume`, `deleteExportPolicy`, `deleteCifsShare`, the SnapMirror `break`/`resync`/`delete` paths, the Vscan and FPolicy policy deletes, cluster-peer delete, and every ARP containment action (`blockSmbUser`, `blockNfsIp`, `containThreat`, `disconnectSessions`). Unblocking is deliberately **not** gated — it restores access, and a confirmation step on the way out of a mistaken block only delays recovery.
+7. Input is validated for both SQL and request paths. The values that reach the audit-log Athena query (`fileKeyPrefix`, `startDate`, `endDate`, `eventType`, `maxResults`) are pattern-checked and then rendered as literals with single quotes doubled. LIKE metacharacters (`%`, `_`) are escaped as well, so a prefix is not interpreted as a wildcard. ONTAP request paths percent-encode caller-supplied names, and `_ontap_request` refuses any path containing a `..` segment or a control character. That check lives in the one function all 110-plus actions pass through rather than in each action.
+8. A block carries an expiry, 24 hours by default, and a scheduled sweep lifts blocks whose expiry has passed. The operator can choose 1 hour to 7 days, or indefinite, at the point of blocking. Over the API the ceiling is 30 days by default (`maxBlockTtlHours`; 0 removes it), which is a point where the instrument should change rather than a number that is safe — a deny rule covers one SVM, so a principal that must stay locked out for longer should be disabled in the directory instead. Exceeding the ceiling is refused, never clamped. ONTAP name-mapping and export-policy rules carry no timestamp, so expiry is tracked in a portal-side ledger (DynamoDB) and the sweep only considers rows in that ledger — a block placed outside the portal is reported as "Not portal-managed" and never lifted automatically. See the [containment boundary](../../solutions/amplify-portal/docs/resource-management-demo-guide.en.md) for what this means operationally.
 
 ## What Happens When the Lambda Is Invoked Directly
 
@@ -424,8 +426,8 @@ Within a single account, a call succeeds if **either** an identity-based policy 
 
 The two layers that do prevent it are both outside this stack:
 
-1. **Identity-based policies** — who is granted `lambda:InvokeFunction` in the first place
-2. **An SCP or permissions boundary** — an organization-level rule forbidding invocation from anywhere but the intended paths
+1. Identity-based policies, which decide who is granted `lambda:InvokeFunction` in the first place
+2. An SCP or permissions boundary, an organization-level rule forbidding invocation from anywhere but the intended paths
 
 ### Example SCP
 

@@ -58,6 +58,8 @@ Additionally, the `CompleteMultipartUpload` error **does not include** the `Prop
 
 ## Test 1: Single `PutObject` limit
 
+A single `PutObject` accepts up to 5 GiB (5,368,709,120 bytes); one byte more is rejected with 400 `EntityTooLarge` on the Content-Length.
+
 ### Method
 
 Pass a zero-filled stream with an explicit Content-Length and let S3 evaluate the limit.
@@ -86,6 +88,8 @@ RESULT=CLIENT_ERROR elapsed=2.7s
 ---
 
 ## Test 2: `UploadPart` (single multipart part) limit
+
+The limit for one `UploadPart` part is also 5 GiB (5,368,709,120 bytes), and an oversized part is rejected on the Content-Length.
 
 ### Results
 
@@ -127,6 +131,8 @@ The part size limit is also 5 GiB, matching standard Amazon S3 multipart specifi
 ---
 
 ## Test 4: whole-object limit = 50 GiB (multipart upload)
+
+A whole object can be assembled up to 50 GiB (53,687,091,200 bytes); one byte more is rejected with 400 `EntityTooLarge` by `CompleteMultipartUpload`, after every part has been transferred.
 
 ### Method
 

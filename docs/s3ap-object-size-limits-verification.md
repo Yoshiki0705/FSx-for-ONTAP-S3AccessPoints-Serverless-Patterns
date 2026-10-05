@@ -58,6 +58,8 @@
 
 ## 検証 1: 単一 `PutObject` の上限
 
+単一 `PutObject` は 5 GiB（5,368,709,120 バイト）まで受け付け、1 バイト超えると Content-Length の時点で 400 `EntityTooLarge` で拒否されました。
+
 ### 手順
 
 Content-Length を明示した上でゼロ埋めストリームを渡し、S3 側が上限判定を行うかを確認します。
@@ -86,6 +88,8 @@ RESULT=CLIENT_ERROR elapsed=2.7s
 ---
 
 ## 検証 2: `UploadPart`（マルチパートの 1 パート）の上限
+
+`UploadPart` の 1 パートの上限も 5 GiB（5,368,709,120 バイト）で、超過は Content-Length の時点で拒否されました。
 
 ### 結果
 
@@ -127,6 +131,8 @@ RESULT=CLIENT_ERROR elapsed=2.7s
 ---
 
 ## 検証 4: オブジェクト全体の上限 = 50 GiB（マルチパートアップロード）
+
+オブジェクト全体は 50 GiB（53,687,091,200 バイト）まで組み立てられ、1 バイト超えると、全パートの転送が終わった後に `CompleteMultipartUpload` が 400 `EntityTooLarge` で拒否しました。
 
 ### 実施方法
 
@@ -170,7 +176,7 @@ RESULT=COMPLETE_FAILED
 2. **`UploadPart` に累積サイズのチェックはありません**。50 GiB + 1 バイト分の 11 パートすべてが受理され、1 バイトのテールパートも正常に登録されました。
 3. **拒否は `CompleteMultipartUpload` のみ**。全データ転送（590 秒）を終えた後に発覚します。事前チェックの手段はサービス側に用意されていません。
 4. **`CompleteMultipartUpload` のエラーに `MaxSizeAllowed` / `ProposedSize` が含まれません**。検証 1・2 の `PutObject` / `UploadPart` では返るため、API 間で一貫していません。
-5. **`CompleteMultipartUpload` 自体に時間がかかります**。成功ケースはアップロード完了が 538 秒、全体が 1095 秒なので、**組み立てだけで約 557 秒（9 分強）**を要しました。本検証では `read_timeout` に 1800 秒を設定していましたが、**これは必要ではありませんでした。** [CompleteMultipartUpload のリファレンス](https://docs.aws.amazon.com/AmazonS3/latest/API/API_CompleteMultipartUpload.html) に、組み立て中は接続がタイムアウトしないよう Amazon S3 が定期的に空白文字を送ると書かれています。既定の読み取りタイムアウトで足ります。
+5. **`CompleteMultipartUpload` 自体に時間がかかります**。成功ケースはアップロード完了が 538 秒、全体が 1095 秒なので、組み立てだけで約 557 秒（9 分強）を要しました。本検証では `read_timeout` に 1800 秒を設定していましたが、**これは必要ではありませんでした。** [CompleteMultipartUpload のリファレンス](https://docs.aws.amazon.com/AmazonS3/latest/API/API_CompleteMultipartUpload.html) に、組み立て中は接続がタイムアウトしないよう Amazon S3 が定期的に空白文字を送ると書かれています。既定の読み取りタイムアウトで足ります。
 6. **200 OK は成功を意味しません。** 同リファレンスは、処理開始後に 200 OK のヘッダーが送られ、**最初の 200 OK の後にリクエストが失敗しうる**こと、エラー応答が 200 OK に埋め込まれうることを明記しています。**API を直接呼ぶ場合は本文を解析する実装が必要です。** AWS SDK（boto3 / botocore を含む）は埋め込まれたエラーを検出して設定どおりのエラー処理を適用します。本検証は boto3 経由なので、この処理は SDK 側で行われていました。
 7. スループットは全パートで 95〜97 MiB/s と安定し、ファイルシステムのスループットキャパシティ 128 MBps（約 122 MiB/s）が律速でした。
 

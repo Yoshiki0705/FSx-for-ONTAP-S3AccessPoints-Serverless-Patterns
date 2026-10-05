@@ -56,7 +56,7 @@ aws oam create-link --label-template '$AccountName' \
 2. **Metric visibility**: Cross-account metrics appear in CloudWatch console within minutes of link creation
 3. **No additional IAM configuration needed** in workload account beyond the OrganizationAccountAccessRole
 4. **Sink Policy is the access control** — only explicitly allowed accounts can create links
-5. **Cost**: OAM itself is free. Cross-account metric/log delivery follows standard CloudWatch pricing.
+5. **Cost**: OAM itself is free (unverified). Cross-account metric/log delivery follows standard CloudWatch pricing.
 
 ## Cleanup
 

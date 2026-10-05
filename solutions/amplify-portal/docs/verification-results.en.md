@@ -231,8 +231,8 @@ max `PT5M`, 20 GiB). A five-minute retention expires in minutes, after which the
 
 ### Added 2026-08-17 (mount management: `mountVolume` / `unmountVolume` / `getVolumeMountInfo`)
 
-**The "online but unmounted" state a refused delete leaves behind can now be reversed from the
-portal.** `bringVolumeOnline` undid the offline step, and nothing could put the junction back.
+The "online but unmounted" state a refused delete leaves behind can now be reversed from the
+portal. `bringVolumeOnline` undid the offline step, and nothing could put the junction back.
 
 | Feature | What was confirmed |
 |---------|--------------------|
@@ -281,7 +281,7 @@ operation are in the [write verification plan](write-verification-plan.en.md).
 | **D. Affects the shared environment** | Disabling a LIF, disabling a protocol service, DNS update, SnapMirror break / resync, the six containment actions | These cut a path, a session or a replication relationship. Decide the target and the window first |
 | **E. Not ONTAP** | Agents / teams / sessions, portal settings, thumbnails | Bedrock, DynamoDB and S3. Not real-hardware ONTAP verification |
 
-> **The two findings the documentation review produced were both overturned by measurement.**
+> The two findings the documentation review produced were both overturned by measurement.
 > The predictions are kept, because the next person reading the same references will reach them.
 >
 > - Predicted: **an in-use QoS policy cannot be deleted, so the cycle cannot complete** (CLI

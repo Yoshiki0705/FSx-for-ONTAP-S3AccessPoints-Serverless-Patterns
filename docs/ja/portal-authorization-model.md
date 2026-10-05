@@ -107,7 +107,7 @@
 （`createUploadLink`、最大 24 時間の書き込み資格情報）です。セッション内で保つべき用途が
 無いので、切り詰める意味がありません。
 
-### アップロードタブは AppSync を通らない
+### AppSync を通らないアップロードタブ
 
 **この 1 か所だけは AppSync が判定しません。** アップロードタブ
 （`@aws-amplify/ui-react-storage`）はブラウザから Identity Pool の資格情報で S3 を直接呼ぶため、
@@ -296,13 +296,15 @@ make portal-grant-roles ARGS='--apply --assign you@example.com=storage-admin,int
 
 ## 機能別認可マトリクス
 
+ポータルのセクションごとに、各機能を呼べるグループと、それを強制する AppSync の認可を示します。
+
 ### Browse セクション（認証済み全ユーザー）
 
 | 機能 | 認可レベル | AppSync 操作 |
 |------|-----------|-------------|
 | ファイル一覧 | authenticated | `listFiles` query |
 | ファイル DL（Presigned URL） | authenticated | `getPresignedUrl` query |
-| ファイル UL（Storage Browser） | `contributor` / `storage-admin`、かつ `external` でない | グループロールの IAM ポリシー（[AppSync を通らない](#アップロードタブは-appsync-を通らない)） |
+| ファイル UL（Storage Browser） | `contributor` / `storage-admin`、かつ `external` でない | グループロールの IAM ポリシー（[AppSync を通らない](#appsync-を通らないアップロードタブ)） |
 | 画像/PDF/DOCX プレビュー | authenticated | `getPresignedUrl` query |
 | 共有リンク生成 | authenticated | `getPresignedUrl` mutation |
 | 最近のファイル | authenticated (owner-scoped) | `RecentFile` model (owner auth) |
@@ -390,14 +392,14 @@ aws cognito-idp create-group \
 
 ## セキュリティ設計原則
 
-1. **多層防御**: フロントエンド UI をバイパスされても AppSync が不正な呼び出しを拒否
-2. **最小権限**: 読み取り操作は広く許可し、書き込み操作は明示的なグループ所属を要求
-3. **Owner スコープ**: 個人データ（お気に入り、履歴、タグ）は Amplify の `allow.owner()` で自分のものだけ表示
-4. **監査証跡**: 全管理操作は `userId` を Lambda ペイロードに含み、CloudTrail で記録
-5. **保護アカウント**: storage-admin でも `fsxadmin`/`administrator` はブロック不可（`ontap_response.py` の安全弁）
-6. **確認ゲート**: 破壊的操作は、ブラウザのダイアログだけでなく Lambda のペイロードに明示的な `confirm: true` を要求します。対象は `deleteVolume`、`deleteExportPolicy`、`deleteCifsShare`、SnapMirror の `break`/`resync`/`delete`、Vscan と FPolicy のポリシー削除、クラスターピア削除、および ARP の封じ込めアクション全部（`blockSmbUser`、`blockNfsIp`、`containThreat`、`disconnectSessions`）です。解除系は意図的にゲートしていません — アクセスを戻す操作であり、誤ったブロックから復帰する経路に確認を挟むと回復が遅れるだけです。
-7. **入力は SQL とリクエストパスの両方で検証する**: 監査ログの Athena クエリに入る値（`fileKeyPrefix`、`startDate`、`endDate`、`eventType`、`maxResults`）は、パターン検証を通してから、シングルクォートを二重化してリテラル化します。LIKE のメタ文字（`%`、`_`）もエスケープするため、プレフィックスはワイルドカードとして解釈されません。ONTAP のリクエストパスは、呼び出し側の名前を percent-encode し、`..` セグメントと制御文字を `_ontap_request` の入口で拒否します。パスの検証を各アクションに任せず 1 箇所に置いているのは、同じ関数を 110 以上のアクションが通るためです。
-8. **有効期限とスイープ**: ブロックには既定 24 時間の有効期限が付き、期限を過ぎたものは定期実行のスイープが解除します。ブロック時に 1 時間〜7 日、または「無期限」を明示的に選べます。API 経由の上限は既定 30 日（`maxBlockTtlHours`、0 で上限なし）で、これは安全な数字というより道具の切り替え点です — deny ルールは 1 SVM にしか効かないため、それより長く締め出す必要がある主体はディレクトリ側で無効化すべきです。上限超過は拒否し、クランプはしません。ONTAP の name-mapping と export-policy のルールにはタイムスタンプがないため、期限はポータル側の台帳（DynamoDB）で管理し、スイープはその台帳にある行だけを対象にします。外部で設定されたブロックは「ポータル管理外」として解除しません。運用上の意味は [封じ込めの境界](./arp-ai-isolation-demo-guide.md) を参照してください。
+1. フロントエンド UI をバイパスされても、AppSync が不正な呼び出しを拒否します（多層防御）。
+2. 読み取り操作は広く許可し、書き込み操作は明示的なグループ所属を要求します（最小権限）。
+3. 個人データ（お気に入り、履歴、タグ）は、Amplify の `allow.owner()` で自分のものだけを表示します（Owner スコープ）。
+4. 全管理操作は `userId` を Lambda ペイロードに含み、CloudTrail で記録します（監査証跡）。
+5. storage-admin でも `fsxadmin`/`administrator` はブロックできません（保護アカウント。`ontap_response.py` の安全弁）。
+6. 確認ゲートとして、破壊的操作は、ブラウザのダイアログだけでなく Lambda のペイロードに明示的な `confirm: true` を要求します。対象は `deleteVolume`、`deleteExportPolicy`、`deleteCifsShare`、SnapMirror の `break`/`resync`/`delete`、Vscan と FPolicy のポリシー削除、クラスターピア削除、および ARP の封じ込めアクション全部（`blockSmbUser`、`blockNfsIp`、`containThreat`、`disconnectSessions`）です。解除系は意図的にゲートしていません — アクセスを戻す操作であり、誤ったブロックから復帰する経路に確認を挟むと回復が遅れるだけです。
+7. 入力は SQL とリクエストパスの両方で検証します。監査ログの Athena クエリに入る値（`fileKeyPrefix`、`startDate`、`endDate`、`eventType`、`maxResults`）は、パターン検証を通してから、シングルクォートを二重化してリテラル化します。LIKE のメタ文字（`%`、`_`）もエスケープするため、プレフィックスはワイルドカードとして解釈されません。ONTAP のリクエストパスは、呼び出し側の名前を percent-encode し、`..` セグメントと制御文字を `_ontap_request` の入口で拒否します。パスの検証を各アクションに任せず 1 箇所に置いているのは、同じ関数を 110 以上のアクションが通るためです。
+8. ブロックには既定 24 時間の有効期限が付き、期限を過ぎたものは定期実行のスイープが解除します。ブロック時に 1 時間〜7 日、または「無期限」を明示的に選べます。API 経由の上限は既定 30 日（`maxBlockTtlHours`、0 で上限なし）で、これは安全な数字というより道具の切り替え点です — deny ルールは 1 SVM にしか効かないため、それより長く締め出す必要がある主体はディレクトリ側で無効化すべきです。上限超過は拒否し、クランプはしません。ONTAP の name-mapping と export-policy のルールにはタイムスタンプがないため、期限はポータル側の台帳（DynamoDB）で管理し、スイープはその台帳にある行だけを対象にします。外部で設定されたブロックは「ポータル管理外」として解除しません。運用上の意味は [封じ込めの境界](./arp-ai-isolation-demo-guide.md) を参照してください。
 
 ## Lambda を直接呼ばれた場合の扱い
 
@@ -411,8 +413,8 @@ aws cognito-idp create-group \
 
 実際の防止レイヤーは次の 2 つで、いずれもこのスタックの外にあります。
 
-1. **アイデンティティベースのポリシー** — 誰に `lambda:InvokeFunction` を与えるか
-2. **SCP または Permissions Boundary** — 組織レベルで、想定した経路以外からの呼び出しを禁止する
+1. アイデンティティベースのポリシー。誰に `lambda:InvokeFunction` を与えるかを決めます
+2. SCP または Permissions Boundary。組織レベルで、想定した経路以外からの呼び出しを禁止します
 
 ### SCP の例
 
