@@ -78,7 +78,7 @@ class TestAppName:
     def test_two_sandboxes_get_two_apps(self) -> None:
         # Publishing from a second sandbox must not overwrite the first app's bundle,
         # because the bundle carries a different user pool.
-        assert hosting.app_name("demo") != hosting.app_name("yoshiki")
+        assert hosting.app_name("demo") != hosting.app_name("owner")
 
 
 class TestSandboxIdentifier:

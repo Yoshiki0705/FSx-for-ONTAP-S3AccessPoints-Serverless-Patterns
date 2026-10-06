@@ -48,7 +48,7 @@ def main():
     mask_regions(
         f"{base_uc29}/step-functions-execution-succeeded.png",
         [
-            # Top-right account badge "yoshiki" (attached: x≈940~1024, y≈0~17)
+            # Top-right account badge (repository maintainer's user name) (attached: x≈940~1024, y≈0~17)
             (1542, 0, 1680, 28, MASK_COLOR),
             # Execution ARN line (attached: x≈200~535, y≈210~240)
             (328, 341, 877, 390, MASK_COLOR),

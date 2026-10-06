@@ -2,7 +2,7 @@
 
 > 🌐 **Language / 言語**: [日本語](snaplock-audit-log-retention.md) | English
 
-**Submitted by**: Yoshiki Fujiwara (AWS Community Builder)
+**Submitted by**: repository maintainer (AWS Community Builder)
 **Date**: 2026-08-06
 **Project**: [FSx-for-ONTAP-S3AccessPoints-Serverless-Patterns](https://github.com/Yoshiki0705/FSx-for-ONTAP-S3AccessPoints-Serverless-Patterns)
 **Context**: Improvement requests arising from creating a SnapLock audit log volume in a verification environment, which left the whole file system undeletable for a minimum of six months

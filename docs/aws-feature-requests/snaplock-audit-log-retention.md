@@ -2,7 +2,7 @@
 
 > 🌐 **Language / 言語**: 日本語 | [English](snaplock-audit-log-retention.en.md)
 
-**提出者**: 藤原 慶樹 (AWS Community Builder)
+**提出者**: リポジトリ管理者 (AWS Community Builder)
 **日付**: 2026-08-06
 **プロジェクト**: [FSx-for-ONTAP-S3AccessPoints-Serverless-Patterns](https://github.com/Yoshiki0705/FSx-for-ONTAP-S3AccessPoints-Serverless-Patterns)
 **コンテキスト**: 検証環境で SnapLock 監査ログボリュームを作成した結果、ファイルシステム全体が最短 6 か月削除できなくなった事象からの改善要望

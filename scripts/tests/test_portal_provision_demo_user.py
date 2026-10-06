@@ -91,7 +91,7 @@ class TestSandboxIdentifier:
         assert provision.sandbox_identifier(name) == "demo"
 
     def test_reads_identifier_from_a_root_stack(self) -> None:
-        assert provision.sandbox_identifier("amplify-fsxns3apamplifyportal-yoshiki-sandbox-ae70db2b34") == "yoshiki"
+        assert provision.sandbox_identifier("amplify-fsxns3apamplifyportal-owner-sandbox-ae70db2b34") == "owner"
 
     @pytest.mark.parametrize("name", ["", "some-other-stack", "amplify-branch-main"])
     def test_non_sandbox_names_are_reported_not_guessed(self, name: str) -> None:

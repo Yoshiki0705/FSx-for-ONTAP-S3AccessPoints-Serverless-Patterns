@@ -32,7 +32,7 @@ def mask_aws_console(img_path: Path, out_path: Path) -> None:
     draw = ImageDraw.Draw(img)
     w, h = img.size
 
-    # 1. Top-right user name area (yoshiki, account switcher dropdown)
+    # 1. Top-right user name area (repository maintainer, account switcher dropdown)
     # Located in the top nav bar, right side (~1350-1500 width on standard viewport)
     top_bar_y = min(80, int(h * 0.04))
     user_box = (

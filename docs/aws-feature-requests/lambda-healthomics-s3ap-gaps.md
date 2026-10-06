@@ -2,7 +2,7 @@
 
 > 🌐 **Language / 言語**: 日本語 | [English](lambda-healthomics-s3ap-gaps.en.md)
 
-**提出者**: 藤原 慶樹 (AWS Community Builder)
+**提出者**: リポジトリ管理者 (AWS Community Builder)
 **日付**: 2026-08-02
 **プロジェクト**: [FSx-for-ONTAP-S3AccessPoints-Serverless-Patterns](https://github.com/Yoshiki0705/FSx-for-ONTAP-S3AccessPoints-Serverless-Patterns)
 **コンテキスト**: 2026-07 の 2 リリース（Lambda セルフマネージドコードストレージ / AWS HealthOmics 東京リージョン対応）を本プロジェクトのワークフローへ組み込む可否評価
