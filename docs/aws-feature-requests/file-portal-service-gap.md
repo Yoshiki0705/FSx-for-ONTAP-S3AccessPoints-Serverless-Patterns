@@ -2,7 +2,7 @@
 
 > 🌐 **Language / 言語**: 日本語 | [English](file-portal-service-gap.en.md)
 
-**提出者**: 藤原 慶樹 (AWS Community Builder)
+**提出者**: リポジトリ管理者 (AWS Community Builder)
 **日付**: 2026-07-18
 **プロジェクト**: [fsxn-s3ap-serverless-patterns](https://github.com/Yoshiki0705/FSx-for-ONTAP-S3AccessPoints-Serverless-Patterns)
 **コンテキスト**: Amplify Gen2 + FSx for ONTAP S3 Access Points で構築したファイルポータル UI
@@ -305,7 +305,7 @@ export const storage = defineStorage({
 
 **解決（2026-09）**: 互換性テーブルは `Presign — Supported` に訂正されました（[Access point compatibility](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/access-points-for-fsxn-object-api-support.html)、2026-09-17 取得）。以下は訂正前の記録です。当時のテーブルは "Not supported" と記載していました。
 
-**しかし、実際には動作する**。当プロジェクトおよびお客様環境で検証済み（[検証記録](../repost-draft-presigned-url-compatibility.md), [互換性ノート](../s3ap-compatibility-notes.md#presigned-url-support)）。**動く理由は署名の仕組みから説明できます。**
+**しかし、実際には動作する**。当プロジェクトおよびお客様環境で検証済み（[互換性ノート](../s3ap-compatibility-notes.md#presigned-url-support)）。**動く理由は署名の仕組みから説明できます。**
 
 1. **Presigning はクライアントサイド操作** — [`aws s3 presign`](https://docs.aws.amazon.com/cli/latest/reference/s3/presign.html) は SigV4 署名をローカルで計算するだけで、ネットワークリクエストは発生しません。
 2. **生成された URL は標準の GetObject** — [Presigned URL の仕様](https://docs.aws.amazon.com/AmazonS3/latest/userguide/ShareObjectPreSignedURL.html)どおり、署名が Authorization ヘッダーではなくクエリパラメータに入るだけの違いです。
@@ -426,137 +426,7 @@ Transfer Family は SFTP/FTPS エンドポイント経由で FSx for ONTAP S3 AP
 
 ---
 
-## 30 ペルソナレビュー
-
-### 方法論
-
-エンタープライズファイルポータルのステークホルダーを代表するロールベースのアーキタイプからフィードバックを収集。各視点からギャップ分析と FR 優先度付けを評価。
-
----
-
-#### 1. Enterprise Storage Architect
-
-> **Storage note**: FR-7 (Presigned URL) is correctly identified as the keystone. The ONTAP dual-authorization model (IAM + file system identity) makes Presigned URL implementation non-trivial — the signed URL must encode both the S3 AP context and the ONTAP identity mapping. I'd add that the URL should honor export-policy rules at the time of access, not at signing time, to prevent stale-permission exploits.
-
-#### 2. Frontend Developer (React/Amplify)
-
-> **Implementation note**: FR-5 (Storage Browser) would eliminate ~400 lines of custom code in our portal (FileExplorer, FilePreview, ResultsViewer file listing). The Storage Browser component already handles pagination, error states, and accessibility. The gap is purely that its S3 client initialization doesn't accept an AP alias as the bucket parameter.
-
-#### 3. Information Security Officer
-
-> **Security note**: The Presigned URL limitation is actually a security feature in disguise — it prevents uncontrolled URL sharing. If FR-7 is implemented, it MUST include: (a) configurable maximum expiry (e.g., org-level cap at 1 hour), (b) IP restriction option via S3 AP policy conditions, (c) CloudTrail logging of URL generation events. Without these controls, Presigned URLs on NAS data could become a data exfiltration vector.
-
-#### 4. Compliance Officer (Financial Services)
-
-> **Governance note**: FR-8 (Audit UI) should be higher priority for regulated industries. FISC (金融情報システムセンター) guidelines require demonstrable file access logs with who/what/when/why. CloudTrail raw logs are insufficient — we need a queryable, reportable interface. Consider integration with AWS Audit Manager custom frameworks.
-
-#### 5. DevOps / Platform Engineer
-
-> **Operations note**: FR-6 (Amplify Storage) would simplify our CI/CD pipeline. Currently, the Lambda proxy pattern means every file operation has cold-start latency. With native Amplify Storage support, file operations would go direct from the browser (via SigV4) to the S3 AP endpoint — cutting latency from ~800ms to ~200ms for listing operations.
-
-#### 6. Data Engineer / Analytics
-
-> **Analytics note**: Kendra is entering Maintenance Mode (2026/6/30) and Q Business will stop accepting new customers (2026/7/31). The successor service is Amazon Quick. FR-9 should target: (1) Amazon Quick — if its S3 connector accepts S3 AP aliases, full-text enterprise search over FSx for ONTAP data is immediately available, (2) OpenSearch Serverless for custom keyword search UX (~$50/month for 1M files with appropriate OCU scaling). Bedrock Knowledge Base already supports FSx for ONTAP S3 AP as a direct data source — RAG/Q&A is available today without new FRs.
-
-#### 7. Enterprise IT Manager
-
-> **Cost note**: The Lambda proxy workaround for file download adds $0.20/1M requests + $0.09/GB data transfer. For a 500-user organization downloading 100 files/day average, that's ~$15K/year in avoidable Lambda costs. Presigned URLs (FR-7) would reduce this to near-zero (direct S3 AP → browser transfer).
-
-#### 8. UX Designer
-
-> **UX note**: File preview is table stakes for user adoption. In user testing, portals without thumbnail preview have 40-60% lower engagement than those with it. The current "file type icon" approach (our FilePreview component) is a minimal fallback — users need to see the actual content to decide whether to download. FR-7 → FR-5 would solve this completely.
-
-#### 9. Healthcare IT (HIPAA)
-
-> **Compliance note**: For HIPAA-covered entities, Presigned URLs on PHI (Protected Health Information) require additional safeguards: (a) URLs must be logged as "disclosure events", (b) expiry must be configurable per data classification, (c) IP-based restrictions for URLs containing PHI. FR-7 implementation should include a mechanism to enforce these through S3 AP policy conditions.
-
-#### 10. Government / Public Sector
-
-> **Public Sector note**: NARA (National Archives) file access requirements mandate audit trails showing chain of custody. FR-8 should explicitly support "file access certificate" generation — a tamper-evident record that a specific user accessed a specific file at a specific time. This is required for FOIA responses and legal hold scenarios.
-
-#### 11. Manufacturing / OT Engineer
-
-> **OT note**: On the factory floor, engineers need to access CAD/CAM files from FSx for ONTAP via both SMB (CAD workstation) and the web portal (tablet on shop floor). FR-7 (Presigned URL) with short expiry (5 min) would enable QR-code-based file access — scan a QR code on a work order to view the associated drawing on a tablet.
-
-#### 12. Mobile Developer
-
-> **Mobile note**: この依存は解消しました。FR-7 が 2026-09 のドキュメント訂正で解決し、presigned URL が公開ドキュメントに裏付けのある機能になったため、モバイルのネイティブ画像/動画ビューアへ直接 URL を渡せます。Lambda プロキシ経由だと同期レスポンスの 6 MB 上限に当たるため、大きいファイルはこちらの経路が必要でした。
-
-#### 13. Solutions Architect (Partner/SI)
-
-> **Partner/SI note**: In customer demos, the #1 question is "can users preview files without downloading?" The current answer ("not yet, pending AWS feature") is the primary blocker for PoC sign-off. FR-7 + FR-5 would convert our portal from "interesting prototype" to "deployable solution" in partner assessments.
-
-#### 14. Backup / DR Specialist
-
-> **DR note**: The FlexClone restore feature provides instant point-in-time volume recovery from the file portal UI — a capability not available in SaaS file management products. However, the restore UX needs a "compare files" view (diff between current and snapshot version) which requires FR-7 for side-by-side preview.
-
-#### 15. Network Engineer
-
-> **Network note**: Presigned URLs for Internet-origin S3 APs would bypass the VPC entirely (browser → S3 AP endpoint directly). This is architecturally clean but raises a consideration: customers using VPC-origin APs would need a different mechanism (VPC endpoint + signed URL). FR-7 should document both NetworkOrigin scenarios.
-
-#### 16. Database Administrator
-
-> **Data note**: FR-9 (Search) should leverage the S3 AP's ability to expose file metadata (size, lastModified, security style) alongside content. A search index that includes both content AND ONTAP metadata (volume name, aggregate, tiering state) would be particularly valuable for storage planning decisions.
-
-#### 17. Cost Optimization (FinOps) Analyst
-
-> **Cost note**: Current architecture cost for a typical 28-pattern deployment with file portal: Lambda proxy adds ~$45/month for a 100-user org. Storage Browser (FR-5) with Presigned URLs (FR-7) would reduce this to ~$2/month (only CloudFront + S3 AP data transfer). ROI for FR-7: 95% cost reduction on file access operations.
-
-#### 18. Legal / Records Management
-
-> **Legal note**: Sharing links (enabled by FR-7) must support "view-only" mode where the recipient can preview but not download. This is critical for legal hold scenarios where documents must be reviewable but not copyable. The S3 AP policy should support a condition key like `s3:x-amz-content-disposition: inline` to enforce browser-only viewing.
-
-#### 19. Education / Research IT
-
-> **Research note**: Academic institutions need to share large datasets (genomics FASTQ, astronomy FITS) with external collaborators. FR-7 Presigned URLs with multi-GB support would enable this. Current workaround (copy to standard S3 + presign) doubles storage cost and creates data governance complexity (which copy is authoritative?).
-
-#### 20. Media & Entertainment
-
-> **Media note**: VFX studios need frame-accurate video preview directly from FSx for ONTAP storage. This requires HTTP Range requests on Presigned URLs — essential for video scrubbing UX. FR-7 implementation should confirm Range GET support on presigned FSx for ONTAP S3 AP URLs.
-
-#### 21. Semiconductor / EDA Engineer
-
-> **EDA note**: GDS/OASIS layout files can be 50-100GB. Preview requires a specialized renderer, not just a file download. The portal should support "preview plugins" that can request byte ranges (FR-7 prerequisite) and render specific layers. This is specific to EDA and wouldn't be solved by generic preview.
-
-#### 22. Human Resources
-
-> **HR note**: Employee document portals need per-user isolation (each employee sees only their own files). The S3 AP dual-authorization model (IAM + ONTAP identity) can enforce this, but the portal UI needs a "My Files" view scoped to the authenticated user's home directory. This is implementable today without new FRs.
-
-#### 23. Supply Chain / Logistics
-
-> **Logistics note**: B2B document exchange (EDI, purchase orders, shipping manifests) via SFTP is now natively supported — Transfer Family + FSx for ONTAP S3 AP (GA 2026/1). The file portal should integrate with this: show "Recently received via SFTP" as a filter/view in the Files tab. This is implementable today without new FRs.
-
-#### 24. Startup / Small Team Lead
-
-> **Startup note**: For small teams (<50 users), the gap between our portal and Box/Drive is too wide for adoption. FR-5 (Storage Browser) alone would close the gap significantly. Prioritize this as the "small team" path — they don't need retention policies or SFTP, they need browse/preview/upload/download to work.
-
-#### 25. AI/ML Engineer
-
-> **AI note**: The processing pipeline integration could be enhanced with a "preview AI results" feature — e.g., show Rekognition bounding boxes overlaid on the original image, or Textract extracted text alongside the PDF. This requires FR-7 (original file preview via Presigned URL) plus custom rendering logic.
-
-#### 26. Quality Assurance / Testing
-
-> **Testing note**: Automated UI testing (Playwright/Cypress) for the file portal requires stable file URLs. Currently, all file access goes through Lambda with dynamic responses, making snapshot testing difficult. Presigned URLs (FR-7) with deterministic expiry would enable proper E2E test assertions.
-
-#### 27. Accessibility Specialist
-
-> **Accessibility note**: File preview must include alt-text generation for images (Rekognition can provide this). PDF preview should extract text for screen readers. Video preview needs captions. The AI/ML pipeline could feed accessibility metadata back to the portal — enabling an inclusive file browsing experience that goes beyond what standard file management products offer.
-
-#### 28. Multi-Cloud / Hybrid Architect
-
-> **Hybrid note**: Organizations with on-premises ONTAP connected via SnapMirror to FSx for ONTAP get the portal "for free" on their existing data. No migration required. This should be the primary messaging: "Your existing NAS data, accessible through a modern web portal with AI capabilities — zero data movement." The FR priorities correctly enable this story.
-
-#### 29. Sustainability / Green IT
-
-> **Sustainability note**: The "no data copy" architecture aligns with sustainability goals — one copy of data rather than multiple copies in S3 + FSx + backup. FR-7 (Presigned URL) strengthens this by eliminating the Lambda proxy's compute cost and the temptation to copy data to standard S3 "just for sharing."
-
-#### 30. Customer Success / Adoption Lead
-
-> **Adoption note**: Adoption risk assessment: without FR-7 (Presigned URL), our portal solves 30% of what users expect from a file portal (listing, processing). With FR-7 + FR-5 (Storage Browser), it solves 70%. The remaining 30% (collaboration, sync, real-time editing) is addressable through Nextcloud coexistence — which we already document. Recommend positioning as: "Processing-first portal that coexists with your collaboration tool."
-
----
-
-## ペルソナレビューからの統合推奨事項
+## ポータル改善の推奨事項
 
 ### 即座に実行可能（AWS FR 不要）
 
@@ -597,7 +467,7 @@ Transfer Family は SFTP/FTPS エンドポイント経由で FSx for ONTAP S3 AP
 | NAS データへの RAG | ✅ Bedrock Knowledge Base + S3 AP | [FSx ユーザーガイド チュートリアル](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/tutorial-build-rag-with-bedrock.html) |
 | エンタープライズ検索 / AI Q&A | ✅ Amazon Quick + S3 AP (AD identity 必須) | [AWS Storage Blog](https://aws.amazon.com/blogs/storage/enabling-ai-powered-analytics-on-enterprise-file-data-configuring-s3-access-points-for-amazon-fsx-for-netapp-ontap-with-active-directory/), [Workshop](https://catalog.us-east-1.prod.workshops.aws/workshops/9cd82e0b-8348-456b-932a-818b9e5825a1/en-US/08-quicksuite/61-setup) |
 | NAS からの動画ストリーミング | ✅ CloudFront + S3 AP | [FSx ユーザーガイド](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/using-access-points-with-aws-services.html) |
-| ファイルプレビュー/ダウンロード用 Presigned URL | ✅ 動作確認済み（client-side SigV4） | [プロジェクト検証記録](../repost-draft-presigned-url-compatibility.md) |
+| ファイルプレビュー/ダウンロード用 Presigned URL | ✅ 動作確認済み（client-side SigV4） | [プロジェクト検証記録](../s3ap-compatibility-notes.md#presigned-url-support) |
 
 ---
 

@@ -300,8 +300,7 @@
       },
       "appears_in": [
         "docs/s3ap-compatibility-notes.md",
-        "docs/aws-feature-requests/file-portal-service-gap.md",
-        "docs/repost-draft-presigned-url-compatibility.md"
+        "docs/aws-feature-requests/file-portal-service-gap.md"
       ],
       "claim_ja": "AWS の FSx for ONTAP S3 Access Point 互換性テーブルは、presigned URL が動作するにもかかわらず Presign を非対応として分類していました。2026-09 に訂正され、現在は `Presign — Supported` と記載されています。",
       "observation_ja": "ONTAP 9.18.1P3D1 で presigned URL 経由の GetObject は HTTP 200 と正しい内容を返す一方、公開テーブルは Presign を非対応と分類していました。2026-09 にテーブルが訂正され、実測と公開ドキュメントが一致しました。"

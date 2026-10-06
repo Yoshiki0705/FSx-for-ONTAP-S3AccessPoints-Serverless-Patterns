@@ -97,7 +97,7 @@ Amazon IVS
   ここでは対象外。ただし「FSx for ONTAP へ publish → S3 AP + CloudFront で配信」という考え方は適用可能。
 - 対象は **エンコード済み HLS のライブ後パッケージング/配信**。トランスコード・再パッケージ・広告挿入は **行わない**。
 
-> **メディアワークフロー**（Media SME lens）: IVS は HLS を multivariate `master.m3u8` + レンディション別
+> **メディアワークフロー**: IVS は HLS を multivariate `master.m3u8` + レンディション別
 > メディアプレイリスト + セグメント（TS は `.ts`、fMP4/CMAF は `.m4s`+init）に加え、サムネイルと録画
 > メタデータ JSON として記録する。任意のプレイリストではなく multivariate master を検証すること。
 
@@ -112,7 +112,7 @@ Amazon IVS
 | **2. クライアント側オーバーレイ（timed metadata）** | [Timed Metadata（`PutMetadata`）](https://docs.aws.amazon.com/ivs/latest/LowLatencyUserGuide/metadata.html) をライブに同期挿入し、プレイヤー SDK が**クライアント側で字幕・テロップ・グラフィックスを描画**。`PutMetadata` は最大 1 KB/リクエスト・5 TPS/チャンネル。 | **間接的に可能**。metadata には「アセット参照キー + タイムコード」を載せ、字幕本文/テロップ画像などの実体は **CloudFront（オリジン = FSx for ONTAP S3 AP）** から取得させる。編集チームは NFS/SMB で字幕を書き、同じデータを S3 AP + CloudFront が配る。 |
 | **3. near-live 編集レンディション（録画側）** | Auto-Record された HLS を継続的に FSx for ONTAP へ取り込み、編集チームが growing recording を編集し、**ライブから数十秒〜数分遅れの別 URL** として near-live 配信。 | **本命**。NLE(SMB) / 字幕ツール(SMB) / S3-API 自動化 / Athena・Bedrock 解析が、コピーを増やさず**単一の正データ**上で並行できる（プロトコル非依存の共同編集）。 |
 
-> **Media SME lens**: 「ライブそのものに焼き込む」のではなく、レイヤー 2（クライアント描画）または
+> **メディアワークフローに関する補足**: 「ライブそのものに焼き込む」のではなく、レイヤー 2（クライアント描画）または
 > レイヤー 3（near-live 別レンディション）で実現するのが IVS に沿った設計。映像への焼き込み
 > クローズドキャプション（CEA-608/708）は**エンコーダー側**で埋め込むもので、FSx からの後入れではない。
 

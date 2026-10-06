@@ -96,7 +96,7 @@ Amazon IVS
   다만 "FSx for ONTAP 에 게시 → S3 AP + CloudFront 로 전달" 개념은 적용 가능.
 - 대상은 **인코딩된 HLS 의 라이브 이후 패키징/전달**. 트랜스코딩·재패키징·광고 삽입은 **하지 않는다**.
 
-> **미디어 워크플로**(Media SME lens): IVS 는 HLS 를 multivariate `master.m3u8` + 렌디션별 미디어
+> **미디어 워크플로**: IVS 는 HLS 를 multivariate `master.m3u8` + 렌디션별 미디어
 > 플레이리스트 + 세그먼트(TS 는 `.ts`, fMP4/CMAF 는 `.m4s`+init)와 썸네일·녹화 메타데이터 JSON 으로
 > 기록한다. 임의 플레이리스트가 아니라 multivariate master 를 검증할 것.
 
@@ -111,7 +111,7 @@ Amazon IVS
 | **2. 클라이언트 측 오버레이(timed metadata)** | [Timed Metadata(`PutMetadata`)](https://docs.aws.amazon.com/ivs/latest/LowLatencyUserGuide/metadata.html) 를 라이브에 동기 삽입하고 플레이어 SDK 가 **클라이언트에서 자막·자막바·그래픽을 렌더링**. `PutMetadata` 는 요청당 최대 1 KB·채널당 5 TPS. | **간접적으로 가능**: metadata 에 "에셋 참조 키 + 타임코드"를 싣고, 자막 본문/오버레이 이미지 실체는 **CloudFront(오리진 = FSx for ONTAP S3 AP)** 에서 가져오게 한다. 편집팀은 NFS/SMB 로 자막을 쓰고, 같은 데이터를 S3 AP + CloudFront 가 배포. |
 | **3. near-live 편집 렌디션(녹화 측)** | Auto-Record 된 HLS 를 지속적으로 FSx for ONTAP 로 취합하고, 편집팀이 growing recording 을 편집해 **라이브보다 수십 초~수 분 지연된 별도 URL** 로 near-live 배포. | **핵심**: NLE(SMB) / 자막 도구(SMB) / S3-API 자동화 / Athena·Bedrock 분석이 복사 없이 **단일 정본 데이터** 위에서 병행(프로토콜 무관 공동 편집). |
 
-> **Media SME lens**: "라이브 자체에 굽는" 것이 아니라 레이어 2(클라이언트 렌더링) 또는 레이어 3
+> **미디어 워크플로 관련 보충**: "라이브 자체에 굽는" 것이 아니라 레이어 2(클라이언트 렌더링) 또는 레이어 3
 > (near-live 별도 렌디션)에서 구현하는 것이 IVS 방식에 맞다. 영상에 구워진 클로즈드 캡션
 > (CEA-608/708)은 **인코더 측**에서 삽입하며 FSx 에서 나중에 넣는 것이 아니다.
 

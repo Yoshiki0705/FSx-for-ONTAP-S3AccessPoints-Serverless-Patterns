@@ -106,7 +106,7 @@ Amazon IVS
 - The pattern covers **post-live packaging/delivery of already-encoded HLS**. It does **not**
   transcode, re-package, or insert ads.
 
-> **Media workflow** (Media SME lens): IVS records HLS as multivariate `master.m3u8` +
+> **Media workflow**: IVS records HLS as multivariate `master.m3u8` +
 > per-rendition media playlists + segments (`.ts` for TS, `.m4s`+init for fMP4/CMAF) plus
 > thumbnails and recording metadata JSON. Validate the multivariate master, not just any playlist.
 
@@ -122,7 +122,7 @@ the insertion happens at.
 | **2. Client-side overlay (timed metadata)** | Insert [Timed Metadata (`PutMetadata`)](https://docs.aws.amazon.com/ivs/latest/LowLatencyUserGuide/metadata.html) synced to the live stream; the player SDK renders **captions/lower-thirds/graphics on the client**. `PutMetadata` allows max 1 KB/request, 5 TPS/channel. | **Indirectly possible**: put an "asset reference key + timecode" in the metadata, and fetch the caption text / overlay images from **CloudFront (origin = FSx for ONTAP S3 AP)**. Editors author captions over NFS/SMB; the same data is served by S3 AP + CloudFront. |
 | **3. Near-live editing rendition (recording side)** | Continuously ingest the Auto-Recorded HLS into FSx for ONTAP, edit the growing recording, and publish a near-live rendition on a **separate URL, tens of seconds to minutes behind live**. | **The sweet spot**: NLE (SMB) / caption tools (SMB) / S3-API automation / Athena/Bedrock analysis run concurrently on a **single authoritative copy** without extra copies (protocol-agnostic collaborative editing). |
 
-> **Media SME lens**: rather than "burning into the live stream itself," realize this at layer 2
+> **Media workflow note**: rather than "burning into the live stream itself," realize this at layer 2
 > (client rendering) or layer 3 (near-live rendition), which matches how IVS works. Burned-in
 > closed captions (CEA-608/708) are embedded at the **encoder**, not added later from FSx.
 
