@@ -104,7 +104,7 @@ Amazon IVS
 - Das Muster deckt **Post-Live-Packaging/Auslieferung bereits kodierten HLS** ab. Es **transkodiert,
   re-packaged oder fügt keine Werbung ein**.
 
-> **Medien-Workflow** (Media SME lens): IVS zeichnet HLS als multivariate `master.m3u8` +
+> **Medien-Workflow**: IVS zeichnet HLS als multivariate `master.m3u8` +
 > Rendition-Medienplaylists + Segmente (`.ts` für TS, `.m4s`+init für fMP4/CMAF) plus Thumbnails und
 > Aufzeichnungs-Metadaten-JSON auf. Das multivariate Master validieren, nicht irgendeine Playlist.
 
@@ -120,7 +120,7 @@ muss man entscheiden, **auf welcher Schicht** die Einfügung erfolgt.
 | **2. Client-seitiges Overlay (Timed Metadata)** | [Timed Metadata (`PutMetadata`)](https://docs.aws.amazon.com/ivs/latest/LowLatencyUserGuide/metadata.html) synchron in den Live-Stream einfügen; das Player-SDK rendert **Untertitel/Bauchbinden/Grafiken clientseitig**. `PutMetadata`: max. 1 KB/Anfrage, 5 TPS/Kanal. | **Indirekt möglich**: „Asset-Referenzschlüssel + Timecode" in die Metadaten legen und den Untertiteltext / Overlay-Bilder von **CloudFront (Origin = FSx for ONTAP S3 AP)** abrufen. Teams bearbeiten Untertitel über NFS/SMB; dieselben Daten werden von S3 AP + CloudFront ausgeliefert. |
 | **3. Near-live-Editing-Rendition (Aufnahmeseite)** | Die Auto-Record-HLS kontinuierlich in FSx for ONTAP ingestieren, die laufende Aufnahme bearbeiten und eine Near-live-Rendition auf einer **separaten URL, Sekunden bis Minuten hinter dem Live** veröffentlichen. | **Der Sweet Spot**: NLE (SMB) / Untertitel-Tools (SMB) / S3-API-Automatisierung / Athena-/Bedrock-Analyse laufen parallel auf einer **einzigen maßgeblichen Kopie** ohne zusätzliche Kopien (protokollunabhängige Kollaboration). |
 
-> **Media SME lens**: Statt „in den Live-Stream selbst einzubrennen", auf Schicht 2 (Client-Rendering)
+> **Hinweis zum Medien-Workflow**: Statt „in den Live-Stream selbst einzubrennen", auf Schicht 2 (Client-Rendering)
 > oder Schicht 3 (Near-live-Rendition) umsetzen — das entspricht der Funktionsweise von IVS. Eingebrannte
 > Closed Captions (CEA-608/708) werden **encoder-seitig** eingebettet, nicht später aus FSx hinzugefügt.
 

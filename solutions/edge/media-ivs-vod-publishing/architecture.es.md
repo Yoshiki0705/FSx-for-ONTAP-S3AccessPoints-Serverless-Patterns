@@ -104,7 +104,7 @@ Amazon IVS
 - El patrón cubre el **empaquetado/entrega post-directo de HLS ya codificado**. **No** transcodifica,
   re-empaqueta ni inserta anuncios.
 
-> **Flujo multimedia** (Media SME lens): IVS graba HLS como `master.m3u8` multivariante + playlists de
+> **Flujo multimedia**: IVS graba HLS como `master.m3u8` multivariante + playlists de
 > medios por rendición + segmentos (`.ts` para TS, `.m4s`+init para fMP4/CMAF) más miniaturas y
 > metadatos de grabación JSON. Validar el master multivariante, no cualquier playlist.
 
@@ -120,7 +120,7 @@ que decidir **en qué capa** ocurre la inserción.
 | **2. Superposición en cliente (timed metadata)** | Insertar [Timed Metadata (`PutMetadata`)](https://docs.aws.amazon.com/ivs/latest/LowLatencyUserGuide/metadata.html) sincronizados al directo; el SDK del reproductor **renderiza subtítulos/rótulos/gráficos en el cliente**. `PutMetadata`: máx. 1 KB/solicitud, 5 TPS/canal. | **Posible indirectamente**: poner una «clave de referencia de activo + timecode» en los metadatos y obtener el texto de subtítulos / imágenes desde **CloudFront (origen = FSx for ONTAP S3 AP)**. Los equipos editan subtítulos por NFS/SMB; los mismos datos los sirve S3 AP + CloudFront. |
 | **3. Rendición de edición near-live (lado grabación)** | Ingerir de forma continua el HLS Auto-Record en FSx for ONTAP, editar la grabación en curso y publicar una rendición near-live en una **URL separada, con decenas de segundos a minutos de retraso respecto al directo**. | **El punto fuerte**: NLE (SMB) / herramientas de subtítulos (SMB) / automatización S3-API / análisis Athena/Bedrock se ejecutan en paralelo sobre una **única copia autorizada** sin copias adicionales (edición colaborativa independiente del protocolo). |
 
-> **Media SME lens**: en lugar de «grabar en el propio directo», impleméntalo en la capa 2 (renderizado
+> **Nota sobre el flujo multimedia**: en lugar de «grabar en el propio directo», impleméntalo en la capa 2 (renderizado
 > en cliente) o la capa 3 (rendición near-live), lo que se ajusta a cómo funciona IVS. Los subtítulos
 > grabados (CEA-608/708) se incrustan en el **encoder**, no se añaden después desde FSx.
 
