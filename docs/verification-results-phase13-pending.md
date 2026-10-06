@@ -25,11 +25,13 @@
 
 | # | 検証項目 | 前提条件 | リスク | 優先度 |
 |---|---------|---------|--------|--------|
-| B-1 | **FlexCache volume に S3 AP を attach 可能か** | FSx for ONTAP + FlexCache volume | **最重要**: AWS ドキュメントに明示的記載なし。不可の場合はアーキテクチャ変更が必要 | **最高** |
+| B-1 | **FlexCache volume に S3 AP を attach 可能か** | FSx for ONTAP + FlexCache volume | **他プロジェクトの実測で不可**: FSx API が `the volume is a FlexCache` で取り付けを拒否した（2026-07-24、ONTAP 9.18.1P3D1、[Lakehouse の記録 #26](https://github.com/Yoshiki0705/FSx-for-ONTAP-Lakehouse-Integrations/blob/main/integrations/snapmirror-flexcache-multicloud/docs/BACKLOG.md)）。拒否はボリューム種別によるもので、ONTAP のバージョンでは解決しない（[Hub のノート](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/blob/main/docs/ja/domains/data-utilization/notes/serving-a-replication-destination-over-s3.md)）。このリポジトリでは再現していない。下の「B-1 が失敗した場合の代替アーキテクチャ」が前提になる | 解消（不可） |
 | B-2 | FlexCache volume の S3 AP 経由 ListObjectsV2 | B-1 が成功した場合 | キャッシュ済み/未キャッシュデータの見え方 | **最高** |
 | B-3 | FlexCache volume の S3 AP 経由 GetObject | B-1 が成功した場合 | cache miss 時のレイテンシ、タイムアウト | **最高** |
 | B-4 | FlexCache volume の S3 AP 経由 GetObject（cache hit 時） | B-3 + prepopulate 済み | cache hit 時のレイテンシ改善の実測 | 高 |
 | B-5 | FlexCache volume の S3 AP NetworkOrigin 設定 | B-1 | Internet/VPC Origin の選択と到達性 | 高 |
+
+B-2〜B-5 は B-1 の成功を前提にした項目です。B-1 が不可と実測されたため、FlexCache volume に S3 Access Points を取り付ける形での検証は前提を失いました。S3 API で読む対象は Origin volume になります。
 
 ### C. CloudFormation デプロイ検証
 
@@ -132,7 +134,7 @@
 
 | # | 項目 | 理由 |
 |---|------|------|
-| B-1 | FlexCache volume に S3 AP attach 可能か | 不可の場合、アーキテクチャ全体の前提が崩れる |
+| B-1 | FlexCache volume に S3 AP attach 可能か | 他プロジェクトの実測で不可（上の B 節）。代替アーキテクチャへの切り替えが要る |
 | E-3 | Dynamic FlexCache ワークフロー（Real ONTAP） | 本パターンの核心機能 |
 
 ### 高優先度（Phase 13 の価値証明に必須）
@@ -193,6 +195,8 @@
 ## B-1 が失敗した場合の代替アーキテクチャ
 
 FlexCache volume に S3 AP を attach できない場合:
+
+B-1 は他プロジェクトの実測で不可だったため（上の B 節）、この節の構成が前提になります。下の更新 1〜4 の実施状況は、このページでは追跡していません。
 
 ```
 代替構成:

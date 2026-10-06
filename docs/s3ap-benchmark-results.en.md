@@ -35,7 +35,7 @@ Four main results follow. All were measured on a Single-AZ (First-generation) FS
 
 > **Environment constraint**: All results are from Single-AZ, First-generation FSx for ONTAP. Multi-AZ or Second-generation file systems may produce different results. Validate separately.
 
-> **Note**: These measurements were taken via the Internet (client → S3AP). Access from a VPC-external Lambda (AWS-managed egress) reduces latency, but a true VPC-internal Lambda + VPC-origin S3 AP path remains untested.
+> **Note**: These measurements were taken via the Internet (client → S3AP). Access from a VPC-external Lambda (AWS-managed egress) reduces latency, but a true VPC-internal Lambda + VPC-origin S3 AP path remains untested (Constraints item 1, re-verification: #443). For reference, a sibling project measured from an in-VPC EC2 instance (c5n.9xlarge, NetworkOrigin=VPC, through an S3 gateway endpoint, boto3 1.43.85, 128 MBps) a concurrency-1 p50 of 363.7 ms for a 1 MiB PutObject and 89.9 ms for an 8 MiB GetObject (2026-09-01, ap-northeast-1, [S3-Burst record, Japanese](https://github.com/Yoshiki0705/S3-Burst-on-ONTAP-Files/blob/main/docs/ja/verification/throughput-iops-concurrency.md)). The write is slower than this page's 1 MB PutObject (P50 164.5 ms), so this data does not show an in-VPC path being faster. The client and SDK version differ, so it does not stand in for a Lambda measurement.
 
 ---
 
