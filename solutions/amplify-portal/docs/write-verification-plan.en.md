@@ -36,7 +36,9 @@ abort** and A7's **copy over 5 GiB**, each for a reason given in its own section
 The order run was A8 → A3 → A2 → A5 → A7 → A4 → A1: fewest prerequisites, smallest impact and
 easiest rollback first. Running them overturned the original premise of A1, A5 and A8.
 
-### A1. QoS policies — **Done (2026-08-15). The premise that the cycle cannot be completed is disproven**
+### A1. QoS policies (done, 2026-08-15)
+
+Measurement disproved the original premise that create → assign → delete cannot complete (see "Measured" at the end of this section).
 
 | Item | Detail |
 |------|--------|
@@ -64,7 +66,7 @@ that the cycle cannot be completed therefore did not hold. What is true instead 
 limit from every volume using the policy**, which the panel's confirmation now says. The `none` release is
 still needed as the way to lift the limit on one volume while keeping the policy.
 
-### A2. SMB share create and delete — **Done (2026-08-15)**
+### A2. SMB share create and delete (done, 2026-08-15)
 
 | Item | Detail |
 |------|--------|
@@ -77,7 +79,7 @@ still needed as the way to lift the limit on one volume while keeping the policy
 Create a probe qtree or directory and share that. The existing `c$` and `ipc$` are ONTAP's
 administrative shares; leave them alone.
 
-### A3. Local groups and members — **Done (2026-08-15)**
+### A3. Local groups and members (done, 2026-08-15)
 
 | Item | Detail |
 |------|--------|
@@ -93,7 +95,7 @@ Sources: [Manage local SMB group membership](https://docs.netapp.com/us-en/ontap
 Local user create / edit / delete was confirmed on 2026-08-14, so make one throwaway user of that
 same shape and use it as the member. **The SID not changing** is already established.
 
-### A4. FlexClone create and split (the split is irreversible) — **Done (2026-08-15)**
+### A4. FlexClone create and split (the split is irreversible; done, 2026-08-15)
 
 | Item | Detail |
 |------|--------|
@@ -120,7 +122,15 @@ from the parent's `clone_<name>.<timestamp>`. The split took seconds on a nearly
 using 348 KB, so the space does not double; the volume leaves the clone listing as the split completes,
 which is why the progress figure is only visible while it runs, and the parent keeps the base snapshot.
 
-### A5. Quota rule deletion — **Done (2026-08-15). "Still enforced after deletion" is not observable in the report**
+Deleting a clone and then its parent stops at `has one or more clones`. The cause is ONTAP's volume
+recovery queue (12 hours by default), and `purge` needs diag privilege, so on FSx for ONTAP the only option is to
+wait. **Splitting the clone before deleting it frees the parent immediately**, confirmed A/B, so a split
+belongs in the plan whenever the parent is going to be deleted. What a split does, and when to choose it,
+is now in the FlexClone panel's collapsed guide.
+
+### A5. Quota rule deletion (done, 2026-08-15)
+
+Whether a deleted rule stays enforced could not be observed through the usage report (see "Measured" at the end of this section).
 
 | Item | Detail |
 |------|--------|
@@ -146,9 +156,11 @@ Measured: creating a tree rule for a qtree makes ONTAP create the volume's defau
 deleting only the qtree rule leaves that default behind -- so the qtree keeps appearing in the usage
 report, which looks like the deleted rule persisting. The deleted rule's own limits left the report
 immediately. Whether enforcement continues is not observable through these reads, so the reference
-above stands as the source and the portal now points at the off → on step after a delete.
+above is the source for that, and the portal now points at the off → on step after a delete.
 
-### A6. SnapMirror update-now and transfer abort — **Update-now done (2026-08-15, on an existing relationship with approval). The abort is not run**
+### A6. SnapMirror update-now and transfer abort (update-now only done, 2026-08-15)
+
+The abort is not run; the reason is at the end of this section.
 
 | Item | Detail |
 |------|--------|
@@ -182,7 +194,9 @@ a transfer here finishes instantly; the measurement above shows a 12-second wind
 different one: an abort leaves a relationship we do not own unhealthy and can leave a restart checkpoint
 behind. Running it needs the owner's approval too.
 
-### A7. File operations (through the S3 Access Point) — **Done (2026-08-15; only the over-5-GiB case is unverified, for want of a precondition)**
+### A7. File operations (through the S3 Access Point; done, 2026-08-15)
+
+Only the over-5-GiB case is unverified, because the object it needs cannot be created in this environment (see "Measured" at the end of this section).
 
 | Item | Detail |
 |------|--------|
@@ -216,16 +230,14 @@ Measured: `createUploadLink` presigned with SigV2 against the global endpoint, s
 `signature_version="s3v4"` and `addressing_style="virtual"`; the PUT returns HTTP 200 after it. An object
 over 5 GiB cannot be created here at all -- it needs a multipart upload, which is the very call that fails
 on this Access Point -- so a size check before the copy was added instead, refusing with the reason.
-Deleting a clone and then its parent stops at `has one or more clones`. The cause is ONTAP's volume
-recovery queue (12 hours by default), and `purge` needs diag privilege, so on FSx the only option is to
-wait. **Splitting the clone before deleting it frees the parent immediately**, confirmed A/B, so a split
-belongs in the plan whenever the parent is going to be deleted. What a split does, and when to choose it,
-is now in the FlexClone panel's collapsed guide.
+
 
 Also found: **a folder cannot be deleted from the UI** (`trashFile` refuses folders and `deleteFileForever`
 is confined to `.trash/`).
 
-### A8. ARP state change — **the premise did not survive measurement (2026-08-15)**
+### A8. ARP state change (done, 2026-08-15)
+
+The premise this entry was placed in group A on did not hold under measurement (details below the table).
 
 | Item | Detail |
 |------|--------|
@@ -251,8 +263,8 @@ Source: [Enable ARP on a volume](https://docs.netapp.com/us-en/ontap/anti-ransom
 
 > **The general lesson from this entry**: "there is a safe observing mode" was a premise, not
 > a fact. The documentation was read at planning time and still did not say whether that mode
-> exists on the version in use. A premise that makes something safe is the one most worth
-> checking first.
+> exists on the version in use. Measure a premise that makes an operation look safe before
+> any other premise.
 
 ---
 
@@ -284,8 +296,8 @@ These stay unverified because they cannot be run. What would have to exist is st
 | `createSnapshotPolicy` / `assignSnapshotPolicy` | Assigning a policy requires `acknowledgeIrreversible`. It is the doorway to lock-bearing configuration, so it is deliberately not run |
 
 This follows [Tamperproof Snapshot Design](../../../docs/tamperproof-snapshot-design.md) and the
-irreversible-operations section of `AGENTS.md`. **A verification environment is the worst place to
-put an irreversible operation**: an undeletable resource becomes a long-running bill and holds
+irreversible-operations section of `AGENTS.md`. **A verification environment does not get an
+irreversible operation either**: an undeletable resource becomes a long-running bill and holds
 everything sharing the file system in place with it.
 
 ---

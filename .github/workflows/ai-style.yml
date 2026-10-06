@@ -32,8 +32,6 @@ jobs:
         run: python3 -m unittest -v scripts/tests/test_ai_style_rules.py scripts/tests/test_ai_style_strong_fixtures.py
       # --fail exits 1 on any fail-tier finding; warnings are printed in the
       # summary and do not fail the step.
-      # temporary: files held by another branch, tracked in #441. They are the
-      # last four lines of the command; delete them once that Issue is closed.
       - name: Scan ja/en Markdown
         run: >-
           python3 tools/ai_style_rules.py . --summary --fail
@@ -44,7 +42,3 @@ jobs:
           --exclude '*.de.md' --exclude '*-de.md' --exclude '*/de/*'
           --exclude '*.es.md' --exclude '*-es.md' --exclude '*/es/*'
           --exclude 'docs/article-*' --exclude 'docs/devto-*'
-          --exclude 'solutions/amplify-portal/docs/write-verification-plan.md'
-          --exclude 'solutions/amplify-portal/docs/write-verification-plan.en.md'
-          --exclude 'solutions/amplify-portal/docs/portal-tabs-guide.md'
-          --exclude 'docs/s3ap-compatibility-notes.md'
