@@ -95,7 +95,7 @@ CreateMultipartUpload ──▶ UploadPart × N 回 ──▶ CompleteMultipartU
 
 実測値の詳細と再現手順: [オブジェクトサイズ上限の実測検証](s3ap-object-size-limits-verification.md)
 
-> **単位に注意**: AWS ドキュメントの「5 GB」「50 GB」はいずれも**二進表記（GiB）**でした。十進で解釈すると 5 GB では 368 MB、50 GB では 3.7 GB の差が生じます。
+> **単位に注意**: AWS ドキュメントの「5 GB」「50 GB」はいずれも**二進表記**（GiB）でした。十進で解釈すると 5 GB では 368 MB、50 GB では 3.7 GB の差が生じます。
 >
 > なお上限が 5 GiB から 50 GiB に引き上げられたのはドキュメント更新によるもので、対応する What's New アナウンスは確認できていません（アーカイブでは 2026-03-08 時点 5 GB、2026-06-25 時点 50 GB）。
 
