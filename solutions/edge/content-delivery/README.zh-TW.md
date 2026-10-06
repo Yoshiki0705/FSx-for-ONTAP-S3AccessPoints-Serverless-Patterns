@@ -133,7 +133,7 @@ DemoMode 的確認請參閱 [docs/demo-guide.md](docs/demo-guide.md)。
   記錄。
 - **資料所在地 / 地區限制**: 由於 CDN 為全球傳遞，對於不允許跨區域傳遞的資料，應
   從核准對象中排除，或透過 CDN 的 geo-blocking 進行控制。
-- **觀眾認證**: 由於不支援 S3 Presigned URL，使用 CDN 原生的權杖機制。
+- **觀眾認證**: 使用 CDN 原生的權杖機制。Presigned URL 在 2026-09 更正後為 `Supported`，但會直接存取存取點、繞過 CDN。
 - **PII**: 寫回傳遞記錄時對用戶端 IP 進行遮罩（`RedactClientIp=true`）。
 - **最小權限**: Publish/LogSync 僅具備目標 S3 AP 的必要 Action。傳遞用 Lambda 因需進行 Internet-origin S3 AP
   存取而在 **VPC 外** 執行。

@@ -15,7 +15,7 @@
 | 强制 Block Public Access（不可禁用） | 默认开启·不可变更 | 无认证的公开源不可用；需源认证 |
 | 源认证为 SigV4（IAM） | 由 IAM / AP 策略评估 | CDN 回源请求须用 AWS SigV4 签名 |
 | 双层授权（AWS + ONTAP） | 先 IAM 再 ONTAP 文件身份（UNIX UID / Windows AD） | 分发对象限于 ONTAP 身份可读范围 |
-| 不支持 Presigned URL | 官方不支持 | 观众令牌认证不能用 S3 Presigned URL；用 CDN 原生令牌 |
+| 支持 Presigned URL（2026-09 已更正） | 公开文档已支持 | 面向观众仍用 CDN 原生令牌：Presigned URL 直接指向接入点端点，会绕过 CDN |
 | NetworkOrigin（Internet/VPC，不可变更） | CDN 从托管/外部网络访问 | CDN 集成需 **Internet origin** |
 | 对象大小上限 50 GB | 单次 PUT 限制为 5 GB | 超过 5 GB 的写回需分段上传 |
 
@@ -30,7 +30,7 @@
 - **M4 — 自管 SigV4 签名代理**：将签名中间层（Lambda Function URL / ALB）作为源。几乎所有 CDN 都可用，
   但代理成为可用性·扩展的关注点。
 
-> 通用绝对约束：观众令牌认证不能用 S3 Presigned URL — 用 CDN 原生令牌。
+> 适用于所有机制：不要把 S3 Presigned URL 交给观众 — 会绕过 CDN。用 CDN 原生令牌。
 > 公开分发绕过 NFS/SMB ACL，故仅分发已批准成品（见第 4 节）。
 
 ## 3. 各分发网络的机制支持（基于事实）
@@ -60,7 +60,7 @@
 
 1. 公开分发绕过 NFS/SMB ACL — **仅分发已批准成品**。不将受 ACL 控制的主数据直接送入分发层。
 2. 分离主数据（受 ACL 控制·机密）与分发成品（公开/准公开）。M3 使该分离结构上自然。
-3. 观众认证用 CDN 原生令牌机制（不用 S3 Presigned URL）。
+3. 观众认证用 CDN 原生令牌机制（不要把 S3 Presigned URL 交给观众：会绕过 CDN）。
 4. 最小权限源凭证；不在边缘放置长期密钥，优先短期凭证。
 5. 分发日志：将日志写回 FSx 时，将观众 PII 处理纳入设计。
 6. **分发批准追踪**：记录哪个对象由谁在何时批准为公开分发。批准人未记录的对象不阻断，而以 `unrecorded` **可视化**。
@@ -78,7 +78,7 @@
 | 能否将 S3 AP 作为无认证的 CDN 源公开 | **否**（强制 BPA） |
 | 能否从 S3 AP 经 CDN 直接分发 | **有条件可以** — 支持/实现 SigV4 时 M1/M2。AP alias 签名为 TBV |
 | 没有 SigV4 的 CDN 能否分发 | **可以** — M3（推送）或 M4（签名代理） |
-| 观众能否用 S3 Presigned URL | **否** — 用 CDN 原生令牌 |
+| 观众能否用 S3 Presigned URL | **不建议** — 会绕过 CDN。用 CDN 原生令牌 |
 | 分发时能否强制 ONTAP ACL | **否** — 以"仅分发已批准成品" + 追踪保障 |
 | 验证风险最低的首选 | **M3（推送）** — 规避源认证，厂商中立，便于 DemoMode |
 

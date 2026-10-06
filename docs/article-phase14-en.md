@@ -58,6 +58,13 @@ Each FlexCache/FlexClone pattern now has a **recommended first conversation ques
 
 ## 2. Presigned URLs: "Not Supported" but Working
 
+> **Correction, 2026-09**: the compatibility table now reads `Presign — Supported`. AWS
+> published the correction requested in 2026-07 after verifying the behaviour internally. The
+> section below is the record as published and was accurate at the time; the constraint it
+> describes no longer applies. See
+> [S3 AP compatibility notes](./s3ap-compatibility-notes.en.md#presigned-url-support).
+
+
 > ⚠️ **Production Warning**: AWS Support explicitly states that operations marked "Not supported" should NOT be relied upon for production workloads, even when they return success today. The behavior may change without deprecation notice, return inconsistent results across regions, or stop working after service updates. **Design alternatives for any workflow that requires presigned URL access to FSx for ONTAP S3 Access Points.**
 
 ### The Discovery

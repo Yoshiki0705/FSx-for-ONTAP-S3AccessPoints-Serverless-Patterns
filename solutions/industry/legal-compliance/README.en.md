@@ -19,7 +19,7 @@ This is a serverless workflow that leverages the S3 Access Points of Amazon FSx 
 ### When this pattern is not a good fit
 
 - You need real-time, event-driven processing (immediate detection of file changes)
-- You need full S3 bucket semantics (notifications, presigned URLs)
+- You need full S3 bucket semantics (bucket notifications, versioning, Object Lock)
 - EC2-based batch processing is already running and the migration cost is not justified
 - You are in an environment where network reachability to the ONTAP REST API cannot be ensured
 

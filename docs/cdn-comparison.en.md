@@ -17,7 +17,7 @@ customer contracts, SLAs, operations, and regional requirements outside this doc
 | Block Public Access enforced (cannot disable) | Default-on, immutable | No unauthenticated public origin; origin auth required |
 | Origin auth is SigV4 (IAM) | Requests evaluated by IAM / AP policy | CDN must sign origin requests with AWS SigV4 |
 | Dual-layer authz (AWS + ONTAP) | IAM then ONTAP file identity (UNIX UID / Windows AD) | Delivery limited to what the ONTAP identity can read |
-| Presigned URLs unsupported | Officially not supported | Viewer token auth cannot use S3 presigned URLs; use CDN-native tokens |
+| Presigned URLs supported (corrected 2026-09) | Backed by the public documentation | Still use CDN-native tokens for viewers: a presigned URL points at the access point endpoint, so a viewer holding one bypasses the CDN |
 | NetworkOrigin (Internet/VPC, immutable) | CDN accesses from managed/external network | CDN integration needs **Internet origin** |
 | 50 GB object size limit | Single PUT limited to 5 GB | Write-backs above 5 GB need multipart |
 
@@ -76,9 +76,10 @@ Viewer → CDN Edge → signing proxy (adds SigV4) → S3 AP → FSx for ONTAP
 - **Not achievable / to verify**: the intermediary becomes a single point of failure and a scaling target.
   The proxy needs its own availability design.
 
-> **Universal hard constraint**: with any of these mechanisms, S3 presigned URLs cannot be used for
-> viewer-facing token authentication. Implement viewer auth with each CDN's native token / signed-URL
-> mechanism.
+> **Applies to every mechanism**: do not hand S3 presigned URLs to viewers. They are supported as of
+> the 2026-09 documentation correction, but the URL addresses the access point directly, so a viewer
+> using one bypasses the CDN, its cache and its edge authorization. Implement viewer auth with each
+> CDN's native token / signed-URL mechanism.
 > Also, because public delivery does not pass through ONTAP NFS/SMB ACLs, **restrict what you deliver to
 > approved renditions** (see section 4).
 
@@ -151,7 +152,7 @@ characteristics of each delivery mechanism.
 1. Public delivery bypasses NFS/SMB ACLs — deliver **only approved renditions**; never route ACL-controlled
    master data straight to the delivery layer.
 2. Separate master (ACL-controlled, sensitive) from delivery artifacts (public/semi-public). M3 makes this natural.
-3. Viewer auth via CDN-native token mechanisms (no S3 presigned URLs).
+3. Viewer auth via CDN-native token mechanisms (do not hand S3 presigned URLs to viewers: they bypass the CDN).
 4. Least-privilege origin credentials; avoid long-lived keys at the edge; prefer short-lived credentials.
 5. Delivery logs: address viewer PII when writing logs back to FSx.
 6. **Approval provenance**: record which object was approved for public delivery, by whom, and when.
@@ -170,7 +171,7 @@ characteristics of each delivery mechanism.
 | Expose S3 AP as an unauthenticated CDN origin? | **No** (BPA enforced) |
 | Deliver directly from S3 AP via CDN? | **Yes, conditionally** — M1/M2 with SigV4; AP-alias signing is TBV |
 | Deliver via a CDN without SigV4? | **Yes** — M3 (push) or M4 (signing proxy) |
-| Use S3 presigned URLs for viewers? | **No** — use CDN-native tokens |
+| Use S3 presigned URLs for viewers? | **No** — they bypass the CDN. Use CDN-native tokens |
 | Enforce ONTAP ACLs at delivery time? | **No** — enforce via "approved renditions only" + provenance |
 | Lowest-verification-risk first step? | **M3 (push)** — avoids origin-auth, CDN-agnostic, DemoMode-friendly |
 

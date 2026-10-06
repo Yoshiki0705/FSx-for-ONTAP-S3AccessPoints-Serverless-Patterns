@@ -94,7 +94,7 @@ PutObject / GetObject / HeadObject / DeleteObject が VPC 外から成功する�
 
 **Priority chain**: FR-7 (Presigned URL) → FR-5 (Storage Browser for S3) → FR-6 (Amplify Storage)。
 
-FR-7 について: Presigned URL は互換性表では "Not supported" だが実測では動作し、AWS Support も ONTAP 側の対応（v4 は 9.11.1 以降、v2 は 9.16.1 以降）を確認してドキュメント修正を提出済み。**未公開**のため、本番前提での依存は引き続き避ける。詳細は [s3ap-compatibility-notes.md](s3ap-compatibility-notes.md)。
+FR-7 について: **解決済み**。互換性表は 2026-09 の訂正で `Presign — Supported` になった（2026-09-17 に公開ページで確認）。ONTAP 側の閾値は v4 が 9.11.1 以降、v2 が 9.16.1 以降。設計に組み込んでよい。詳細は [s3ap-compatibility-notes.md](s3ap-compatibility-notes.md)。
 
 **Next actions**:
 
@@ -102,7 +102,7 @@ FR-7 について: Presigned URL は互換性表では "Not supported" だが実
   Lambda / HealthOmics）。**いずれもクローズ済み**（Support API で確認、2026-09-02 時点）。要望が実装
   されたわけではなく、サービスチームへ渡った時点でケースが閉じるため、機能側は別に追う必要があります
 - Presigned URL のドキュメント修正ケース（2026-07-19 起票）は **現在も open**。公開互換性テーブルは
-  `Presign — Not supported` のままなので、本番前提での依存は引き続き避ける
+  `Presign — Supported` に訂正された（2026-09）ので、設計に組み込んでよい
 - `aws-amplify/amplify-ui`（Storage Browser + S3 AP）と `aws-amplify/amplify-backend`（Storage category + S3 AP）に issue 起票
 
 ---

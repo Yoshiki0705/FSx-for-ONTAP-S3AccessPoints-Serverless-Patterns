@@ -36,7 +36,7 @@
 | S3 AP Event Notifications | ❌ | ❌ | ❌ | ❌ |
 | S3 AP Lifecycle Policy | ❌ | ❌ | ❌ | ❌ |
 | S3 AP Versioning | ❌ | ❌ | ❌ | ❌ |
-| S3 AP Presigned URL | ❌ | ❌ | ❌ | ❌ |
+| S3 AP Presigned URL | ✅ | ❌ | ❌ | ❌ |
 
 ### ネットワーク / ルーティング機能
 

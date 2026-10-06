@@ -17,7 +17,7 @@ FSx for ONTAP S3 Access Points(S3 AP) 상의 데이터를 CDN/엣지 네트워�
 | Block Public Access 강제(비활성화 불가) | 기본 활성·변경 불가 | 인증 없는 퍼블릭 오리진 불가. 오리진 인증 필수 |
 | 오리진 인증은 SigV4(IAM) | IAM / AP 정책으로 평가 | CDN은 오리진 요청에 AWS SigV4 서명 필요 |
 | 2단계 인가(AWS + ONTAP) | IAM 후 ONTAP 파일 ID(UNIX UID / Windows AD) | 배포 대상은 ONTAP ID로 읽을 수 있는 범위로 한정 |
-| Presigned URL 미지원 | 공식 미지원 | 시청자 토큰 인증에 S3 Presigned URL 사용 불가. CDN 네이티브 토큰 사용 |
+| Presigned URL 지원(2026-09 정정) | 공개 문서로 뒷받침됨 | 시청자용으로는 여전히 CDN 네이티브 토큰 사용. Presigned URL은 액세스 포인트 엔드포인트를 직접 가리키므로 CDN을 우회함 |
 | NetworkOrigin(Internet/VPC, 변경 불가) | CDN은 관리형/외부망에서 접근 | CDN 연계에는 **Internet origin** 필요 |
 | 객체 크기 상한 50 GB | 단일 PUT은 5 GB까지 | 5 GB 초과 쓰기는 멀티파트 |
 
@@ -33,7 +33,7 @@ FSx for ONTAP S3 Access Points(S3 AP) 상의 데이터를 CDN/엣지 네트워�
 - **M4 — 자체 관리 SigV4 서명 프록시**: 서명 중간층(Lambda Function URL / ALB)을 오리진으로 배치. 거의
   모든 CDN에서 동작하나, 프록시가 가용성·스케일 대상이 됨.
 
-> 공통 절대 제약: 시청자 토큰 인증에 S3 Presigned URL을 사용할 수 없음 — CDN 네이티브 토큰 사용.
+> 모든 메커니즘에 적용: S3 Presigned URL을 시청자에게 전달하지 않음 — CDN을 우회함. CDN 네이티브 토큰 사용.
 > 퍼블릭 배포는 NFS/SMB ACL을 경유하지 않으므로 승인된 렌디션만 배포(4절 참조).
 
 ## 3. 배포 네트워크별 메커니즘 대응(사실 기반)
@@ -63,7 +63,7 @@ FSx for ONTAP S3 Access Points(S3 AP) 상의 데이터를 CDN/엣지 네트워�
 
 1. 퍼블릭 배포는 NFS/SMB ACL을 우회 — **승인된 렌디션만 배포**. ACL 제어 마스터를 배포 레이어로 직접 흘리지 않음.
 2. 마스터(ACL 제어·기밀)와 배포 성과물(퍼블릭/준퍼블릭)을 분리. M3는 이 분리가 구조적으로 자연스러움.
-3. 시청자 인증은 CDN 네이티브 토큰 메커니즘(S3 Presigned URL 미사용).
+3. 시청자 인증은 CDN 네이티브 토큰 메커니즘(시청자에게 S3 Presigned URL 전달 금지: CDN 우회).
 4. 최소 권한 오리진 자격 증명. 엣지에 장기 키를 두지 않고 단기 자격 증명 우선.
 5. 배포 로그: FSx로 로그를 기록할 때 시청자 PII 취급을 설계에 포함.
 6. **배포 승인 추적**: 어떤 오브젝트를 누가 언제 퍼블릭 배포로 승인했는지 기록. 승인자가 미기록인 오브젝트는
@@ -82,7 +82,7 @@ FSx for ONTAP S3 Access Points(S3 AP) 상의 데이터를 CDN/엣지 네트워�
 | S3 AP를 인증 없는 CDN 오리진으로 공개할 수 있는가 | **불가**(BPA 강제) |
 | S3 AP에서 CDN으로 직접 배포할 수 있는가 | **조건부 가능** — SigV4 지원/구현 시 M1/M2. AP alias 서명은 TBV |
 | SigV4가 없는 CDN으로도 배포할 수 있는가 | **가능** — M3(푸시) 또는 M4(서명 프록시) |
-| 시청자용으로 S3 Presigned URL을 쓸 수 있는가 | **불가** — CDN 네이티브 토큰 사용 |
+| 시청자용으로 S3 Presigned URL을 쓸 수 있는가 | **권장하지 않음** — CDN을 우회함. CDN 네이티브 토큰 사용 |
 | 배포 시 ONTAP ACL을 강제할 수 있는가 | **불가** — "승인된 렌디션만 배포" + 추적으로 담보 |
 | 검증 리스크가 가장 낮은 첫 단계 | **M3(푸시)** — 오리진 인증 회피, CDN 비종속, DemoMode 친화 |
 

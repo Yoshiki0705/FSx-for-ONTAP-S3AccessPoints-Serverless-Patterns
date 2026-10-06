@@ -78,7 +78,7 @@ Amazon IVS
 
 ## Constraints (FSx for ONTAP S3 AP)
 
-- **Presigned URLs not supported** → viewer auth via CloudFront-native signed URLs/cookies.
+- **Viewer auth via CloudFront-native signed URLs/cookies** (presigned URLs work but bypass the CDN).
 - Not a full S3 bucket: no Object Versioning / Object Lock / Lifecycle / Static Website
   Hosting (verify per operation in [../../docs/s3ap-compatibility-notes.md](../../../docs/s3ap-compatibility-notes.md)).
 - `PutObject` max 5 GB (multipart for larger).
@@ -269,8 +269,8 @@ or out of order. Do not treat a single `Recording End` event as a guaranteed exa
   (because `bucketName` is validated only as a bucket-name-shaped string), but recording-time writes fail
   (**"Recording Start Failure"**, no `ivs/v1/...` objects). Use a standard S3 bucket ([direct-recording-experiment.md](direct-recording-experiment.md)).
 - **"Is an S3 Access Point a drop-in S3 bucket?"** No — it is an S3-compatible access boundary.
-  No Presigned URLs, Versioning, Object Lock, Lifecycle, or Static Website Hosting.
-- **"Can viewers get a presigned URL to the VOD?"** No — use CloudFront signed URLs/cookies.
+  No Versioning, Object Lock, Lifecycle, or Static Website Hosting.
+- **"Can viewers get a presigned URL to the VOD?"** Technically yes, but not recommended — it bypasses the CDN. Use CloudFront signed URLs/cookies.
 - **"Does publishing enforce the original NFS/SMB permissions?"** No — delivery bypasses ONTAP
   ACLs; the boundary is operational (publish only approved) + CloudFront origin lockdown.
 - **"Does the completeness score mean the content is safe to publish?"** No — it only checks the

@@ -133,7 +133,7 @@ DemoMode 的确认请参阅 [docs/demo-guide.md](docs/demo-guide.md)。
   记录。
 - **数据所在地 / 地域限制**: 由于 CDN 是全球分发，对于不允许跨区域分发的数据，应
   从批准对象中排除，或通过 CDN 的 geo-blocking 进行控制。
-- **观众认证**: 由于不支持 S3 Presigned URL，使用 CDN 原生的令牌机制。
+- **观众认证**: 使用 CDN 原生的令牌机制。Presigned URL 在 2026-09 更正后为 `Supported`，但会直接访问接入点、绕过 CDN。
 - **PII**: 写回分发日志时对客户端 IP 进行掩码（`RedactClientIp=true`）。
 - **最小权限**: Publish/LogSync 仅具备目标 S3 AP 的必要 Action。分发用 Lambda 因需进行 Internet-origin S3 AP
   访问而在 **VPC 外** 运行。

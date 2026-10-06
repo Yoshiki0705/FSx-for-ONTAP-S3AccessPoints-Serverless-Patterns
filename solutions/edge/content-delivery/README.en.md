@@ -135,7 +135,7 @@ For DemoMode verification, see [docs/demo-guide.md](docs/demo-guide.md).
   be extended to record into `shared/lineage.py` (DynamoDB).
 - **Data residency / geo-restrictions**: Because CDNs deliver globally, data for which out-of-region
   delivery is not allowed should be excluded from approval, or controlled with the CDN's geo-blocking.
-- **Viewer authentication**: Because S3 Presigned URLs are unsupported, use CDN-native token mechanisms.
+- **Viewer authentication**: Use CDN-native token mechanisms. Presigned URLs became `Supported` with the 2026-09 correction, but a viewer holding one addresses the access point directly and bypasses the CDN.
 - **PII**: Client IPs are masked when writing delivery logs back (`RedactClientIp=true`).
 - **Least privilege**: Publish/LogSync have only the necessary Actions on the target S3 AP. The delivery
   Lambdas run **outside the VPC** for Internet-origin S3 AP access.

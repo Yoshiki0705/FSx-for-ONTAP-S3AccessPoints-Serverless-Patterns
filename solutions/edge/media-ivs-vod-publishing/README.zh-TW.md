@@ -207,7 +207,7 @@ VOD 發佈不僅依賴自動判定。依套件**完整性訊號**計算 publish-
 
 - **permission-aware 擷取邊界**：擷取僅限於指定錄製前綴。公開分發不強制 ONTAP 檔案權限，因此邊界由「僅發佈
   已審核」營運與 CloudFront 來源鎖定保障。
-- **觀眾認證**：FSx for ONTAP S3 AP **不支援** S3 Presigned URL — 使用 CloudFront 簽章 URL/Cookie。
+- **觀眾認證**：受控 VOD 使用 CloudFront 簽章 URL/Cookie。
 - **資料所在地**：IVS 頻道、Recording Configuration、S3 位置須**同一區域**。CloudFront 為全球分發，不可跨區
   分發的資料應排除或以地域限制控制。
 - **最小權限**：Publish Lambda 僅對來源 S3（讀）與輸出 S3 AP（寫）具備必要 Action。為存取 Internet-origin
@@ -261,9 +261,9 @@ VOD 發佈不僅依賴自動判定。依套件**完整性訊號**計算 publish-
 - **「IVS 能否直接錄製到 FSx for ONTAP S3 AP？」** 否。**AWS 服務團隊已確認不支援**。設定建立可達 `ACTIVE`
   （因 `bucketName` 僅依儲存貯體名稱格式驗證），但錄製時會出現 **「Recording Start Failure」**，不寫入 `ivs/v1/...` 物件。
   請使用標準 S3 儲存貯體（[direct-recording-experiment.md](direct-recording-experiment.md)）。
-- **「S3 AP 是完整 S3 儲存貯體嗎？」** 否（不支援 Presigned URL / Versioning / Object Lock / Lifecycle /
+- **「S3 AP 是完整 S3 儲存貯體嗎？」** 否（不支援 Versioning / Object Lock / Lifecycle /
   Static Website Hosting）。
-- **「能給觀眾 Presigned URL 嗎？」** 否 → 使用 CloudFront 簽章 URL / Cookie。
+- **「能給觀眾 Presigned URL 嗎？」** 技術上可以，但不建議（會繞過 CDN）→ 使用 CloudFront 簽章 URL / Cookie。
 - **「完整性分數高就能公開？」** 否。僅檢查 HLS 套件完整性；內容可否公開需另行人工/AI 審核。審核為 **opt-in 內建**
   （`EnableModeration=true` 執行 Rekognition，命中則封鎖發佈）。
 
@@ -273,7 +273,7 @@ VOD 發佈不僅依賴自動判定。依套件**完整性訊號**計算 publish-
   （尾端延遲）** 而非平均進行容量規劃，並以高 CloudFront TTL / Origin Shield 減少來源提取。
 - Playlist（`.m3u8`）短 TTL，Segment（`.ts` / `.m4s`）長 TTL。
 - 若需將分發讀取與業務磁碟區隔離，可考慮以 **FlexCache** 磁碟區（ONTAP 原生）作為 CloudFront 來源。
-- **S3 AP 不是完整的 S3 儲存貯體** — 是 S3 相容存取邊界。勿假設貯體層級功能（Presigned URL、Versioning、
+- **S3 AP 不是完整的 S3 儲存貯體** — 是 S3 相容存取邊界。勿假設貯體層級功能（Versioning、
   Object Lock、Lifecycle、Static Website Hosting）可用。參見 [../../docs/s3ap-compatibility-notes.md](../../../docs/s3ap-compatibility-notes.md)。
 
 ## 參考（AWS 官方文件）

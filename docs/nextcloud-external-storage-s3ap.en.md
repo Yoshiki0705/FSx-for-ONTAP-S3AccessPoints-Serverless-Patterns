@@ -351,7 +351,7 @@ curl -s https://nextcloud.example.com/status.php | jq .
 
 | Constraint | Impact | Workaround |
 |-----------|--------|-----------|
-| **Presigned URLs (listed as "Not supported" but works)** | Nextcloud can generate direct download links via Presigned URL (works as a signed GetObject request). However, AWS recommends against production reliance. | Option A: Use Presigned URL for direct download (reduces server load). Option B: Proxy through server process (governance-first). |
+| **Presigned URLs (corrected to Supported in 2026-09)** | Nextcloud can generate direct download links via Presigned URL (works as a signed GetObject request) | Option A: Use Presigned URL for direct download (reduces server load). Option B: Proxy through the server process (when revocation after issue and per-access records are required). |
 | **50 GB object size limit (single PUT 5 GB)** | Files above 50 GB cannot be uploaded | Nextcloud uses multipart upload for large files, which covers 5-50 GB. Verify S3 AP multipart support with your ONTAP version (9.15.1+). |
 | **ListObjectsV2 max 1000/request** | Large directories need pagination | Nextcloud handles this automatically via its S3 backend library. |
 | **No S3 event notifications** | Cannot trigger on S3 AP upload events | Use a Nextcloud Flow/Workflow webhook, or a scheduled scan. **FPolicy is not an option**: an upload through the S3 access point raises no FPolicy notification (measured 2026-08-26, ONTAP 9.18.1P3D1). |

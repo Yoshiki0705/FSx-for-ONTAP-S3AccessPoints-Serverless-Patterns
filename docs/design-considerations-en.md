@@ -225,7 +225,7 @@ FSx for ONTAP S3 AP is "S3 compatible" but NOT "identical to Amazon S3." Conside
 | Object Lock / WORM | ❌ | SnapLock | SnapLock Compliance for regulatory requirements |
 | S3 Select | ❌ | Athena + Glue Data Catalog | Process with external analytics engines |
 | Server-Side Encryption (SSE-S3/KMS) | ❌ | NAE / NVE (ONTAP volume encryption) | At-rest via ONTAP layer. In-transit via TLS |
-| Presigned URL | ⚠️ | — | Works in some cases (unofficial). Not recommended for production reliance |
+| Presigned URL | ✅ | — | `Supported` since the 2026-09 correction. Keep expiry short |
 | Cross-AP Copy | ❌ | DataSync / rsync | Cannot copy between different APs |
 
 **Reference**: [Accessing data via S3 Access Points (AWS Docs)](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/accessing-data-via-s3-access-points.html)
@@ -364,7 +364,7 @@ Items to verify in a PoC for serverless patterns using FSx for ONTAP S3 AP:
 - [ ] Confirm dependency on conditional writes (Delta Lake / Iceberg, etc.)
 - [ ] Confirm dependency on S3 Event Notification (need for FPolicy alternative)
 - [ ] Confirm Multipart Upload needs (ONTAP version requirement: 9.16.1+)
-- [ ] Confirm dependency on Presigned URLs (not recommended for production)
+- [ ] Confirm presigned URL expiry is short enough for the requirement
 
 ### Security
 

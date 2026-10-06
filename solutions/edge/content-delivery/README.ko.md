@@ -133,7 +133,7 @@ DemoMode 확인은 [docs/demo-guide.md](docs/demo-guide.md) 를 참조하십시�
   기록으로 확장 가능.
 - **데이터 소재지 / 지역 제한**: CDN 은 글로벌 배포이므로, 리전 외 배포가 허용되지 않는 데이터는
   승인 대상에서 제외하거나, CDN 의 geo-blocking 으로 제어합니다.
-- **시청자 인증**: S3 Presigned URL 미지원이므로, CDN 네이티브 토큰 메커니즘을 사용합니다.
+- **시청자 인증**: CDN 네이티브 토큰 메커니즘을 사용합니다. Presigned URL은 2026-09 정정으로 `Supported`이지만, 액세스 포인트를 직접 가리켜 CDN을 우회합니다.
 - **PII**: 배포 로그 재기록 시 클라이언트 IP 를 마스킹(`RedactClientIp=true`).
 - **최소 권한**: Publish/LogSync 는 대상 S3 AP 의 필요한 Action 만. 배포용 Lambda 는 Internet-origin S3 AP
   액세스를 위해 **VPC 외부**에서 실행.

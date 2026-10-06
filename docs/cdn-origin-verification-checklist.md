@@ -66,7 +66,7 @@ curl -sS -o /tmp/out.bin -w "%{http_code}\n" \
 ### 1.3 ネガティブ確認（仕様の再確認）
 
 - 無署名 GET が **403/AccessDenied** であること（Block Public Access 強制の確認）。
-- Presigned URL が利用不可であること（生成不可／利用非対応）→ 視聴者トークンは CDN ネイティブ機構へ。
+- Presigned URL を視聴者に渡していないこと（2026-09 の訂正で機能自体は `Supported`。ただし AP エンドポイントを直接指すため CDN を経由しない）→ 視聴者トークンは CDN ネイティブ機構へ。
 
 ---
 

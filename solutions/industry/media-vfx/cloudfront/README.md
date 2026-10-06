@@ -123,7 +123,7 @@ https://<cloudfront-domain-name>/rendered/<asset-name>/playlist.m3u8
 
 ## 制約事項
 
-- FSx for ONTAP S3 AP は Presigned URL 非対応のため、CloudFront Signed URL/Cookie は使用不可
+- 視聴者に S3 Presigned URL を渡すと CloudFront を経由しないため、視聴者認証には CloudFront Signed URL/Cookie を使用する（CloudFront 側の署名は S3 の presign とは独立した仕組みで、こちらは使用可）
 - S3 AP のオブジェクトサイズ上限は 50 GB、単一 PutObject は 5 GB（5 GB 超はマルチパートアップロードを使用）
 - CloudFront は internet network origin の S3 AP のみアクセス可能
 

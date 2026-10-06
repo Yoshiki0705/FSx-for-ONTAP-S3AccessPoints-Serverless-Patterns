@@ -201,9 +201,9 @@ unhealthy にし、再開用チェックポイントを残す**ためです。�
    説明を出すかを決める）
 
 **アップロードリンク**: 署名付き PUT URL は SigV4 を明示する必要があります（boto3 の既定では
-presign が v2 になる経路があり、ONTAP 側の v2 対応は 9.16.1 以降）。AWS の互換性表は presigned
-URL を「非対応」と記載していますが実測では動作しており、AWS Support がドキュメント修正を提出
-済み・**未公開**です。本番前提にはしない扱いを継続します（[S3 AP 互換性メモ](../../../docs/s3ap-compatibility-notes.md)）。
+presign が v2 になる経路があり、ONTAP 側の v2 対応は 9.16.1 以降）。AWS の互換性表は 2026-09 の
+訂正で `Presign — Supported` になったため、公開ドキュメントに裏付けのある機能として扱えます
+（[S3 AP 互換性メモ](../../../docs/s3ap-compatibility-notes.md)）。
 
 実測: `createUploadLink` は SigV2 かつグローバルエンドポイントに署名していたため、PUT が 301 で失敗して
 いました（署名が `host` を含むのでリダイレクトを追えない）。`signature_version="s3v4"` と

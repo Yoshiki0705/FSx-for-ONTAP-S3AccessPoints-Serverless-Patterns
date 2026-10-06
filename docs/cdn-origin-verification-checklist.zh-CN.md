@@ -65,7 +65,7 @@ curl -sS -o /tmp/out.bin -w "%{http_code}\n" \
 ### 1.3 负向确认（重申规范）
 
 - 无签名 GET 应为 **403/AccessDenied**（确认 Block Public Access 强制）。
-- Presigned URL 不可用（无法生成/不支持）→ 观众令牌走 CDN 原生机制。
+- 不把 Presigned URL 交给观众（2026-09 更正后功能本身为 `Supported`，但 URL 直接指向接入点端点、会绕过 CDN）→ 观众令牌走 CDN 原生机制。
 
 ---
 

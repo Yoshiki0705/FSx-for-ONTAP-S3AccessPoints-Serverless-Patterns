@@ -65,8 +65,8 @@ Amazon IVS
   CloudFront signs origin requests with **SigV4**.
 - The S3 AP resource policy must allow the CloudFront service principal / distribution
   (see [samples/access-point-policy-cloudfront.json](samples/access-point-policy-cloudfront.json)).
-- Use CloudFront-native **signed URLs / signed cookies** for controlled VOD (Presigned URLs
-  are not supported by FSx for ONTAP S3 AP).
+- Use CloudFront-native **signed URLs / signed cookies** for controlled VOD (presigned URLs
+  work, but a viewer using one bypasses the CDN).
 - TTL: short for `.m3u8` playlists, long for immutable `.ts` / `.m4s` segments.
 
 ## Operational notes

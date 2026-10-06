@@ -235,7 +235,7 @@ This table records **limitations on the AWS side**. Some of them still hold whil
 
 | AWS-side limitation | What the limitation is | Where the portal stands |
 |---|---|---|
-| Presigned URLs on S3 AP are not officially supported | AWS's compatibility table still reads `Presign — Not supported`. The [NetApp KB](https://kb.netapp.com/Advice_and_Troubleshooting/Data_Storage_Software/ONTAP_OS/What_version_of_ONTAP_support_pre-signed_URLs_for_S3_bucket) puts ONTAP-layer support at 9.11.1 for v4 and 9.16.1 for v2. A documentation fix has been requested and is **not yet published** (FR-7) | Preview, download and sharing links are implemented with presigned URLs. Until the public documentation is updated, production workloads need an alternative designed in ([compatibility notes](../s3ap-compatibility-notes.en.md)) |
+| ~~Presigned URLs on S3 AP are not officially supported~~ (resolved) | The compatibility table was corrected to `Presign — Supported` in 2026-09. The [NetApp KB](https://kb.netapp.com/Advice_and_Troubleshooting/Data_Storage_Software/ONTAP_OS/What_version_of_ONTAP_support_pre-signed_URLs_for_S3_bucket) puts ONTAP-layer support at 9.11.1 for v4 and 9.16.1 for v2 (FR-7 resolved) | Preview, download and sharing links are implemented with presigned URLs. No alternative needs designing in any more ([compatibility notes](../s3ap-compatibility-notes.en.md)) |
 | Amplify Storage does not support S3 AP | The component supports standard S3 buckets only (FR-6, Open) | Upload is implemented with Storage Browser for S3 |
 | No native search or indexing for S3 AP content | OpenSearch requires a data copy | Semantic search implemented with Bedrock KB. No literal full-text match |
 | S3 AP does not support Object Versioning | — | No per-file version history. Point-in-time recovery of the volume via Snapshot + FlexClone |
@@ -280,7 +280,7 @@ This table records **limitations on the AWS side**. Some of them still hold whil
 
 **Service**: Amazon FSx for ONTAP
 
-**Current state**: Presigned URLs are listed as "Not supported" in the FSx for ONTAP S3 AP compatibility table. **However, they actually work.** Verified in this project and other environments, and **the signing mechanism explains why**:
+**Resolved (2026-09)**: the compatibility table was corrected to `Presign — Supported` (fetched 2026-09-17). What follows is the record from before the correction, when the table read "Not supported" while the capability worked. **The signing mechanism explains why it worked**:
 
 1. Presigning is a client-side operation — [`aws s3 presign`](https://docs.aws.amazon.com/cli/latest/reference/s3/presign.html) computes a SigV4 signature locally and makes no network request
 2. The resulting URL executes as a standard GetObject, with the signature in query parameters instead of the Authorization header ([Presigned URL reference](https://docs.aws.amazon.com/AmazonS3/latest/userguide/ShareObjectPreSignedURL.html))
@@ -289,7 +289,7 @@ This table records **limitations on the AWS side**. Some of them still hold whil
 
 **Changed to**: Documentation correction request only — update the compatibility table to reflect actual behavior.
 
-**Production Guidance**: **the table is the contract, and it says "Not supported".** Behaviour that works today is not a commitment: nothing published guarantees it across regions or after a service update. Treat the working behaviour as measured, not promised. Recommend having a Lambda proxy fallback path for production use.
+**Production Guidance (updated 2026-09)**: the table now reads `Supported`, so this can be treated as a capability the public documentation backs. Keep the Lambda proxy fallback as an option for when revocation after issue or per-access records are required, not because of support status.
 
 ---
 
@@ -427,7 +427,7 @@ Feedback was collected from role-based archetypes representing enterprise file p
 
 #### 12. Mobile Developer
 
-> **Mobile note**: Without Presigned URLs, mobile apps cannot use native image/video viewers for FSx for ONTAP content. Lambda proxy approach hits the 6MB synchronous response limit, making large file access impossible on mobile. FR-7 is prerequisite for any mobile file portal.
+> **Mobile note**: This dependency is cleared. FR-7 was resolved by the 2026-09 documentation correction, so presigned URLs can be handed to a mobile device's native image/video viewer. The Lambda proxy route hits the 6 MB synchronous response limit, which is why large files needed this path.
 
 #### 13. Solutions Architect (Partner/SI)
 

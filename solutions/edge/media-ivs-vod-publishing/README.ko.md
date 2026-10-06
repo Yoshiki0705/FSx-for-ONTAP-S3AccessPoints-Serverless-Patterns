@@ -216,7 +216,7 @@ VOD 게시는 자동 판정에만 의존하지 않습니다. 패키지 **완전�
 
 - **permission-aware 수집 경계**: 수집은 지정 녹화 프리픽스 하위로 제한. 공개 전달은 ONTAP 파일 권한을
   강제하지 않으므로 경계는 "승인된 것만 게시" 운영과 CloudFront 오리진 잠금으로 보장.
-- **시청자 인증**: FSx for ONTAP S3 AP 는 S3 Presigned URL **미지원** — CloudFront 서명 URL/쿠키 사용.
+- **시청자 인증**: 제어된 VOD 에서는 CloudFront 서명 URL/쿠키 사용.
 - **데이터 소재지**: IVS 채널·Recording Configuration·S3 위치는 **동일 리전**. CloudFront 는 글로벌이므로
   리전 외 전달 불가 데이터는 제외하거나 지역 제한 적용.
 - **최소 권한**: Publish Lambda 는 소스 S3(읽기)와 출력 S3 AP(쓰기)의 필요 Action 만. Internet-origin S3 AP
@@ -273,9 +273,9 @@ VOD 게시는 자동 판정에만 의존하지 않습니다. 패키지 **완전�
 - **"IVS 녹화를 FSx for ONTAP S3 AP 로 직접?"** 아니오. **AWS 서비스 팀이 비지원으로 확인**. 설정 생성은 `ACTIVE` 가
   되지만(`bucketName` 이 버킷 이름 형식으로만 검증됨), 녹화 시에는 **"Recording Start Failure"** 로 `ivs/v1/...` 가
   기록되지 않음. 표준 S3 버킷 경유 사용([direct-recording-experiment.md](direct-recording-experiment.md)).
-- **"S3 AP 는 완전한 S3 버킷?"** 아니오(Presigned URL / Versioning / Object Lock / Lifecycle /
+- **"S3 AP 는 완전한 S3 버킷?"** 아니오(Versioning / Object Lock / Lifecycle /
   Static Website Hosting 미지원).
-- **"시청자에게 Presigned URL?"** 아니오 → CloudFront 서명 URL / 쿠키 사용.
+- **"시청자에게 Presigned URL?"** 기술적으로는 가능하지만 권장하지 않음(CDN 우회) → CloudFront 서명 URL / 쿠키 사용.
 - **"완전성 점수가 높으면 공개해도 되나?"** 아니오. 패키지 완전성 확인일 뿐, 콘텐츠 공개 가부는 별도의
   사람/AI 모더레이션으로 판단. 모더레이션은 **opt-in 으로 내장**(`EnableModeration=true` 로 Rekognition 실행,
   플래그 시 publish 차단).
@@ -287,7 +287,7 @@ VOD 게시는 자동 판정에만 의존하지 않습니다. 패키지 **완전�
   Shield 로 오리진 페치를 줄입니다.
 - Playlist(`.m3u8`)는 짧은 TTL, Segment(`.ts` / `.m4s`)는 긴 TTL.
 - 전달 읽기를 업무 볼륨과 분리하려면 **FlexCache** 볼륨(ONTAP 네이티브)을 CloudFront 오리진 소스로 고려.
-- **S3 AP 는 완전한 S3 버킷이 아닙니다** — S3 호환 액세스 경계. 버킷 레벨 기능(Presigned URL, Versioning,
+- **S3 AP 는 완전한 S3 버킷이 아닙니다** — S3 호환 액세스 경계. 버킷 레벨 기능(Versioning,
   Object Lock, Lifecycle, Static Website Hosting) 전제 금지. [../../docs/s3ap-compatibility-notes.md](../../../docs/s3ap-compatibility-notes.md) 참조.
 
 ## 참조(AWS 공식 문서)

@@ -19,7 +19,7 @@ Amazon FSx for NetApp ONTAP의 S3 Access Points를 활용하여 파일 서버의
 ### 이 패턴이 적합하지 않은 경우
 
 - 실시간 이벤트 기반 처리가 필요함(파일 변경 즉시 감지)
-- 완전한 S3 버킷 시맨틱(알림, Presigned URL)이 필요함
+- 완전한 S3 버킷 시맨틱(버킷 알림, Versioning, Object Lock)이 필요함
 - EC2 기반 배치 처리가 이미 가동 중이며 마이그레이션 비용이 타당하지 않음
 - ONTAP REST API에 대한 네트워크 도달성을 확보할 수 없는 환경
 

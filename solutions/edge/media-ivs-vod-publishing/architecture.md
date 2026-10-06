@@ -73,7 +73,7 @@ Amazon IVS
 
 ## 制約（FSx for ONTAP S3 AP 由来）
 
-- **Presigned URL 非対応** → 視聴者認証は CloudFront ネイティブの署名付き URL/Cookie を使用。
+- **視聴者認証は CloudFront ネイティブの署名付き URL/Cookie を使用**（Presigned URL は使えるが CDN を経由しない）。
 - フル S3 バケットではない: Object Versioning / Object Lock / Lifecycle / Static Website Hosting は非対応
   （操作ごとに [../../docs/s3ap-compatibility-notes.md](../../../docs/s3ap-compatibility-notes.md) で確認）。
 - `PutObject` は最大 5 GB（超過は multipart）。
@@ -246,9 +246,9 @@ Amazon IVS の EventBridge イベントは **ベストエフォート** 配信�
 - **「IVS の録画先を直接 FSx for ONTAP の S3 Access Point にできる？」** いいえ。**AWS サービスチームが非サポートと確認済み**
   （サポートされる出力先は標準 Amazon S3 バケット）。設定作成は `ACTIVE` になる（`bucketName` が bucket 名形式として検証されるだけ）が、
   録画時は **「Recording Start Failure」** で `ivs/v1/...` は書かれない。標準 S3 バケット経由を使用（[direct-recording-experiment.md](direct-recording-experiment.md)）。
-- **「S3 Access Point は S3 バケットの差し替え？」** いいえ — S3 互換のアクセス境界。Presigned URL、Versioning、
+- **「S3 Access Point は S3 バケットの差し替え？」** いいえ — S3 互換のアクセス境界。Versioning、
   Object Lock、Lifecycle、Static Website Hosting は非対応。
-- **「視聴者に VOD の presigned URL を渡せる？」** いいえ — CloudFront 署名付き URL/Cookie を使用。
+- **「視聴者に VOD の presigned URL を渡せる？」** 技術的には可能だが推奨しない（CDN を経由しない）— CloudFront 署名付き URL/Cookie を使用。
 - **「publish は元の NFS/SMB 権限を強制する？」** いいえ — 配信は ONTAP ACL を経由しない。境界は運用
   （承認済みのみ publish）+ CloudFront オリジンのロックダウン。
 - **「完全性スコアが高ければ公開して安全？」** いいえ — HLS パッケージが揃っているかを確認するだけ。

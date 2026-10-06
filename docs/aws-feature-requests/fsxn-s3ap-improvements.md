@@ -16,7 +16,7 @@ repository can still observe of the underlying gaps:
 | FR-1 (Athena output location) | closed | Not re-measured since submission. The portal writes Athena results to a standard bucket, which is what the request was about. |
 | FR-2 (Event Notifications / EventBridge) | closed | **Still absent.** FPolicy does not fire for writes arriving through an S3 access point (measured 2026-08-26, ONTAP 9.18.1P3D1) and no workaround exists for that path — see [native-s3ap-notifications-evidence](native-s3ap-notifications-evidence.en.md). |
 | FR-3 (Object Lifecycle) | closed | **Still absent.** Retention is reachable only through SnapLock / S3 Object Lock, which are ONTAP-side mechanisms rather than S3 lifecycle semantics — see the root-cause table in [file-portal-service-gap](file-portal-service-gap.en.md). |
-| FR-4 (Versioning + Presigned URL) | see below | Presigned URLs work but the compatibility table still publishes `Not supported`; the documentation-correction case filed 2026-07-19 is **still open**. Object versioning remains absent. |
+| FR-4 (Versioning + Presigned URL) | see below | Presigned URLs: **resolved** — the compatibility table was corrected to `Supported` in 2026-09 and the documentation case is closed. Object versioning remains absent. |
 | FR-5 (Per-request metrics) | filed 2026-09-06, raised as a request 2026-09-07 | **Still absent as far as this repository can observe.** Tracked as `E-001` in [`docs/agent/evidence-ledger.json`](../agent/evidence-ledger.json), tier `hypothesis` — see FR-5 below for what was read and measured, and for why absence is not asserted. |
 
 ---

@@ -70,7 +70,7 @@ PutObject, GetObject, ListObjectsV2, HeadObject, DeleteObject, MultipartUpload.
   limits are **binary** (GiB).
 `UploadPartCopy` is documented as Supported but **fails with `NoSuchKey`** in practice (`CopyObject` works) — server-side assembly of large objects is not possible.
 NOT supported: GetBucketNotificationConfiguration.
-Presigned URLs: listed as "Not supported" by AWS but observed working (client-side SigV4 → plain
+Presigned URLs: `Supported` since the 2026-09 documentation correction; previously listed as "Not supported" while working (client-side SigV4 → plain
 GetObject). A vendor-confirmed doc correction is **not yet published**, so avoid production reliance
 until it is. Details: [compatibility notes](../s3ap-compatibility-notes.md).
 

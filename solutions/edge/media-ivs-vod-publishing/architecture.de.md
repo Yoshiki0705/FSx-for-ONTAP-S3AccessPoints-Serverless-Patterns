@@ -77,7 +77,7 @@ Amazon IVS
 
 ## Einschränkungen (FSx for ONTAP S3 AP)
 
-- **Presigned URLs nicht unterstützt** → Zuschauer-Auth über CloudFront-signierte URLs/Cookies.
+- **Zuschauer-Auth über CloudFront-signierte URLs/Cookies** (Presigned URLs funktionieren, umgehen aber das CDN).
 - Kein vollständiger S3-Bucket: kein Object Versioning / Object Lock / Lifecycle / Static Website
   Hosting (pro Operation in [../../docs/s3ap-compatibility-notes.md](../../../docs/s3ap-compatibility-notes.md) prüfen).
 - `PutObject` max 5 GB (darüber multipart).
@@ -264,8 +264,8 @@ oder unsortiert sein. Ein einzelnes `Recording End` nicht als garantiert Exactly
   validiert wird), aber die Aufzeichnung schlägt fehl (**„Recording Start Failure"**, keine `ivs/v1/...`-Objekte).
   Einen Standard-S3-Bucket verwenden ([direct-recording-experiment.md](direct-recording-experiment.md)).
 - **„Ist ein S3 Access Point ein Drop-in-S3-Bucket?"** Nein — eine S3-kompatible Zugriffsgrenze. Kein
-  Presigned URL, Versioning, Object Lock, Lifecycle oder Static Website Hosting.
-- **„Kann man Zuschauern eine Presigned URL des VOD geben?"** Nein — CloudFront-signierte URLs/Cookies verwenden.
+  Versioning, Object Lock, Lifecycle oder Static Website Hosting.
+- **„Kann man Zuschauern eine Presigned URL des VOD geben?"** Technisch ja, aber nicht empfohlen — sie umgeht das CDN. CloudFront-signierte URLs/Cookies verwenden.
 - **„Erzwingt das Publizieren die ursprünglichen NFS/SMB-Berechtigungen?"** Nein — die Auslieferung
   umgeht ONTAP-ACLs; die Grenze ist operativ (nur Freigegebenes publizieren) + CloudFront-Origin-Sperre.
 - **„Bedeutet ein hoher Vollständigkeits-Score, dass der Inhalt sicher veröffentlicht werden kann?"**

@@ -15,7 +15,7 @@
 | 強制 Block Public Access（不可停用） | 預設啟用·不可變更 | 無驗證的公開來源不可用；需來源驗證 |
 | 來源驗證為 SigV4（IAM） | 由 IAM / AP 政策評估 | CDN 回源請求須以 AWS SigV4 簽章 |
 | 雙層授權（AWS + ONTAP） | 先 IAM 再 ONTAP 檔案身分（UNIX UID / Windows AD） | 傳遞對象限於 ONTAP 身分可讀範圍 |
-| 不支援 Presigned URL | 官方不支援 | 觀眾權杖驗證不能用 S3 Presigned URL；用 CDN 原生權杖 |
+| 支援 Presigned URL（2026-09 已更正） | 公開文件已支援 | 面向觀眾仍用 CDN 原生權杖：Presigned URL 直接指向存取點端點，會繞過 CDN |
 | NetworkOrigin（Internet/VPC，不可變更） | CDN 從受管/外部網路存取 | CDN 整合需 **Internet origin** |
 | 物件大小上限 50 GB | 單次 PUT 限制為 5 GB | 超過 5 GB 的寫回需多部分上傳 |
 
@@ -30,7 +30,7 @@
 - **M4 — 自管 SigV4 簽章代理**：將簽章中間層（Lambda Function URL / ALB）作為來源。幾乎所有 CDN 皆可用，
   但代理成為可用性·擴展的關注點。
 
-> 通用絕對限制：觀眾權杖驗證不能用 S3 Presigned URL — 用 CDN 原生權杖。
+> 適用於所有機制：不要把 S3 Presigned URL 交給觀眾 — 會繞過 CDN。用 CDN 原生權杖。
 > 公開傳遞繞過 NFS/SMB ACL，故僅傳遞已核准成品（見第 4 節）。
 
 ## 3. 各傳遞網路的機制支援（基於事實）
@@ -60,7 +60,7 @@
 
 1. 公開傳遞繞過 NFS/SMB ACL — **僅傳遞已核准成品**。不將受 ACL 控管的主資料直接送入傳遞層。
 2. 分離主資料（受 ACL 控管·機密）與傳遞成品（公開/準公開）。M3 使該分離結構上自然。
-3. 觀眾驗證用 CDN 原生權杖機制（不用 S3 Presigned URL）。
+3. 觀眾驗證用 CDN 原生權杖機制（不要把 S3 Presigned URL 交給觀眾：會繞過 CDN）。
 4. 最小權限來源憑證；不在邊緣放置長期金鑰，優先短期憑證。
 5. 傳遞日誌：將日誌寫回 FSx 時，將觀眾 PII 處理納入設計。
 6. **傳遞核准軌跡**：記錄哪個物件由誰於何時核准為公開傳遞。核准者未記錄的物件不阻斷，而以 `unrecorded` **可視化**。
@@ -78,7 +78,7 @@
 | 能否將 S3 AP 作為無驗證的 CDN 來源公開 | **否**（強制 BPA） |
 | 能否從 S3 AP 經 CDN 直接傳遞 | **有條件可以** — 支援/實作 SigV4 時 M1/M2。AP alias 簽章為 TBV |
 | 沒有 SigV4 的 CDN 能否傳遞 | **可以** — M3（推送）或 M4（簽章代理） |
-| 觀眾能否用 S3 Presigned URL | **否** — 用 CDN 原生權杖 |
+| 觀眾能否用 S3 Presigned URL | **不建議** — 會繞過 CDN。用 CDN 原生權杖 |
 | 傳遞時能否強制 ONTAP ACL | **否** — 以「僅傳遞已核准成品」+ 軌跡保障 |
 | 驗證風險最低的首選 | **M3（推送）** — 規避來源驗證，供應商中立，便於 DemoMode |
 

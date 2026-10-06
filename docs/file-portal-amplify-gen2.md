@@ -258,7 +258,7 @@ Storage Browser for Amazon S3 をベースにしたマネージドなブラウ�
 | **共有・コメント等の協業機能** | 自分で作る | ファイル操作と通知は実装済み。コメント / バージョン共有 UI は未実装 | 組み込み | 自分で作る | [Nextcloud: Sharing](https://docs.nextcloud.com/server/latest/user_manual/en/files/sharing.html) / [本リポジトリ](../solutions/amplify-portal/docs/portal-tabs-guide.md) |
 | **モバイル** | レスポンシブ Web | レスポンシブ Web（[実測は 390×844 のエミュレーション](../solutions/amplify-portal/docs/verification-results.md)）| ネイティブアプリ (iOS / Android) | レスポンシブ Web | [Nextcloud: Clients](https://nextcloud.com/clients/) / 本リポジトリ |
 | **言語 / フレームワーク** | TypeScript + React | 同左（UI は 8 言語）| PHP | 任意 | [本リポジトリ](../solutions/amplify-portal/docs/CONTRIBUTING-UI.md) |
-| **S3 AP Presigned URL** | 動作する（※ドキュメント上 Not supported）| 同左 | 同左 | 同左 | [本リポジトリの実測メモ](./s3ap-compatibility-notes.md#presigned-url-support) |
+| **S3 AP Presigned URL** | 使用可（2026-09 にドキュメント訂正）| 同左 | 同左 | 同左 | [本リポジトリのメモ](./s3ap-compatibility-notes.md#presigned-url-support) |
 | **インフラコスト（概算）** | 〜$5-10/月 | 同左 | 〜$50-100/月 (EC2) | 〜$5-20/月 | **概算・時点情報。根拠となる価格表を引いていません。**[コストの計測](./ja/cost-measurement.md)を読み、[AWS Pricing Calculator](https://calculator.aws/) で自分の構成を見積もってください |
 
 > **AD について**: 上の「認証」行はポータルにサインインする人の認証です。**FSx for ONTAP の SVM を Active Directory に参加させるかどうかは別の軸**で、SMB アクセスと NTFS ACL に効きます。ポータルの認可（Cognito グループ）と ONTAP 側の認可は二層で、両方を設計する必要があります。[認可モデル](./ja/portal-authorization-model.md)を参照してください。
@@ -521,7 +521,7 @@ solutions/amplify-portal/
 **External Storage via S3 AP**: Nextcloud の「External Storage」アプリは S3 互換バックエンドをサポート。S3 AP エイリアスをバケット名として設定すると、FSx for ONTAP のファイルを Nextcloud のファイルブラウザに表示できる。
 
 **S3 AP と Nextcloud の制約事項**:
-- Presigned URL は AWS ドキュメント上「Not supported」だが、実際にはクライアント側で生成・利用可能（GetObject の署名付きリクエストとして動作する。[詳細](./s3ap-compatibility-notes.md#presigned-url-support)）。ただし本番依存は非推奨のため、Nextcloud はサーバープロセス経由でのダウンロードプロキシも選択可能
+- Presigned URL は 2026-09 のドキュメント訂正で `Supported` になった（[詳細](./s3ap-compatibility-notes.md#presigned-url-support)）。発行後の取り消しや操作記録が要件なら、Nextcloud はサーバープロセス経由でのダウンロードプロキシも選択可能
 - `ListObjectsV2` のページネーション（1リクエスト最大1000オブジェクト）は Nextcloud の S3 バックエンドがネイティブに処理
 - PutObject（単一 PUT 5 GB / Multipart で 50 GB まで）により Nextcloud UI から FSx for ONTAP へのアップロードが可能
 
@@ -616,7 +616,7 @@ solutions/amplify-portal/
 | データ滞留 (in-region) | Lambda プロキシ (CDN 経由しない) | サーバーサイドプロキシ | Lambda プロキシ |
 | 既存 shared/ モジュール連携 | `data_classification`, `lineage`, `human_review` はバックエンド Lambda で動作 | 同左 | 同左 |
 
-> **Governance note**: S3 AP の Presigned URL はドキュメント上「Not supported」ですが、GetObject の署名付きリクエストとして実際には動作します（[詳細](./s3ap-compatibility-notes.md#presigned-url-support)）。ただし本番依存は非推奨のため、データガバナンスを重視する場合はサーバーサイドコンポーネント（Lambda または Nextcloud サーバー）経由でのアクセスを推奨します。これにより、データ滞留制御がアプリケーション層で担保されます。
+> **Governance note**: S3 AP の Presigned URL は 2026-09 のドキュメント訂正で `Supported` になりました（[詳細](./s3ap-compatibility-notes.md#presigned-url-support)）。機能としては使えますが、presigned URL は発行後に取り消せず、オブジェクト単位のアクセス記録もアプリケーション層には残りません。データ滞留制御や監査を重視する場合は、サーバーサイドコンポーネント（Lambda または Nextcloud サーバー）経由でのアクセスを選んでください。
 
 > **Compliance note**: 処理結果ファイルには `data_classification` ラベル（INTERNAL/CUI/PUBLIC 等）が付与されます。ファイルポータル UI でこのラベルをユーザーに表示することを推奨します。バックエンドの `shared/data_classification.py` モジュールが分類ロジックを提供します。
 
@@ -704,7 +704,7 @@ A: 直接的には影響しません。フロントエンドは S3 AP 経由で�
 A: はい。バックエンドパターンはフロントエンド非依存です。ファイル閲覧用にまず Nextcloud を稼働させ、カスタム UI が必要になった段階で Amplify ベースの処理ダッシュボードを追加できます。
 
 **Q: S3 AP Presigned URL でのダイレクトダウンロードは？**
-A: AWS ドキュメント上は「Not supported」ですが、Presigned URL は実際にはクライアント側の SigV4 署名計算であり、使用時に実行されるのは通常の GetObject リクエストのため動作します（[検証結果と根拠](./s3ap-compatibility-notes.md#presigned-url-support)）。ただし互換性テーブルが `Not supported` である以上、本番ワークロードで依存させるべきではありません。データガバナンスの観点でサーバーサイドプロキシ経由を選択することも有効ですが、技術的にはダイレクトダウンロードも可能です。
+A: 使えます。互換性テーブルは 2026-09 の訂正で `Presign — Supported` になりました（[経緯と根拠](./s3ap-compatibility-notes.md#presigned-url-support)）。Presigned URL はクライアント側の SigV4 署名計算で、使用時に実行されるのは通常の GetObject リクエストです。URL を持つ者は誰でもアクセスできるため有効期限は短くし、発行後の取り消しや操作記録が要件ならサーバーサイドプロキシ経由を選んでください。
 
 **Q: 規制環境（FISC、HIPAA）ではどのアプローチが使えますか？**
 A: 3つすべてが適切に設定すれば規制要件を満たせます。主要な制御（監査ログ、暗号化、アクセス制御）は共有バックエンド層にあります。フロントエンド固有の考慮事項: Amplify Gen2（Cognito SAML + WAF）、Nextcloud（LDAP + ALB 上の WAF）、カスタム（実装依存）。
@@ -724,7 +724,7 @@ A: Nextcloud の S3 バックエンド設定でエンドポイント URL と認�
 - [AgentCore MCP デモガイド](./demo-agentcore-mcp-quick-desktop.md) — E2E デモ（list_files / read_file / search_files）+ スクリーンショット
 - [AgentCore MCP 残課題トラッカー](./agentcore-mcp-remaining-issues.md) — 既知の問題と対応状況
 - [代替アーキテクチャ比較 (S3 AP vs EFS vs NFS)](./comparison-alternatives.md) — バックエンドアーキテクチャ比較
-- [S3AP 互換性ノート](./s3ap-compatibility-notes.md) — Presigned URL 制限を含む既知の制約
+- [S3AP 互換性ノート](./s3ap-compatibility-notes.md) — 既知の制約と、解消済みの制約の記録
 - [Demo Mode ガイド](./demo-mode-guide.md) — FSx for ONTAP なしでの実行方法
 - [コスト計算機](./cost-calculator.md) — 全体インフラのコスト見積もり
 - [パターン選択ガイド](./pattern-selection-guide.md) — ワークロードに適した UC パターン
