@@ -241,8 +241,7 @@ python3 -m pytest solutions/sap/erp-adjacent/tests/ -v
 ## Self-Review (4-Axis Check)
 
 4 軸（実装漏れ / 違和感 / 磨き込み / 退行リスク）の定義はグローバル steering
-の AI 開発原則にある。あちらも常時ロードなので、ここに転記すると
-同じ規約が 2 か所に存在し、片方だけが更新される。このリポジトリ固有の読み替えだけを置く:
+の AI 開発原則にある。このリポジトリ固有の読み替えだけを置く:
 
 - **実装漏れ**: handler を変えて `template.yaml` を忘れていないか。JA/EN parity。
 - **退行リスク**: `make test-quick` を通したか。`shared/` の export を消していないか
@@ -323,6 +322,7 @@ decision = evaluate_confidence(confidence=0.72)
 - Documentation, comments, README: Japanese (primary) + English + 6 other languages
 - Commit messages: English (conventional commits: `feat:`, `fix:`, `docs:`, `chore:`)
 - No persona names in git content (use role-based descriptions)
+- Prose style: [writing-quality](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/blob/main/docs/agent/writing-quality.md)
 
 ## Security & Privacy (Public Repository)
 公開リポジトリである。コミットした内容は全世界から見える。
