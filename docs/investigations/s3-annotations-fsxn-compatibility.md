@@ -104,7 +104,7 @@ aws s3api put-object-annotation \
 - Category: Feature Request
 - Severity: Low (General guidance)
 - Status: unassigned
-- Submitted by: yoshiki@netapp.com
+- Submitted by: リポジトリ管理者
 
 ### テンプレート（起票時に使用した内容）
 

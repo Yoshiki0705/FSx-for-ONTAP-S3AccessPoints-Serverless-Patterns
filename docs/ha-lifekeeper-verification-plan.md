@@ -36,7 +36,7 @@ sam deploy --no-confirm-changeset \
     DemoMode=true \
     S3AccessPointAlias=$DEMO_BUCKET \
     OutputBucketName=$DEMO_BUCKET \
-    NotificationEmail=yoshiki@netapp.com \
+    NotificationEmail=maintainer@example.com \
     ClusterName=demo-cluster \
     TriggerMode=POLLING \
     ScheduleExpression="rate(60 minutes)" \
