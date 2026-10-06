@@ -473,6 +473,10 @@ drift:
 # requires the repository to then produce findings, and another asserts the reported
 # output does not contain the value it found — CI logs are public here.
 	$(PYTHON) -m pytest scripts/tests/test_check_account_id_placeholders.py --tb=short -q
+# The public-IPv4 shape check, which replaced a grep for two literal addresses that
+# had to live in this public repository to be found. Its tests assemble their
+# synthetic address at runtime and assert the output masks it.
+	$(PYTHON) -m pytest scripts/tests/test_check_public_ipv4.py --tb=short -q
 	$(PYTHON) -m pytest scripts/tests/test_stale_claim_rules.py --tb=short -q
 # The measured-false claim rule. Separate from the stale-claim rules above because it
 # retires on a new measurement rather than on a code marker, and because its scan range
@@ -758,6 +762,9 @@ security:
 # which is how it sat unnoticed since it was written. This needs no secret, so it has
 # no such state, and it catches any real ID rather than the single configured one.
 	$(PYTHON) scripts/check_account_id_placeholders.py
+# Public IPv4 addresses, by shape for the same reason: no real address has to be
+# written into this repository for the check to find one.
+	$(PYTHON) scripts/check_public_ipv4.py
 
 # cfn-guard over every deployable template. Separate from `security` because it needs
 # the cfn-guard binary rather than a pip package, and separate from `lint-cfn` because
