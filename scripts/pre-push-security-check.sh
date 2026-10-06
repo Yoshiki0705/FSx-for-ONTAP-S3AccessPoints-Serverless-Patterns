@@ -71,7 +71,7 @@ echo "📋 Check 3: No personal file paths (/Users/*/Downloads/*.pem etc.)"
 check_empty "No /Users/ paths with .pem" bash -c "scan_files | xargs grep -rln '/Users/.*\.pem' 2>/dev/null"
 
 # Allow /Users/ in scripts that use it as a default but check for hardcoded sensitive paths
-PERSONAL_PATH_FILES=$(scan_files | xargs grep -rln '/Users/yoshiki' 2>/dev/null || true)
+PERSONAL_PATH_FILES=$(scan_files | xargs grep -rlnE '/Users/[A-Za-z0-9._-]+/' 2>/dev/null || true)
 if [ -n "$PERSONAL_PATH_FILES" ]; then
   echo "  ⚠️  WARN: Personal paths found in:"
   echo "$PERSONAL_PATH_FILES" | sed 's/^/       /'
@@ -81,10 +81,19 @@ fi
 
 echo ""
 
-# --- Check 4: No real IP addresses (non-RFC1918 patterns) ---
-echo "📋 Check 4: No real EC2 IP addresses"
-check_empty "No known EC2 IPs (3.112.208.171)" bash -c "scan_files | xargs grep -rl '3\.112\.208\.171' 2>/dev/null"
-check_empty "No known EC2 IPs (13.113.190.197)" bash -c "scan_files | xargs grep -rl '13\.113\.190\.197' 2>/dev/null"
+# --- Check 4: No publicly routable IPv4 addresses ---
+# Shape-based: any address outside private, loopback, link-local and the RFC 5737
+# documentation ranges fails. Specific values that must also be caught belong in
+# the gitignored scripts/_sensitive_strings.py, which _check_sensitive_leaks.py scans.
+echo "📋 Check 4: No publicly routable IPv4 addresses"
+if ipv4_out=$(python3 "$REPO_ROOT/scripts/check_public_ipv4.py" --root "$REPO_ROOT" 2>&1); then
+  echo "  ✅ PASS: No public IPv4 in tracked files"
+  PASS=$((PASS + 1))
+else
+  echo "  ❌ FAIL: No public IPv4 in tracked files (values masked)"
+  echo "$ipv4_out" | sed 's/^/       /'
+  FAIL=$((FAIL + 1))
+fi
 
 echo ""
 

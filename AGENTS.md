@@ -12,7 +12,7 @@ CloudFormation/SAM template sharing the Python modules in `shared/`.
 **Two pillars**: `solutions/` (S3 AP data processing) + `operations/` (file system operational
 optimization).
 
-**Test coverage**: ~5,000 Python tests across 304 files + ~495 vitest tests across 34 files.
+**Test coverage**: ~5,000 Python tests across 305 files + ~495 vitest tests across 34 files.
 
 > ファイル数は `make drift` がツリーと照合するので古くなれば fail する。テスト総数は 3 系統の
 > 合計なので概数。誰も保守しない厳密な数値より丸めた数値のほうがよい。
@@ -241,7 +241,7 @@ python3 -m pytest solutions/sap/erp-adjacent/tests/ -v
 ## Self-Review (4-Axis Check)
 
 4 軸（実装漏れ / 違和感 / 磨き込み / 退行リスク）の定義はグローバル steering
-`yoshiki-ai-development-principles` にある。あちらも常時ロードなので、ここに転記すると
+の AI 開発原則にある。あちらも常時ロードなので、ここに転記すると
 同じ規約が 2 か所に存在し、片方だけが更新される。このリポジトリ固有の読み替えだけを置く:
 
 - **実装漏れ**: handler を変えて `template.yaml` を忘れていないか。JA/EN parity。
@@ -404,7 +404,7 @@ decision = evaluate_confidence(confidence=0.72)
 
 | 対象 | 参照先 |
 |---|---|
-| 命名 / 中立性 / PII / JA・EN parity | グローバル `yoshiki-ai-development-principles`（常時ロード） |
+| 命名 / 中立性 / PII / JA・EN parity | グローバル steering の AI 開発原則（常時ロード） |
 | 記事と技術ドキュメントの品質バー | グローバル `documentation-and-article-quality` |
 | ガバナンスと責任ある AI | グローバル `governance-responsible-ai` |
 | CI | `.github/workflows/agent-output-audit.yml`（命名/中立性/リーク/parity）、`gitleaks.yml` |

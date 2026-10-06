@@ -11,7 +11,9 @@
 If you discover a security vulnerability in this project, please report it responsibly:
 
 1. **Do NOT** open a public GitHub issue for security vulnerabilities
-2. Email: yoshiki0705@gmail.com with subject "[SECURITY] FSx S3AP Patterns"
+2. Report it privately through GitHub's private vulnerability reporting:
+   [Report a vulnerability](https://github.com/Yoshiki0705/FSx-for-ONTAP-S3AccessPoints-Serverless-Patterns/security/advisories/new)
+   (also reachable from the repository's **Security** tab). Only the maintainers can see the report
 3. Include:
    - Description of the vulnerability
    - Steps to reproduce

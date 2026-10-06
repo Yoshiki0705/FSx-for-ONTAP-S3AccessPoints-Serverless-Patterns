@@ -91,13 +91,9 @@ jobs:
           fi
           echo "✅ No real AWS account ID in tracked files"
 
-      - name: Check no hardcoded EC2 IPs
-        run: |
-          # Common patterns for real public IPs (non-placeholder)
-          # Skip security check scripts themselves (they contain patterns to search for)
-          result=$(git ls-files | grep -v 'scripts/pre-push' | grep -v 'scripts/_check' | grep -v '.github/workflows/' | xargs grep -rln '3\.112\.208\.171\|13\.113\.190\.197' 2>/dev/null || true)
-          if [ -n "$result" ]; then
-            echo "::error::Real EC2 IP addresses found in: $result"
-            exit 1
-          fi
-          echo "✅ No known real EC2 IPs in tracked files"
+      # Shape-based, like the account-ID step: any publicly routable IPv4 fails,
+      # so no real address has to live in this public file to be detected.
+      # Specific values go in the SENSITIVE_STRINGS_PY secret, which the
+      # sensitive-leak-check job in validators.yml scans tracked text against.
+      - name: Check no public IPv4 addresses
+        run: python3 scripts/check_public_ipv4.py
