@@ -211,6 +211,7 @@ Seven parts. The mapping from article to source document is in [File Portal arti
 | Repository | Summary |
 |---|---|
 | [FSx-for-ONTAP-Adoption-Playbook](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook) | **Where the decisions live.** Decision trees for the storage approach, the migration method and the observability route. This repository covers what comes after FSx for ONTAP is chosen, so start there if it is not |
+| [FSx-for-ONTAP-App-Modernization-Patterns](https://github.com/Yoshiki0705/FSx-for-ONTAP-App-Modernization-Patterns/blob/main/docs/en/stage-3-s3-access-points.md) | Stage 3 moves part of an application's processing to AWS Lambda through FSx for ONTAP S3 Access Points (planned, not yet measured). The processing patterns beyond that live in this repository |
 | [FSx-for-ONTAP-Agentic-Access-Aware-RAG](https://github.com/Yoshiki0705/FSx-for-ONTAP-Agentic-Access-Aware-RAG) | Access-aware agentic RAG (CDK + Amazon Bedrock) |
 | [FSx-for-ONTAP-Lakehouse-Integrations](https://github.com/Yoshiki0705/FSx-for-ONTAP-Lakehouse-Integrations) | Lakehouse integration (Databricks, Snowflake, Athena, Glue, EMR) |
 | [S3-Burst-on-ONTAP-Files](https://github.com/Yoshiki0705/S3-Burst-on-ONTAP-Files) | Data collected over the S3 API kept as the record of truth on FSx for ONTAP and served to NFS / SMB sites through FlexCache (source of the throughput measurements) |
