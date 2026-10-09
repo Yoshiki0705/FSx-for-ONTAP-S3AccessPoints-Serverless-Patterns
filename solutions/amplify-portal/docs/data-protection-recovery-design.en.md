@@ -1,0 +1,92 @@
+# Data Protection Recovery Tier — Portal Design Guide for the AWS Backup Logically Air-Gapped Vault
+
+🌐 **Language / 言語**: [日本語](data-protection-recovery-design.md) | English
+
+> Purpose: describe the design frame for how the AWS Backup logically air-gapped vault (hereafter "LAG vault") recovery tier attaches to this portal. The AWS facts themselves live in a separate repository (see "References" below). This guide does not re-derive the facts; it only decides the portal's attachment points and where an approval-gated restore flow sits.
+>
+> This is a design-only guide. It assumes the vault, Vault Lock, RAM share and multi-party approval (MPA) already exist, configured outside the portal by the governance owners.
+
+## Audience and assumptions
+
+This guide is for anyone designing how to add a recovery-point list and an approval-gated restore flow to this Amplify portal, which fronts the S3 Access Points of Amazon FSx for NetApp ONTAP (hereafter "FSx for ONTAP"). It assumes the portal can already list and lock ONTAP snapshots (Tamperproof, SnapLock, ARP status) but has no surface for AWS Backup recovery points or restore jobs.
+
+## The LAG vault as a recovery tier
+
+The LAG vault is the recovery tier for a compromise of the AWS account (the management boundary) itself. Snapshots and SnapMirror destinations inside that same boundary are within reach of a compromised AWS account or ONTAP administrator. The LAG vault stores backups in an AWS Backup service-owned account, outside the reach of ONTAP administration, so it keeps recovery points on the far side of that boundary.
+
+What this tier protects is the availability and integrity of recovery points. It does not protect the confidentiality of data that has been read out; that is the job of other controls — access control, encryption and auditing. The portal screens state this distinction too: listing recovery points or restoring is a "get the data back" operation, not a "stop the exfiltration" one.
+
+## Distinguishing ONTAP snapshots from AWS Backup recovery points
+
+So a reader does not conflate the two, the portal screens and this guide keep them clearly separate.
+
+| Aspect | ONTAP snapshots (already in the portal) | AWS Backup recovery points (not built; this guide's subject) |
+|------|-----------------------------------|------------------------------------------|
+| Storage location | Inside the same FSx for ONTAP file system | An AWS Backup vault (for a LAG vault, an AWS service-owned account) |
+| Management boundary | Inside the ONTAP / AWS account boundary | A LAG vault is outside the boundary |
+| Existing portal surface | `functions/snapshots`, `functions/data-protection` (list, lock status, ARP status, Tamperproof lock) | None |
+| Expected API | ONTAP REST (`GET /api/storage/volumes/{uuid}/snapshots`, etc.) | AWS Backup (`backup:ListRecoveryPointsByBackupVault`, etc.) |
+| What it protects | Recovery points against nearby tampering or accidental deletion | Recovery points against a whole-AWS-account compromise |
+
+## Where it attaches to the portal
+
+The portal already has the pieces to carry this recovery tier as-is. What is new is a handler that calls AWS Backup and the wiring that connects it to the existing approval and orchestration mechanisms.
+
+- **Recovery-point list panel**: place an AWS Backup recovery-point list next to the existing snapshot list in the Data Protection section. Label it distinctly so it is not confused with ONTAP snapshots. This is a read-only surface.
+- **Approval-gated restore flow**: starting a restore reuses the existing human approval (`agent-chat`'s `request_action_approval`, "safety-controller") and the existing irreversibility acknowledgement guard (`_require_ack` / `acknowledgeIrreversible`) to gather approval in stages. The restore itself activates the dormant AppSync -> Step Functions wiring (`amplify/custom/step-functions.ts`, call site commented out) and runs as a tracked execution with a human-approval wait state.
+- **Restore to a new volume**: a restore always targets a new volume and never overwrites the original. This matches the referenced Option D and the LAG vault doc.
+
+## Reusing the existing approval and guard
+
+The portal already has the mechanisms to put irreversible operations behind human approval. The new restore flow reuses them rather than building its own.
+
+| Existing mechanism | Where it lives | Use in the restore flow |
+|------------|---------------------|------------------|
+| Irreversibility acknowledgement guard | `functions/data-protection` (`_require_ack`), `functions/snapshots` (`acknowledgeIrreversible`) | Require an explicit acknowledgement, with a one-sentence consequence, when a restore is requested |
+| Human approval tool | `functions/agent-chat` (`request_action_approval`, "safety-controller") | Route the request through approval before the restore job starts |
+| AppSync -> Step Functions wiring | `amplify/custom/step-functions.ts` (dormant) | Orchestrate the restore execution with a human-approval wait state |
+
+The read-only list panel needs no `acknowledgeIrreversible`. The acknowledgement guard and human approval apply only to the write and irreversible step of starting a restore job.
+
+## Cross-Region and cross-account visibility
+
+The recovery-point list can also target a RAM-shared vault in another account or Region. Per the referenced Option D, `aws backup list-recovery-points-by-backup-vault` takes `--backup-vault-account-id` to list from a shared recovery account. The portal list panel is designed to accept the same argument, so it can show recovery points in another account or Region and whether a restore to them is possible.
+
+Three states are worth monitoring. The portal does not build alerting for them; it defers that to the observability side (`fsxn-observability-integrations`). The split is that the portal holds visibility and flows, while observability holds the alerting.
+
+- Vault copy-job failures.
+- "Completed with issues" (when the source file system is encrypted with an AWS managed key, the backup is not copied to the vault and the job ends in this state; registered as evidence [E-009] in the source repository).
+- RAM-share revocation (the shared recovery account loses its list and restore permissions; source [E-014]).
+
+Attach the design to the existing `docs/multi-account/ram-sharing.md` and `docs/multi-region/disaster-recovery.md`.
+
+## Note on a vendor limitation
+
+Among the AWS-documented facts, this guide cites the ones that bear on the design as already-registered evidence in the source repository. It does not re-derive them here.
+
+- Malware Protection for AWS Backup does not scan FSx for ONTAP recovery points (registered as [E-008] in the source repository). Check restored contents with FlexClone and a scan through S3 Access Points.
+- If the source file system is encrypted with an AWS managed key, the backup is not copied to the LAG vault and the job ends "Completed with issues" ([E-009]). Using a LAG vault assumes the source file system is encrypted with a customer managed key.
+- Backups cover RW volumes only; DP, LSM, FlexCache and SnapMirror destination volumes and SnapLock FlexGroup volumes are not backed up ([E-010]).
+
+## The deferred, irreversible boundary
+
+This guide and the follow-on portal work do NOT do the following. Each is a decision owned outside the portal, by the governance side, and needs a disposable test environment.
+
+- **Do not create a vault or set Vault Lock.** Vault Lock compliance mode is always on and cannot be turned off later ([E-020]). The vault encryption key is fixed at creation and cannot be changed later ([E-020]). Creating the vault is irreversible and is an out-of-portal decision owned by the account/governance side.
+- **Do not configure real MPA approvers.** The MPA approval-team resources live in `us-east-1` and gate real recovery access. Wiring real approvers is a separate Issue that needs a disposable test environment.
+- The portal work is limited to: a read path (list) + an approval-gated restore (requesting a restore to a new volume) + a design guide + cross-account/Region visibility. It assumes the vault, Vault Lock, RAM share and MPA are already configured elsewhere.
+
+## Follow-on Issues
+
+This guide is the design frame the following three follow-on Issues implement. Each Issue maps to a part of this guide.
+
+- [#459](https://github.com/Yoshiki0705/FSx-for-ONTAP-S3AccessPoints-Serverless-Patterns/issues/459) — list recovery points (read-only). The list panel in "Where it attaches to the portal".
+- [#460](https://github.com/Yoshiki0705/FSx-for-ONTAP-S3AccessPoints-Serverless-Patterns/issues/460) — approval-gated restore. The approval-gated restore flow and the reuse of the existing approval and guard.
+- [#461](https://github.com/Yoshiki0705/FSx-for-ONTAP-S3AccessPoints-Serverless-Patterns/issues/461) — cross-Region and cross-account visibility. The corresponding section of this guide.
+
+## References
+
+These hold the AWS facts. This guide does not re-derive them; it cites them as design inputs.
+
+- [AWS Backup Logically Air-Gapped Vault for Amazon FSx for NetApp ONTAP](https://github.com/Yoshiki0705/FSx-for-ONTAP-Cyber-Resilience-Patterns/blob/main/docs/data-protection/aws-backup-logically-air-gapped-vault.md) — vault prerequisites (customer managed key required; AWS-managed-key file systems are not copied and the job ends "Completed with issues"; RW volumes only), configuration options, restore and restore testing, and how to choose an isolation option.
+- [Ransomware Recovery Runbook — Option D](https://github.com/Yoshiki0705/FSx-for-ONTAP-Cyber-Resilience-Patterns/blob/main/docs/runbooks/ransomware-recovery.md), the "Option D" recovery-account restore (`list-recovery-points-by-backup-vault` with `--backup-vault-account-id`, `start-restore-job` to a new volume).
