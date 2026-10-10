@@ -99,6 +99,7 @@ AwsSolutions-IAM4[Policy::arn:<AWS::Partition>:iam::aws:policy/service-role/AWSL
 AwsSolutions-IAM4[Policy::arn:<AWS::Partition>:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole]	data/QueryAuditLogLambdaRole/Resource
 AwsSolutions-IAM4[Policy::arn:<AWS::Partition>:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole]	data/RecoveryPointsLambdaRole/Resource
 AwsSolutions-IAM4[Policy::arn:<AWS::Partition>:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole]	data/ResourceMgmtLambdaRole/Resource
+AwsSolutions-IAM4[Policy::arn:<AWS::Partition>:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole]	data/RestoreLambdaRole/Resource
 AwsSolutions-IAM4[Policy::arn:<AWS::Partition>:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole]	data/SearchFilesLambdaRole/Resource
 AwsSolutions-IAM4[Policy::arn:<AWS::Partition>:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole]	data/TextractLambdaRole/Resource
 AwsSolutions-IAM4[Policy::arn:<AWS::Partition>:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole]	data/ThumbnailsLambdaRole/Resource
@@ -127,6 +128,7 @@ AwsSolutions-IAM5[Resource::<PlatformDiscoveryFunction75A219A3.Arn>:*]	data/ampl
 AwsSolutions-IAM5[Resource::<QueryAuditLogFunction1B934D98.Arn>:*]	data/amplifyData/L2GraphqlApi/QueryAuditLogLambdaDataSource/ServiceRole/DefaultPolicy/Resource
 AwsSolutions-IAM5[Resource::<RecoveryPointsFunction47078BB9.Arn>:*]	data/amplifyData/L2GraphqlApi/RecoveryPointsLambdaDataSource/ServiceRole/DefaultPolicy/Resource
 AwsSolutions-IAM5[Resource::<ResourceMgmtFunction962E93B1.Arn>:*]	data/amplifyData/L2GraphqlApi/ResourceMgmtLambdaDataSource/ServiceRole/DefaultPolicy/Resource
+AwsSolutions-IAM5[Resource::<RestoreFunction6CD1497B.Arn>:*]	data/amplifyData/L2GraphqlApi/RestoreLambdaDataSource/ServiceRole/DefaultPolicy/Resource
 AwsSolutions-IAM5[Resource::<SearchFilesFunction8BB2D99D.Arn>:*]	data/amplifyData/L2GraphqlApi/SearchFilesLambdaDataSource/ServiceRole/DefaultPolicy/Resource
 AwsSolutions-IAM5[Resource::<TableManagerCustomProviderframeworkisComplete2E51021B.Arn>:*]	data/amplifyData/AmplifyTableManager/AmplifyTableWaiterStateMachine/Role/DefaultPolicy/Resource
 AwsSolutions-IAM5[Resource::<TextractFunction6DF7C8EE.Arn>:*]	data/amplifyData/L2GraphqlApi/TextractLambdaDataSource/ServiceRole/DefaultPolicy/Resource
@@ -193,6 +195,15 @@ AwsSolutions-IAM5[Resource::arn:aws:s3:<AWS::Region>:<AWS::AccountId>:accesspoin
 # that statement is omitted entirely while the config is empty -- which is what this
 # baseline is measured against -- so only the list wildcard remains here.
 AwsSolutions-IAM5[Resource::*]	data/RecoveryPointsLambdaRole/Resource
+
+# `backup:StartRestoreJob` and `backup:DescribeRestoreJob` define no restorable resource
+# type -- AWS's own managed restore policy (AWSBackupServiceRolePolicyForRestores)
+# grants them on `*`, so they cannot be scoped. The `iam:PassRole` beside them is scoped
+# to the single restore-role ARN with an `iam:PassedToService = backup.amazonaws.com`
+# condition, and that statement is omitted entirely while `restoreRoleArn` is empty --
+# which is what this baseline is measured against -- so only the backup list/describe
+# wildcard remains here.
+AwsSolutions-IAM5[Resource::*]	data/RestoreLambdaRole/Resource
 
 # `comprehend:DetectSentiment` and `DetectKeyPhrases` define no resource type, and
 # `DetectEntities` defines only an optional custom `entity-recognizer-endpoint` this

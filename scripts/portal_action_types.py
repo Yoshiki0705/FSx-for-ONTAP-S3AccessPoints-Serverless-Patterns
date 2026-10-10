@@ -52,6 +52,7 @@ HANDLER_MAPS = {
     "data-protection": "DataProtectionActionParams",
     "snapshots": "SnapshotsActionParams",
     "recovery-points": "RecoveryPointsActionParams",
+    "restore": "RestoreActionParams",
     "list-files": "ListFilesActionParams",
     "agent-chat": "AgentChatActionParams",
     "thumbnails": "ThumbnailsActionParams",
@@ -99,6 +100,10 @@ SCALARS: dict[str, str] = {
     "maxResults": "number",
     "maxRecords": "number",
     "limit": "number",
+    # The size of the new volume an AWS Backup restore creates, in megabytes. The
+    # handler sends it as a string in the restore Metadata map, but the UI collects a
+    # number — a size typed as a string would reject the numeric form field.
+    "sizeInMegabytes": "number",
     "count": "number",
     "retentionDays": "number",
     "ttlHours": "number",
@@ -126,6 +131,9 @@ SCALARS: dict[str, str] = {
     # that ONTAP would reject with 66846871.
     "constituentsPerAggregate": "number",
     "encryption": "boolean",
+    # Whether the restored FSx for ONTAP volume has storage efficiency on. Optional;
+    # the restore handler copies it into the Metadata map only when supplied.
+    "storageEfficiencyEnabled": "boolean",
     "continuouslyAvailable": "boolean",
     "surgeAsNormal": "boolean",
     # Epoch seconds, taken from the first message's timestamp.

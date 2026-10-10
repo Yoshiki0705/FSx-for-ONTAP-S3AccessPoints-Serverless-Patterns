@@ -56,6 +56,9 @@ solutions/amplify-portal/functions/thumbnails
 # FSx-scoped list, the describe required-field guard, and that a boto3 ClientError
 # comes back as an error dict rather than raising to AppSync.
 solutions/amplify-portal/functions/recovery-points
+# The approval-gated AWS Backup restore handler (#460). Its tests cover the ack
+# guard, new-volume metadata assembly, the SVM allowlist and the ClientError path.
+solutions/amplify-portal/functions/restore
 # The two endpoints that hand out access rather than serve a request: a presigned URL,
 # which is a bearer credential that outlives the call, and a folder ZIP, whose prefix
 # check has to refuse an *ancestor* of an allowed prefix or the archive carries every

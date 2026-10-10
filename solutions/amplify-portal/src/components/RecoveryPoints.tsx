@@ -3,7 +3,10 @@ import { useQuery } from "@tanstack/react-query";
 import { useTranslation } from "../i18n";
 import type { TranslationKeys } from "../i18n/locales/ja";
 import { errorMessage } from "../lib/portalQuery";
-import { recoveryPointsQuery } from "../lib/dispatch";
+import { recoveryPointsQuery, restoreMutate } from "../lib/dispatch";
+import { useStorageAdmin } from "../hooks/useStorageAdmin";
+import { restoreAllowedSvmIds } from "../lib/portalOutputs";
+import { RestoreConfirmDialog, type RestoreFormValues } from "./RestoreConfirmDialog";
 
 /**
  * One AWS Backup recovery point, as the handler returns it.
@@ -34,6 +37,18 @@ interface BackupVault {
 }
 
 const LOGICALLY_AIR_GAPPED = "LOGICALLY_AIR_GAPPED_BACKUP_VAULT";
+
+/** A recovery point must be in one of these states to be restorable. */
+const RESTORABLE_STATUSES = new Set(["AVAILABLE", "COMPLETED"]);
+
+/**
+ * Capacity-pool tiering policies offered in the restore form.
+ *
+ * The default (first entry) matches the ONTAP restore default. These are the FSx
+ * for ONTAP tiering policy names; the handler passes the chosen value through to the
+ * restore Metadata unchanged.
+ */
+const TIERING_POLICIES = ["SNAPSHOT_ONLY", "AUTO", "ALL", "NONE"];
 
 /**
  * The label and severity for a recovery-point Status.
@@ -78,7 +93,41 @@ function formatSize(bytes: number): string {
  */
 export function RecoveryPoints() {
   const { t } = useTranslation();
+  const isStorageAdmin = useStorageAdmin();
   const [statusFilter, setStatusFilter] = useState("");
+  /** The recovery point whose restore dialog is open; null when none. */
+  const [pendingRestore, setPendingRestore] = useState<RecoveryPoint | null>(null);
+  const [restoreError, setRestoreError] = useState<string | null>(null);
+  const [restoreResult, setRestoreResult] = useState<string | null>(null);
+
+  const runRestore = async (point: RecoveryPoint, values: RestoreFormValues) => {
+    setRestoreError(null);
+    setRestoreResult(null);
+    try {
+      const data = await restoreMutate<{ restoreJobId?: string }>({
+        action: "startRestore",
+        params: {
+          recoveryPointArn: point.recoveryPointArn,
+          name: values.name,
+          storageVirtualMachineId: values.storageVirtualMachineId,
+          junctionPath: values.junctionPath,
+          sizeInMegabytes: values.sizeInMegabytes,
+          storageEfficiencyEnabled: values.storageEfficiencyEnabled,
+          tieringPolicy: values.tieringPolicy,
+          acknowledgeIrreversible: true,
+        },
+      });
+      if (data?.error) {
+        setRestoreError(data.error);
+      } else if (data?.restoreJobId) {
+        setRestoreResult(t("rpRestoreStarted").split("{jobId}").join(data.restoreJobId));
+      } else {
+        setRestoreError(t("rpRestoreError"));
+      }
+    } catch (err) {
+      setRestoreError(err instanceof Error ? err.message : t("rpRestoreError"));
+    }
+  };
 
   const pointsQuery = useQuery({
     queryKey: ["recoveryPoints", "listRecoveryPoints"],
@@ -147,6 +196,22 @@ export function RecoveryPoints() {
       </p>
 
       {loadError && <div className="error-message">{t("rpLoadError")}: {loadError}</div>}
+      {restoreError && <div className="error-message">{t("rpRestoreError")}: {restoreError}</div>}
+      {restoreResult && <div className="success-message">{restoreResult}</div>}
+
+      {pendingRestore && (
+        <RestoreConfirmDialog
+          recoveryPointArn={pendingRestore.recoveryPointArn}
+          allowedSvmIds={restoreAllowedSvmIds}
+          tieringPolicies={TIERING_POLICIES}
+          onCancel={() => setPendingRestore(null)}
+          onConfirm={(values) => {
+            const point = pendingRestore;
+            setPendingRestore(null);
+            void runRestore(point, values);
+          }}
+        />
+      )}
 
       {statuses.length > 0 && (
         <div className="form-group" style={{ maxWidth: "20rem", marginBottom: "1rem" }}>
@@ -172,6 +237,7 @@ export function RecoveryPoints() {
               <th>{t("rpColSize")}</th>
               <th>{t("rpColVault")}</th>
               <th>{t("rpColEncryption")}</th>
+              {isStorageAdmin === true && <th>{t("rpColActions")}</th>}
             </tr>
           </thead>
           <tbody>
@@ -193,6 +259,22 @@ export function RecoveryPoints() {
                     )}
                   </td>
                   <td>{point.isEncrypted ? t("rpEncrypted") : t("rpNotEncrypted")}</td>
+                  {isStorageAdmin === true && (
+                    <td>
+                      <button
+                        type="button"
+                        className="btn-primary"
+                        disabled={!RESTORABLE_STATUSES.has(point.status)}
+                        onClick={() => {
+                          setRestoreError(null);
+                          setRestoreResult(null);
+                          setPendingRestore(point);
+                        }}
+                      >
+                        {t("rpRestore")}
+                      </button>
+                    </td>
+                  )}
                 </tr>
               );
             })}

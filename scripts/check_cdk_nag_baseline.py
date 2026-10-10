@@ -180,6 +180,16 @@ REASONS: list[tuple[str, str]] = [
         "baseline is measured against -- so only the list wildcard remains here.",
     ),
     (
+        "data/RestoreLambdaRole",
+        "`backup:StartRestoreJob` and `backup:DescribeRestoreJob` define no restorable "
+        "resource type -- AWS's own managed restore policy "
+        "(AWSBackupServiceRolePolicyForRestores) grants them on `*`, so they cannot be "
+        "scoped. The `iam:PassRole` beside them is scoped to the single restore-role ARN "
+        "with an `iam:PassedToService = backup.amazonaws.com` condition, and that statement "
+        "is omitted entirely while `restoreRoleArn` is empty -- which is what this baseline "
+        "is measured against -- so only the backup list/describe wildcard remains here.",
+    ),
+    (
         "data/",
         "A resource wildcard on a Lambda role we declare. What remains is object keys, "
         "which cannot be listed in advance, and names that arrive as configuration -- see "

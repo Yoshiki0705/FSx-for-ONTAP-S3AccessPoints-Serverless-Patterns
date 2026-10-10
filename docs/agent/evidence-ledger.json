@@ -395,6 +395,33 @@
         "status": "filed",
         "where": "https://github.com/aws/aws-cdk/issues/26553 and https://github.com/aws/aws-cdk/issues/23909 -- both open upstream, filed by others. Nothing filed from here yet; the per-output residue counts measured above are not in either issue and would be the contribution to make."
       }
+    },
+    {
+      "id": "E-011",
+      "claim": "AWS Backup restore of an FSx for ONTAP recovery point always creates a NEW volume; it cannot restore to an existing file system's data, cannot overwrite an existing volume, and cannot restore individual files or folders. The new volume may be placed into an existing file system via the chosen SVM (FSx for ONTAP only).",
+      "subject": "AWS",
+      "tier": "documented",
+      "premise": true,
+      "sources": [
+        {
+          "url": "https://docs.aws.amazon.com/aws-backup/latest/devguide/restoring-fsx.html",
+          "read": "full",
+          "retrieved": "2026-10-10",
+          "says": "The restore page states you cannot restore to an existing Amazon FSx file system and cannot restore individual files or folders, and separately that Amazon FSx for NetApp ONTAP allows restoring a volume to an existing file system. The two reconcile as: a restore never writes into or over an existing file system's data (every restore creates a new resource), and FSx for ONTAP is the one type whose newly created resource is a new volume that can be placed into an existing file system via the chosen SVM. The page lists the FSx for ONTAP restore metadata keys (Name, OntapConfiguration.{junctionPath, sizeInMegabytes, storageEfficiencyEnabled, storageVirtualMachineId, tieringPolicy})."
+        }
+      ],
+      "support_inquiry": {
+        "status": "not-needed",
+        "topic": "Nothing to ask AWS Support. The no-overwrite / new-volume-only rule and the FSx for ONTAP volume-into-existing-file-system placement are stated directly on the AWS Backup restore documentation."
+      },
+      "feature_request": {
+        "status": "not-applicable"
+      },
+      "appears_in": [
+        "solutions/amplify-portal/docs/data-protection-recovery-design.md",
+        "solutions/amplify-portal/docs/data-protection-recovery-design.en.md"
+      ],
+      "claim_ja": "AWS Backup による FSx for ONTAP 復旧ポイントの復元は常に新しいボリュームを作成します。既存のファイルシステムの中身へは復元できず、既存のボリュームを上書きできず、個々のファイルやフォルダを復元することもできません。新しいボリュームは、選択した SVM を介して既存のファイルシステムに配置できます（FSx for ONTAP のみ）。"
     }
   ]
 }

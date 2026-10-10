@@ -137,6 +137,8 @@ export const protectionMutate = <T,>(call: DispatchCall<"protectionMutation">) =
   dispatchFor<T, "protectionMutation">("protectionMutation", call);
 export const recoveryPointsQuery = <T,>(call: DispatchCall<"recoveryPointsQuery">) =>
   dispatchFor<T, "recoveryPointsQuery">("recoveryPointsQuery", call);
+export const restoreMutate = <T,>(call: DispatchCall<"recoveryPointsMutation">) =>
+  dispatchFor<T, "recoveryPointsMutation">("recoveryPointsMutation", call);
 export const fileQuery = <T,>(call: DispatchCall<"fileQuery">) => dispatchFor<T, "fileQuery">("fileQuery", call);
 export const fileMutate = <T,>(call: DispatchCall<"fileMutation">) =>
   dispatchFor<T, "fileMutation">("fileMutation", call);

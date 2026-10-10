@@ -86,6 +86,18 @@ AWS 公開文書に基づく仕様のうち、設計に効くものを参照元�
 - **マルウェアスキャン結果の列は出しません。** FSx for ONTAP は Malware Protection for AWS Backup の対象外であり（[E-008]）、同名の列を作ると誤解を生むためです。
 - **ソースアカウント ID の列やアカウント切り替えの導線は、このパネルには出しません。** ハンドラは将来のクロスアカウント表示のために `backupVaultAccountId` 引数を受け取れますが、それを設定する UI は持ちません。クロスアカウントの UI は #461、復元の起票は #460 に繰り延べます。
 
+## #460 で実装した承認付き復元
+
+#460 では、本ガイドの「承認付き復元フロー」を、新しいボリュームへの復元の起票として実装しました。復元は `backup:StartRestoreJob` を呼び、選択した復旧ポイントから既存のファイルシステムの中に新しい FSx for ONTAP ボリュームを作成します。ポータルで初めての書き込み・不可逆の AWS Backup 導線です。
+
+- **復元は常に新しいボリュームを作成します。上書きの導線はありません。** AWS Backup のドキュメント [restoring-fsx.html](https://docs.aws.amazon.com/aws-backup/latest/devguide/restoring-fsx.html) は 2 つの文を載せています。(1)「既存の Amazon FSx ファイルシステムへは復元できず、個々のファイルやフォルダも復元できない」。(2)「Amazon FSx for NetApp ONTAP は、既存のファイルシステムへのボリュームの復元を許可する」。この 2 文は対象が異なり、矛盾しません。(1) は「ファイルシステムを復元先にすること」の否定で、復元は既存ファイルシステムの中身へは書き込まず、個々のファイル・フォルダも復元しません。(2) は FSx for ONTAP 固有の配置の例外で、作成する新しいボリュームを、新しいファイルシステムではなく、選択した SVM を介して既存のファイルシステムに置けます。したがってポータルは復元を「既存ファイルシステムの中に新しいボリュームを作成する」操作として提示し、既存ボリュームの上書きや個々のファイル復元はできません [E-011]。この規則は参照元リポジトリに [E-011] として登録済みです。
+- **二段の承認ゲートを再利用します。** サーバー側のハードゲートは `_require_ack`（`acknowledgeIrreversible` が `true` でなければ `StartRestoreJob` を呼ばず拒否）で、`functions/data-protection/handler.py` と同じ仕組みです。UI は `SnaplockConfirmDialog` と同じ形の確認ダイアログで一文の結果を示し、チェックボックスの同意を取ってから `acknowledgeIrreversible: true` を送ります。復元は加算的（新しいボリュームの作成）なので、SnapLock のような打鍵確認ではなくチェックボックスで足ります。チャット側では `request_action_approval`（"safety-controller"）が破壊的操作の提案前の人の承認アドバイザリとして働きます。
+- **新しいボリュームのメタデータだけを集めます。** フォームは名前（必須）・SVM（必須、`restoreAllowedSvmIds` に限定したドロップダウン）・ジャンクションパス（必須）・ボリュームサイズ MB（必須の数値）・ストレージ効率化（任意のチェックボックス、既定オフ）・階層化ポリシー（任意のドロップダウン、既定値）を取ります。復元先の既存ファイルシステムは選択した SVM で決まります（ONTAP の復元メタデータに独立したファイルシステムキーはありません）。ハンドラは SVM を `ALLOWED_SVM_IDS` に照合し、範囲外なら拒否します。
+- **成功時は復元ジョブ ID を表示します。進捗のポーリングはしません。** 成功レスポンスの `RestoreJobId` と「進捗は AWS Backup コンソールまたは Observability で確認」の案内を出します。タイマーでの `DescribeRestoreJob` のポーリングは #133／#134（Restore Job State Change の取り込み）と重なるため行いません。
+- **復元ジョブの Status は復旧ポイントの Status とは別の列挙です。** 復元ジョブの `Status` は `PENDING | RUNNING | COMPLETED | ABORTED | FAILED` で、#459 の復旧ポイントの `Status`（`COMPLETED | PARTIAL | DELETING | EXPIRED | AVAILABLE | STOPPED | CREATING`）とは別物です。両者を混同しません。
+- **Step Functions の人の承認待ち状態（マルチパーティー承認）は繰り延べます。** このリポジトリには人の承認待ち（`waitForTaskToken`／手動承認）のステートマシンがデプロイされていません。`amplify/custom/step-functions.ts` は呼び出し側がコメントアウトされた休眠中の構成です。#460 は `_require_ack` ＋ 確認ダイアログ ＋ チャットのアドバイザリで承認を取り、ステートマシンによる多者承認は後続 Issue に回します。
+- **実際の復元の成功確認は Issue のチェックボックスに繰り延べます。** アカウントに復旧ポイントが存在しないため、#460 は `StartRestoreJob`／`DescribeRestoreJob` をモックした単体テストだけを載せます。
+
 ## 後続 Issue
 
 本ガイドは次の 3 本の後続 Issue が実装する設計枠です。各 Issue は本ガイドのどの部分を実装するかを対応づけます。

@@ -849,6 +849,26 @@ export interface RecoveryPointsActionParams {
   };
 }
 
+/** Actions of functions/restore, reached by `recoveryPointsMutation`. */
+export interface RestoreActionParams {
+  describeRestore: {
+    restoreJobId: string;
+  };
+  startRestore: {
+    junctionPath: string;
+    name: string;
+    recoveryPointArn: string;
+    sizeInMegabytes: number;
+    storageVirtualMachineId: string;
+    acknowledgeIrreversible?: true;
+    fileSystemId?: string;
+    idempotencyToken?: string;
+    restoreJobId?: string;
+    storageEfficiencyEnabled?: boolean;
+    tieringPolicy?: string;
+  };
+}
+
 /** Actions of functions/list-files, reached by `fileMutation`, `fileQuery`. */
 export interface ListFilesActionParams {
   copyFile: {
@@ -1054,6 +1074,7 @@ export type DispatchParams = {
   platformQuery: PlatformDiscoveryActionParams;
   protectionMutation: SnapshotsActionParams;
   protectionQuery: SnapshotsActionParams;
+  recoveryPointsMutation: RestoreActionParams;
   recoveryPointsQuery: RecoveryPointsActionParams;
   thumbnailQuery: ThumbnailsActionParams;
 };
