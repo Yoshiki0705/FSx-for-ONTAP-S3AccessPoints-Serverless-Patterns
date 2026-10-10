@@ -68,6 +68,10 @@ describe("Backend Infrastructure Structure", () => {
       // Read-only AWS Backup recovery-point listing (#459). Also outside the VPC:
       // it reaches the AWS Backup control plane, not the ONTAP management LIF.
       "RecoveryPointsFunction",
+      // Approval-gated AWS Backup restore (#460). Outside the VPC for the same
+      // reason as the reader: it reaches the AWS Backup control plane. A write
+      // handler, so its role carries StartRestoreJob/PassRole the reader must not.
+      "RestoreFunction",
     ];
 
     it("defines all expected Lambda functions", () => {

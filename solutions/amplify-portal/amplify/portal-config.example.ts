@@ -123,6 +123,15 @@ export interface PortalConfig {
   // default listing (the caller must name a vault) and scopes the role to nothing.
   backupVaultNames: string[];
   backupVaultArns: string[];
+
+  // AWS Backup approval-gated restore (#460, write).
+  // ARN of the restore role AWS Backup assumes to create the new volume; the SVM
+  // ids and file system ids a restore may target. Empty restoreRoleArn disables the
+  // write path (the handler answers "not configured" instead of calling
+  // StartRestoreJob) and omits the iam:PassRole grant from the restore role.
+  restoreRoleArn: string;
+  restoreAllowedSvmIds: string[];
+  restoreAllowedFileSystemIds: string[];
 }
 
 /**
@@ -665,4 +674,37 @@ export const config: PortalConfig = {
    *   export AMPLIFY_PORTAL_BACKUP_VAULT_ARNS=arn:aws:backup:ap-northeast-1:123456789012:backup-vault:Default
    */
   backupVaultArns: idList(process.env.AMPLIFY_PORTAL_BACKUP_VAULT_ARNS),
+
+  /**
+   * ARN of the AWS Backup restore role the restore write path passes (#460).
+   *
+   * AWS Backup assumes this role to create the new FSx for ONTAP volume. Point it
+   * at the account's existing AWS Backup default/custom restore role (trust
+   * backup.amazonaws.com, AWSBackupServiceRolePolicyForRestores) rather than minting
+   * a second high-privilege role in the portal synth. Empty disables the write path:
+   * the handler answers "not configured" instead of calling StartRestoreJob, and the
+   * restore role's iam:PassRole grant is omitted.
+   *   export AMPLIFY_PORTAL_RESTORE_ROLE_ARN=arn:aws:iam::123456789012:role/AWSBackupDefaultServiceRole
+   */
+  restoreRoleArn: process.env.AMPLIFY_PORTAL_RESTORE_ROLE_ARN || "",
+
+  /**
+   * Storage virtual machine ids a restore may target (#460).
+   *
+   * Comma-separated. A restore places the new volume into the existing file system
+   * that owns the chosen SVM, so the restore handler refuses any SVM outside this
+   * set. Empty means no SVM is allowed, so a restore is refused until configured.
+   *   export AMPLIFY_PORTAL_RESTORE_SVM_IDS=svm-01234567890abcdef
+   */
+  restoreAllowedSvmIds: idList(process.env.AMPLIFY_PORTAL_RESTORE_SVM_IDS),
+
+  /**
+   * File system ids a restore may target (#460).
+   *
+   * Comma-separated. An optional second allowlist beside the SVM allowlist (the
+   * ONTAP restore metadata has no separate file-system key — the target is implied
+   * by the SVM). Empty means the file-system check is not enforced.
+   *   export AMPLIFY_PORTAL_RESTORE_FILE_SYSTEM_IDS=fs-01234567890abcdef
+   */
+  restoreAllowedFileSystemIds: idList(process.env.AMPLIFY_PORTAL_RESTORE_FILE_SYSTEM_IDS),
 };

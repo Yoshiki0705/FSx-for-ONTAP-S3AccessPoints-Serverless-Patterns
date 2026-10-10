@@ -89,6 +89,12 @@ backend.addOutput({
     externalAiEnabled: String(config.externalDefaults.aiEnabled),
     // Serialised, because custom outputs are a flat map of strings.
     externalShareLinksByRole: JSON.stringify(config.externalDefaults.shareLinksByRole),
+
+    // The SVM ids an approval-gated restore may target (#460), so the restore
+    // dialog's SVM dropdown offers exactly the set the handler enforces server-side.
+    // Not a control — the restore handler refuses any SVM outside this set — only a
+    // way for the UI to present the allowed choices rather than a free-text field.
+    restoreAllowedSvmIds: JSON.stringify(config.restoreAllowedSvmIds ?? []),
   },
 });
 
@@ -1326,6 +1332,68 @@ const recoveryPointsFunction = new lambda.Function(
 );
 
 api.addLambdaDataSource("RecoveryPointsLambdaDataSource", recoveryPointsFunction);
+
+// --- Lambda Data Source for AWS Backup restore (approval-gated write, #460) ---
+// Starts an AWS Backup restore job that creates a NEW FSx for ONTAP volume in an
+// existing file system from a selected recovery point. A separate write handler
+// from functions/recovery-points, so its role carries the restore write permissions
+// the read role must not have. Like the recovery-points reader it reaches a regional
+// AWS control-plane API, so it needs no VPC, no shared layer, and no secret.
+const restoreRole = new iam.Role(dataStack, "RestoreLambdaRole", {
+  assumedBy: new iam.ServicePrincipal("lambda.amazonaws.com"),
+  managedPolicies: [
+    iam.ManagedPolicy.fromAwsManagedPolicyName(
+      "service-role/AWSLambdaBasicExecutionRole"
+    ),
+  ],
+  inlinePolicies: {
+    AwsBackupRestore: new iam.PolicyDocument({
+      statements: [
+        new iam.PolicyStatement({
+          // Not resource-scopable: StartRestoreJob and DescribeRestoreJob define no
+          // restorable resource type, and AWS's own managed restore policy
+          // (AWSBackupServiceRolePolicyForRestores) grants them on "*". This is what
+          // the cdk-nag IAM5 baseline entry below records.
+          actions: ["backup:StartRestoreJob", "backup:DescribeRestoreJob"],
+          resources: ["*"],
+        }),
+        // Hand AWS Backup the restore role it assumes to create the volume. Scoped
+        // to the single configured restore-role ARN with the PassedToService
+        // condition, so this role can pass that one role to AWS Backup and nothing
+        // else. Granted only when the ARN is configured — CDK refuses a statement
+        // with empty `resources`, and the example config ships an empty default.
+        ...(config.restoreRoleArn
+          ? [
+              new iam.PolicyStatement({
+                actions: ["iam:PassRole"],
+                resources: [config.restoreRoleArn],
+                conditions: { StringEquals: { "iam:PassedToService": "backup.amazonaws.com" } },
+              }),
+            ]
+          : []),
+      ],
+    }),
+  },
+});
+
+const restoreFunction = new lambda.Function(dataStack, "RestoreFunction", {
+  runtime: lambda.Runtime.PYTHON_3_13,
+  architecture: lambda.Architecture.ARM_64,
+  handler: "index.handler",
+  code: functionCode("functions/restore"),
+  role: restoreRole,
+  environment: {
+    BACKUP_RESTORE_ROLE_ARN: config.restoreRoleArn,
+    ALLOWED_SVM_IDS: JSON.stringify(config.restoreAllowedSvmIds ?? []),
+    ALLOWED_FILE_SYSTEM_IDS: JSON.stringify(config.restoreAllowedFileSystemIds ?? []),
+  },
+  memorySize: 256,
+  timeout: Duration.seconds(30),
+  description:
+    "Starts an AWS Backup restore job to a new FSx for ONTAP volume (approval-gated write)",
+});
+
+api.addLambdaDataSource("RestoreLambdaDataSource", restoreFunction);
 
 // --- Lambda Data Source for ARP/AI Response Actions ---
 // Uses functions/data-protection/handler.py (dedicated handler for write operations)

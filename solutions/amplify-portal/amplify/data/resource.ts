@@ -255,6 +255,24 @@ const schema = a.schema({
     .handler(a.handler.custom({ dataSource: "RecoveryPointsLambdaDataSource", entry: "./resolvers/recovery-points-dispatch.js" })),
 
   // =========================================================================
+  // Generic Dispatch: AWS Backup restore (approval-gated write, #460)
+  // Starts an AWS Backup restore job that creates a NEW FSx for ONTAP volume in an
+  // existing file system from a selected recovery point. The portal's first write /
+  // irreversible AWS Backup path: storage-admin only (like every other write
+  // mutation), and the handler refuses unless acknowledgeIrreversible is true. There
+  // is no overwrite / restore-in-place path — the API forbids it, so the mutation
+  // only ever creates a new volume. Its own write handler (functions/restore) and
+  // data source, so its role carries StartRestoreJob/PassRole the read role must not.
+  // Actions: startRestore, describeRestore
+  // =========================================================================
+  recoveryPointsMutation: a
+    .mutation()
+    .arguments({ action: a.string().required(), params: a.json() })
+    .returns(a.json())
+    .authorization((allow) => [allow.groups(["storage-admin"])])
+    .handler(a.handler.custom({ dataSource: "RestoreLambdaDataSource", entry: "./resolvers/restore-dispatch.js" })),
+
+  // =========================================================================
   // Generic Dispatch: File Operations
   // Replaces 6 individual file operations
   // Actions: listFiles, listFilesFromAp, trashFile, restoreFromTrash,

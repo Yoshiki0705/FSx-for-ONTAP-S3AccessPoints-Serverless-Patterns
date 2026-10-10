@@ -19,6 +19,8 @@ type CustomOutputs = {
   enforceRoles?: string;
   externalAiEnabled?: string;
   externalShareLinksByRole?: string;
+  // The SVM ids an approval-gated restore may target (#460), serialised.
+  restoreAllowedSvmIds?: string;
 };
 
 type AmplifyOutputs = {
@@ -100,4 +102,24 @@ export function readExternalShareLinksByRole(raw: string | undefined): Record<st
 }
 export const externalShareLinksByRole: Record<string, boolean> = readExternalShareLinksByRole(
   outputs.custom?.externalShareLinksByRole
+);
+
+/**
+ * SVM ids an approval-gated restore may target (#460).
+ *
+ * The restore dialog's SVM dropdown offers exactly this set, which the handler
+ * enforces server-side. An absent or unparseable value becomes `[]` — the dropdown
+ * is then empty and a restore cannot be submitted until the deployment configures
+ * `restoreAllowedSvmIds`, which matches the handler refusing an unconfigured SVM.
+ */
+export function readRestoreAllowedSvmIds(raw: string | undefined): string[] {
+  try {
+    const parsed: unknown = JSON.parse(raw ?? "[]");
+    return Array.isArray(parsed) ? parsed.filter((v): v is string => typeof v === "string") : [];
+  } catch {
+    return [];
+  }
+}
+export const restoreAllowedSvmIds: string[] = readRestoreAllowedSvmIds(
+  outputs.custom?.restoreAllowedSvmIds
 );
