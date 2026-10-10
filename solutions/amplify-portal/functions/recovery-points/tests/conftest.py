@@ -10,6 +10,11 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 os.environ.setdefault("BACKUP_VAULT_NAMES", '["vault1"]')
+# Lambda always sets AWS_REGION; BACKUP_REGIONS is the extra Regions a request may
+# select. The tests pin both on the module, so a developer's own AWS_REGION cannot
+# change what they assert.
+os.environ.setdefault("AWS_REGION", "ap-northeast-1")
+os.environ.setdefault("BACKUP_REGIONS", '["us-east-1"]')
 
 # Loaded under a name of its own rather than imported as `index`. Fourteen handlers
 # under `functions/` are `index.py`, and a bare `import index` in each test module
@@ -20,7 +25,7 @@ os.environ.setdefault("BACKUP_VAULT_NAMES", '["vault1"]')
 #
 # Registered in `sys.modules` before `exec_module` so the module can be patched by
 # name, and after the environment above is set, because the module reads
-# BACKUP_VAULT_NAMES at import time.
+# BACKUP_VAULT_NAMES, AWS_REGION and BACKUP_REGIONS at import time.
 MODULE_NAME = "rp_handler"
 _spec = importlib.util.spec_from_file_location(MODULE_NAME, Path(__file__).parent.parent / "index.py")
 assert _spec is not None and _spec.loader is not None

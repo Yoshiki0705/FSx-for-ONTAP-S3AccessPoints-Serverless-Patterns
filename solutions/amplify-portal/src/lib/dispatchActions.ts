@@ -837,15 +837,21 @@ export interface RecoveryPointsActionParams {
     backupVaultName: string;
     recoveryPointArn: string;
     backupVaultAccountId?: string;
+    backupVaultRegion?: string;
   };
-  /** No parameters. */
-  listBackupVaults: Record<string, never>;
+  listBackupVaults: {
+    backupVaultRegion?: string;
+  };
   listRecoveryPoints: {
     backupVaultAccountId?: string;
     backupVaultName?: string;
+    backupVaultRegion?: string;
     maxResults?: number;
     recoveryPointArn?: string;
     resourceArn?: string;
+  };
+  listSharedBackupVaults: {
+    backupVaultRegion?: string;
   };
 }
 
