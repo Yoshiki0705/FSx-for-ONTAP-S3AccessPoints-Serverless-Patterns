@@ -722,6 +722,89 @@ class TestDescribeAcrossAccounts:
         mock_boto3.client.assert_not_called()
 
 
+class TestRegionContextOnEveryPath:
+    """The Region selector is built from the answer, so a failed answer must still carry it.
+
+    The UI reads ``homeRegion`` and ``regions`` from the vault list. If only a
+    successful ``listBackupVaults`` carried them, one failed call (an opt-in Region
+    that is not enabled, throttling) would remove the selector and leave the user
+    no way back to the home Region.
+    """
+
+    EXPECTED_REGIONS = [HOME, OTHER_REGION]
+
+    @pytest.mark.parametrize("action", ["listBackupVaults", "listSharedBackupVaults", "listRecoveryPoints"])
+    def test_a_failed_aws_call_still_names_the_regions(self, mock_backup, action):
+        from rp_handler import handler
+
+        mock_backup.list_backup_vaults.side_effect = ClientError(
+            {"Error": {"Code": "UnrecognizedClientException", "Message": "The security token is invalid"}},
+            "ListBackupVaults",
+        )
+        mock_backup.list_recovery_points_by_backup_vault.side_effect = mock_backup.list_backup_vaults.side_effect
+
+        result = handler({"action": action, "backupVaultRegion": OTHER_REGION, "backupVaultName": "v"}, CONTEXT)
+
+        assert result["errorCode"] == "UnrecognizedClientException"
+        assert result["homeRegion"] == HOME
+        assert result["regions"] == self.EXPECTED_REGIONS
+
+    @pytest.mark.parametrize(
+        "event",
+        [
+            {"action": "listBackupVaults", "backupVaultRegion": "eu-west-1"},
+            {"action": "listRecoveryPoints", "backupVaultAccountId": "bad"},
+            {"action": "listRecoveryPoints", "backupVaultRegion": OTHER_REGION},
+            {"action": "definitelyNotAnAction"},
+        ],
+        ids=["region-refused", "account-refused", "name-required", "unknown-action"],
+    )
+    def test_a_refusal_still_names_the_regions(self, mock_boto3, event):
+        from rp_handler import handler
+
+        result = handler(event, CONTEXT)
+
+        assert result["errorCode"]
+        assert result["homeRegion"] == HOME
+        assert result["regions"] == self.EXPECTED_REGIONS
+
+    def test_an_unexpected_exception_still_names_the_regions(self, mock_backup):
+        from rp_handler import handler
+
+        mock_backup.list_backup_vaults.side_effect = RuntimeError("boom")
+
+        result = handler({"action": "listBackupVaults"}, CONTEXT)
+
+        assert result["error"] == "boom"
+        assert result["homeRegion"] == HOME
+        assert result["regions"] == self.EXPECTED_REGIONS
+
+    def test_a_revoked_share_still_names_the_regions(self, mock_backup):
+        from rp_handler import handler
+
+        stub_shared(mock_backup)
+
+        result = handler(
+            {"action": "listRecoveryPoints", "backupVaultName": "shared-vault", "backupVaultAccountId": OWNER_ACCOUNT},
+            CONTEXT,
+        )
+
+        assert result["errorCode"] == "VaultNotShared"
+        assert result["homeRegion"] == HOME
+        assert result["regions"] == self.EXPECTED_REGIONS
+
+    def test_a_success_names_the_regions_too(self, mock_backup):
+        from rp_handler import handler
+
+        mock_backup.list_recovery_points_by_backup_vault.return_value = {"RecoveryPoints": []}
+
+        result = handler({"action": "listRecoveryPoints", "backupVaultName": "v"}, CONTEXT)
+
+        assert result["error"] is None
+        assert result["homeRegion"] == HOME
+        assert result["regions"] == self.EXPECTED_REGIONS
+
+
 class TestUiPayloads:
     """Every payload the UI builds must be accepted and answered with the full key set."""
 
@@ -739,7 +822,15 @@ class TestUiPayloads:
         result = handler({"action": action, **UI_PAYLOADS[label]}, CONTEXT)
 
         assert result["error"] is None, result
-        assert set(result) >= {"recoveryPoints", "backupVaults", "recoveryPoint", "error", "errorCode"}
+        assert set(result) >= {
+            "recoveryPoints",
+            "backupVaults",
+            "recoveryPoint",
+            "error",
+            "errorCode",
+            "homeRegion",
+            "regions",
+        }
 
     def test_every_refusal_carries_the_full_key_set(self, mock_boto3):
         from rp_handler import handler
@@ -750,6 +841,14 @@ class TestUiPayloads:
             {"action": "describeRecoveryPoint"},
         ):
             result = handler(event, CONTEXT)
-            assert set(result) >= {"recoveryPoints", "backupVaults", "recoveryPoint", "error", "errorCode"}
+            assert set(result) >= {
+                "recoveryPoints",
+                "backupVaults",
+                "recoveryPoint",
+                "error",
+                "errorCode",
+                "homeRegion",
+                "regions",
+            }
             assert result["error"]
             assert result["errorCode"]

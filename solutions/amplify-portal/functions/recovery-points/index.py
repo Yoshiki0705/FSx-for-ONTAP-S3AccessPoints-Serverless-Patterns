@@ -83,6 +83,11 @@ def _result(**fields: Any) -> dict[str, Any]:
     handler's own refusals (``InvalidParameter``, ``RegionNotAllowed``,
     ``VaultNameRequired``, ``VaultNotShared``). The UI branches on it; it never
     reads the message text to work out what happened.
+
+    ``homeRegion`` and ``regions`` are on every path, failures included. The UI builds
+    its Region selector from them, so an answer that failed (an opt-in Region that is
+    not enabled, throttling) must not take the selector, and the way back to the home
+    Region, away with it.
     """
     response: dict[str, Any] = {
         "recoveryPoints": [],
@@ -90,6 +95,8 @@ def _result(**fields: Any) -> dict[str, Any]:
         "recoveryPoint": None,
         "error": None,
         "errorCode": None,
+        "homeRegion": HOME_REGION,
+        "regions": _allowed_regions(),
     }
     response.update(fields)
     return response
@@ -318,17 +325,12 @@ def _list_recovery_points(event: dict[str, Any], own_account_id: str) -> dict[st
 def _list_backup_vaults(event: dict[str, Any], own_account_id: str) -> dict[str, Any]:
     """List the backup vaults this account owns in one Region, with type and lock state.
 
-    Also returns the Regions a request may select, so the Region selector needs no
-    second route for configuration.
+    The response also names the Regions a request may select (see ``_result``), so the
+    Region selector needs no second route for configuration.
     """
     region = _requested_region(event)
     vaults = [_vault_row(vault, region, own_account_id) for vault in _vault_pages(_client(region), shared=False)]
-    return _result(
-        backupVaults=vaults,
-        region=region,
-        homeRegion=HOME_REGION,
-        regions=_allowed_regions(),
-    )
+    return _result(backupVaults=vaults, region=region)
 
 
 def _list_shared_backup_vaults(event: dict[str, Any], own_account_id: str) -> dict[str, Any]:
