@@ -693,6 +693,13 @@ export const config: PortalConfig = {
    * non-empty. One request reads one Region, and the handler refuses any Region that
    * is neither its own nor listed here, because ListBackupVaults cannot be scoped to
    * a Region in IAM. Restores are still started in the function's own Region only.
+   *
+   * Adding a Region is not enough to read this account's own vaults there. Also add
+   * the ARN of each vault to read in that Region to AMPLIFY_PORTAL_BACKUP_VAULT_ARNS:
+   * ListBackupVaults is granted on "*", so the vault names appear in the selector, but
+   * ListRecoveryPointsByBackupVault is granted only on the ARNs in that list, and an
+   * ARN contains the Region. Selecting a vault whose ARN is missing is refused by IAM
+   * (AccessDeniedException). Use exact ARNs, not a wildcard.
    *   export AMPLIFY_PORTAL_BACKUP_REGIONS=us-east-1,eu-west-1
    */
   backupRegions: idList(process.env.AMPLIFY_PORTAL_BACKUP_REGIONS),
