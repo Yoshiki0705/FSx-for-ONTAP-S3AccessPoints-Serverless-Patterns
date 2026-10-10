@@ -984,3 +984,42 @@ describe("Portal activity ledger", () => {
     }
   });
 });
+
+describe("Recovery points: Region and shared-vault scope (#461)", () => {
+  const roleStart = backendSource.indexOf('new iam.Role(dataStack, "RecoveryPointsLambdaRole"');
+  const functionStart = backendSource.indexOf('"RecoveryPointsFunction"');
+  const role = backendSource.slice(roleStart, functionStart);
+  const functionBody = backendSource.slice(functionStart, functionStart + 900);
+
+  it("passes the selectable Regions to the function", () => {
+    // The handler refuses any Region that is neither its own nor in this list,
+    // because ListBackupVaults cannot be scoped to a Region in IAM. A function
+    // deployed without the variable would offer no Region but its own.
+    expect(roleStart).toBeGreaterThan(-1);
+    expect(functionStart).toBeGreaterThan(roleStart);
+    expect(functionBody).toContain("BACKUP_REGIONS: JSON.stringify(config.backupRegions ?? [])");
+  });
+
+  it("keeps the vault-scoped reads on the configured ARNs", () => {
+    // A shared vault is reached by adding its ARN to backupVaultArns, not by
+    // widening the grant. The vault-scoped statement names exactly that list.
+    expect(role).toContain("resources: config.backupVaultArns");
+    expect(role).not.toMatch(/backup-vault:\*/);
+  });
+
+  it("leaves ListBackupVaults as the only account-level read", () => {
+    // ByShared is an input of ListBackupVaults, so the shared-vault list needs no
+    // new action. A second account-level action here would be a widening.
+    const accountLevel = role.slice(role.indexOf('actions: ["backup:ListBackupVaults"]'));
+    expect(accountLevel).toContain('resources: ["*"]');
+    const actions = [...role.matchAll(/"backup:[A-Za-z]+"/g)].map((m) => m[0]);
+    expect(actions.sort()).toEqual(
+      [
+        '"backup:DescribeBackupVault"',
+        '"backup:DescribeRecoveryPoint"',
+        '"backup:ListBackupVaults"',
+        '"backup:ListRecoveryPointsByBackupVault"',
+      ].sort(),
+    );
+  });
+});

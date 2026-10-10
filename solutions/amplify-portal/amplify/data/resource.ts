@@ -241,11 +241,15 @@ const schema = a.schema({
     .handler(a.handler.custom({ dataSource: "ListSnapshotsLambdaDataSource", entry: "./resolvers/snapshots-dispatch.js" })),
 
   // =========================================================================
-  // Generic Dispatch: AWS Backup recovery points (read-only, #459)
+  // Generic Dispatch: AWS Backup recovery points (read-only, #459, #461)
   // Lists AWS Backup recovery points for FSx for ONTAP volumes, labelled so they
-  // are not confused with ONTAP snapshots. Query only — restore (#460) and the
-  // cross-account UI / alerting (#461) are out of scope, so there is no mutation.
-  // Actions: listRecoveryPoints, listBackupVaults, describeRecoveryPoint
+  // are not confused with ONTAP snapshots. Query only: starting a restore is the
+  // separate recoveryPointsMutation below (#460). The query can read another Region
+  // of this account and a logically air-gapped vault another account shared through
+  // AWS RAM (#461); job-failure and share-revocation alerting stays in the
+  // Observability integrations repository, not in the portal.
+  // Actions: listRecoveryPoints, listBackupVaults, listSharedBackupVaults,
+  //   describeRecoveryPoint
   // =========================================================================
   recoveryPointsQuery: a
     .query()

@@ -123,6 +123,9 @@ export interface PortalConfig {
   // default listing (the caller must name a vault) and scopes the role to nothing.
   backupVaultNames: string[];
   backupVaultArns: string[];
+  // Regions besides the function's own that the panel's Region selector offers (#461).
+  // Empty means the selector is hidden and the panel reads the function's own Region.
+  backupRegions: string[];
 
   // AWS Backup approval-gated restore (#460, write).
   // ARN of the restore role AWS Backup assumes to create the new volume; the SVM
@@ -672,8 +675,27 @@ export const config: PortalConfig = {
    * account-level list and stays on "*". Empty scopes the role to nothing, so set
    * these to the ARNs of the vaults in backupVaultNames.
    *   export AMPLIFY_PORTAL_BACKUP_VAULT_ARNS=arn:aws:backup:ap-northeast-1:123456789012:backup-vault:Default
+   *
+   * To read a vault another account shared through AWS RAM (#461), add that vault's
+   * ARN here too. It carries the OWNER's account ID and the vault's Region, for
+   * example arn:aws:backup:us-east-1:111122223333:backup-vault:shared-lag-vault.
+   * The role is not granted any other vault, so a shared vault whose ARN is not
+   * listed is refused by IAM. Which ARN the service evaluates for a shared vault is
+   * not yet confirmed in a real account (unverified). Prefer exact ARNs over a
+   * `backup-vault:*` wildcard, which would put a new cdk-nag finding on the role.
    */
   backupVaultArns: idList(process.env.AMPLIFY_PORTAL_BACKUP_VAULT_ARNS),
+
+  /**
+   * Regions besides the function's own that the recovery-points panel may read (#461).
+   *
+   * Comma-separated Region names. The panel shows a Region selector only when this is
+   * non-empty. One request reads one Region, and the handler refuses any Region that
+   * is neither its own nor listed here, because ListBackupVaults cannot be scoped to
+   * a Region in IAM. Restores are still started in the function's own Region only.
+   *   export AMPLIFY_PORTAL_BACKUP_REGIONS=us-east-1,eu-west-1
+   */
+  backupRegions: idList(process.env.AMPLIFY_PORTAL_BACKUP_REGIONS),
 
   /**
    * ARN of the AWS Backup restore role the restore write path passes (#460).

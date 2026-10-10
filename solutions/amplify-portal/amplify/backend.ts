@@ -1323,6 +1323,9 @@ const recoveryPointsFunction = new lambda.Function(
     role: recoveryPointsRole,
     environment: {
       BACKUP_VAULT_NAMES: JSON.stringify(config.backupVaultNames ?? []),
+      // Regions besides the function's own that a request may select (#461). The
+      // handler refuses any other Region, so this list is what bounds the calls.
+      BACKUP_REGIONS: JSON.stringify(config.backupRegions ?? []),
     },
     memorySize: 256,
     timeout: Duration.seconds(30),

@@ -99,6 +99,18 @@ describe("Portal configuration defaults", () => {
     );
   });
 
+  it("offers no extra recovery-point Region unless one is configured", async () => {
+    // Empty hides the panel's Region selector and keeps every call in the function's own
+    // Region. The example and a deployer's copy both have to resolve this way.
+    const config = await loadConfig();
+    expect(config.backupRegions).toEqual([]);
+  });
+  it("splits and trims the recovery-point Regions", async () => {
+    // A whitespace-only entry surviving as a list member would reach the function as a
+    // Region name that matches nothing.
+    const config = await loadConfig({ AMPLIFY_PORTAL_BACKUP_REGIONS: " us-east-1 , ,eu-west-1" });
+    expect(config.backupRegions).toEqual(["us-east-1", "eu-west-1"]);
+  });
   it("leaves the path prefixes undefined rather than empty when unset", async () => {
     // `{}` and undefined are different instructions to `backend.ts`: undefined derives the
     // prefixes from `groupApMapping`, `{}` reads as "configured, restricting nothing".
