@@ -410,17 +410,20 @@ ONTAP REST API から以下をリアルタイム取得:
 
 ### 復旧ポイント（AWS Backup 復旧ポイント、読み取り専用）
 
-AWS Backup の復旧ポイントを一覧する読み取り専用のパネルです（#459）。ONTAP スナップショットとは別物で、AWS Backup のボールトに保存される復旧層です。パネルの文言とサブタイトルで両者の区別を明示します。
+AWS Backup の復旧ポイントを一覧するパネルです（#459）。復元の起票は #460、ボールトとリージョンの選択は #461 で足しました。ONTAP スナップショットとは別物で、AWS Backup のボールトに保存される復旧層です。パネルの文言とサブタイトルで両者の区別を明示します。
 
 | 取得情報 | API | 表示内容 |
 |---------|-----|---------|
 | 復旧ポイント一覧 | `backup:ListRecoveryPointsByBackupVault`（`ByResourceType="FSx"`） | 作成日時 / ステータス / リソースタイプ / サイズ / 暗号化 |
-| ボールト情報 | `backup:ListBackupVaults` | ボールト名と、論理エアギャップボールトを示すバッジ |
+| ボールト情報 | `backup:ListBackupVaults` | ボールト名と、論理エアギャップボールトを示すバッジ。選択したリージョンのこのアカウントのボールトを、セレクタの選択肢にも使う |
+| 共有ボールトの一覧 | `backup:ListBackupVaults`（`ByShared=True`） | 他のアカウントから AWS RAM で共有されたボールト（所有アカウント ID とボールト名）。セレクタの選択肢 |
 
 - **一覧は API から取得します。** コンソールのボールト一覧に出る復旧ポイント数は概算値のことがあり、正確な数は `ListRecoveryPointsByBackupVault` を参照します。パネルは API の結果を表示します。
-- **ステータスは `Status` と `StatusMessage` をそのまま表示します。** 「Completed with issues」は復旧ポイントの `Status` の列挙値ではなく、コピー／バックアップジョブ側の状態です。この監視は #461／Observability 側に委ねます。
+- **ステータスは `Status` と `StatusMessage` をそのまま表示します。** 「Completed with issues」は復旧ポイントの `Status` の列挙値ではなく、コピー／バックアップジョブ側の状態です。この監視はポータルでは行わず、Observability 側に委ねます。
 - **マルウェアスキャン結果の列は出しません。** FSx for ONTAP は Malware Protection for AWS Backup の対象外のため、同名の列は誤解を生みます。
-- 復元の起票は #460、クロスアカウント表示の UI は #461 に繰り延べます。ハンドラは将来のために `backupVaultAccountId` 引数を受け取れますが、それを設定する UI は持ちません。
+- **ボールトとリージョンのセレクタ（#461）。** 「このアカウントの設定済みボールト」「このアカウントのボールト」「他のアカウントから AWS RAM で共有されたボールト」から選びます。リージョンの選択欄は、`AMPLIFY_PORTAL_BACKUP_REGIONS` を設定したときだけ出ます。どの選択でも同じ表に行が出ます。共有ボールトを参照する設定手順と、実環境で未検証の点は、[設計ガイド](data-protection-recovery-design.md) の「#461 で実装したクロスアカウント／クロスリージョンの可視化」にあります。
+- **復元の起票（#460）はポータルと同じリージョンの行に限ります。** 他のリージョンの行は一覧に出ますが、復元ボタンは無効です。
+- **ジョブの失敗、「Completed with issues」、AWS RAM 共有の取り消しの監視は、ポータルでは行いません。** Observability integrations が受け持ちます。パネルの下部に説明へのリンクがあります。
 
 ---
 
@@ -608,7 +611,7 @@ CloudTrail S3 データイベントを Athena で検索。フィルター: フ�
 | ツール | チェック内容 |
 |--------|------------|
 | cdk-nag (AwsSolutionsChecks) | IAM 過剰権限、暗号化、ログ保持 |
-| CDK ハーネステスト (137 assertions) | Lambda 数、ランタイム、環境変数 |
+| CDK ハーネステスト (145 assertions) | Lambda 数、ランタイム、環境変数 |
 | IAM Access Analyzer | ポリシーの SECURITY_WARNING 検知 |
 | floci 統合テスト (9 tests) | S3 ListObjectsV2 + Delimiter 動作 |
 

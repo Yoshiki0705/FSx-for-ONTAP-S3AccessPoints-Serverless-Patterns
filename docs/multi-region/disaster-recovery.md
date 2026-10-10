@@ -124,6 +124,16 @@ Resources:
 | Asynchronous (15 min) | < 15 分 | 高 | Tier 2 |
 | Asynchronous (1 hour) | < 1 時間 | 最高 | Tier 2/3 |
 
+### AWS Backup 論理エアギャップボールト（別アカウント・別リージョンの復旧ポイント）
+
+AWS Backup のコピー先ボールトが別のリージョン、または RAM で共有された別のアカウントにあるとき、Amplify ポータルの「復旧ポイント」パネルで復旧ポイントを確認できます。
+
+- **別リージョンのボールト**: ポータルの設定 `AMPLIFY_PORTAL_BACKUP_REGIONS` にリージョンを足すと、パネルにリージョンの選択欄が出ます。1 回の要求で引くリージョンは 1 つです。
+- **復元はポータルと同じリージョンに限ります。** ポータルは、関数自身のリージョンで復元ジョブを起票します。別リージョンの復旧ポイントは一覧に出ますが、復元ボタンは無効です。別リージョンの復旧ポイントの復元に関する条件は、AWS Backup の FSx 向け復元の文書に記載が見当たらず、実環境でも未検証です。
+- **LAG ボールトの対応リージョンは、コピー先を決める前に確認します。** 一部のリージョンでは LAG ボールトの機能に差があり、一覧は AWS Backup の LAG ボールトの文書にあります（[該当ページ](https://docs.aws.amazon.com/aws-backup/latest/devguide/logicallyairgappedvault.html)）。一覧は改訂されるため、ここには写しません。
+
+設定手順と、実環境で未検証の点は [ポータル設計ガイド](../../solutions/amplify-portal/docs/data-protection-recovery-design.md) の「#461 で実装したクロスアカウント／クロスリージョンの可視化」にあります。共有の受け取り側の操作は [AWS RAM による FSx for ONTAP リソース共有](../multi-account/ram-sharing.md) にあります。
+
 ---
 
 ## フェイルオーバーランブック
@@ -399,3 +409,4 @@ def test_snapmirror_break():
 - [Multi-Region Step Functions 設計](./step-functions-design.md)
 - [コスト最適化ガイド](../cost-optimization-guide.md)
 - [Global Task Token Store テンプレート](../../shared/cfn/global-task-token-store.yaml)
+- [データ保護の復旧層（ポータル設計ガイド）](../../solutions/amplify-portal/docs/data-protection-recovery-design.md)

@@ -52,7 +52,7 @@ LAG ボールトは、AWS アカウント（管理境界）そのものが侵害
 
 復旧点の一覧は、RAM 共有された別アカウント・別リージョンのボールトも対象にできます。参照元 Option D の手順では、`aws backup list-recovery-points-by-backup-vault` に `--backup-vault-account-id` を渡して、共有先の復旧アカウントから一覧します。ポータルの一覧パネルも同じ引数を取れるよう設計し、別アカウント・別リージョンの復旧点と、そこへ復元できるかどうかを見られるようにします。
 
-監視する状態は次の 3 つです。これらの状態そのもののアラートはポータル側で作らず、Observability 側（`fsxn-observability-integrations`）に委ねます。ポータルは可視化と導線を持ち、アラートは Observability が持つ、という役割分担です。
+監視する状態は次の 3 つです。これらの状態そのもののアラートはポータル側で作らず、Observability 側（[FSx-for-ONTAP-Observability-integrations](https://github.com/Yoshiki0705/FSx-for-ONTAP-Observability-integrations/blob/main/docs/ja/cyber-resilience-capability-map.md)）に委ねます。ポータルは可視化と導線を持ち、アラートは Observability が持つ、という役割分担です。
 
 - ボールトのコピージョブの失敗。
 - 「Completed with issues」（元のファイルシステムが AWS マネージドキーで暗号化されていると、バックアップはボールトへコピーされず、ジョブはこの状態で完了します。参照元リポジトリに [E-009] として登録された所見）。
@@ -84,7 +84,7 @@ AWS 公開文書に基づく仕様のうち、設計に効くものを参照元�
 - **表示する列は、作成日時・ステータス・リソースタイプ・サイズ・暗号化です。** これに加えてボールト名と、論理エアギャップボールト（`VaultType == "LOGICALLY_AIR_GAPPED_BACKUP_VAULT"`）であることを示すバッジを出します。
 - **ステータスは `Status` と `StatusMessage` をそのまま表示します。** 復旧ポイントの `Status` の取り得る値は `COMPLETED | PARTIAL | DELETING | EXPIRED | AVAILABLE | STOPPED | CREATING` で、「Completed with issues」はこの列挙に含まれません。これはコピー／バックアップジョブ側の状態であって、復旧ポイントの `Status` ではないため、パネルは「Completed with issues」という文字列に UI ラベルを対応づけません。この状態の監視と意味づけは #461／Observability 側に委ねます。
 - **マルウェアスキャン結果の列は出しません。** FSx for ONTAP は Malware Protection for AWS Backup の対象外であり（[E-008]）、同名の列を作ると誤解を生むためです。
-- **ソースアカウント ID の列やアカウント切り替えの導線は、このパネルには出しません。** ハンドラは将来のクロスアカウント表示のために `backupVaultAccountId` 引数を受け取れますが、それを設定する UI は持ちません。クロスアカウントの UI は #461、復元の起票は #460 に繰り延べます。
+- **#459 の時点では、ソースアカウント ID の列やアカウント切り替えの導線は出しませんでした。** ハンドラは将来のクロスアカウント表示のために `backupVaultAccountId` 引数を受け取れましたが、それを設定する UI は持っていませんでした。復元の起票は #460、クロスアカウントとクロスリージョンの UI は #461 で入りました。
 
 ## #460 で実装した承認付き復元
 
@@ -97,6 +97,22 @@ AWS 公開文書に基づく仕様のうち、設計に効くものを参照元�
 - **復元ジョブの Status は復旧ポイントの Status とは別の列挙です。** 復元ジョブの `Status` は `PENDING | RUNNING | COMPLETED | ABORTED | FAILED` で、#459 の復旧ポイントの `Status`（`COMPLETED | PARTIAL | DELETING | EXPIRED | AVAILABLE | STOPPED | CREATING`）とは別物です。両者を混同しません。
 - **Step Functions の人の承認待ち状態（マルチパーティー承認）は繰り延べます。** このリポジトリには人の承認待ち（`waitForTaskToken`／手動承認）のステートマシンがデプロイされていません。`amplify/custom/step-functions.ts` は呼び出し側がコメントアウトされた休眠中の構成です。#460 は `_require_ack` ＋ 確認ダイアログ ＋ チャットのアドバイザリで承認を取り、ステートマシンによる多者承認は後続 Issue に回します。
 - **実際の復元の成功確認は Issue のチェックボックスに繰り延べます。** アカウントに復旧ポイントが存在しないため、#460 は `StartRestoreJob`／`DescribeRestoreJob` をモックした単体テストだけを載せます。
+
+## #461 で実装したクロスアカウント／クロスリージョンの可視化
+
+#461 では、「クロスリージョン・クロスアカウントの可視化」の節で設計した一覧を、既存の「復旧ポイント」パネルに足しました。別のパネルは作らず、同じ表に行を出します。パネルが扱うのは一覧と復元の導線までで、ジョブ失敗や RAM 共有の取り消しの監視は含みません。
+
+- **ボールトの選択肢は 3 つです。** 関数自身のリージョンにある、このアカウントの設定済みボールト（#459 の表示そのまま）、このアカウントのボールト（選択したリージョンの `ListBackupVaults`）、他のアカウントから RAM で共有されたボールト（同じリージョンの `ListBackupVaults` に `ByShared=True`）です。共有ボールトは所有アカウント ID とボールト名の組で選び、手入力の欄はありません。RAM で共有できるボールトの種類は LAG ボールトです（[AWS Backup の LAG ボールトの文書](https://docs.aws.amazon.com/aws-backup/latest/devguide/logicallyairgappedvault.html)）。
+- **リージョンは 1 回の要求で 1 つだけ引きます。** 選べるのは関数自身のリージョンと、`AMPLIFY_PORTAL_BACKUP_REGIONS` に挙げたリージョンです。それ以外はハンドラが `RegionNotAllowed` で拒否します。`backup:ListBackupVaults` の許可はリソース `*` なので、IAM はリージョンを限定していません。この許可リストが呼び出し先を限定します。設定が空のとき、リージョンの選択欄は出ません。全リージョンへ並行して問い合わせる方式は採りませんでした。1 要求が N 回の API 呼び出しになって関数のタイムアウト（30 秒）の中に収める必要が生じ、無効なオプトインリージョンなどでの部分失敗を仕様に持ち込むためです。リージョンが 3 つ以上あり、1 画面で全体を見たいという要望が出たときに再検討します。
+- **ホームリージョン以外と他アカウントのボールトは、名前を必ず指定します。** 設定済みのボールト名は、このアカウントのホームリージョンでだけ意味を持つためです。名前がないとハンドラは `VaultNameRequired` を返し、設定済みの名前で別のボールトを引くことはしません。
+- **共有ボールトは、現在の共有一覧に載っているときだけ引きます。** ハンドラは、同じリージョンの `ListBackupVaults`（`ByShared=True`）に（ボールト名, 所有アカウント）の組があることを確認してから、`BackupVaultAccountId` を付けて `ListRecoveryPointsByBackupVault` を呼びます。載っていなければ `VaultNotShared` を返し、復旧ポイントの一覧は呼びません。任意のアカウント ID の探索を防ぎ、RAM 共有の取り消し・未承認・存在しない組を 1 つの結果で扱うためです。UI は、選択中の共有ボールトが再取得した一覧から消えたとき、既定の表示に戻して通知を出します。
+- **アカウント ID は 12 桁の半角数字だけを受け付けます。** 数値型、全角数字、前後に空白のある値は `InvalidParameter` で拒否し、AWS の呼び出しの前に止めます。
+- **復元の起票はポータルと同じリージョンの行に限ります。** 復元ハンドラ（`functions/restore`）はリージョンを指定せずにクライアントを作るため、他のリージョンの行は一覧に出ても復元ボタンは無効です。共有ボールトのうち同じリージョンの行は、ボタンが有効のままです。共有ボールトからの復元が実環境で成功するかは、未検証です。ボールトが CMK で暗号化されている場合は、所有者側の KMS キーポリシーに復旧アカウントのロールの許可が要ります（LAG ボールトの文書の KMS の節）。
+- **共有ボールトを参照するには、IAM のリソース範囲に ARN を足します。** 新しい IAM アクションは要りません。`ByShared` は `ListBackupVaults` の入力で、既存の `backup:ListBackupVaults`（リソース `*`）で足ります。一方、`backup:ListRecoveryPointsByBackupVault` はポータルのロールで `AMPLIFY_PORTAL_BACKUP_VAULT_ARNS` の ARN だけに許可しています。共有ボールトの ARN には所有者のアカウント ID が入るため（例: `arn:aws:backup:us-east-1:111122223333:backup-vault:shared-lag-vault`）、その ARN を `AMPLIFY_PORTAL_BACKUP_VAULT_ARNS` に足して再デプロイします。ワイルドカード（`backup-vault:*`）は勧めません。cdk-nag の IAM5 に新しい指摘が出る場合があること、共有の範囲が他アカウントの所有者の管理下にあることが理由です。共有ボールトの場合にサービスがどの ARN で評価するかは、実環境で未検証です。
+- **認可の範囲は #459 から変えていません。** 復旧ポイントのクエリは `allow.authenticated()` のままです。サインインした全ユーザー（外部メンバーを含む）が、IAM が許す範囲に限り、他アカウントのボールト名・所有アカウント ID・復旧ポイントのメタデータを読めます。実質の境界は IAM のリソース範囲です。一覧を `storage-admin` に限るかどうかは、この設計に含めていません。
+- **「Completed with issues」は、復旧ポイントの一覧ではなくバックアップジョブから読み取ります。** Observability 側の記述では、バックアップジョブが `COMPLETED` で状態メッセージを伴う場合として検知しており、EventBridge の個別の状態ではなく、対象はバックアップジョブでコピージョブは含みません。上の「ベンダーの仕様に関する補足」と「#459 で実装した読み取り専用の一覧」にある「コピー／バックアップジョブ側の状態」との差は、ポータル側の根拠を読み直すまで未解消です。パネルは復旧ポイントの `Status` と `StatusMessage` をそのまま表示し、ラベルへの変換はしません。
+- **監視は Observability integrations に任せ、ポータルにはリンクだけを置きます。** ジョブの失敗、「Completed with issues」、RAM 共有の取り消しの検知（`BackupJobFailed`、`CopyJobFailed`、`BackupCompletedWithIssues`、`RestoreJobFailed`、`RamShareRevoked`）は、[Observability integrations の機能マップ](https://github.com/Yoshiki0705/FSx-for-ONTAP-Observability-integrations/blob/main/docs/ja/cyber-resilience-capability-map.md) の Detect 節にある「Backup / LAG-vault event-feed note」が説明しています。実装は [aws-backup-events.yaml](https://github.com/Yoshiki0705/FSx-for-ONTAP-Observability-integrations/blob/main/shared/templates/aws-backup-events.yaml) です。RAM 取り消しの検知には、CloudTrail の管理イベント証跡が前提です。
+- **実環境での確認は済んでいません（未検証）。** このアカウントには共有ボールトも復旧ポイントもないため、次の点は確認していません。(1) `ByShared` が返すのが受け手側の一覧か、所有者側の一覧か。文書の文面からは決められず、未確認です。ハンドラは、所有者が自アカウントのエントリに `ownedByThisAccount` を付け、UI は選択肢から除くので、どちらの返り方でも動きますが、受け手側の一覧が空なら共有ボールトは選択肢に出ません。(2) 共有ボールトの ARN を `AMPLIFY_PORTAL_BACKUP_VAULT_ARNS` に足すとアクセスが通ること。(3) Lambda ランタイム同梱の boto3 が `ByShared` と `BackupVaultAccountId` を受け付けること（手元の boto3 1.43.36 では確認、ランタイム同梱版は未確認）。(4) RAM 共有を取り消してから共有一覧から消えるまでの時間。(5) 共有ボールトからの復元と、他のリージョンの復旧ポイントの復元。(6) 「Completed with issues」のバックアップジョブが作る復旧ポイントの `Status` と `StatusMessage`。単体テストはハンドラも UI も API のスタブで動くので、これらの挙動は固定していません。ボールトの作成は不可逆（コンプライアンスモードの Vault Lock、作成時に固定される暗号化キー）なため、所有者の承認を得た使い捨ての環境で確認します。
 
 ## 後続 Issue
 
