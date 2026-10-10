@@ -241,6 +241,20 @@ const schema = a.schema({
     .handler(a.handler.custom({ dataSource: "ListSnapshotsLambdaDataSource", entry: "./resolvers/snapshots-dispatch.js" })),
 
   // =========================================================================
+  // Generic Dispatch: AWS Backup recovery points (read-only, #459)
+  // Lists AWS Backup recovery points for FSx for ONTAP volumes, labelled so they
+  // are not confused with ONTAP snapshots. Query only — restore (#460) and the
+  // cross-account UI / alerting (#461) are out of scope, so there is no mutation.
+  // Actions: listRecoveryPoints, listBackupVaults, describeRecoveryPoint
+  // =========================================================================
+  recoveryPointsQuery: a
+    .query()
+    .arguments({ action: a.string().required(), params: a.json() })
+    .returns(a.json())
+    .authorization((allow) => [allow.authenticated()])
+    .handler(a.handler.custom({ dataSource: "RecoveryPointsLambdaDataSource", entry: "./resolvers/recovery-points-dispatch.js" })),
+
+  // =========================================================================
   // Generic Dispatch: File Operations
   // Replaces 6 individual file operations
   // Actions: listFiles, listFilesFromAp, trashFile, restoreFromTrash,

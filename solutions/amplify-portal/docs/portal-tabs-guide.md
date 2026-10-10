@@ -3,13 +3,13 @@
 > 🌐 **Language / 言語**: 日本語 | [English](portal-tabs-guide.en.md)
 
 > **最終更新**: 2026-07-22
-> **検証**: CDK Sandbox デプロイ → Cognito ログイン → 17 セクション全表示確認済み
+> **検証**: CDK Sandbox デプロイ → Cognito ログイン → 18 セクション全表示確認済み
 
 ---
 
 ## 概要
 
-FSx for ONTAP File Portal はサイドバーナビゲーション（4 グループ × 17 セクション）で構成されています。各セクションは独立した機能を提供し、同一の FSx for ONTAP S3 Access Point 上のデータにアクセスします。
+FSx for ONTAP File Portal はサイドバーナビゲーション（4 グループ × 18 セクション）で構成されています。各セクションは独立した機能を提供し、同一の FSx for ONTAP S3 Access Point 上のデータにアクセスします。
 
 ![サイドバーレイアウト](screenshots/portal-sidebar-layout.png)
 
@@ -36,6 +36,7 @@ FSx for ONTAP File Portal はサイドバーナビゲーション（4 グルー�
 │  Snapshots   │                                             │
 │  Lock        │                                             │
 │  ARP/AI      │                                             │
+│  Recovery    │                                             │
 │──────────────│                                             │
 │ ADMIN        │                                             │
 │  Resources   │                                             │
@@ -404,6 +405,22 @@ ONTAP REST API から以下をリアルタイム取得:
 - 🔴 `high`: ランサムウェア攻撃の可能性 — 即座に対応が必要
 
 **ONTAP 未接続時のフォールバック UI**: 白画面ではなく、接続手順付きの info パネルを表示。
+
+---
+
+### 復旧ポイント（AWS Backup 復旧ポイント、読み取り専用）
+
+AWS Backup の復旧ポイントを一覧する読み取り専用のパネルです（#459）。ONTAP スナップショットとは別物で、AWS Backup のボールトに保存される復旧層です。パネルの文言とサブタイトルで両者の区別を明示します。
+
+| 取得情報 | API | 表示内容 |
+|---------|-----|---------|
+| 復旧ポイント一覧 | `backup:ListRecoveryPointsByBackupVault`（`ByResourceType="FSx"`） | 作成日時 / ステータス / リソースタイプ / サイズ / 暗号化 |
+| ボールト情報 | `backup:ListBackupVaults` | ボールト名と、論理エアギャップボールトを示すバッジ |
+
+- **一覧は API から取得します。** コンソールのボールト一覧に出る復旧ポイント数は概算値のことがあり、正確な数は `ListRecoveryPointsByBackupVault` を参照します。パネルは API の結果を表示します。
+- **ステータスは `Status` と `StatusMessage` をそのまま表示します。** 「Completed with issues」は復旧ポイントの `Status` の列挙値ではなく、コピー／バックアップジョブ側の状態です。この監視は #461／Observability 側に委ねます。
+- **マルウェアスキャン結果の列は出しません。** FSx for ONTAP は Malware Protection for AWS Backup の対象外のため、同名の列は誤解を生みます。
+- 復元の起票は #460、クロスアカウント表示の UI は #461 に繰り延べます。ハンドラは将来のために `backupVaultAccountId` 引数を受け取れますが、それを設定する UI は持ちません。
 
 ---
 

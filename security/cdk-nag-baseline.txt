@@ -97,6 +97,7 @@ AwsSolutions-IAM4[Policy::arn:<AWS::Partition>:iam::aws:policy/service-role/AWSL
 AwsSolutions-IAM4[Policy::arn:<AWS::Partition>:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole]	data/NotificationBridgeLambdaRole/Resource
 AwsSolutions-IAM4[Policy::arn:<AWS::Partition>:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole]	data/PlatformDiscoveryFunction/ServiceRole/Resource
 AwsSolutions-IAM4[Policy::arn:<AWS::Partition>:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole]	data/QueryAuditLogLambdaRole/Resource
+AwsSolutions-IAM4[Policy::arn:<AWS::Partition>:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole]	data/RecoveryPointsLambdaRole/Resource
 AwsSolutions-IAM4[Policy::arn:<AWS::Partition>:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole]	data/ResourceMgmtLambdaRole/Resource
 AwsSolutions-IAM4[Policy::arn:<AWS::Partition>:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole]	data/SearchFilesLambdaRole/Resource
 AwsSolutions-IAM4[Policy::arn:<AWS::Partition>:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole]	data/TextractLambdaRole/Resource
@@ -124,6 +125,7 @@ AwsSolutions-IAM5[Resource::<ListFilesFunction1C81569A.Arn>:*]	data/amplifyData/
 AwsSolutions-IAM5[Resource::<ListSnapshotsFunction17EE7098.Arn>:*]	data/amplifyData/L2GraphqlApi/ListSnapshotsLambdaDataSource/ServiceRole/DefaultPolicy/Resource
 AwsSolutions-IAM5[Resource::<PlatformDiscoveryFunction75A219A3.Arn>:*]	data/amplifyData/L2GraphqlApi/PlatformDiscoveryLambdaDataSource/ServiceRole/DefaultPolicy/Resource
 AwsSolutions-IAM5[Resource::<QueryAuditLogFunction1B934D98.Arn>:*]	data/amplifyData/L2GraphqlApi/QueryAuditLogLambdaDataSource/ServiceRole/DefaultPolicy/Resource
+AwsSolutions-IAM5[Resource::<RecoveryPointsFunction47078BB9.Arn>:*]	data/amplifyData/L2GraphqlApi/RecoveryPointsLambdaDataSource/ServiceRole/DefaultPolicy/Resource
 AwsSolutions-IAM5[Resource::<ResourceMgmtFunction962E93B1.Arn>:*]	data/amplifyData/L2GraphqlApi/ResourceMgmtLambdaDataSource/ServiceRole/DefaultPolicy/Resource
 AwsSolutions-IAM5[Resource::<SearchFilesFunction8BB2D99D.Arn>:*]	data/amplifyData/L2GraphqlApi/SearchFilesLambdaDataSource/ServiceRole/DefaultPolicy/Resource
 AwsSolutions-IAM5[Resource::<TableManagerCustomProviderframeworkisComplete2E51021B.Arn>:*]	data/amplifyData/AmplifyTableManager/AmplifyTableWaiterStateMachine/Role/DefaultPolicy/Resource
@@ -183,6 +185,14 @@ AwsSolutions-IAM5[Resource::*]	data/GetFileMetadataLambdaRole/Resource
 # access-point wildcard is refused at synth once `groupApMapping` is in use.
 AwsSolutions-IAM5[Resource::arn:aws:s3:<AWS::Region>:<AWS::AccountId>:accesspoint/*/object/*]	auth/amplifyAuth/authenticatedUserRole/DefaultPolicy/Resource
 AwsSolutions-IAM5[Resource::arn:aws:s3:<AWS::Region>:<AWS::AccountId>:accesspoint/*]	auth/amplifyAuth/authenticatedUserRole/DefaultPolicy/Resource
+
+# `backup:ListBackupVaults` is an account-level list that defines no resource type -- it
+# enumerates the vaults, which cannot be restricted to the vaults it is meant to find.
+# The vault-scoped reads beside it (`ListRecoveryPointsByBackupVault`,
+# `DescribeRecoveryPoint`, `DescribeBackupVault`) name `backupVaultArns` exactly, and
+# that statement is omitted entirely while the config is empty -- which is what this
+# baseline is measured against -- so only the list wildcard remains here.
+AwsSolutions-IAM5[Resource::*]	data/RecoveryPointsLambdaRole/Resource
 
 # `comprehend:DetectSentiment` and `DetectKeyPhrases` define no resource type, and
 # `DetectEntities` defines only an optional custom `entity-recognizer-endpoint` this

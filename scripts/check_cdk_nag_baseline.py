@@ -171,6 +171,15 @@ REASONS: list[tuple[str, str]] = [
         "deny every read as though the grant were broken.",
     ),
     (
+        "data/RecoveryPointsLambdaRole",
+        "`backup:ListBackupVaults` is an account-level list that defines no resource type "
+        "-- it enumerates the vaults, which cannot be restricted to the vaults it is meant "
+        "to find. The vault-scoped reads beside it (`ListRecoveryPointsByBackupVault`, "
+        "`DescribeRecoveryPoint`, `DescribeBackupVault`) name `backupVaultArns` exactly, and "
+        "that statement is omitted entirely while the config is empty -- which is what this "
+        "baseline is measured against -- so only the list wildcard remains here.",
+    ),
+    (
         "data/",
         "A resource wildcard on a Lambda role we declare. What remains is object keys, "
         "which cannot be listed in advance, and names that arrive as configuration -- see "

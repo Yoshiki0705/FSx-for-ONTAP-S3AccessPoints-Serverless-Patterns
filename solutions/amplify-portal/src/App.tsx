@@ -15,6 +15,7 @@ import { VersionHistory } from "./components/VersionHistory";
 import { AuditLog } from "./components/AuditLog";
 import { ArpStatus } from "./components/ArpStatus";
 import { SnaplockStatus } from "./components/SnaplockStatus";
+import { RecoveryPoints } from "./components/RecoveryPoints";
 import { ResourceManagement } from "./components/ResourceManagement";
 import { AgentChat } from "./components/AgentChat";
 import { AgentDirectory } from "./components/AgentDirectory";
@@ -67,6 +68,7 @@ const NAV_ITEMS: { id: Section; icon: string; labelKey: TranslationKeys; group: 
   { id: "snapshots", icon: "📸", labelKey: "navSnapshots", group: "protection" },
   { id: "lock", icon: "🔒", labelKey: "navLock", group: "protection" },
   { id: "arp", icon: "🛡️", labelKey: "navArp", group: "protection" },
+  { id: "recovery", icon: "☁️", labelKey: "navRecovery", group: "protection" },
   // Admin group
   { id: "resources", icon: "🔧", labelKey: "navResources", group: "admin" },
   { id: "versions", icon: "🔄", labelKey: "navVersionDiff", group: "admin" },
@@ -454,6 +456,7 @@ function App() {
         {activeSection === "snapshots" && <VersionHistory mode="browse" />}
         {activeSection === "lock" && <SnaplockStatus />}
         {activeSection === "arp" && <ArpStatus />}
+        {activeSection === "recovery" && <RecoveryPoints />}
         {/* Guarded again here, not only in the nav: the section is reachable by
             URL hash, and hiding the button alone left a non-admin on a blank page. */}
         {activeSection === "resources" && (isStorageAdmin === true ? (

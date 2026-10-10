@@ -65,6 +65,9 @@ describe("Backend Infrastructure Structure", () => {
       // Outside the VPC on purpose: it answers the AWS control plane, and its
       // value is that it still answers when the ONTAP path does not.
       "PlatformDiscoveryFunction",
+      // Read-only AWS Backup recovery-point listing (#459). Also outside the VPC:
+      // it reaches the AWS Backup control plane, not the ONTAP management LIF.
+      "RecoveryPointsFunction",
     ];
 
     it("defines all expected Lambda functions", () => {
