@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { keepPreviousData, useQuery } from "@tanstack/react-query";
+import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "../i18n";
 import type { TranslationKeys } from "../i18n/locales/ja";
 import { errorMessage } from "../lib/portalQuery";
@@ -68,11 +68,23 @@ interface VaultsResponse extends HandlerStatus {
   backupVaults?: BackupVault[];
   /** The Region the list is for. */
   region?: string;
-  /** The Region the portal's function runs in: the only one a restore can be started in. */
+  /**
+   * The Region the portal's function runs in: the only one a restore can be started in.
+   * The handler puts this and `regions` on failures too, but a rejected request carries
+   * no body at all, so the panel also keeps the first answer it received.
+   */
   homeRegion?: string;
   /** The Regions the selector offers: home first, then the configured ones. */
   regions?: string[];
 }
+
+/** The Region context the panel keeps once it has learned it. */
+interface RegionContext {
+  homeRegion: string;
+  regions: string[];
+}
+
+const UNKNOWN_REGION_CONTEXT: RegionContext = { homeRegion: "", regions: [] };
 
 /**
  * Which vault the table shows.
@@ -180,10 +192,18 @@ function formatSize(bytes: number): string {
 export function RecoveryPoints() {
   const { t, locale } = useTranslation();
   const isStorageAdmin = useStorageAdmin();
+  const queryClient = useQueryClient();
   const [statusFilter, setStatusFilter] = useState("");
   /** The Region being read; "" is the portal's own. */
   const [region, setRegion] = useState("");
   const [selection, setSelection] = useState<VaultSelection>(DEFAULT_SELECTION);
+  /**
+   * The home Region and the selectable Regions, kept from the first answer that carried
+   * them. They are configuration, not per-Region data, so a later failed or rejected
+   * vault-list request (an opt-in Region that is not enabled, throttling, a network
+   * error) must not clear them: the selector is built from them, and so is the way back.
+   */
+  const [regionContext, setRegionContext] = useState<RegionContext>(UNKNOWN_REGION_CONTEXT);
   /** Set when the selected shared vault disappears from the shared list. */
   const [sharedVaultGone, setSharedVaultGone] = useState(false);
   /** The recovery point whose restore dialog is open; null when none. */
@@ -242,14 +262,25 @@ export function RecoveryPoints() {
       }),
   });
 
-  const homeRegion = vaultsQuery.data?.homeRegion ?? "";
-  const regions = vaultsQuery.data?.regions ?? [];
+  const answeredHomeRegion = vaultsQuery.data?.homeRegion ?? "";
+  const answeredRegions = vaultsQuery.data?.regions ?? [];
+  // Adjusted while rendering, like the selection below: the condition is false on the
+  // pass that follows, so it cannot loop.
+  if (regionContext.homeRegion === "" && answeredHomeRegion !== "" && answeredRegions.length > 0) {
+    setRegionContext({ homeRegion: answeredHomeRegion, regions: answeredRegions });
+  }
+  const homeRegion = regionContext.homeRegion || answeredHomeRegion;
+  const regions = regionContext.regions.length > 0 ? regionContext.regions : answeredRegions;
   const isHomeRegion = region === "" || region === homeRegion;
   // Outside the home Region there is no configured default: a vault name is unique
   // per Region, so the handler needs one named. Until one is chosen the table asks.
   const needsVaultChoice = !isHomeRegion && selection.kind === "default";
 
   const vaults = vaultsQuery.isPlaceholderData ? [] : (vaultsQuery.data?.backupVaults ?? []);
+  // Not while the previous Region's answer is standing in: its error is not this Region's.
+  const vaultsLoadError = vaultsQuery.isPlaceholderData
+    ? null
+    : (errorMessage(vaultsQuery.error, "") ?? vaultsQuery.data?.error ?? null);
   const sharedListOk = sharedQuery.isSuccess && !sharedQuery.data?.error;
   // Rows this account owns are not "shared with" it, whichever list ByShared returned.
   const sharedVaults = sharedListOk ? (sharedQuery.data?.backupVaults ?? []).filter((v) => !v.ownedByThisAccount) : [];
@@ -263,7 +294,7 @@ export function RecoveryPoints() {
     queryKey: ["recoveryPoints", "listRecoveryPoints", region, selectedAccountId, selectedName],
     queryFn: async (): Promise<RecoveryPointsResponse | null> => {
       if (needsVaultChoice) return { recoveryPoints: [] };
-      return recoveryPointsQuery<RecoveryPointsResponse>({
+      const data = await recoveryPointsQuery<RecoveryPointsResponse>({
         action: "listRecoveryPoints",
         params: {
           maxResults: 100,
@@ -272,6 +303,13 @@ export function RecoveryPoints() {
           backupVaultAccountId: selectedAccountId || undefined,
         },
       });
+      // The handler can learn that a share is gone before the shared list is fetched
+      // again. Ask for that list now, so the revoked vault does not stay in the
+      // selector until the next refresh. Here, after the response, not during render.
+      if (data?.errorCode === "VaultNotShared") {
+        void queryClient.invalidateQueries({ queryKey: ["recoveryPoints", "listSharedBackupVaults", region] });
+      }
+      return data;
     },
   });
 
@@ -412,6 +450,11 @@ export function RecoveryPoints() {
           {t("rpSharedLoadError")}: {sharedLoadError}
         </div>
       )}
+      {vaultsLoadError && (
+        <div className="error-message">
+          {t("rpVaultsLoadError")}: {vaultsLoadError}
+        </div>
+      )}
       {sharedVaultGone && <div className="info-message">{t("rpSharedVaultGone")}</div>}
       {selectedShared !== null && isStorageAdmin === true && (
         <p className="status-subtitle" style={{ display: "block", marginBottom: "1rem" }}>
@@ -424,7 +467,11 @@ export function RecoveryPoints() {
           {t("rpLoadError")}: {loadError}
         </div>
       )}
-      {accessDenied && <div className="error-message">{t("rpAccessDeniedHint")}</div>}
+      {accessDenied && (
+        // Share revocation and an unaccepted share can only explain a refusal on a shared
+        // vault; for a vault of this account only the IAM ARN scope is in play.
+        <div className="error-message">{t(selectedShared !== null ? "rpAccessDeniedHint" : "rpAccessDeniedHintOwn")}</div>
+      )}
       {restoreError && <div className="error-message">{t("rpRestoreError")}: {restoreError}</div>}
       {restoreResult && <div className="success-message">{restoreResult}</div>}
 
@@ -476,7 +523,9 @@ export function RecoveryPoints() {
               const vault = vaultByName.get(point.backupVaultName);
               // The row's own type first: a shared vault is not in this account's list.
               const airGapped = (point.vaultType || vault?.vaultType) === LOGICALLY_AIR_GAPPED;
-              const inOtherRegion = Boolean(point.region && homeRegion && point.region !== homeRegion);
+              // Fails closed: a restore is started in the portal's own Region, so a row that
+              // names a Region is restorable only when that Region is known to be the same.
+              const inOtherRegion = Boolean(point.region) && point.region !== homeRegion;
               return (
                 <tr key={point.recoveryPointArn}>
                   <td>{formatDate(point.creationDate)}</td>
@@ -517,7 +566,9 @@ export function RecoveryPoints() {
                         {t("rpRestore")}
                       </button>
                       {inOtherRegion && (
-                        <div style={SMALL_TEXT_STYLE}>{t("rpRestoreOtherRegion").split("{region}").join(homeRegion)}</div>
+                        <div style={SMALL_TEXT_STYLE}>
+                          {homeRegion ? t("rpRestoreOtherRegion").split("{region}").join(homeRegion) : t("rpRestoreRegionUnknown")}
+                        </div>
                       )}
                     </td>
                   )}

@@ -66,23 +66,28 @@ const point = (overrides: Record<string, unknown> = {}) => ({
   ...overrides,
 });
 
+/** A successful listBackupVaults answer for one Region. */
+const okVaults = (region: string) => ({
+  backupVaults: [localVault("Default", region), localVault("regional-vault", region)],
+  region,
+  homeRegion: HOME,
+  regions: [HOME, OTHER_REGION],
+  error: null,
+  errorCode: null,
+});
+
 /** What the stubbed handler answers; each test sets what it needs. */
 let sharedVaults: unknown[] = [];
 let pointsFor: (params: Record<string, unknown>) => unknown = () => ({ recoveryPoints: [point()] });
+/** Replaces the listBackupVaults answer (it may reject); null keeps the successful default. */
+let vaultsFor: ((params: Record<string, unknown>) => unknown) | null = null;
 
 const respond = () => {
   recoveryPointsQuery.mockImplementation(async (call: Call) => {
     const params = call.params ?? {};
     const region = (params.backupVaultRegion as string | undefined) || HOME;
     if (call.action === "listBackupVaults") {
-      return {
-        backupVaults: [localVault("Default", region), localVault("regional-vault", region)],
-        region,
-        homeRegion: HOME,
-        regions: [HOME, OTHER_REGION],
-        error: null,
-        errorCode: null,
-      };
+      return vaultsFor ? vaultsFor(params) : okVaults(region);
     }
     if (call.action === "listSharedBackupVaults") {
       return { backupVaults: sharedVaults, region, error: null, errorCode: null };
@@ -117,6 +122,7 @@ beforeEach(() => {
   recoveryPointsQuery.mockReset();
   isStorageAdmin = true;
   sharedVaults = [];
+  vaultsFor = null;
   pointsFor = () => ({ recoveryPoints: [point()], error: null, errorCode: null });
   respond();
 });
@@ -297,6 +303,143 @@ describe("RecoveryPoints: vault and Region scope", () => {
 
     expect(screen.queryByRole("button", { name: "Restore" })).toBeNull();
     expect(screen.queryByRole("columnheader", { name: "Actions" })).toBeNull();
+  });
+});
+
+describe("RecoveryPoints: a failed vault list does not strand the user", () => {
+  const regionSelect = () => screen.getByLabelText("Region") as HTMLSelectElement;
+
+  /** The other Region's vault list fails; the home Region's succeeds. */
+  const failOtherRegion = (answer: () => unknown) => {
+    vaultsFor = (params) => (params.backupVaultRegion === OTHER_REGION ? answer() : okVaults(HOME));
+  };
+
+  const switchToOtherRegionAndBack = async () => {
+    renderPanel();
+    await screen.findByRole("table");
+    await waitFor(() => expect(screen.getByLabelText("Region")).toBeTruthy());
+
+    fireEvent.change(regionSelect(), { target: { value: OTHER_REGION } });
+    await screen.findByText(/Could not load the list of vaults in this Region/);
+  };
+
+  const failureShapes: Array<[string, () => unknown]> = [
+    // What a handler that left the Region context off its failure answers looked like.
+    [
+      "an error answer without the Region context",
+      () => ({ backupVaults: [], error: "The security token included in the request is invalid", errorCode: "UnrecognizedClientException" }),
+    ],
+    [
+      "an error answer that carries the Region context",
+      () => ({
+        backupVaults: [],
+        homeRegion: HOME,
+        regions: [HOME, OTHER_REGION],
+        error: "The security token included in the request is invalid",
+        errorCode: "UnrecognizedClientException",
+      }),
+    ],
+    ["a rejected request", () => Promise.reject(new Error("Network error"))],
+  ];
+
+  it.each(failureShapes)("keeps the Region selector and says why, after %s", async (_label, answer) => {
+    failOtherRegion(answer);
+
+    await switchToOtherRegionAndBack();
+
+    // The selector is still there, still on the Region that failed.
+    expect(regionSelect().value).toBe(OTHER_REGION);
+    expect(screen.getByRole("option", { name: HOME })).toBeTruthy();
+  });
+
+  it.each(failureShapes)("lets the user return to the home Region after %s", async (_label, answer) => {
+    failOtherRegion(answer);
+    await switchToOtherRegionAndBack();
+
+    fireEvent.change(regionSelect(), { target: { value: HOME } });
+
+    await screen.findByRole("table");
+    expect(regionSelect().value).toBe(HOME);
+    expect(vaultSelect().value).toBe("default");
+    expect(screen.queryByText(/Could not load the list of vaults in this Region/)).toBeNull();
+  });
+
+  it("shows the message of a rejected vault-list request", async () => {
+    failOtherRegion(() => Promise.reject(new Error("Network error")));
+
+    await switchToOtherRegionAndBack();
+
+    expect(screen.getByText(/Network error/)).toBeTruthy();
+  });
+
+  it("shows the message of an error answer", async () => {
+    failOtherRegion(() => ({ backupVaults: [], error: "The security token included in the request is invalid", errorCode: "UnrecognizedClientException" }));
+
+    await switchToOtherRegionAndBack();
+
+    expect(screen.getByText(/The security token included in the request is invalid/)).toBeTruthy();
+  });
+
+  it("keeps restore disabled for a row with a Region while the portal's own Region is unknown", async () => {
+    // The vault list never answers successfully, so the home Region is never learned,
+    // yet the default listing returns a row that names a Region.
+    vaultsFor = () => Promise.reject(new Error("Network error"));
+    renderPanel();
+
+    await screen.findByRole("table");
+
+    expect((screen.getByRole("button", { name: "Restore" }) as HTMLButtonElement).disabled).toBe(true);
+    expect(screen.getByText(/Restore is unavailable until the portal's own Region is known/)).toBeTruthy();
+  });
+
+  it("does not disable restore for a row of the home Region once the home Region is known", async () => {
+    renderPanel();
+
+    await screen.findByRole("table");
+    await waitFor(() => expect(screen.getByLabelText("Region")).toBeTruthy());
+
+    expect((screen.getByRole("button", { name: "Restore" }) as HTMLButtonElement).disabled).toBe(false);
+    expect(screen.queryByText(/Restore is unavailable until the portal's own Region is known/)).toBeNull();
+  });
+});
+
+describe("RecoveryPoints: what a denied or revoked read tells the user", () => {
+  it("names only the IAM ARN scope when AWS denies a vault of this account", async () => {
+    pointsFor = (params) =>
+      params.backupVaultName === "regional-vault"
+        ? { recoveryPoints: [], error: "An error occurred (AccessDeniedException)", errorCode: "AccessDeniedException" }
+        : { recoveryPoints: [point()], error: null, errorCode: null };
+    renderPanel();
+    await screen.findByRole("table");
+    await waitFor(() => expect(screen.getByRole("option", { name: "regional-vault" })).toBeTruthy());
+
+    fireEvent.change(vaultSelect(), { target: { value: "local:regional-vault" } });
+
+    await screen.findByText(/does not allow this vault's ARN/);
+    // A share cannot be the cause for a vault this account owns.
+    expect(screen.queryByText(/AWS RAM share was revoked/)).toBeNull();
+    expect(screen.queryByText(/share has not been accepted/)).toBeNull();
+  });
+
+  it("asks for the shared list again when the handler reports the vault is no longer shared", async () => {
+    sharedVaults = [sharedVault()];
+    pointsFor = (params) =>
+      params.backupVaultAccountId
+        ? { recoveryPoints: [], error: "not shared", errorCode: "VaultNotShared" }
+        : { recoveryPoints: [point()], error: null, errorCode: null };
+    renderPanel();
+    await screen.findByRole("table");
+    await waitFor(() => expect(screen.getByText(`${OWNER_ACCOUNT} / shared-vault`)).toBeTruthy());
+    const before = callsTo("listSharedBackupVaults").length;
+
+    // The owner revoked the share since the list was fetched; the handler is the first to know.
+    sharedVaults = [];
+    fireEvent.change(vaultSelect(), { target: { value: `shared:${OWNER_ACCOUNT}:shared-vault` } });
+
+    await screen.findByText(/no longer in the list of shared vaults/);
+    await waitFor(() => expect(callsTo("listSharedBackupVaults").length).toBeGreaterThan(before));
+    // The revoked vault does not stay in the selector until the next manual refresh.
+    await waitFor(() => expect(screen.queryByText(`${OWNER_ACCOUNT} / shared-vault`)).toBeNull());
   });
 });
 
