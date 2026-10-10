@@ -224,6 +224,46 @@ AWS は継続的に RAM 対応リソースを拡大している。FSx for ONTAP 
 
 ---
 
+## AWS Backup 論理エアギャップボールトの共有とポータルでの参照
+
+ここまでの表は FSx for ONTAP のリソースの RAM 対応です。AWS Backup の論理エアギャップ（LAG）ボールト（RAM のリソースタイプ `backup:BackupVault`）は別のリソースで、RAM で共有できます。共有先は、ボールトの所有者が指定する個別のアカウント ID です。共有を受け取ったアカウントは、そのボールトと復旧ポイントを参照し、復元ジョブを起票できます（[AWS Backup の LAG ボールトの文書](https://docs.aws.amazon.com/aws-backup/latest/devguide/logicallyairgappedvault.html)）。
+
+### 受け取り側の操作
+
+| 操作 | CLI（API の入力） | 前提 |
+|---|---|---|
+| 共有されたボールトの一覧 | `aws backup list-backup-vaults --by-shared`（`ByShared`） | 共有を承認済み。リージョンごとに実行する |
+| 共有ボールトの復旧ポイントの一覧 | `aws backup list-recovery-points-by-backup-vault --backup-vault-account-id <所有者のアカウント ID>`（`BackupVaultAccountId`） | アカウント ID を付けない呼び出しは `AccessDeniedException` になる |
+| 復旧ポイントからの復元 | `aws backup start-restore-job`（入力は復旧ポイントの ARN） | CMK で暗号化されたボールトでは、所有者側の KMS キーポリシーに復旧アカウントのロールの許可が要る |
+
+`--by-shared` が受け取り側の一覧を返すかどうかは未確認です。下の「実環境で未検証の点」の先頭を参照してください。
+
+RAM の管理権限 `AWSRAMPermissionBackupVaultReadOnly`（version 3、既定）が許可するアクションは、`DescribeBackupVault`、`ListRecoveryPointsByBackupVault`、`ListProtectedResourcesByBackupVault`、`DescribeRecoveryPoint`、`GetRecoveryPointRestoreMetadata`、`StartRestoreJob`、`ListTags`、`CreateBackupAccessPoint` です（`aws ram get-permission` を ap-northeast-1 で実行して確認、2026-10-10）。
+
+### ポータルでの参照手順
+
+Amplify ポータルの「復旧ポイント」パネルで共有ボールトを選ぶ手順です。
+
+1. 受け取り側のアカウントで共有を承認する。
+2. `AMPLIFY_PORTAL_BACKUP_VAULT_ARNS` に共有ボールトの ARN を足して再デプロイする。ARN には所有者のアカウント ID とボールトのリージョンが入る（例: `arn:aws:backup:us-east-1:111122223333:backup-vault:shared-lag-vault`）。ポータルのロールは、この一覧にある ARN の復旧ポイントだけを参照できる。
+3. 共有ボールトが関数自身のリージョン以外にあるときは、`AMPLIFY_PORTAL_BACKUP_REGIONS` にそのリージョンを足す。このアカウント自身のボールトを、足したリージョンで読むときも、そのボールトの ARN を `AMPLIFY_PORTAL_BACKUP_VAULT_ARNS` に足す（手順 2 と同じ。ARN にリージョンが入るので、リージョンを足しただけでは IAM が許可しない）。足りないボールトを選ぶと `AccessDeniedException` になる（IAM のリソース範囲から読み取れる挙動で、実環境では未確認）。
+4. パネルの「表示するボールト」で「他のアカウントから AWS RAM で共有されたボールト」の項目を選ぶ。
+
+共有が取り消されると、そのボールトは共有一覧から消えると想定しています。実環境では未確認です（下の「実環境で未検証の点」）。選択中のボールトが一覧から消えたとき、パネルは既定の表示に戻して通知を出します。取り消しのアラートはポータルでは作りません。検知は [Observability integrations の機能マップ](https://github.com/Yoshiki0705/FSx-for-ONTAP-Observability-integrations/blob/main/docs/ja/cyber-resilience-capability-map.md) の Detect 節にある「バックアップ / LAG ボールトのイベントフィードに関する補足」が説明しています。
+
+### 実環境で未検証の点
+
+このアカウントには共有ボールトも復旧ポイントもないため、次は確認できていません（未検証）。
+
+- `ByShared` が受け取り側の一覧を返すか、所有者側の一覧を返すか。
+- 共有を取り消したとき、そのボールトが共有一覧から消えること、および消えるまでの時間。上の `ByShared` の方向が未確認なので、この想定が成り立つかどうかも未確認です。
+- 共有ボールトの ARN を `AMPLIFY_PORTAL_BACKUP_VAULT_ARNS` に足すと、ポータルのロールのアクセスが通ること。
+- 共有ボールトからの復元と、他のリージョンの復旧ポイントの復元。
+
+詳細は [ポータル設計ガイド](../../solutions/amplify-portal/docs/data-protection-recovery-design.md) の「#461 で実装したクロスアカウント／クロスリージョンの可視化」にあります。
+
+---
+
 ## セキュリティ考慮事項
 
 ### Organization 共有のリスク
@@ -247,3 +287,4 @@ AWS は継続的に RAM 対応リソースを拡大している。FSx for ONTAP 
 - [Cross-Account IAM ロール設計](./cross-account-iam.md)
 - [Shared Services アーキテクチャ](./shared-services-architecture.md)
 - [StackSets デプロイガイド](./stacksets-deployment.md)
+- [データ保護の復旧層（ポータル設計ガイド）](../../solutions/amplify-portal/docs/data-protection-recovery-design.md)

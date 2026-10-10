@@ -411,17 +411,20 @@ Retrieved in real time from the ONTAP REST API:
 
 ### Recovery points (AWS Backup recovery points, read-only)
 
-A read-only panel that lists AWS Backup recovery points (#459). These are distinct from ONTAP snapshots — a recovery tier stored in an AWS Backup vault. The panel text and subtitle make the distinction explicit.
+A panel that lists AWS Backup recovery points (#459). Starting a restore was added in #460, and the vault and Region selectors in #461. These are distinct from ONTAP snapshots — a recovery tier stored in an AWS Backup vault. The panel text and subtitle make the distinction explicit.
 
 | Data | API | Shown |
 |------|-----|-------|
 | Recovery-point list | `backup:ListRecoveryPointsByBackupVault` (`ByResourceType="FSx"`) | Created / status / resource type / size / encryption |
-| Vault info | `backup:ListBackupVaults` | Vault name and a badge marking a logically air-gapped vault |
+| Vault info | `backup:ListBackupVaults` | Vault name and a badge marking a logically air-gapped vault. This account's vaults in the selected Region are also the selector's choices |
+| Shared-vault list | `backup:ListBackupVaults` (`ByShared=True`) | Vaults other accounts shared through AWS RAM (owner account ID and vault name). The selector's choices |
 
 - **The list comes from the API.** The recovery-point count shown in the console vault list can be approximate; the exact count comes from `ListRecoveryPointsByBackupVault`, which is what the panel displays.
-- **Status is surfaced as `Status` plus `StatusMessage`, verbatim.** "Completed with issues" is not a recovery-point `Status` enum value — it is a copy-/backup-job state, left to #461 / the observability side.
+- **Status is surfaced as `Status` plus `StatusMessage`, verbatim.** "Completed with issues" is not a recovery-point `Status` enum value — it is a copy-/backup-job state, which the portal does not monitor and leaves to the observability side.
 - **No malware-scan column.** FSx for ONTAP is out of scope for Malware Protection for AWS Backup, so a same-named column would mislead.
-- Requesting a restore is deferred to #460 and the cross-account UI to #461. The handler accepts a `backupVaultAccountId` argument for the future, but ships no UI that sets it.
+- **Vault and Region selectors (#461).** Choose between "Configured vaults in this account", "Vaults in this account" and "Vaults shared by other accounts through AWS RAM". The Region selector appears only when `AMPLIFY_PORTAL_BACKUP_REGIONS` is set. Every choice puts its rows in the same table. The setup for reading a shared vault, and the points that are unverified in a real account, are in the "The cross-account and cross-Region visibility implemented in #461" section of the [design guide](data-protection-recovery-design.en.md).
+- **Starting a restore (#460) is limited to rows in the portal's own Region.** A row in another Region is listed, but its restore button is disabled.
+- **The portal does not monitor job failures, "Completed with issues" or AWS RAM share revocation.** The Observability integrations cover them; a link to their description sits at the bottom of the panel.
 
 ---
 
@@ -619,7 +622,7 @@ This portal is protected by the following quality gates:
 | Tool | What it checks |
 |--------|------------|
 | cdk-nag (AwsSolutionsChecks) | Over-permissive IAM, encryption, log retention |
-| CDK harness tests (137 assertions) | Lambda count, runtime, environment variables |
+| CDK harness tests (145 assertions) | Lambda count, runtime, environment variables |
 | IAM Access Analyzer | SECURITY_WARNING detection in policies |
 | floci integration tests (9 tests) | S3 ListObjectsV2 + Delimiter behaviour |
 
