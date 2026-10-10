@@ -3,13 +3,13 @@
 > 🌐 **Language / 言語**: [日本語](portal-tabs-guide.md) | English
 
 > **Last updated**: 2026-07-22
-> **Verified**: CDK Sandbox deploy → Cognito login → all 17 sections confirmed to render
+> **Verified**: CDK Sandbox deploy → Cognito login → all 18 sections confirmed to render
 
 ---
 
 ## Overview
 
-The File Portal for Amazon FSx for NetApp ONTAP (hereafter FSx for ONTAP) is organised as a sidebar navigation with 4 groups and 17 sections. Each section provides an independent capability, and all of them access data on the same FSx for ONTAP S3 Access Point.
+The File Portal for Amazon FSx for NetApp ONTAP (hereafter FSx for ONTAP) is organised as a sidebar navigation with 4 groups and 18 sections. Each section provides an independent capability, and all of them access data on the same FSx for ONTAP S3 Access Point.
 
 ![Sidebar layout](screenshots/portal-sidebar-layout.png)
 
@@ -36,6 +36,7 @@ The File Portal for Amazon FSx for NetApp ONTAP (hereafter FSx for ONTAP) is org
 │  Snapshots   │                                             │
 │  Lock        │                                             │
 │  ARP/AI      │                                             │
+│  Recovery    │                                             │
 │──────────────│                                             │
 │ ADMIN        │                                             │
 │  Resources   │                                             │
@@ -405,6 +406,22 @@ Retrieved in real time from the ONTAP REST API:
 - 🔴 `high`: possible ransomware attack — immediate response required
 
 **Fallback UI when ONTAP is not connected**: instead of a blank screen, an info panel with the connection steps is shown.
+
+---
+
+### Recovery points (AWS Backup recovery points, read-only)
+
+A read-only panel that lists AWS Backup recovery points (#459). These are distinct from ONTAP snapshots — a recovery tier stored in an AWS Backup vault. The panel text and subtitle make the distinction explicit.
+
+| Data | API | Shown |
+|------|-----|-------|
+| Recovery-point list | `backup:ListRecoveryPointsByBackupVault` (`ByResourceType="FSx"`) | Created / status / resource type / size / encryption |
+| Vault info | `backup:ListBackupVaults` | Vault name and a badge marking a logically air-gapped vault |
+
+- **The list comes from the API.** The recovery-point count shown in the console vault list can be approximate; the exact count comes from `ListRecoveryPointsByBackupVault`, which is what the panel displays.
+- **Status is surfaced as `Status` plus `StatusMessage`, verbatim.** "Completed with issues" is not a recovery-point `Status` enum value — it is a copy-/backup-job state, left to #461 / the observability side.
+- **No malware-scan column.** FSx for ONTAP is out of scope for Malware Protection for AWS Backup, so a same-named column would mislead.
+- Requesting a restore is deferred to #460 and the cross-account UI to #461. The handler accepts a `backupVaultAccountId` argument for the future, but ships no UI that sets it.
 
 ---
 

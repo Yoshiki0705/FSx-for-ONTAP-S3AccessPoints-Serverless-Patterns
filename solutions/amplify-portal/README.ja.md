@@ -131,7 +131,7 @@ sequenceDiagram
 
 ---
 
-## ポータル UI — サイドバーレイアウト（17 セクション）
+## ポータル UI — サイドバーレイアウト（18 セクション）
 
 ![Sidebar Layout](docs/screenshots/portal-sidebar-layout.png)
 *左サイドバー: グループ化されたナビゲーション。中央: アクティブなセクションコンテンツ。右: AI アシスタント（ファイル選択時）。*
@@ -152,6 +152,7 @@ sequenceDiagram
 | **Data Protection** | Snapshots | ONTAP スナップショット一覧 + FlexClone リストア |
 | | Lock | SnapLock (WORM) + S3 Object Lock ステータス |
 | | ARP/AI | Autonomous Ransomware Protection ステータス |
+| | 復旧ポイント | FSx for ONTAP ボリュームの AWS Backup 復旧ポイント一覧（読み取り専用） |
 | **Admin** | Resource Management | ボリューム、共有、エクスポート、クォータ、QoS、SnapMirror（storage-admin のみ） |
 | | Version Diff | スナップショット間のサイドバイサイドファイル比較 |
 | | Audit Trail | CloudTrail S3 データイベント（誰が/いつ/何を） |

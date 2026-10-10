@@ -153,7 +153,7 @@ sequenceDiagram
 
 ---
 
-## Portal UI — Sidebar Layout (17 Sections)
+## Portal UI — Sidebar Layout (18 Sections)
 
 ![Sidebar Layout](docs/screenshots/portal-sidebar-layout.png)
 *Left sidebar: grouped navigation. Center: active section content. Right: AI assistant (on file selection).*
@@ -174,6 +174,7 @@ sequenceDiagram
 | **Data Protection** | Snapshots | ONTAP snapshot listing + FlexClone restore |
 | | Lock | SnapLock (WORM) + S3 Object Lock status |
 | | ARP/AI | Autonomous Ransomware Protection status |
+| | Recovery points | AWS Backup recovery-point listing for FSx for ONTAP volumes (read-only) |
 | **Admin** | Resource Management | Volumes, shares, exports, quotas, QoS, SnapMirror (storage-admin only) |
 | | Version Diff | Side-by-side file comparison between snapshots |
 | | Audit Trail | CloudTrail S3 data events (who/when/what) |

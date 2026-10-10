@@ -116,6 +116,13 @@ export interface PortalConfig {
   ontapSecretName: string;
   ontapSvmName: string;
   ontapVolumeName: string;
+
+  // AWS Backup recovery-point listing (#459, read-only).
+  // Vault names the recovery-points panel lists when the caller names none, and
+  // the vault ARNs the read-only IAM role is scoped to. Empty disables the panel's
+  // default listing (the caller must name a vault) and scopes the role to nothing.
+  backupVaultNames: string[];
+  backupVaultArns: string[];
 }
 
 /**
@@ -637,4 +644,25 @@ export const config: PortalConfig = {
 
   /** Default volume name for snapshot/lock operations */
   ontapVolumeName: process.env.ONTAP_VOLUME_NAME || "",
+
+  /**
+   * AWS Backup vault names the recovery-points panel lists by default (#459).
+   *
+   * Comma-separated. The read-only panel lists FSx for ONTAP recovery points in
+   * these vaults when the caller does not name one. Empty means the panel shows
+   * nothing until a vault is named.
+   *   export AMPLIFY_PORTAL_BACKUP_VAULT_NAMES=Default,lag-vault
+   */
+  backupVaultNames: idList(process.env.AMPLIFY_PORTAL_BACKUP_VAULT_NAMES),
+
+  /**
+   * AWS Backup vault ARNs the recovery-points IAM role is scoped to (#459).
+   *
+   * Comma-separated. ListRecoveryPointsByBackupVault, DescribeRecoveryPoint and
+   * DescribeBackupVault are granted on exactly these ARNs; ListBackupVaults is an
+   * account-level list and stays on "*". Empty scopes the role to nothing, so set
+   * these to the ARNs of the vaults in backupVaultNames.
+   *   export AMPLIFY_PORTAL_BACKUP_VAULT_ARNS=arn:aws:backup:ap-northeast-1:123456789012:backup-vault:Default
+   */
+  backupVaultArns: idList(process.env.AMPLIFY_PORTAL_BACKUP_VAULT_ARNS),
 };

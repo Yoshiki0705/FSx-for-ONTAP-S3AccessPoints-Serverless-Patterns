@@ -831,6 +831,24 @@ export interface SnapshotsActionParams {
   };
 }
 
+/** Actions of functions/recovery-points, reached by `recoveryPointsQuery`. */
+export interface RecoveryPointsActionParams {
+  describeRecoveryPoint: {
+    backupVaultName: string;
+    recoveryPointArn: string;
+    backupVaultAccountId?: string;
+  };
+  /** No parameters. */
+  listBackupVaults: Record<string, never>;
+  listRecoveryPoints: {
+    backupVaultAccountId?: string;
+    backupVaultName?: string;
+    maxResults?: number;
+    recoveryPointArn?: string;
+    resourceArn?: string;
+  };
+}
+
 /** Actions of functions/list-files, reached by `fileMutation`, `fileQuery`. */
 export interface ListFilesActionParams {
   copyFile: {
@@ -1036,6 +1054,7 @@ export type DispatchParams = {
   platformQuery: PlatformDiscoveryActionParams;
   protectionMutation: SnapshotsActionParams;
   protectionQuery: SnapshotsActionParams;
+  recoveryPointsQuery: RecoveryPointsActionParams;
   thumbnailQuery: ThumbnailsActionParams;
 };
 

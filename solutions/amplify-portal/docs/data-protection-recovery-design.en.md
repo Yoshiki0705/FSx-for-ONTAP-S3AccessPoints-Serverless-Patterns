@@ -76,6 +76,16 @@ This guide and the follow-on portal work do NOT do the following. Each is a deci
 - **Do not configure real MPA approvers.** The MPA approval-team resources live in `us-east-1` and gate real recovery access. Wiring real approvers is a separate Issue that needs a disposable test environment.
 - The portal work is limited to: a read path (list) + an approval-gated restore (requesting a restore to a new volume) + a design guide + cross-account/Region visibility. It assumes the vault, Vault Lock, RAM share and MPA are already configured elsewhere.
 
+## The read-only list implemented in #459
+
+#459 implements the list panel from "Where it attaches to the portal" as a read-only surface. It adds a "Recovery points" panel to the portal's Data Protection section at the same granularity as the existing ARP/AI and SnapLock features.
+
+- **The list comes from the API.** The panel calls `ListRecoveryPointsByBackupVault` with `ByResourceType="FSx"`, so it lists only FSx for ONTAP recovery points. Both the AWS Backup console vault list and the vault detail carry a note that the displayed recovery-point count may be approximate and that the exact count comes from `ListRecoveryPointsByBackupVault` (O-1). The panel shows the API result, not that approximate count.
+- **The columns are created, status, resource type, size and encryption.** Alongside these it shows the vault name and a badge marking a logically air-gapped vault (`VaultType == "LOGICALLY_AIR_GAPPED_BACKUP_VAULT"`).
+- **Status is surfaced as `Status` plus `StatusMessage`, verbatim.** The recovery-point `Status` enum is `COMPLETED | PARTIAL | DELETING | EXPIRED | AVAILABLE | STOPPED | CREATING`; "Completed with issues" is not in it. That is a copy-/backup-job state, not a recovery-point `Status`, so the panel keys no UI label on the literal "Completed with issues". Monitoring and interpreting that state is left to #461 / the observability side.
+- **There is no malware-scan column.** FSx for ONTAP is out of scope for Malware Protection for AWS Backup ([E-008]), so a same-named column would mislead.
+- **This panel shows no source-account-ID column and no account switcher.** The handler accepts a `backupVaultAccountId` argument for a future cross-account surface, but ships no UI that sets it. The cross-account UI is deferred to #461 and requesting a restore to #460.
+
 ## Follow-on Issues
 
 This guide is the design frame the following three follow-on Issues implement. Each Issue maps to a part of this guide.

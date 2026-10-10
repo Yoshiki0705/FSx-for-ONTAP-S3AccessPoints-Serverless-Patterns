@@ -497,7 +497,7 @@ def test_the_published_checker_shares_the_repository_table(published, drift):
 
 
 def test_a_correct_published_number_is_left_alone(published):
-    text = "4 groups × 17 sections. Same sidebar pattern as Google Drive and Box."
+    text = "4 groups × 18 sections. Same sidebar pattern as Google Drive and Box."
     assert published.count_findings(text, {"label": "Part 1 (EN)", "url": "https://x"}) == []
 
 
@@ -562,7 +562,7 @@ COUNT_PHRASINGS = {
         "**6 operations optimization patterns (OPS1-OPS6)**",
         "├── operations/             # Operational optimization patterns (6, all built)",
     ),
-    "pytest-files": (305, "~5,000 Python tests across 305 files", None),
+    "pytest-files": (306, "~5,000 Python tests across 306 files", None),
     "vitest-files": (34, "~495 vitest tests across 34 files", None),
 }
 

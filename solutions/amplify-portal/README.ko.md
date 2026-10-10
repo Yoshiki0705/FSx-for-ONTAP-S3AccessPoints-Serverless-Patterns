@@ -128,7 +128,7 @@ sequenceDiagram
 
 ---
 
-## 포털 UI — 사이드바 레이아웃 (17개 섹션)
+## 포털 UI — 사이드바 레이아웃 (18개 섹션)
 
 ![Sidebar Layout](docs/screenshots/portal-sidebar-layout.png)
 *왼쪽 사이드바: 그룹화된 네비게이션. 중앙: 활성 섹션 콘텐츠. 오른쪽: AI 어시스턴트 (파일 선택 시).*
@@ -149,6 +149,7 @@ sequenceDiagram
 | **Data Protection** | Snapshots | ONTAP 스냅샷 목록 + FlexClone 복원 |
 | | Lock | SnapLock (WORM) + S3 Object Lock 상태 |
 | | ARP/AI | Autonomous Ransomware Protection 상태 |
+| | 복구 지점 | FSx for ONTAP 볼륨의 AWS Backup 복구 지점 목록(읽기 전용) |
 | **Admin** | Resource Management | 볼륨, 공유, 내보내기, 할당량, QoS, SnapMirror(storage-admin 전용) |
 | | Version Diff | 스냅샷 간 파일 비교 (사이드 바이 사이드) |
 | | Audit Trail | CloudTrail S3 데이터 이벤트 (누가/언제/무엇을) |

@@ -128,7 +128,7 @@ sequenceDiagram
 
 ---
 
-## Portal-UI — Seitenleisten-Layout (17 Bereiche)
+## Portal-UI — Seitenleisten-Layout (18 Bereiche)
 
 ![Sidebar Layout](docs/screenshots/portal-sidebar-layout.png)
 *Linke Seitenleiste: gruppierte Navigation. Mitte: aktiver Bereichsinhalt. Rechts: AI-Assistent (bei Dateiauswahl).*
@@ -149,6 +149,7 @@ sequenceDiagram
 | **Data Protection** | Snapshots | ONTAP-Snapshot-Liste + FlexClone-Wiederherstellung |
 | | Lock | SnapLock (WORM) + S3 Object Lock-Status |
 | | ARP/AI | Autonomous Ransomware Protection-Status |
+| | Wiederherstellungspunkte | AWS Backup-Wiederherstellungspunkte für FSx for ONTAP-Volumes (schreibgeschützt) |
 | **Admin** | Resource Management | Volumes, Freigaben, Exporte, Quotas, QoS, SnapMirror (nur storage-admin) |
 | | Version Diff | Dateivergleich zwischen Snapshots (nebeneinander) |
 | | Audit Trail | CloudTrail S3-Datenereignisse (wer/wann/was) |

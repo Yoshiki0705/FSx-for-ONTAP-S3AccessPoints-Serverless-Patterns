@@ -1262,6 +1262,71 @@ const listSnapshotsFunction = new lambda.Function(
 
 api.addLambdaDataSource("ListSnapshotsLambdaDataSource", listSnapshotsFunction);
 
+// --- Lambda Data Source for AWS Backup recovery points (read-only, #459) ---
+// Lists AWS Backup recovery points for FSx for ONTAP volumes. Unlike the ONTAP
+// readers this reaches a regional AWS control-plane API over the Lambda service
+// network, so it needs no VPC, no shared layer, and no Secrets Manager credential.
+const recoveryPointsRole = new iam.Role(dataStack, "RecoveryPointsLambdaRole", {
+  assumedBy: new iam.ServicePrincipal("lambda.amazonaws.com"),
+  managedPolicies: [
+    iam.ManagedPolicy.fromAwsManagedPolicyName(
+      "service-role/AWSLambdaBasicExecutionRole"
+    ),
+  ],
+  inlinePolicies: {
+    AwsBackupRead: new iam.PolicyDocument({
+      statements: [
+        // The vault-scoped reads are only granted when a vault ARN is configured.
+        // CDK refuses a statement with an empty `resources`, and an unconfigured
+        // clone (the example config ships empty arrays) would otherwise fail synth.
+        ...(config.backupVaultArns.length > 0
+          ? [
+              new iam.PolicyStatement({
+                actions: [
+                  "backup:ListRecoveryPointsByBackupVault",
+                  "backup:DescribeRecoveryPoint",
+                  "backup:DescribeBackupVault",
+                ],
+                // Scoped to the configured vault ARN(s). Recovery points are
+                // addressed under the vault, so vault-scoping is the documented
+                // granularity.
+                resources: config.backupVaultArns,
+              }),
+            ]
+          : []),
+        new iam.PolicyStatement({
+          // ListBackupVaults is an account-level list and is not vault-scopable,
+          // so it is on "*". The statement above carries the vault scope for the
+          // reads that can be scoped.
+          actions: ["backup:ListBackupVaults"],
+          resources: ["*"],
+        }),
+      ],
+    }),
+  },
+});
+
+const recoveryPointsFunction = new lambda.Function(
+  dataStack,
+  "RecoveryPointsFunction",
+  {
+    runtime: lambda.Runtime.PYTHON_3_13,
+    architecture: lambda.Architecture.ARM_64,
+    handler: "index.handler",
+    code: functionCode("functions/recovery-points"),
+    role: recoveryPointsRole,
+    environment: {
+      BACKUP_VAULT_NAMES: JSON.stringify(config.backupVaultNames ?? []),
+    },
+    memorySize: 256,
+    timeout: Duration.seconds(30),
+    description:
+      "Lists AWS Backup recovery points for FSx for ONTAP volumes (read-only)",
+  }
+);
+
+api.addLambdaDataSource("RecoveryPointsLambdaDataSource", recoveryPointsFunction);
+
 // --- Lambda Data Source for ARP/AI Response Actions ---
 // Uses functions/data-protection/handler.py (dedicated handler for write operations)
 // Actions from: functions/data-protection/handler.py

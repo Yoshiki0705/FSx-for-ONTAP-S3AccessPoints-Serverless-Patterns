@@ -128,7 +128,7 @@ sequenceDiagram
 
 ---
 
-## 入口 UI — 側邊欄佈局（17 個部分）
+## 入口 UI — 側邊欄佈局（18 個部分）
 
 ![Sidebar Layout](docs/screenshots/portal-sidebar-layout.png)
 *左側邊欄：分組導覽。中央：活動部分內容。右側：AI 助手（檔案選取時）。*
@@ -149,6 +149,7 @@ sequenceDiagram
 | **Data Protection** | Snapshots | ONTAP 快照列表 + FlexClone 還原 |
 | | Lock | SnapLock (WORM) + S3 Object Lock 狀態 |
 | | ARP/AI | Autonomous Ransomware Protection 狀態 |
+| | 復原點 | FSx for ONTAP 磁碟區的 AWS Backup 復原點列表（唯讀） |
 | **Admin** | Resource Management | 磁碟區、共用、匯出、配額、QoS、SnapMirror（僅 storage-admin） |
 | | Version Diff | 快照間的並排檔案比對 |
 | | Audit Trail | CloudTrail S3 資料事件（誰/何時/什麼） |

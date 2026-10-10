@@ -18,7 +18,7 @@
 export type Section =
   | "files" | "favorites" | "recent" | "watch" | "upload"
   | "process" | "agent" | "search" | "history" | "analytics"
-  | "snapshots" | "arp" | "lock"
+  | "snapshots" | "arp" | "lock" | "recovery"
   | "versions" | "audit" | "resources" | "agentDir";
 
 /**
@@ -36,8 +36,8 @@ export type Section =
  */
 export const SECTIONS: Section[] = [
   "files", "favorites", "recent", "upload", "process", "agent", "search",
-  "history", "analytics", "snapshots", "arp", "lock", "versions", "audit",
-  "resources", "agentDir",
+  "history", "analytics", "snapshots", "arp", "lock", "recovery", "versions",
+  "audit", "resources", "agentDir",
 ];
 
 /** Where the hash points. */

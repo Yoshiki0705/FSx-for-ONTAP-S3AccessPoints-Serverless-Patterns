@@ -918,6 +918,7 @@ TYPED_HELPERS: dict[str, str] = {
     "arpMutate": "arpMutation",
     "protectionQuery": "protectionQuery",
     "protectionMutate": "protectionMutation",
+    "recoveryPointsQuery": "recoveryPointsQuery",
     "fileQuery": "fileQuery",
     "fileMutate": "fileMutation",
     "agentQuery": "agentQuery",

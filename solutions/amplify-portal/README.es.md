@@ -128,7 +128,7 @@ sequenceDiagram
 
 ---
 
-## UI del Portal — Diseño de la barra lateral (17 secciones)
+## UI del Portal — Diseño de la barra lateral (18 secciones)
 
 ![Sidebar Layout](docs/screenshots/portal-sidebar-layout.png)
 *Barra lateral izquierda: navegación agrupada. Centro: contenido de la sección activa. Derecha: asistente AI (al seleccionar archivo).*
@@ -149,6 +149,7 @@ sequenceDiagram
 | **Data Protection** | Snapshots | Lista de snapshots ONTAP + restauración FlexClone |
 | | Lock | SnapLock (WORM) + estado de S3 Object Lock |
 | | ARP/AI | Estado de Autonomous Ransomware Protection |
+| | Puntos de recuperación | Lista de puntos de recuperación de AWS Backup para volúmenes FSx for ONTAP (solo lectura) |
 | **Admin** | Resource Management | Volúmenes, recursos compartidos, exportaciones, cuotas, QoS, SnapMirror (solo storage-admin) |
 | | Version Diff | Comparación lado a lado de archivos entre snapshots |
 | | Audit Trail | Eventos de datos S3 de CloudTrail (quién/cuándo/qué) |

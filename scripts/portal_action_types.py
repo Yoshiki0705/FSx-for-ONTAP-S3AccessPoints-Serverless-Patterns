@@ -51,6 +51,7 @@ HANDLER_MAPS = {
     "resource-management": "ResourceMgmtActionParams",
     "data-protection": "DataProtectionActionParams",
     "snapshots": "SnapshotsActionParams",
+    "recovery-points": "RecoveryPointsActionParams",
     "list-files": "ListFilesActionParams",
     "agent-chat": "AgentChatActionParams",
     "thumbnails": "ThumbnailsActionParams",
