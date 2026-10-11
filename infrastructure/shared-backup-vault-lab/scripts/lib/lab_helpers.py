@@ -21,6 +21,8 @@ Usage: ``python3 lab_helpers.py <command> [options]``. Commands:
 * ``age-minutes``      whole minutes between two timestamps (invitation age)
 * ``node-min-major``   minimum Node.js major version for the portal tooling
 * ``text-digest``      sha256[:32] of the arguments joined with "|" (idempotency tokens)
+* ``provision-password`` read the output of ``make portal-demo-user`` on stdin: print
+                       the password (exit 0), or exit 3 when the account already existed
 
 Nothing here calls AWS. Whether the shapes produced here are accepted by the
 services is not yet run on real environment.
@@ -719,6 +721,36 @@ def cost_dates(since: str | None, record_file: Path | None, now: str) -> dict[st
 # --------------------------------------------------------------------------
 
 
+# The print format of scripts/portal_provision_demo_user.py that 07 depends on. A
+# contract test reads that script and checks both strings, so a format change is
+# caught before this parser silently reads nothing.
+PROVISION_PASSWORD_LINE = re.compile(r"^  password  (\S+)\s*$")
+PROVISION_EXISTS_TEXT = "already exists; password unchanged"
+
+
+def parse_provision_output(text: str) -> tuple[str, str]:
+    """Read the result of ``make portal-demo-user``.
+
+    Args:
+        text: Standard output of the provisioning script.
+
+    Returns:
+        ``("password", value)`` when exactly one password line is present,
+        ``("exists", "")`` when the account already existed (its password is
+        unchanged and unknown).
+
+    Raises:
+        ValueError: When the output holds neither (or several password lines). The
+            message never contains output text, so no secret can reach a log.
+    """
+    found = [m.group(1) for m in (PROVISION_PASSWORD_LINE.match(line) for line in text.splitlines()) if m]
+    if len(found) == 1:
+        return "password", found[0]
+    if not found and PROVISION_EXISTS_TEXT in text:
+        return "exists", ""
+    raise ValueError(f"expected exactly one password line or the '{PROVISION_EXISTS_TEXT}' notice (found {len(found)})")
+
+
 def build_parser() -> argparse.ArgumentParser:
     """Build the command-line parser.
 
@@ -773,6 +805,7 @@ def build_parser() -> argparse.ArgumentParser:
     sub.add_parser("node-min-major")
     td = sub.add_parser("text-digest")
     td.add_argument("parts", nargs="+")
+    sub.add_parser("provision-password")
     return parser
 
 
@@ -862,6 +895,11 @@ def main(argv: list[str] | None = None) -> int:
             print(NODE_MIN_MAJOR)
         elif args.command == "text-digest":
             print(text_digest(args.parts))
+        elif args.command == "provision-password":
+            kind, value = parse_provision_output(sys.stdin.read())
+            if kind == "exists":
+                return 3
+            print(value)
     except (ValueError, RuntimeError) as exc:
         print(f"error: {exc}", file=sys.stderr)
         return 1

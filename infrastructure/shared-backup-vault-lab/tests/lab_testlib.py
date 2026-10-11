@@ -33,6 +33,9 @@ import pytest
 LAB_SRC = Path(__file__).resolve().parents[1]
 REPO_SRC = LAB_SRC.parents[1]
 STUBS = Path(__file__).resolve().parent / "stubs"
+# Fake node, npm, npx and make. Not on the default PATH: a test that needs them links
+# them into its tools dir with ``Lab.use_external_stubs``.
+EXTERNAL_STUBS = STUBS / "external"
 
 # One value per kind, never shared between kinds, so a script that passes a name
 # where an id belongs (or the reverse) is caught by the value assertion.
@@ -175,6 +178,9 @@ class Lab:
         self.jq_dir = tmp / "jqbin"
         self.tools_dir = tmp / "tools"
         self.external_log = tmp / "external-calls.log"
+        self.external_jsonl = tmp / "external-calls.jsonl"
+        self.chromium_path = tmp / "chromium" / "chrome"
+        self.portal = self.repo / "solutions" / "amplify-portal"
         self.call_log = tmp / "aws-calls.jsonl"
         self.scenario_path = tmp / "scenario.json"
         self.sleep_log = tmp / "sleep.log"
@@ -223,6 +229,9 @@ class Lab:
             "STUB_CALL_LOG": str(self.call_log),
             "STUB_SLEEP_LOG": str(self.sleep_log),
             "STUB_EXTERNAL_LOG": str(self.external_log),
+            "STUB_EXTERNAL_JSONL": str(self.external_jsonl),
+            "STUB_DIR": str(EXTERNAL_STUBS),
+            "STUB_CHROMIUM_PATH": str(self.chromium_path),
         }
         if lab_env:
             env.update(BASE_LAB_ENV)
@@ -284,6 +293,75 @@ class Lab:
         if not self.external_log.is_file():
             return []
         return self.external_log.read_text(encoding="utf-8").splitlines()
+
+    def use_external_stubs(self, *names: str) -> None:
+        """Link the fake ``node``, ``npm``, ``npx`` or ``make`` into the tools dir.
+
+        Args:
+            *names: Command names; none means all four.
+        """
+        for name in names or ("node", "npm", "npx", "make"):
+            link = self.tools_dir / name
+            if link.exists() or link.is_symlink():
+                link.unlink()
+            link.symlink_to(EXTERNAL_STUBS / name)
+
+    def external_records(self) -> list[dict[str, Any]]:
+        """Return the JSON records (cwd and environment values) of the fake external commands."""
+        if not self.external_jsonl.is_file():
+            return []
+        return [json.loads(line) for line in self.external_jsonl.read_text(encoding="utf-8").splitlines() if line]
+
+    def make_portal(
+        self,
+        outputs: bool = True,
+        node_modules: bool = True,
+        chromium: bool = True,
+        config: bool = True,
+    ) -> Path:
+        """Create a fake portal directory and the repository's ``portal_preflight.py``.
+
+        ``scripts/sandbox.sh`` records its call and exits with ``$STUB_SANDBOX_RC``.
+
+        Args:
+            outputs: Create ``amplify_outputs.json`` (an existing sandbox).
+            node_modules: Create ``node_modules/@playwright/test`` and ``.bin/ampx``.
+            chromium: Create the file the fake ``node -e`` reports as the browser.
+            config: Create ``amplify/portal-config.ts``.
+
+        Returns:
+            The portal directory.
+        """
+        portal = self.portal
+        (portal / "scripts").mkdir(parents=True, exist_ok=True)
+        (portal / "amplify").mkdir(parents=True, exist_ok=True)
+        sandbox = portal / "scripts" / "sandbox.sh"
+        sandbox.write_text('#!/bin/sh\nexec python3 "$STUB_DIR/sandbox_stub.py" "$@"\n', encoding="utf-8")
+        sandbox.chmod(0o755)
+        (portal / "amplify" / "portal-config.example.ts").write_text("// example\n", encoding="utf-8")
+        if config:
+            (portal / "amplify" / "portal-config.ts").write_text("// config\n", encoding="utf-8")
+        if outputs:
+            (portal / "amplify_outputs.json").write_text(
+                json.dumps({"auth": {"user_pool_id": "us-east-1_StubPool", "aws_region": "ap-northeast-1"}}),
+                encoding="utf-8",
+            )
+        if node_modules:
+            (portal / "node_modules" / "@playwright" / "test").mkdir(parents=True, exist_ok=True)
+            (portal / "node_modules" / ".bin").mkdir(parents=True, exist_ok=True)
+            ampx = portal / "node_modules" / ".bin" / "ampx"
+            ampx.write_text("#!/bin/sh\n", encoding="utf-8")
+            ampx.chmod(0o755)
+        if chromium:
+            self.chromium_path.parent.mkdir(parents=True, exist_ok=True)
+            self.chromium_path.write_text("chromium", encoding="utf-8")
+        (self.repo / "scripts").mkdir(parents=True, exist_ok=True)
+        (self.repo / "scripts" / "portal_preflight.py").write_text(
+            "import os\nimport sys\n\nsys.path.insert(0, os.environ['STUB_DIR'])\n"
+            "import preflight_stub\n\npreflight_stub.main(sys.argv[1:])\n",
+            encoding="utf-8",
+        )
+        return portal
 
     def install_script(self, name: str, text: str) -> Path:
         """Write an executable script under ``scripts/`` of the lab copy.

@@ -1,0 +1,5 @@
+#!/bin/sh
+# Test stub: the real work is in node_stub.py. This directory is not on the default PATH
+# of a test; Lab.use_external_stubs() links the wrappers into the per-test tools dir and
+# sets STUB_DIR to this directory.
+exec python3 "${STUB_DIR:-$(dirname "$0")}/node_stub.py" "$@"

@@ -1,4 +1,4 @@
-"""What scripts 01-06 and 08-10 actually call, with the VALUES they pass.
+"""What scripts 01-10 actually call, with the VALUES they pass.
 
 ``EXPECTED_CALLS`` is keyed by the scripts found on disk. Each row names the literal
 call site in the script (``aws_owner backup start-copy-job``), the profile and
@@ -27,6 +27,7 @@ from typing import Any, Callable
 import botocore.session
 import lab_scenarios as sc
 import lab_scenarios_ops as ops
+import lab_scenarios_portal as pt
 import pytest
 import yaml
 from botocore import xform_name
@@ -403,6 +404,53 @@ EXPECTED_CALLS: dict[str, list[Row]] = {
             region="us-east-1",
         ),
     ],
+    "07_portal_config.sh": [
+        aws("print", "aws_recipient sts get-caller-identity"),
+        aws("print", "aws_recipient backup list-backup-vaults", {"--by-shared": []}, region=PRIMARY),
+        aws("print", "aws_recipient backup list-backup-vaults", {"--by-shared": []}, region=sc.SECOND),
+        Row(
+            "print",
+            "describe_stack recipient",
+            "cloudformation",
+            "describe-stacks",
+            {"--stack-name": f"shared-vault-lab-recipient-{PRIMARY}"},
+            RECIPIENT,
+            PRIMARY,
+        ),
+        aws("check", "aws_recipient sts get-caller-identity"),
+        aws("check", "aws_recipient lambda list-functions"),
+        aws(
+            "check",
+            "aws_recipient iam get-role-policy",
+            {"--role-name": pt.ROLE_NAME, "--policy-name": "AwsBackupRead"},
+        ),
+        aws(
+            "check",
+            "aws_recipient lambda invoke",
+            {"--function-name": pt.FUNCTION, "--payload": pt.SHARED_PAYLOAD},
+        ),
+        aws(
+            "check",
+            "aws_recipient lambda invoke",
+            {"--function-name": pt.FUNCTION, "--payload": pt.RP_PAYLOAD},
+        ),
+        aws("deploy", "aws_recipient sts get-caller-identity"),
+        aws("deploy", "aws_recipient cloudformation describe-stacks"),
+        ext("deploy", "run_external ./scripts/sandbox.sh", "sandbox.sh --once"),
+        aws("deploy-fresh", "aws_recipient cloudformation describe-stacks"),
+        ext("deploy-fresh", "run_external npm", "npm ci"),
+        ext("deploy-fresh", "run_external ./scripts/sandbox.sh", "sandbox.sh --once"),
+        aws("deploy-existing", "aws_recipient cloudformation describe-stacks"),
+        ext("deploy-existing", "run_external python3", "portal_preflight.py --print-sandbox-identifier"),
+        ext("deploy-existing", "run_external ./scripts/sandbox.sh", "sandbox.sh --once"),
+        aws("ui", "aws_recipient sts get-caller-identity"),
+        ext("ui", "run_external node", "node -e"),
+        ext("ui", "run_external npx", "playwright test shared-vault-lab\\.spec\\.ts$ --reporter=json"),
+        aws("ui-provision", "aws_recipient sts get-caller-identity"),
+        ext("ui-provision", "run_external npm", "npm ci"),
+        ext("ui-provision", "run_external npx", "playwright install chromium"),
+        ext("ui-provision", "run_external make", "portal-demo-user"),
+    ],
     "08_restore.sh": [
         aws("cli", "aws_recipient sts get-caller-identity"),
         aws(
@@ -675,6 +723,93 @@ def run_06_cost(lab: Lab, **kw: Any) -> Result:
     return lab.run("06_verify.sh", "--cost", "--since", "2026-10-01", env={"LAB_NOW": PINNED_NOW}, **kw)
 
 
+def run_07_print(lab: Lab, **kw: Any) -> Result:
+    lab.write_scenario(pt.print_scenario())
+    return lab.run("07_portal_config.sh", "--print", env={"LAB_SECOND_REGION": sc.SECOND}, **kw)
+
+
+def run_07_check(lab: Lab, **kw: Any) -> Result:
+    lab.write_scenario(pt.check("arn-present"))
+    return lab.run(
+        "07_portal_config.sh", "--check", "--expect", "arn-present", env={"LAB_SECOND_REGION": sc.SECOND}, **kw
+    )
+
+
+def run_07_deploy(lab: Lab, **kw: Any) -> Result:
+    lab.use_external_stubs()
+    lab.make_portal(outputs=False)
+    lab.write_scenario(pt.deploy())
+    return lab.run(
+        "07_portal_config.sh",
+        "--deploy",
+        "--stage",
+        "regions-only",
+        "--identifier",
+        pt.SANDBOX_ID,
+        "--apply",
+        env={"LAB_SECOND_REGION": sc.SECOND},
+        **kw,
+    )
+
+
+def run_07_deploy_fresh(lab: Lab, **kw: Any) -> Result:
+    lab.use_external_stubs()
+    lab.make_portal(outputs=False, node_modules=False, config=False)
+    lab.write_scenario(pt.deploy())
+    return lab.run(
+        "07_portal_config.sh", "--deploy", "--stage", "regions-only", "--identifier", pt.SANDBOX_ID, "--apply", **kw
+    )
+
+
+def run_07_deploy_existing(lab: Lab, **kw: Any) -> Result:
+    lab.use_external_stubs()
+    lab.make_portal(outputs=True)
+    (lab.root / "portal.local.env").write_text("AMPLIFY_PORTAL_BACKUP_REGIONS=ap-northeast-3\n", encoding="utf-8")
+    lab.write_scenario(pt.deploy())
+    return lab.run(
+        "07_portal_config.sh",
+        "--deploy",
+        "--stage",
+        "full",
+        "--identifier",
+        pt.SANDBOX_ID,
+        "--apply",
+        env={"STUB_PREFLIGHT_ID": pt.SANDBOX_ID},
+        **kw,
+    )
+
+
+def run_07_ui(lab: Lab, **kw: Any) -> Result:
+    lab.use_external_stubs()
+    lab.make_portal()
+    lab.write_scenario(pt.base())
+    return lab.run(
+        "07_portal_config.sh",
+        "--ui",
+        "--expect",
+        "arn-present",
+        "--apply",
+        env={"PORTAL_USER": pt.USERNAME, "PORTAL_PASSWORD": pt.PASSWORD},
+        **kw,
+    )
+
+
+def run_07_ui_provision(lab: Lab, **kw: Any) -> Result:
+    lab.use_external_stubs()
+    lab.make_portal(node_modules=False, chromium=False, config=False)
+    lab.write_scenario(pt.base())
+    return lab.run(
+        "07_portal_config.sh",
+        "--ui",
+        "--expect",
+        "arn-missing",
+        "--provision-user",
+        "--apply",
+        env={"STUB_MAKE_PASSWORD": pt.PASSWORD},
+        **kw,
+    )
+
+
 def run_08_cli(lab: Lab, **kw: Any) -> Result:
     lab.write_scenario(ops.restore("cli"))
     return lab.run("08_restore.sh", "--apply", **kw)
@@ -710,6 +845,13 @@ RUNS: dict[tuple[str, str], Callable[..., Result]] = {
     ("05_accept_share.sh", "accept"): run_05_accept,
     ("06_verify.sh", "verify"): run_06_verify,
     ("06_verify.sh", "cost"): run_06_cost,
+    ("07_portal_config.sh", "print"): run_07_print,
+    ("07_portal_config.sh", "check"): run_07_check,
+    ("07_portal_config.sh", "deploy"): run_07_deploy,
+    ("07_portal_config.sh", "deploy-fresh"): run_07_deploy_fresh,
+    ("07_portal_config.sh", "deploy-existing"): run_07_deploy_existing,
+    ("07_portal_config.sh", "ui"): run_07_ui,
+    ("07_portal_config.sh", "ui-provision"): run_07_ui_provision,
     ("08_restore.sh", "cli"): run_08_cli,
     ("08_restore.sh", "portal"): run_08_portal,
     ("09_revoke_share.sh", "revoke"): run_09_revoke,
@@ -919,6 +1061,114 @@ def test_required_actions_have_a_pass_role_entry_for_both_service_roles() -> Non
     data = json.loads((SCRIPTS_DIR / "lib" / "required-actions.json").read_text(encoding="utf-8"))
     assert "iam:PassRole" in data["operator-owner"]
     assert "iam:PassRole" in data["operator-recipient"]
+
+
+# Operator actions that the success runs cannot exercise, each with the reason. The parity
+# test subtracts these from the operator groups before it compares them with the record,
+# so a stale entry (named but never needed and not listed here) is caught.
+NOT_EXERCISED: dict[str, str] = {
+    "cloudformation:DescribeStackEvents": "only read on a failed deploy (02/07), not in a success run",
+    "ec2:DescribeSecurityGroups": "01 reads it only when a security group id is given; the success run does not",
+    "iam:PassRole": "passed to CloudFormation for the two service roles, never a direct CLI call",
+    "organizations:ListAWSServiceAccessForOrganization": "01 reads it only inside an organization; the success run is standalone",
+}
+
+_RECORDED_ACTIONS: set[str] | None = None
+
+
+def _record_operator_actions(lab: Lab) -> set[str]:
+    """The service:operation set recorded by every success run (computed once per session)."""
+    global _RECORDED_ACTIONS
+    if _RECORDED_ACTIONS is None:
+        recorded: set[str] = set()
+        for index, (script, run) in enumerate(ALL_RUNS):
+            local = Lab(lab.tmp / f"parity-{index}")
+            result = RUNS[(script, run)](local)
+            assert result.rc == 0, result.out + result.err
+            recorded |= _actions_of(result.calls)
+        _RECORDED_ACTIONS = recorded
+    return _RECORDED_ACTIONS
+
+
+def test_required_actions_parity(lab: Lab) -> None:
+    """The operator groups and the recorded calls agree exactly, once NOT_EXERCISED is removed.
+
+    The cover test only forbids a call that no group names. This test is the other
+    direction: a named operator action that no success run makes, and that is not listed
+    in NOT_EXERCISED with a reason, fails here (a permission the README would ask for
+    without the lab needing it).
+    """
+    data = json.loads((SCRIPTS_DIR / "lib" / "required-actions.json").read_text(encoding="utf-8"))
+    operator = {a for key in ("operator-owner", "operator-recipient", "operator-optional") for a in data[key]}
+    recorded = _record_operator_actions(lab)
+    # Every documented exception must be a real operator action (no stale reason).
+    stale_reasons = set(NOT_EXERCISED) - operator
+    assert not stale_reasons, f"NOT_EXERCISED names actions no group lists: {sorted(stale_reasons)}"
+    # Nothing is both exercised and marked not-exercised.
+    contradictions = recorded & set(NOT_EXERCISED)
+    assert not contradictions, f"NOT_EXERCISED lists actions a run does make: {sorted(contradictions)}"
+    unexercised = operator - recorded - set(NOT_EXERCISED)
+    assert not unexercised, (
+        "operator actions in required-actions.json that no success run makes and that are "
+        f"not documented in NOT_EXERCISED: {sorted(unexercised)}"
+    )
+    uncovered = recorded - operator
+    assert not uncovered, f"recorded calls with no operator entry: {sorted(uncovered)}"
+
+
+# The resource types the templates create, with the provisioning group whose credentials
+# CloudFormation uses. Types whose pinned schema declares no handler permissions (FSx) are
+# listed so the test records that they were considered; their actions are hand-transcribed
+# (E23, not yet run on real environment).
+PROVISIONING_TYPES: dict[str, str] = {
+    "AWS::Backup::BackupVault": "cloudformation-provisioning-owner",
+    "AWS::Backup::LogicallyAirGappedBackupVault": "cloudformation-provisioning-owner",
+    "AWS::FSx::FileSystem": "cloudformation-provisioning-owner",
+    "AWS::FSx::StorageVirtualMachine": "cloudformation-provisioning-owner",
+    "AWS::FSx::Volume": "cloudformation-provisioning-owner",
+    "AWS::IAM::Role": "cloudformation-provisioning-owner",
+    "AWS::KMS::Key": "cloudformation-provisioning-owner",
+    "AWS::KMS::Alias": "cloudformation-provisioning-owner",
+    "AWS::RAM::ResourceShare": "cloudformation-provisioning-owner",
+}
+
+
+def _template_types() -> set[str]:
+    """Every AWS resource type declared by the lab templates."""
+    from cfnlint.decode import cfn_yaml
+
+    types: set[str] = set()
+    for path in (LAB_SRC / "cloudformation").glob("*.yaml"):
+        doc = json.loads(json.dumps(cfn_yaml.load(str(path))))
+        for resource in (doc.get("Resources") or {}).values():
+            if isinstance(resource, dict) and isinstance(resource.get("Type"), str):
+                types.add(resource["Type"])
+    return types
+
+
+def test_provisioning_covers_schema_handlers() -> None:
+    """The provisioning groups cover the handler permissions of the pinned cfn-lint schema.
+
+    For every resource type the templates create, the IAM actions the pinned cfn-lint
+    resource schema lists under ``handlers[*].permissions`` must be a subset of the
+    provisioning group CloudFormation runs under. Types whose schema lists no permission
+    (FSx) are recorded in PROVISIONING_TYPES but add nothing to compare.
+    """
+    from cfnlint.schema import PROVIDER_SCHEMA_MANAGER
+
+    data = json.loads((SCRIPTS_DIR / "lib" / "required-actions.json").read_text(encoding="utf-8"))
+    # The map is complete: every type a template creates has a provisioning group.
+    assert _template_types() <= set(PROVISIONING_TYPES), sorted(_template_types() - set(PROVISIONING_TYPES))
+    saw_permissions = False
+    for resource_type, group in PROVISIONING_TYPES.items():
+        schema = PROVIDER_SCHEMA_MANAGER.get_resource_schema("us-east-1", resource_type)
+        handlers = getattr(schema, "schema", {}).get("handlers", {})
+        permissions = {p for handler in handlers.values() for p in handler.get("permissions", [])}
+        if permissions:
+            saw_permissions = True
+        missing = permissions - set(data[group])
+        assert not missing, f"{group} does not cover {resource_type}: {sorted(missing)}"
+    assert saw_permissions, "no schema listed any permission; the pinned cfn-lint schemas may have changed"
 
 
 # --------------------------------------------------------------------------

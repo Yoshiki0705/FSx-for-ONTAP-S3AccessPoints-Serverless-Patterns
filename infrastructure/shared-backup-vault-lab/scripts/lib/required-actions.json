@@ -60,6 +60,7 @@
     "fsx:ListTagsForResource",
     "fsx:TagResource",
     "iam:GetRole",
+    "iam:GetRolePolicy",
     "iam:PassRole",
     "iam:SimulatePrincipalPolicy",
     "ram:AcceptResourceShareInvitation",
