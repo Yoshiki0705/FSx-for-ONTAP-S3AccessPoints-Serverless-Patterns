@@ -16,8 +16,8 @@ file) so a lab script can never reach a real AWS endpoint. For every call it:
 3. records the call (argv, parsed flags, profile, Region, environment hints) as
    one JSON line in ``$STUB_CALL_LOG``;
 4. answers from the scenario file ``$STUB_SCENARIO`` (JSON: ``"<service>
-   <subcommand> [--flag] [!--flag]"`` -> ``{"body", "rc", "stderr"}`` or a list of
-   those, returned in order with the last one repeated). A call with no scenario
+   <subcommand> [--flag[=value]] [!--flag]"`` -> ``{"body", "rc", "stderr"}`` or a
+   list of those, returned in order with the last one repeated). A call with no scenario
    entry exits 99 with ``UNSTUBBED call: <key>`` (default deny).
 
 What this does NOT prove: that AWS accepts the call (permissions, service-side
@@ -563,31 +563,45 @@ def validate_custom(
 # --------------------------------------------------------------------------
 
 
-def match_scenario(scenario: dict[str, Any], service: str, sub: str, flags: set[str]) -> str | None:
+def match_scenario(
+    scenario: dict[str, Any],
+    service: str,
+    sub: str,
+    flags: set[str],
+    values: dict[str, list[str]] | None = None,
+) -> str | None:
     """Pick the most specific scenario key for a call.
 
     A key is ``"<service> <subcommand> [--flag ...] [!--flag ...]"``: the listed
-    flags must be present and the ``!`` flags absent. The key with the most
-    constraints wins; ties go to the first in file order.
+    flags must be present and the ``!`` flags absent. A listed flag may carry a
+    value (``--region=ap-northeast-3``, ``--profile=lab-owner``); the call must
+    then pass that value for the flag. The key with the most constraints wins;
+    ties go to the first in file order.
 
     Args:
         scenario: Parsed scenario file.
         service: CLI service name.
         sub: CLI subcommand.
         flags: Flags present in the call (non-global flags and global ones).
+        values: Flag -> values the call passed (to match ``--flag=value`` keys).
 
     Returns:
         The matching key, or None.
     """
     best: str | None = None
     best_score = -1
+    seen = values or {}
     for key in scenario:
         tokens = key.split()
         if len(tokens) < 2 or tokens[0] != service or tokens[1] != sub:
             continue
         required = {t for t in tokens[2:] if not t.startswith("!")}
         forbidden = {t[1:] for t in tokens[2:] if t.startswith("!")}
-        if not required <= flags or forbidden & flags:
+        required_names = {t.partition("=")[0] for t in required}
+        wanted = [t.partition("=")[::2] for t in required if "=" in t]
+        if not required_names <= flags or forbidden & flags:
+            continue
+        if any(value not in seen.get(flag, []) for flag, value in wanted):
             continue
         score = len(required) + len(forbidden)
         if score > best_score:
@@ -699,7 +713,9 @@ def run(argv: list[str]) -> int:
     scenario: dict[str, Any] = {}
     if scenario_path and Path(scenario_path).is_file():
         scenario = json.loads(Path(scenario_path).read_text(encoding="utf-8"))
-    key = match_scenario(scenario, service, sub, flags_present)
+    seen_values: dict[str, list[str]] = {flag: list(tokens) for flag, tokens in groups}
+    seen_values.update(parsed)
+    key = match_scenario(scenario, service, sub, flags_present, seen_values)
     call_key = f"{service} {sub}"
     if key is None:
         record(log_path, {**base, "args": parsed, "positional": positional, "stub_rc": UNSTUBBED})

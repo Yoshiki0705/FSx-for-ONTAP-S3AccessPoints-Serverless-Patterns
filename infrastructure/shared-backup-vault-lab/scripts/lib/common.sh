@@ -635,3 +635,157 @@ irreversible_gate() {
     exit 1
   fi
 }
+
+# --------------------------------------------------------------------------
+# Shared pure helpers for scripts 01-05 (no AWS calls: the call sites stay in the
+# scripts as literal aws_owner / aws_recipient lines)
+# --------------------------------------------------------------------------
+
+# lab_regions: the configured Regions, PRIMARY first, one per line.
+lab_regions() {
+  printf '%s\n' "$LAB_PRIMARY_REGION"
+  if [ -n "${LAB_SECOND_REGION:-}" ]; then
+    printf '%s\n' "$LAB_SECOND_REGION"
+  fi
+}
+
+# lab_join_plus WORD...: join with "+" (Regions in an irreversible-operation token).
+lab_join_plus() {
+  local out="" sep="" word
+  for word in "$@"; do
+    out="$out$sep$word"
+    sep="+"
+  done
+  printf '%s\n' "$out"
+}
+
+# impact_begin / impact LABEL TEXT: the IMPACT block that precedes every gate.
+impact_begin() {
+  printf '=== IMPACT ===\n'
+}
+
+impact() {
+  printf '  - %s : %s\n' "$1" "$2"
+}
+
+# stack_status_class STATUS: ok, busy, failed or absent (empty status).
+stack_status_class() {
+  case ${1:-} in
+    "") echo absent ;;
+    DELETE_COMPLETE) echo absent ;;
+    CREATE_COMPLETE | UPDATE_COMPLETE | UPDATE_ROLLBACK_COMPLETE | IMPORT_COMPLETE) echo ok ;;
+    ROLLBACK_COMPLETE | CREATE_FAILED | ROLLBACK_FAILED | UPDATE_FAILED | UPDATE_ROLLBACK_FAILED | \
+      DELETE_FAILED | REVIEW_IN_PROGRESS | IMPORT_ROLLBACK_FAILED | IMPORT_ROLLBACK_COMPLETE)
+      echo failed
+      ;;
+    *) echo busy ;;
+  esac
+}
+
+# stack_recovery_hint STATUS STACK REGION PROFILE: the recovery commands for a stack
+# in a failed state. The scripts print these and stop; they never delete a stack.
+stack_recovery_hint() {
+  local status=$1 stack=$2 region=$3 profile=$4
+  case $status in
+    UPDATE_ROLLBACK_FAILED)
+      printf '  recover with: aws cloudformation continue-update-rollback --stack-name %s --region %s --profile %s\n' \
+        "$stack" "$region" "$profile"
+      ;;
+    *)
+      printf '  recover with: aws cloudformation delete-stack --stack-name %s --region %s --profile %s\n' \
+        "$stack" "$region" "$profile"
+      printf '  then wait for DELETE_COMPLETE and run this script again\n'
+      ;;
+  esac
+}
+
+# describe_stack owner|recipient STACK: print the describe-stacks JSON of the current
+# Region. Returns 0 when the stack exists, 4 when it does not, 1 when it cannot be read
+# (an unreadable stack is never treated as absent).
+describe_stack() {
+  local kind=$1 stack=$2 out
+  case $kind in
+    owner) out=$(aws_owner cloudformation describe-stacks --stack-name "$stack" 2>&1) || out="FAILED:$out" ;;
+    recipient) out=$(aws_recipient cloudformation describe-stacks --stack-name "$stack" 2>&1) || out="FAILED:$out" ;;
+    *) die_usage "describe_stack: expected owner or recipient" ;;
+  esac
+  case $out in
+    FAILED:*"does not exist"*) return 4 ;;
+    FAILED:*) return 1 ;;
+  esac
+  printf '%s' "$out"
+}
+
+# stack_value JSON KIND KEY: a parameter or output of the first stack in a
+# describe-stacks response. KIND is Outputs or Parameters. Prints nothing when
+# the key is absent.
+stack_value() {
+  local json=$1 kind=$2 key=$3
+  case $kind in
+    Outputs)
+      printf '%s' "$json" | jq -r --arg k "$key" '[.Stacks[0].Outputs[]? | select(.OutputKey == $k) | .OutputValue][0] // empty'
+      ;;
+    Parameters)
+      printf '%s' "$json" | jq -r --arg k "$key" '[.Stacks[0].Parameters[]? | select(.ParameterKey == $k) | .ParameterValue][0] // empty'
+      ;;
+    *) die_usage "stack_value: expected Outputs or Parameters" ;;
+  esac
+}
+
+# stack_value_one LABEL JSON KIND KEY: stack_value, but dies unless there is exactly
+# one non-empty value. Call as: if ! v=$(stack_value_one ...); then exit 1; fi
+stack_value_one() {
+  local label=$1 json=$2 kind=$3 key=$4 raw
+  raw=$(stack_value "$json" "$kind" "$key")
+  require_one "$label" "$(printf '%s' "$raw" | jq -Rs '.')"
+}
+
+# stack_failure_events owner|recipient STACK: print up to 10 FAILED stack events to
+# stderr and keep their text in STACK_FAILURE_TEXT (call it directly, not in $(...)).
+STACK_FAILURE_TEXT=""
+stack_failure_events() {
+  local kind=$1 stack=$2 out
+  STACK_FAILURE_TEXT=""
+  case $kind in
+    owner) out=$(aws_owner cloudformation describe-stack-events --stack-name "$stack" 2>/dev/null) || out="" ;;
+    recipient) out=$(aws_recipient cloudformation describe-stack-events --stack-name "$stack" 2>/dev/null) || out="" ;;
+    *) die_usage "stack_failure_events: expected owner or recipient" ;;
+  esac
+  if [ -z "$out" ]; then
+    echo "  (the stack events could not be read)" >&2
+    return 0
+  fi
+  STACK_FAILURE_TEXT=$(printf '%s' "$out" | jq -r '
+    [.StackEvents[]? | select((.ResourceStatus // "") | test("FAILED"))][0:10][]
+    | "  FAILED \(.LogicalResourceId): \(.ResourceStatusReason // "no reason given")"')
+  if [ -n "$STACK_FAILURE_TEXT" ]; then
+    printf '%s\n' "$STACK_FAILURE_TEXT" >&2
+  fi
+}
+
+# svm_budget FS_JSON SVMS_JSON: print "<svm count> <limit>" for one file system.
+# FS_JSON is fsx describe-file-systems output, SVMS_JSON is fsx
+# describe-storage-virtual-machines output. LAB_RECIPIENT_SVM_LIMIT overrides the
+# table. Returns 3 when the configuration is not in the documented table.
+svm_budget() {
+  local fs=$1 svms=$2 count tp ha net limit
+  count=$(printf '%s' "$svms" | jq -r '[.StorageVirtualMachines[]?] | length') || return 1
+  if [ -n "${LAB_RECIPIENT_SVM_LIMIT:-}" ]; then
+    printf '%s %s\n' "$count" "$LAB_RECIPIENT_SVM_LIMIT"
+    return 0
+  fi
+  tp=$(printf '%s' "$fs" | jq -r '.FileSystems[0].OntapConfiguration | (.ThroughputCapacityPerHAPair // .ThroughputCapacity // empty)') || return 1
+  ha=$(printf '%s' "$fs" | jq -r '.FileSystems[0].OntapConfiguration.HAPairs // 1') || return 1
+  net=$(printf '%s' "$fs" | jq -r '.FileSystems[0].NetworkType // "IPV4"') || return 1
+  case $net in
+    DUAL*) net=DUAL ;;
+    *) net=IPV4 ;;
+  esac
+  if [ -z "$tp" ]; then
+    return 3
+  fi
+  if ! limit=$(lab_py svm-limit --throughput "$tp" --network-type "$net" --ha-pairs "$ha" 2>/dev/null); then
+    return 3
+  fi
+  printf '%s %s\n' "$count" "$limit"
+}

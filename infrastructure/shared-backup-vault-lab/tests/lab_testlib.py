@@ -4,7 +4,9 @@ The harness never reaches AWS. Every run uses:
 
 * a copy of the lab at ``<tmp>/repo/infrastructure/shared-backup-vault-lab`` with a
   fake repository-root ``Makefile`` beside it (the layout the scripts expect);
-* ``PATH = tests/stubs : <pytest python dir> : <dir with only jq> : /usr/bin:/bin``.
+* ``PATH = tests/stubs : <per-test tools dir> : <pytest python dir> : <dir with only jq> : /usr/bin:/bin``.
+  The per-test tools dir starts empty; ``add_tool`` puts fake ``node``, ``npm`` and
+  the like in it and records their calls.
   The dir with only jq is a temporary directory holding one symlink. Homebrew keeps
   ``jq`` and the real ``aws`` in the same directory, so putting jq's own directory on
   PATH would expose the real CLI;
@@ -171,10 +173,12 @@ class Lab:
         self.home = tmp / "home"
         self.cwd = tmp / "cwd"
         self.jq_dir = tmp / "jqbin"
+        self.tools_dir = tmp / "tools"
+        self.external_log = tmp / "external-calls.log"
         self.call_log = tmp / "aws-calls.jsonl"
         self.scenario_path = tmp / "scenario.json"
         self.sleep_log = tmp / "sleep.log"
-        for directory in (self.home, self.cwd, self.jq_dir):
+        for directory in (self.home, self.cwd, self.jq_dir, self.tools_dir):
             directory.mkdir(parents=True)
         shutil.copytree(
             LAB_SRC,
@@ -196,7 +200,9 @@ class Lab:
 
     def path(self) -> str:
         """PATH for lab runs: stubs, the pytest python, a dir with only jq, system dirs."""
-        return os.pathsep.join([str(STUBS), str(Path(sys.executable).parent), str(self.jq_dir), "/usr/bin", "/bin"])
+        return os.pathsep.join(
+            [str(STUBS), str(self.tools_dir), str(Path(sys.executable).parent), str(self.jq_dir), "/usr/bin", "/bin"]
+        )
 
     def env(self, extra: dict[str, str | None] | None = None, lab_env: bool = True) -> dict[str, str]:
         """Build the environment for a run.
@@ -216,6 +222,7 @@ class Lab:
             "STUB_SCENARIO": str(self.scenario_path),
             "STUB_CALL_LOG": str(self.call_log),
             "STUB_SLEEP_LOG": str(self.sleep_log),
+            "STUB_EXTERNAL_LOG": str(self.external_log),
         }
         if lab_env:
             env.update(BASE_LAB_ENV)
@@ -250,6 +257,33 @@ class Lab:
         if not path.is_file():
             return []
         return [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line]
+
+    def add_tool(self, name: str, body: str = "") -> Path:
+        """Put a fake external command (node, npm, ...) in the per-test tools dir.
+
+        The fake appends ``<name> <arguments>`` to the external-call log, then runs
+        ``body`` (shell text, for example ``echo v20.11.0``).
+
+        Args:
+            name: Command name.
+            body: Shell lines to run after the call is logged.
+
+        Returns:
+            The path of the fake.
+        """
+        path = self.tools_dir / name
+        path.write_text(
+            f'#!/bin/sh\nprintf \'%s\\n\' "{name} $*" >>"$STUB_EXTERNAL_LOG"\n{body}\n',
+            encoding="utf-8",
+        )
+        path.chmod(0o755)
+        return path
+
+    def external_calls(self) -> list[str]:
+        """Return the logged calls of the fake external commands (``name args``)."""
+        if not self.external_log.is_file():
+            return []
+        return self.external_log.read_text(encoding="utf-8").splitlines()
 
     def install_script(self, name: str, text: str) -> Path:
         """Write an executable script under ``scripts/`` of the lab copy.

@@ -18,6 +18,9 @@ Usage: ``python3 lab_helpers.py <command> [options]``. Commands:
 * ``restore-metadata`` ``--metadata`` value for a restore into an FSx for ONTAP volume
 * ``cost-dates``       Start/End dates for a Cost Explorer request
 * ``valid-date``       exit 0 when the argument is a real YYYY-MM-DD date
+* ``age-minutes``      whole minutes between two timestamps (invitation age)
+* ``node-min-major``   minimum Node.js major version for the portal tooling
+* ``text-digest``      sha256[:32] of the arguments joined with "|" (idempotency tokens)
 
 Nothing here calls AWS. Whether the shapes produced here are accepted by the
 services is not yet run on real environment.
@@ -88,6 +91,11 @@ SVM_LIMITS_ONE_HA_PAIR = {
     6144: (24, 11),
 }
 SVM_LIMIT_MULTI_HA_PAIR = 11
+# Minimum Node.js major version for the portal tooling (07 --ui, sandbox.sh).
+# Source: the prerequisites table in solutions/amplify-portal/docs/GETTING-STARTED.md
+# ("20.x or later"). The portal README says 18.17+; the stricter value is used.
+# A test keeps this constant equal to the table.
+NODE_MIN_MAJOR = 20
 
 ISO_RE = re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:\d{2})?$", re.ASCII)
 DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$", re.ASCII)
@@ -149,6 +157,35 @@ def add_days(start: str, days: int) -> str:
         The shifted timestamp as ``YYYY-MM-DDTHH:MM:SSZ``.
     """
     return format_iso(parse_iso(start) + dt.timedelta(days=days))
+
+
+def age_minutes(start: str, now: str) -> int:
+    """Whole minutes from ``start`` to ``now`` (never negative).
+
+    Args:
+        start: ISO 8601 timestamp of the event.
+        now: ISO 8601 timestamp of the present.
+
+    Returns:
+        Elapsed whole minutes, 0 when ``start`` is in the future.
+    """
+    seconds = (parse_iso(now) - parse_iso(start)).total_seconds()
+    return max(int(seconds // 60), 0)
+
+
+def text_digest(parts: list[str]) -> str:
+    """Hash text parts into a stable 32-hex-digit token.
+
+    Used for idempotency tokens that must be the same on every run for the same
+    inputs (a retry must not start a second irreversible copy).
+
+    Args:
+        parts: Values that identify the operation; joined with ``|``.
+
+    Returns:
+        First 32 hex digits of the SHA-256 of the joined text.
+    """
+    return hashlib.sha256("|".join(parts).encode("utf-8")).hexdigest()[:32]
 
 
 def valid_date(value: str) -> bool:
@@ -730,6 +767,12 @@ def build_parser() -> argparse.ArgumentParser:
 
     vd = sub.add_parser("valid-date")
     vd.add_argument("value")
+    am = sub.add_parser("age-minutes")
+    am.add_argument("--from", dest="start", required=True)
+    am.add_argument("--now", required=True)
+    sub.add_parser("node-min-major")
+    td = sub.add_parser("text-digest")
+    td.add_argument("parts", nargs="+")
     return parser
 
 
@@ -813,6 +856,12 @@ def main(argv: list[str] | None = None) -> int:
             print(json.dumps(cost_dates(args.since, record, args.now), sort_keys=True))
         elif args.command == "valid-date":
             return 0 if valid_date(args.value) else 1
+        elif args.command == "age-minutes":
+            print(age_minutes(args.start, args.now))
+        elif args.command == "node-min-major":
+            print(NODE_MIN_MAJOR)
+        elif args.command == "text-digest":
+            print(text_digest(args.parts))
     except (ValueError, RuntimeError) as exc:
         print(f"error: {exc}", file=sys.stderr)
         return 1
