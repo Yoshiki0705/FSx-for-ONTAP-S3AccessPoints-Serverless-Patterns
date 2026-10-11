@@ -1,4 +1,4 @@
-"""Plan mode, --apply and the confirmation token of the state-changing scripts 02-05.
+"""Plan mode, --apply and the confirmation token of the state-changing scripts 02-05 and 08-10.
 
 Every state-changing script prints a plan and exits 10 without --apply. The two
 irreversible steps (03 creates the air-gapped vault, 04 copies into it) also need
@@ -11,6 +11,7 @@ from __future__ import annotations
 from typing import Any
 
 import lab_scenarios as sc
+import lab_scenarios_ops as ops
 import pytest
 from lab_testlib import Lab, assert_called
 
@@ -34,6 +35,10 @@ PLANS = {
     "04-all": (sc.backup_copy, ("04_backup_and_copy.sh", "--retention-days", "7"), NOW),
     "04-backup": (sc.backup_copy, ("04_backup_and_copy.sh", "--phase", "backup"), NOW),
     "05": (sc.accept, ("05_accept_share.sh",), {"LAB_NOW": "2026-10-11T03:00:00Z"}),
+    "08-cli": (ops.restore, ("08_restore.sh",), {}),
+    "09": (ops.revoke, ("09_revoke_share.sh",), {}),
+    "10": (ops.teardown, ("10_teardown.sh",), {}),
+    "10-delete-key": (ops.teardown, ("10_teardown.sh", "--delete-key"), {}),
 }
 
 
@@ -334,3 +339,73 @@ def test_05_apply_accepts_exactly_one_invitation(lab: Lab) -> None:
     result = lab.run("05_accept_share.sh", "--apply", env={"LAB_NOW": "2026-10-11T03:00:00Z"})
     assert result.rc == 0, result.out + result.err
     assert len(calls_of(result.calls, "accept-resource-share-invitation")) == 1
+
+
+# --------------------------------------------------------------------------
+# 08, 09: plan first; no token (a restore adds a volume, a revoke can be undone)
+# --------------------------------------------------------------------------
+
+
+def test_08_apply_restores_without_a_token(lab: Lab) -> None:
+    lab.write_scenario(ops.restore())
+    result = lab.run("08_restore.sh", "--apply")
+    assert result.rc == 0, result.out + result.err
+    assert len(calls_of(result.calls, "start-restore-job")) == 1
+
+
+def test_09_apply_revokes_without_a_token(lab: Lab) -> None:
+    lab.write_scenario(ops.revoke())
+    result = lab.run("09_revoke_share.sh", "--apply")
+    assert result.rc == 0, result.out + result.err
+    assert len(calls_of(result.calls, "delete-resource-share")) == 1
+
+
+# --------------------------------------------------------------------------
+# 10: --apply deletes; --delete-key needs the exact token
+# --------------------------------------------------------------------------
+
+TOKEN_10 = ops.DELETE_KEY_TOKEN
+
+
+def test_10_delete_key_plan_prints_the_token_and_the_full_command(lab: Lab) -> None:
+    lab.write_scenario(ops.teardown())
+    result = lab.run("10_teardown.sh", "--delete-key")
+    assert result.rc == 10
+    assert TOKEN_10 == "delete-key-alias/shared-vault-lab-fs"
+    assert f"./scripts/10_teardown.sh --apply --delete-key --confirm {TOKEN_10}" in result.out
+
+
+@pytest.mark.parametrize(
+    "confirm",
+    [None, "", "delete-key-alias/other-fs", "delete-key-shared-vault-lab-fs", "delete-key-alias/shared-vault-lab-fs "],
+)
+def test_10_delete_key_without_the_right_token_changes_nothing(lab: Lab, confirm: str | None) -> None:
+    lab.write_scenario(ops.teardown())
+    args = ["--apply", "--delete-key"] + (["--confirm", confirm] if confirm is not None else [])
+    result = lab.run("10_teardown.sh", *args)
+    assert result.rc == 1
+    assert f"--confirm {TOKEN_10}" in result.err
+    assert mutating(result.calls) == []
+    assert not calls_of(result.calls, "schedule-key-deletion")
+
+
+def test_10_token_in_the_environment_is_not_a_confirmation(lab: Lab) -> None:
+    lab.write_scenario(ops.teardown())
+    result = lab.run("10_teardown.sh", "--apply", "--delete-key", env={"LAB_CONFIRM": TOKEN_10, "CONFIRM": TOKEN_10})
+    assert result.rc == 1
+    assert mutating(result.calls) == []
+
+
+def test_10_apply_without_delete_key_never_schedules_the_key(lab: Lab) -> None:
+    lab.write_scenario(ops.teardown())
+    result = lab.run("10_teardown.sh", "--apply")
+    assert result.rc == 0, result.out + result.err
+    assert not calls_of(result.calls, "schedule-key-deletion")
+    assert len(calls_of(result.calls, "delete-volume")) == 2
+
+
+def test_10_confirm_without_delete_key_is_a_usage_error(lab: Lab) -> None:
+    lab.write_scenario(ops.teardown())
+    result = lab.run("10_teardown.sh", "--apply", "--confirm", TOKEN_10)
+    assert result.rc == 2
+    assert result.calls == []

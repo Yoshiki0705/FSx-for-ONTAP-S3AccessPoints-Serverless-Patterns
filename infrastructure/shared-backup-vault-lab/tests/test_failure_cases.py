@@ -1,4 +1,4 @@
-"""Failure cases of scripts 01-05.
+"""Failure cases of scripts 01-06, 08 and 09 (script 10 is in test_teardown.py).
 
 A test that expects an abort checks four things: the exit code, a message that
 belongs to that abort, that the script got as far as the read that caused it, and
@@ -15,6 +15,7 @@ from pathlib import Path
 from typing import Any
 
 import lab_scenarios as sc
+import lab_scenarios_ops as ops
 import pytest
 from lab_testlib import LAB_SRC, SENTINEL, Lab, assert_called
 
@@ -137,6 +138,9 @@ GUARDED = {
         NOW,
     ),
     "05": (sc.accept, ("05_accept_share.sh", "--apply"), RECIPIENT_PROFILE, NOW),
+    "08": (ops.restore, ("08_restore.sh", "--apply"), RECIPIENT_PROFILE, {}),
+    "09": (ops.revoke, ("09_revoke_share.sh", "--apply"), OWNER_PROFILE, {}),
+    "10": (ops.teardown, ("10_teardown.sh", "--apply"), OWNER_PROFILE, {}),
 }
 
 
@@ -1073,8 +1077,616 @@ def test_plan_impact_lines_05_accept_share(lab: Lab) -> None:
     assert "valid for 12 hours" in result.out
 
 
+def test_plan_impact_lines_08_restore(lab: Lab) -> None:
+    lab.write_scenario(ops.restore())
+    result = lab.run("08_restore.sh")
+    assert result.rc == 10, result.out + result.err
+    assert _labels(result.out) == ["creates", "uses", "cost", "remains after revoke"]
+    assert "stays after 09_revoke_share.sh" in result.out
+    assert not calls_of(result.calls, "start-restore-job")
+
+
+def test_plan_impact_lines_09_revoke_share(lab: Lab) -> None:
+    lab.write_scenario(ops.revoke())
+    result = lab.run("09_revoke_share.sh")
+    assert result.rc == 10, result.out + result.err
+    assert _labels(result.out) == ["effect", "remains", "undo"]
+    assert "--repair-share" in result.out
+
+
+def test_plan_impact_lines_10_teardown(lab: Lab) -> None:
+    lab.write_scenario(ops.teardown())
+    result = lab.run("10_teardown.sh")
+    assert result.rc == 10, result.out + result.err
+    assert _labels(result.out) == ["deletes", "irreversible", "remains", "cost continues"]
+    assert "SkipFinalBackup=true" in result.out
+
+
+def test_plan_impact_lines_10_delete_key(lab: Lab) -> None:
+    lab.write_scenario(ops.teardown())
+    result = lab.run("10_teardown.sh", "--delete-key")
+    assert result.rc == 10, result.out + result.err
+    assert _labels(result.out) == [
+        "deletes",
+        "irreversible",
+        "remains",
+        "cost continues",
+        "schedules",
+        "while pending",
+        "unknown",
+    ]
+    assert "7-day pending window" in result.out
+    assert f"--apply --delete-key --confirm {ops.DELETE_KEY_TOKEN}" in result.out
+
+
 def test_scripts_state_what_is_not_yet_run_on_real_environment() -> None:
-    for name in ("02_deploy.sh", "03_deploy_lag_share.sh", "04_backup_and_copy.sh", "05_accept_share.sh"):
+    names = (
+        "02_deploy.sh",
+        "03_deploy_lag_share.sh",
+        "04_backup_and_copy.sh",
+        "05_accept_share.sh",
+        "06_verify.sh",
+        "08_restore.sh",
+        "09_revoke_share.sh",
+        "10_teardown.sh",
+    )
+    for name in names:
         text = Path(LAB_SRC / "scripts" / name).read_text(encoding="utf-8")
         assert "not yet run on real environment" in text, name
         assert not re.search(r"\bverified\b", text, re.I), name
+
+
+# --------------------------------------------------------------------------
+# 06: the checks fail when the observed state differs from the expected shape
+# --------------------------------------------------------------------------
+
+RECIPIENT_SHARED = f"backup list-backup-vaults --by-shared --profile={RECIPIENT_PROFILE}"
+OWNER_SHARED = f"backup list-backup-vaults --by-shared --profile={OWNER_PROFILE}"
+NO_ACCOUNT_LIST = "backup list-recovery-points-by-backup-vault !--backup-vault-account-id"
+WITH_ACCOUNT_LIST = "backup list-recovery-points-by-backup-vault --backup-vault-account-id"
+VERIFY_NOW = {"LAB_NOW": "2026-10-11T12:00:00Z"}
+
+
+def run06(lab: Lab, *updates: dict[str, Any], args: tuple[str, ...] = ()):
+    lab.write_scenario(sc.merged(ops.verify(), *updates))
+    return lab.run("06_verify.sh", *args, env=VERIFY_NOW)
+
+
+def test_06_success_prints_expected_next_to_measured_and_changes_nothing(lab: Lab) -> None:
+    result = run06(lab)
+    assert result.rc == 0, result.out + result.err
+    for tag in ("V1", "V2", "V4"):
+        assert f"{tag} expected:" in result.out
+    assert "V1 measured:" in result.out and "V4 measured:" in result.out
+    assert "Failed: 0" in result.out
+    assert mutating(result.calls) == []
+    assert "first observation" not in result.out.lower() and "n=1" not in result.out
+
+
+def test_06_results_count_as_observations(lab: Lab) -> None:
+    """06 is read-only, so its checks are recorded in apply mode (the record row ignores plan runs)."""
+    result = run06(lab)
+    assert result.rc == 0
+    checks = [r for r in lab.records() if r["event"] == "check_pass"]
+    assert {"V1", "V2", "V4"} <= {r["item"] for r in checks}
+    assert {r["mode"] for r in checks} == {"apply"}
+
+
+def test_06_empty_recipient_list_fails(lab: Lab) -> None:
+    result = run06(lab, {RECIPIENT_SHARED: {"body": {"BackupVaultList": []}}})
+    assert result.rc == 1
+    assert "[V1]" in result.out and "holds 0 rows" in result.out
+    assert_called(result.calls, "backup", "list-backup-vaults", {"--by-shared": []}, profile=RECIPIENT_PROFILE)
+    assert mutating(result.calls) == []
+
+
+def test_06_owner_list_not_empty_fails(lab: Lab) -> None:
+    result = run06(lab, {OWNER_SHARED: {"body": {"BackupVaultList": [ops.shared_row()]}}})
+    assert result.rc == 1
+    assert "[V2]" in result.out and "holds 1 rows, expected none" in result.out
+    assert_called(result.calls, "backup", "list-backup-vaults", {"--by-shared": []}, profile=OWNER_PROFILE)
+
+
+def test_06_no_account_id_call_succeeds_fails(lab: Lab) -> None:
+    result = run06(lab, {NO_ACCOUNT_LIST: {"body": {"RecoveryPoints": []}}})
+    assert result.rc == 1
+    assert "[V4]" in result.out and "WITHOUT --backup-vault-account-id succeeded" in result.out
+    assert_called(
+        result.calls, "backup", "list-recovery-points-by-backup-vault", {"--backup-vault-name": sc.LAG_VAULT}, times=2
+    )
+
+
+def test_06_no_account_id_call_with_another_error_code_fails(lab: Lab) -> None:
+    result = run06(lab, {NO_ACCOUNT_LIST: sc.err("ResourceNotFoundException", "no such vault")})
+    assert result.rc == 1
+    assert "returned ResourceNotFoundException, expected AccessDeniedException" in result.out
+
+
+def test_06_wrong_account_or_type_fails(lab: Lab) -> None:
+    wrong_account = ops.shared_row(account="999988887777")
+    result = run06(lab, {RECIPIENT_SHARED: {"body": {"BackupVaultList": [wrong_account]}}})
+    assert result.rc == 1
+    assert "account=999988887777" in result.out
+    no_type = run06(lab, {RECIPIENT_SHARED: {"body": {"BackupVaultList": [ops.shared_row(vault_type="")]}}})
+    assert no_type.rc == 1
+    assert "VaultType=absent" in no_type.out
+
+
+def test_06_two_rows_with_the_vault_name_fail(lab: Lab) -> None:
+    result = run06(lab, {RECIPIENT_SHARED: {"body": {"BackupVaultList": [ops.shared_row(), ops.shared_row()]}}})
+    assert result.rc == 1
+    assert "holds 2 rows named" in result.out
+
+
+def test_06_row_shape_difference_is_a_warning_not_a_failure(lab: Lab) -> None:
+    row = ops.shared_row()
+    row["VaultState"] = "AVAILABLE"
+    row["NumberOfRecoveryPoints"] = 1
+    result = run06(lab, {RECIPIENT_SHARED: {"body": {"BackupVaultList": [row]}}})
+    assert result.rc == 0, result.out + result.err
+    assert "VaultState=AVAILABLE and NumberOfRecoveryPoints=1" in result.out
+    assert "not a failure" in result.out
+
+
+def test_06_no_recovery_point_yet_is_a_warning(lab: Lab) -> None:
+    result = run06(lab, {WITH_ACCOUNT_LIST: {"body": {"RecoveryPoints": []}}})
+    assert result.rc == 0, result.out + result.err
+    assert "no recovery point is listed in the shared vault yet" in result.out
+    assert not calls_of(result.calls, "get-recovery-point-restore-metadata")
+
+
+def test_06_recovery_point_arn_of_another_form_fails(lab: Lab) -> None:
+    rp = ops.shared_recovery_point()
+    rp["RecoveryPointArn"] = sc.SRC_RP
+    result = run06(lab, {WITH_ACCOUNT_LIST: {"body": {"RecoveryPoints": [rp]}}})
+    assert result.rc == 1
+    assert "do not have the expected cross-account form" in result.out
+
+
+def test_06_unreadable_restore_metadata_fails(lab: Lab) -> None:
+    result = run06(lab, {"backup get-recovery-point-restore-metadata": sc.err("AccessDeniedException", "no")})
+    assert result.rc == 1
+    assert "[V7]" in result.out and "could not read the restore metadata" in result.out
+
+
+# -- 06 --cost ---------------------------------------------------------------
+
+COST_NOW = {"LAB_NOW": "2026-10-11T00:00:00Z"}
+
+
+def run06_cost(lab: Lab, *updates: dict[str, Any], args: tuple[str, ...] = ("--cost", "--since", "2026-10-01")):
+    lab.write_scenario(sc.merged(ops.cost(), *updates))
+    return lab.run("06_verify.sh", *args, env=COST_NOW)
+
+
+def test_06_cost_builds_tag_filter_call(lab: Lab) -> None:
+    result = run06_cost(lab)
+    assert result.rc == 0, result.out + result.err
+    ce = calls_of(result.calls, "get-cost-and-usage")
+    assert len(ce) == 4
+    flt = '{"Tags":{"Key":"Project","Values":["shared-vault-lab"]}}'
+    for profile in (OWNER_PROFILE, RECIPIENT_PROFILE):
+        mine = [c for c in ce if c["profile"] == profile]
+        assert len(mine) == 2
+        assert sorted("--filter" in c["args"] for c in mine) == [False, True]
+        tagged = next(c for c in mine if "--filter" in c["args"])
+        assert tagged["args"]["--filter"] == [flt]
+        for call in mine:
+            assert call["region"] == "us-east-1"
+            assert call["args"]["--granularity"] == ["DAILY"]
+            assert call["args"]["--metrics"] == ["UnblendedCost"]
+            assert call["args"]["--group-by"] == ["Type=DIMENSION,Key=SERVICE"]
+            assert call["args"]["--time-period"] == ["Start=2026-10-01,End=2026-10-12"]
+    assert mutating(result.calls) == []
+
+
+def test_06_cost_access_denied_warns_with_command(lab: Lab) -> None:
+    denied = sc.err("AccessDeniedException", "User is not authorized to perform: ce:GetCostAndUsage")
+    result = run06_cost(lab, {f"ce get-cost-and-usage --profile={RECIPIENT_PROFILE}": denied})
+    assert result.rc == 0, result.out + result.err
+    assert "[E26] Cost Explorer denied access for the recipient profile" in result.out
+    command = (
+        "aws ce get-cost-and-usage --profile lab-recipient --region us-east-1 --output json "
+        "--time-period Start=2026-10-01,End=2026-10-12 --granularity DAILY --metrics UnblendedCost "
+        "--group-by Type=DIMENSION,Key=SERVICE --filter "
+        '\'{"Tags":{"Key":"Project","Values":["shared-vault-lab"]}}\''
+    )
+    assert command in result.out
+    # The owner was still read, and the denied account stops after its first request.
+    assert len([c for c in calls_of(result.calls, "get-cost-and-usage") if c["profile"] == OWNER_PROFILE]) == 2
+    assert len([c for c in calls_of(result.calls, "get-cost-and-usage") if c["profile"] == RECIPIENT_PROFILE]) == 1
+
+
+def test_06_cost_other_error_fails(lab: Lab) -> None:
+    result = run06_cost(lab, {"ce get-cost-and-usage": sc.err("ThrottlingException", "slow down")})
+    assert result.rc == 1
+    assert "[E26] Cost Explorer call failed" in result.out
+    assert "ThrottlingException" in result.out
+
+
+def test_06_cost_without_since_or_record_exits_2(lab: Lab) -> None:
+    lab.write_scenario(ops.cost())
+    result = lab.run("06_verify.sh", "--cost", env=COST_NOW)
+    assert result.rc == 2
+    assert "no start date for --cost" in result.err
+    assert result.calls == []
+
+
+def test_06_cost_takes_the_start_date_from_the_first_record(lab: Lab) -> None:
+    (lab.root / "lab-run.local.jsonl").write_text(
+        '{"ts": "2026-10-03T08:00:00Z", "script": "01", "event": "check_pass"}\n', encoding="utf-8"
+    )
+    lab.write_scenario(ops.cost())
+    result = lab.run("06_verify.sh", "--cost", env=COST_NOW)
+    assert result.rc == 0, result.out + result.err
+    assert calls_of(result.calls, "get-cost-and-usage")[0]["args"]["--time-period"] == [
+        "Start=2026-10-03,End=2026-10-12"
+    ]
+
+
+@pytest.mark.parametrize(
+    "args", [("--since", "2026-10-01"), ("--cost", "--region", PRIMARY), ("--cost", "--since", "2026-13-40")]
+)
+def test_06_cost_options_are_validated(lab: Lab, args: tuple[str, ...]) -> None:
+    lab.write_scenario(ops.cost())
+    result = lab.run("06_verify.sh", *args, env=COST_NOW)
+    assert result.rc == 2
+    assert result.calls == []
+
+
+def test_06_cost_output_discloses_api_charge(lab: Lab) -> None:
+    result = run06_cost(lab)
+    out = result.out
+    assert "Cost Explorer values, not an invoice" in out
+    assert "may lag" in out
+    assert "The Cost Explorer API is charged per request" in out
+    assert "Cost Explorer API requests sent by this run: 4" in out
+    assert "USD 0.01 per paginated request" in out
+    assert "https://docs.aws.amazon.com/cost-management/latest/userguide/ce-what-is.html" in out
+    assert "not re-checked here" in out
+
+
+def test_06_cost_counts_every_page_request(lab: Lab) -> None:
+    pages = [{"body": {**ops.cost_body(), "NextPageToken": "page-2"}}, {"body": ops.cost_body("1.00")}]
+    result = run06_cost(
+        lab,
+        {f"ce get-cost-and-usage --profile={OWNER_PROFILE} --next-page-token": pages[1]},
+        {f"ce get-cost-and-usage --profile={OWNER_PROFILE}": pages[0]},
+    )
+    assert result.rc == 0, result.out + result.err
+    # owner: filtered 2 pages + unfiltered 2 pages... the second key answers every follow-up page
+    owner_calls = [c for c in calls_of(result.calls, "get-cost-and-usage") if c["profile"] == OWNER_PROFILE]
+    assert any("--next-page-token" in c["args"] for c in owner_calls)
+    assert f"requests sent by this run: {len(calls_of(result.calls, 'get-cost-and-usage'))}" in result.out
+    assert len(calls_of(result.calls, "get-cost-and-usage")) > 4
+
+
+# --------------------------------------------------------------------------
+# 08
+# --------------------------------------------------------------------------
+
+RP_LIST_KEY = "backup list-recovery-points-by-backup-vault"
+VOLUMES_KEY = "fsx describe-volumes --filters"
+RESTORE_ENV = {"LAB_RESTORE_JUNCTION_PATH": "/vol_restored_x", "LAB_RESTORE_VOLUME_NAME": "vol_restored"}
+
+
+def run08(lab: Lab, *updates: dict[str, Any], args: tuple[str, ...] = ("--apply",), env: dict[str, Any] | None = None):
+    lab.write_scenario(sc.merged(ops.restore(), *updates))
+    return lab.run("08_restore.sh", *args, env=env)
+
+
+def test_08_empty_recovery_point_aborts(lab: Lab) -> None:
+    result = run08(lab, {RP_LIST_KEY: {"body": {"RecoveryPoints": []}}})
+    assert result.rc == 1
+    assert "expected exactly one value (rows=0)" in result.err
+    assert_called(
+        result.calls, "backup", "list-recovery-points-by-backup-vault", {"--backup-vault-account-id": sc.OWNER}
+    )
+    assert mutating(result.calls) == []
+
+
+def test_08_only_completed_recovery_points_count(lab: Lab) -> None:
+    rps = {"body": {"RecoveryPoints": [ops.shared_recovery_point(status="PARTIAL")]}}
+    result = run08(lab, {RP_LIST_KEY: rps})
+    assert result.rc == 1
+    assert "rows=0" in result.err
+    assert mutating(result.calls) == []
+
+
+def test_08_two_recovery_points_abort(lab: Lab) -> None:
+    second = ops.shared_recovery_point()
+    second["RecoveryPointArn"] += "2"
+    rps = {"body": {"RecoveryPoints": [ops.shared_recovery_point(), second]}}
+    result = run08(lab, {RP_LIST_KEY: rps})
+    assert result.rc == 1
+    assert "rows=2" in result.err
+    assert ops.SHARED_RP in result.err and ops.SHARED_RP + "2" in result.err
+    assert mutating(result.calls) == []
+
+
+def test_08_exhausted_svm_budget_aborts_before_start(lab: Lab) -> None:
+    """The restore SVM is missing and the file system already holds its limit (6): nothing starts."""
+    others = [f"svm-0{i}000000000000000" for i in range(6)]
+    result = run08(lab, ops.recipient_fs(others))
+    assert result.rc == 1
+    assert "no free SVM slot (6 of 6 used)" in result.err
+    assert_called(
+        result.calls,
+        "fsx",
+        "describe-storage-virtual-machines",
+        {"--filters": f"Name=file-system-id,Values={sc.EXISTING_RECIPIENT_FS}"},
+    )
+    assert mutating(result.calls) == []
+
+
+def test_08_restore_svm_at_capacity_still_restores(lab: Lab) -> None:
+    """02 may have used the last slot for the restore SVM itself: a restore adds a volume, not an SVM."""
+    svms = [f"svm-0{i}000000000000000" for i in range(5)] + [sc.RECIPIENT_RESTORE_SVM]
+    result = run08(lab, ops.recipient_fs(svms))
+    assert result.rc == 0, result.out + result.err
+    assert "6 of 6" in result.out
+    assert len(calls_of(result.calls, "start-restore-job")) == 1
+
+
+def test_08_missing_restore_svm_with_a_free_slot_points_at_02(lab: Lab) -> None:
+    result = run08(lab, ops.recipient_fs(["svm-0a000000000000000"]))
+    assert result.rc == 1
+    assert "run 02_deploy.sh --side recipient --apply" in result.err
+    assert mutating(result.calls) == []
+
+
+def test_08_existing_volume_with_the_restore_name_aborts(lab: Lab) -> None:
+    result = run08(lab, {VOLUMES_KEY: ops.volumes(ops.restored_volume())})
+    assert result.rc == 1
+    assert "already exists" in result.err
+    assert mutating(result.calls) == []
+
+
+def test_08_waits_on_volume_not_job_progress(lab: Lab) -> None:
+    """A CREATED volume with a job still at 0 percent is not done; COMPLETED plus CREATED is."""
+    running = {"body": {"RestoreJobId": ops.RESTORE_JOB_ID, "Status": "RUNNING", "PercentDone": "0.0"}}
+    done = {"body": {"RestoreJobId": ops.RESTORE_JOB_ID, "Status": "COMPLETED", "PercentDone": "100.0"}}
+    updates = {
+        "backup describe-restore-job": [running, running, done],
+        VOLUMES_KEY: [
+            ops.volumes(),
+            ops.volumes(ops.restored_volume("CREATING")),
+            ops.volumes(ops.restored_volume("CREATED")),
+            ops.volumes(ops.restored_volume("CREATED")),
+        ],
+    }
+    result = run08(lab, updates)
+    assert result.rc == 0, result.out + result.err
+    assert len(calls_of(result.calls, "describe-restore-job")) == 3
+    assert len(lab.sleeps()) == 2
+    names = [c["subcommand"] for c in result.calls]
+    assert names.index("tag-resource") > max(i for i, n in enumerate(names) if n == "describe-restore-job")
+
+
+def test_08_a_completed_job_without_a_created_volume_keeps_waiting(lab: Lab) -> None:
+    done = {"body": {"RestoreJobId": ops.RESTORE_JOB_ID, "Status": "COMPLETED", "PercentDone": "100.0"}}
+    updates = {
+        "backup describe-restore-job": done,
+        VOLUMES_KEY: [
+            ops.volumes(),
+            ops.volumes(ops.restored_volume("CREATING")),
+            ops.volumes(ops.restored_volume("CREATING")),
+            ops.volumes(ops.restored_volume("CREATED")),
+        ],
+    }
+    result = run08(lab, updates)
+    assert result.rc == 0, result.out + result.err
+    assert len(calls_of(result.calls, "describe-restore-job")) == 3
+
+
+def test_08_volume_created_but_job_never_completes_is_a_warning(lab: Lab) -> None:
+    running = {"body": {"RestoreJobId": ops.RESTORE_JOB_ID, "Status": "RUNNING", "PercentDone": "0.0"}}
+    updates = {
+        "backup describe-restore-job": running,
+        VOLUMES_KEY: [ops.volumes(), ops.volumes(ops.restored_volume("CREATED"))],
+    }
+    result = run08(lab, updates)
+    assert result.rc == 0, result.out + result.err
+    assert "[V7]" in result.out and "did not report COMPLETED within the wait" in result.out
+    assert "COMPLETED and the volume is CREATED" not in result.out
+    assert len(lab.sleeps()) == 60
+    assert len(calls_of(result.calls, "tag-resource")) == 1
+
+
+def test_08_metadata_has_lowercase_keys(lab: Lab) -> None:
+    result = run08(lab, env=RESTORE_ENV)
+    assert result.rc == 0, result.out + result.err
+    call = calls_of(result.calls, "start-restore-job")[0]
+    metadata = json.loads(call["args"]["--metadata"][0])
+    assert set(metadata) == {"Name", "OntapConfiguration"}
+    ontap = json.loads(metadata["OntapConfiguration"])
+    assert all(key[0].islower() for key in ontap), ontap
+    assert set(ontap) == {"junctionPath", "sizeInMegabytes", "storageEfficiencyEnabled", "storageVirtualMachineId"}
+    assert ontap["storageVirtualMachineId"] == sc.RECIPIENT_RESTORE_SVM
+    assert ontap["junctionPath"] == "/vol_restored_x"
+    assert ontap["sizeInMegabytes"] == "1024"
+    text = call["args"]["--metadata"][0]
+    for forbidden in (
+        "FileSystemId",
+        "VolumeId",
+        "Lifecycle",
+        "VolumeType",
+        "tieringPolicy",
+        "TieringPolicy",
+        sc.SENTINEL.SVM,
+    ):
+        assert forbidden not in text
+
+
+def test_08_portal_payload_shape(lab: Lab) -> None:
+    lab.write_scenario(ops.restore("portal"))
+    result = lab.run("08_restore.sh", "--apply", "--via", "portal")
+    assert result.rc == 0, result.out + result.err
+    invokes = calls_of(result.calls, "invoke")
+    start = json.loads(invokes[0]["args"]["--payload"][0])
+    assert start["action"] == "startRestore"
+    assert start["acknowledgeIrreversible"] is True
+    assert start["storageVirtualMachineId"] == sc.RECIPIENT_RESTORE_SVM
+    assert start["recoveryPointArn"] == ops.SHARED_RP
+    assert start["name"] == "vol_restored" and start["junctionPath"] == "/vol_restored"
+    assert start["sizeInMegabytes"] == "1024"
+    assert json.loads(invokes[1]["args"]["--payload"][0]) == {
+        "action": "describeRestore",
+        "restoreJobId": ops.RESTORE_JOB_ID,
+    }
+    assert all("--cli-binary-format" in c["argv"] and "raw-in-base64-out" in c["argv"] for c in invokes)
+    assert not calls_of(result.calls, "start-restore-job"), "the portal path does not call AWS Backup directly"
+
+
+def test_08_portal_function_error_is_reported(lab: Lab) -> None:
+    refused = {"body": {"error": "Storage virtual machine svm-0 is not in the allowed set."}}
+    lab.write_scenario(sc.merged(ops.restore("portal"), {"lambda invoke": refused}))
+    result = lab.run("08_restore.sh", "--apply", "--via", "portal")
+    assert result.rc == 1
+    assert "the portal restore function refused: Storage virtual machine svm-0 is not in the allowed set." in result.err
+
+
+def test_08_portal_two_matching_functions_abort(lab: Lab) -> None:
+    function = {"FunctionName": "second-copy", "Description": ops.PORTAL_RESTORE_DESCRIPTION}
+    listing = {
+        "body": {
+            "Functions": [
+                {"FunctionName": ops.PORTAL_FUNCTION, "Description": ops.PORTAL_RESTORE_DESCRIPTION},
+                function,
+            ]
+        }
+    }
+    lab.write_scenario(sc.merged(ops.restore("portal"), {"lambda list-functions": listing}))
+    result = lab.run("08_restore.sh", "--apply", "--via", "portal")
+    assert result.rc == 1
+    assert "rows=2" in result.err
+    assert not calls_of(result.calls, "invoke")
+
+
+def test_08_portal_is_for_the_primary_region_only(lab: Lab) -> None:
+    lab.write_scenario(ops.restore("portal"))
+    result = lab.run(
+        "08_restore.sh", "--apply", "--via", "portal", "--region", SECOND, env={"LAB_SECOND_REGION": SECOND}
+    )
+    assert result.rc == 2
+    assert result.calls == []
+
+
+def test_08_second_region_restores_in_that_region(lab: Lab) -> None:
+    stack = sc.stack_body(
+        f"{sc.TAG}-recipient-{SECOND}",
+        "CREATE_COMPLETE",
+        {
+            "RestoreRoleArn": sc.RECIPIENT_ROLE_ARN,
+            "FileSystemId": sc.EXISTING_RECIPIENT_FS,
+            "RestoreSvmId": sc.RECIPIENT_RESTORE_SVM,
+        },
+    )
+    scenario = sc.merged(
+        ops.restore(),
+        {f"cloudformation describe-stacks --stack-name={sc.TAG}-recipient-{SECOND}": {"body": stack}},
+    )
+    lab.write_scenario(scenario)
+    result = lab.run("08_restore.sh", "--apply", "--region", SECOND, env={"LAB_SECOND_REGION": SECOND})
+    assert result.rc == 0, result.out + result.err
+    regions = {c["region"] for c in result.calls if c["service"] in ("backup", "fsx", "cloudformation")}
+    assert regions == {SECOND}
+    assert "[E6]" in result.out
+
+
+@pytest.mark.parametrize("status", ["FAILED", "ABORTED"])
+def test_08_failed_restore_job_is_reported(lab: Lab, status: str) -> None:
+    failed = {
+        "body": {
+            "RestoreJobId": ops.RESTORE_JOB_ID,
+            "Status": status,
+            "StatusMessage": "Insufficient capacity in the file system",
+        }
+    }
+    result = run08(lab, {"backup describe-restore-job": failed, VOLUMES_KEY: ops.volumes()})
+    assert result.rc == 1
+    assert f"restore job {ops.RESTORE_JOB_ID} ended {status}" in result.out
+    assert "Insufficient capacity in the file system" in result.out
+    assert "COMPLETED and the volume is CREATED" not in result.out
+    assert not calls_of(result.calls, "tag-resource")
+
+
+def test_08_tag_resource_failure_fails_the_run(lab: Lab) -> None:
+    result = run08(lab, {"fsx tag-resource": sc.err("BadRequest", "cannot tag")})
+    assert result.rc == 1
+    assert "tagging the restored volume" in result.out
+    assert "COMPLETED and the volume is CREATED" in result.out, "the restore itself succeeded"
+    assert_called(result.calls, "fsx", "tag-resource", {"--resource-arn": ops.RESTORED_VOLUME_ARN}, times=1)
+
+
+def test_08_stack_missing_points_at_02(lab: Lab) -> None:
+    key = f"cloudformation describe-stacks --stack-name={sc.TAG}-recipient-{PRIMARY}"
+    result = run08(lab, {key: sc.no_stack()})
+    assert result.rc == 1
+    assert "run 02_deploy.sh --side recipient --apply first" in result.err
+    assert mutating(result.calls) == []
+
+
+# --------------------------------------------------------------------------
+# 09
+# --------------------------------------------------------------------------
+
+LISTED = {"body": {"BackupVaultList": [ops.shared_row()]}}
+
+
+def run09(lab: Lab, *updates: dict[str, Any], args: tuple[str, ...] = ("--apply",)):
+    lab.write_scenario(sc.merged(ops.revoke(), *updates))
+    return lab.run("09_revoke_share.sh", *args)
+
+
+def test_09_share_never_disappears_is_reported_as_failure(lab: Lab) -> None:
+    result = run09(lab, {RECIPIENT_SHARED: LISTED})
+    assert result.rc == 1
+    assert "[V6]" in result.out and "still in the recipient list in ap-northeast-1 after" in result.out
+    assert "06_verify.sh later" in result.out
+    assert len(calls_of(result.calls, "delete-resource-share")) == 1
+    assert len(lab.sleeps()) == 120
+    assert calls_of(result.calls, "list-recovery-points-by-backup-vault"), "the error code is still observed"
+    assert any(r["event"] == "api_code" for r in lab.records())
+
+
+def test_09_records_integer_seconds(lab: Lab) -> None:
+    result = run09(lab)
+    assert result.rc == 0, result.out + result.err
+    rows = [r for r in lab.records() if r["event"] == "revoke_seconds"]
+    assert len(rows) == 1
+    assert re.fullmatch(r"region=ap-northeast-1 seconds=\d+", rows[0]["detail"]), rows[0]
+    assert rows[0]["item"] == "V6"
+    assert re.search(r"after \d+ seconds \(wall clock, integer\)", result.out)
+    assert "list-recovery-points then returned: AccessDeniedException" in result.out
+    assert len(calls_of(result.calls, "delete-resource-share")) == 1
+    assert_called(
+        result.calls, "ram", "delete-resource-share", {"--resource-share-arn": ops.SHARE_ARN}, profile=OWNER_PROFILE
+    )
+
+
+def test_09_unreadable_recipient_list_is_a_failure(lab: Lab) -> None:
+    result = run09(lab, {RECIPIENT_SHARED: sc.err("ThrottlingException", "slow down")})
+    assert result.rc == 1
+    assert "could not be read in ap-northeast-1 while waiting" in result.out
+
+
+def test_09_no_active_share_is_a_warning_and_deletes_nothing(lab: Lab) -> None:
+    result = run09(lab, {"ram get-resource-shares": {"body": {"resourceShares": []}}})
+    assert result.rc == 0, result.out + result.err
+    assert "nothing to revoke there" in result.out
+    assert not calls_of(result.calls, "delete-resource-share")
+
+
+def test_09_two_active_shares_abort(lab: Lab) -> None:
+    result = run09(lab, {"ram get-resource-shares": sc.share_list(PRIMARY, count=2)})
+    assert result.rc == 1
+    assert "rows=2" in result.err
+    assert not calls_of(result.calls, "delete-resource-share")
+
+
+def test_09_list_failure_changes_nothing(lab: Lab) -> None:
+    result = run09(lab, {"ram get-resource-shares": sc.err("ThrottlingException", "slow down")})
+    assert result.rc == 1
+    assert "the share state is unknown, nothing was changed" in result.err
+    assert mutating(result.calls) == []

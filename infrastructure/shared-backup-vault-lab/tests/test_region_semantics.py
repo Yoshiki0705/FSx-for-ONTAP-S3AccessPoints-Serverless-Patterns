@@ -1,4 +1,4 @@
-"""Which Region each call of scripts 01-05 is sent to.
+"""Which Region each call of scripts 01-06 and 08-10 is sent to.
 
 ``--region`` means something different in each script: for 04 it picks the copy
 DESTINATION, while the copy request itself is sent to the primary Region. The
@@ -12,6 +12,7 @@ from __future__ import annotations
 from typing import Any
 
 import lab_scenarios as sc
+import lab_scenarios_ops as ops
 import pytest
 from lab_testlib import Lab, assert_called
 
@@ -330,6 +331,96 @@ def test_05_region_option_limits_the_run(lab: Lab) -> None:
 
 
 # --------------------------------------------------------------------------
+# 06, 08, 09, 10
+# --------------------------------------------------------------------------
+SECOND_STACKS = {
+    f"cloudformation describe-stacks --stack-name={sc.TAG}-recipient-{SECOND}": sc.no_stack(),
+    f"cloudformation describe-stacks --stack-name={sc.TAG}-lag-{SECOND}": sc.no_stack(),
+    f"backup list-backup-vaults --by-vault-type --region={SECOND}": {"body": {"BackupVaultList": []}},
+}
+
+
+def test_06_checks_every_configured_region(lab: Lab) -> None:
+    second_row = {"body": {"BackupVaultList": [ops.shared_row(SECOND)]}}
+    scenario = sc.merged(
+        ops.verify(),
+        {
+            f"backup list-backup-vaults --by-shared --profile=lab-recipient --region={SECOND}": second_row,
+            f"cloudformation describe-stacks --stack-name={sc.TAG}-recipient-{SECOND}": sc.no_stack(),
+        },
+    )
+    scenario["backup list-recovery-points-by-backup-vault --backup-vault-account-id"] = {
+        "body": {"RecoveryPoints": [ops.shared_recovery_point(PRIMARY)]}
+    }
+    lab.write_scenario(scenario)
+    result = lab.run("06_verify.sh", env={**WITH_SECOND, "LAB_NOW": "2026-10-11T12:00:00Z"})
+    shared = [c["region"] for c in result.calls if c["subcommand"] == "list-backup-vaults"]
+    assert shared == [PRIMARY, PRIMARY, SECOND, SECOND]  # recipient and owner, per Region
+    assert regions_of(result.calls, "backup", "list-recovery-points-by-backup-vault") == [
+        PRIMARY,
+        PRIMARY,
+        SECOND,
+        SECOND,
+    ]
+
+
+def test_06_region_option_limits_the_run(lab: Lab) -> None:
+    lab.write_scenario(ops.verify())
+    result = lab.run("06_verify.sh", "--region", PRIMARY, env={**WITH_SECOND, "LAB_NOW": "2026-10-11T12:00:00Z"})
+    assert {c["region"] for c in result.calls} == {PRIMARY}
+
+
+def test_06_cost_has_no_region_and_always_calls_us_east_1(lab: Lab) -> None:
+    """Cost Explorer is a global endpoint: --cost ignores the configured Regions."""
+    for env in ({}, WITH_SECOND, {"LAB_PRIMARY_REGION": "eu-west-1"}):
+        local = Lab(lab.tmp / f"ce-{len(env)}-{env.get('LAB_PRIMARY_REGION', 'x')}")
+        local.write_scenario(ops.cost())
+        result = local.run(
+            "06_verify.sh", "--cost", "--since", "2026-10-01", env={**env, "LAB_NOW": "2026-10-11T00:00:00Z"}
+        )
+        assert result.rc == 0, result.out + result.err
+        assert set(regions_of(result.calls, "ce", "get-cost-and-usage")) == {"us-east-1"}
+
+
+def test_08_restores_in_the_primary_region_only_by_default(lab: Lab) -> None:
+    lab.write_scenario(ops.restore())
+    result = lab.run("08_restore.sh", "--apply", env=WITH_SECOND)
+    assert result.rc == 0, result.out + result.err
+    assert {c["region"] for c in result.calls} == {PRIMARY}
+
+
+def test_09_revokes_in_every_configured_region(lab: Lab) -> None:
+    scenario = sc.merged(
+        ops.revoke(),
+        {"ram get-resource-shares": [sc.share_list(PRIMARY), sc.share_list(SECOND)]},
+    )
+    lab.write_scenario(scenario)
+    result = lab.run("09_revoke_share.sh", "--apply", env=WITH_SECOND)
+    assert result.rc == 0, result.out + result.err
+    assert regions_of(result.calls, "ram", "delete-resource-share") == [PRIMARY, SECOND]
+    assert regions_of(result.calls, "ram", "get-resource-shares") == [PRIMARY, SECOND]
+
+
+def test_09_region_option_limits_the_run(lab: Lab) -> None:
+    lab.write_scenario(ops.revoke())
+    result = lab.run("09_revoke_share.sh", "--region", SECOND, "--apply", env=WITH_SECOND)
+    assert result.rc == 0, result.out + result.err
+    assert {c["region"] for c in result.calls if c["service"] in ("ram", "backup")} == {SECOND}
+
+
+def test_10_handles_every_configured_region_and_has_no_region_option(lab: Lab) -> None:
+    lab.write_scenario(sc.merged(ops.teardown(), SECOND_STACKS, ops.lag_listing(0, SECOND)))
+    result = lab.run("10_teardown.sh", env=WITH_SECOND)  # plan only: the reads are what is checked
+    assert result.rc == 10, result.out + result.err
+    for sub in ("list-backup-jobs", "list-copy-jobs", "list-restore-jobs", "get-resource-shares"):
+        assert set(regions_of(result.calls, "backup" if sub.startswith("list") else "ram", sub)) == {PRIMARY, SECOND}, (
+            sub
+        )
+    refused = lab.run("10_teardown.sh", "--region", PRIMARY)
+    assert refused.rc == 2
+
+
+# --------------------------------------------------------------------------
 # A Region that is neither the primary nor the second
 # --------------------------------------------------------------------------
 
@@ -342,8 +433,11 @@ def test_05_region_option_limits_the_run(lab: Lab) -> None:
         ("04_backup_and_copy.sh", "--retention-days", "7", "--region", "eu-west-1"),
         ("05_accept_share.sh", "--region", "eu-west-1"),
         ("03_deploy_lag_share.sh", "--retention-days", "7", "--region", SECOND),
+        ("06_verify.sh", "--region", "eu-west-1"),
+        ("08_restore.sh", "--region", "eu-west-1"),
+        ("09_revoke_share.sh", "--region", "eu-west-1"),
     ],
-    ids=["02", "03", "04", "05", "03-second-not-configured"],
+    ids=["02", "03", "04", "05", "03-second-not-configured", "06", "08", "09"],
 )
 def test_a_region_that_is_not_configured_exits_2_with_no_aws_call(lab: Lab, argv: tuple[str, ...]) -> None:
     lab.write_scenario(sc.deploy_lag())

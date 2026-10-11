@@ -1,4 +1,4 @@
-"""What scripts 01-05 actually call, with the VALUES they pass.
+"""What scripts 01-06 and 08-10 actually call, with the VALUES they pass.
 
 ``EXPECTED_CALLS`` is keyed by the scripts found on disk. Each row names the literal
 call site in the script (``aws_owner backup start-copy-job``), the profile and
@@ -26,6 +26,7 @@ from typing import Any, Callable
 
 import botocore.session
 import lab_scenarios as sc
+import lab_scenarios_ops as ops
 import pytest
 import yaml
 from botocore import xform_name
@@ -113,6 +114,43 @@ def backup_token() -> str:
 def copy_token() -> str:
     """The idempotency token 04 derives for the copy."""
     return helpers.text_digest([sc.SRC_RP, sc.lag_arn(PRIMARY), "7"])
+
+
+def restore_token() -> str:
+    """The idempotency token 08 derives for the restore."""
+    return helpers.text_digest([ops.SHARED_RP, sc.RECIPIENT_RESTORE_SVM, "vol_restored"])
+
+
+def restore_metadata_json() -> str:
+    """The --metadata value 08 sends: lower-case keys, no source ids, built by lab_helpers."""
+    metadata = helpers.build_restore_metadata(
+        ops.restore_metadata(), sc.RECIPIENT_RESTORE_SVM, "vol_restored", "/vol_restored"
+    )
+    return json.dumps(metadata, sort_keys=True, separators=(",", ":"))
+
+
+PORTAL_START = json.dumps(
+    {
+        "action": "startRestore",
+        "recoveryPointArn": ops.SHARED_RP,
+        "name": "vol_restored",
+        "storageVirtualMachineId": sc.RECIPIENT_RESTORE_SVM,
+        "fileSystemId": sc.EXISTING_RECIPIENT_FS,
+        "junctionPath": "/vol_restored",
+        "sizeInMegabytes": "1024",
+        "acknowledgeIrreversible": True,
+        "idempotencyToken": restore_token(),
+    },
+    separators=(",", ":"),
+)
+PORTAL_DESCRIBE = json.dumps({"action": "describeRestore", "restoreJobId": ops.RESTORE_JOB_ID}, separators=(",", ":"))
+COST_FLAGS = {
+    "--granularity": "DAILY",
+    "--metrics": "UnblendedCost",
+    "--group-by": "Type=DIMENSION,Key=SERVICE",
+    "--time-period": "Start=2026-10-01,End=2026-10-12",
+}
+COST_FILTER = json.dumps({"Tags": {"Key": "Project", "Values": ["shared-vault-lab"]}}, separators=(",", ":"))
 
 
 EXPECTED_CALLS: dict[str, list[Row]] = {
@@ -323,6 +361,239 @@ EXPECTED_CALLS: dict[str, list[Row]] = {
         ),
         aws("accept", "aws_recipient backup list-backup-vaults", {"--by-shared": []}),
     ],
+    "06_verify.sh": [
+        aws("verify", "aws_owner sts get-caller-identity"),
+        aws("verify", "aws_recipient sts get-caller-identity"),
+        aws("verify", "aws_recipient backup list-backup-vaults", {"--by-shared": []}),
+        aws("verify", "aws_owner backup list-backup-vaults", {"--by-shared": []}),
+        aws(
+            "verify", "aws_recipient backup list-recovery-points-by-backup-vault", {"--backup-vault-name": sc.LAG_VAULT}
+        ),
+        aws(
+            "verify",
+            "aws_recipient backup list-recovery-points-by-backup-vault",
+            {"--backup-vault-name": sc.LAG_VAULT, "--backup-vault-account-id": sc.OWNER},
+        ),
+        aws(
+            "verify",
+            "aws_recipient backup get-recovery-point-restore-metadata",
+            {
+                "--backup-vault-name": sc.LAG_VAULT,
+                "--recovery-point-arn": ops.SHARED_RP,
+                "--backup-vault-account-id": sc.OWNER,
+            },
+        ),
+        aws("verify", "aws_owner cloudformation describe-stacks", {"--stack-name": "shared-vault-lab-owner-base"}),
+        aws("verify", "aws_owner fsx describe-file-systems", {"--file-system-ids": SENTINEL.FS}),
+        aws(
+            "verify",
+            "aws_recipient cloudformation describe-stacks",
+            {"--stack-name": f"shared-vault-lab-recipient-{PRIMARY}"},
+        ),
+        aws("verify", "aws_recipient fsx describe-file-systems", {"--file-system-ids": "fs-0123123123123123a"}),
+        aws("cost", "aws_owner sts get-caller-identity"),
+        aws("cost", "aws_recipient sts get-caller-identity"),
+        aws("cost", "aws_owner ce get-cost-and-usage", COST_FLAGS, region="us-east-1"),
+        aws("cost", "aws_recipient ce get-cost-and-usage", COST_FLAGS, region="us-east-1"),
+        aws("cost", "aws_owner ce get-cost-and-usage", {**COST_FLAGS, "--filter": COST_FILTER}, region="us-east-1"),
+        aws(
+            "cost",
+            "aws_recipient ce get-cost-and-usage",
+            {**COST_FLAGS, "--filter": COST_FILTER},
+            region="us-east-1",
+        ),
+    ],
+    "08_restore.sh": [
+        aws("cli", "aws_recipient sts get-caller-identity"),
+        aws(
+            "cli",
+            "aws_recipient cloudformation describe-stacks",
+            {"--stack-name": f"shared-vault-lab-recipient-{PRIMARY}"},
+        ),
+        aws("cli", "aws_recipient fsx describe-file-systems", {"--file-system-ids": sc.EXISTING_RECIPIENT_FS}),
+        aws(
+            "cli",
+            "aws_recipient fsx describe-storage-virtual-machines",
+            {"--filters": f"Name=file-system-id,Values={sc.EXISTING_RECIPIENT_FS}"},
+        ),
+        aws(
+            "cli",
+            "aws_recipient fsx describe-volumes",
+            {"--filters": f"Name=storage-virtual-machine-id,Values={sc.RECIPIENT_RESTORE_SVM}"},
+        ),
+        aws(
+            "cli",
+            "aws_recipient backup list-recovery-points-by-backup-vault",
+            {"--backup-vault-name": sc.LAG_VAULT, "--backup-vault-account-id": sc.OWNER},
+        ),
+        aws(
+            "cli",
+            "aws_recipient backup get-recovery-point-restore-metadata",
+            {
+                "--backup-vault-name": sc.LAG_VAULT,
+                "--recovery-point-arn": ops.SHARED_RP,
+                "--backup-vault-account-id": sc.OWNER,
+            },
+        ),
+        aws(
+            "cli",
+            "aws_recipient backup start-restore-job",
+            {
+                "--recovery-point-arn": ops.SHARED_RP,
+                "--iam-role-arn": sc.RECIPIENT_ROLE_ARN,
+                "--resource-type": "FSx",
+                "--idempotency-token": restore_token(),
+                "--metadata": restore_metadata_json(),
+            },
+        ),
+        aws("cli", "aws_recipient backup describe-restore-job", {"--restore-job-id": ops.RESTORE_JOB_ID}),
+        aws(
+            "cli",
+            "aws_recipient fsx tag-resource",
+            {"--resource-arn": ops.RESTORED_VOLUME_ARN, "--tags": "Key=Project,Value=shared-vault-lab"},
+        ),
+        aws("portal", "aws_recipient sts get-caller-identity"),
+        aws("portal", "aws_recipient lambda list-functions"),
+        aws(
+            "portal",
+            "aws_recipient lambda invoke",
+            {"--function-name": ops.PORTAL_FUNCTION, "--payload": PORTAL_START},
+        ),
+        aws(
+            "portal",
+            "aws_recipient lambda invoke",
+            {"--function-name": ops.PORTAL_FUNCTION, "--payload": PORTAL_DESCRIBE},
+        ),
+        aws(
+            "portal",
+            "aws_recipient fsx describe-volumes",
+            {"--filters": f"Name=storage-virtual-machine-id,Values={sc.RECIPIENT_RESTORE_SVM}"},
+        ),
+        aws(
+            "portal",
+            "aws_recipient fsx tag-resource",
+            {"--resource-arn": ops.RESTORED_VOLUME_ARN, "--tags": "Key=Project,Value=shared-vault-lab"},
+        ),
+    ],
+    "09_revoke_share.sh": [
+        aws("revoke", "aws_owner sts get-caller-identity"),
+        aws("revoke", "aws_recipient sts get-caller-identity"),
+        aws(
+            "revoke",
+            "aws_owner ram get-resource-shares",
+            {"--resource-owner": "SELF", "--name": sc.SHARE_NAME, "--resource-share-status": "ACTIVE"},
+        ),
+        aws("revoke", "aws_owner ram delete-resource-share", {"--resource-share-arn": ops.SHARE_ARN}),
+        aws("revoke", "aws_recipient backup list-backup-vaults", {"--by-shared": []}),
+        aws(
+            "revoke",
+            "aws_recipient backup list-recovery-points-by-backup-vault",
+            {"--backup-vault-name": sc.LAG_VAULT, "--backup-vault-account-id": sc.OWNER},
+        ),
+    ],
+    "10_teardown.sh": [
+        aws("teardown", "aws_owner sts get-caller-identity"),
+        aws("teardown", "aws_recipient sts get-caller-identity"),
+        aws("teardown", "aws_owner cloudformation describe-stacks", {"--stack-name": "shared-vault-lab-owner-base"}),
+        aws(
+            "teardown",
+            "aws_owner backup list-backup-jobs",
+            {"--by-backup-vault-name": sc.STD_VAULT, "--by-state": "CREATED"},
+        ),
+        aws(
+            "teardown",
+            "aws_owner backup list-backup-jobs",
+            {"--by-backup-vault-name": sc.STD_VAULT, "--by-state": "ABORTING"},
+        ),
+        aws("teardown", "aws_owner backup list-copy-jobs", {"--by-state": "CREATED"}),
+        aws("teardown", "aws_owner backup list-copy-jobs", {"--by-state": "RUNNING"}),
+        aws("teardown", "aws_recipient backup list-restore-jobs", {"--by-status": "PENDING"}),
+        aws("teardown", "aws_recipient backup list-restore-jobs", {"--by-status": "RUNNING"}),
+        aws(
+            "teardown",
+            "aws_owner ram get-resource-shares",
+            {"--resource-owner": "SELF", "--name": sc.SHARE_NAME, "--resource-share-status": "ACTIVE"},
+        ),
+        aws(
+            "teardown",
+            "aws_recipient cloudformation describe-stacks",
+            {"--stack-name": f"shared-vault-lab-recipient-{PRIMARY}"},
+        ),
+        aws(
+            "teardown",
+            "aws_recipient fsx describe-storage-virtual-machines",
+            {"--storage-virtual-machine-ids": sc.RECIPIENT_RESTORE_SVM},
+        ),
+        aws("teardown", "aws_recipient fsx list-tags-for-resource", {"--resource-arn": ops.RECIPIENT_SVM_ARN}),
+        aws(
+            "teardown",
+            "aws_recipient fsx describe-volumes",
+            {"--filters": f"Name=storage-virtual-machine-id,Values={sc.RECIPIENT_RESTORE_SVM}"},
+        ),
+        aws("teardown", "aws_owner fsx list-tags-for-resource", {"--resource-arn": sc.VOLUME_ARN}),
+        aws(
+            "teardown",
+            "aws_owner cloudformation describe-stack-resource",
+            {"--stack-name": "shared-vault-lab-owner-base", "--logical-resource-id": "StandardVault"},
+        ),
+        aws(
+            "teardown",
+            "aws_owner backup list-recovery-points-by-backup-vault",
+            {"--backup-vault-name": sc.STD_VAULT, "--by-resource-arn": sc.VOLUME_ARN},
+        ),
+        aws(
+            "teardown",
+            "aws_owner backup list-backup-vaults",
+            {"--by-vault-type": "LOGICALLY_AIR_GAPPED_BACKUP_VAULT"},
+        ),
+        aws(
+            "teardown",
+            "aws_owner backup list-recovery-points-by-backup-vault",
+            {"--backup-vault-name": sc.LAG_VAULT},
+        ),
+        aws(
+            "teardown", "aws_owner cloudformation describe-stacks", {"--stack-name": f"shared-vault-lab-lag-{PRIMARY}"}
+        ),
+        aws("teardown", "aws_owner kms describe-key", {"--key-id": "alias/shared-vault-lab-fs"}),
+        aws("teardown", "aws_owner ram delete-resource-share", {"--resource-share-arn": ops.SHARE_ARN}),
+        aws(
+            "teardown",
+            "aws_recipient fsx delete-volume",
+            {"--volume-id": ops.RESTORED_VOLUME_ID, "--ontap-configuration": "SkipFinalBackup=true"},
+        ),
+        aws("teardown", "aws_recipient fsx describe-volumes", {"--volume-ids": ops.RESTORED_VOLUME_ID}),
+        aws(
+            "teardown",
+            "aws_recipient cloudformation delete-stack",
+            {"--stack-name": f"shared-vault-lab-recipient-{PRIMARY}"},
+        ),
+        aws(
+            "teardown",
+            "aws_owner backup delete-recovery-point",
+            {"--backup-vault-name": sc.STD_VAULT, "--recovery-point-arn": sc.SRC_RP},
+        ),
+        aws(
+            "teardown",
+            "aws_owner fsx delete-volume",
+            {"--volume-id": SENTINEL.VOLUME, "--ontap-configuration": "SkipFinalBackup=true"},
+        ),
+        aws("teardown", "aws_owner fsx describe-volumes", {"--volume-ids": SENTINEL.VOLUME}),
+        aws("teardown", "aws_owner cloudformation delete-stack", {"--stack-name": "shared-vault-lab-owner-base"}),
+        aws("teardown", "aws_owner cloudformation delete-stack", {"--stack-name": f"shared-vault-lab-lag-{PRIMARY}"}),
+        aws(
+            "teardown",
+            "aws_owner fsx describe-backups",
+            {"--filters": f"Name=file-system-id,Values={SENTINEL.FS}"},
+        ),
+        aws("delete-key", "aws_owner sts get-caller-identity"),
+        aws("delete-key", "aws_owner fsx describe-file-systems"),
+        aws(
+            "delete-key",
+            "aws_owner kms schedule-key-deletion",
+            {"--key-id": sc.KEY_ARN, "--pending-window-in-days": "7"},
+        ),
+        aws("delete-key", "aws_owner kms delete-alias", {"--alias-name": "alias/shared-vault-lab-fs"}),
+    ],
 }
 
 
@@ -394,6 +665,41 @@ def run_05_accept(lab: Lab, **kw: Any) -> Result:
     return lab.run("05_accept_share.sh", "--apply", env={"LAB_NOW": "2026-10-11T03:00:00Z"}, **kw)
 
 
+def run_06_verify(lab: Lab, **kw: Any) -> Result:
+    lab.write_scenario(ops.verify())
+    return lab.run("06_verify.sh", env={"LAB_NOW": "2026-10-11T12:00:00Z"}, **kw)
+
+
+def run_06_cost(lab: Lab, **kw: Any) -> Result:
+    lab.write_scenario(ops.cost())
+    return lab.run("06_verify.sh", "--cost", "--since", "2026-10-01", env={"LAB_NOW": PINNED_NOW}, **kw)
+
+
+def run_08_cli(lab: Lab, **kw: Any) -> Result:
+    lab.write_scenario(ops.restore("cli"))
+    return lab.run("08_restore.sh", "--apply", **kw)
+
+
+def run_08_portal(lab: Lab, **kw: Any) -> Result:
+    lab.write_scenario(ops.restore("portal"))
+    return lab.run("08_restore.sh", "--apply", "--via", "portal", **kw)
+
+
+def run_09_revoke(lab: Lab, **kw: Any) -> Result:
+    lab.write_scenario(ops.revoke())
+    return lab.run("09_revoke_share.sh", "--apply", **kw)
+
+
+def run_10_teardown(lab: Lab, **kw: Any) -> Result:
+    lab.write_scenario(ops.teardown())
+    return lab.run("10_teardown.sh", "--apply", **kw)
+
+
+def run_10_delete_key(lab: Lab, **kw: Any) -> Result:
+    lab.write_scenario(ops.teardown())
+    return lab.run("10_teardown.sh", "--apply", "--delete-key", "--confirm", ops.DELETE_KEY_TOKEN, **kw)
+
+
 RUNS: dict[tuple[str, str], Callable[..., Result]] = {
     ("01_preflight.sh", "all"): run_01_all,
     ("02_deploy.sh", "owner"): run_02_owner,
@@ -402,6 +708,13 @@ RUNS: dict[tuple[str, str], Callable[..., Result]] = {
     ("03_deploy_lag_share.sh", "repair"): run_03_repair,
     ("04_backup_and_copy.sh", "all"): run_04_all,
     ("05_accept_share.sh", "accept"): run_05_accept,
+    ("06_verify.sh", "verify"): run_06_verify,
+    ("06_verify.sh", "cost"): run_06_cost,
+    ("08_restore.sh", "cli"): run_08_cli,
+    ("08_restore.sh", "portal"): run_08_portal,
+    ("09_revoke_share.sh", "revoke"): run_09_revoke,
+    ("10_teardown.sh", "teardown"): run_10_teardown,
+    ("10_teardown.sh", "delete-key"): run_10_delete_key,
 }
 
 
@@ -572,6 +885,9 @@ def _actions_of(calls: list[dict[str, Any]]) -> set[str]:
         service, sub = call["service"], call["subcommand"]
         if (service, sub) == ("sts", "get-caller-identity"):
             continue  # needs no permission
+        if (service, sub) == ("lambda", "invoke"):
+            out.add("lambda:InvokeFunction")  # the CLI command is not the API operation name
+            continue
         if (service, sub) == ("cloudformation", "deploy"):
             out |= {
                 f"cloudformation:{op}"
@@ -584,8 +900,8 @@ def _actions_of(calls: list[dict[str, Any]]) -> set[str]:
     return out
 
 
-def test_required_actions_cover_every_call_of_scripts_01_to_05(lab: Lab) -> None:
-    """Whatever 01-05 call is named in required-actions.json (a later commit adds the exact-match test)."""
+def test_required_actions_cover_every_call_of_the_scripts(lab: Lab) -> None:
+    """Whatever the scripts call is named in required-actions.json (a later commit adds the exact-match test)."""
     data = json.loads((SCRIPTS_DIR / "lib" / "required-actions.json").read_text(encoding="utf-8"))
     operator = {a for key in ("operator-owner", "operator-recipient", "operator-optional") for a in data[key]}
     recorded: set[str] = set()
