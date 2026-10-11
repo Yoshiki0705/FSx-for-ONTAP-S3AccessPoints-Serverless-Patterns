@@ -262,6 +262,8 @@ Amplify ポータルの「復旧ポイント」パネルで共有ボールトを
 
 詳細は [ポータル設計ガイド](../../solutions/amplify-portal/docs/data-protection-recovery-design.md) の「#461 で実装したクロスアカウント／クロスリージョンの可視化」にあります。
 
+これらの点を 2 つのアカウントで自分の環境に再現する手順とコードは [共有ボールト検証ラボ](../../infrastructure/shared-backup-vault-lab/README.md) にあります（実機での通しは未実施）。
+
 ---
 
 ## セキュリティ考慮事項

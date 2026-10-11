@@ -132,7 +132,7 @@ AWS Backup のコピー先ボールトが別のリージョン、または RAM �
 - **復元はポータルと同じリージョンに限ります。** ポータルは、関数自身のリージョンで復元ジョブを起票します。別リージョンの復旧ポイントは一覧に出ますが、復元ボタンは無効です。別リージョンの復旧ポイントの復元に関する条件は、AWS Backup の FSx for ONTAP の復元に関する文書に記載が見当たらず、実環境でも未検証です。
 - **LAG ボールトの対応リージョンは、コピー先を決める前に確認します。** 一部のリージョンでは LAG ボールトの機能に差があり、一覧は AWS Backup の LAG ボールトの文書にあります（[該当ページ](https://docs.aws.amazon.com/aws-backup/latest/devguide/logicallyairgappedvault.html)）。一覧は改訂されるため、ここには写しません。
 
-設定手順と、実環境で未検証の点は [ポータル設計ガイド](../../solutions/amplify-portal/docs/data-protection-recovery-design.md) の「#461 で実装したクロスアカウント／クロスリージョンの可視化」にあります。共有の受け取り側の操作は [AWS RAM による FSx for ONTAP リソース共有](../multi-account/ram-sharing.md) にあります。
+設定手順と、実環境で未検証の点は [ポータル設計ガイド](../../solutions/amplify-portal/docs/data-protection-recovery-design.md) の「#461 で実装したクロスアカウント／クロスリージョンの可視化」にあります。共有の受け取り側の操作は [AWS RAM による FSx for ONTAP リソース共有](../multi-account/ram-sharing.md) にあります。別アカウント・別リージョンの経路をコードとパラメータだけで自分の環境に再現する手順は [共有ボールト検証ラボ](../../infrastructure/shared-backup-vault-lab/README.md) にあります（実機での通しは未実施）。
 
 ---
 

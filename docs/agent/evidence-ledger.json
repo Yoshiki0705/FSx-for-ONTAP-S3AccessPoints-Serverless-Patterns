@@ -422,6 +422,39 @@
         "solutions/amplify-portal/docs/data-protection-recovery-design.en.md"
       ],
       "claim_ja": "AWS Backup による FSx for ONTAP 復旧ポイントの復元は常に新しいボリュームを作成します。既存のファイルシステムの中身へは復元できず、既存のボリュームを上書きできず、個々のファイルやフォルダを復元することもできません。新しいボリュームは、選択した SVM を介して既存のファイルシステムに配置できます（FSx for ONTAP のみ）。"
+    },
+    {
+      "id": "E-012",
+      "claim": "A logically air-gapped backup vault comes with a compliance-mode vault lock; once the grace time expires it cannot be deleted while it holds a recovery point, and a delete or lifecycle change is denied for any user and for AWS. An empty vault can be deleted. The minimum retention is seven days.",
+      "subject": "AWS",
+      "tier": "documented",
+      "premise": true,
+      "sources": [
+        {
+          "url": "https://docs.aws.amazon.com/aws-backup/latest/devguide/logicallyairgappedvault.html",
+          "read": "full",
+          "retrieved": "2026-10-11",
+          "says": "States that every logically air-gapped vault comes equipped with a vault lock in compliance mode, that a vault cannot be deleted while it still contains recovery points (ensure it is empty first), and shows MinRetentionDays 7. The restore-access vault is a separate view with no recovery points of its own and Vault Lock does not block its deletion."
+        },
+        {
+          "url": "https://docs.aws.amazon.com/aws-backup/latest/devguide/vault-lock.html",
+          "read": "full",
+          "retrieved": "2026-10-11",
+          "says": "States that when a lock is active in compliance mode and the grace time is over, the vault configuration cannot be altered or deleted by a customer, account/data owner, or AWS as long as it contains recovery points, and that AWS Backup denies a delete or a lifecycle change in a locked vault for any user including the root user. The vault itself can be deleted if it is empty and holds no recovery points. The compliance-mode grace time must be at least three days."
+        }
+      ],
+      "support_inquiry": {
+        "status": "not-needed",
+        "topic": "Nothing to ask AWS Support. The AWS Backup logically-air-gapped-vault and Vault Lock pages state the compliance-mode lock, the undeletable-while-holding-a-recovery-point rule, the empty-vault exception and the seven-day minimum directly."
+      },
+      "feature_request": {
+        "status": "not-applicable"
+      },
+      "appears_in": [
+        "infrastructure/shared-backup-vault-lab/docs/procedure.md",
+        "infrastructure/shared-backup-vault-lab/docs/procedure.en.md"
+      ],
+      "claim_ja": "論理エアギャップ（LAG）ボールトはコンプライアンスモードの Vault Lock を伴い、グレースタイムの満了後は復旧ポイントを保持している間は削除できず、削除や保持期間の変更はどのユーザーに対しても、また AWS に対しても拒否されます。空のボールトは削除できます。最短の保持期間は 7 日です。"
     }
   ]
 }
