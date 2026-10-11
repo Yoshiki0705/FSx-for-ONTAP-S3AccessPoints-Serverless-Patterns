@@ -1,6 +1,11 @@
 #!/usr/bin/env python3
 """Check that the portal's UI sends the parameters its Lambda actions require.
 
+Instruction for anyone writing a dispatch call: a call this checker cannot read is
+a call it cannot protect. Write the action name as a literal; never compute it. After
+adding a new wrapper shape that reaches dispatch, run `--list-opaque` and confirm the
+new calls are visible to the checker.
+
 The generic dispatch endpoints (`adminMutation`, `adminQuery`, `protectionMutation`
 and the rest) take an action name and an untyped `params` JSON blob. TypeScript
 checks that `params` is valid JSON and stops there, so a component can send

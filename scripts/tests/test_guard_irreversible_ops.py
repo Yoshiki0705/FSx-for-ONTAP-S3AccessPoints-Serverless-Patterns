@@ -251,6 +251,18 @@ BLOCK_CASES: list[tuple[str, dict[str, object]]] = [
         "EBS lock-snapshot",
         {"command": "aws ec2 lock-snapshot --snapshot-id snap-1 --lock-mode compliance"},
     ),
+    (
+        # Boundary: the ASK entries for air-gapped vaults, copies and shares sit
+        # in the same list as the lock-configuration BLOCK rule. A vault-lock
+        # configuration call on the lab's standard vault must stay a refusal, not
+        # become an "are you sure" because a neighbouring entry now matches.
+        "Backup vault lock configuration on the lab standard vault stays BLOCK",
+        {
+            "service_name": "backup",
+            "operation_name": "PutBackupVaultLockConfiguration",
+            "parameters": {"BackupVaultName": "shared-vault-lab-standard", "ChangeableForDays": 3},
+        },
+    ),
 ]
 
 ASK_CASES: list[tuple[str, dict[str, object]]] = [
@@ -296,6 +308,118 @@ ASK_CASES: list[tuple[str, dict[str, object]]] = [
     (
         "portal deleteFileForever",
         {"action": "deleteFileForever", "params": {"key": "k"}},
+    ),
+    # --- Logically air-gapped (LAG) vaults, copy jobs and RAM shares ---
+    (
+        "LAG vault creation (CLI)",
+        {
+            "command": (
+                "aws backup create-logically-air-gapped-backup-vault --backup-vault-name lab-lag "
+                "--min-retention-days 7 --max-retention-days 35"
+            )
+        },
+    ),
+    (
+        "LAG vault creation via use_aws",
+        {
+            "service_name": "backup",
+            "operation_name": "CreateLogicallyAirGappedBackupVault",
+            "parameters": {"BackupVaultName": "lab-lag", "MinRetentionDays": 7, "MaxRetentionDays": 35},
+        },
+    ),
+    (
+        "lab LAG template deploy",
+        {
+            "command": (
+                "aws cloudformation deploy --template-file "
+                "infrastructure/shared-backup-vault-lab/cloudformation/owner-lag-share.yaml "
+                "--stack-name lab-owner-lag-share"
+            )
+        },
+    ),
+    (
+        # Pins the inline-type branch: nothing else in the corpus reaches it.
+        "LAG vault type in an inline template",
+        {
+            "command": (
+                "aws cloudformation create-stack --stack-name x --template-body "
+                '\'{"Resources":{"V":{"Type":"AWS::Backup::LogicallyAirGappedBackupVault"}}}\''
+            )
+        },
+    ),
+    (
+        "start-copy-job (CLI)",
+        {
+            "command": (
+                "aws backup start-copy-job --recovery-point-arn arn:aws:ec2:us-east-1::volume/vol-1 "
+                "--source-backup-vault-name src --destination-backup-vault-arn "
+                "arn:aws:backup:us-east-1:111122223333:backup-vault:lab-lag "
+                "--iam-role-arn arn:aws:iam::111122223333:role/r"
+            )
+        },
+    ),
+    (
+        "StartCopyJob via use_aws",
+        {
+            "service_name": "backup",
+            "operation_name": "StartCopyJob",
+            "parameters": {"SourceBackupVaultName": "src", "IamRoleArn": "arn:aws:iam::111122223333:role/r"},
+        },
+    ),
+    (
+        # Tolerated over-match: the entry cannot tell a call from a mention, so a
+        # shell search for the name asks too. Recorded so that narrowing it later
+        # is a deliberate change. Code searches should use the search tool.
+        "grep mentioning start-copy-job (tolerated over-match)",
+        {"command": "grep -rn start-copy-job scripts/"},
+    ),
+    (
+        "RAM share of a Backup vault (CLI)",
+        {
+            "command": (
+                "aws ram create-resource-share --name lab --resource-arns "
+                "arn:aws:backup:us-east-1:111122223333:backup-vault:lab-lag --principals 444455556666"
+            )
+        },
+    ),
+    (
+        # Vault ARN appears before the operation name: the reverse-order branch.
+        "RAM share of a Backup vault via use_aws, vault key first",
+        {
+            "parameters": {
+                "name": "lab",
+                "resourceArns": ["arn:aws:backup:us-east-1:111122223333:backup-vault:lab-lag"],
+                "principals": ["444455556666"],
+            },
+            "operation_name": "CreateResourceShare",
+            "service_name": "ram",
+        },
+    ),
+    (
+        "associate-resource-share adds a Backup vault",
+        {
+            "command": (
+                "aws ram associate-resource-share --resource-share-arn "
+                "arn:aws:ram:us-east-1:111122223333:resource-share/abc --resource-arns "
+                "arn:aws:backup:us-east-1:111122223333:backup-vault:lab-lag"
+            )
+        },
+    ),
+    (
+        "RAM share with an opaque external payload",
+        {"command": "aws ram create-resource-share --cli-input-json file://share.json"},
+    ),
+    (
+        "lab 03 with --apply",
+        {"command": "infrastructure/shared-backup-vault-lab/scripts/03_deploy_lag_share.sh --apply"},
+    ),
+    (
+        "lab 04 with --apply",
+        {"command": "infrastructure/shared-backup-vault-lab/scripts/04_backup_and_copy.sh --phase all --apply"},
+    ),
+    (
+        "lab 10 with --apply",
+        {"command": "infrastructure/shared-backup-vault-lab/scripts/10_teardown.sh --apply"},
     ),
 ]
 
@@ -347,6 +471,58 @@ ALLOW_CASES: list[tuple[str, dict[str, object]]] = [
     (
         "running the test suite",
         {"command": "make test-quick"},
+    ),
+    # --- Reads and plans near the LAG / copy / share entries must stay silent ---
+    (
+        "list LAG vaults (CLI)",
+        {"command": "aws backup list-backup-vaults --by-vault-type LOGICALLY_AIR_GAPPED_BACKUP_VAULT"},
+    ),
+    (
+        "list LAG vaults via use_aws",
+        {
+            "service_name": "backup",
+            "operation_name": "ListBackupVaults",
+            "parameters": {"ByVaultType": "LOGICALLY_AIR_GAPPED_BACKUP_VAULT"},
+        },
+    ),
+    (
+        "describe-copy-job",
+        {"command": "aws backup describe-copy-job --copy-job-id 11111111-2222-3333-4444-555555555555"},
+    ),
+    (
+        "RAM share of VPC subnets",
+        {
+            "command": (
+                "aws ram create-resource-share --name subnets --resource-arns "
+                "arn:aws:ec2:us-east-1:111122223333:subnet/subnet-0123456789abcdef0 --principals 444455556666"
+            )
+        },
+    ),
+    (
+        "get-resource-shares",
+        {"command": "aws ram get-resource-shares --resource-owner SELF"},
+    ),
+    (
+        "lab 04 plan without --apply",
+        {"command": "infrastructure/shared-backup-vault-lab/scripts/04_backup_and_copy.sh --phase all"},
+    ),
+    (
+        "lab 06 with --apply (read-only script)",
+        {"command": "infrastructure/shared-backup-vault-lab/scripts/06_verify.sh --apply"},
+    ),
+    (
+        "lab 10 plan without --apply",
+        {"command": "infrastructure/shared-backup-vault-lab/scripts/10_teardown.sh"},
+    ),
+    (
+        # Regression pins for the narrowed lab-template branch: with the old broad
+        # form (`cloudformation` followed by anything) both of these would ask.
+        "cfn-lint on the lab LAG template",
+        {"command": ".venv/bin/cfn-lint infrastructure/shared-backup-vault-lab/cloudformation/owner-lag-share.yaml"},
+    ),
+    (
+        "git diff of the lab LAG template",
+        {"command": "git diff -- infrastructure/shared-backup-vault-lab/cloudformation/owner-lag-share.yaml"},
     ),
 ]
 
@@ -651,6 +827,38 @@ def test_all_three_outcomes_are_represented() -> None:
     assert len(BLOCK_CASES) >= 20, f"only {len(BLOCK_CASES)} block cases"
     assert len(ASK_CASES) >= 5, f"only {len(ASK_CASES)} ask cases"
     assert len(ALLOW_CASES) >= 10, f"only {len(ALLOW_CASES)} allow cases"
+
+
+# Entry-level mutation: each ASK entry added for air-gapped vaults, copy jobs and
+# RAM shares is identified by a marker that appears in its pattern. Removing the
+# entry's pattern must make at least one ASK case stop asking; otherwise the entry
+# is untested. Existing entries are deliberately not mutated here.
+_NEW_ASK_MARKERS = [
+    "LogicallyAirGappedBackupVault",
+    "start[-_]?copy[-_]?job",
+    "(?:create|associate)[-_]?resource[-_]?share",
+    "deploy_lag_share",
+]
+
+
+@pytest.mark.parametrize("marker", _NEW_ASK_MARKERS)
+def test_each_new_ask_entry_is_pinned_by_the_corpus(marker: str, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Neutralising one new ASK entry makes at least one ASK case fail."""
+    matching = [i for i, (pattern, _why) in enumerate(guard.ASK) if marker in pattern]
+    assert len(matching) == 1, f"marker {marker!r} must identify exactly one ASK entry, found {len(matching)}"
+    mutated = list(guard.ASK)
+    mutated[matching[0]] = (r"(?!x)x", mutated[matching[0]][1])
+    monkeypatch.setattr(guard, "ASK", mutated)
+    no_longer_asked = [label for label, payload in ASK_CASES if not guard.classify(payload)[1]]
+    assert no_longer_asked, f"no ASK case depends on the entry marked {marker!r}"
+
+
+def test_new_ask_entries_do_not_weaken_the_lock_configuration_block() -> None:
+    """The boundary case is BLOCK in the same run in which the new entries are active."""
+    label = "Backup vault lock configuration on the lab standard vault stays BLOCK"
+    payload = dict(next(p for lbl, p in BLOCK_CASES if lbl == label))
+    assert guard.classify(payload)[0] == 2
+    assert all(any(marker in pattern for pattern, _why in guard.ASK) for marker in _NEW_ASK_MARKERS)
 
 
 def test_case_labels_are_unique() -> None:
