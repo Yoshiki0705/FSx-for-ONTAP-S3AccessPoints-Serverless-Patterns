@@ -1,0 +1,8 @@
+{
+  "_doc": "IAM actions (service:Operation) the lab needs, per principal. Read by the permission pre-check in 01_preflight.sh, the README permission table and the stub call-record parity test. Real-environment run: not yet done. Each lab script adds the operations it calls; keep every list sorted.",
+  "operator-owner": [],
+  "operator-recipient": [],
+  "cloudformation-provisioning-owner": [],
+  "cloudformation-provisioning-recipient": [],
+  "operator-optional": []
+}

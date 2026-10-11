@@ -1,0 +1,7 @@
+#!/bin/sh
+# Test stub for sleep: records the interval and returns at once, so a 60-minute
+# wait_until timeout runs in milliseconds.
+if [ -n "${STUB_SLEEP_LOG:-}" ]; then
+  printf '%s\n' "$*" >>"$STUB_SLEEP_LOG"
+fi
+exit 0

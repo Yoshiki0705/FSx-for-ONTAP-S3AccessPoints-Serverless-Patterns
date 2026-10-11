@@ -233,3 +233,11 @@ tmp/
 # recorded five financial-idp locales as failed, and all five READMEs are in the
 # tree today, so what it preserved was a list of languages that look broken.
 translation_errors.log
+
+# Shared-vault lab: per-reader files (profiles, account ids, ARNs, generated
+# credentials, run records, original screenshots). Recursive forms on purpose: the
+# parameter files live two levels down in cloudformation/parameters/.
+infrastructure/shared-backup-vault-lab/**/*.local.env
+infrastructure/shared-backup-vault-lab/**/*.local.json
+infrastructure/shared-backup-vault-lab/**/*.local.jsonl
+infrastructure/shared-backup-vault-lab/**/originals/
