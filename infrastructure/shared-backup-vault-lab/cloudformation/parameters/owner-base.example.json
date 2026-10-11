@@ -1,0 +1,11 @@
+[
+  { "ParameterKey": "LabTag", "ParameterValue": "shared-vault-lab" },
+  { "ParameterKey": "SubnetId", "ParameterValue": "subnet-0123456789abcdef0" },
+  { "ParameterKey": "SecurityGroupId", "ParameterValue": "sg-0123456789abcdef0" },
+  { "ParameterKey": "StorageCapacityGiB", "ParameterValue": "1024" },
+  { "ParameterKey": "ThroughputCapacity", "ParameterValue": "128" },
+  { "ParameterKey": "SvmName", "ParameterValue": "svm_lab" },
+  { "ParameterKey": "VolumeName", "ParameterValue": "vol_lab" },
+  { "ParameterKey": "VolumeSizeMB", "ParameterValue": "1024" },
+  { "ParameterKey": "StandardVaultName", "ParameterValue": "shared-vault-lab-standard" }
+]

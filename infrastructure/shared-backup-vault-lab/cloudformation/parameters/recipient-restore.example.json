@@ -1,0 +1,8 @@
+[
+  { "ParameterKey": "LabTag", "ParameterValue": "shared-vault-lab" },
+  { "ParameterKey": "ExistingFileSystemId", "ParameterValue": "fs-0123456789abcdef0" },
+  { "ParameterKey": "SubnetId", "ParameterValue": "" },
+  { "ParameterKey": "SecurityGroupId", "ParameterValue": "" },
+  { "ParameterKey": "ThroughputCapacity", "ParameterValue": "128" },
+  { "ParameterKey": "RestoreSvmName", "ParameterValue": "svm_restore" }
+]

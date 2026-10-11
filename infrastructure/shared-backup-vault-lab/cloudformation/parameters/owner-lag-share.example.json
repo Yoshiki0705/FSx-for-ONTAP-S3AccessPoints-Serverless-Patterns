@@ -1,0 +1,10 @@
+[
+  { "ParameterKey": "LabTag", "ParameterValue": "shared-vault-lab" },
+  { "ParameterKey": "LagVaultName", "ParameterValue": "shared-vault-lab-lag" },
+  { "ParameterKey": "ShareName", "ParameterValue": "shared-vault-lab-lag-share" },
+  { "ParameterKey": "RetentionDays", "ParameterValue": "7" },
+  { "ParameterKey": "AcknowledgeRetentionDays", "ParameterValue": "7" },
+  { "ParameterKey": "RecipientAccountId", "ParameterValue": "444455556666" },
+  { "ParameterKey": "AllowExternalPrincipals", "ParameterValue": "true" },
+  { "ParameterKey": "ShareEnabled", "ParameterValue": "true" }
+]

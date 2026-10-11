@@ -90,10 +90,15 @@ def templates() -> list[Path]:
     expanded by the default Actions shell, which is how this gate came to validate
     nothing at all.
 
+    The shared-vault lab templates are listed explicitly: they are not named
+    `template-deploy.yaml`, and `test_check_cfn_guard.py` derives the expected set
+    from the directory so a fourth template cannot be left out.
+
     Returns:
-        Sorted template paths.
+        Template paths: the solution templates, then the lab templates, each sorted.
     """
-    return sorted((ROOT / "solutions").rglob("template-deploy.yaml"))
+    lab = ROOT / "infrastructure" / "shared-backup-vault-lab" / "cloudformation"
+    return sorted((ROOT / "solutions").rglob("template-deploy.yaml")) + sorted(lab.glob("*.yaml"))
 
 
 def run(paths: list[Path]) -> str:

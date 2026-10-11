@@ -408,6 +408,29 @@ jobs:
       - name: Audit Python dependencies
         run: pip-audit -r requirements.txt --desc
 
+  # The pinned cfn-lint over every template registered in .cfnlintrc. A job of its
+  # own, rather than another step in portal-drift-check, so that a template error is
+  # reported as a cfn-lint failure and not as a "Portal doc/code drift check" failure.
+  # `make lint-cfn` exits non-zero on errors only (--non-zero-exit-code error).
+  # scripts/tests/test_cfn_template_coverage.py asserts this job stays blocking and
+  # stays in validators-summary.
+  cfn-lint:
+    name: "cfn-lint (pinned, blocking)"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.13"
+      - name: Install pinned dev tooling
+        run: pip install -r requirements-dev.txt
+      - name: Check the resolved tool versions are the pinned ones
+        run: python3 scripts/check_tool_versions.py
+      - name: Lint every registered CloudFormation template
+        run: make lint-cfn
+
   validators-summary:
     name: "Validators Summary"
     runs-on: ubuntu-latest
@@ -423,6 +446,7 @@ jobs:
       - bedrock-inference-profile-check
       - actions-pinning-check
       - dependency-audit
+      - cfn-lint
     if: always()
     steps:
       - name: Evaluate
@@ -443,6 +467,7 @@ jobs:
             ["bedrock-inference-profile-check"]="${{ needs.bedrock-inference-profile-check.result }}"
             ["actions-pinning-check"]="${{ needs.actions-pinning-check.result }}"
             ["dependency-audit"]="${{ needs.dependency-audit.result }}"
+            ["cfn-lint"]="${{ needs.cfn-lint.result }}"
           )
           failed=0
           for name in "${!results[@]}"; do

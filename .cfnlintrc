@@ -10,6 +10,10 @@ templates:
   # workflows from the repository root, so that file never ran and these seven
   # templates had no gate at all. They are listed here instead.
   - "infrastructure/handson-lab/cloudformation/*.yaml"
+  # The shared-vault lab templates (owner-base, owner-lag-share, recipient-restore).
+  # scripts/tests/test_cfn_template_coverage.py fails if a template under the lab is
+  # missing from this list, and the cfn-lint job in validators.yml is blocking.
+  - "infrastructure/shared-backup-vault-lab/cloudformation/*.yaml"
 
 ignore_templates:
   - "shared/cfn/*.yaml"

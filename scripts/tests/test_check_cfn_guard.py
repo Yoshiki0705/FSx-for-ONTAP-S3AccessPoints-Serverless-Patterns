@@ -313,11 +313,43 @@ def test_a_stale_baseline_entry_fails(monkeypatch: pytest.MonkeyPatch) -> None:
     assert gate.main([]) == 1
 
 
+LAB_CFN = ROOT / "infrastructure" / "shared-backup-vault-lab" / "cloudformation"
+
+
+def missing_lab_templates(checked: list[Path]) -> list[Path]:
+    """Lab templates on disk that the gate does not check.
+
+    The expected set comes from the directory, never from a hand-written list, so a
+    fourth template cannot be added without being scanned.
+
+    Args:
+        checked: Paths the gate would scan (``gate.templates()``).
+
+    Returns:
+        Lab templates missing from ``checked``.
+    """
+    return [p for p in sorted(LAB_CFN.glob("*.yaml")) if p not in set(checked)]
+
+
 def test_templates_are_found_without_a_shell_glob() -> None:
     """The original fault: `solutions/**/template-deploy.yaml` was passed literally."""
     found = gate.templates()
-    assert len(found) >= 25, f"only {len(found)} templates discovered"
-    assert all(p.name == "template-deploy.yaml" for p in found)
+    deploy_templates = [p for p in found if p.name == "template-deploy.yaml"]
+    assert len(deploy_templates) >= 25, f"only {len(deploy_templates)} templates discovered"
+    assert all(p.name == "template-deploy.yaml" or p.parent == LAB_CFN for p in found)
+
+
+def test_every_shared_vault_lab_template_is_scanned() -> None:
+    assert len(list(LAB_CFN.glob("*.yaml"))) >= 3
+    assert missing_lab_templates(gate.templates()) == []
+
+
+def test_a_lab_template_left_out_of_the_gate_is_detected() -> None:
+    """Negative control: dropping one lab template from the scanned list must be reported."""
+    scanned = gate.templates()
+    dropped = sorted(LAB_CFN.glob("*.yaml"))[0]
+    assert missing_lab_templates([p for p in scanned if p != dropped]) == [dropped]
+    assert missing_lab_templates([p for p in scanned if p.parent != LAB_CFN]) == sorted(LAB_CFN.glob("*.yaml"))
 
 
 def test_missing_cfn_guard_fails_rather_than_skips(monkeypatch: pytest.MonkeyPatch) -> None:

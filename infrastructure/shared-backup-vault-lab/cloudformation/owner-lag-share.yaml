@@ -1,0 +1,119 @@
+# Real-environment run: not yet done (status source: docs/verification-record.md)
+#
+# Owner account, part 2: a logically air-gapped (LAG) backup vault and a RAM share
+# of that vault to one recipient account. One stack per Region.
+#
+# IRREVERSIBLE: creating the LAG vault cannot be undone for the retention you
+# choose. Once a recovery point is copied in, the vault cannot be deleted until
+# that recovery point expires, and changing the retention range later means
+# replacing the vault. RetentionDays is the minimum AND maximum retention of the
+# vault, so it also fixes how long every copy is kept. The vault is billed while
+# it holds data. Expiry was observed once as source creation + retention; no
+# early-deletion route is confirmed.
+#
+# Deploying this file directly (aws cloudformation deploy ...) BYPASSES the checks
+# in scripts/03_deploy_lag_share.sh: the confirmation token, the post-deploy
+# verification and the account check. The only protection left in the template is
+# the Rules section below, which asks for the retention twice. Whether a Rules
+# assertion that compares two parameters is enforced by `deploy` is not yet run
+# on real environment.
+#
+#   aws cloudformation deploy --template-file cloudformation/owner-lag-share.yaml \
+#     --stack-name <LAB_TAG>-lag-<region> \
+#     --parameter-overrides file://cloudformation/parameters/owner-lag-share.local.json
+AWSTemplateFormatVersion: "2010-09-09"
+Description: Shared-vault lab, owner side - logically air-gapped backup vault and RAM share to one account
+
+Parameters:
+  LabTag:
+    Type: String
+    Default: shared-vault-lab
+    AllowedPattern: "^[a-z0-9-]{3,40}$"
+    Description: Value of the Project tag
+  LagVaultName:
+    Type: String
+    AllowedPattern: "^[a-zA-Z0-9_-]{2,50}$"
+    Description: Name of the logically air-gapped vault
+  ShareName:
+    Type: String
+    AllowedPattern: "^[a-zA-Z0-9_-]{1,64}$"
+    Description: Name of the RAM resource share
+  RetentionDays:
+    Type: Number
+    MinValue: 7
+    MaxValue: 35
+    Description: IRREVERSIBLE. Minimum and maximum retention of the vault, in days
+  AcknowledgeRetentionDays:
+    Type: Number
+    MinValue: 7
+    MaxValue: 35
+    Description: Type the same number as RetentionDays to confirm you read the IRREVERSIBLE note
+  RecipientAccountId:
+    Type: String
+    AllowedPattern: "^[0-9]{12}$"
+    Description: Account that receives the share
+  AllowExternalPrincipals:
+    Type: String
+    Default: "true"
+    AllowedValues: ["true", "false"]
+    Description: Allow sharing with an account outside the organization (false needs organization sharing enabled)
+  ShareEnabled:
+    Type: String
+    Default: "true"
+    AllowedValues: ["true", "false"]
+    Description: Normally true. 03_deploy_lag_share.sh --repair-share flips it false then true to recreate the share
+
+Rules:
+  RetentionAcknowledged:
+    Assertions:
+      - Assert: !Equals [!Ref RetentionDays, !Ref AcknowledgeRetentionDays]
+        AssertDescription: AcknowledgeRetentionDays must equal RetentionDays
+
+Conditions:
+  ShareOn: !Equals [!Ref ShareEnabled, "true"]
+
+Resources:
+  # DeletionPolicy is left at the default on purpose: an EMPTY vault must be
+  # deletable with the stack. UpdateReplacePolicy Retain keeps the old vault when
+  # a change forces replacement, because a vault holding a recovery point cannot
+  # be deleted.
+  LagVault:
+    Type: AWS::Backup::LogicallyAirGappedBackupVault
+    UpdateReplacePolicy: Retain
+    Properties:
+      BackupVaultName: !Ref LagVaultName
+      MinRetentionDays: !Ref RetentionDays
+      MaxRetentionDays: !Ref RetentionDays
+      BackupVaultTags:
+        Project: !Ref LabTag
+        Cleanup: delete-when-done
+
+  # PrincipalAssociation / ResourceAssociation resources are the documented
+  # preference, but the pinned cfn-lint does not know AWS::RAM::PrincipalAssociation,
+  # so the share lists its resources and principals directly.
+  VaultShare:
+    Type: AWS::RAM::ResourceShare
+    Condition: ShareOn
+    Properties:
+      Name: !Ref ShareName
+      AllowExternalPrincipals: !Ref AllowExternalPrincipals
+      ResourceArns:
+        - !GetAtt LagVault.BackupVaultArn
+      Principals:
+        - !Ref RecipientAccountId
+      Tags:
+        - Key: Project
+          Value: !Ref LabTag
+        - Key: Cleanup
+          Value: delete-when-done
+
+Outputs:
+  LagVaultArn:
+    Description: ARN of the logically air-gapped vault (Ref returns the name, not the ARN)
+    Value: !GetAtt LagVault.BackupVaultArn
+  LagVaultName:
+    Description: Name of the logically air-gapped vault
+    Value: !Ref LagVault
+  ResourceShareArn:
+    Description: ARN of the RAM share, or not-shared while ShareEnabled is false
+    Value: !If [ShareOn, !Ref VaultShare, not-shared]
