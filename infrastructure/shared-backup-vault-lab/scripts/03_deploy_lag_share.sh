@@ -205,7 +205,7 @@ deploy_stack() {
 
 # poll_vault: 0 AVAILABLE, 1 still creating, 2 the poll or the vault failed.
 VAULT_JSON=""
-# shellcheck disable=SC2329  # invoked through wait_until
+# shellcheck disable=SC2329,SC2317  # invoked through wait_until
 poll_vault() {
   local state
   VAULT_JSON=$(aws_owner backup describe-backup-vault --backup-vault-name "$LAB_LAG_VAULT_NAME") || return 2

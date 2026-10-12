@@ -483,7 +483,7 @@ changed_stacks() {
 AFTER_SNAPSHOT="[]"
 CHANGED="[]"
 BEFORE_SNAPSHOT="[]"
-# shellcheck disable=SC2329  # invoked through wait_until
+# shellcheck disable=SC2329,SC2317  # invoked through wait_until
 poll_stacks() {
   AFTER_SNAPSHOT=$(amplify_snapshot) || return 2
   CHANGED=$(changed_stacks "$BEFORE_SNAPSHOT" "$AFTER_SNAPSHOT")

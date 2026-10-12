@@ -159,5 +159,11 @@ def test_shellcheck_is_clean_on_every_lab_shell_file() -> None:
     targets = shellcheck_targets(LAB_SRC)
     assert targets
     version = subprocess.run(["shellcheck", "--version"], capture_output=True, text=True, check=False).stdout
-    proc = run_shellcheck(targets)
-    assert proc.returncode == 0, f"{version}\n{proc.stdout}{proc.stderr}"
+    # One invocation per file: passing every path at once lets a newer shellcheck
+    # resolve cross-file dispatch and hide what CI's per-file 0.9.0 run surfaces.
+    failures = [
+        f"{target}\n{proc.stdout}{proc.stderr}"
+        for target in targets
+        if (proc := run_shellcheck([target])).returncode != 0
+    ]
+    assert not failures, f"{version}\n" + "\n".join(failures)

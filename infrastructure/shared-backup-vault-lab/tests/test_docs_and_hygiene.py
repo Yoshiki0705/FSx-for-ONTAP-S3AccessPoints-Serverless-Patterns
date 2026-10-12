@@ -227,7 +227,9 @@ def test_account_ids_are_placeholders() -> None:
                     assert account in PLACEHOLDER_ACCOUNTS, f"{doc.name}:{number}: real-looking account id {account}"
 
 
-FORBIDDEN_NAMING = re.compile(r"\bFSxN\b|\bFSx ONTAP\b|Workload Factory|NetApp Console|BlueXP")
+FORBIDDEN_NAMING = re.compile(
+    r"\bFSxN\b|\bFSx ONTAP\b|Workload Factory|NetApp Console|BlueXP"  # allow:naming this detector pattern lists the banned words so a doc using them fails
+)
 NEUTRALITY = re.compile(
     "\\bbeats\\b|\u3088\u308a\u512a\u308c\u3066\u3044\u308b|\u7af6\u5408\u30c4\u30fc\u30eb|game-changer|differentiator",  # allow:neutrality this detector pattern lists the banned words so a doc using them fails
     re.IGNORECASE,

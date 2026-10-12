@@ -109,7 +109,7 @@ POLL_ARN=""
 
 # poll_fs KIND / poll_svm KIND ID / poll_volume KIND ID: lifecycle polls for
 # wait_until (0 done, 1 not yet, 2 the poll or the resource failed).
-# shellcheck disable=SC2329  # invoked through wait_until
+# shellcheck disable=SC2329,SC2317  # invoked through wait_until
 poll_fs() {
   local kind=$1 out state
   case $kind in
@@ -125,7 +125,7 @@ poll_fs() {
   esac
 }
 
-# shellcheck disable=SC2329  # invoked through wait_until
+# shellcheck disable=SC2329,SC2317  # invoked through wait_until
 poll_svm() {
   local kind=$1 id=$2 out state
   case $kind in
@@ -141,7 +141,7 @@ poll_svm() {
   esac
 }
 
-# shellcheck disable=SC2329  # invoked through wait_until
+# shellcheck disable=SC2329,SC2317  # invoked through wait_until
 poll_volume() {
   local id=$1 out state
   out=$(aws_owner fsx describe-volumes --volume-ids "$id") || return 2

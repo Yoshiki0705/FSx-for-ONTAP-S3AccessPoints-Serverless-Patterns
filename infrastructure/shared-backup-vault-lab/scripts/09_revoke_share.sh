@@ -73,7 +73,7 @@ fi
 # poll_shared_gone: 0 when the recipient's shared list no longer holds the lab vault
 # of the owner, 1 while it is listed, 2 when the list cannot be read.
 POLL_STATE=""
-# shellcheck disable=SC2329  # invoked through wait_until
+# shellcheck disable=SC2329,SC2317  # invoked through wait_until
 poll_shared_gone() {
   local vaults
   if ! vaults=$(aws_recipient backup list-backup-vaults --by-shared); then

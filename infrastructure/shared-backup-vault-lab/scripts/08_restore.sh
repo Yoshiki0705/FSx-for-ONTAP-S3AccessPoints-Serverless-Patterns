@@ -262,7 +262,7 @@ JOB_STATUS=""
 JOB_MESSAGE=""
 VOL_STATE="none"
 VOL_ARN=""
-# shellcheck disable=SC2329  # invoked through wait_until
+# shellcheck disable=SC2329,SC2317  # invoked through wait_until
 poll_restore() {
   local job vols payload
   if [ "$VIA" = cli ]; then

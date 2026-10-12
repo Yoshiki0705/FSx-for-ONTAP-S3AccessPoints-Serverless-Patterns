@@ -295,7 +295,7 @@ fi
 # --------------------------------------------------------------------------
 BACKUP_STATE=""
 BACKUP_MESSAGE=""
-# shellcheck disable=SC2329  # invoked through wait_until
+# shellcheck disable=SC2329,SC2317  # invoked through wait_until
 poll_backup_job() {
   local out
   out=$(aws_owner backup describe-backup-job --backup-job-id "$BACKUP_JOB_ID") || return 2
@@ -348,7 +348,7 @@ fi
 COPY_STATE=""
 COPY_MESSAGE=""
 COPY_DEST_RP=""
-# shellcheck disable=SC2329  # invoked through wait_until
+# shellcheck disable=SC2329,SC2317  # invoked through wait_until
 poll_copy_job() {
   local out
   out=$(aws_owner backup describe-copy-job --copy-job-id "$COPY_JOB_ID") || return 2

@@ -490,7 +490,7 @@ fi
 # --------------------------------------------------------------------------
 
 # poll_share_gone: 0 when no ACTIVE share of the lab remains in the current Region.
-# shellcheck disable=SC2329  # invoked through wait_until
+# shellcheck disable=SC2329,SC2317  # invoked through wait_until
 poll_share_gone() {
   local out
   out=$(aws_owner ram get-resource-shares --resource-owner SELF --name "$LAB_SHARE_NAME" --resource-share-status ACTIVE) || return 2
@@ -500,7 +500,7 @@ poll_share_gone() {
 # poll_volume_gone KIND VOLUME_ID: 0 once describe-volumes answers VolumeNotFound.
 # A volume that is still described is not gone; the describe is read directly
 # (not a tag search, which can keep returning a deleted resource).
-# shellcheck disable=SC2329  # invoked through wait_until
+# shellcheck disable=SC2329,SC2317  # invoked through wait_until
 poll_volume_gone() {
   local kind=$1 id=$2 out
   case $kind in
@@ -515,7 +515,7 @@ poll_volume_gone() {
 }
 
 # poll_stack_gone KIND STACK: 0 when the stack no longer exists, 2 on DELETE_FAILED.
-# shellcheck disable=SC2329  # invoked through wait_until
+# shellcheck disable=SC2329,SC2317  # invoked through wait_until
 poll_stack_gone() {
   local kind=$1 stack=$2 json rc status
   if json=$(describe_stack "$kind" "$stack"); then
@@ -534,7 +534,7 @@ poll_stack_gone() {
 }
 
 # poll_rps_gone: 0 when no recovery point of the lab volume remains in the standard vault.
-# shellcheck disable=SC2329  # invoked through wait_until
+# shellcheck disable=SC2329,SC2317  # invoked through wait_until
 poll_rps_gone() {
   local out
   out=$(aws_owner backup list-recovery-points-by-backup-vault --backup-vault-name "$LAB_STANDARD_VAULT_NAME" --by-resource-arn "$VOLUME_ARN") || return 2
