@@ -6,5 +6,6 @@
   { "ParameterKey": "AcknowledgeRetentionDays", "ParameterValue": "7" },
   { "ParameterKey": "RecipientAccountId", "ParameterValue": "444455556666" },
   { "ParameterKey": "AllowExternalPrincipals", "ParameterValue": "true" },
-  { "ParameterKey": "ShareEnabled", "ParameterValue": "true" }
+  { "ParameterKey": "ShareEnabled", "ParameterValue": "true" },
+  { "ParameterKey": "MpaApprovalTeamArn", "ParameterValue": "" }
 ]

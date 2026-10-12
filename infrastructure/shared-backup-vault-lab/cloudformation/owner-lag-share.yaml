@@ -62,6 +62,14 @@ Parameters:
     Default: "true"
     AllowedValues: ["true", "false"]
     Description: Normally true. 03_deploy_lag_share.sh --repair-share flips it false then true to recreate the share
+  MpaApprovalTeamArn:
+    Type: String
+    Default: ""
+    Description: >-
+      Optional. ARN of a Multi-party approval (MPA) approval team that gates the
+      CreateRestoreAccessVault approval path on this LAG vault. NOT YET RUN ON
+      REAL ENVIRONMENT in this lab. Leave empty (the default) for the single-org
+      run this lab verifies
 
 Rules:
   RetentionAcknowledged:
@@ -71,6 +79,7 @@ Rules:
 
 Conditions:
   ShareOn: !Equals [!Ref ShareEnabled, "true"]
+  HasMpaTeam: !Not [!Equals [!Ref MpaApprovalTeamArn, ""]]
 
 Resources:
   # DeletionPolicy is left at the default on purpose: an EMPTY vault must be
@@ -87,6 +96,16 @@ Resources:
       BackupVaultTags:
         Project: !Ref LabTag
         Cleanup: delete-when-done
+      # MpaApprovalTeamArn gates the CreateRestoreAccessVault approval path with a
+      # Multi-party approval team. It is fixed at creation: it cannot be changed
+      # afterwards, and a change forces CloudFormation to replace the vault (which
+      # UpdateReplacePolicy: Retain then keeps). MPA additionally requires a second
+      # AWS Organization (a separate recovery org) and an approval team of 3 to 20
+      # approvers, so it is out of scope for this lab's single-org, two-account run
+      # and is NOT YET RUN ON REAL ENVIRONMENT. Passed only when a non-empty ARN is
+      # given; otherwise the property is omitted (AWS::NoValue). See the MPA path
+      # section of README.md and docs/procedure.md.
+      MpaApprovalTeamArn: !If [HasMpaTeam, !Ref MpaApprovalTeamArn, !Ref "AWS::NoValue"]
 
   # PrincipalAssociation / ResourceAssociation resources are the documented
   # preference, but the pinned cfn-lint does not know AWS::RAM::PrincipalAssociation,
