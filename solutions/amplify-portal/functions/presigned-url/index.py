@@ -28,6 +28,7 @@ from shared.exceptions import S3ApHelperError
 from shared.portal_activity_ledger import ACTION_SHARE_LINK, record_activity
 from shared.portal_external_policy import share_link_expiry_ceiling
 from shared.portal_path_scope import allowed_prefixes, reject_key, resolve_ap_alias
+from shared.s3ap_app_signal import emit_s3ap_app_signal
 from shared.s3ap_helper import S3ApHelper
 
 logger = logging.getLogger()
@@ -93,6 +94,20 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
     except S3ApHelperError as e:
         logger.exception("Presign failed for key %s on %s", key, ap_alias)
         return {"url": None, "expiresIn": 0, "error": str(e)}
+
+    # Application-layer half of the audit join. A presigned URL mints no S3 event
+    # until the client redeems it, so this records the application's intent now;
+    # the join completes when the URL is GET-redeemed and ONTAP records a Read
+    # Object. Best-effort, exactly like the ledger write below: the URL is already
+    # valid and cannot be withdrawn, so a failure here must not fail the request.
+    try:
+        emit_s3ap_app_signal(
+            object_key=key,
+            operation="GET",
+            principal=event.get("sub") or user_id,
+        )
+    except Exception:  # noqa: BLE001 - best-effort signal, never fatal to the request
+        logger.exception("Failed to emit S3 AP application signal for key %s", key)
 
     # Recorded after signing, because the row describes a URL that exists. The write
     # cannot fail the request: the URL is already valid and cannot be withdrawn, so a

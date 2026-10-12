@@ -56,6 +56,12 @@ export interface PortalConfig {
   // While false, any signed-in user can write and delete.
   enforceRoles: boolean;
 
+  // Optional sample instrumentation: emit the application half of the
+  // audit-correlation signal from the presigned-url function. Off by default;
+  // omit or leave false unless you are correlating portal activity with FSx for
+  // ONTAP audit logs in the Observability sibling project.
+  enableS3apAppSignal?: boolean;
+
   // What a caller holding the `external` scope may do, regardless of role.
   externalDefaults: {
     aiEnabled: boolean;
@@ -386,6 +392,18 @@ export const config: PortalConfig = {
    * On unless the variable is exactly "false", so a typo lands on the restrictive side.
    */
   enforceRoles: process.env.AMPLIFY_PORTAL_ENFORCE_ROLES !== "false",
+
+  /**
+   * Optional sample instrumentation. When true, the presigned-url function emits
+   * the application half of the audit-correlation join — the join key on
+   * (object key, operation, time window) — as a CloudWatch EMF record in the
+   * `FSxONTAPAppSignals` namespace. The correlation/join side lives in the
+   * Observability sibling project.
+   *
+   * **False.** This is opt-in: leave it off unless you are joining portal
+   * activity against FSx for ONTAP audit logs. It emits nothing when off.
+   */
+  enableS3apAppSignal: false,
 
   /**
    * Limits applied to a caller holding the `external` scope, whatever their role.

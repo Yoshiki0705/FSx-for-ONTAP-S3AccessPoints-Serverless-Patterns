@@ -1126,6 +1126,9 @@ const getPresignedUrlFunction = new lambda.Function(
         EXTERNAL_SHARE_LINKS_BY_ROLE: JSON.stringify(
           config.externalDefaults.shareLinksByRole
         ),
+      // Optional sample instrumentation, off unless the deployment opts in. See
+      // shared/s3ap_app_signal.py and the Getting Started doc.
+      ENABLE_S3AP_APP_SIGNAL: String(config.enableS3apAppSignal ?? false),
     },
     // `index.py` imports `shared.portal_path_scope`. Without the layer the function
     // fails at import and every preview and download with it.
