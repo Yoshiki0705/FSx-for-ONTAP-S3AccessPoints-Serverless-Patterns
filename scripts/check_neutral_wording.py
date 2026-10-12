@@ -113,8 +113,9 @@ SCAN_GLOBS = (
     "**/*.sh",
 )
 
-#: Directory prefixes skipped entirely, each for a reason that is not "it has
-#: findings we do not want to see".
+#: Path prefixes skipped entirely, each for a reason that is not "it has
+#: findings we do not want to see". These anchor at the repository root because
+#: they name specific rule-defining files.
 EXCLUDED_PREFIXES: tuple[str, ...] = (
     # A rule cannot be written without naming what it forbids. These paths define
     # the standard, so their matches are the rule text itself.
@@ -123,19 +124,30 @@ EXCLUDED_PREFIXES: tuple[str, ...] = (
     "AGENTS.md",
     "scripts/check_neutral_wording.py",
     "scripts/tests/test_check_neutral_wording.py",
-    # Not authored here.
-    "node_modules/",
-    ".venv/",
-    "cdk.out/",
-    ".aws-sam/",
-    ".git/",
-    ".canonical-audit/",
+)
+
+#: Directory names skipped wherever they appear in the path, not only at the
+#: root. These are third-party or build directories (gitignored), so a nested
+#: copy such as `solutions/amplify-portal/node_modules/` is as much "not authored
+#: here" as a top-level one. Matching only the root prefix let the portal's nested
+#: node_modules into the scan.
+EXCLUDED_DIR_SEGMENTS: frozenset[str] = frozenset(
+    {
+        "node_modules",
+        ".venv",
+        "cdk.out",
+        ".aws-sam",
+        ".git",
+        ".canonical-audit",
+    }
 )
 
 
 def _is_excluded(rel_path: str) -> bool:
     """Whether a repository-relative path is outside the audited set."""
-    return any(rel_path.startswith(prefix) for prefix in EXCLUDED_PREFIXES)
+    if any(rel_path.startswith(prefix) for prefix in EXCLUDED_PREFIXES):
+        return True
+    return bool(EXCLUDED_DIR_SEGMENTS.intersection(rel_path.split("/")))
 
 
 def discover_files(project_root: Path, paths: list[str] | None = None) -> list[Path]:

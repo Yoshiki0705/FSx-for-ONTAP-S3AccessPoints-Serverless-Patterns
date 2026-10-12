@@ -1,5 +1,7 @@
 # Real-environment run: not yet done (status source: docs/verification-record.md)
 
+🌐 **Language / 言語**: 日本語 | [English](verification-record.en.md)
+
 > Language / 言語: 日本語 | [English](verification-record.en.md)
 
 この文書は、共有ボールト検証ラボの状態の唯一の出所です。README と手順書の状態の行は、この文書を指します。

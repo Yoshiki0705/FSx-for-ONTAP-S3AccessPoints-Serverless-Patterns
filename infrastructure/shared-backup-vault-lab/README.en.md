@@ -1,5 +1,7 @@
 # Real-environment run: not yet done (status source: docs/verification-record.md)
 
+🌐 **Language / 言語**: [日本語](README.md) | English
+
 # Shared-vault verification lab
 
 > Language / 言語: [日本語](README.md) | English

@@ -229,9 +229,9 @@ def test_account_ids_are_placeholders() -> None:
 
 FORBIDDEN_NAMING = re.compile(r"\bFSxN\b|\bFSx ONTAP\b|Workload Factory|NetApp Console|BlueXP")
 NEUTRALITY = re.compile(
-    "\\bbeats\\b|\u3088\u308a\u512a\u308c\u3066\u3044\u308b|\u7af6\u5408\u30c4\u30fc\u30eb|game-changer|differentiator",
+    "\\bbeats\\b|\u3088\u308a\u512a\u308c\u3066\u3044\u308b|\u7af6\u5408\u30c4\u30fc\u30eb|game-changer|differentiator",  # allow:neutrality this detector pattern lists the banned words so a doc using them fails
     re.IGNORECASE,
-)  # allow:neutrality this detector pattern lists the banned words so a doc using them fails
+)
 
 
 def test_naming_and_neutrality() -> None:

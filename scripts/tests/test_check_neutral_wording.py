@@ -173,6 +173,18 @@ def test_named_path_still_honours_exclusions(tmp_path: Path) -> None:
     assert discover_files(tmp_path, ["AGENTS.md"]) == []
 
 
+def test_nested_third_party_dir_is_excluded(tmp_path: Path) -> None:
+    """A third-party directory is skipped wherever it sits, not only at the root.
+
+    A root-anchored prefix let `solutions/amplify-portal/node_modules/` into the
+    scan, so vendor files that say 'differentiator' failed the gate. The exclusion
+    is 'not authored here', which a nested copy satisfies just as well.
+    """
+    write(tmp_path, "solutions/amplify-portal/node_modules/pkg/README.md", "our differentiator\n")
+    kept = write(tmp_path, "docs/guide.md", "clean\n")
+    assert discover_files(tmp_path) == [kept]
+
+
 def test_empty_scan_fails(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     """No matches means the globs stopped fitting the tree, not a clean run.
 

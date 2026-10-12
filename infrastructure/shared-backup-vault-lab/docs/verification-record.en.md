@@ -1,5 +1,7 @@
 # Real-environment run: not yet done (status source: docs/verification-record.md)
 
+🌐 **Language / 言語**: [日本語](verification-record.md) | English
+
 > Language / 言語: [日本語](verification-record.md) | English
 
 This document is the single source of truth for the state of the shared-vault lab. The status line in the README and the runbook points at this file.

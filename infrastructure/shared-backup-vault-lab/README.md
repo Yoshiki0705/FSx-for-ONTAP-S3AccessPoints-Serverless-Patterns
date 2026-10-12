@@ -1,5 +1,7 @@
 # Real-environment run: not yet done (status source: docs/verification-record.md)
 
+🌐 **Language / 言語**: 日本語 | [English](README.en.md)
+
 # 共有ボールト検証ラボ
 
 > Language / 言語: 日本語 | [English](README.en.md)

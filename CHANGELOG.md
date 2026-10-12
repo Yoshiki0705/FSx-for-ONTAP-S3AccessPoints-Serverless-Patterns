@@ -22,6 +22,7 @@ and this project adheres to [Conventional Commits](https://www.conventionalcommi
 - 170+ documentation files updated with new directory references
 
 ### Added
+- Shared-backup-vault lab under `infrastructure/shared-backup-vault-lab/`: CloudFormation templates, deploy/verify/teardown scripts, a stub-based test harness, a Playwright UI spec, and a ja+en README, runbook and verification record. The record table is empty and its status reads "not yet run on real environment".
 - `solutions/ha/lifekeeper-monitoring/README.en.md` (English README with Success Metrics)
 - `solutions/ha/lifekeeper-monitoring/docs/demo-guide.md` (DemoMode deployment guide)
 - Sample LifeKeeper log files in `test-data/ha-lifekeeper-monitoring/`
