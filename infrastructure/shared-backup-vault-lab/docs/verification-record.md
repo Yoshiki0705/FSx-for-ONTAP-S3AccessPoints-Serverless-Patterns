@@ -68,10 +68,10 @@
 | 2026-10-12 | ap-northeast-1 | SINGLE_AZ_1 128MBps 1024GiB | aws-cli/2.36.5 | b8ec32a85b54 | - | V1 | 1✅ 0❌ 0⚠ | 18s | script 06_verify.sh。両リージョンで PASS。`--by-shared` に LAG 1 件、ARN は所有者、VaultType LOGICALLY_AIR_GAPPED_BACKUP_VAULT、by-shared 行では VaultState 無し・NumberOfRecoveryPoints 0 |
 | 2026-10-12 | ap-northeast-1 | SINGLE_AZ_1 128MBps 1024GiB | aws-cli/2.36.5 | b8ec32a85b54 | - | V2 | 1✅ 0❌ 0⚠ | 18s | script 06_verify.sh。両リージョンで所有者の `--by-shared` は空 |
 | 2026-10-12 | ap-northeast-1 | SINGLE_AZ_1 128MBps 1024GiB | aws-cli/2.36.5 | b8ec32a85b54 | - | V4 | 1✅ 0❌ 0⚠ | 18s | script 06_verify.sh。`--backup-vault-account-id` 無しは AccessDeniedException、付けると成功し復旧ポイント 1 件。ARN 形 arn:aws:backup:<region>:<owner>:recovery-point:<id> |
-| 2026-10-12 | ap-northeast-1 | SINGLE_AZ_1 128MBps 1024GiB | aws-cli/2.36.5 | b8ec32a85b54 | 6231351a42a9 | V3 | 1✅ 0❌ 0⚠ | 41s | script 07_portal_config.sh（--ui, arn-present）。ロールのポリシーに共有ボールト ARN、spec の arn-present 2 件が PASS（エアギャップのチップ・所有者アカウント表示、復元ダイアログは確認無効のまま開いて復元せず閉じる） |
-| 2026-10-12 | ap-northeast-1 | SINGLE_AZ_1 128MBps 1024GiB | aws-cli/2.36.5 | b8ec32a85b54 | 6231351a42a9 | V5 | 1✅ 0❌ 0⚠ | 41s | script 07_portal_config.sh。listSharedBackupVaults が成功し所有者アカウントを表示 |
-| 2026-10-12 | ap-northeast-1 | SINGLE_AZ_1 128MBps 1024GiB | aws-cli/2.36.5 | b8ec32a85b54 | 6231351a42a9 | V6 | 1✅ 0❌ 0⚠ | 2s | script 09_revoke_share.sh。取り消し後 1〜2 秒で by-shared から外れ（両リージョン）、以後の list-recovery-points は AccessDeniedException。復元済みボリュームは不変 |
-| 2026-10-12 | ap-northeast-1 | SINGLE_AZ_1 128MBps 1024GiB | aws-cli/2.36.5 | b8ec32a85b54 | 6231351a42a9 | V7 | 1✅ 0❌ 0⚠ | 1362s | script 08_restore.sh（--via cli）。共有復旧ポイントから受け手の既存 FS へ復元、ジョブ COMPLETED、vol_restored が CREATED（1 GiB、junction /vol_restored）、復元ロール受理、Project タグ付与 |
+| 2026-10-12 | ap-northeast-1 | SINGLE_AZ_1 128MBps 1024GiB | aws-cli/2.36.5 | b8ec32a85b54 | f0eac3fbaffd | V3 | 1✅ 0❌ 0⚠ | 41s | script 07_portal_config.sh（--ui, arn-present）。ロールのポリシーに共有ボールト ARN、spec の arn-present 2 件が PASS（エアギャップのチップ・所有者アカウント表示、復元ダイアログは確認無効のまま開いて復元せず閉じる） |
+| 2026-10-12 | ap-northeast-1 | SINGLE_AZ_1 128MBps 1024GiB | aws-cli/2.36.5 | b8ec32a85b54 | f0eac3fbaffd | V5 | 1✅ 0❌ 0⚠ | 41s | script 07_portal_config.sh。listSharedBackupVaults が成功し所有者アカウントを表示 |
+| 2026-10-12 | ap-northeast-1 | SINGLE_AZ_1 128MBps 1024GiB | aws-cli/2.36.5 | b8ec32a85b54 | f0eac3fbaffd | V6 | 1✅ 0❌ 0⚠ | 2s | script 09_revoke_share.sh。取り消し後 1〜2 秒で by-shared から外れ（両リージョン）、以後の list-recovery-points は AccessDeniedException。復元済みボリュームは不変 |
+| 2026-10-12 | ap-northeast-1 | SINGLE_AZ_1 128MBps 1024GiB | aws-cli/2.36.5 | b8ec32a85b54 | f0eac3fbaffd | V7 | 1✅ 0❌ 0⚠ | 1362s | script 08_restore.sh（--via cli）。共有復旧ポイントから受け手の既存 FS へ復元、ジョブ COMPLETED、vol_restored が CREATED（1 GiB、junction /vol_restored）、復元ロール受理、Project タグ付与 |
 
 各行は 1 回の実行の 1 項目の結果（n=1）で、他の環境や規模への一般化ではありません。digest と portal-ref はコミット時点のコードに対応します。
 
