@@ -603,7 +603,7 @@ The portal's presigned-url function can emit the **application half** of the
 audit-correlation join. What it sends is the join key on
 `(object key, operation, time window)` — the deterministic key that pairs a portal
 request with its matching record in the Amazon FSx for NetApp ONTAP audit log. FSx for
-ONTAP audit records carry no free-form field, so a trace ID cannot be propagated into
+ONTAP audit records carry no free-form field, so a trace ID cannot be propagated into <!-- allow:unverified: unverified premise about the ONTAP audit record schema; not checked against ONTAP's audit schema in this PR's E2E (correlation was proven on object-key, not trace-ID propagation) -->
 them; the end-user attribution is therefore supplied by the application side through this
 signal.
 
