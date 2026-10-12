@@ -87,17 +87,41 @@ MPA（マルチパーティー承認）は実行していません（この環�
 
 実機で観測した画面と CLI 出力です。アカウント ID・リソース ID・ARN・復旧ポイント ID・KMS キー ID はマスク（黒塗りまたは切り取り）し、ポータルの画面は spec のダミーアカウント 111122223333 を使います。手順書の撮影計画マーカー（`<!-- SCREENSHOT: ... -->`）は撮影のガイドで、ここに置く 9 枚とは別物です。
 
-| ファイル名 | 画面 / 出力 | 対応項目 |
-|---|---|---|
-| lab-recipient-shared-vault-list.png | 受け手の `--by-shared` 一覧（LAG 1 件） | V1 |
-| lab-recipient-shared-vault-detail.png | 受け手から見た共有ボールトの詳細 | V1 |
-| lab-recipient-shared-vault-osaka.png | 第 2 リージョン（Osaka）の共有ボールト | V1 |
-| lab-recipient-shared-vault-revoked.png | 取り消し後に一覧から外れた状態 | V6 |
-| lab-recipient-restored-volume.png | 復元された vol_restored | V7 |
-| lab-owner-vault-detail.png | 所有者の LAG ボールトの詳細 | V5 |
-| lab-owner-copy-jobs.png | 所有者のコピージョブ（別リージョン宛先 ARN） | E24 |
-| P02-arn-present.png | ポータルの共有ボールト選択（arn-present） | V3, V5 |
-| P03-restore-dialog.png | ポータルの復元ダイアログ（確認無効） | V3 |
+**[V1] 受け手の共有ボールト一覧** — 受け手アカウントの `--by-shared` 一覧に、所有者が共有した LAG ボールトが 1 件表示されます。
+
+![受け手の共有ボールト一覧（RAM 経由）に LAG ボールトが 1 件表示される](screenshots/lab-recipient-shared-vault-list.png)
+
+**[V1] 受け手から見た共有ボールトの詳細** — ボールトタイプ（論理的にエアギャップ）、コンプライアンスモードのロック、保持 1 週、復旧ポイント 1 件が受け手側に見えます。
+
+![受け手コンソールの共有ボールト詳細：エアギャップのタイプ、ロック済み、保持 1 週、復旧ポイント 1 件](screenshots/lab-recipient-shared-vault-detail.png)
+
+**[V1] 第 2 リージョン（Osaka）の共有ボールト** — クロスリージョンでも同じ共有ボールトと復旧ポイントが受け手に見えます。
+
+![大阪リージョンで受け手に見える共有ボールトと復旧ポイント](screenshots/lab-recipient-shared-vault-osaka.png)
+
+**[V5] 所有者の LAG ボールトの詳細** — 所有者側では、同じボールトが「共有」ステータスと、受け手アカウントへの RAM 共有の行とともに表示されます。
+
+![所有者コンソールの LAG ボールト詳細：共有ステータスと RAM 共有の行](screenshots/lab-owner-vault-detail.png)
+
+**[E24] 所有者のコピージョブ** — 標準ボールトから東京・大阪の LAG ボールトへのコピージョブが両方とも完了。クロスリージョンのコピーは送信元リージョンの一覧に、宛先リージョンの ARN を持って現れます。
+
+![所有者コンソールのコピージョブ：東京と大阪の LAG ボールト宛先への 2 件が完了](screenshots/lab-owner-copy-jobs.png)
+
+**[V3][V5] ポータルの共有ボールト選択（arn-present）** — ポータルの復旧ポイント画面で、所有者が共有した LAG ボールトを選び、エアギャップのチップと復旧ポイントが表示されます。
+
+![ポータルの復旧ポイント画面：共有ボールト選択とエアギャップのチップ、所有者アカウント表示](screenshots/P02-arn-present.png)
+
+**[V3] ポータルの復元ダイアログ（確認無効）** — 復元ダイアログは開くが、確認ボタンは無効で、ポータルからは復元を開始しません（復元は 08 スクリプトの役割）。
+
+![ポータルの復元ダイアログ：確認ボタンが無効の状態](screenshots/P03-restore-dialog.png)
+
+**[V6] 取り消し後に一覧から外れた状態** — 共有を取り消すと、受け手の `--by-shared` 一覧から共有ボールトが消えます。
+
+![取り消し後、受け手の共有ボールト一覧が空になった状態](screenshots/lab-recipient-shared-vault-revoked.png)
+
+**[V7] 復元された vol_restored** — 共有復旧ポイントから受け手の既存ファイルシステムへ復元されたボリュームが、受け手コンソールに表示されます。
+
+![受け手コンソールに表示された復元ボリューム vol_restored（作成済み、1 GiB、junction /vol_restored）](screenshots/lab-recipient-restored-volume.png)
 
 ## 参考: 初回の手動観測
 

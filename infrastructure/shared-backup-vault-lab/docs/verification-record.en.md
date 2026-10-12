@@ -87,17 +87,41 @@ Multi-party approval (MPA) was not run (recorded as not applicable in this envir
 
 These are the screens and CLI output observed in the real environment. Account ids, resource ids, ARNs, recovery-point ids and KMS key ids are masked (blacked out or cropped), and the portal screens use the spec's dummy account 111122223333. The runbook's capture-plan markers (`<!-- SCREENSHOT: ... -->`) are a capture guide and are distinct from the 9 images placed here.
 
-| File name | Screen / output | Item |
-|---|---|---|
-| lab-recipient-shared-vault-list.png | The recipient's `--by-shared` list (one LAG vault) | V1 |
-| lab-recipient-shared-vault-detail.png | The shared vault detail seen from the recipient | V1 |
-| lab-recipient-shared-vault-osaka.png | The shared vault in the second Region (Osaka) | V1 |
-| lab-recipient-shared-vault-revoked.png | The state after the revoke left the list | V6 |
-| lab-recipient-restored-volume.png | The restored vol_restored | V7 |
-| lab-owner-vault-detail.png | The owner's LAG vault detail | V5 |
-| lab-owner-copy-jobs.png | The owner's copy jobs (cross-Region destination ARN) | E24 |
-| P02-arn-present.png | The portal shared-vault choice (arn-present) | V3, V5 |
-| P03-restore-dialog.png | The portal restore dialog (confirm disabled) | V3 |
+**[V1] The recipient's shared-vault list** — one LAG vault shared by the owner appears in the recipient account's `--by-shared` list.
+
+![The recipient's shared-vault list (via RAM) showing one LAG vault](screenshots/lab-recipient-shared-vault-list.png)
+
+**[V1] The shared vault detail seen from the recipient** — the recipient sees the vault type (logically air-gapped), the compliance-mode lock, a one-week retention and one recovery point.
+
+![The recipient console's shared-vault detail: air-gapped type, locked, one-week retention, one recovery point](screenshots/lab-recipient-shared-vault-detail.png)
+
+**[V1] The shared vault in the second Region (Osaka)** — the same shared vault and recovery point are visible to the recipient cross-Region.
+
+![The shared vault and recovery point visible to the recipient in the Osaka Region](screenshots/lab-recipient-shared-vault-osaka.png)
+
+**[V5] The owner's LAG vault detail** — on the owner side the same vault shows a "shared" status and the RAM-share row to the recipient account.
+
+![The owner console's LAG vault detail: shared status and the RAM-share row](screenshots/lab-owner-vault-detail.png)
+
+**[E24] The owner's copy jobs** — the copy jobs from the standard vault into the Tokyo and Osaka LAG vaults both completed. The cross-Region copy appears in the source Region's list carrying the destination Region's ARN.
+
+![The owner console's copy jobs: two completed into the Tokyo and Osaka LAG-vault destinations](screenshots/lab-owner-copy-jobs.png)
+
+**[V3][V5] The portal shared-vault choice (arn-present)** — on the portal recovery-points screen, the LAG vault shared by the owner is selected and shows the air-gapped chip and the recovery point.
+
+![The portal recovery-points screen: shared-vault choice, air-gapped chip, owner account shown](screenshots/P02-arn-present.png)
+
+**[V3] The portal restore dialog (confirm disabled)** — the restore dialog opens but its confirm button is disabled, and the portal does not start a restore (that is the job of script 08).
+
+![The portal restore dialog with the confirm button disabled](screenshots/P03-restore-dialog.png)
+
+**[V6] The state after the revoke left the list** — after the share is revoked, the shared vault leaves the recipient's `--by-shared` list.
+
+![After the revoke, the recipient's shared-vault list is empty](screenshots/lab-recipient-shared-vault-revoked.png)
+
+**[V7] The restored vol_restored** — the volume restored from the shared recovery point into the recipient's existing file system appears in the recipient console.
+
+![The restored volume vol_restored in the recipient console (created, 1 GiB, junction /vol_restored)](screenshots/lab-recipient-restored-volume.png)
 
 ## Reference: first manual observations
 
