@@ -1,0 +1,127 @@
+# Real-environment run: recorded [V1][V2][V3][V4][V5][V6][V7]; not recorded [E13] (status source: docs/verification-record.md)
+#
+# Recipient account: the role AWS Backup assumes to restore, and a storage virtual
+# machine to restore into. Optionally creates a minimal Amazon FSx for NetApp
+# ONTAP file system when ExistingFileSystemId is empty.
+#
+# Deploy through scripts/02_deploy.sh --side recipient, or directly:
+#   aws cloudformation deploy --template-file cloudformation/recipient-restore.yaml \
+#     --stack-name <LAB_TAG>-recipient-<region> --capabilities CAPABILITY_IAM \
+#     --parameter-overrides file://cloudformation/parameters/recipient-restore.local.json
+#
+# Notes:
+# - A first-generation file system with 128 or 256 MBps allows 6 SVMs, so the
+#   restore target needs a free slot; 01_preflight.sh counts them.
+# - A file system created here has the AWS managed key (no key is specified).
+# - Costs start when the file system is created (only when it is created here).
+AWSTemplateFormatVersion: "2010-09-09"
+Description: Shared-vault lab, recipient side - restore role, restore SVM and an optional minimal file system
+
+Parameters:
+  LabTag:
+    Type: String
+    Default: shared-vault-lab
+    AllowedPattern: "^[a-z0-9-]{3,40}$"
+    Description: Value of the Project tag
+  ExistingFileSystemId:
+    Type: String
+    Default: ""
+    AllowedPattern: "^(fs-[0-9a-f]{8,17})?$"
+    Description: Restore into this file system; empty creates a minimal one
+  SubnetId:
+    Type: String
+    Default: ""
+    AllowedPattern: "^(subnet-[0-9a-f]{8,17})?$"
+    Description: Subnet for a new file system (required when ExistingFileSystemId is empty)
+  SecurityGroupId:
+    Type: String
+    Default: ""
+    AllowedPattern: "^(sg-[0-9a-f]{8,17})?$"
+    Description: Security group for a new file system; empty uses the VPC default group
+  ThroughputCapacity:
+    Type: Number
+    Default: 128
+    AllowedValues: [128, 256, 512, 1024, 2048, 4096]
+    Description: Throughput capacity in MBps of a new file system
+  RestoreSvmName:
+    Type: String
+    Default: svm_restore
+    AllowedPattern: "^[A-Za-z0-9_]{1,47}$"
+    Description: Name of the SVM that receives the restored volume
+
+Rules:
+  NewFileSystemNeedsSubnet:
+    RuleCondition: !Equals [!Ref ExistingFileSystemId, ""]
+    Assertions:
+      - Assert: !Not [!Equals [!Ref SubnetId, ""]]
+        AssertDescription: SubnetId is required when ExistingFileSystemId is empty
+
+Conditions:
+  CreateFileSystem: !Equals [!Ref ExistingFileSystemId, ""]
+  HasSecurityGroup: !Not [!Equals [!Ref SecurityGroupId, ""]]
+
+Resources:
+  # No RoleName on purpose (see owner-base.yaml). Whether a dedicated role is
+  # enough for a restore, compared with the account default role, is not yet run
+  # on real environment.
+  RestoreRole:
+    Type: AWS::IAM::Role
+    Properties:
+      Description: Assumed by AWS Backup to restore recovery points into this account
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: backup.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - !Sub "arn:${AWS::Partition}:iam::aws:policy/service-role/AWSBackupServiceRolePolicyForRestores"
+      Tags:
+        - Key: Project
+          Value: !Ref LabTag
+        - Key: Cleanup
+          Value: delete-when-done
+
+  NewFileSystem:
+    Type: AWS::FSx::FileSystem
+    Condition: CreateFileSystem
+    Properties:
+      FileSystemType: ONTAP
+      StorageCapacity: 1024
+      StorageType: SSD
+      SubnetIds:
+        - !Ref SubnetId
+      SecurityGroupIds: !If [HasSecurityGroup, [!Ref SecurityGroupId], !Ref "AWS::NoValue"]
+      OntapConfiguration:
+        DeploymentType: SINGLE_AZ_1
+        ThroughputCapacity: !Ref ThroughputCapacity
+        AutomaticBackupRetentionDays: 0
+      Tags:
+        - Key: Project
+          Value: !Ref LabTag
+        - Key: Cleanup
+          Value: delete-when-done
+
+  RestoreSvm:
+    Type: AWS::FSx::StorageVirtualMachine
+    Properties:
+      FileSystemId: !If [CreateFileSystem, !Ref NewFileSystem, !Ref ExistingFileSystemId]
+      Name: !Ref RestoreSvmName
+      RootVolumeSecurityStyle: UNIX
+      Tags:
+        - Key: Project
+          Value: !Ref LabTag
+        - Key: Cleanup
+          Value: delete-when-done
+
+Outputs:
+  RestoreRoleArn:
+    Description: Role AWS Backup assumes for restores
+    Value: !GetAtt RestoreRole.Arn
+  FileSystemId:
+    Description: File system that holds the restore SVM
+    Value: !If [CreateFileSystem, !Ref NewFileSystem, !Ref ExistingFileSystemId]
+  RestoreSvmId:
+    Description: SVM that receives the restored volume
+    Value: !Ref RestoreSvm

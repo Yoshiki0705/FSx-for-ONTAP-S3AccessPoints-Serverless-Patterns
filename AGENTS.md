@@ -12,7 +12,7 @@ CloudFormation/SAM template sharing the Python modules in `shared/`.
 **Two pillars**: `solutions/` (S3 AP data processing) + `operations/` (file system operational
 optimization).
 
-**Test coverage**: ~5,000 Python tests across 308 files + ~530 vitest tests across 36 files.
+**Test coverage**: ~5,000 Python tests across 324 files + ~530 vitest tests across 36 files.
 
 > ファイル数は `make drift` がツリーと照合するので古くなれば fail する。テスト総数は 3 系統の
 > 合計なので概数。誰も保守しない厳密な数値より丸めた数値のほうがよい。
@@ -277,12 +277,7 @@ python3 -m pytest solutions/sap/erp-adjacent/tests/ -v
 | 制約の解消（ドキュメントが「自分で作れ」と書いていたものを実装した） | `make drift-published` も走らせる。公開記事の記述はリポジトリ内のチェックでは見えない |
 | `solutions/amplify-portal/amplify/**` | IAM Policy Validation ワークフローが `solutions/industry/` と `infrastructure/` の**全**テンプレートを走査する。失敗は既存の負債かもしれないので、`git diff --name-only` で自分の変更範囲を確認してから引き受ける |
 
-> **なぜ action-parameter 契約チェックがあるか**: dispatch は型のない `params` を取るため、
-> TypeScript は境界の向こうを見られない。`{snapshotName, retentionDays}` を `snapshotId` と
-> `expiryTime` を読む action に送るコードは、コンパイルも lint も通り、ボタンも描画され、
-> クリックのたびに失敗する。実際に出荷された。新しいラッパー形状で dispatch を呼んだら
-> `--list-opaque` を確認する。チェッカーが読めない呼び出しは、守れない呼び出しである。
-> action 名は計算せずリテラルで書く。
+> action-parameter 契約チェックの理由は scripts/check_portal_action_params.py の docstring。dispatch の新形状は --list-opaque で確認し、action 名はリテラルで書く。
 ## Key Design Decisions
 
 ### S3ApHelper is the Core Abstraction
@@ -382,6 +377,9 @@ decision = evaluate_confidence(confidence=0.72)
 | Lock a snapshot (`expiry_time`) | Extendable only. Cannot be shortened or released |
 | S3 Object Lock `COMPLIANCE` mode | Retention cannot be shortened or removed |
 | Delete a volume, SVM or file system | Data loss |
+| Create a logically air-gapped backup vault | Compliance-mode lock, retention fixed at creation. Undeletable while it holds a recovery point |
+| `start-copy-job` into a logically air-gapped vault | Expiry seen once as source creation + retention; no early-deletion route confirmed. Source CMK early deletion untested: keep it |
+| Share a logically air-gapped vault via AWS RAM | Recipients can read and restore. Revoking ends access; volumes already restored stay |
 
 **ルール:**
 

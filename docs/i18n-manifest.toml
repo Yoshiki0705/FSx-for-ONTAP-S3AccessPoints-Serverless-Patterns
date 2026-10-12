@@ -240,6 +240,21 @@ locales = ["ja", "en"]
 why = "Its four guides are already ja+en; holding them there."
 
 [[rule]]
+glob = "infrastructure/shared-backup-vault-lab/README.md"
+locales = ["ja", "en"]
+why = """
+The shared-backup-vault verification lab, written for a reader reproducing the
+procedure from their own account, so the README is ja+en like knfsd-file-cache
+above. Declared rather than left to the `infrastructure/*/README.md` keep rule so a
+missing or drifting English twin is a number, not an absence.
+"""
+
+[[rule]]
+glob = "infrastructure/shared-backup-vault-lab/docs/*.md"
+locales = ["ja", "en"]
+why = "Its procedure and verification-record guides are ja+en; holding them in parity like the knfsd guides above."
+
+[[rule]]
 glob = "docs/agent/*.md"
 locales = ["ja"]
 why = """

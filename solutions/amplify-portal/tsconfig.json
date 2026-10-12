@@ -33,9 +33,11 @@
   // not define, and how a `DefineBackendBase` import survived even though
   // @aws-amplify/backend never exported it.
   "include": ["src", "tests", "amplify"],
-  // tests/e2e holds Playwright specs. @playwright/test is intentionally not a
-  // package.json dependency (the e2e workflow provisions it via npx), so those
-  // specs are type-checked and run by Playwright's own runner instead. This
-  // matches playwright.config.ts, which already sits outside the include paths.
+  // tests/e2e holds Playwright specs. @playwright/test is a devDependency in
+  // package.json, pinned at 1.63.0. The specs stay excluded here on purpose:
+  // Playwright's own runner transpiles and runs them, so `tsc -b` neither needs
+  // nor compiles them. This matches playwright.config.ts, which also sits outside
+  // the include paths. A single spec can still be type-checked with a throwaway
+  // tsconfig that extends this file and sets "exclude" to an empty list.
   "exclude": ["amplify_outputs.json", "tests/e2e"]
 }

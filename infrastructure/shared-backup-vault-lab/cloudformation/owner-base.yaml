@@ -1,0 +1,227 @@
+# Real-environment run: recorded [V1][V2][V3][V4][V5][V6][V7]; not recorded [E13] (status source: docs/verification-record.md)
+#
+# Owner account, part 1: a customer managed KMS key, an Amazon FSx for NetApp
+# ONTAP file system encrypted with it (one SVM, one volume), a standard backup
+# vault, and the role AWS Backup uses to back up and copy.
+#
+# Deploy through scripts/02_deploy.sh, or directly:
+#   aws cloudformation deploy --template-file cloudformation/owner-base.yaml \
+#     --stack-name <LAB_TAG>-owner-base --capabilities CAPABILITY_IAM \
+#     --parameter-overrides file://cloudformation/parameters/owner-base.local.json
+#
+# Notes:
+# - The key and its alias use DeletionPolicy/UpdateReplacePolicy Retain. A copy in
+#   a logically air-gapped vault can outlive this stack, and a key scheduled for
+#   deletion cannot be used. 10_teardown.sh --delete-key is the only way the lab
+#   schedules key deletion.
+# - No SnapLock configuration and no vault lock configuration are created here.
+# - Costs start when the file system is created. The file system, SVM and volume
+#   are deleted by 10_teardown.sh, not by this template alone.
+AWSTemplateFormatVersion: "2010-09-09"
+Description: Shared-vault lab, owner side - KMS key, FSx for ONTAP file system, standard backup vault, backup role
+
+Parameters:
+  LabTag:
+    Type: String
+    Default: shared-vault-lab
+    AllowedPattern: "^[a-z0-9-]{3,40}$"
+    Description: Value of the Project tag and prefix of the key alias
+  SubnetId:
+    Type: String
+    AllowedPattern: "^subnet-[0-9a-f]{8,17}$"
+    Description: Subnet for the file system (single Availability Zone deployment)
+  SecurityGroupId:
+    Type: String
+    Default: ""
+    AllowedPattern: "^(sg-[0-9a-f]{8,17})?$"
+    Description: Security group for the file system; empty uses the VPC default group
+  StorageCapacityGiB:
+    Type: Number
+    Default: 1024
+    MinValue: 1024
+    MaxValue: 65536
+    Description: SSD storage capacity in GiB
+  ThroughputCapacity:
+    Type: Number
+    Default: 128
+    AllowedValues: [128, 256, 512, 1024, 2048, 4096]
+    Description: Throughput capacity in MBps
+  SvmName:
+    Type: String
+    Default: svm_lab
+    AllowedPattern: "^[A-Za-z0-9_]{1,47}$"
+    Description: Name of the storage virtual machine
+  VolumeName:
+    Type: String
+    Default: vol_lab
+    AllowedPattern: "^[A-Za-z0-9_]{1,203}$"
+    Description: Name of the volume that is backed up
+  VolumeSizeMB:
+    Type: Number
+    Default: 1024
+    MinValue: 20
+    Description: Volume size in MiB
+  StandardVaultName:
+    Type: String
+    AllowedPattern: "^[a-zA-Z0-9_-]{2,50}$"
+    Description: Name of the standard (unlocked) backup vault
+
+Conditions:
+  HasSecurityGroup: !Not [!Equals [!Ref SecurityGroupId, ""]]
+
+Resources:
+  FsKey:
+    Type: AWS::KMS::Key
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      Description: !Sub "${LabTag} file system key (copies into a logically air-gapped vault need a customer managed key)"
+      EnableKeyRotation: true
+      KeyPolicy:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: DelegateToIam
+            Effect: Allow
+            Principal:
+              AWS: !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:root"
+            Action: "kms:*"
+            Resource: "*"
+      Tags:
+        - Key: Project
+          Value: !Ref LabTag
+        - Key: Cleanup
+          Value: delete-when-done
+
+  FsKeyAlias:
+    Type: AWS::KMS::Alias
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      AliasName: !Sub "alias/${LabTag}-fs"
+      TargetKeyId: !Ref FsKey
+
+  FileSystem:
+    Type: AWS::FSx::FileSystem
+    Properties:
+      FileSystemType: ONTAP
+      StorageCapacity: !Ref StorageCapacityGiB
+      StorageType: SSD
+      SubnetIds:
+        - !Ref SubnetId
+      SecurityGroupIds: !If [HasSecurityGroup, [!Ref SecurityGroupId], !Ref "AWS::NoValue"]
+      KmsKeyId: !GetAtt FsKey.Arn
+      OntapConfiguration:
+        DeploymentType: SINGLE_AZ_1
+        ThroughputCapacity: !Ref ThroughputCapacity
+        AutomaticBackupRetentionDays: 0
+      Tags:
+        - Key: Project
+          Value: !Ref LabTag
+        - Key: Cleanup
+          Value: delete-when-done
+
+  Svm:
+    Type: AWS::FSx::StorageVirtualMachine
+    Properties:
+      FileSystemId: !Ref FileSystem
+      Name: !Ref SvmName
+      RootVolumeSecurityStyle: UNIX
+      Tags:
+        - Key: Project
+          Value: !Ref LabTag
+        - Key: Cleanup
+          Value: delete-when-done
+
+  Volume:
+    Type: AWS::FSx::Volume
+    Properties:
+      Name: !Ref VolumeName
+      VolumeType: ONTAP
+      OntapConfiguration:
+        JunctionPath: !Sub "/${VolumeName}"
+        SizeInMegabytes: !Ref VolumeSizeMB
+        SecurityStyle: UNIX
+        StorageEfficiencyEnabled: "true"
+        StorageVirtualMachineId: !Ref Svm
+        OntapVolumeType: RW
+        TieringPolicy:
+          Name: NONE
+      Tags:
+        - Key: Project
+          Value: !Ref LabTag
+        - Key: Cleanup
+          Value: delete-when-done
+
+  StandardVault:
+    Type: AWS::Backup::BackupVault
+    Properties:
+      BackupVaultName: !Ref StandardVaultName
+      BackupVaultTags:
+        Project: !Ref LabTag
+        Cleanup: delete-when-done
+
+  # No RoleName on purpose: a fixed name would need CAPABILITY_NAMED_IAM and would
+  # collide on a second deployment.
+  BackupRole:
+    Type: AWS::IAM::Role
+    Properties:
+      Description: Used by AWS Backup to back up the lab volume and copy it into the air-gapped vault
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: backup.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - !Sub "arn:${AWS::Partition}:iam::aws:policy/service-role/AWSBackupServiceRolePolicyForBackup"
+        - !Sub "arn:${AWS::Partition}:iam::aws:policy/service-role/AWSBackupServiceRolePolicyForRestores"
+      Policies:
+        - PolicyName: UseFsKeyForCopy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Sid: UseFsKey
+                Effect: Allow
+                Action:
+                  - kms:Encrypt
+                  - kms:Decrypt
+                  - "kms:ReEncrypt*"
+                  - "kms:GenerateDataKey*"
+                  - kms:DescribeKey
+                Resource: !GetAtt FsKey.Arn
+              - Sid: GrantForAwsResources
+                Effect: Allow
+                Action: kms:CreateGrant
+                Resource: !GetAtt FsKey.Arn
+                Condition:
+                  Bool:
+                    "kms:GrantIsForAWSResource": "true"
+      Tags:
+        - Key: Project
+          Value: !Ref LabTag
+        - Key: Cleanup
+          Value: delete-when-done
+
+Outputs:
+  KeyArn:
+    Description: ARN of the customer managed key
+    Value: !GetAtt FsKey.Arn
+  FileSystemId:
+    Description: File system id
+    Value: !Ref FileSystem
+  SvmId:
+    Description: Storage virtual machine id
+    Value: !Ref Svm
+  VolumeId:
+    Description: Volume id
+    Value: !Ref Volume
+  VolumeArn:
+    Description: Volume ARN (the resource AWS Backup protects)
+    Value: !GetAtt Volume.ResourceARN
+  StandardVaultName:
+    Description: Name of the standard backup vault
+    Value: !Ref StandardVault
+  BackupRoleArn:
+    Description: Role AWS Backup assumes for backup and copy
+    Value: !GetAtt BackupRole.Arn

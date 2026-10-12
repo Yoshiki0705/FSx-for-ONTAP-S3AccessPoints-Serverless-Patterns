@@ -243,6 +243,45 @@ ASK: list[tuple[str, str]] = [
         "現在値を読んでから、短縮になっていないか確認してください。",
     ),
     (
+        # Logically air-gapped (LAG) vault creation. Compliance-mode lock from
+        # creation; retention cannot be changed afterwards. The third branch is
+        # narrowed to the CloudFormation verbs that create or change a stack, so
+        # reading the lab template (cfn-lint, git diff, validate-template) is not
+        # asked about. The branches are, in order: CLI/API name, inline template
+        # type, lab LAG template deploy.
+        r"create[-_]?logically[-_]?air[-_]?gapped[-_]?backup[-_]?vault|"
+        r"Type\W{0,6}AWS::Backup::LogicallyAirGappedBackupVault|"
+        r"cloudformation\s+(?:deploy|create-stack|update-stack|create-change-set)\b[^|;&]{0,300}owner[-_]lag[-_]share",
+        "論理エアギャップ（LAG）ボールトの作成です。コンプライアンスモードのロックが作成時から有効で、保持期間は"
+        "作成後に変えられません。復旧ポイントが入ると、その期限までボールトを削除できません。",
+    ),
+    (
+        # The destination vault is not visible in the arguments (only its ARN), so
+        # every copy asks. A mention alone also matches (e.g. a shell search for
+        # the name); that over-match is accepted and pinned in the corpus.
+        r"\bstart[-_]?copy[-_]?job\b",
+        "コピージョブの開始です。宛先が LAG ボールトなら、期限は元バックアップの作成時刻 + ボールトの保持期間だった"
+        "（初回の観測は 1 回）、早期に消す経路は確認されていません。コピー元のカスタマーマネージドキーを早く削除したときの影響は"
+        "未検証なので、予防として期限まで残してください。",
+    ),
+    (
+        # Sharing a Backup vault through RAM. Only shapes where the vault ARN is
+        # visible ask; a VPC subnet share is untouched. A payload in an external
+        # file cannot be read, so it asks as well.
+        r"\b(?:create|associate)[-_]?resource[-_]?share\b[^|;&]{0,500}backup[-_]vault|"
+        r"backup[-_]vault[^|;&]{0,500}\b(?:create|associate)[-_]?resource[-_]?share\b|"
+        r"\b(?:create|associate)-resource-share\b[^|;&]{0,200}(?:--cli-input-json|file://)",
+        "Backup ボールトを RAM で共有します。受け取り側のアカウントが復旧ポイントを読み、復元できます。"
+        "共有を取り消せばアクセスは止まりますが、受け取り側が既に復元したボリュームは残ります。",
+    ),
+    (
+        # Shared-vault lab scripts that create a retention lock or tear things
+        # down. Lab-specific: not part of the global-hook patch.
+        r"\b(?:0[34]_(?:deploy_lag_share|backup_and_copy)|10_teardown)\.sh\b[^|;&]{0,300}--apply\b",
+        "共有ボールト検証ラボの、保持ロックを伴う手順（LAG ボールトの作成、LAG へのコピー）または後片付けを --apply で実行します。"
+        "影響範囲（いつまで削除できないか、その間の費用）を先に述べ、所有者の承認を得てください。",
+    ),
+    (
         r"\"?action\"?" + SEP + r"[\"']?deleteFileForever",
         "deleteFileForever はバージョンを含めて完全に削除します。復旧経路はありません。",
     ),
