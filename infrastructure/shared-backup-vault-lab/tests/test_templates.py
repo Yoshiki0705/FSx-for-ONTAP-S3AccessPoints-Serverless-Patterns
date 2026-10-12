@@ -25,7 +25,7 @@ PARAMS_DIR = CFN_DIR / "parameters"
 COMMON = LAB_SRC / "scripts" / "lib" / "common.sh"
 NAMES = ("owner-base", "owner-lag-share", "recipient-restore")
 STATUS_RE = re.compile(
-    r"^# Real-environment run: (not yet done|recorded( \[[VE]\d+\])+(; not recorded( \[[VE]\d+\])+)?)"
+    r"^# Real-environment run: (not yet done|recorded (\[[VE]\d+\])+(; not recorded (\[[VE]\d+\])+)?)"
     r" \(status source: docs/verification-record\.md\)$"
 )
 

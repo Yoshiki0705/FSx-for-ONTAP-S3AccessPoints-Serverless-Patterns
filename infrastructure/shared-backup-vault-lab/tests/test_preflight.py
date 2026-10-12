@@ -575,4 +575,8 @@ def test_01_makes_no_mutating_call(lab: Lab) -> None:
 
 def test_01_status_line_and_language() -> None:
     lines = Path(LAB_SRC / "scripts" / SCRIPT).read_text(encoding="utf-8").splitlines()
-    assert lines[1] == "# Real-environment run: not yet done (status source: docs/verification-record.md)"
+    status_re = re.compile(
+        r"^# Real-environment run: (not yet done|recorded (\[[VE]\d+\])+(; not recorded (\[[VE]\d+\])+)?)"
+        r" \(status source: docs/verification-record\.md\)$"
+    )
+    assert status_re.match(lines[1]), lines[1]

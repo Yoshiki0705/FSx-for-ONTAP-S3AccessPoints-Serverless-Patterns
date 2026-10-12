@@ -1101,4 +1101,8 @@ def test_07_header_and_modes_are_documented() -> None:
     text = (LAB_SRC / "scripts" / SCRIPT).read_text(encoding="utf-8")
     for mode in ("--print", "--check", "--deploy", "--ui"):
         assert re.search(rf"^#   07_portal_config\.sh {re.escape(mode)}", text, re.M), mode
-    assert "Real-environment run: not yet done" in text.splitlines()[1]
+    status_re = re.compile(
+        r"^# Real-environment run: (not yet done|recorded (\[[VE]\d+\])+(; not recorded (\[[VE]\d+\])+)?)"
+        r" \(status source: docs/verification-record\.md\)$"
+    )
+    assert status_re.match(text.splitlines()[1]), text.splitlines()[1]

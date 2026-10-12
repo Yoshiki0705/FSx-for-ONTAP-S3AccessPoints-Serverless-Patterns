@@ -786,4 +786,10 @@ def test_common_lib_is_bash_3_2_compatible() -> None:
 def test_the_status_line_is_the_second_line_and_in_english() -> None:
     lines = COMMON.read_text(encoding="utf-8").splitlines()
     assert lines[0] == "#!/bin/bash"
-    assert lines[1] == "# Real-environment run: not yet done (status source: docs/verification-record.md)"
+    # The status line follows the D-5 grammar: either 'not yet done' or the recorded
+    # form. test_verification_record.py checks it stays consistent with the record.
+    status_re = re.compile(
+        r"^# Real-environment run: (not yet done|recorded (\[[VE]\d+\])+(; not recorded (\[[VE]\d+\])+)?)"
+        r" \(status source: docs/verification-record\.md\)$"
+    )
+    assert status_re.match(lines[1]), lines[1]

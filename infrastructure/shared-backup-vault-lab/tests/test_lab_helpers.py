@@ -11,6 +11,7 @@ import hashlib
 import importlib.util
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -148,12 +149,18 @@ def test_digest_changes_on_one_byte(tree: Path) -> None:
 
 def test_digest_ignores_the_status_line_but_not_other_comments(tree: Path) -> None:
     before = helpers.code_digest(tree)
-    status = "# Real-environment run: not yet done (status source: docs/verification-record.md)"
-    _edit(
-        tree / "scripts" / "lib" / "common.sh",
-        status,
-        "# Real-environment run: recorded [V1]; not recorded [E13] (status source: docs/verification-record.md)",
+    # Swap whatever status line common.sh carries for a different valid one: the
+    # digest must not move, because status-prefix lines are excluded.
+    common = tree / "scripts" / "lib" / "common.sh"
+    current = next(
+        ln for ln in common.read_text(encoding="utf-8").splitlines() if ln.startswith("# Real-environment run:")
     )
+    other = (
+        "# Real-environment run: not yet done (status source: docs/verification-record.md)"
+        if "recorded" in current
+        else "# Real-environment run: recorded [V1]; not recorded [E13] (status source: docs/verification-record.md)"
+    )
+    _edit(common, current, other)
     assert helpers.code_digest(tree) == before
     _edit(tree / "scripts" / "lib" / "common.sh", "# Exit codes used", "# Exit codes seen")
     assert helpers.code_digest(tree) != before
@@ -693,7 +700,11 @@ def test_helpers_run_on_python_3_9_when_available(tree: Path) -> None:
 
 def test_helpers_status_line_and_language() -> None:
     lines = HELPERS_PATH.read_text(encoding="utf-8").splitlines()
-    assert lines[1] == "# Real-environment run: not yet done (status source: docs/verification-record.md)"
+    status_re = re.compile(
+        r"^# Real-environment run: (not yet done|recorded (\[[VE]\d+\])+(; not recorded (\[[VE]\d+\])+)?)"
+        r" \(status source: docs/verification-record\.md\)$"
+    )
+    assert status_re.match(lines[1]), lines[1]
     assert all(ord(ch) < 128 or ch in "✅❌⚠" for ch in HELPERS_PATH.read_text(encoding="utf-8"))
 
 

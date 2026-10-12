@@ -1231,7 +1231,11 @@ SCRIPT_FILES = sorted(SCRIPTS_DIR.glob("[0-9][0-9]_*.sh"))
 def test_script_header_and_safety_flags(path: Path) -> None:
     lines = path.read_text(encoding="utf-8").splitlines()
     assert lines[0] == "#!/bin/bash"
-    assert lines[1] == "# Real-environment run: not yet done (status source: docs/verification-record.md)"
+    status_re = re.compile(
+        r"^# Real-environment run: (not yet done|recorded (\[[VE]\d+\])+(; not recorded (\[[VE]\d+\])+)?)"
+        r" \(status source: docs/verification-record\.md\)$"
+    )
+    assert status_re.match(lines[1]), lines[1]
     text = "\n".join(lines)
     assert "set -euo pipefail" in text
     assert re.search(r"^# Exit codes:", text, re.M), "the usage/exit-code comment block is missing"
