@@ -11,8 +11,17 @@ AWS Backup の論理エアギャップ（LAG）ボールトを 2 つのアカウ
 ## 冒頭の注意
 
 - **実機での通しは未実施です。** この時点で実機で動いたものはありません。スクリプトの先頭と文書の冒頭に状態の行があり、状態の唯一の出所は [`docs/verification-record.md`](docs/verification-record.md) です。
-- **LAG ボールトの作成は不可逆です。** 保持日数（7〜35 日）は作成時に固定され、復旧ポイントが入っている間はボールトを削除できません。空のボールトは削除できました（1 回観測）。詳細は [`docs/procedure.md`](docs/procedure.md) の冒頭にあります。
-- **費用が発生します。** FS の稼働、バックアップとコピーの保管、KMS キーに課金されます。後片付けは [`10_teardown.sh`](scripts/10_teardown.sh) が行い、残るものを一覧します。
+- **LAG ボールトの作成は不可逆です。** 保持日数は作成時に固定され、下限は 7 日です（AWS が定める LAG ボールトの最小値 [E-012]。[CreateLogicallyAirGappedBackupVault の `MinRetentionDays` / `MaxRetentionDays`](https://docs.aws.amazon.com/aws-backup/latest/devguide/API_CreateLogicallyAirGappedBackupVault.html)）。上限の具体値は AWS のドキュメントを参照してください。復旧ポイントが入っている間はボールトを削除できません。空のボールトは削除できました（1 回観測）。詳細は [`docs/procedure.md`](docs/procedure.md) の冒頭にあります。
+- **費用が発生します。** FS の稼働、バックアップとコピーの保管、KMS キーに課金されます。後片付けは [`10_teardown.sh`](scripts/10_teardown.sh) が行い、残るものを一覧します。リソースの拘束と費用の切り分けは [コストとリソース拘束](#コストとリソース拘束) にあります。
+
+## コストとリソース拘束
+
+- 7 日ロックは、保持日数として選んだ値ではなく、AWS が定める LAG ボールトの保持の下限です。これより短くは設定できません [E-012]（[CreateLogicallyAirGappedBackupVault の `MinRetentionDays`](https://docs.aws.amazon.com/aws-backup/latest/devguide/API_CreateLogicallyAirGappedBackupVault.html)）。
+- ロックが効くのは、復旧ポイントが LAG ボールトにコピーされた後だけです。空の LAG ボールトはすぐに削除できました（1 回観測）。
+- このため、FS・SVM・ボリューム・CMK は検証が終わった当日に [`10_teardown.sh`](scripts/10_teardown.sh) で後片付けできます。7 日の下限で残るのは LAG ボールトとサイズ 0 の復旧ポイントだけで、ロック自体の費用は小さく、FS の稼働費用は当日止まります。
+- 失効の起点は元バックアップの作成時刻で、コピー完了時刻ではありません（1 回観測）。
+- スクリプトと CloudFormation の `--retention-days` の上限 35 は、このラボが設ける保守的な入力上限で、AWS が LAG ボールトに定める実際の保持上限とは別物です（この入力上限も未検証）。実際の上限は AWS のドキュメント（上の CreateLogicallyAirGappedBackupVault リンク）を参照してください。
+- 詳細は [`docs/procedure.md`](docs/procedure.md) の冒頭の 4 項目にあります。
 
 ## クイックスタート
 

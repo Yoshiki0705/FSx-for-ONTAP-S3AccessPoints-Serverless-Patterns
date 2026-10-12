@@ -11,8 +11,17 @@ A lab that reproduces, from code and parameters alone, the path where an AWS Bac
 ## Opening notice
 
 - **The real-environment run is not yet done.** Nothing here has run against a real account yet. Each script and document carries a status line at the top, and the single source of truth for the state is [`docs/verification-record.md`](docs/verification-record.en.md).
-- **Creating a LAG vault is irreversible.** The retention (7 to 35 days) is fixed at creation, and the vault cannot be deleted while it holds a recovery point. An empty vault could be deleted (observed once). The detail is at the top of [`docs/procedure.en.md`](docs/procedure.en.md).
-- **It costs money.** The running file system, the stored backups and copies, and the KMS key are billed. [`10_teardown.sh`](scripts/10_teardown.sh) does the cleanup and lists what remains.
+- **Creating a LAG vault is irreversible.** The retention is fixed at creation; the minimum is 7 days (the AWS-fixed lower bound for a LAG vault [E-012]; [`MinRetentionDays` / `MaxRetentionDays` of CreateLogicallyAirGappedBackupVault](https://docs.aws.amazon.com/aws-backup/latest/devguide/API_CreateLogicallyAirGappedBackupVault.html)). For the upper bound, see the AWS documentation. The vault cannot be deleted while it holds a recovery point. An empty vault could be deleted (observed once). The detail is at the top of [`docs/procedure.en.md`](docs/procedure.en.md).
+- **It costs money.** The running file system, the stored backups and copies, and the KMS key are billed. [`10_teardown.sh`](scripts/10_teardown.sh) does the cleanup and lists what remains. The split between resource hold and cost is in [Cost and resource hold](#cost-and-resource-hold).
+
+## Cost and resource hold
+
+- The 7-day lock is not a retention value we chose; it is the AWS-fixed minimum for a LAG vault's retention. It cannot be set shorter [E-012] ([`MinRetentionDays` of CreateLogicallyAirGappedBackupVault](https://docs.aws.amazon.com/aws-backup/latest/devguide/API_CreateLogicallyAirGappedBackupVault.html)).
+- The lock applies only once a recovery point is copied into the LAG vault. An empty LAG vault could be deleted immediately (observed once).
+- Because of this, the file system, SVM, volume and CMK can be torn down with [`10_teardown.sh`](scripts/10_teardown.sh) the same day the verification finishes. Only the LAG vault plus its size-0 recovery point stay locked for the 7-day minimum, so the lock's own cost is small while the file-system runtime cost stops the same day.
+- The expiry start is the source-backup creation time, not the copy completion time (observed once).
+- The upper limit of 35 on `--retention-days` in the scripts and CloudFormation is a conservative input cap this lab sets, distinct from the actual retention ceiling AWS defines for a LAG vault (this input cap is also unverified). For the actual ceiling, see the AWS documentation (the CreateLogicallyAirGappedBackupVault link above).
+- See the four opening items at the top of [`docs/procedure.en.md`](docs/procedure.en.md) for the detail.
 
 ## Quick start
 

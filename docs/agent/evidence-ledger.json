@@ -452,7 +452,9 @@
       },
       "appears_in": [
         "infrastructure/shared-backup-vault-lab/docs/procedure.md",
-        "infrastructure/shared-backup-vault-lab/docs/procedure.en.md"
+        "infrastructure/shared-backup-vault-lab/docs/procedure.en.md",
+        "infrastructure/shared-backup-vault-lab/README.md",
+        "infrastructure/shared-backup-vault-lab/README.en.md"
       ],
       "claim_ja": "論理エアギャップ（LAG）ボールトはコンプライアンスモードの Vault Lock を伴い、グレースタイムの満了後は復旧ポイントを保持している間は削除できず、削除や保持期間の変更はどのユーザーに対しても、また AWS に対しても拒否されます。空のボールトは削除できます。最短の保持期間は 7 日です。"
     }
