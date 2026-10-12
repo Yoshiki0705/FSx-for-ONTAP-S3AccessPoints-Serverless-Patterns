@@ -1,4 +1,4 @@
-# Real-environment run: not yet done (status source: docs/verification-record.md)
+# Real-environment run: recorded [V1][V2][V3][V4][V5][V6][V7]; not recorded [E13] (status source: docs/verification-record.md)
 
 🌐 **Language / 言語**: [日本語](verification-record.md) | English
 
@@ -8,7 +8,7 @@ This document is the single source of truth for the state of the shared-vault la
 
 ## Status
 
-Date and environment of the real-environment run: not yet done. There are zero recorded rows. While no recorded row holds, writing a word such as `verified` (or its Japanese equivalents) under the lab fails a test (the rules below under "Limits of the mechanical enforcement").
+Date and environment of the real-environment run: 2026-10-12 (JST). The owner and the recipient were both in ap-northeast-1, with ap-northeast-3 as the second Region, run with the lab's own scripts and templates. The record table below carries one row per item for V1 to V7. E13 (an environment with organization sharing on) is not recorded because this environment used the invitation path with organization sharing off. MPA was not run (see "Treatment of MPA" below).
 
 The status-line grammar has an intermediate state until every item holds. Environments are exclusive and cannot satisfy every item at once, so only the items that hold are listed.
 
@@ -65,8 +65,39 @@ The item is in the closed set of the definition table above, `result` is of the 
 
 | Date (UTC) | Region | Config | AWS CLI | Code digest | portal-ref | Item | Result | Duration | Notes |
 |---|---|---|---|---|---|---|---|---|---|
+| 2026-10-12 | ap-northeast-1 | SINGLE_AZ_1 128MBps 1024GiB | aws-cli/2.36.5 | b8ec32a85b54 | - | V1 | 1✅ 0❌ 0⚠ | 18s | script 06_verify.sh. PASS in both Regions. `--by-shared` lists one LAG vault, ARN account is the owner, VaultType LOGICALLY_AIR_GAPPED_BACKUP_VAULT; the by-shared row has no VaultState and NumberOfRecoveryPoints 0 |
+| 2026-10-12 | ap-northeast-1 | SINGLE_AZ_1 128MBps 1024GiB | aws-cli/2.36.5 | b8ec32a85b54 | - | V2 | 1✅ 0❌ 0⚠ | 18s | script 06_verify.sh. The owner's `--by-shared` is empty in both Regions |
+| 2026-10-12 | ap-northeast-1 | SINGLE_AZ_1 128MBps 1024GiB | aws-cli/2.36.5 | b8ec32a85b54 | - | V4 | 1✅ 0❌ 0⚠ | 18s | script 06_verify.sh. Without `--backup-vault-account-id` it is AccessDeniedException; with it the call succeeds and returns 1 recovery point. ARN shape arn:aws:backup:<region>:<owner>:recovery-point:<id> |
+| 2026-10-12 | ap-northeast-1 | SINGLE_AZ_1 128MBps 1024GiB | aws-cli/2.36.5 | b8ec32a85b54 | 6231351a42a9 | V3 | 1✅ 0❌ 0⚠ | 41s | script 07_portal_config.sh (--ui, arn-present). The role policy lists the shared vault ARN; the spec's two arn-present tests PASS (air-gapped chip and owner account shown; the restore dialog opens with a disabled confirm and closes without restoring) |
+| 2026-10-12 | ap-northeast-1 | SINGLE_AZ_1 128MBps 1024GiB | aws-cli/2.36.5 | b8ec32a85b54 | 6231351a42a9 | V5 | 1✅ 0❌ 0⚠ | 41s | script 07_portal_config.sh. listSharedBackupVaults succeeds and shows the owner account |
+| 2026-10-12 | ap-northeast-1 | SINGLE_AZ_1 128MBps 1024GiB | aws-cli/2.36.5 | b8ec32a85b54 | 6231351a42a9 | V6 | 1✅ 0❌ 0⚠ | 2s | script 09_revoke_share.sh. After the revoke the vault leaves by-shared in about 1 to 2 s (both Regions); a later list-recovery-points is AccessDeniedException. The already-restored volume is untouched |
+| 2026-10-12 | ap-northeast-1 | SINGLE_AZ_1 128MBps 1024GiB | aws-cli/2.36.5 | b8ec32a85b54 | 6231351a42a9 | V7 | 1✅ 0❌ 0⚠ | 1362s | script 08_restore.sh (--via cli). Restored from the shared recovery point into the recipient's existing file system; the job reached COMPLETED, vol_restored reached CREATED (1 GiB, junction /vol_restored), the restore role was accepted, and the restored volume carried the Project tag |
 
-(No records. The real-environment run is not yet done.)
+Each row is one item's result in one run (n=1), not a generalization to another environment or scale. The digest and portal-ref correspond to the code at commit time.
+
+## Where a cross-Region copy job appears (the E24 observation)
+
+The cross-Region copy job (Tokyo source to the Osaka LAG vault) appeared in the SOURCE Region's list-copy-jobs with the destination vault ARN in ap-northeast-3; it did not appear in the destination Region's list (observed once). Both copies' recovery points carry the same delete date (source-backup creation time plus 7 days), cross-Region included. E24 is a MANUAL item, so it is kept here as an observation rather than in the record table.
+
+## Treatment of MPA
+
+Multi-party approval (MPA) was not run (recorded as not applicable in this environment). MPA needs two AWS Organizations (a primary and a separate recovery org) and an approval team of 3 to 20 approvers. This lab's single-organization, two-account setup does not provide them. It is tracked in follow-up issue #471. The template's `MpaApprovalTeamArn` parameter and the prerequisites are in the MPA section of the README and the runbook, and it is not run on real environment. <!-- allow:not-a-claim: these are documented MPA prerequisites cited from the AWS MPA guide in the README and runbook, not a claim of vendor absence -->
+
+## Real-environment screenshots
+
+These are the screens and CLI output observed in the real environment. Account ids, resource ids, ARNs, recovery-point ids and KMS key ids are masked (blacked out or cropped), and the portal screens use the spec's dummy account 111122223333. The runbook's capture-plan markers (`<!-- SCREENSHOT: ... -->`) are a capture guide and are distinct from the 9 images placed here.
+
+| File name | Screen / output | Item |
+|---|---|---|
+| lab-recipient-shared-vault-list.png | The recipient's `--by-shared` list (one LAG vault) | V1 |
+| lab-recipient-shared-vault-detail.png | The shared vault detail seen from the recipient | V1 |
+| lab-recipient-shared-vault-osaka.png | The shared vault in the second Region (Osaka) | V1 |
+| lab-recipient-shared-vault-revoked.png | The state after the revoke left the list | V6 |
+| lab-recipient-restored-volume.png | The restored vol_restored | V7 |
+| lab-owner-vault-detail.png | The owner's LAG vault detail | V5 |
+| lab-owner-copy-jobs.png | The owner's copy jobs (cross-Region destination ARN) | E24 |
+| P02-arn-present.png | The portal shared-vault choice (arn-present) | V3, V5 |
+| P03-restore-dialog.png | The portal restore dialog (confirm disabled) | V3 |
 
 ## Reference: first manual observations
 

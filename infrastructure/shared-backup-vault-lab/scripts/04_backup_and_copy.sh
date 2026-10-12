@@ -1,5 +1,5 @@
 #!/bin/bash
-# Real-environment run: not yet done (status source: docs/verification-record.md)
+# Real-environment run: recorded [V1][V2][V3][V4][V5][V6][V7]; not recorded [E13] (status source: docs/verification-record.md)
 #
 # 04_backup_and_copy.sh - back up the lab volume, then copy the backup into the
 # air-gapped vault.

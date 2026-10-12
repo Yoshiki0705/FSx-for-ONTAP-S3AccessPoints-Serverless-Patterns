@@ -244,9 +244,10 @@ def _unbacked_verified_claims(records_held: set[str]) -> list[str]:
 
 
 def test_every_verified_claim_is_tagged_and_backed() -> None:
-    # The record table is empty, so no item is held. Every 'verified' term in the lab
-    # must therefore be in a code span or a negation; none may stand as a bare claim.
-    assert _unbacked_verified_claims(records_held=set()) == []
+    # A 'verified' term in the lab must be in a code span, a negation, or carry a tag
+    # for an item that holds against the current record. An untagged claim, or a tag
+    # for an item that is not held, is a finding.
+    assert _unbacked_verified_claims(records_held=_held_items_from_record()) == []
 
 
 def test_verified_claim_scan_has_negative_controls() -> None:
@@ -308,8 +309,56 @@ def _record_rows_from_doc(path: Path) -> list[dict[str, str]]:
     return rows
 
 
+def _held_items_from_record() -> set[str]:
+    """Items that hold against the current code: valid rows whose digest matches.
+
+    A row holds when it validates (``_validate_record_row``), its digest equals the
+    current ``code_digest``, and, for a portal item, its portal-ref equals the
+    current ``portal_ref``. This is the single source the status line is checked
+    against, so the status line can never claim more than the table supports.
+    """
+    digest = HELPERS.code_digest(LAB_SRC)
+    try:
+        pref = HELPERS.portal_ref(LAB_SRC)
+    except RuntimeError:
+        pref = None
+    held: set[str] = set()
+    for row in _record_rows_from_doc(RECORD_JA):
+        if _validate_record_row(row, set(DEFINED)):
+            continue
+        if row["digest"] != digest:
+            continue
+        if row["item"] in HELPERS.PORTAL_ITEMS and row["portal_ref"] != pref:
+            continue
+        held.add(row["item"])
+    return held
+
+
+STATUS_TAG = re.compile(r"\[(V[1-8]|E\d+)\]")
+
+
+def _parse_status_line(line: str) -> tuple[set[str], set[str]] | None:
+    """Split a status line into (recorded, not_recorded) item sets.
+
+    Returns ``None`` when the line is the ``not yet done`` form, and raises nothing
+    for a malformed line (the caller asserts the grammar separately).
+    """
+    if line == NOT_YET_DONE:
+        return set(), set()
+    head, _, tail = line.partition("; not recorded ")
+    recorded = set(STATUS_TAG.findall(head))
+    not_recorded = set(STATUS_TAG.findall(tail)) if tail else set()
+    return recorded, not_recorded
+
+
 def test_status_line_matches_the_record() -> None:
-    # The table is empty in C7, so the status line of every document is 'not yet done'.
+    # The status line is checked against the record table: every item listed under
+    # 'recorded' must hold, and the held set must be exactly the recorded set, so the
+    # line can neither claim more than the table supports nor hide a recorded item.
+    # The 'not recorded' list is authored (the exclusive-environment items) and only
+    # has to be valid D-5 grammar, disjoint from 'recorded', and made of real items.
+    held = _held_items_from_record()
+    first_lines = {}
     for path in (
         RECORD_JA,
         RECORD_EN,
@@ -318,10 +367,23 @@ def test_status_line_matches_the_record() -> None:
         DOCS / "procedure.md",
         DOCS / "procedure.en.md",
     ):
-        first = path.read_text(encoding="utf-8").splitlines()[0]
-        assert first == NOT_YET_DONE, f"{path.name} status line is {first!r}"
-    assert _record_rows_from_doc(RECORD_JA) == []
-    assert _record_rows_from_doc(RECORD_EN) == []
+        first_lines[path.name] = path.read_text(encoding="utf-8").splitlines()[0]
+    # Every document carries the identical status line.
+    distinct = set(first_lines.values())
+    assert len(distinct) == 1, f"status lines differ across documents: {first_lines}"
+    line = next(iter(distinct))
+    if not held:
+        assert line == NOT_YET_DONE, line
+        return
+    assert PARTIAL_RE.match(line), line
+    recorded, not_recorded = _parse_status_line(line)
+    assert recorded == held, f"recorded {sorted(recorded)} != held {sorted(held)}"
+    assert recorded.isdisjoint(not_recorded), f"an item is both recorded and not recorded: {recorded & not_recorded}"
+    assert not_recorded <= set(DEFINED), f"not-recorded has an unknown item: {not_recorded - set(DEFINED)}"
+    # The two record tables carry the same rows (JA/EN parity of the recorded set).
+    ja_items = sorted(r["item"] for r in _record_rows_from_doc(RECORD_JA))
+    en_items = sorted(r["item"] for r in _record_rows_from_doc(RECORD_EN))
+    assert ja_items == en_items, f"JA record items {ja_items} != EN record items {en_items}"
 
 
 def test_partial_status_grammar_of_d5() -> None:
@@ -336,12 +398,18 @@ def test_partial_status_grammar_of_d5() -> None:
 
 
 def test_script_and_template_headers_match_the_record() -> None:
-    # No item holds, so every script and template must carry the 'not yet done' line.
+    # Every script and template carries the same status line as the verification
+    # record, and that line's recorded set equals the held set (checked above), so a
+    # header can never claim a state the table does not support.
+    expected_body = RECORD_JA.read_text(encoding="utf-8").splitlines()[0].lstrip("# ")
+    held = _held_items_from_record()
+    recorded, _ = _parse_status_line("# " + expected_body)
+    assert recorded == held, f"record header recorded {sorted(recorded)} != held {sorted(held)}"
     for path in list(SCRIPTS.glob("*.sh")) + [SCRIPTS / "lib" / "lab_helpers.py"] + list(TEMPLATES.glob("*.yaml")):
         head = [ln for ln in path.read_text(encoding="utf-8").splitlines()[:3] if STATUS_PREFIX in ln.lstrip("/ ")]
         assert head, f"{path.name} has no status line in its first three lines"
         line = head[0].lstrip("#/ ").rstrip()
-        assert line.startswith("Real-environment run: not yet done"), f"{path.name}: {line!r}"
+        assert line == expected_body, f"{path.name}: {line!r}, expected {expected_body!r}"
 
 
 # --------------------------------------------------------------------------

@@ -1,4 +1,4 @@
-# Real-environment run: not yet done (status source: docs/verification-record.md)
+# Real-environment run: recorded [V1][V2][V3][V4][V5][V6][V7]; not recorded [E13] (status source: docs/verification-record.md)
 
 🌐 **Language / 言語**: [日本語](README.md) | English
 
@@ -177,6 +177,18 @@ These are the CloudFormation types the templates create. The permissions for the
 | owner-base | `AWS::KMS::Key`, `AWS::KMS::Alias`, `AWS::FSx::FileSystem`, `AWS::FSx::StorageVirtualMachine`, `AWS::FSx::Volume`, `AWS::Backup::BackupVault`, `AWS::IAM::Role` |
 | owner-lag-share | `AWS::Backup::LogicallyAirGappedBackupVault`, `AWS::RAM::ResourceShare` |
 | recipient-restore | `AWS::IAM::Role`, `AWS::FSx::StorageVirtualMachine`, `AWS::FSx::FileSystem` (only when `ExistingFileSystemId` is empty) |
+
+## Multi-party approval (MPA) path
+
+A LAG vault can carry Multi-party approval (MPA), which gates the `CreateRestoreAccessVault` approval that creates a restore-access vault behind a multi-person approval. This is a path separate from the RAM-share restore this lab verifies; it protects access to a LAG vault's contents with a distributed approval when a compromise is suspected.
+
+The MPA prerequisites, which this lab's single-organization, two-account setup cannot meet, are:
+
+- A second AWS Organization for recovery, separate from the primary AWS Organization.
+- An approval team of 3 to 20 approvers.
+- `MpaApprovalTeamArn` set at vault creation. It cannot be changed afterwards, and a change forces CloudFormation to replace the vault.
+
+The `owner-lag-share.yaml` template has an optional `MpaApprovalTeamArn` parameter whose default is empty. When empty the property is not sent, so the lab's default path is unchanged. **This path is not run on real environment** (tracked in follow-up issue #471). See [the AWS Backup MPA guide](https://docs.aws.amazon.com/aws-backup/latest/devguide/multipartyapproval.html) and [what Multi-party approval is](https://docs.aws.amazon.com/mpa/latest/userguide/what-is.html).
 
 ## Direct deploy without the scripts
 

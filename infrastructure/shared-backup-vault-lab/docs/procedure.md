@@ -1,4 +1,4 @@
-# Real-environment run: not yet done (status source: docs/verification-record.md)
+# Real-environment run: recorded [V1][V2][V3][V4][V5][V6][V7]; not recorded [E13] (status source: docs/verification-record.md)
 
 🌐 **Language / 言語**: 日本語 | [English](procedure.en.md)
 
@@ -82,6 +82,10 @@
 ## 既存 sandbox を更新するとき
 
 既存の sandbox を持ち、依存が更新された状態で `make sandbox` を再実行する読者は、`07 --deploy` が `UPDATE_FAILED` で失敗しえます。原因は AwsCliLayer の置換が Express モードの sandbox で拒否されることで、`docs/agent/portal-cdk-quality-gates.md` の AwsCliLayer の行に書いてあります。回復手段の選択（削除と再作成は Cognito ユーザーと DynamoDB を消します）は、ポータルの利用者データの扱いに関わる人の判断です。本ラボは事前の検知を持たず、失敗後に案内を読む形です。
+
+## このラボの範囲外である MPA の経路
+
+LAG ボールトの MPA（マルチパーティー承認）は、`CreateRestoreAccessVault` の承認を 3〜20 人の承認チームで守る経路で、このラボが検証する RAM 共有による復元とは別物です。プライマリの組織に加えてリカバリ用の AWS Organizations をもう 1 つ必要とし、`MpaApprovalTeamArn` はボールトの作成時に設定します（作成後は変更できず、変更はボールトの置換を伴います）。このラボの単一組織・2 アカウント構成はそれを満たさないため MPA を実行せず、テンプレートの `MpaApprovalTeamArn` パラメータは空のままにします。この経路は実機では未実行です（追跡は follow-up issue #471）。詳細は [AWS Backup の MPA のガイド](https://docs.aws.amazon.com/aws-backup/latest/devguide/multipartyapproval.html) と [Multi-party approval とは](https://docs.aws.amazon.com/mpa/latest/userguide/what-is.html) にあります。<!-- allow:not-a-claim: these are documented MPA prerequisites cited from the linked AWS MPA guide, not a claim of vendor absence -->
 
 ## 撮影一覧
 

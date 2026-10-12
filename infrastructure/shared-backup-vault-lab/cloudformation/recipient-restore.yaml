@@ -1,4 +1,4 @@
-# Real-environment run: not yet done (status source: docs/verification-record.md)
+# Real-environment run: recorded [V1][V2][V3][V4][V5][V6][V7]; not recorded [E13] (status source: docs/verification-record.md)
 #
 # Recipient account: the role AWS Backup assumes to restore, and a storage virtual
 # machine to restore into. Optionally creates a minimal Amazon FSx for NetApp

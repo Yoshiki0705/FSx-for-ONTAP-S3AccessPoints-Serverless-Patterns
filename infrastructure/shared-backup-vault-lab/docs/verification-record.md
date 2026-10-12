@@ -1,4 +1,4 @@
-# Real-environment run: not yet done (status source: docs/verification-record.md)
+# Real-environment run: recorded [V1][V2][V3][V4][V5][V6][V7]; not recorded [E13] (status source: docs/verification-record.md)
 
 🌐 **Language / 言語**: 日本語 | [English](verification-record.en.md)
 
@@ -8,7 +8,7 @@
 
 ## 状態
 
-実機での通しの日付と環境: 未実施。実機の記録の行は現在 0 件です。記録の行が 1 件も成立していない間、ラボ配下に `verified` / `検証済み` / `確認済み` と書くとテストが落ちます（下の「機械的な強制の限界」の規則）。
+実機での通しの日付と環境: 2026-10-12（JST）。所有者と受け手の両アカウントを ap-northeast-1 に置き、第 2 リージョンを ap-northeast-3 として、ラボ自身のスクリプトとテンプレートで通しました。下の記録の表に V1〜V7 の結果を 1 行ずつ載せています。E13（組織共有が有効な環境）は、この環境が組織共有を無効にした招待経路のため記録していません。MPA は実行していません（下の「MPA の扱い」）。
 
 状態の行の文法には、全項目が成立するまでの中間状態があります。環境が排他で全項目を同時に満たせないため、成立した項目だけを並べます。
 
@@ -65,8 +65,39 @@
 
 | 実施日（UTC） | リージョン | 構成 | AWS CLI | コードの digest | portal-ref | 項目 | 結果 | 所要 | 備考 |
 |---|---|---|---|---|---|---|---|---|---|
+| 2026-10-12 | ap-northeast-1 | SINGLE_AZ_1 128MBps 1024GiB | aws-cli/2.36.5 | b8ec32a85b54 | - | V1 | 1✅ 0❌ 0⚠ | 18s | script 06_verify.sh。両リージョンで PASS。`--by-shared` に LAG 1 件、ARN は所有者、VaultType LOGICALLY_AIR_GAPPED_BACKUP_VAULT、by-shared 行では VaultState 無し・NumberOfRecoveryPoints 0 |
+| 2026-10-12 | ap-northeast-1 | SINGLE_AZ_1 128MBps 1024GiB | aws-cli/2.36.5 | b8ec32a85b54 | - | V2 | 1✅ 0❌ 0⚠ | 18s | script 06_verify.sh。両リージョンで所有者の `--by-shared` は空 |
+| 2026-10-12 | ap-northeast-1 | SINGLE_AZ_1 128MBps 1024GiB | aws-cli/2.36.5 | b8ec32a85b54 | - | V4 | 1✅ 0❌ 0⚠ | 18s | script 06_verify.sh。`--backup-vault-account-id` 無しは AccessDeniedException、付けると成功し復旧ポイント 1 件。ARN 形 arn:aws:backup:<region>:<owner>:recovery-point:<id> |
+| 2026-10-12 | ap-northeast-1 | SINGLE_AZ_1 128MBps 1024GiB | aws-cli/2.36.5 | b8ec32a85b54 | 6231351a42a9 | V3 | 1✅ 0❌ 0⚠ | 41s | script 07_portal_config.sh（--ui, arn-present）。ロールのポリシーに共有ボールト ARN、spec の arn-present 2 件が PASS（エアギャップのチップ・所有者アカウント表示、復元ダイアログは確認無効のまま開いて復元せず閉じる） |
+| 2026-10-12 | ap-northeast-1 | SINGLE_AZ_1 128MBps 1024GiB | aws-cli/2.36.5 | b8ec32a85b54 | 6231351a42a9 | V5 | 1✅ 0❌ 0⚠ | 41s | script 07_portal_config.sh。listSharedBackupVaults が成功し所有者アカウントを表示 |
+| 2026-10-12 | ap-northeast-1 | SINGLE_AZ_1 128MBps 1024GiB | aws-cli/2.36.5 | b8ec32a85b54 | 6231351a42a9 | V6 | 1✅ 0❌ 0⚠ | 2s | script 09_revoke_share.sh。取り消し後 1〜2 秒で by-shared から外れ（両リージョン）、以後の list-recovery-points は AccessDeniedException。復元済みボリュームは不変 |
+| 2026-10-12 | ap-northeast-1 | SINGLE_AZ_1 128MBps 1024GiB | aws-cli/2.36.5 | b8ec32a85b54 | 6231351a42a9 | V7 | 1✅ 0❌ 0⚠ | 1362s | script 08_restore.sh（--via cli）。共有復旧ポイントから受け手の既存 FS へ復元、ジョブ COMPLETED、vol_restored が CREATED（1 GiB、junction /vol_restored）、復元ロール受理、Project タグ付与 |
 
-（記録なし。実機での通しは未実施です。）
+各行は 1 回の実行の 1 項目の結果（n=1）で、他の環境や規模への一般化ではありません。digest と portal-ref はコミット時点のコードに対応します。
+
+## 別リージョンのコピージョブの出現先（E24 の観測）
+
+別リージョンのコピージョブ（Tokyo のソース → Osaka の LAG ボールト）は、ソースリージョンの list-copy-jobs に、宛先ボールト ARN（ap-northeast-3）付きで出ました。宛先リージョンの一覧には出ませんでした（1 回観測）。両方のコピーの復旧ポイントは、別リージョンを含め同じ失効日（元バックアップの作成時刻 + 7 日）を持ちます。E24 は MANUAL 項目のため記録の表には載せず、ここに観測として残します。
+
+## MPA の扱い
+
+MPA（マルチパーティー承認）は実行していません（この環境では該当なしとして記録）。MPA は、プライマリと別のリカバリ組織という 2 つの AWS Organizations と、3〜20 人の承認チームを必要とします。このラボの単一組織・2 アカウント構成はそれを満たしません。追跡は follow-up issue #471 です。テンプレートの `MpaApprovalTeamArn` パラメータと前提は README と手順書の MPA の節にあり、実機では未実行です。<!-- allow:not-a-claim: these are documented MPA prerequisites cited from the AWS MPA guide in the README and runbook, not a claim of vendor absence -->
+
+## 実機のスクリーンショット
+
+実機で観測した画面と CLI 出力です。アカウント ID・リソース ID・ARN・復旧ポイント ID・KMS キー ID はマスク（黒塗りまたは切り取り）し、ポータルの画面は spec のダミーアカウント 111122223333 を使います。手順書の撮影計画マーカー（`<!-- SCREENSHOT: ... -->`）は撮影のガイドで、ここに置く 9 枚とは別物です。
+
+| ファイル名 | 画面 / 出力 | 対応項目 |
+|---|---|---|
+| lab-recipient-shared-vault-list.png | 受け手の `--by-shared` 一覧（LAG 1 件） | V1 |
+| lab-recipient-shared-vault-detail.png | 受け手から見た共有ボールトの詳細 | V1 |
+| lab-recipient-shared-vault-osaka.png | 第 2 リージョン（Osaka）の共有ボールト | V1 |
+| lab-recipient-shared-vault-revoked.png | 取り消し後に一覧から外れた状態 | V6 |
+| lab-recipient-restored-volume.png | 復元された vol_restored | V7 |
+| lab-owner-vault-detail.png | 所有者の LAG ボールトの詳細 | V5 |
+| lab-owner-copy-jobs.png | 所有者のコピージョブ（別リージョン宛先 ARN） | E24 |
+| P02-arn-present.png | ポータルの共有ボールト選択（arn-present） | V3, V5 |
+| P03-restore-dialog.png | ポータルの復元ダイアログ（確認無効） | V3 |
 
 ## 参考: 初回の手動観測
 

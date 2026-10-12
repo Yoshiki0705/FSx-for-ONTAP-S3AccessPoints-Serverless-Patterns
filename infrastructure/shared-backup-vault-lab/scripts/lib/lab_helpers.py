@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Real-environment run: not yet done (status source: docs/verification-record.md)
+# Real-environment run: recorded [V1][V2][V3][V4][V5][V6][V7]; not recorded [E13] (status source: docs/verification-record.md)
 """Pure helpers for the shared-vault lab scripts (standard library only).
 
 Runs on Python 3.9 and later: macOS ships /usr/bin/python3 at 3.9, and the lab

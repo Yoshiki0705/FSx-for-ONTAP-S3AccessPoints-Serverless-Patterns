@@ -1,4 +1,4 @@
-# Real-environment run: not yet done (status source: docs/verification-record.md)
+# Real-environment run: recorded [V1][V2][V3][V4][V5][V6][V7]; not recorded [E13] (status source: docs/verification-record.md)
 
 🌐 **Language / 言語**: 日本語 | [English](README.en.md)
 
@@ -177,6 +177,18 @@ CloudFormation が呼び出し元の資格情報で資源を作るときの権�
 | owner-base | `AWS::KMS::Key`, `AWS::KMS::Alias`, `AWS::FSx::FileSystem`, `AWS::FSx::StorageVirtualMachine`, `AWS::FSx::Volume`, `AWS::Backup::BackupVault`, `AWS::IAM::Role` |
 | owner-lag-share | `AWS::Backup::LogicallyAirGappedBackupVault`, `AWS::RAM::ResourceShare` |
 | recipient-restore | `AWS::IAM::Role`, `AWS::FSx::StorageVirtualMachine`, `AWS::FSx::FileSystem`（`ExistingFileSystemId` が空のときだけ） |
+
+## マルチパーティー承認（MPA）の経路
+
+LAG ボールトには、復元アクセス用のボールトを作る `CreateRestoreAccessVault` の承認を複数人の承認で守る MPA（マルチパーティー承認）を付けられます。これはこのラボが検証する RAM 共有による復元経路とは別の経路で、侵害が疑われるときに LAG ボールトの内容へのアクセスを分散承認で守るためのものです。
+
+MPA の前提は次のとおりで、このラボの単一組織・2 アカウント構成では満たせません。
+
+- プライマリの AWS Organizations とは別に、リカバリ用の AWS Organizations をもう 1 つ用意すること。
+- 3〜20 人の承認チームを用意すること。
+- `MpaApprovalTeamArn` をボールトの作成時に設定すること。作成後は変更できず、変更は CloudFormation によるボールトの置換を伴います。
+
+テンプレートの `owner-lag-share.yaml` には任意の `MpaApprovalTeamArn` パラメータがあり、既定は空です。空のときはプロパティを送らないので、このラボの既定の経路は変わりません。**この経路は実機では未実行です**（追跡は follow-up issue #471）。詳細は [AWS Backup の MPA のガイド](https://docs.aws.amazon.com/aws-backup/latest/devguide/multipartyapproval.html) と [Multi-party approval とは](https://docs.aws.amazon.com/mpa/latest/userguide/what-is.html) にあります。
 
 ## スクリプトを通さない直接デプロイ
 

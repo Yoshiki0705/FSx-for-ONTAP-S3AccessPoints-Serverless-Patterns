@@ -1,4 +1,4 @@
-# Real-environment run: not yet done (status source: docs/verification-record.md)
+# Real-environment run: recorded [V1][V2][V3][V4][V5][V6][V7]; not recorded [E13] (status source: docs/verification-record.md)
 
 🌐 **Language / 言語**: [日本語](procedure.md) | English
 
@@ -82,6 +82,10 @@ The cost is read by `06_verify.sh --cost`. What this runbook keeps is the wait u
 ## When updating an existing sandbox
 
 A reader who holds an existing sandbox and reruns `make sandbox` with updated dependencies may see `07 --deploy` fail with `UPDATE_FAILED`. The cause is that the AwsCliLayer replacement is refused on an Express-mode sandbox, written up in the AwsCliLayer row of `docs/agent/portal-cdk-quality-gates.md`. The choice of recovery (deleting and recreating removes the Cognito users and DynamoDB) is a decision for someone responsible for the portal's user data. This lab holds no pre-detection; the guidance is read after the failure.
+
+## The MPA path, out of scope for this lab
+
+Multi-party approval (MPA) on a LAG vault gates the `CreateRestoreAccessVault` approval behind a 3-to-20-person approval team, a path separate from the RAM-share restore this lab verifies. It needs a second AWS Organization (a recovery org) in addition to the primary org, and `MpaApprovalTeamArn` must be set at vault creation (it cannot be changed afterwards; a change replaces the vault). This lab's single-organization, two-account setup does not provide those, so it does not exercise MPA; the template's `MpaApprovalTeamArn` parameter is left empty. This path is not run on real environment (tracked in follow-up issue #471). See [the AWS Backup MPA guide](https://docs.aws.amazon.com/aws-backup/latest/devguide/multipartyapproval.html) and [what Multi-party approval is](https://docs.aws.amazon.com/mpa/latest/userguide/what-is.html). <!-- allow:not-a-claim: these are documented MPA prerequisites cited from the linked AWS MPA guide, not a claim of vendor absence -->
 
 ## Screenshot list
 

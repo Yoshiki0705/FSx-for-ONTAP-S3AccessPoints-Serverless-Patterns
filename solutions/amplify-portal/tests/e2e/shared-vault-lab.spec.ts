@@ -1,4 +1,4 @@
-// Real-environment run: not yet done (status source: docs/verification-record.md)
+// Real-environment run: recorded [V1][V2][V3][V4][V5][V6][V7]; not recorded [E13] (status source: docs/verification-record.md)
 /**
  * Shared-vault lab: what the portal shows for a vault shared by another account.
  *
@@ -83,6 +83,16 @@ async function capture(page: Page, name: string): Promise<void> {
 }
 
 async function signIn(page: Page): Promise<void> {
+  // Suppress the first-run welcome modal before the app loads. Its overlay covers the whole
+  // viewport and intercepts pointer events, so a later Restore click would be blocked. The
+  // app only shows it when this localStorage flag is absent (see components/WelcomeModal.tsx).
+  await page.addInitScript(() => {
+    try {
+      window.localStorage.setItem("portal-welcome-dismissed", "true");
+    } catch {
+      /* localStorage unavailable: the test will surface the overlay instead */
+    }
+  });
   await page.goto(BASE_URL);
   // Either the portal's navigation (a session was restored) or the sign-in form.
   const landing = page.locator('nav, input[type="password"]').first();
