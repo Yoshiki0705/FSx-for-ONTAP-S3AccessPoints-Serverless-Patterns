@@ -597,6 +597,30 @@ Items to confirm when taking this from DemoMode/sandbox to production:
 
 > **Data residency note**: Amazon Bedrock on-demand models (Nova, Claude) run inference in the same region as the caller. Called from ap-northeast-1, data stays within ap-northeast-1. Cross-Region Inference may send data to other regions, so restrict the `bedrock:InferenceProfile` ARN according to your regulatory requirement.
 
+## Optional instrumentation — emitting the application-side signal
+
+The portal's presigned-url function can emit the **application half** of the
+audit-correlation join. What it sends is the join key on
+`(object key, operation, time window)` — the deterministic key that pairs a portal
+request with its matching record in the Amazon FSx for NetApp ONTAP audit log. FSx for
+ONTAP audit records carry no free-form field, so a trace ID cannot be propagated into <!-- allow:unverified: unverified premise about the ONTAP audit record schema; not checked against ONTAP's audit schema in this PR's E2E (correlation was proven on object-key, not trace-ID propagation) -->
+them; the end-user attribution is therefore supplied by the application side through this
+signal.
+
+The instrumentation is **off by default** and is opt-in via the `ENABLE_S3AP_APP_SIGNAL`
+environment variable. Left unset or `false`, it emits nothing — no EMF record, no metric,
+no X-Ray annotation. Set `enableS3apAppSignal` (default `false`) to `true` in
+`portal-config.ts` and backend.ts passes the variable through to the presigned-url
+function.
+
+When enabled, it writes CloudWatch Embedded Metric Format records in the
+`FSxONTAPAppSignals` namespace. It needs no `PutMetricData` call and no extra IAM
+permission, and adds no API round trip to the handler's runtime.
+
+The correlation/join side — ingesting the audit logs and joining them on the join key —
+lives in the Observability sibling project, not in this repository. What is emitted here
+is only one side of the join.
+
 ## Deleting the environment
 
 ```bash

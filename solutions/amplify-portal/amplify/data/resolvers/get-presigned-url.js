@@ -26,6 +26,7 @@ export function request(ctx) {
       key: key,
       expiresIn: expiresIn,
       userId: ctx.identity.username,
+      sub: ctx.identity.claims ? ctx.identity.claims.sub : null,
       groups: groups,
     },
   };

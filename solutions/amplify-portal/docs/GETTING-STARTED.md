@@ -617,6 +617,26 @@ DemoMode/sandbox で検証後、本番に持っていく際の確認項目:
 
 > **Data residency note**: Amazon Bedrock の On-Demand モデル (Nova, Claude) は、呼び出し元と同じリージョンで推論を実行します。ap-northeast-1 から呼び出した場合、データは ap-northeast-1 内に留まります。Cross-Region Inference を使用する場合はデータが他リージョンに送信される可能性があるため、規制要件に応じて `bedrock:InferenceProfile` の ARN を制限してください。
 
+## 任意の計装 — アプリ側シグナルの送出
+
+ポータルの presigned-url 関数は、監査突き合わせ（audit-correlation）の**アプリ側の半分**を
+送出できます。送るのは `(オブジェクトキー, 操作, 時間窓)` で決まる join key で、これは
+Amazon FSx for NetApp ONTAP の監査ログ側のレコードと決定的に結合するための鍵です。FSx for ONTAP
+の監査レコードには自由記述フィールドがないため、トレース ID をそのまま埋め込むことはできません。 <!-- allow:unverified: ONTAP 監査レコードのスキーマに関する未検証の前提; 本 PR の E2E では ONTAP 監査スキーマに対して未確認（突き合わせはオブジェクトキーで実証、トレース ID 伝播は未実証） -->
+そこで、エンドユーザーの帰属はアプリ側がこのシグナルで補います。
+
+この計装は**既定で無効**で、`ENABLE_S3AP_APP_SIGNAL` 環境変数による opt-in です。設定しない、
+または `false` のままなら、EMF レコードもメトリクスも X-Ray アノテーションも一切出力しません。
+`portal-config.ts` の `enableS3apAppSignal`（既定 `false`）を `true` にすると、backend.ts が
+この変数を presigned-url 関数に渡します。
+
+有効化すると、CloudWatch Embedded Metric Format で namespace `FSxONTAPAppSignals` にレコードが
+出ます。`PutMetricData` 呼び出しも追加の IAM 権限も不要で、ハンドラの実行時間に API のラウンド
+トリップを足しません。
+
+突き合わせ（join）側 — 監査ログの取り込みと join key での結合 — は、本リポジトリではなく
+Observability の姉妹プロジェクトにあります。ここで送出するのは join の片側だけです。
+
 ## 環境削除
 
 ```bash
