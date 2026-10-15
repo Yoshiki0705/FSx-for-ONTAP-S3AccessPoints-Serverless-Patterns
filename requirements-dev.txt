@@ -30,3 +30,9 @@ Pillow==12.3.0
 # test_botocore_pin_matches_installed fails when the installed botocore differs
 # from this line.
 botocore==1.43.111
+# scripts/tests/test_portal_preflight.py imports jmespath directly: its fake AWS
+# applies the code's own `--query` with it. It was only present as a dependency
+# of boto3 / botocore, which allow `jmespath>=0.7.1,<2.0.0`, so a new release
+# would have changed what the tests evaluate with no line in this repository.
+# 1.1.0 satisfies that range and was the newest release when it was pinned.
+jmespath==1.1.0
