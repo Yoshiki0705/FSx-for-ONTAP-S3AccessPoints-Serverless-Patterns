@@ -41,6 +41,26 @@ Exit codes for that mode: 0 identifier printed, 3 no outputs file (nothing is
 deployed yet, so the caller's default is correct), 1 outputs exist but the
 identifier could not be resolved -- which must stop the caller rather than fall
 back to the default.
+
+``--check-config-vs-live`` runs before ``ampx sandbox`` starts and stops a deploy
+that would replace a value the deployed sandbox holds with an empty one. The
+usual cause is a worktree whose gitignored ``portal-config.ts`` is a fresh copy of
+the example: the deploy succeeds and the access point alias, the ONTAP connection,
+the VPC and the state machine ARN come back empty. It compares the effective value
+(environment variable, then the ``portal-config.ts`` literal) of ``s3ApAlias``,
+``ontapMgmtIp``, ``ontapSecretName``, ``s3ObjectLockBucket``, ``stateMachineArn``
+and ``vpcId`` with the deployed functions' variables, the GraphQL API's environment
+and the functions' ``VpcConfig``, reading AWS only. It prints key names and never a
+value. Exit codes: 0 nothing would be blanked, the comparison could not be made, or
+the opt-out is set; 1 a deployed value would become empty; 2 no ``portal-config.ts``.
+
+Not being able to compare (no outputs file, AWS unreachable, SSO expired, a different
+sandbox from the outputs file's) is a skip, as it is for ``check_hosted_binding``:
+``sandbox.sh`` has already stopped when it cannot identify the sandbox, ``ampx``
+needs the same credentials, and a second gate on AWS availability would only give
+people a reason to bypass this one. ``AMPLIFY_PORTAL_ALLOW_CONFIG_BLANKING=1``
+(exactly ``1``) lets a deploy that empties a value through; the keys are still
+printed. ``AMPLIFY_PORTAL_SKIP_CONFIG_CHECK`` does not skip it.
 """
 
 from __future__ import annotations
@@ -938,6 +958,140 @@ def check_config(source: str) -> list[Result]:
     return results
 
 
+# Config keys that flow into a deployed function's environment (or, for the last
+# two, the GraphQL API's environment and the VPC placement). The variable each is
+# written to is read from backend.ts, so a rename there is followed.
+GUARDED_ENV_KEYS = ("s3ApAlias", "ontapMgmtIp", "ontapSecretName", "s3ObjectLockBucket")
+STATE_MACHINE_KEY = "stateMachineArn"
+VPC_KEY = "vpcId"
+ALLOW_BLANKING_VAR = "AMPLIFY_PORTAL_ALLOW_CONFIG_BLANKING"
+LIVE_CHECK = "config vs live"
+
+
+def check_config_vs_live(config_src: str, backend_src: str, stack: str, region: str) -> list[Result]:
+    """Name the keys whose deployed value is set but whose effective value is empty.
+
+    A key whose effective value is set cannot be blanked by the deploy, so only the
+    empty ones are looked up. Reports key names; it is handed no value to print.
+    A key that cannot be read, or cannot be tied to a deployed resource, is skipped
+    rather than treated as empty.
+    """
+    functions = parse_backend_functions(backend_src)
+    try:
+        in_vpc = expected_vpc_functions(backend_src)
+    except ValueError:
+        in_vpc = []
+    resources = stack_resources(stack, region, ("AWS::Lambda::Function", "AWS::AppSync::GraphQLApi"))
+    lambdas = [r for r in resources if r[0] == "AWS::Lambda::Function"]
+    configs: dict[str, dict] = {}
+
+    def holds(fn: BackendFunction, var: str | None) -> bool:
+        """Whether the deployed ``fn`` has ``var`` set (or, for None, a VPC)."""
+        match = resolve_logical(fn.logical_id, lambdas)
+        if match is None:
+            return False
+        if match[1] not in configs:
+            configs[match[1]] = function_config(match[1], region)
+        conf = configs[match[1]]
+        return conf["vpc_id"] if var is None else var in conf["nonempty_env"]
+
+    def live(key: str) -> tuple[bool | None, str]:
+        """Return whether the deployed value is set (None when unknowable) and where it lives."""
+        if key == VPC_KEY:
+            return (any(holds(fn, None) for fn in in_vpc), "VpcConfig") if in_vpc else (None, "")
+        if key == STATE_MACHINE_KEY:
+            var = appsync_env_bindings(backend_src).get(key)
+            api = next((physical for kind, _, physical in resources if kind == "AWS::AppSync::GraphQLApi"), None)
+            if not (var and api):
+                return None, ""
+            raw = aws(
+                "appsync",
+                "get-graphql-api-environment-variables",
+                "--region",
+                region,
+                "--api-id",
+                api.rsplit("/", 1)[-1],
+                "--query",
+                "environmentVariables",
+                "--output",
+                "json",
+            )
+            return bool((json.loads(raw) or {}).get(var)), var
+        bound = [(fn, var) for fn in functions for var, bound_key in fn.env.items() if bound_key == key]
+        if not bound:
+            return None, ""
+        return any(holds(fn, var) for fn, var in bound), "/".join(sorted({var for _, var in bound}))
+
+    results: list[Result] = []
+    compared = 0
+    for key in (*GUARDED_ENV_KEYS, STATE_MACHINE_KEY, VPC_KEY):
+        value, _ = effective_scalar(config_src, key)
+        if value is None:
+            results.append(Result(LIVE_CHECK, SKIP, f"{key}: not readable from portal-config.ts; not compared"))
+        elif value:
+            compared += 1  # set, so the deploy cannot blank it
+        else:
+            is_set, where = live(key)
+            if is_set is None:
+                results.append(Result(LIVE_CHECK, SKIP, f"{key}: no deployed counterpart could be read; not compared"))
+                continue
+            compared += 1
+            if is_set:
+                detail = f"{key} ({where}): non-empty in the deployed sandbox, empty in the effective config"
+                results.append(Result(LIVE_CHECK, FAIL, detail))
+    if not any(r.status == FAIL for r in results):
+        results.append(Result(LIVE_CHECK, OK, f"{compared} key(s) compared; none would blank a deployed value"))
+    return results
+
+
+def run_check_config_vs_live(region: str, identifier: str, config_src: str) -> int:
+    """Run the pre-deploy comparison and return the exit code for ``sandbox.sh``.
+
+    0 when nothing would be blanked, when the comparison could not be made, or when
+    the opt-out is set; 1 when a deployed value would become empty.
+
+    Not being able to compare is a SKIP, not a failure, as in ``check_hosted_binding``
+    and ``--print-sandbox-identifier``'s "nothing deployed" answer. The wrapper has
+    already refused to continue when it cannot identify the sandbox, and ``ampx``
+    needs the same credentials: a second gate on AWS availability would only give
+    people a reason to bypass this one. Messages on that path are fixed text because
+    the AWS error carries the caller's role and account.
+    """
+
+    def skip(message: str) -> int:
+        report([Result(LIVE_CHECK, SKIP, message)])
+        return 0
+
+    if not OUTPUTS_PATH.exists():
+        return skip(f"{OUTPUTS_PATH.name} not found: nothing is deployed from this checkout")
+    try:
+        auth = load_outputs().get("auth") or {}
+        region = auth.get("aws_region") or region
+        stack = owning_stack(auth.get("user_pool_id", ""), region)
+        if stack in ("", "None"):
+            return skip("the sandbox could not be identified; nothing was compared")
+        if identifier and identifier != sandbox_identifier(stack):
+            return skip(
+                "this deploy targets a different sandbox from the one in the outputs file; nothing was compared"
+            )
+        results = check_config_vs_live(config_src, read_backend_text(), stack, region)
+    except (RuntimeError, json.JSONDecodeError):
+        return skip("the deployed sandbox could not be read; nothing was compared")
+
+    report(results)
+    blanked = [r for r in results if r.status == FAIL]
+    if not blanked:
+        return 0
+    if os.environ.get(ALLOW_BLANKING_VAR) == "1":
+        print(f"{ALLOW_BLANKING_VAR}=1 is set: continuing although the {len(blanked)} key(s) above will be blanked.")
+        return 0
+    print(
+        f"{len(blanked)} key(s) would be blanked by this deploy, so it was stopped. If that is intended, "
+        f"set {ALLOW_BLANKING_VAR}=1."
+    )
+    return 1
+
+
 def print_sandbox_identifier(region_hint: str) -> int:
     """Print the identifier of the sandbox the outputs file points at.
 
@@ -1007,6 +1161,16 @@ def main() -> int:
         action="store_true",
         help="check portal-config.ts alone, without comparing it to a deployment",
     )
+    parser.add_argument(
+        "--check-config-vs-live",
+        action="store_true",
+        help="before a deploy, stop if the effective config would blank a value the deployed sandbox holds",
+    )
+    parser.add_argument(
+        "--identifier",
+        default="",
+        help="with --check-config-vs-live: the sandbox about to be deployed; one other than the outputs file's is not compared",
+    )
     args = parser.parse_args()
 
     if args.print_sandbox_identifier:
@@ -1022,6 +1186,9 @@ def main() -> int:
             file=sys.stderr,
         )
         return 2
+
+    if args.check_config_vs_live:
+        return run_check_config_vs_live(args.region, args.identifier, config_src)
 
     # Before the first deployment there is nothing to compare the files against, and
     # that is when the config is most likely to be wrong. Reporting "could not run"

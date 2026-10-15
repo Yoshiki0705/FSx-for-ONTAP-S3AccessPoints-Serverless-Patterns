@@ -603,11 +603,22 @@ SUBNET_ID = "subnet-0123456789abcdef0"
 # Sentinels. Output that must not hold a value is searched for these. They are
 # documentation-range or obviously fake values, so they are safe to commit.
 SENTINEL_IP = "203.0.113.77"
-SENTINEL_SECRET = "sentinel-secret-name"
-SENTINEL_ALIAS = "sentinel-alias-0001"
-SENTINEL_BUCKET = "sentinel-lock-bucket"
-SENTINEL_ARN = "arn:aws:states:ap-northeast-1:111122223333:stateMachine:sentinel"
+# Each starts with four characters nothing in the tool's own wording contains, so a
+# leak of the first four characters can be told from ordinary output.
+SENTINEL_SECRET = "zqsx-secret-name"
+SENTINEL_ALIAS = "zqal-alias-0001"
+SENTINEL_BUCKET = "zqlk-lock-bucket"
+SENTINEL_ARN = "arn:aws:states:ap-northeast-1:111122223333:stateMachine:zqsm"
 SENTINELS = (SENTINEL_IP, SENTINEL_SECRET, SENTINEL_ALIAS, SENTINEL_BUCKET, SENTINEL_ARN, VPC_ID)
+
+
+def leaked(output: str) -> bool:
+    """Return whether any sentinel, or the first four characters of one, is in ``output``.
+
+    A boolean on purpose: an assertion on a list of leaked values would print them.
+    """
+    return any(s in output or s[:4] in output for s in SENTINELS)
+
 
 ONTAP_ENV = {"ONTAP_MGMT_IP": "config.ontapMgmtIp", "ONTAP_SECRET_NAME": "config.ontapSecretName"}
 
@@ -988,7 +999,7 @@ class TestCheckLambdaVpc:
         results, _ = self._run(monkeypatch, stack)
 
         output = "\n".join(f"{r.detail}\n{r.remedy}" for r in results if r.name == "VPC wiring")
-        assert [s for s in SENTINELS if s in output] == [], "a configuration value reached the VPC wiring output"
+        assert not leaked(output), "a configuration value reached the VPC wiring output"
 
     def test_unreadable_stack_still_fails(self, monkeypatch: pytest.MonkeyPatch) -> None:
         def explode(*args: str) -> str:
@@ -1033,3 +1044,279 @@ class TestCheckLambdaVpc:
 
         target = next(r for r in results if r.name == "ONTAP target")
         assert target.status == preflight.SKIP
+
+
+# Config key -> the variable portal-config.ts reads it from, as the tests' config names it.
+LIVE_KEYS = {
+    "s3ApAlias": "AMPLIFY_PORTAL_S3AP_ALIAS",
+    "ontapMgmtIp": "ONTAP_MGMT_IP",
+    "ontapSecretName": "ONTAP_SECRET_NAME",
+    "s3ObjectLockBucket": "S3_OBJECT_LOCK_BUCKET",
+    "stateMachineArn": "AMPLIFY_PORTAL_SFN_ARN",
+    "vpcId": "AMPLIFY_PORTAL_VPC_ID",
+}
+LIVE_VALUES = {
+    "s3ApAlias": SENTINEL_ALIAS,
+    "ontapMgmtIp": SENTINEL_IP,
+    "ontapSecretName": SENTINEL_SECRET,
+    "s3ObjectLockBucket": SENTINEL_BUCKET,
+    "stateMachineArn": SENTINEL_ARN,
+    "vpcId": VPC_ID,
+}
+
+
+def live_config(**values: str) -> str:
+    """Return a portal-config.ts holding ``values``; every other guarded key is empty."""
+    body = "".join(f'  {key}: process.env.{var} || "{values.get(key, "")}",\n' for key, var in LIVE_KEYS.items())
+    return "export const config = {\n" + body + "};\n"
+
+
+def full_config() -> str:
+    return live_config(**LIVE_VALUES)
+
+
+def deployed_sandbox(*, populated: bool) -> tuple[dict[str, dict], dict[str, str]]:
+    """Return ``(functions, appsync environment)`` for a sandbox that is fully set or fully blank."""
+    ontap = (
+        {"ONTAP_MGMT_IP": SENTINEL_IP, "ONTAP_SECRET_NAME": SENTINEL_SECRET}
+        if populated
+        else {"ONTAP_MGMT_IP": "", "ONTAP_SECRET_NAME": ""}
+    )
+    functions = {
+        "ListFilesFunction": deployed(None, S3_AP_ALIAS=SENTINEL_ALIAS if populated else ""),
+        "PlatformDiscoveryFunction": deployed(False, ONTAP_MGMT_IP=ontap["ONTAP_MGMT_IP"]),
+        "ListSnapshotsFunction": deployed(populated, **ontap),
+        "ArpResponseFunction": deployed(populated, **ontap),
+        "ResourceMgmtFunction": deployed(
+            populated, **ontap, S3_OBJECT_LOCK_BUCKET=SENTINEL_BUCKET if populated else ""
+        ),
+    }
+    return functions, ({"STATE_MACHINE_ARN": SENTINEL_ARN} if populated else {})
+
+
+class TestConfigVsLive:
+    """The check that runs before ``ampx sandbox``: would this deploy blank a deployed value?
+
+    The incident it answers: a worktree whose portal-config.ts was a fresh copy of the
+    example (every value empty) ran the sandbox command against a sandbox that had real
+    values. The deploy succeeded, and the access point alias, the ONTAP connection, the
+    VPC and the state machine ARN were replaced by empty strings.
+    """
+
+    @pytest.fixture(autouse=True)
+    def _paths(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+        outputs = tmp_path / "amplify_outputs.json"
+        outputs.write_text(
+            json.dumps({"auth": {"user_pool_id": "ap-northeast-1_X", "aws_region": REGION}}), encoding="utf-8"
+        )
+        backend = tmp_path / "backend.ts"
+        backend.write_text(make_backend(SYNTHETIC_BACKEND), encoding="utf-8")
+        monkeypatch.setattr(preflight, "OUTPUTS_PATH", outputs)
+        monkeypatch.setattr(preflight, "BACKEND_PATH", backend)
+        monkeypatch.setattr(preflight, "owning_stack", lambda pool, region: FakeAws.AUTH)
+        for var in (*LIVE_KEYS.values(), preflight.ALLOW_BLANKING_VAR):
+            monkeypatch.delenv(var, raising=False)
+
+    def _run(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        config: str,
+        *,
+        populated: bool = True,
+        identifier: str = "",
+        **fake_kwargs,
+    ) -> tuple[int, FakeAws]:
+        functions, api_env = deployed_sandbox(populated=populated)
+        fake = FakeAws(functions, api_env, **fake_kwargs)
+        monkeypatch.setattr(preflight, "aws", fake)
+        return preflight.run_check_config_vs_live(REGION, identifier, config), fake
+
+    @pytest.mark.parametrize("key", list(LIVE_KEYS))
+    def test_a_deployed_value_that_would_become_empty_is_rejected(
+        self, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str], key: str
+    ) -> None:
+        values = {k: v for k, v in LIVE_VALUES.items() if k != key}
+
+        status, _ = self._run(monkeypatch, live_config(**values))
+
+        out = capsys.readouterr().out
+        assert status == 1
+        assert out.count("[FAIL]") == 1
+        assert key in out
+        # Only the key that would be blanked is named.
+        assert [other for other in LIVE_KEYS if other != key and other in out] == []
+
+    def test_non_empty_to_non_empty_passes_when_the_values_differ(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        different = live_config(**{k: f"changed-{k}" for k in LIVE_KEYS})
+
+        status, _ = self._run(monkeypatch, different)
+
+        assert status == 0
+
+    def test_non_empty_to_non_empty_passes_when_the_values_match(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        status, fake = self._run(monkeypatch, full_config())
+
+        assert status == 0
+        # Nothing can be blanked when the effective value is set, so no function is read.
+        assert not any(call[1] == "get-function-configuration" for call in fake.calls)
+
+    def test_empty_to_empty_passes(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        status, fake = self._run(monkeypatch, live_config(), populated=False)
+
+        assert status == 0
+        assert any(call[1] == "get-function-configuration" for call in fake.calls)  # it did look
+
+    def test_first_deploy_passes_without_calling_aws(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        monkeypatch.setattr(preflight, "OUTPUTS_PATH", tmp_path / "absent.json")
+
+        status, fake = self._run(monkeypatch, live_config())
+
+        assert status == 0
+        assert fake.calls == []
+        assert "[skip]" in capsys.readouterr().out
+
+    def test_opt_out_passes_and_still_names_the_keys(
+        self, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        monkeypatch.setenv(preflight.ALLOW_BLANKING_VAR, "1")
+
+        status, _ = self._run(monkeypatch, live_config())
+
+        out = capsys.readouterr().out
+        assert status == 0
+        assert all(key in out for key in LIVE_KEYS)
+        assert preflight.ALLOW_BLANKING_VAR in out
+
+    @pytest.mark.parametrize("value", ["true", "0", "", "yes", "11"])
+    def test_opt_out_needs_exactly_1(self, monkeypatch: pytest.MonkeyPatch, value: str) -> None:
+        monkeypatch.setenv(preflight.ALLOW_BLANKING_VAR, value)
+
+        status, _ = self._run(monkeypatch, live_config())
+
+        assert status == 1
+
+    def test_output_holds_no_values(self, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]) -> None:
+        """Rejection, pass and opt-out all print key names only, never a value or its start."""
+        outputs = []
+        for opted_out, config in ((False, live_config()), (False, full_config()), (True, live_config())):
+            if opted_out:
+                monkeypatch.setenv(preflight.ALLOW_BLANKING_VAR, "1")
+            self._run(monkeypatch, config)
+            captured = capsys.readouterr()
+            outputs.append(captured.out + captured.err)
+
+        assert not any(leaked(out) for out in outputs), "a configuration value reached the output"
+
+    def test_a_partially_updated_stack_counts_the_non_empty_function(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """One blank function must not hide another that still holds the value."""
+        functions, api_env = deployed_sandbox(populated=False)
+        functions["ResourceMgmtFunction"] = healthy()
+        fake = FakeAws(functions, api_env)
+        monkeypatch.setattr(preflight, "aws", fake)
+
+        status = preflight.run_check_config_vs_live(REGION, "", live_config())
+
+        assert status == 1
+
+    def test_unreadable_aws_skips_with_a_fixed_message(
+        self, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        def explode(*args: str) -> str:
+            raise RuntimeError("User: arn:aws:sts::111122223333:assumed-role/Operator is not authorized")
+
+        monkeypatch.setattr(preflight, "aws", explode)
+
+        status = preflight.run_check_config_vs_live(REGION, "", live_config())
+
+        captured = capsys.readouterr()
+        assert status == 0
+        assert "[skip]" in captured.out
+        assert "111122223333" not in captured.out + captured.err
+        assert "Operator" not in captured.out + captured.err
+
+    def test_an_unresolvable_owner_skips(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        def no_owner(pool: str, region: str) -> str:
+            raise RuntimeError("Stack for ap-northeast-1_X does not exist")
+
+        monkeypatch.setattr(preflight, "owning_stack", no_owner)
+
+        assert preflight.run_check_config_vs_live(REGION, "", live_config()) == 0
+
+    def test_a_different_identifier_is_not_compared(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """A second sandbox is a new deploy, not an overwrite of the one the outputs name."""
+        status, fake = self._run(monkeypatch, live_config(), identifier="other")
+
+        assert status == 0
+        assert fake.calls == []
+
+    def test_the_identifier_of_this_sandbox_is_compared(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        status, _ = self._run(monkeypatch, live_config(), identifier="demo")
+
+        assert status == 1
+
+    def test_a_key_not_readable_from_the_config_is_skipped_not_treated_as_blank(
+        self, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        values = {k: v for k, v in LIVE_VALUES.items() if k != "s3ApAlias"}
+        config = live_config(**values).replace(
+            'process.env.AMPLIFY_PORTAL_S3AP_ALIAS || ""', "resolveAlias(process.env.AMPLIFY_PORTAL_S3AP_ALIAS)"
+        )
+
+        status, _ = self._run(monkeypatch, config)
+
+        out = capsys.readouterr().out
+        assert status == 0
+        assert "[skip]" in out
+        assert "s3ApAlias" in out
+
+    def test_a_state_machine_that_cannot_be_read_is_skipped(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        values = {k: v for k, v in LIVE_VALUES.items() if k != "stateMachineArn"}
+
+        status, _ = self._run(monkeypatch, live_config(**values), graphql_api=False)
+
+        assert status == 0
+
+    def test_every_call_is_a_read(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        _, fake = self._run(monkeypatch, live_config())
+
+        assert fake.calls
+        assert all(call[1].startswith(("describe-", "list-", "get-")) for call in fake.calls)
+
+    def test_the_variable_compared_is_the_one_backend_ts_binds(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """A variable renamed in backend.ts is followed; no name is written in the check."""
+        renamed = {**SYNTHETIC_BACKEND, "ListFilesFunction": {"env": {"S3_ALIAS_RENAMED": "config.s3ApAlias"}}}
+        (tmp_path / "backend.ts").write_text(make_backend(renamed), encoding="utf-8")
+        functions, api_env = deployed_sandbox(populated=True)
+        functions["ListFilesFunction"] = deployed(None, S3_ALIAS_RENAMED=SENTINEL_ALIAS)
+        monkeypatch.setattr(preflight, "aws", FakeAws(functions, api_env))
+        values = {k: v for k, v in LIVE_VALUES.items() if k != "s3ApAlias"}
+
+        status = preflight.run_check_config_vs_live(REGION, "", live_config(**values))
+
+        out = capsys.readouterr().out
+        assert status == 1
+        assert "S3_ALIAS_RENAMED" in out
+
+    def test_main_runs_the_check_and_returns_its_exit_code(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
+        config = tmp_path / "portal-config.ts"
+        config.write_text(live_config(), encoding="utf-8")
+        monkeypatch.setattr(preflight, "CONFIG_PATH", config)
+        functions, api_env = deployed_sandbox(populated=True)
+        monkeypatch.setattr(preflight, "aws", FakeAws(functions, api_env))
+        monkeypatch.setattr(sys, "argv", ["portal_preflight.py", "--check-config-vs-live", "--identifier", "demo"])
+
+        assert preflight.main() == 1
+
+    def test_main_without_a_config_file_is_the_existing_exit_2(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
+        monkeypatch.setattr(preflight, "CONFIG_PATH", tmp_path / "absent.ts")
+        monkeypatch.setattr(sys, "argv", ["portal_preflight.py", "--check-config-vs-live"])
+
+        assert preflight.main() == 2
