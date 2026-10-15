@@ -332,7 +332,14 @@ VPC にサブネットとルートテーブルが揃っているか、ONTAP 接�
 シークレットだけ）になっていないかを見ます。デプロイ前に止めるのは、**失敗した sandbox が
 ロールバックしない**ためです。VPC Lambda が ENI を保持するので、後片付けに実測 28 分かかります。
 
-意図して先に進める場合は `AMPLIFY_PORTAL_SKIP_CONFIG_CHECK=1` を渡します。デプロイ後の検査
+意図して先に進める場合は `AMPLIFY_PORTAL_SKIP_CONFIG_CHECK=1` を渡します。
+`npm start` は `ampx` を起動する前に、実効設定と稼働中の sandbox の値も比べます
+（`--check-config-vs-live`、AWS は読み取りのみ）。稼働中で非空の値が空になるキー
+（`s3ApAlias`、`ontapMgmtIp`、`ontapSecretName`、`s3ObjectLockBucket`、`stateMachineArn`、
+`vpcId`）があると、キー名だけを表示して止まります。意図して空にする場合は
+`AMPLIFY_PORTAL_ALLOW_CONFIG_BLANKING=1`（値がちょうど `1` のときだけ有効）を渡します。
+この検査は `AMPLIFY_PORTAL_SKIP_CONFIG_CHECK` では飛ばせません。
+デプロイ後の検査
 （配信中のバンドルが指す pool、関数の VPC 配線、ゲートウェイエンドポイントの所有者）は
 `make portal-preflight` が引き続き担当します。
 

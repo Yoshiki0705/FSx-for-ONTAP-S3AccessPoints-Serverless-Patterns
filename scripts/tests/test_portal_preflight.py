@@ -4,15 +4,23 @@ Only the pure parts are exercised here: config parsing, stack-name reading, and
 the verdict each comparison produces. The AWS-facing calls are the part that has
 to be run against a deployed sandbox, and asserting on a mock of them would
 prove that the mock matches the code rather than that the code matches AWS.
+
+The exception is ``FakeAws`` near the end. It returns raw API-shaped payloads and
+applies the code's own ``--query`` with ``jmespath``, so a malformed query or a
+mistaken reading of the response shape fails here instead of passing against a
+mock that was written to agree with the code. It is still not a deployed sandbox:
+what these tests do not show is that the real CLI returns these shapes.
 """
 
 from __future__ import annotations
 
 import importlib.util
 import json
+import re
 import sys
 from pathlib import Path
 
+import jmespath
 import pytest
 
 MODULE_PATH = Path(__file__).resolve().parent.parent / "portal_preflight.py"
@@ -86,8 +94,8 @@ class TestOntapDetection:
         assert preflight.ONTAP_CONNECT_VARS == ("ONTAP_MGMT_IP", "ONTAP_SECRET_NAME")
         assert set(preflight.ONTAP_CONNECT_VARS) <= set(preflight.ONTAP_TARGET_VARS)
 
-    def test_detection_is_by_environment_not_name(self) -> None:
-        """A name list has to be updated when a function is added; this does not.
+    def test_the_address_variable_is_part_of_the_target(self) -> None:
+        """Which functions to check comes from backend.ts; these say what each must hold.
 
         ListSnapshotsFunction was missed by the earlier name-hint list, and its
         panel reported ONTAP's own authorization error while the rest worked.
@@ -102,13 +110,6 @@ class TestOntapDetection:
             "SVM_NAME",
             "ONTAP_SECRET_NAME",
         }
-
-    def test_short_name_keeps_the_readable_segment(self) -> None:
-        name = "amplify-fsxns3apamplifypo-ListSnapshotsFunction17E-IKzBphg7QYSo"
-        assert preflight.short_name(name) == "ListSnapshotsFunction17E"
-
-    def test_short_name_passes_through_a_plain_name(self) -> None:
-        assert preflight.short_name("myfunc") == "myfunc"
 
 
 class TestResult:
@@ -589,3 +590,803 @@ class TestCheckConfig:
 
     def test_no_session_region_skips_rather_than_guessing(self) -> None:
         assert self._verdict(preflight.check_config(self._config()), "region") == preflight.SKIP
+
+
+# ---------------------------------------------------------------------------
+# A fake AWS that answers in API shape
+# ---------------------------------------------------------------------------
+
+REGION = "ap-northeast-1"
+VPC_ID = "vpc-0123456789abcdef0"
+SUBNET_ID = "subnet-0123456789abcdef0"
+
+# Sentinels. Output that must not hold a value is searched for these. They are
+# documentation-range or obviously fake values, so they are safe to commit.
+SENTINEL_IP = "203.0.113.77"
+# Each starts with four characters nothing in the tool's own wording contains, so a
+# leak of the first four characters can be told from ordinary output.
+SENTINEL_SECRET = "zqsx-secret-name"
+SENTINEL_ALIAS = "zqal-alias-0001"
+SENTINEL_BUCKET = "zqlk-lock-bucket"
+SENTINEL_ARN = "arn:aws:states:ap-northeast-1:111122223333:stateMachine:zqsm"
+SENTINELS = (SENTINEL_IP, SENTINEL_SECRET, SENTINEL_ALIAS, SENTINEL_BUCKET, SENTINEL_ARN, VPC_ID)
+
+
+def leaked(output: str) -> bool:
+    """Return whether any sentinel, or the first four characters of one, is in ``output``.
+
+    A boolean on purpose: an assertion on a list of leaked values would print them.
+    """
+    return any(s in output or s[:4] in output for s in SENTINELS)
+
+
+ONTAP_ENV = {"ONTAP_MGMT_IP": "config.ontapMgmtIp", "ONTAP_SECRET_NAME": "config.ontapSecretName"}
+
+# The same two layouts backend.ts uses, with the three VPC functions plus two that
+# must never be expected in a VPC: one reads the management address but holds no
+# credential (the platform inventory), one has nothing to do with ONTAP.
+SYNTHETIC_BACKEND: dict[str, dict] = {
+    "ListSnapshotsFunction": {"vpc": True, "env": dict(ONTAP_ENV)},
+    "ArpResponseFunction": {"vpc": True, "inline": True, "env": dict(ONTAP_ENV)},
+    "ResourceMgmtFunction": {
+        "vpc": True,
+        "env": {**ONTAP_ENV, "S3_OBJECT_LOCK_BUCKET": "config.s3ObjectLockBucket"},
+    },
+    "PlatformDiscoveryFunction": {"inline": True, "env": {"ONTAP_MGMT_IP": "config.ontapMgmtIp"}},
+    "ListFilesFunction": {
+        "env": {"S3_AP_ALIAS": "config.s3ApAlias", "GROUP_AP_MAPPING": "JSON.stringify(config.groupApMapping || {})"}
+    },
+}
+EXPECTED = ("ListSnapshotsFunction", "ArpResponseFunction", "ResourceMgmtFunction")
+
+
+def make_backend(functions: dict[str, dict]) -> str:
+    """Return a backend.ts-shaped source for ``functions``.
+
+    ``vpc`` adds the ``...(vpcConfig && ...)`` spread, ``inline`` selects the
+    one-line constructor layout, and ``env`` maps a variable to its TypeScript
+    expression. The state machine override is included because it is the one
+    binding that does not live in a function.
+    """
+    parts = ['import * as lambda from "aws-cdk-lib/aws-lambda";\n']
+    for construct, spec in functions.items():
+        env = "".join(f"    {var}: {expr},\n" for var, expr in spec.get("env", {}).items())
+        spread = "  ...(vpcConfig && { vpc: vpcConfig.vpc }),\n" if spec.get("vpc") else ""
+        body = f"  environment: {{\n{env}  }},\n  memorySize: 256,\n{spread}"
+        if spec.get("inline"):
+            parts.append(
+                f'const {construct[0].lower()}{construct[1:]} = new lambda.Function(dataStack, "{construct}", {{\n{body}}});\n'
+            )
+        else:
+            parts.append(
+                f'const {construct[0].lower()}{construct[1:]} = new lambda.Function(\n  dataStack,\n  "{construct}",\n  {{\n{body}  }}\n);\n'
+            )
+    parts.append(
+        'dataResources.cfnResources.cfnGraphqlApi.addPropertyOverride(\n  "EnvironmentVariables.STATE_MACHINE_ARN",\n  config.stateMachineArn\n);\n'
+    )
+    return "\n".join(parts)
+
+
+def deployed(vpc: bool | None, **env: str) -> dict:
+    """Return a ``get-function-configuration`` response.
+
+    ``vpc`` True is a function placed in a VPC. False is the empty ``VpcConfig`` that
+    Lambda reports for one that is not. None omits the key, the other shape a function
+    that was never in a VPC comes back in.
+    """
+    payload: dict = {"Environment": {"Variables": env}} if env else {}
+    if vpc:
+        payload["VpcConfig"] = {"SubnetIds": [SUBNET_ID], "SecurityGroupIds": ["sg-0123456789abcdef0"], "VpcId": VPC_ID}
+    elif vpc is False:
+        payload["VpcConfig"] = {"SubnetIds": [], "SecurityGroupIds": [], "VpcId": ""}
+    return payload
+
+
+def healthy(**overrides: str) -> dict:
+    """A function that took its update: in the VPC, with both ONTAP variables set."""
+    env = {"ONTAP_MGMT_IP": SENTINEL_IP, "ONTAP_SECRET_NAME": SENTINEL_SECRET, "SVM_NAME": "svm-sentinel"}
+    env.update(overrides)
+    return deployed(True, **env)
+
+
+def healthy_stack() -> dict[str, dict]:
+    return {construct: healthy() for construct in EXPECTED}
+
+
+def incident_stack() -> dict[str, dict]:
+    """Two of the three failed to update and kept an empty VpcConfig and blank variables."""
+    stack = healthy_stack()
+    stack["ListSnapshotsFunction"] = deployed(False, ONTAP_MGMT_IP="", ONTAP_SECRET_NAME="", SVM_NAME="svm-sentinel")
+    stack["ArpResponseFunction"] = deployed(None)
+    return stack
+
+
+class FakeAws:
+    """Answer the preflight's read-only AWS calls with API-shaped payloads.
+
+    The code's own ``--query`` is applied with ``jmespath`` and ``--output text`` is
+    rendered the way the CLI renders it, so what is under test is the code's reading
+    of the response and not the mock's agreement with the code. A verb that writes, or
+    a call this class does not know, fails loudly instead of returning something.
+    """
+
+    ROOT = "amplify-fsxns3apamplifyportal-demo-sandbox-0123456789"
+    AUTH = f"{ROOT}-auth179371D7-1X5N7VRRW3H34"
+    DATA = f"{ROOT}-data7552DF31-Z4LHLM0GG5EN"
+    API_ARN = "arn:aws:appsync:ap-northeast-1:111122223333:apis/abcdefghijklmnopqrstuvwxyz"
+
+    def __init__(
+        self,
+        functions: dict[str, dict],
+        api_env: dict[str, str] | None = None,
+        *,
+        logical_overrides: dict[str, str] | None = None,
+        graphql_api: bool = True,
+    ) -> None:
+        self.functions = functions
+        self.api_env = api_env or {}
+        self.graphql_api = graphql_api
+        self.calls: list[tuple[str, ...]] = []
+        overrides = logical_overrides or {}
+        # Construct id + eight uppercase hex digits, the form CloudFormation gives it.
+        self.logical = {c: overrides.get(c, f"{c}{0x519A7386 + i:08X}") for i, c in enumerate(functions)}
+        self.physical = {c: f"amplify-fsxns3apamplifypo-{c[:21]}-{i:012X}" for i, c in enumerate(functions)}
+
+    @staticmethod
+    def _options(tokens: tuple[str, ...]) -> dict[str, list[str]]:
+        options: dict[str, list[str]] = {}
+        flag = ""
+        for token in tokens:
+            if token.startswith("--"):
+                flag = token
+                options[flag] = []
+            elif flag:
+                options[flag].append(token)
+        return options
+
+    def _resources(self, stack: str) -> list[dict]:
+        if stack != self.DATA:
+            return [
+                {
+                    "ResourceType": "AWS::Cognito::UserPool",
+                    "LogicalResourceId": "UserPool6BA7E5F2",
+                    "PhysicalResourceId": "x",
+                }
+            ]
+        items = [
+            {
+                "ResourceType": "AWS::Lambda::Function",
+                "LogicalResourceId": self.logical[c],
+                "PhysicalResourceId": self.physical[c],
+            }
+            for c in self.functions
+        ]
+        items.append(
+            {
+                "ResourceType": "AWS::IAM::Role",
+                "LogicalResourceId": "ListSnapshotsLambdaRole0123ABCD",
+                "PhysicalResourceId": "role",
+            }
+        )
+        if self.graphql_api:
+            items.append(
+                {
+                    "ResourceType": "AWS::AppSync::GraphQLApi",
+                    "LogicalResourceId": "amplifyDataGraphQLAPI42A6FA33",
+                    "PhysicalResourceId": self.API_ARN,
+                }
+            )
+        return items
+
+    def _payload(self, service: str, verb: str, opts: dict[str, list[str]]) -> object:
+        if (service, verb) == ("cloudformation", "describe-stacks"):
+            name = opts["--stack-name"][0]
+            root_id = (
+                None if name == self.ROOT else f"arn:aws:cloudformation:{REGION}:111122223333:stack/{self.ROOT}/uuid"
+            )
+            return {"Stacks": [{"StackName": name, "RootId": root_id}]}
+        if (service, verb) == ("cloudformation", "list-stacks"):
+            root_id = f"arn:aws:cloudformation:{REGION}:111122223333:stack/{self.ROOT}/uuid"
+            return {
+                "StackSummaries": [
+                    {"StackName": self.ROOT, "RootId": None},
+                    {"StackName": self.AUTH, "RootId": root_id},
+                    {"StackName": self.DATA, "RootId": root_id},
+                ]
+            }
+        if (service, verb) == ("cloudformation", "list-stack-resources"):
+            return {"StackResourceSummaries": self._resources(opts["--stack-name"][0])}
+        if (service, verb) == ("lambda", "get-function-configuration"):
+            name = opts["--function-name"][0]
+            for construct, physical in self.physical.items():
+                if physical == name:
+                    return self.functions[construct]
+            raise RuntimeError("ResourceNotFoundException")
+        if (service, verb) == ("appsync", "get-graphql-api-environment-variables"):
+            assert opts["--api-id"] == ["abcdefghijklmnopqrstuvwxyz"], "an API id, not the ARN, is what the call takes"
+            return {"environmentVariables": self.api_env}
+        raise AssertionError(f"FakeAws does not know {service} {verb}")
+
+    def __call__(self, *args: str) -> str:
+        service, verb = args[0], args[1]
+        assert verb.startswith(("describe-", "list-", "get-")), f"{service} {verb} is not a read"
+        self.calls.append(args)
+        opts = self._options(args[2:])
+        payload = self._payload(service, verb, opts)
+        if "--query" in opts:
+            payload = jmespath.search(opts["--query"][0], payload)
+        if opts.get("--output") == ["text"]:
+            return "None" if payload is None else str(payload)
+        return json.dumps(payload)
+
+
+class TestParseBackend:
+    """The expected function set is read from backend.ts, not from a list kept here."""
+
+    REAL = Path(__file__).resolve().parents[2] / "solutions" / "amplify-portal" / "amplify" / "backend.ts"
+
+    def test_the_vpc_spread_marks_the_expected_set(self) -> None:
+        expected = preflight.expected_vpc_functions(make_backend(SYNTHETIC_BACKEND))
+        assert [f.logical_id for f in expected] == list(EXPECTED)
+
+    def test_both_constructor_layouts_are_read(self) -> None:
+        parsed = {f.logical_id: f for f in preflight.parse_backend_functions(make_backend(SYNTHETIC_BACKEND))}
+        assert set(parsed) == set(SYNTHETIC_BACKEND)
+        assert parsed["ArpResponseFunction"].in_vpc  # one-line layout
+        assert parsed["ListSnapshotsFunction"].in_vpc  # multi-line layout
+
+    def test_a_function_with_ontap_vars_but_no_spread_is_not_expected(self) -> None:
+        expected = {f.logical_id for f in preflight.expected_vpc_functions(make_backend(SYNTHETIC_BACKEND))}
+        assert "PlatformDiscoveryFunction" not in expected
+        assert "ListFilesFunction" not in expected
+
+    def test_env_bindings_map_the_variable_to_the_config_key(self) -> None:
+        parsed = {f.logical_id: f for f in preflight.parse_backend_functions(make_backend(SYNTHETIC_BACKEND))}
+        assert parsed["ResourceMgmtFunction"].env == {
+            "ONTAP_MGMT_IP": "ontapMgmtIp",
+            "ONTAP_SECRET_NAME": "ontapSecretName",
+            "S3_OBJECT_LOCK_BUCKET": "s3ObjectLockBucket",
+        }
+
+    def test_an_expression_other_than_a_bare_config_key_is_not_a_binding(self) -> None:
+        parsed = {f.logical_id: f for f in preflight.parse_backend_functions(make_backend(SYNTHETIC_BACKEND))}
+        assert "GROUP_AP_MAPPING" not in parsed["ListFilesFunction"].env
+
+    def test_appsync_bindings_are_keyed_by_config_key(self) -> None:
+        assert preflight.appsync_env_bindings(make_backend(SYNTHETIC_BACKEND)) == {
+            "stateMachineArn": "STATE_MACHINE_ARN"
+        }
+
+    def test_a_spread_outside_a_parsed_function_is_an_error(self) -> None:
+        """A construct this parser does not recognise must not shrink the set quietly."""
+        source = (
+            make_backend(SYNTHETIC_BACKEND)
+            + '\nnew NodejsFunction(stack, "Other", {\n  ...(vpcConfig && { vpc: v }),\n});\n'
+        )
+        with pytest.raises(ValueError, match="vpcConfig"):
+            preflight.expected_vpc_functions(source)
+
+    def test_the_real_backend_has_a_nonempty_vpc_set_and_every_spread_is_accounted_for(self) -> None:
+        source = self.REAL.read_text(encoding="utf-8")
+        expected = preflight.expected_vpc_functions(source)
+        assert expected
+        assert len(expected) == source.count("...(vpcConfig &&")
+        constructed = set(re.findall(r'new lambda\.Function\(\s*\w+,\s*"(\w+)"', source))
+        assert {f.logical_id for f in expected} <= constructed
+        # The function an earlier name-hint list missed.
+        assert "ListSnapshotsFunction" in {f.logical_id for f in expected}
+
+    def test_every_function_that_connects_to_ontap_is_in_the_vpc(self) -> None:
+        """The property the old runtime filter checked, moved to where it can be stated.
+
+        The check used to find ONTAP-facing functions by their environment, which
+        meant a function that lost its variables stopped being checked. Expectation
+        now comes from the source, so the source has to be where "connects to ONTAP"
+        implies "is in the VPC".
+        """
+        parsed = preflight.parse_backend_functions(self.REAL.read_text(encoding="utf-8"))
+        connecting = [f for f in parsed if set(preflight.ONTAP_CONNECT_VARS) <= set(f.env)]
+        assert connecting
+        assert [f.logical_id for f in connecting if not f.in_vpc] == []
+
+    def test_every_expected_vpc_function_binds_both_connect_variables(self) -> None:
+        """The other direction: "is in the VPC" implies "is given both variables".
+
+        ``check_lambda_vpc`` reports a variable as empty only for functions whose
+        binding it can see (``var in fn.env``). A variable rewritten in backend.ts as
+        anything but a bare ``config.<key>`` leaves that binding, and the "empty"
+        condition for it disappears without a failure. Pinning the binding here is
+        what makes that a failing test and not a quieter check.
+        """
+        expected = preflight.expected_vpc_functions(self.REAL.read_text(encoding="utf-8"))
+        assert expected
+        unbound = {
+            f.logical_id: sorted(set(preflight.ONTAP_CONNECT_VARS) - set(f.env))
+            for f in expected
+            if set(preflight.ONTAP_CONNECT_VARS) - set(f.env)
+        }
+        assert unbound == {}
+
+
+class TestCheckLambdaVpc:
+    """The VPC check is driven by the functions that should be in the VPC."""
+
+    CONFIG = f'export const config = {{\n  vpcId: (process.env.AMPLIFY_PORTAL_VPC_ID || "{VPC_ID}").trim(),\n}};\n'
+    CONFIG_NO_VPC = 'export const config = {\n  vpcId: (process.env.AMPLIFY_PORTAL_VPC_ID || "").trim(),\n};\n'
+
+    @pytest.fixture(autouse=True)
+    def _backend(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+        path = tmp_path / "backend.ts"
+        path.write_text(make_backend(SYNTHETIC_BACKEND), encoding="utf-8")
+        # raising=False: the pre-fix module has no BACKEND_PATH, and the same tests
+        # have to run against it to show what it did with the same stack.
+        monkeypatch.setattr(preflight, "BACKEND_PATH", path, raising=False)
+        monkeypatch.delenv("AMPLIFY_PORTAL_VPC_ID", raising=False)
+
+    def _run(self, monkeypatch: pytest.MonkeyPatch, stack: dict[str, dict], config: str | None = None, **kw) -> tuple:
+        fake = FakeAws(stack, **kw)
+        monkeypatch.setattr(preflight, "aws", fake)
+        return preflight.check_lambda_vpc(FakeAws.AUTH, REGION, config or self.CONFIG), fake
+
+    def test_the_incident_shape_fails(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """Two of three functions failed to update and left both variables blank.
+
+        The check selected functions by "both ONTAP variables are set", so a function
+        that failed to update left the population it was checking and the one healthy
+        function was reported as all of them.
+        """
+        results, fake = self._run(monkeypatch, incident_stack())
+
+        failures = [r for r in results if r.status == preflight.FAIL]
+        assert failures, "a stack where two of three expected functions failed to update passed"
+        text = "\n".join(r.detail for r in failures)
+        assert fake.logical["ListSnapshotsFunction"] in text
+        assert fake.logical["ArpResponseFunction"] in text
+        assert fake.logical["ResourceMgmtFunction"] not in text
+        assert any(r.detail == "1 of 3 expected function(s) conform" for r in results)
+
+    def test_all_conforming_passes(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        results, _ = self._run(monkeypatch, healthy_stack())
+
+        assert [r for r in results if r.status == preflight.FAIL] == []
+        assert any(r.detail == "3 of 3 expected function(s) conform" for r in results)
+        target = next(r for r in results if r.name == "ONTAP target")
+        assert target.status == preflight.OK
+        assert "3 of 3 expected function(s)" in target.detail
+
+    def test_functions_outside_the_vpc_are_not_expected(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        stack = healthy_stack()
+        stack["PlatformDiscoveryFunction"] = deployed(False, ONTAP_MGMT_IP=SENTINEL_IP)
+        stack["ListFilesFunction"] = deployed(None, S3_AP_ALIAS=SENTINEL_ALIAS)
+
+        results, _ = self._run(monkeypatch, stack)
+
+        assert [r for r in results if r.status == preflight.FAIL] == []
+        assert any(r.detail == "3 of 3 expected function(s) conform" for r in results)
+
+    def test_empty_vpc_id_skips_without_calling_aws(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        results, fake = self._run(monkeypatch, incident_stack(), self.CONFIG_NO_VPC)
+
+        assert [r.status for r in results] == [preflight.SKIP]
+        assert fake.calls == []
+
+    def test_vpc_id_from_the_environment_counts(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """The literal is empty; the variable is what the deploy will use."""
+        monkeypatch.setenv("AMPLIFY_PORTAL_VPC_ID", VPC_ID)
+
+        results, _ = self._run(monkeypatch, incident_stack(), self.CONFIG_NO_VPC)
+
+        assert [r for r in results if r.status == preflight.FAIL]
+
+    def test_an_expected_function_missing_from_the_stack_fails(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        stack = healthy_stack()
+        del stack["ResourceMgmtFunction"]
+
+        results, _ = self._run(monkeypatch, stack)
+
+        assert any(r.detail == "2 of 3 expected function(s) conform" for r in results)
+        missing = [r for r in results if r.status == preflight.FAIL and "ResourceMgmtFunction" in r.detail]
+        assert missing
+        assert "missing from the deployed stack" in missing[0].detail
+
+    def test_logical_id_match_is_exact(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """A different construct that shares a prefix is not the expected function."""
+        overrides = {"ListSnapshotsFunction": "ListSnapshotsFunctionExtra1234ABCD"}
+
+        results, _ = self._run(monkeypatch, healthy_stack(), logical_overrides=overrides)
+
+        assert any(r.detail == "2 of 3 expected function(s) conform" for r in results)
+
+    def test_vpc_without_the_secret_name_fails(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        stack = healthy_stack()
+        stack["ResourceMgmtFunction"] = healthy(ONTAP_SECRET_NAME="")
+
+        results, fake = self._run(monkeypatch, stack)
+
+        failing = [
+            r for r in results if r.status == preflight.FAIL and fake.logical["ResourceMgmtFunction"] in r.detail
+        ]
+        assert failing
+        assert "ONTAP_SECRET_NAME" in failing[0].detail
+        assert "ONTAP_MGMT_IP" not in failing[0].detail
+
+    def test_failures_print_ids_never_values(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        stack = incident_stack()
+        stack["ResourceMgmtFunction"] = healthy(ONTAP_SECRET_NAME="")
+
+        results, _ = self._run(monkeypatch, stack)
+
+        output = "\n".join(f"{r.detail}\n{r.remedy}" for r in results if r.name == "VPC wiring")
+        assert not leaked(output), "a configuration value reached the VPC wiring output"
+
+    def test_unreadable_stack_still_fails(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        def explode(*args: str) -> str:
+            raise RuntimeError("AccessDenied")
+
+        monkeypatch.setattr(preflight, "aws", explode)
+
+        results = preflight.check_lambda_vpc(FakeAws.AUTH, REGION, self.CONFIG)
+
+        assert [r.status for r in results] == [preflight.FAIL]
+        assert "cannot read functions" in results[0].detail
+
+    def test_an_underivable_expected_set_fails_rather_than_skips(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
+        monkeypatch.setattr(preflight, "BACKEND_PATH", tmp_path / "absent.ts", raising=False)
+        monkeypatch.setattr(preflight, "aws", FakeAws(healthy_stack()))
+
+        results = preflight.check_lambda_vpc(FakeAws.AUTH, REGION, self.CONFIG)
+
+        assert [r.status for r in results] == [preflight.FAIL]
+        assert "cannot derive" in results[0].detail
+
+    def test_unknown_stack_skips(self) -> None:
+        results = preflight.check_lambda_vpc(None, REGION, self.CONFIG)
+
+        assert [r.status for r in results] == [preflight.SKIP]
+
+    def test_targets_that_disagree_still_fail(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        stack = healthy_stack()
+        stack["ArpResponseFunction"] = healthy(ONTAP_MGMT_IP="203.0.113.78")
+
+        results, _ = self._run(monkeypatch, stack)
+
+        target = next(r for r in results if r.name == "ONTAP target")
+        assert target.status == preflight.FAIL
+
+    def test_a_function_that_does_not_conform_is_left_out_of_the_target_comparison(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        results, _ = self._run(monkeypatch, incident_stack())
+
+        target = next(r for r in results if r.name == "ONTAP target")
+        assert target.status == preflight.SKIP
+
+
+# Config key -> the variable portal-config.ts reads it from, as the tests' config names it.
+LIVE_KEYS = {
+    "s3ApAlias": "AMPLIFY_PORTAL_S3AP_ALIAS",
+    "ontapMgmtIp": "ONTAP_MGMT_IP",
+    "ontapSecretName": "ONTAP_SECRET_NAME",
+    "s3ObjectLockBucket": "S3_OBJECT_LOCK_BUCKET",
+    "stateMachineArn": "AMPLIFY_PORTAL_SFN_ARN",
+    "vpcId": "AMPLIFY_PORTAL_VPC_ID",
+}
+LIVE_VALUES = {
+    "s3ApAlias": SENTINEL_ALIAS,
+    "ontapMgmtIp": SENTINEL_IP,
+    "ontapSecretName": SENTINEL_SECRET,
+    "s3ObjectLockBucket": SENTINEL_BUCKET,
+    "stateMachineArn": SENTINEL_ARN,
+    "vpcId": VPC_ID,
+}
+
+
+def live_config(**values: str) -> str:
+    """Return a portal-config.ts holding ``values``; every other guarded key is empty."""
+    body = "".join(f'  {key}: process.env.{var} || "{values.get(key, "")}",\n' for key, var in LIVE_KEYS.items())
+    return "export const config = {\n" + body + "};\n"
+
+
+def full_config() -> str:
+    return live_config(**LIVE_VALUES)
+
+
+def deployed_sandbox(*, populated: bool) -> tuple[dict[str, dict], dict[str, str]]:
+    """Return ``(functions, appsync environment)`` for a sandbox that is fully set or fully blank."""
+    ontap = (
+        {"ONTAP_MGMT_IP": SENTINEL_IP, "ONTAP_SECRET_NAME": SENTINEL_SECRET}
+        if populated
+        else {"ONTAP_MGMT_IP": "", "ONTAP_SECRET_NAME": ""}
+    )
+    functions = {
+        "ListFilesFunction": deployed(None, S3_AP_ALIAS=SENTINEL_ALIAS if populated else ""),
+        "PlatformDiscoveryFunction": deployed(False, ONTAP_MGMT_IP=ontap["ONTAP_MGMT_IP"]),
+        "ListSnapshotsFunction": deployed(populated, **ontap),
+        "ArpResponseFunction": deployed(populated, **ontap),
+        "ResourceMgmtFunction": deployed(
+            populated, **ontap, S3_OBJECT_LOCK_BUCKET=SENTINEL_BUCKET if populated else ""
+        ),
+    }
+    return functions, ({"STATE_MACHINE_ARN": SENTINEL_ARN} if populated else {})
+
+
+class TestConfigVsLive:
+    """The check that runs before ``ampx sandbox``: would this deploy blank a deployed value?
+
+    The incident it answers: a worktree whose portal-config.ts was a fresh copy of the
+    example (every value empty) ran the sandbox command against a sandbox that had real
+    values. The deploy succeeded, and the access point alias, the ONTAP connection, the
+    VPC and the state machine ARN were replaced by empty strings.
+    """
+
+    @pytest.fixture(autouse=True)
+    def _paths(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+        outputs = tmp_path / "amplify_outputs.json"
+        outputs.write_text(
+            json.dumps({"auth": {"user_pool_id": "ap-northeast-1_X", "aws_region": REGION}}), encoding="utf-8"
+        )
+        backend = tmp_path / "backend.ts"
+        backend.write_text(make_backend(SYNTHETIC_BACKEND), encoding="utf-8")
+        monkeypatch.setattr(preflight, "OUTPUTS_PATH", outputs)
+        monkeypatch.setattr(preflight, "BACKEND_PATH", backend)
+        monkeypatch.setattr(preflight, "owning_stack", lambda pool, region: FakeAws.AUTH)
+        for var in (*LIVE_KEYS.values(), preflight.ALLOW_BLANKING_VAR):
+            monkeypatch.delenv(var, raising=False)
+
+    def _run(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        config: str,
+        *,
+        populated: bool = True,
+        identifier: str = "",
+        **fake_kwargs,
+    ) -> tuple[int, FakeAws]:
+        functions, api_env = deployed_sandbox(populated=populated)
+        fake = FakeAws(functions, api_env, **fake_kwargs)
+        monkeypatch.setattr(preflight, "aws", fake)
+        return preflight.run_check_config_vs_live(REGION, identifier, config), fake
+
+    @pytest.mark.parametrize("key", list(LIVE_KEYS))
+    def test_a_deployed_value_that_would_become_empty_is_rejected(
+        self, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str], key: str
+    ) -> None:
+        values = {k: v for k, v in LIVE_VALUES.items() if k != key}
+
+        status, _ = self._run(monkeypatch, live_config(**values))
+
+        out = capsys.readouterr().out
+        assert status == 1
+        assert out.count("[FAIL]") == 1
+        assert key in out
+        # Only the key that would be blanked is named.
+        assert [other for other in LIVE_KEYS if other != key and other in out] == []
+
+    def test_non_empty_to_non_empty_passes_when_the_values_differ(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        different = live_config(**{k: f"changed-{k}" for k in LIVE_KEYS})
+
+        status, _ = self._run(monkeypatch, different)
+
+        assert status == 0
+
+    def test_non_empty_to_non_empty_passes_when_the_values_match(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        status, fake = self._run(monkeypatch, full_config())
+
+        assert status == 0
+        # Nothing can be blanked when the effective value is set, so no function is read.
+        assert not any(call[1] == "get-function-configuration" for call in fake.calls)
+
+    def test_empty_to_empty_passes(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        status, fake = self._run(monkeypatch, live_config(), populated=False)
+
+        assert status == 0
+        assert any(call[1] == "get-function-configuration" for call in fake.calls)  # it did look
+
+    def test_first_deploy_passes_without_calling_aws(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        monkeypatch.setattr(preflight, "OUTPUTS_PATH", tmp_path / "absent.json")
+
+        status, fake = self._run(monkeypatch, live_config())
+
+        assert status == 0
+        assert fake.calls == []
+        assert "[skip]" in capsys.readouterr().out
+
+    def test_opt_out_passes_and_still_names_the_keys(
+        self, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        monkeypatch.setenv(preflight.ALLOW_BLANKING_VAR, "1")
+
+        status, _ = self._run(monkeypatch, live_config())
+
+        out = capsys.readouterr().out
+        assert status == 0
+        assert all(key in out for key in LIVE_KEYS)
+        assert preflight.ALLOW_BLANKING_VAR in out
+
+    @pytest.mark.parametrize("value", ["true", "0", "", "yes", "11"])
+    def test_opt_out_needs_exactly_1(self, monkeypatch: pytest.MonkeyPatch, value: str) -> None:
+        monkeypatch.setenv(preflight.ALLOW_BLANKING_VAR, value)
+
+        status, _ = self._run(monkeypatch, live_config())
+
+        assert status == 1
+
+    def test_output_holds_no_values(self, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]) -> None:
+        """Rejection, pass and opt-out all print key names only, never a value or its start."""
+        outputs = []
+        for opted_out, config in ((False, live_config()), (False, full_config()), (True, live_config())):
+            if opted_out:
+                monkeypatch.setenv(preflight.ALLOW_BLANKING_VAR, "1")
+            self._run(monkeypatch, config)
+            captured = capsys.readouterr()
+            outputs.append(captured.out + captured.err)
+
+        assert not any(leaked(out) for out in outputs), "a configuration value reached the output"
+
+    def test_a_partially_updated_stack_counts_the_non_empty_function(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """One blank function must not hide another that still holds the value."""
+        functions, api_env = deployed_sandbox(populated=False)
+        functions["ResourceMgmtFunction"] = healthy()
+        fake = FakeAws(functions, api_env)
+        monkeypatch.setattr(preflight, "aws", fake)
+
+        status = preflight.run_check_config_vs_live(REGION, "", live_config())
+
+        assert status == 1
+
+    def test_unreadable_aws_skips_with_a_fixed_message(
+        self, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        def explode(*args: str) -> str:
+            raise RuntimeError("User: arn:aws:sts::111122223333:assumed-role/Operator is not authorized")
+
+        monkeypatch.setattr(preflight, "aws", explode)
+
+        status = preflight.run_check_config_vs_live(REGION, "", live_config())
+
+        captured = capsys.readouterr()
+        assert status == 0
+        assert "[skip]" in captured.out
+        assert "111122223333" not in captured.out + captured.err
+        assert "Operator" not in captured.out + captured.err
+
+    def test_an_unresolvable_owner_skips(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        def no_owner(pool: str, region: str) -> str:
+            raise RuntimeError("Stack for ap-northeast-1_X does not exist")
+
+        monkeypatch.setattr(preflight, "owning_stack", no_owner)
+
+        assert preflight.run_check_config_vs_live(REGION, "", live_config()) == 0
+
+    def test_a_different_identifier_is_not_compared(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """A second sandbox is a new deploy, not an overwrite of the one the outputs name."""
+        status, fake = self._run(monkeypatch, live_config(), identifier="other")
+
+        assert status == 0
+        assert fake.calls == []
+
+    def test_the_identifier_of_this_sandbox_is_compared(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        status, _ = self._run(monkeypatch, live_config(), identifier="demo")
+
+        assert status == 1
+
+    def test_a_key_not_readable_from_the_config_is_skipped_not_treated_as_blank(
+        self, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        values = {k: v for k, v in LIVE_VALUES.items() if k != "s3ApAlias"}
+        config = live_config(**values).replace(
+            'process.env.AMPLIFY_PORTAL_S3AP_ALIAS || ""', "resolveAlias(process.env.AMPLIFY_PORTAL_S3AP_ALIAS)"
+        )
+
+        status, _ = self._run(monkeypatch, config)
+
+        out = capsys.readouterr().out
+        assert status == 0
+        assert "[skip]" in out
+        assert "s3ApAlias" in out
+
+    @pytest.mark.parametrize(
+        ("key", "absent"),
+        [
+            ("s3ApAlias", ("ListFilesFunction",)),
+            ("vpcId", ("ListSnapshotsFunction", "ArpResponseFunction", "ResourceMgmtFunction")),
+        ],
+    )
+    def test_a_key_whose_functions_are_not_in_the_stack_is_skipped_not_counted(
+        self, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str], key: str, absent: tuple[str, ...]
+    ) -> None:
+        """No deployed counterpart is "nothing to compare", not "the deployed value is empty".
+
+        Counting it as compared made the OK line say ``6 key(s) compared`` with nothing
+        read behind one of them.
+        """
+        values = {k: v for k, v in LIVE_VALUES.items() if k != key}
+        overrides = {construct: f"{construct}Extra1234ABCD" for construct in absent}
+
+        status, _ = self._run(monkeypatch, live_config(**values), logical_overrides=overrides)
+
+        out = capsys.readouterr().out
+        assert status == 0
+        assert "[skip]" in out
+        assert key in out
+        assert "5 key(s) compared" in out
+
+    def test_an_answer_in_an_unexpected_shape_skips_with_the_class_only(
+        self, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """A defect in the check, or a reply it does not understand, is not a deploy that cannot proceed.
+
+        Exiting 1 would stop ``sandbox.sh`` before the opt-out can be read, which is
+        the one place a bug in this check would have no way round it.
+        """
+        functions, api_env = deployed_sandbox(populated=True)
+        fake = FakeAws(functions, api_env)
+
+        def wrong_shape(*args: str) -> str:
+            if args[1] == "get-function-configuration":
+                return json.dumps([SENTINEL_SECRET])  # a list where an object is expected
+            return fake(*args)
+
+        monkeypatch.setattr(preflight, "aws", wrong_shape)
+
+        status = preflight.run_check_config_vs_live(REGION, "", live_config())
+
+        captured = capsys.readouterr()
+        assert status == 0
+        assert "[skip]" in captured.out
+        assert "AttributeError" in captured.out
+        assert not leaked(captured.out + captured.err), "a configuration value reached the output"
+
+    def test_a_state_machine_that_cannot_be_read_is_skipped(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        values = {k: v for k, v in LIVE_VALUES.items() if k != "stateMachineArn"}
+
+        status, _ = self._run(monkeypatch, live_config(**values), graphql_api=False)
+
+        assert status == 0
+
+    def test_every_call_is_a_read(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        _, fake = self._run(monkeypatch, live_config())
+
+        assert fake.calls
+        assert all(call[1].startswith(("describe-", "list-", "get-")) for call in fake.calls)
+
+    def test_the_variable_compared_is_the_one_backend_ts_binds(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """A variable renamed in backend.ts is followed; no name is written in the check."""
+        renamed = {**SYNTHETIC_BACKEND, "ListFilesFunction": {"env": {"S3_ALIAS_RENAMED": "config.s3ApAlias"}}}
+        (tmp_path / "backend.ts").write_text(make_backend(renamed), encoding="utf-8")
+        functions, api_env = deployed_sandbox(populated=True)
+        functions["ListFilesFunction"] = deployed(None, S3_ALIAS_RENAMED=SENTINEL_ALIAS)
+        monkeypatch.setattr(preflight, "aws", FakeAws(functions, api_env))
+        values = {k: v for k, v in LIVE_VALUES.items() if k != "s3ApAlias"}
+
+        status = preflight.run_check_config_vs_live(REGION, "", live_config(**values))
+
+        out = capsys.readouterr().out
+        assert status == 1
+        assert "S3_ALIAS_RENAMED" in out
+
+    def test_main_runs_the_check_and_returns_its_exit_code(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
+        config = tmp_path / "portal-config.ts"
+        config.write_text(live_config(), encoding="utf-8")
+        monkeypatch.setattr(preflight, "CONFIG_PATH", config)
+        functions, api_env = deployed_sandbox(populated=True)
+        monkeypatch.setattr(preflight, "aws", FakeAws(functions, api_env))
+        monkeypatch.setattr(sys, "argv", ["portal_preflight.py", "--check-config-vs-live", "--identifier", "demo"])
+
+        assert preflight.main() == 1
+
+    def test_main_without_a_config_file_is_the_existing_exit_2(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
+        monkeypatch.setattr(preflight, "CONFIG_PATH", tmp_path / "absent.ts")
+        monkeypatch.setattr(sys, "argv", ["portal_preflight.py", "--check-config-vs-live"])
+
+        assert preflight.main() == 2

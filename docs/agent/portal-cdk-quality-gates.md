@@ -23,8 +23,8 @@
 | **AwsCliLayer の置換が Express の sandbox で拒否される** | `@aws-cdk/asset-awscli-v1` の更新で層の `Content.S3Key` が変わると、論理 ID が内容を含まないため置換になる（既存 sandbox の更新のみ）。デプロイ後に `UPDATE_FAILED`（`ampx` は終了コード 0）。no mitigation applied; follow-up issue to be filed |
 
 sandbox が同一 VPC に複数ある状態と、不要な sandbox を消す作業の罠は
-[portal-sandbox-lifecycle](portal-sandbox-lifecycle.md) にある。DynamoDB Gateway
-エンドポイントの所有権、`list-exports` に現れない依存、log group の retention。
+[portal-sandbox-lifecycle](portal-sandbox-lifecycle.md) にある。再デプロイしても直らない
+関数とその検査は [portal-redeploy-guards](portal-redeploy-guards.md) にある。
 
 ## CDK / IaC Quality Gates
 

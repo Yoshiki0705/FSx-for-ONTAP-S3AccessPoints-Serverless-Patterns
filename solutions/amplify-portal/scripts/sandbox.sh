@@ -23,6 +23,15 @@
 # when deliberately standing up a second sandbox -- along with
 # AMPLIFY_PORTAL_DDB_GW_ENDPOINT_EXISTS=1, so it reuses the existing route
 # instead of trying to own it.
+#
+# Before ampx starts, the effective config (environment variable, then the literal
+# in portal-config.ts) is compared with the deployed sandbox. A value the sandbox
+# holds that this deploy would replace with an empty one stops the run and the check
+# lists the key names, never the values. portal-config.ts is gitignored per
+# worktree, so a worktree holding a fresh copy of the example is enough to do this.
+# Set AMPLIFY_PORTAL_ALLOW_CONFIG_BLANKING=1 (exactly 1) when emptying a value is
+# intended. AMPLIFY_PORTAL_SKIP_CONFIG_CHECK does not skip this check. It runs once
+# at start-up, so a redeploy under --watch is not covered. `delete` skips it.
 
 set -euo pipefail
 cd "$(dirname "$0")/.."
@@ -74,6 +83,21 @@ if [ -z "$IDENTIFIER" ]; then
       exit 1
       ;;
   esac
+fi
+
+# Compare what this deploy would write with what the sandbox holds. After the
+# identifier is settled, because a second sandbox is compared against nothing.
+# Not for `delete`: deleting does not apply the config. Not skipped by
+# AMPLIFY_PORTAL_SKIP_CONFIG_CHECK, which was set for a different purpose and is
+# often set from habit; this check has its own opt-out.
+if [ "${1:-}" != "delete" ]; then
+  if ! python3 "$PREFLIGHT" --check-config-vs-live ${IDENTIFIER:+--identifier "$IDENTIFIER"}; then
+    echo "✖ Stopped before ampx. If keys are listed above, this deploy would replace values" >&2
+    echo "  the sandbox holds with empty ones. Run it from the worktree whose" >&2
+    echo "  portal-config.ts has the real values, or set AMPLIFY_PORTAL_ALLOW_CONFIG_BLANKING=1" >&2
+    echo "  if emptying them is intended." >&2
+    exit 1
+  fi
 fi
 
 if [ -n "$IDENTIFIER" ]; then

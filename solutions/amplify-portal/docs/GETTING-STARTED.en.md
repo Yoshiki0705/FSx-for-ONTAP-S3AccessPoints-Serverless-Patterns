@@ -338,7 +338,13 @@ credential, or a credential with no SVM. It stops before the deploy because **a 
 sandbox does not roll back**: VPC Lambdas hold their ENIs, and clearing one out was measured
 at 28 minutes.
 
-Pass `AMPLIFY_PORTAL_SKIP_CONFIG_CHECK=1` to go ahead deliberately. The checks against a
+Pass `AMPLIFY_PORTAL_SKIP_CONFIG_CHECK=1` to go ahead deliberately.
+Before it starts `ampx`, `npm start` also compares the effective config with the values the
+deployed sandbox holds (`--check-config-vs-live`, read-only AWS calls). If a key that is
+non-empty in the sandbox would become empty (`s3ApAlias`, `ontapMgmtIp`, `ontapSecretName`,
+`s3ObjectLockBucket`, `stateMachineArn`, `vpcId`), it prints the key names only and stops.
+Pass `AMPLIFY_PORTAL_ALLOW_CONFIG_BLANKING=1` (exactly `1`) when emptying them is intended.
+`AMPLIFY_PORTAL_SKIP_CONFIG_CHECK` does not skip this check. The checks against a
 deployment -- which pool the published bundle names, whether the functions are in the VPC,
 who owns the gateway endpoint -- remain `make portal-preflight`.
 
