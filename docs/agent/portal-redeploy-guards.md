@@ -9,10 +9,10 @@ CDK コードそのものの罠は [portal-cdk-quality-gates](portal-cdk-quality
 
 | Pitfall | Solution |
 |---------|----------|
-| **`UPDATE_FAILED` の関数は `description` の変更だけでは更新されず、`make sandbox` を再実行しても変わらない** | 更新後の判定は `describe-stacks` の `StackStatus` ではなく、`get-function-configuration` の `VpcConfig` と環境変数で行う。観測は 1 件（verified、ap-northeast-1）、理由は hypothesis（行 1 の根拠）。強制: `make portal-preflight` の `VPC wiring`。`backend.ts` で VPC に入る関数ごとに、論理 ID を挙げて FAIL にする |
+| **観測では、`UPDATE_FAILED` の関数は `description` の変更だけでは更新されず、`make sandbox` を再実行しても変わらなかった** | 更新後の判定は `describe-stacks` の `StackStatus` ではなく、`get-function-configuration` の `VpcConfig` と環境変数で行う。観測は 1 件（verified、ap-northeast-1）、理由は hypothesis（行 1 の根拠）。強制: `make portal-preflight` の `VPC wiring`。`backend.ts` で VPC に入る関数ごとに、論理 ID を挙げて FAIL にする |
 | **CloudFormation の更新を起こす変更の例と限界** | データスタックに `CfnOutput` を 1 つ足して `--once`、削除してもう 1 回 `--once` すると、直前に `UPDATE_FAILED` だった 2 関数が更新された（verified、1 観測、ap-northeast-1）。失敗したリソースが再試行されるかは、リソースの型と失敗の原因による。1 観測を一般則にしない（行 2 の根拠）。強制: `make portal-preflight` の `VPC wiring` が、更新後に VPC に入るはずの関数を `M of N expected function(s) conform` で数える。M が N に届かなければ、更新は届いていない |
 | **VPC に入る Lambda の更新が、実行ロールへ VPC 実行ポリシーを付けた直後に `CreateNetworkInterface` の権限エラーで失敗することがある** | ポリシー付与の 3〜4 秒後に始まった更新が 2 関数で失敗し、別の関数の更新は約 19 秒後に成功した（verified、1 観測、ap-northeast-1。再現率は未測定、原因は hypothesis）。復旧は、ロールが整った後に CloudFormation の更新を起こし直す（上の行）。強制: 失敗した関数は VPC 配線なし・ONTAP の環境変数が空のまま残るので、`make portal-preflight` の `VPC wiring` が FAIL にする |
-| **`portal-config.ts` は作業ツリーごとの gitignore 対象で、共有 sandbox の実効設定は「デプロイを打った作業ツリーのそれ」になる** | `sandbox.sh` は `ampx` の前に `portal_preflight.py --check-config-vs-live` を呼び、稼働中で非空の値が空になる 6 キーの名前（値は出さない）を並べて止まる。意図した上書きは `AMPLIFY_PORTAL_ALLOW_CONFIG_BLANKING=1`（値がちょうど `1` のときだけ有効）。通す場合と通らない入口は行 4 の根拠。強制: `scripts/portal_preflight.py --check-config-vs-live`、`scripts/tests/test_sandbox_script.py` |
+| **`portal-config.ts` は作業ツリーごとの gitignore 対象で、共有 sandbox の実効設定は「デプロイを打った作業ツリーのそれ」になる** | `sandbox.sh` は `ampx` の前に `portal_preflight.py --check-config-vs-live` を呼び、稼働中で非空の値が空になる 6 キーの名前（値は出さない）を並べて止まる。意図した上書きは `AMPLIFY_PORTAL_ALLOW_CONFIG_BLANKING=1`（値がちょうど `1` のときだけ有効）。通す場合（応答形が想定外のときは `[skip]` の 1 行で検査が無効になる代償を含む）と通らない入口は行 4 の根拠。強制: `scripts/portal_preflight.py --check-config-vs-live`、`scripts/tests/test_sandbox_script.py` |
 | **`make portal-preflight` が全項目 `ok` でも、デプロイの完了を証明しない** | 全項目 `ok` の後は、`VPC wiring` の `M of N expected function(s) conform` で M と N が一致しているかを見る。N は `backend.ts` から導くので、更新に失敗した関数が母集団から外れても縮まない。旧実装は外れた（verified、API 形のフェイクで再現。行 5 の根拠）。強制: `check_lambda_vpc` と回帰テスト `test_the_incident_shape_fails` |
 
 ## 根拠の詳細
@@ -34,14 +34,15 @@ CDK コードそのものの罠は [portal-cdk-quality-gates](portal-cdk-quality
 
 ### 行 4 の根拠: 設定の上書きとその検査の範囲
 
-- 観測（1 観測、ap-northeast-1）: 別の作業ツリーで example をコピーしただけの（値がすべて空の）設定から `make sandbox` を打つと、稼働中の S3 Access Points のエイリアス（`S3_AP_ALIAS`）、ONTAP の接続（`ONTAP_MGMT_IP`、`ONTAP_SECRET_NAME`）、`vpcId`、状態機械 ARN、`S3_OBJECT_LOCK_BUCKET` の 6 キーが空で上書きされ、デプロイは成功した。
+- 観測（hypothesis、1 観測、ap-northeast-1。デプロイ後に稼働中の値を読み直した記録は無い）: 別の作業ツリーで example をコピーしただけの（値がすべて空の）設定から `make sandbox` を打つと、稼働中の S3 Access Points のエイリアス（`S3_AP_ALIAS`）、ONTAP の接続（`ONTAP_MGMT_IP`、`ONTAP_SECRET_NAME`）、`vpcId`、状態機械 ARN、`S3_OBJECT_LOCK_BUCKET` の 6 キーが空で上書きされ、デプロイは成功した。
 - 検査の実測（verified、読み取り専用、ap-northeast-1）: 空の example を実効設定にすると 6 キーが FAIL になり（8 秒、1 回）、実設定では 6 キーを比較して通った（7 秒、1 回）。どちらも出力に値は無かった。
 - 実効値: 環境変数、`portal-config.ts` のリテラルの順。
 - 通す場合: 初回デプロイ、AWS を読めないとき（SSO 失効を含む）、期待と違う形の応答、別の identifier、`delete`。AWS を読めないことを失敗にしないのは、`ampx` が同じ認証情報を要し、`sandbox.sh` が sandbox を特定できなければ先に止まるので、2 つ目の関門は迂回の理由を増やすだけになるため。
+- 通す場合の代償: AWS の応答形が想定外のときも、検査は `[skip]` の 1 行を出して終了コード 0 で通り、無効になる。`npm start` では `ampx` や Vite の出力に埋もれうる（端末での見え方は未確認）。
 - 通らない入口: `npm run sandbox` と `npm run start:dev` は `npx ampx sandbox` を直接呼ぶ。`make sandbox`、`make sandbox-watch`、`npm start` は `sandbox.sh` を通る。起動時の 1 回だけで、`--watch` 中の再デプロイは見ない。
 - 比べないもの: 6 キー以外の設定、非空から別の非空への変更（値が違うことは見ない）。
 - `AMPLIFY_PORTAL_SKIP_CONFIG_CHECK` はこの検査を飛ばさない。
-- lab の `07_portal_config.sh --deploy` は example をコピーしたあとそのまま `sandbox.sh --once` を呼ぶので、既存 sandbox で環境変数も値を渡していなければ同じ検査が止める（lab 側には専用のガードは無い）。
+- 読み（hypothesis、未実行）: lab の `07_portal_config.sh --deploy` は example をコピーしたあとそのまま `sandbox.sh --once` を呼ぶので、既存 sandbox で環境変数も値を渡していなければ同じ検査が止めると読める。lab のテストは `sandbox.sh` を偽物にするため、この経路は実行も自動試験もされていない。lab 側に専用のガードは無い。
 
 ### 行 5 の根拠: 全項目 ok の後に見るもの
 
