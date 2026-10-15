@@ -57,13 +57,19 @@ from pathlib import Path
 PORTAL_DIR = Path(__file__).resolve().parent.parent / "solutions" / "amplify-portal"
 OUTPUTS_PATH = PORTAL_DIR / "amplify_outputs.json"
 CONFIG_PATH = PORTAL_DIR / "amplify" / "portal-config.ts"
+BACKEND_PATH = PORTAL_DIR / "amplify" / "backend.ts"
 
-# What makes a function ONTAP-facing is that it was given a management address,
-# so that is what identifies one. Matching names instead missed
-# ListSnapshotsFunction, which held a stale address and a credential for another
-# cluster while the panel it serves reported "User is not authorized" -- measured
-# 2026-08-28, after the same defect had been fixed on the function whose name did
-# match. A hint list has to be updated when a function is added; this does not.
+# Which functions are expected to be in the VPC is read from backend.ts, the file
+# that decides it, and not from the deployed functions' environment. A function is
+# found by what it should be, then checked for what it is. Selecting by "has both
+# variables set" dropped a function whose update failed and left both blank --
+# the failure being looked for removed the function from the check, and one healthy
+# function was reported as all of them. Matching names instead had missed
+# ListSnapshotsFunction earlier, which held a stale address and a credential for
+# another cluster while the panel it serves reported "User is not authorized".
+#
+# These two variables are what a function that connects to ONTAP is given. They are
+# no longer how it is found; they are what it must hold once found.
 ONTAP_ADDRESS_VAR = "ONTAP_MGMT_IP"
 ONTAP_CREDENTIAL_VAR = "ONTAP_SECRET_NAME"
 
@@ -105,6 +111,11 @@ def aws(*args: str) -> str:
 def read_config_text() -> str:
     """Return portal-config.ts source, or an empty string when absent."""
     return CONFIG_PATH.read_text(encoding="utf-8") if CONFIG_PATH.exists() else ""
+
+
+def read_backend_text() -> str:
+    """Return backend.ts source, or an empty string when absent."""
+    return BACKEND_PATH.read_text(encoding="utf-8") if BACKEND_PATH.exists() else ""
 
 
 def config_default(source: str, key: str) -> str | None:
@@ -222,6 +233,74 @@ def effective_list(source: str, key: str) -> tuple[list[str] | None, str]:
     if expr is None:
         return None, "portal-config.ts"
     return re.findall(r'"([^"]*)"', expr), "portal-config.ts"
+
+
+VPC_SPREAD = "...(vpcConfig &&"
+
+# A construct is a ``new lambda.Function(<scope>, "<id>", {...});`` statement, and
+# its closing line starts at column 0 with nothing but closing brackets before the
+# ``;``. Both layouts in backend.ts end that way: ``});`` for the one-line form and
+# ``);`` for the one that puts each argument on its own line.
+_FUNCTION_START = re.compile(r'new lambda\.Function\(\s*\w+,\s*"(\w+)"')
+_FUNCTION_END = re.compile(r"^[})]*\);[ \t]*$", re.MULTILINE)
+_ENV_BINDING = re.compile(r"^\s*([A-Z][A-Z0-9_]*):\s*config\.(\w+)\s*,", re.MULTILINE)
+_APPSYNC_BINDING = re.compile(r'addPropertyOverride\(\s*"EnvironmentVariables\.([A-Z0-9_]+)",\s*config\.(\w+)\s*\)')
+
+
+@dataclass(frozen=True)
+class BackendFunction:
+    """One Lambda construct in backend.ts: its id, VPC membership and config bindings."""
+
+    logical_id: str
+    in_vpc: bool
+    env: dict[str, str]  # environment variable -> portal-config.ts key, when bound to one
+
+
+def parse_backend_functions(source: str) -> list[BackendFunction]:
+    """Return every ``new lambda.Function`` in backend.ts.
+
+    ``env`` holds only variables set to a bare ``config.<key>``. A variable built
+    from an expression (``JSON.stringify(...)``) is not a binding to one key, so it
+    is left out rather than guessed at.
+    """
+    functions: list[BackendFunction] = []
+    for start in _FUNCTION_START.finditer(source):
+        end = _FUNCTION_END.search(source, start.end())
+        block = source[start.start() : end.end() if end else len(source)]
+        functions.append(
+            BackendFunction(
+                logical_id=start.group(1),
+                in_vpc=VPC_SPREAD in block,
+                env=dict(_ENV_BINDING.findall(block)),
+            )
+        )
+    return functions
+
+
+def expected_vpc_functions(source: str) -> list[BackendFunction]:
+    """Return the functions backend.ts places in the VPC when ``vpcId`` is set.
+
+    Raises ValueError when a ``...(vpcConfig &&`` spread exists that no parsed
+    function accounts for -- for example one written on a construct this parser does
+    not recognise. Returning only what was recognised would shrink the expected set
+    without a sound, which is the failure this derivation exists to remove.
+    """
+    expected = [fn for fn in parse_backend_functions(source) if fn.in_vpc]
+    if source.count(VPC_SPREAD) != len(expected):
+        raise ValueError(
+            f"backend.ts has {source.count(VPC_SPREAD)} '{VPC_SPREAD}' spread(s), "
+            f"but {len(expected)} are inside a recognised new lambda.Function"
+        )
+    return expected
+
+
+def appsync_env_bindings(source: str) -> dict[str, str]:
+    """Return ``{config key: variable}`` for values written onto the AppSync API.
+
+    The state machine ARN is not a Lambda variable: ``backend.ts`` adds it to the
+    GraphQL API's environment, and only when the config names one.
+    """
+    return {key: var for var, key in _APPSYNC_BINDING.findall(source)}
 
 
 def load_outputs() -> dict:
@@ -365,9 +444,16 @@ def stack_family(stack: str, region: str) -> list[str]:
     return family
 
 
-def stack_functions(stack: str, region: str) -> list[str]:
-    """Return every Lambda function in a stack family."""
-    names: list[str] = []
+def stack_resources(stack: str, region: str, resource_types: tuple[str, ...]) -> list[tuple[str, str, str]]:
+    """Return ``(type, logical id, physical id)`` for resources of the given types.
+
+    One ``list-stack-resources`` call per stack in the family, whatever the number of
+    types. The logical ID is what identifies a resource by its construct; the
+    physical name of a function is truncated and cannot.
+    """
+    selector = " || ".join(f"ResourceType=='{kind}'" for kind in resource_types)
+    query = f"StackResourceSummaries[?{selector}].[ResourceType,LogicalResourceId,PhysicalResourceId]"
+    found: list[tuple[str, str, str]] = []
     for member in stack_family(stack, region):
         raw = aws(
             "cloudformation",
@@ -377,16 +463,34 @@ def stack_functions(stack: str, region: str) -> list[str]:
             "--stack-name",
             member,
             "--query",
-            "StackResourceSummaries[?ResourceType=='AWS::Lambda::Function'].PhysicalResourceId",
+            query,
             "--output",
             "json",
         )
-        names.extend(json.loads(raw))
-    return names
+        found.extend((kind, logical, physical) for kind, logical, physical in json.loads(raw))
+    return found
+
+
+def resolve_logical(construct_id: str, resources: list[tuple[str, str, str]]) -> tuple[str, str] | None:
+    """Return ``(logical id, physical id)`` of the resource built from ``construct_id``.
+
+    CloudFormation names a construct's resource with its id plus eight uppercase hex
+    digits. Matching the whole logical ID is what keeps ``ListFilesFunction`` from
+    claiming ``ListFilesFunctionExtra...``, which a prefix or substring match would.
+    """
+    pattern = re.compile(re.escape(construct_id) + r"[0-9A-F]{8}")
+    matches = sorted((logical, physical) for _, logical, physical in resources if pattern.fullmatch(logical))
+    return matches[0] if matches else None
 
 
 def function_config(name: str, region: str) -> dict:
-    """Return a function's VPC subnets and the file system it addresses."""
+    """Return what a deployed function holds, without returning any value.
+
+    ``nonempty_env`` is the *names* of the variables that have a value. The check
+    that uses it needs to know whether a variable is set, and a report built on it
+    cannot print a value it was never handed. ``target`` is the exception: the
+    ONTAP target comparison needs the values to compare.
+    """
     raw = aws(
         "lambda",
         "get-function-configuration",
@@ -395,7 +499,7 @@ def function_config(name: str, region: str) -> dict:
         "--function-name",
         name,
         "--query",
-        "{subnets: VpcConfig.SubnetIds, env: Environment.Variables}",
+        "{subnets: VpcConfig.SubnetIds, vpc: VpcConfig.VpcId, env: Environment.Variables}",
         "--output",
         "json",
     )
@@ -403,75 +507,98 @@ def function_config(name: str, region: str) -> dict:
     env = parsed.get("env") or {}
     return {
         "subnets": parsed.get("subnets") or [],
+        "vpc_id": bool(parsed.get("vpc")),
+        "nonempty_env": frozenset(var for var, value in env.items() if value),
         "target": tuple(env.get(var) for var in ONTAP_TARGET_VARS),
         "ontap_facing": all(env.get(var) for var in ONTAP_CONNECT_VARS),
     }
 
 
-def short_name(function_name: str) -> str:
-    """Return the readable middle segment of a generated function name."""
-    parts = function_name.split("-")
-    return parts[-2] if len(parts) >= 2 else function_name
-
-
 def check_lambda_vpc(stack: str | None, region: str, config_src: str) -> list[Result]:
-    """Confirm every ONTAP-facing function is in the VPC and shares one target."""
-    declared_vpc = config_default(config_src, "vpcId")
+    """Confirm every function backend.ts puts in the VPC is there, holding its ONTAP variables.
+
+    The population is the functions backend.ts gives a ``VpcConfig`` when ``vpcId``
+    is set, not the functions that happen to carry ONTAP variables. A function whose
+    update failed keeps an empty ``VpcConfig`` and blank variables; filtering on the
+    variables removed exactly that function from the check.
+
+    Prints each function's logical ID and the *names* of what is wrong with it, never
+    a value.
+    """
+    declared_vpc, vpc_origin = effective_scalar(config_src, "vpcId")
     if not declared_vpc:
-        return [Result("VPC wiring", SKIP, "portal-config.ts declares no vpcId")]
+        return [Result("VPC wiring", SKIP, f"vpcId is empty ({vpc_origin}); no function is expected in a VPC")]
     if not stack:
         return [Result("VPC wiring", SKIP, "owning stack unknown")]
 
     try:
-        candidates = stack_functions(stack, region)
-        configs = {name: function_config(name, region) for name in candidates}
-    except RuntimeError as exc:
-        return [Result("VPC wiring", FAIL, f"cannot read functions: {exc}")]
-
-    facing = {n: c for n, c in configs.items() if c["ontap_facing"]}
-    if not facing:
+        expected = expected_vpc_functions(read_backend_text())
+    except ValueError as exc:
+        return [Result("VPC wiring", FAIL, f"cannot derive the expected functions from backend.ts: {exc}")]
+    if not expected:
         return [
             Result(
                 "VPC wiring",
                 FAIL,
-                f"no function in this stack family sets both {ONTAP_ADDRESS_VAR} and {ONTAP_CREDENTIAL_VAR}",
-                "The deployed stack does not match this checkout, or the "
-                "variables were renamed and ONTAP_CONNECT_VARS needs updating.",
+                "cannot derive the expected functions from backend.ts: none is given a VpcConfig",
+                "backend.ts changed shape or this checkout is not the portal. Without an expected set "
+                "there is nothing to check, which must not read as a pass.",
             )
         ]
 
-    results: list[Result] = []
-    for name, conf in sorted(facing.items()):
-        if conf["subnets"]:
-            results.append(
-                Result(
-                    "VPC wiring",
-                    OK,
-                    f"{short_name(name)}: {len(conf['subnets'])} subnet(s)",
-                )
-            )
-        else:
-            results.append(
-                Result(
-                    "VPC wiring",
-                    FAIL,
-                    f"{short_name(name)}: no VpcConfig, so the ONTAP management LIF is unreachable",
-                    "Every ONTAP call runs to the function timeout, which the "
-                    "UI shows as a panel stuck on loading rather than as an "
-                    "error. Redeploy the sandbox so the VPC config applies.",
-                )
-            )
+    try:
+        resources = stack_resources(stack, region, ("AWS::Lambda::Function",))
+        resolved = {fn.logical_id: resolve_logical(fn.logical_id, resources) for fn in expected}
+        configs = {physical: function_config(physical, region) for _, physical in filter(None, resolved.values())}
+    except RuntimeError as exc:
+        return [Result("VPC wiring", FAIL, f"cannot read functions: {exc}")]
 
+    rows: list[Result] = []
+    conforming: list[tuple[BackendFunction, dict]] = []
+    for fn in expected:
+        match = resolved[fn.logical_id]
+        if match is None:
+            # No logical ID to print: the function is not in the stack, which is the point.
+            rows.append(Result("VPC wiring", FAIL, f"{fn.logical_id}: missing from the deployed stack"))
+            continue
+        label, physical = match
+        conf = configs[physical]
+        problems = [] if conf["subnets"] else ["no VpcConfig"]
+        problems += [f"{var} empty" for var in ONTAP_CONNECT_VARS if var in fn.env and var not in conf["nonempty_env"]]
+        if problems:
+            rows.append(Result("VPC wiring", FAIL, f"{label}: {'; '.join(problems)}"))
+        else:
+            rows.append(Result("VPC wiring", OK, f"{label}: {len(conf['subnets'])} subnet(s)"))
+            conforming.append((fn, conf))
+
+    summary = Result(
+        "VPC wiring",
+        OK if len(conforming) == len(expected) else FAIL,
+        f"{len(conforming)} of {len(expected)} expected function(s) conform",
+        ""
+        if len(conforming) == len(expected)
+        else "A function that fails to update keeps its old VpcConfig and variables, and every ONTAP call "
+        "from it runs to the function timeout, which the UI shows as a panel stuck on loading. "
+        "Re-running the deploy does not retry it unless the change reaches CloudFormation: see "
+        "docs/agent/portal-cdk-quality-gates.md.",
+    )
+    results: list[Result] = [summary, *rows]
+
+    facing = [(fn, conf) for fn, conf in conforming if conf["ontap_facing"]]
     targets: dict[tuple, list[str]] = {}
-    for name, conf in sorted(facing.items()):
-        targets.setdefault(conf["target"], []).append(short_name(name))
-    if len(targets) == 1:
+    for fn, conf in facing:
+        targets.setdefault(conf["target"], []).append(fn.logical_id)
+    if len(facing) < 2:
+        results.append(
+            Result("ONTAP target", SKIP, "fewer than 2 conforming functions hold an ONTAP target to compare")
+        )
+    elif len(targets) == 1:
         address, svm, secret = next(iter(targets))
         results.append(
             Result(
                 "ONTAP target",
                 OK,
-                f"all {len(facing)} function(s) address {address} / {svm} with {secret}",
+                f"{len(facing)} of {len(expected)} expected function(s) address {address} / {svm} with {secret}",
             )
         )
     else:
