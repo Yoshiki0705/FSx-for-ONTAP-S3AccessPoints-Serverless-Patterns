@@ -54,8 +54,9 @@ and the functions' ``VpcConfig``, reading AWS only. It prints key names and neve
 value. Exit codes: 0 nothing would be blanked, the comparison could not be made, or
 the opt-out is set; 1 a deployed value would become empty; 2 no ``portal-config.ts``.
 
-Not being able to compare (no outputs file, AWS unreachable, SSO expired, a different
-sandbox from the outputs file's) is a skip, as it is for ``check_hosted_binding``:
+Not being able to compare (no outputs file, AWS unreachable, SSO expired, an answer in a
+shape this check does not expect, a different sandbox from the outputs file's) is a
+skip, as it is for ``check_hosted_binding``:
 ``sandbox.sh`` has already stopped when it cannot identify the sandbox, ``ampx``
 needs the same credentials, and a second gate on AWS availability would only give
 people a reason to bypass this one. ``AMPLIFY_PORTAL_ALLOW_CONFIG_BLANKING=1``
@@ -599,8 +600,8 @@ def check_lambda_vpc(stack: str | None, region: str, config_src: str) -> list[Re
         if len(conforming) == len(expected)
         else "A function that fails to update keeps its old VpcConfig and variables, and every ONTAP call "
         "from it runs to the function timeout, which the UI shows as a panel stuck on loading. "
-        "Re-running the deploy does not retry it unless the change reaches CloudFormation: see "
-        "docs/agent/portal-redeploy-guards.md.",
+        "In one observation, re-running the deploy did not update such a function, and it may not here "
+        "either: see docs/agent/portal-redeploy-guards.md for what was observed and what is only a reading.",
     )
     results: list[Result] = [summary, *rows]
 
@@ -985,20 +986,28 @@ def check_config_vs_live(config_src: str, backend_src: str, stack: str, region: 
     lambdas = [r for r in resources if r[0] == "AWS::Lambda::Function"]
     configs: dict[str, dict] = {}
 
-    def holds(fn: BackendFunction, var: str | None) -> bool:
-        """Whether the deployed ``fn`` has ``var`` set (or, for None, a VPC)."""
-        match = resolve_logical(fn.logical_id, lambdas)
-        if match is None:
-            return False
-        if match[1] not in configs:
-            configs[match[1]] = function_config(match[1], region)
-        conf = configs[match[1]]
-        return conf["vpc_id"] if var is None else var in conf["nonempty_env"]
+    def holds(pairs: list[tuple[BackendFunction, str | None]]) -> bool | None:
+        """Whether any deployed ``(function, variable)`` has its variable set (None: a VPC).
+
+        None when no function in ``pairs`` is in the stack. That is "nothing to compare
+        with", not "the value is empty": answering False would count the key as compared.
+        """
+        confs: list[tuple[dict, str | None]] = []
+        for fn, var in pairs:
+            match = resolve_logical(fn.logical_id, lambdas)
+            if match is None:
+                continue
+            if match[1] not in configs:
+                configs[match[1]] = function_config(match[1], region)
+            confs.append((configs[match[1]], var))
+        if not confs:
+            return None
+        return any(conf["vpc_id"] if var is None else var in conf["nonempty_env"] for conf, var in confs)
 
     def live(key: str) -> tuple[bool | None, str]:
         """Return whether the deployed value is set (None when unknowable) and where it lives."""
         if key == VPC_KEY:
-            return (any(holds(fn, None) for fn in in_vpc), "VpcConfig") if in_vpc else (None, "")
+            return (holds([(fn, None) for fn in in_vpc]), "VpcConfig") if in_vpc else (None, "")
         if key == STATE_MACHINE_KEY:
             var = appsync_env_bindings(backend_src).get(key)
             api = next((physical for kind, _, physical in resources if kind == "AWS::AppSync::GraphQLApi"), None)
@@ -1020,7 +1029,7 @@ def check_config_vs_live(config_src: str, backend_src: str, stack: str, region: 
         bound = [(fn, var) for fn in functions for var, bound_key in fn.env.items() if bound_key == key]
         if not bound:
             return None, ""
-        return any(holds(fn, var) for fn, var in bound), "/".join(sorted({var for _, var in bound}))
+        return holds(bound), "/".join(sorted({var for _, var in bound}))
 
     results: list[Result] = []
     compared = 0
@@ -1054,8 +1063,11 @@ def run_check_config_vs_live(region: str, identifier: str, config_src: str) -> i
     and ``--print-sandbox-identifier``'s "nothing deployed" answer. The wrapper has
     already refused to continue when it cannot identify the sandbox, and ``ampx``
     needs the same credentials: a second gate on AWS availability would only give
-    people a reason to bypass this one. Messages on that path are fixed text because
-    the AWS error carries the caller's role and account.
+    people a reason to bypass this one. An answer whose shape this check does not
+    expect (``KeyError``, ``TypeError`` and the like) is treated the same way, and
+    for the same reason: a defect here should not be a deploy that cannot proceed.
+    Messages on that path are fixed text because the AWS error carries the caller's
+    role and account.
     """
 
     def skip(message: str) -> int:
@@ -1077,6 +1089,12 @@ def run_check_config_vs_live(region: str, identifier: str, config_src: str) -> i
         results = check_config_vs_live(config_src, read_backend_text(), stack, region)
     except (RuntimeError, json.JSONDecodeError):
         return skip("the deployed sandbox could not be read; nothing was compared")
+    except (KeyError, TypeError, AttributeError, IndexError, ValueError) as exc:
+        # An answer in a shape this check does not expect is "could not compare" like an
+        # unreadable one: exiting 1 here would stop sandbox.sh before the opt-out is
+        # reachable, so a defect in this check would block every deploy with no way
+        # round it. Only the exception's class is printed; its message can carry a value.
+        return skip(f"the deployed sandbox returned an unexpected shape ({type(exc).__name__}); nothing was compared")
 
     report(results)
     blanked = [r for r in results if r.status == FAIL]

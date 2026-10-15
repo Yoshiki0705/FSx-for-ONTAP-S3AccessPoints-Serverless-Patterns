@@ -889,6 +889,24 @@ class TestParseBackend:
         assert connecting
         assert [f.logical_id for f in connecting if not f.in_vpc] == []
 
+    def test_every_expected_vpc_function_binds_both_connect_variables(self) -> None:
+        """The other direction: "is in the VPC" implies "is given both variables".
+
+        ``check_lambda_vpc`` reports a variable as empty only for functions whose
+        binding it can see (``var in fn.env``). A variable rewritten in backend.ts as
+        anything but a bare ``config.<key>`` leaves that binding, and the "empty"
+        condition for it disappears without a failure. Pinning the binding here is
+        what makes that a failing test and not a quieter check.
+        """
+        expected = preflight.expected_vpc_functions(self.REAL.read_text(encoding="utf-8"))
+        assert expected
+        unbound = {
+            f.logical_id: sorted(set(preflight.ONTAP_CONNECT_VARS) - set(f.env))
+            for f in expected
+            if set(preflight.ONTAP_CONNECT_VARS) - set(f.env)
+        }
+        assert unbound == {}
+
 
 class TestCheckLambdaVpc:
     """The VPC check is driven by the functions that should be in the VPC."""
@@ -1270,6 +1288,58 @@ class TestConfigVsLive:
         assert status == 0
         assert "[skip]" in out
         assert "s3ApAlias" in out
+
+    @pytest.mark.parametrize(
+        ("key", "absent"),
+        [
+            ("s3ApAlias", ("ListFilesFunction",)),
+            ("vpcId", ("ListSnapshotsFunction", "ArpResponseFunction", "ResourceMgmtFunction")),
+        ],
+    )
+    def test_a_key_whose_functions_are_not_in_the_stack_is_skipped_not_counted(
+        self, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str], key: str, absent: tuple[str, ...]
+    ) -> None:
+        """No deployed counterpart is "nothing to compare", not "the deployed value is empty".
+
+        Counting it as compared made the OK line say ``6 key(s) compared`` with nothing
+        read behind one of them.
+        """
+        values = {k: v for k, v in LIVE_VALUES.items() if k != key}
+        overrides = {construct: f"{construct}Extra1234ABCD" for construct in absent}
+
+        status, _ = self._run(monkeypatch, live_config(**values), logical_overrides=overrides)
+
+        out = capsys.readouterr().out
+        assert status == 0
+        assert "[skip]" in out
+        assert key in out
+        assert "5 key(s) compared" in out
+
+    def test_an_answer_in_an_unexpected_shape_skips_with_the_class_only(
+        self, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """A defect in the check, or a reply it does not understand, is not a deploy that cannot proceed.
+
+        Exiting 1 would stop ``sandbox.sh`` before the opt-out can be read, which is
+        the one place a bug in this check would have no way round it.
+        """
+        functions, api_env = deployed_sandbox(populated=True)
+        fake = FakeAws(functions, api_env)
+
+        def wrong_shape(*args: str) -> str:
+            if args[1] == "get-function-configuration":
+                return json.dumps([SENTINEL_SECRET])  # a list where an object is expected
+            return fake(*args)
+
+        monkeypatch.setattr(preflight, "aws", wrong_shape)
+
+        status = preflight.run_check_config_vs_live(REGION, "", live_config())
+
+        captured = capsys.readouterr()
+        assert status == 0
+        assert "[skip]" in captured.out
+        assert "AttributeError" in captured.out
+        assert not leaked(captured.out + captured.err), "a configuration value reached the output"
 
     def test_a_state_machine_that_cannot_be_read_is_skipped(self, monkeypatch: pytest.MonkeyPatch) -> None:
         values = {k: v for k, v in LIVE_VALUES.items() if k != "stateMachineArn"}
