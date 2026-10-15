@@ -600,7 +600,7 @@ def check_lambda_vpc(stack: str | None, region: str, config_src: str) -> list[Re
         else "A function that fails to update keeps its old VpcConfig and variables, and every ONTAP call "
         "from it runs to the function timeout, which the UI shows as a panel stuck on loading. "
         "Re-running the deploy does not retry it unless the change reaches CloudFormation: see "
-        "docs/agent/portal-cdk-quality-gates.md.",
+        "docs/agent/portal-redeploy-guards.md.",
     )
     results: list[Result] = [summary, *rows]
 

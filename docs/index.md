@@ -48,6 +48,7 @@
 | ポータルの CDK / cdk-nag | [portal-cdk-quality-gates](agent/portal-cdk-quality-gates.md) |
 | ポータル UI の文字列 / 8 言語 | [portal-i18n](agent/portal-i18n.md) |
 | ポータル sandbox の削除 / 同一 VPC への 2 台目 | [portal-sandbox-lifecycle](agent/portal-sandbox-lifecycle.md) |
+| ポータルの再デプロイで関数が直らない / デプロイ前後の検査 | [portal-redeploy-guards](agent/portal-redeploy-guards.md) |
 | 他端末に渡すデモ環境（URL / アカウント） | [portal-demo-environment](agent/portal-demo-environment.md) |
 | 作業を PR に切り分けて main に載せる | [landing-work](agent/landing-work.md) |
 | コスト見積り / リソース停止 | [cost-awareness](agent/cost-awareness.md) |
