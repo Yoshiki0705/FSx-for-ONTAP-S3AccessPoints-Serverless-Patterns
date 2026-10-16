@@ -48,6 +48,37 @@ AWS-side policy looks correct but CloudFront still receives 403s.
   **signed URLs / signed cookies** for controlled/authenticated VOD.
 - For region-bound content, apply CloudFront **geo-restriction**.
 
+## Applicability beyond HLS (unverified)
+
+The AWS tutorial this pattern reuses documents HLS adaptive-bitrate video delivery from an
+FSx for ONTAP S3 Access Points origin via CloudFront
+([tutorial-stream-video-with-cloudfront](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/tutorial-stream-video-with-cloudfront.html)).
+Applying the same origin model to other content types (images, HTML) is **unverified** here —
+the tutorial subject is HLS video. The CloudFront + OAC origin mechanics are the same, but the
+tiering read-back behavior for non-video objects should be verified separately before relying
+on it (see the checklist item below).
+
+## Why CDN caching does not remove FSx reads
+
+A CloudFront cache in front of the origin reduces origin fetches but does not eliminate them.
+Reads still reach FSx for ONTAP on cache expiry, after a manual purge, for non-cacheable
+content, and for processing that does not pass through CloudFront. For objects whose blocks
+have cooled to the capacity pool, those origin reads are served from the capacity pool unless
+the read restores them to SSD. Size SSD headroom and set the tiering read-back policy with
+origin reads in mind, not on the assumption that the CDN absorbs all of them (operational
+consideration based on general CDN behavior).
+
+## Interaction with cloud-retrieval-policy
+
+Whether an origin read restores cold data to SSD depends on the volume's
+`cloud-retrieval-policy`. Under the Auto default, only random reads restore to SSD; sequential
+reads stay in the capacity pool. How reads through FSx for ONTAP S3 Access Points are judged
+(random vs sequential), and therefore whether they restore to SSD, is not confirmed here. For
+the policy values and the read-back behavior, see
+[cloud-retrieval-policy.md](https://github.com/Yoshiki0705/FSx-for-ONTAP-Observability-integrations/blob/main/docs/en/cloud-retrieval-policy.md)
+in the Observability integrations repository, which also tracks the S3 Access Points read-back
+question as unverified.
+
 ## Checklist
 
 - [ ] CloudFront distribution created with OAC targeting the S3 AP origin.
@@ -56,6 +87,8 @@ AWS-side policy looks correct but CloudFront still receives 403s.
 - [ ] `.m3u8` short TTL, segments long TTL, Origin Shield enabled.
 - [ ] Viewer auth via CloudFront signed URLs/cookies (no Presigned URLs).
 - [ ] Geo-restriction applied where required.
+- [ ] For image/HTML delivery, verify FSx for ONTAP S3 Access Points read-back behavior
+      separately (tiering restore to SSD is not confirmed for non-HLS content).
 
 ## References
 
