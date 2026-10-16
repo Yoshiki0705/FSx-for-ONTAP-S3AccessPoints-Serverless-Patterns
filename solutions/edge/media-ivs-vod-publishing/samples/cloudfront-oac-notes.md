@@ -58,7 +58,7 @@ the tutorial subject is HLS video. The CloudFront + OAC origin mechanics are the
 tiering read-back behavior for non-video objects should be verified separately before relying
 on it (see the checklist item below).
 
-## Why CDN caching does not remove FSx reads
+## Why CDN caching does not remove FSx for ONTAP reads
 
 A CloudFront cache in front of the origin reduces origin fetches but does not eliminate them.
 Reads still reach FSx for ONTAP on cache expiry, after a manual purge, for non-cacheable
