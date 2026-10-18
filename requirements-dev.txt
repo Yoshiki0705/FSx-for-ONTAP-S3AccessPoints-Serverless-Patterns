@@ -29,7 +29,7 @@ Pillow==12.3.0
 # botocore follows it; Renovate bumps both in the aws-sdk-python group, and
 # test_botocore_pin_matches_installed fails when the installed botocore differs
 # from this line.
-botocore==1.43.111
+botocore==1.43.114
 # scripts/tests/test_portal_preflight.py imports jmespath directly: its fake AWS
 # applies the code's own `--query` with it. It was only present as a dependency
 # of boto3 / botocore, which allow `jmespath>=0.7.1,<2.0.0`, so a new release
