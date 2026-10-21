@@ -19,4 +19,4 @@
 # `backend.ts` now passes both platform tags, so a release tagged either way resolves.
 # What remains is only that some cp313 aarch64 manylinux wheel exists; if a future
 # release has none, the layer cannot be staged without Docker and the pin has to hold.
-Pillow==12.3.0
+Pillow==13.0.0
