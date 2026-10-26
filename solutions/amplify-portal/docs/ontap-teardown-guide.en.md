@@ -8,7 +8,7 @@ when cleaning up a verification environment. This collects each action's REST en
 synchronous/asynchronous behaviour, and the dependency order in one place.
 
 > **Verification status**: all actions were exercised once, on a disposable SVM on
-> fs-002ec851eba809979 (ONTAP 9.18.1P6), on 2026-10-26. The differences only a real cluster
+> fs-0123456789abcdef0 (ONTAP 9.18.1P6), on 2026-10-26. The differences only a real cluster
 > revealed — SVM delete goes through the FSx API, audit's consolidation wait, audit's `log_path`,
 > and the FPolicy engine refusal wording — are reflected in the implementation and this note.
 

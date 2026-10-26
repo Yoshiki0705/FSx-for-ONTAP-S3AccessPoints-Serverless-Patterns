@@ -2932,7 +2932,7 @@ class TestSvmManagement:
         # listSvms derives the file system id from the ONTAP cluster name, then calls
         # the FSx API. The cluster GET is served over the urllib3 pool; the FSx call
         # over the fake client.
-        http = MockHttp({"/cluster": {"data": {"name": "FsxId002ec851eba809979"}}})
+        http = MockHttp({"/cluster": {"data": {"name": "FsxId0123456789abcdef0"}}})
         fsx = fsx_client(
             svms=[
                 {"Name": "svm1", "StorageVirtualMachineId": "svm-1", "Lifecycle": "CREATED", "Subtype": "default"},
@@ -2950,7 +2950,7 @@ class TestSvmManagement:
         assert by_name["other"]["isDefault"] is False
         # The FSx call was scoped to the file system id derived from the cluster name.
         _, kwargs = fsx.get_paginator.return_value.paginate.call_args
-        assert kwargs["Filters"][0]["Values"] == ["fs-002ec851eba809979"]
+        assert kwargs["Filters"][0]["Values"] == ["fs-0123456789abcdef0"]
 
     def test_impact_separates_root_from_non_root(self, mock_secrets):
         from rm_handler import handler

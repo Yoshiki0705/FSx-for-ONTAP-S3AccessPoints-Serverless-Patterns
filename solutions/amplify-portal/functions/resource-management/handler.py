@@ -6876,7 +6876,7 @@ def _file_system_id(http, headers):
     """The FSx file system id (fs-...) this handler's ONTAP cluster belongs to.
 
     FSx names the ONTAP cluster `FsxId<filesystemid without dashes>` -- measured
-    `FsxId002ec851eba809979` for `fs-002ec851eba809979`. Deriving the id from the
+    `FsxId0123456789abcdef0` for `fs-0123456789abcdef0`. Deriving the id from the
     cluster name avoids a new environment variable (which would be a template change)
     and keeps the FSx API calls scoped to this file system rather than the whole
     account. Returns (fs_id, None) or (None, error_message).
@@ -6897,7 +6897,7 @@ def _list_svms_rm(http, headers, event):
 
     Listed through the FSx API rather than ONTAP REST because the SVM delete goes
     through the FSx API and needs the FSx id (svm-...), which the ONTAP REST listing
-    does not carry -- it reports the ONTAP UUID. Verified on fs-002ec851eba809979.
+    does not carry -- it reports the ONTAP UUID. Verified on fs-0123456789abcdef0.
     """
     fs_id, err = _file_system_id(http, headers)
     if err:
@@ -6990,7 +6990,7 @@ def _delete_svm(http, headers, event, user_id):
 
     AWS FSx API: DeleteStorageVirtualMachine (NOT ONTAP REST).
 
-    Verified on fs-002ec851eba809979 (ONTAP 9.18.1P6): on FSx for ONTAP the fsxadmin
+    Verified on fs-0123456789abcdef0 (ONTAP 9.18.1P6): on FSx for ONTAP the fsxadmin
     account is not authorised to run ONTAP REST `DELETE /svm/svms/{uuid}` -- it returns
     ONTAP error code 6, "not authorized for that command", even with no non-root
     volumes left. The SVM is an AWS-managed resource, so its lifecycle belongs to the
