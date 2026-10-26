@@ -81,7 +81,7 @@
 
 ## 既存 sandbox を更新するとき
 
-既存の sandbox を持ち、依存が更新された状態で `make sandbox` を再実行する読者は、`07 --deploy` が `UPDATE_FAILED` で失敗しえます。原因は AwsCliLayer の置換が Express モードの sandbox で拒否されることで、`docs/agent/portal-cdk-quality-gates.md` の AwsCliLayer の行に書いてあります。回復手段の選択（削除と再作成は Cognito ユーザーと DynamoDB を消します）は、ポータルの利用者データの扱いに関わる人の判断です。本ラボは事前の検知を持たず、失敗後に案内を読む形です。
+既存の sandbox を持ち、依存が更新された状態で `make sandbox` を再実行すると、AwsCliLayer の内容が変わることがあります。ポータルの `backend.ts` はこの層の論理 ID に asset hash を含めるので、更新は置換ではなく作成 + 削除になり、Express モードの sandbox でも通ります（`docs/agent/portal-cdk-quality-gates.md` の AwsCliLayer の行）。この対策より前のポータルで作った sandbox でも、対策後の `backend.ts` でデプロイすれば同じく作成 + 削除になります。それでも `07 --deploy` が `UPDATE_FAILED` で止まった場合の回復手段の選択（削除と再作成は Cognito ユーザーと DynamoDB を消します）は、ポータルの利用者データの扱いに関わる人の判断です。
 
 ## このラボの範囲外である MPA の経路
 

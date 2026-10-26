@@ -498,6 +498,20 @@ describe("Shared Python layer attachment", () => {
     // function keeps importing the previous version of shared/.
     expect(backendSource).toContain("sources ${sharedSourcesFingerprint}");
   });
+
+  it("puts the asset hash in every AwsCliLayer's logical ID", () => {
+    // Amplify creates these layers for its BucketDeployments, under a logical ID
+    // derived from the construct path. A new @aws-cdk/asset-awscli-v1 changes the
+    // layer content under the same ID, which is a replacement, and a DisableRollback
+    // sandbox refuses it. With the hash in the ID the update is create + delete.
+    const start = backendSource.indexOf("instanceof AwsCliLayer");
+    expect(start, "AwsCliLayer override not found").toBeGreaterThan(-1);
+    const block = backendSource.slice(start, backendSource.indexOf("\n}\n", start));
+    expect(block).toContain("overrideLogicalId(");
+    expect(block).toContain("asset.assetHash");
+    // A layer without an asset would silently keep a content-free ID.
+    expect(block).toContain("throw new Error");
+  });
 });
 
 describe("GraphQL authorization", () => {
