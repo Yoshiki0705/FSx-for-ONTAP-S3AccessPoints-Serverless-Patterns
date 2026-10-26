@@ -230,6 +230,7 @@ AwsSolutions-IAM5[Resource::arn:aws:s3:<AWS::Region>:<AWS::AccountId>:accesspoin
 # it. Those name `s3ObjectLockBucket` once it is configured, and it is unset in
 # `portal-config.example.ts`, which is what this baseline is measured against.
 AwsSolutions-IAM5[Resource::*]	data/ResourceMgmtLambdaRole/Resource
+AwsSolutions-IAM5[Resource::arn:<AWS::Partition>:fsx:<AWS::Region>:<AWS::AccountId>:storage-virtual-machine/*]	data/ResourceMgmtLambdaRole/Resource
 AwsSolutions-IAM5[Resource::arn:<AWS::Partition>:secretsmanager:<AWS::Region>:<AWS::AccountId>:secret:*]	data/ResourceMgmtLambdaRole/Resource
 
 # `textract:DetectDocumentText` and `AnalyzeDocument` define only `adapter` and
