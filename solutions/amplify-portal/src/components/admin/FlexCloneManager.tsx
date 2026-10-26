@@ -25,6 +25,9 @@ export function FlexCloneManager() {
   const [actionError, setActionError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [showCreate, setShowCreate] = useState(false);
+  const [busy, setBusy] = useState(false);
+  /** Clone awaiting delete confirmation, by its UUID. */
+  const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
 
   const [cloneName, setCloneName] = useState("");
   const [parentVolume, setParentVolume] = useState("");
@@ -91,6 +94,28 @@ export function FlexCloneManager() {
       if (data?.success) { setSuccess(t("fcSplitInitiated")); clearSuccess(); loadClones(); }
       else setError(data?.error || "Split failed");
     } catch (e) { setError(e instanceof Error ? e.message : "Split failed"); }
+  };
+
+  /**
+   * Delete a clone volume (as opposed to splitting it to independence).
+   *
+   * Uses the inline confirm row rather than window.confirm, matching the teardown
+   * actions added across this portal. The handler removes the clone the same way a
+   * volume is removed (unmount, offline, delete) and reports that the base snapshot
+   * on the parent remains the operator's to clear.
+   */
+  const handleDelete = async (clone: FlexClone) => {
+    setBusy(true);
+    setError(null);
+    try {
+      const data = await adminMutate<{ success?: boolean }>({
+        action: "deleteFlexClone",
+        params: { volumeUuid: clone.uuid, volumeName: clone.name, confirm: true },
+      });
+      if (data?.success) { setSuccess(t("fcCloneDeleted")); setConfirmDelete(null); clearSuccess(); loadClones(); }
+      else setError(data?.error || "Delete failed");
+    } catch (e) { setError(e instanceof Error ? e.message : "Delete failed"); }
+    finally { setBusy(false); }
   };
 
   return (
@@ -209,9 +234,26 @@ export function FlexCloneManager() {
                 </td>
                 <td>
                   {!c.splitInitiated && (
-                    <button className="rm-btn-sm" onClick={() => handleSplit(c)} title={t("fcSplitTitle")}>
-                      {t("fcSplit")}
-                    </button>
+                    <span className="sm-actions" style={{ padding: 0, border: "none" }}>
+                      <button className="rm-btn-sm" onClick={() => handleSplit(c)} title={t("fcSplitTitle")}>
+                        {t("fcSplit")}
+                      </button>
+                      <button className="rm-btn-danger-sm" disabled={busy}
+                        onClick={() => setConfirmDelete(c.uuid)} title={t("fcDeleteTitle")}>
+                        {t("delete")}
+                      </button>
+                    </span>
+                  )}
+                  {confirmDelete === c.uuid && (
+                    <span className="peer-accept-row" role="alertdialog">
+                      <span className="sm-confirm-text">{t("fcConfirmDelete").replace("{name}", c.name)}</span>
+                      <button className="rm-btn-danger-sm" disabled={busy} onClick={() => handleDelete(c)}>
+                        {t("rmExecute")}
+                      </button>
+                      <button className="rm-btn-sm" onClick={() => setConfirmDelete(null)}>
+                        {t("cancel")}
+                      </button>
+                    </span>
                   )}
                 </td>
               </tr>

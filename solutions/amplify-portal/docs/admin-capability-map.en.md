@@ -139,7 +139,8 @@ Every action is implemented in the Lambda that calls the ONTAP REST API
 | Quotas | ○ | ○ | ○ change the limits, turn per-volume enforcement on and off | ○ |
 | Storage efficiency | ○ | — | — | — |
 | FlexCache | ○ | ○ | ○ enable/disable write-back, resize | ○ |
-| FlexClone | ○ | ○ | ○ split | — |
+| FlexClone | ○ | ○ | ○ split | ○ delete clone † |
+| Object-store buckets | ○ | — | — | ○ |
 
 ### Access control
 
@@ -156,11 +157,12 @@ Every action is implemented in the Lambda that calls the ONTAP REST API
 | Panel | Read | Create | Modify | Delete |
 |-------|:---:|:---:|:---:|:---:|
 | ARP/AI protection | ○ | — | ○ state change, bulk enable | ○ clear suspects |
-| Snapshot management | ○ | ○ policy | ○ enable locking | ○ policy |
-| SnapLock | ○ | — | ○ retention | — |
+| Snapshot management | ○ | ○ policy | ○ enable locking, assign a policy to a volume | ○ policy |
+| SnapLock | ○ config, expired-retention list (read-only) | — | ○ retention | — |
 | SnapMirror | ○ | ○ relationship (destination volume provisioned and initialized) | ○ update now, quiesce, resume, break, resync, abort transfer | ○ delete relationship |
 | Virus scanning | ○ | ○ on-access policy | ○ Vscan enable/disable, policy enable/disable | ○ policy |
-| FPolicy | ○ | ○ event/policy | ○ policy enable/disable | ○ event/policy |
+| FPolicy | ○ event/policy/engine | ○ event/policy | ○ policy enable/disable | ○ event/policy/engine † |
+| Audit | ○ NAS/S3 audit config | — | — | ○ delete NAS/S3 audit † |
 
 ### Cluster
 
@@ -168,6 +170,7 @@ Every action is implemented in the Lambda that calls the ONTAP REST API
 |-------|:---:|:---:|:---:|:---:|
 | Peering | ○ cluster peers/SVM peers/intercluster LIFs | ○ cluster peer/SVM peer | ○ accept (passphrase / state), change SVM peer applications | ○ cluster peer/SVM peer |
 | Cluster information | ○ nodes/licences/LIFs/protocols/DNS/jobs | — | ○ LIF enable/disable, protocol enable/disable, DNS update | — |
+| SVM | ○ list, deletion impact preview | — | — | ○ delete SVM (via FSx API, name re-entry) † |
 
 ### AI services
 
@@ -179,7 +182,14 @@ Every action is implemented in the Lambda that calls the ONTAP REST API
 
 Of the `—` entries above, there is currently nothing where ONTAP offers a way and the portal
 does not reach it. What remains as `—` are operations ONTAP itself does not offer (shortening
-a SnapLock retention, deleting a FlexClone), which is a different thing.
+a SnapLock retention), which is a different thing.
+
+> **† (teardown actions added here, verified on a live cluster 2026-10-26)**: FPolicy engine
+> delete, NAS/S3 audit delete, SVM delete, and FlexClone delete, exercised once on a disposable
+> SVM on fs-002 (ONTAP 9.18.1P6). **SVM delete alone is not permitted through ONTAP REST for the
+> fsxadmin account (code 6) and goes through the AWS FSx API.** The REST/FSx paths, sync/async
+> behaviour, teardown order, and measurements are in the
+> [ONTAP teardown guide](ontap-teardown-guide.en.md).
 
 The four entries that used to be listed here -- resizing a FlexCache, renaming a qtree,
 moving a name mapping's evaluation order, and per-volume quota enforcement -- are all
@@ -346,6 +356,7 @@ two levels above.
 ## Related documents
 
 - [Resource management demo guide](resource-management-demo-guide.en.md) — per-panel steps
+- [ONTAP teardown guide](ontap-teardown-guide.en.md) — delete actions: REST, sync/async, dependency order
 - [Implementation guide](IMPLEMENTATION.en.md) — architecture and configuration
 - [ONTAP connection guide](ONTAP-CONNECTION-GUIDE.en.md) — connecting to the management endpoint
 - [AI agent demo guide](ai-agent-demo-guide.en.md)

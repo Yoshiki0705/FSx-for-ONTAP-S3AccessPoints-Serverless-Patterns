@@ -2603,6 +2603,504 @@ class TestFPolicy:
         assert ev["fileOperations"] == ["create", "delete"]
 
 
+class TestFPolicyEngine:
+    """The last step of an FPolicy teardown: policy -> event -> engine.
+
+    ONTAP refuses to delete an engine a policy still names, and the built-in
+    `native` engine is never a teardown target, so both guards sit in front of
+    the DELETE.
+    """
+
+    def test_list_flags_native(self, mock_secrets):
+        from rm_handler import handler
+
+        http = MockHttp(
+            {
+                "/svm/svms": {"data": {"records": [{"uuid": "svm-1"}]}},
+                "/engines": {
+                    "data": {
+                        "records": [
+                            {"name": "native", "type": "synchronous"},
+                            {"name": "external_1", "type": "asynchronous"},
+                        ]
+                    }
+                },
+            }
+        )
+        with patch("rm_handler.urllib3.PoolManager", return_value=http):
+            result = handler({"action": "listFpolicyEngines"}, None)
+
+        assert result["error"] is None
+        by_name = {e["name"]: e for e in result["engines"]}
+        assert by_name["native"]["isNative"] is True
+        assert by_name["external_1"]["isNative"] is False
+
+    def test_delete_targets_the_named_engine_and_reads_back(self, mock_secrets):
+        from rm_handler import handler
+
+        http = MockHttp(
+            {
+                "/svm/svms": {"data": {"records": [{"uuid": "svm-1"}]}},
+                # Read-back after the DELETE: empty means gone.
+                "/engines": {"data": {"records": []}},
+            }
+        )
+        with patch("rm_handler.urllib3.PoolManager", return_value=http):
+            result = handler(
+                {"action": "deleteFpolicyEngine", "name": "external_1", "confirm": True},
+                None,
+            )
+
+        assert result["success"] is True
+        deletes = [c for c in http.calls if c[0] == "DELETE"]
+        assert len(deletes) == 1
+        assert "/protocols/fpolicy/svm-1/engines/external_1" in deletes[0][1]
+
+    def test_native_is_refused_without_calling_ontap(self, mock_secrets):
+        from rm_handler import handler
+
+        http = MockHttp({"/svm/svms": {"data": {"records": [{"uuid": "svm-1"}]}}})
+        with patch("rm_handler.urllib3.PoolManager", return_value=http):
+            result = handler(
+                {"action": "deleteFpolicyEngine", "name": "native", "confirm": True},
+                None,
+            )
+
+        assert result["success"] is False
+        assert "native" in result["error"].lower()
+        assert not [c for c in http.calls if c[0] == "DELETE"]
+
+    def test_attached_engine_failure_gets_the_teardown_hint(self, mock_secrets):
+        from rm_handler import handler
+
+        http = MockHttp(
+            {
+                "/svm/svms": {"data": {"records": [{"uuid": "svm-1"}]}},
+                "/engines/external_1": {
+                    "status": 400,
+                    "data": {
+                        "error": {
+                            "message": "Deletion of an FPolicy engine that is attached to one or more FPolicy policies is not allowed."
+                        }
+                    },
+                },
+            }
+        )
+        with patch("rm_handler.urllib3.PoolManager", return_value=http):
+            result = handler(
+                {"action": "deleteFpolicyEngine", "name": "external_1", "confirm": True},
+                None,
+            )
+
+        assert result["success"] is False
+        assert "teardown order" in result["error"].lower()
+
+    def test_delete_that_leaves_the_engine_present_is_a_failure(self, mock_secrets):
+        """A DELETE ONTAP accepted but did not apply must not read as success."""
+        from rm_handler import handler
+
+        http = MockHttp(
+            {
+                "/svm/svms": {"data": {"records": [{"uuid": "svm-1"}]}},
+                # Read-back still finds it.
+                "/engines": {"data": {"records": [{"name": "external_1"}]}},
+            }
+        )
+        with patch("rm_handler.urllib3.PoolManager", return_value=http):
+            result = handler(
+                {"action": "deleteFpolicyEngine", "name": "external_1", "confirm": True},
+                None,
+            )
+
+        assert result["success"] is False
+        assert "still present" in result["error"]
+
+
+class TestAudit:
+    """Removing an SVM's audit configuration so its log volume can be deleted.
+
+    ONTAP refuses to delete an audit configuration while it is enabled (140902421),
+    so the delete disables first, the way a volume is taken offline before delete.
+    Both the NAS and the object-store legs share one implementation.
+    """
+
+    def test_get_config_reports_both_legs(self, mock_secrets):
+        from rm_handler import handler
+
+        http = MockHttp(
+            {
+                "/svm/svms": {"data": {"records": [{"uuid": "svm-1"}]}},
+                # Measured on 9.18.1P6: the destination is reported as log_path, not
+                # log.volume.name.
+                "/protocols/audit/svm-1/object-store": {"data": {"enabled": False, "log_path": "/s3audit_vol"}},
+                # The NAS leg matches the base path; object-store is matched above.
+                "/protocols/audit/svm-1": {"data": {"enabled": True, "log_path": "/nasaudit_vol"}},
+            }
+        )
+        with patch("rm_handler.urllib3.PoolManager", return_value=http):
+            result = handler({"action": "getAuditConfig"}, None)
+
+        assert result["error"] is None
+        assert result["nasAudit"]["logVolume"] == "/nasaudit_vol"
+        assert result["nasAudit"]["enabled"] is True
+        assert result["objectStoreAudit"]["logVolume"] == "/s3audit_vol"
+
+    def test_delete_disables_before_deleting(self, mock_secrets):
+        """When auditing is enabled, the PATCH disable must precede the DELETE."""
+        from rm_handler import handler
+
+        http = MockHttp(
+            {
+                "/svm/svms": {"data": {"records": [{"uuid": "svm-1"}]}},
+                # First GET: enabled. After DELETE the read-back GET matches the same
+                # fragment, so the handler's read-back sees the same record -- the
+                # MockHttp cannot vary a response by call order, so this test asserts
+                # ordering via the recorded calls rather than the read-back result.
+                "/protocols/audit/svm-1": {"data": {"enabled": True, "log_path": "/v"}},
+            }
+        )
+        with patch("rm_handler.urllib3.PoolManager", return_value=http):
+            handler({"action": "deleteAudit", "confirm": True}, None)
+
+        methods = [c[0] for c in http.calls if "/protocols/audit/svm-1" in c[1]]
+        assert "PATCH" in methods and "DELETE" in methods
+        assert methods.index("PATCH") < methods.index("DELETE")
+
+    def test_delete_object_store_targets_the_object_store_path(self, mock_secrets):
+        from rm_handler import handler
+
+        http = MockHttp(
+            {
+                "/svm/svms": {"data": {"records": [{"uuid": "svm-1"}]}},
+                "/protocols/audit/svm-1/object-store": {"data": {"enabled": False, "log_path": "/v"}},
+            }
+        )
+        with patch("rm_handler.urllib3.PoolManager", return_value=http):
+            handler({"action": "deleteObjectStoreAudit", "confirm": True}, None)
+
+        # The MockHttp returns the same "configured" record for the read-back GET,
+        # so success cannot be asserted here (on a live cluster the read-back is a
+        # 404). What this fixes is the path: the DELETE must target the object-store
+        # leg, and because the config was not enabled there is no disable PATCH.
+        deletes = [c for c in http.calls if c[0] == "DELETE"]
+        assert any("/protocols/audit/svm-1/object-store" in c[1] for c in deletes)
+        assert not [c for c in http.calls if c[0] == "PATCH"]
+
+    def test_delete_refuses_without_confirm(self, mock_secrets):
+        from rm_handler import handler
+
+        http = MockHttp({"/svm/svms": {"data": {"records": [{"uuid": "svm-1"}]}}})
+        with patch("rm_handler.urllib3.PoolManager", return_value=http):
+            result = handler({"action": "deleteAudit"}, None)
+
+        assert result["success"] is False
+        assert "confirm" in result["error"].lower()
+        assert not [c for c in http.calls if c[0] == "DELETE"]
+
+    def test_delete_with_no_configuration_reports_it(self, mock_secrets):
+        from rm_handler import handler
+
+        # Default MockHttp returns empty records, so _audit_leg reads "not configured".
+        http = MockHttp({"/svm/svms": {"data": {"records": [{"uuid": "svm-1"}]}}})
+        with patch("rm_handler.urllib3.PoolManager", return_value=http):
+            result = handler({"action": "deleteAudit", "confirm": True}, None)
+
+        assert result["success"] is False
+        assert "no nas audit" in result["error"].lower()
+
+    def test_delete_retries_on_final_consolidation(self, mock_secrets):
+        """The delete immediately after a disable fails with 'Final consolidation';
+        the handler retries rather than giving up on the first one.
+
+        Measured on 9.18.1P6: a retry ~20s later succeeds. Here the DELETE is refused
+        with the consolidation message every time, so the handler exhausts its
+        retries -- what this pins is that it made more than one DELETE attempt and
+        slept between them, not a single failed call.
+        """
+        from rm_handler import handler
+
+        http = MockHttp(
+            {
+                "/svm/svms": {"data": {"records": [{"uuid": "svm-1"}]}},
+                # Disabled already, so no PATCH; the DELETE is refused with the
+                # consolidation error on every attempt.
+                "/protocols/audit/svm-1": {
+                    "status": 400,
+                    "data": {"error": {"message": "Final consolidation is in progress. Retry after sometime."}},
+                },
+            }
+        )
+        # The read of the current config comes from the same base-path pattern, which
+        # returns the 400; _audit_leg treats an _error as "not configured". To get
+        # past the existence check, serve a configured, disabled record for the GET
+        # and the 400 only for the DELETE by giving the DELETE its own matcher is not
+        # possible with substring matching, so this test drives _delete_audit_leg
+        # directly instead.
+        from rm_handler import _delete_audit_leg
+
+        calls = {"delete": 0}
+        orig_request = http.request
+
+        def counting(method, url, **kw):
+            if method == "DELETE":
+                calls["delete"] += 1
+            if method == "GET" and "/protocols/audit/svm-1" in url and "jobs" not in url:
+                return MockResponse(200, {"enabled": False, "log_path": "/v"})
+            return orig_request(method, url, **kw)
+
+        http.request = counting
+        with patch("rm_handler.urllib3.PoolManager", return_value=http), patch("rm_handler.time.sleep"):
+            result = _delete_audit_leg(http, {}, "svm-1", "", "u", "NAS")
+
+        assert result["success"] is False
+        assert "consolidation" in result["error"].lower()
+        assert calls["delete"] >= 2, "the delete should have been retried"
+
+
+class _FsxNotFound(Exception):
+    """Stand-in for botocore's StorageVirtualMachineNotFound, matched by class name."""
+
+
+def fsx_client(*, svms=None, delete_error=None, describe_after_delete="DELETING"):
+    """A fake boto3 FSx client for the SVM actions.
+
+    `listSvms` and `deleteSvm` reach FSx through `boto3.client("fsx")`. The handler's
+    `boto3` is patched by `mock_secrets` for Secrets Manager; this returns a separate
+    MagicMock for the "fsx" client while leaving the secretsmanager mock in place.
+
+    Measured behaviour this models: the delete is accepted and the SVM then reports a
+    DELETING lifecycle (or NotFound once gone), and the non-root-volume refusal comes
+    back as a botocore ClientError carrying that message.
+    """
+    fsx = MagicMock()
+
+    # describe_storage_virtual_machines with a paginator (listSvms) and direct
+    # (delete read-back).
+    svm_records = svms or []
+    paginator = MagicMock()
+    paginator.paginate.return_value = [{"StorageVirtualMachines": svm_records}]
+    fsx.get_paginator.return_value = paginator
+
+    def _describe(StorageVirtualMachineIds=None, **_kw):
+        if describe_after_delete == "NotFound":
+            raise _FsxNotFound("StorageVirtualMachineNotFound")
+        return {"StorageVirtualMachines": [{"Lifecycle": describe_after_delete}]}
+
+    fsx.describe_storage_virtual_machines.side_effect = _describe
+    fsx.exceptions.StorageVirtualMachineNotFound = _FsxNotFound
+
+    def _delete(StorageVirtualMachineId=None, **_kw):
+        if delete_error is not None:
+            err = Exception(delete_error)
+            err.response = {"Error": {"Message": delete_error}}
+            raise err
+        return {}
+
+    fsx.delete_storage_virtual_machine.side_effect = _delete
+    return fsx
+
+
+def _patch_fsx(mock_secrets_fixture, fsx):
+    """Route boto3.client('fsx') to `fsx`, keeping the secretsmanager mock.
+
+    `mock_secrets` already patched `rm_handler.boto3`; its `.client` returns the
+    Secrets Manager mock for every service. This narrows it: 'fsx' -> the fake FSx
+    client, anything else -> whatever the secrets mock returned.
+    """
+    import rm_handler
+
+    sm_default = rm_handler.boto3.client.return_value
+
+    def _client(service, *a, **k):
+        return fsx if service == "fsx" else sm_default
+
+    rm_handler.boto3.client.side_effect = _client
+
+
+class TestSvmManagement:
+    """Listing and deleting an SVM through the FSx API.
+
+    On FSx for ONTAP the SVM delete goes through the FSx control plane, not ONTAP
+    REST (fsxadmin is not authorised for ONTAP's SVM delete -- measured code 6). The
+    listing is also FSx-sourced so it carries the FSx id the delete needs. The
+    deletion-impact preview stays on ONTAP REST, where `is_svm_root` is reliable.
+    """
+
+    def test_list_flags_default(self, mock_secrets):
+        from rm_handler import handler
+
+        # listSvms derives the file system id from the ONTAP cluster name, then calls
+        # the FSx API. The cluster GET is served over the urllib3 pool; the FSx call
+        # over the fake client.
+        http = MockHttp({"/cluster": {"data": {"name": "FsxId0123456789abcdef0"}}})
+        fsx = fsx_client(
+            svms=[
+                {"Name": "svm1", "StorageVirtualMachineId": "svm-1", "Lifecycle": "CREATED", "Subtype": "default"},
+                {"Name": "other", "StorageVirtualMachineId": "svm-2", "Lifecycle": "CREATED", "Subtype": "default"},
+            ]
+        )
+        with patch("rm_handler.urllib3.PoolManager", return_value=http):
+            _patch_fsx(mock_secrets, fsx)
+            result = handler({"action": "listSvms"}, None)
+
+        by_name = {s["name"]: s for s in result["svms"]}
+        assert by_name["svm1"]["svmId"] == "svm-1"
+        # SVM_NAME is svm1 in the test env (conftest).
+        assert by_name["svm1"]["isDefault"] is True
+        assert by_name["other"]["isDefault"] is False
+        # The FSx call was scoped to the file system id derived from the cluster name.
+        _, kwargs = fsx.get_paginator.return_value.paginate.call_args
+        assert kwargs["Filters"][0]["Values"] == ["fs-0123456789abcdef0"]
+
+    def test_impact_separates_root_from_non_root(self, mock_secrets):
+        from rm_handler import handler
+
+        http = MockHttp(
+            {
+                "/storage/volumes": {
+                    "data": {
+                        "records": [
+                            {"name": "root", "uuid": "r1", "is_svm_root": True},
+                            {"name": "data1", "uuid": "d1", "is_svm_root": False, "nas": {"path": "/data1"}},
+                        ]
+                    }
+                }
+            }
+        )
+        with patch("rm_handler.urllib3.PoolManager", return_value=http):
+            result = handler({"action": "getSvmDeletionImpact", "svm": "svm1"}, None)
+
+        assert result["nonRootCount"] == 1
+        assert result["canDelete"] is False
+        assert result["rootVolume"]["name"] == "root"
+        assert result["nonRootVolumes"][0]["name"] == "data1"
+
+    def test_delete_calls_fsx_api_and_reports_lifecycle(self, mock_secrets):
+        from rm_handler import handler
+
+        http = MockHttp()
+        fsx = fsx_client(describe_after_delete="DELETING")
+        with patch("rm_handler.urllib3.PoolManager", return_value=http):
+            _patch_fsx(mock_secrets, fsx)
+            result = handler(
+                {"action": "deleteSvm", "svm": "svm1", "svmId": "svm-uuid-1", "confirm": True},
+                None,
+            )
+
+        assert result["success"] is True
+        assert result["lifecycle"] == "DELETING"
+        fsx.delete_storage_virtual_machine.assert_called_once_with(StorageVirtualMachineId="svm-uuid-1")
+        # The delete never touches the ONTAP REST pool.
+        assert not [c for c in http.calls if c[0] == "DELETE"]
+
+    def test_delete_reports_gone_when_already_not_found(self, mock_secrets):
+        from rm_handler import handler
+
+        http = MockHttp()
+        fsx = fsx_client(describe_after_delete="NotFound")
+        with patch("rm_handler.urllib3.PoolManager", return_value=http):
+            _patch_fsx(mock_secrets, fsx)
+            result = handler(
+                {"action": "deleteSvm", "svm": "svm1", "svmId": "svm-uuid-1", "confirm": True},
+                None,
+            )
+
+        assert result["success"] is True
+        assert result["lifecycle"] == "DELETED"
+
+    def test_delete_surfaces_non_root_refusal_with_ontap_note(self, mock_secrets):
+        """FSx refuses while a non-root volume remains; the note explains the plane gap."""
+        from rm_handler import handler
+
+        http = MockHttp()
+        fsx = fsx_client(
+            delete_error="Cannot delete storage virtual machine while it has non-root volumes: fsvol-0abc",
+        )
+        with patch("rm_handler.urllib3.PoolManager", return_value=http):
+            _patch_fsx(mock_secrets, fsx)
+            result = handler(
+                {"action": "deleteSvm", "svm": "svm1", "svmId": "svm-uuid-1", "confirm": True},
+                None,
+            )
+
+        assert result["success"] is False
+        assert "non-root volume" in result["error"]
+        assert "recovery-queue" in result["error"]
+
+    def test_delete_refuses_without_confirm(self, mock_secrets):
+        from rm_handler import handler
+
+        http = MockHttp()
+        fsx = fsx_client()
+        with patch("rm_handler.urllib3.PoolManager", return_value=http):
+            _patch_fsx(mock_secrets, fsx)
+            result = handler({"action": "deleteSvm", "svmId": "svm-uuid-1"}, None)
+
+        assert result["success"] is False
+        assert "confirm" in result["error"].lower()
+        fsx.delete_storage_virtual_machine.assert_not_called()
+
+    def test_delete_requires_svm_id(self, mock_secrets):
+        from rm_handler import handler
+
+        http = MockHttp()
+        fsx = fsx_client()
+        with patch("rm_handler.urllib3.PoolManager", return_value=http):
+            _patch_fsx(mock_secrets, fsx)
+            result = handler({"action": "deleteSvm", "confirm": True}, None)
+
+        assert result["success"] is False
+        assert "svmId" in result["error"]
+
+
+class TestFlexCloneDelete:
+    """Removing a clone volume, versus splitting it to independence."""
+
+    def test_delete_follows_offline_before_delete(self, mock_secrets):
+        from rm_handler import handler
+
+        http = MockHttp(
+            {
+                "/storage/volumes/clone-1": {"data": {}},
+                "/cluster/jobs": {"data": {"state": "success"}},
+            }
+        )
+        with patch("rm_handler.urllib3.PoolManager", return_value=http):
+            result = handler(
+                {"action": "deleteFlexClone", "volumeUuid": "clone-1", "volumeName": "clone1", "confirm": True},
+                None,
+            )
+
+        assert result["success"] is True
+        methods = [c[0] for c in http.calls if "/storage/volumes/clone-1" in c[1]]
+        # offline PATCH precedes the DELETE.
+        assert methods.index("PATCH") < methods.index("DELETE")
+
+    def test_delete_notes_the_parent_base_snapshot(self, mock_secrets):
+        from rm_handler import handler
+
+        http = MockHttp({"/storage/volumes/clone-1": {"data": {}}})
+        with patch("rm_handler.urllib3.PoolManager", return_value=http):
+            result = handler(
+                {"action": "deleteFlexClone", "volumeUuid": "clone-1", "confirm": True},
+                None,
+            )
+
+        assert result["success"] is True
+        assert "parent" in result["parentSnapshotNote"].lower()
+
+    def test_delete_refuses_without_confirm(self, mock_secrets):
+        from rm_handler import handler
+
+        http = MockHttp()
+        with patch("rm_handler.urllib3.PoolManager", return_value=http):
+            result = handler({"action": "deleteFlexClone", "volumeUuid": "clone-1"}, None)
+
+        assert result["success"] is False
+        assert "confirm" in result["error"].lower()
+        assert not [c for c in http.calls if c[0] == "DELETE"]
+
+
 class TestNewActionsAreRouted:
     """Every action the 7 panels call must resolve to a handler, not fall through."""
 
@@ -3597,6 +4095,8 @@ class TestConfirmGatedDeletesMatchUiPayloads:
         ("resyncSnapmirror", {"relationshipUuid": "sm-1", "confirm": True}, "/snapmirror"),
         ("deleteClusterPeer", {"uuid": "cp-1", "confirm": True}, "/cluster/peers"),
         ("deleteSvmPeer", {"uuid": "sp-1", "confirm": True}, "/svm/peers"),
+        ("deleteFpolicyEngine", {"name": "external_1", "confirm": True}, "/engines"),
+        ("deleteFlexClone", {"volumeUuid": "clone-1", "confirm": True}, "/storage/volumes"),
     ]
 
     @pytest.mark.parametrize("action,params,_path", UI_DELETE_PAYLOADS)

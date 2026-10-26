@@ -278,6 +278,10 @@ export interface ResourceMgmtActionParams {
     maxFileSize?: number;
     svm?: string;
   };
+  deleteAudit: {
+    confirm: boolean;
+    svm?: string;
+  };
   deleteCifsShare: {
     confirm: boolean;
     name: string;
@@ -298,6 +302,16 @@ export interface ResourceMgmtActionParams {
   deleteFlexCache: {
     uuid: string;
     name?: string;
+  };
+  deleteFlexClone: {
+    confirm: boolean;
+    volumeUuid: VolumeUuid;
+    volumeName?: string;
+  };
+  deleteFpolicyEngine: {
+    confirm: boolean;
+    name: string;
+    svm?: string;
   };
   deleteFpolicyEvent: {
     confirm: boolean;
@@ -322,6 +336,10 @@ export interface ResourceMgmtActionParams {
   deleteNameMapping: {
     direction?: string;
     index?: number;
+    svm?: string;
+  };
+  deleteObjectStoreAudit: {
+    confirm: boolean;
     svm?: string;
   };
   deleteObjectStoreBucket: {
@@ -349,6 +367,11 @@ export interface ResourceMgmtActionParams {
     confirm: boolean;
     policyUuid: PolicyUuid;
   };
+  deleteSvm: {
+    confirm: boolean;
+    svmId: string;
+    svm?: string;
+  };
   deleteSvmPeer: {
     confirm: boolean;
     uuid: string;
@@ -374,6 +397,9 @@ export interface ResourceMgmtActionParams {
   };
   getArpSuspectsAdmin: {
     volumeUuid: VolumeUuid;
+  };
+  getAuditConfig: {
+    svm?: string;
   };
   /** No parameters. */
   getClusterInfo: Record<string, never>;
@@ -416,6 +442,9 @@ export interface ResourceMgmtActionParams {
   getSnapshotLockingStatus: {
     volumeUuid: VolumeUuid;
   };
+  getSvmDeletionImpact: {
+    svm?: string;
+  };
   getVolume: {
     volumeUuid: VolumeUuid;
   };
@@ -446,6 +475,9 @@ export interface ResourceMgmtActionParams {
   /** No parameters. */
   listFlexCaches: Record<string, never>;
   listFlexClones: {
+    svm?: string;
+  };
+  listFpolicyEngines: {
     svm?: string;
   };
   listFpolicyEvents: {
@@ -505,6 +537,8 @@ export interface ResourceMgmtActionParams {
   };
   /** No parameters. */
   listSvmPeers: Record<string, never>;
+  /** No parameters. */
+  listSvms: Record<string, never>;
   listVolumes: {
     svm?: string;
   };
@@ -1123,17 +1157,22 @@ export const ACTIONS_ACCEPTING_SVM: ReadonlySet<string> = new Set([
   "createSnapshotPolicy",
   "createVolume",
   "createVscanPolicy",
+  "deleteAudit",
   "deleteCifsShare",
+  "deleteFpolicyEngine",
   "deleteFpolicyEvent",
   "deleteFpolicyPolicy",
   "deleteLocalGroup",
   "deleteLocalUser",
   "deleteNameMapping",
+  "deleteObjectStoreAudit",
   "deleteObjectStoreBucket",
   "deleteQtree",
+  "deleteSvm",
   "deleteVscanPolicy",
   "disconnectSessions",
   "getArpStatus",
+  "getAuditConfig",
   "getDnsConfig",
   "getEfficiencyStats",
   "getFilePermissions",
@@ -1142,6 +1181,7 @@ export const ACTIONS_ACCEPTING_SVM: ReadonlySet<string> = new Set([
   "getQuotaReport",
   "getSnaplockConfig",
   "getSnaplockStatus",
+  "getSvmDeletionImpact",
   "getVolumeMountInfo",
   "getVscanStatus",
   "listActiveBlocks",
@@ -1150,6 +1190,7 @@ export const ACTIONS_ACCEPTING_SVM: ReadonlySet<string> = new Set([
   "listExpiredRetention",
   "listExportPolicies",
   "listFlexClones",
+  "listFpolicyEngines",
   "listFpolicyEvents",
   "listFpolicyPolicies",
   "listGroupMembers",

@@ -1,10 +1,19 @@
 import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { useTranslation } from "../../i18n";
 import { adminMutate, adminQuery } from "../../lib/dispatch";
 import type { VolumeUuid } from "../../lib/dispatchActions";
 import { SnaplockConfirmDialog } from "../SnaplockConfirmDialog";
 import { VolumeSelector } from "./VolumeSelector";
 import type { SnaplockIntent } from "../../utils/snaplockConsequences";
+
+interface ExpiredEntry {
+  resourceType: "volume" | "snapshot";
+  volumeName: string;
+  snapshotName?: string;
+  snaplockType?: string;
+  expiryTime: string;
+}
 
 interface SnaplockConfig {
   volumeName: string;
@@ -31,6 +40,26 @@ export function SnaplockManager() {
   const [retentionDays, setRetentionDays] = useState(30);
   /** Set while the consequence dialog is open; null when nothing is pending. */
   const [pendingSnaplock, setPendingSnaplock] = useState<SnaplockIntent | null>(null);
+
+  // Read-only view of locked resources whose retention has passed (expired) or
+  // not yet (pending). This panel only shows them -- the deletion that would
+  // follow is irreversible and is deliberately not offered here, so the boundary
+  // that SnapLock retention is never shortened or bypassed stays intact.
+  const { data: expiredData } = useQuery({
+    queryKey: ["admin", "listExpiredRetention"],
+    queryFn: async () => {
+      const parsed = await adminQuery<{
+        expired?: ExpiredEntry[];
+        pending?: ExpiredEntry[];
+        complianceClockTime?: string | null;
+        clockSource?: string;
+      }>({ action: "listExpiredRetention" });
+      if (parsed?.error && !parsed.error.includes("Unknown action") && !parsed.error.includes("not configured")) {
+        throw new Error(parsed.error);
+      }
+      return parsed;
+    },
+  });
 
   const loadConfig = async (volumeName?: string) => {
     const name = volumeName || volumeInput;
@@ -109,6 +138,44 @@ export function SnaplockManager() {
 
       {error && <div className="error-message">{error}</div>}
       {result && <div className="success-message">{result}</div>}
+
+      {/* Retention status across the SVM — read-only. Deleting an expired lock is
+          irreversible and is not offered from here; this only surfaces what has
+          passed its retention so an operator can plan removal elsewhere. */}
+      {expiredData && ((expiredData.expired?.length ?? 0) > 0 || (expiredData.pending?.length ?? 0) > 0) && (
+        <div className="rm-form" style={{ marginBottom: "1.5rem" }}>
+          <h4>{t("slExpiredTitle")}</h4>
+          <p className="rm-hint">
+            {t("slExpiredClock")}: {expiredData.complianceClockTime
+              ? new Date(expiredData.complianceClockTime).toLocaleString()
+              : t("slExpiredNoClock")}
+          </p>
+          <p className="rm-hint">{t("slExpiredReadOnly")}</p>
+          <table className="rm-table">
+            <thead><tr>
+              <th>{t("slExpiredStatus")}</th><th>{t("slExpiredResource")}</th>
+              <th>{t("rmVolumeName")}</th><th>{t("slExpiredExpiry")}</th>
+            </tr></thead>
+            <tbody>
+              {[
+                ...(expiredData.expired ?? []).map(e => ({ ...e, status: "expired" as const })),
+                ...(expiredData.pending ?? []).map(e => ({ ...e, status: "pending" as const })),
+              ].map((e, i) => (
+                <tr key={i}>
+                  <td>
+                    <span className={`lu-badge ${e.status === "expired" ? "disabled" : "active"}`}>
+                      {e.status === "expired" ? t("slExpiredPast") : t("slExpiredPendingWord")}
+                    </span>
+                  </td>
+                  <td>{e.resourceType === "snapshot" ? `${t("slExpiredSnapshot")}: ${e.snapshotName}` : t("slExpiredVolume")}</td>
+                  <td className="lu-username">{e.volumeName}</td>
+                  <td>{e.expiryTime ? new Date(e.expiryTime).toLocaleString() : "—"}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
 
       {/* Volume lookup */}
       <div className="create-form" style={{ marginBottom: "1.5rem" }}>

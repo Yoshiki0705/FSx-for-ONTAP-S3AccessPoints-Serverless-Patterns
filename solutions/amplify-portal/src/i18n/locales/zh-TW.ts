@@ -1868,4 +1868,90 @@ arpResponseSweepNote: "封鎖會在設定的期限過後自動解除。如需提
   // --- Shared / misc ---
   processing: "處理中...",
   athenaGuidanceTitle: "使用方法",
+
+  // --- Teardown: panel navigation (ResourceManagement cards) ---
+  rmAudit: "稽核",
+  rmAuditDesc: "檢視及刪除 NAS / S3 稽核組態",
+  rmObjectStore: "物件儲存貯體",
+  rmObjectStoreDesc: "列出並刪除 ONTAP 物件儲存貯體",
+  rmSvm: "SVM",
+  rmSvmDesc: "清理磁碟區後列出並刪除 SVM",
+  rmEdit: "編輯",
+
+  // --- Teardown: FPolicy engines ---
+  fpEngines: "引擎",
+  fpEngineType: "類型",
+  fpNoEngines: "沒有引擎",
+  fpEngineNative: "native（內建）",
+  fpEngineNativeHint: "native 引擎為 ONTAP 內建，無法刪除",
+  fpConfirmDeleteEngine: "刪除此引擎。若仍有 FPolicy 原則參照它，ONTAP 會拒絕。是否繼續？",
+  fpTeardownTitle: "FPolicy 拆除順序",
+  fpTeardown1: "停用原則",
+  fpTeardown2: "刪除原則",
+  fpTeardown3: "刪除原則參照的事件",
+  fpTeardown4: "最後刪除引擎",
+
+  // --- Teardown: audit ---
+  auditIntro: "作為稽核記錄目標的磁碟區無法刪除。請先在此刪除稽核組態。",
+  auditNas: "NAS 稽核",
+  auditObjectStore: "S3（物件儲存）稽核",
+  auditEnabled: "已啟用",
+  auditLogVolume: "記錄磁碟區",
+  auditNotConfigured: "未設定",
+  auditVolumeDependencyHint: "此磁碟區是稽核記錄目標。刪除磁碟區之前請先刪除此稽核組態。",
+  auditDelete: "刪除稽核",
+  auditConfirmDelete: "刪除此稽核組態。若已啟用，將先停用。是否繼續？",
+  auditDeleted: "已刪除稽核組態",
+
+  // --- Teardown: SVM ---
+  svmIntro: "刪除 SVM 會連同其根磁碟區一併刪除。若仍擁有非根磁碟區則無法刪除。",
+  svmName: "SVM 名稱",
+  svmSubtype: "子類型",
+  svmDefault: "預設",
+  svmNone: "沒有 SVM",
+  svmBlockedByVolumes: "此 SVM 仍擁有 {count} 個非根磁碟區。請先刪除它們。",
+  svmConfirmDelete: "刪除 SVM「{name}」及其根磁碟區。此操作無法復原。",
+  svmTypeToConfirm: "請輸入 SVM 名稱「{name}」以確認",
+  svmDeleted: "已刪除 SVM「{name}」",
+
+  // --- Teardown: FlexClone delete ---
+  fcCloneDeleted: "已刪除複本",
+  fcConfirmDelete: "刪除複本「{name}」。父磁碟區上的基礎 Snapshot 將保留。是否繼續？",
+  fcDeleteTitle: "刪除此複本磁碟區（split 為獨立化，delete 為刪除）",
+
+  // --- Teardown: object-store buckets ---
+  osbIntro: "這些是 ONTAP 自身的物件儲存貯體，與帳戶的 Amazon S3 貯體是不同的命名空間。",
+  osbName: "貯體名稱",
+  osbVolume: "磁碟區",
+  osbType: "類型",
+  osbNone: "沒有物件儲存貯體",
+  osbConfirmDelete: "刪除貯體「{name}」。透過它讀取的 S3 Access Points 將失去資料路徑。是否繼續？",
+  osbDeleted: "已刪除貯體「{name}」",
+
+  // --- Teardown: QoS edit ---
+  rmQosEdit: "編輯 QoS 原則「{name}」",
+  rmQosUpdated: "已更新 QoS 原則「{name}」",
+
+  // --- Teardown: SnapLock expired-retention list (read-only) ---
+  slExpiredTitle: "保留期限狀態",
+  slExpiredClock: "合規時鐘",
+  slExpiredNoClock: "無法取得",
+  slExpiredReadOnly: "此清單為唯讀。刪除已到期的鎖定無法復原，因此不在此處執行。",
+  slExpiredStatus: "狀態",
+  slExpiredResource: "資源",
+  slExpiredExpiry: "到期",
+  slExpiredPast: "已到期",
+  slExpiredPendingWord: "保留中",
+  slExpiredVolume: "磁碟區",
+  slExpiredSnapshot: "Snapshot",
+
+  // --- Teardown: snapshot policy assignment ---
+  rmSnapAssignTo: "指派給磁碟區",
+  rmSnapSelectPolicy: "選擇原則",
+  rmSnapPolicyAssigned: "已指派原則「{name}」",
+  rmSnapAssignLockHint: "此原則會鎖定 Snapshot。指派後，此磁碟區建立的每個 Snapshot 在到期前都無法刪除。",
+
+  // --- Teardown: volume delete dependency (clones) ---
+  rmDeleteCloneList: "阻止刪除磁碟區「{parent}」的複本：",
+  rmDeleteCloneListAction: "請在 FlexClone 面板中對這些複本執行 split（獨立化）或 delete（刪除），再刪除父磁碟區。",
 };

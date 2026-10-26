@@ -25,7 +25,13 @@ interface FPolicyConnection {
   state: string;
 }
 
-type Tab = "policies" | "events" | "connections";
+interface FPolicyEngine {
+  name: string;
+  type: string;
+  isNative: boolean;
+}
+
+type Tab = "policies" | "events" | "engines" | "connections";
 
 export function FPolicyManager() {
   const { t } = useTranslation();
@@ -35,8 +41,8 @@ export function FPolicyManager() {
   const [success, setSuccess] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [showCreate, setShowCreate] = useState(false);
-  /** Policy or event awaiting delete confirmation. */
-  const [confirmFor, setConfirmFor] = useState<{ kind: "policy" | "event"; name: string } | null>(null);
+  /** Policy, event or engine awaiting delete confirmation. */
+  const [confirmFor, setConfirmFor] = useState<{ kind: "policy" | "event" | "engine"; name: string } | null>(null);
   // Policy form
   const [polName, setPolName] = useState("");
   const [polEvents, setPolEvents] = useState("");
@@ -95,10 +101,13 @@ export function FPolicyManager() {
           ? ({ action: "listFpolicyPolicies" } as const)
           : tab === "events"
             ? ({ action: "listFpolicyEvents" } as const)
-            : ({ action: "getFpolicyStatus" } as const);
+            : tab === "engines"
+              ? ({ action: "listFpolicyEngines" } as const)
+              : ({ action: "getFpolicyStatus" } as const);
       const parsed = await adminQuery<{
         policies?: FPolicyPolicy[];
         events?: FPolicyEvent[];
+        engines?: FPolicyEngine[];
         connections?: FPolicyConnection[];
       }>(call);
       // A dispatcher that is not wired yet is an empty list, not a failure.
@@ -115,6 +124,7 @@ export function FPolicyManager() {
 
   const policies = tab === "policies" ? data?.policies ?? [] : [];
   const events = tab === "events" ? data?.events ?? [] : [];
+  const engines = tab === "engines" ? data?.engines ?? [] : [];
   const connections = tab === "connections" ? data?.connections ?? [] : [];
 
   // Mutation handlers report through their own state, so a failed action is
@@ -127,13 +137,14 @@ export function FPolicyManager() {
       <div className="lu-tabs">
         <button className={`lu-tab ${tab === "policies" ? "active" : ""}`} onClick={() => setTab("policies")}>📋 {t("fpPolicies")}</button>
         <button className={`lu-tab ${tab === "events" ? "active" : ""}`} onClick={() => setTab("events")}>📡 {t("fpEvents")}</button>
+        <button className={`lu-tab ${tab === "engines" ? "active" : ""}`} onClick={() => setTab("engines")}>⚙️ {t("fpEngines")}</button>
         <button className={`lu-tab ${tab === "connections" ? "active" : ""}`} onClick={() => setTab("connections")}>🔌 {t("fpConnections")}</button>
       </div>
 
       {error && <div className="rm-error">⚠️ {error}</div>}
       {success && <div className="rm-success">✅ {success}</div>}
 
-      {tab !== "connections" && (
+      {(tab === "policies" || tab === "events") && (
         <div className="lu-toolbar">
           <span className="lu-count">
             {tab === "policies" ? policies.length : events.length}{" "}
@@ -304,6 +315,51 @@ export function FPolicyManager() {
             ))}</tbody>
           </table>
         )
+      ) : tab === "engines" ? (
+        <>
+          {/* FPolicy teardown is an order, and the engine is its last step: an engine
+              a policy still references cannot be deleted. Spelled out so the delete
+              button's failures read as "wrong order" rather than "broken". */}
+          <details className="fc-split-guide">
+            <summary>{t("fpTeardownTitle")}</summary>
+            <ol>
+              <li>{t("fpTeardown1")}</li>
+              <li>{t("fpTeardown2")}</li>
+              <li>{t("fpTeardown3")}</li>
+              <li>{t("fpTeardown4")}</li>
+            </ol>
+          </details>
+          {engines.length === 0 ? <p className="rm-empty">{t("fpNoEngines")}</p> : (
+            <table className="rm-table">
+              <thead><tr><th>{t("fpEngine")}</th><th>{t("fpEngineType")}</th><th>{t("rmActions")}</th></tr></thead>
+              <tbody>{engines.map(e => (
+                <tr key={e.name}>
+                  <td className="lu-username">{e.name}</td>
+                  <td>{e.isNative ? <span className="lu-badge">{t("fpEngineNative")}</span> : e.type}</td>
+                  <td>
+                    <button className="rm-btn-danger-sm" disabled={busy || e.isNative}
+                      title={e.isNative ? t("fpEngineNativeHint") : t("delete")}
+                      onClick={() => setConfirmFor({ kind: "engine", name: e.name })}>
+                      {t("delete")}
+                    </button>
+                    {confirmFor?.kind === "engine" && confirmFor.name === e.name && (
+                      <span className="peer-accept-row" role="alertdialog">
+                        <span className="sm-confirm-text">{t("fpConfirmDeleteEngine")}</span>
+                        <button className="rm-btn-danger-sm" disabled={busy}
+                          onClick={() => runAction({ action: "deleteFpolicyEngine", params: { name: e.name, confirm: true } })}>
+                          {t("rmExecute")}
+                        </button>
+                        <button className="rm-btn-sm" onClick={() => setConfirmFor(null)}>
+                          {t("cancel")}
+                        </button>
+                      </span>
+                    )}
+                  </td>
+                </tr>
+              ))}</tbody>
+            </table>
+          )}
+        </>
       ) : (
         connections.length === 0 ? <p className="rm-empty">{t("fpNoConnections")}</p> : (
           <table className="rm-table">

@@ -1883,4 +1883,90 @@ arpResponseSweepNote: "Sperren heben sich nach Ablauf der Frist selbst auf. Für
   // --- Shared / misc ---
   processing: "Wird verarbeitet...",
   athenaGuidanceTitle: "Verwendung",
+
+  // --- Teardown: panel navigation (ResourceManagement cards) ---
+  rmAudit: "Audit",
+  rmAuditDesc: "NAS-/S3-Audit-Konfiguration anzeigen und entfernen",
+  rmObjectStore: "Object-Store-Buckets",
+  rmObjectStoreDesc: "ONTAP-Object-Store-Buckets auflisten und löschen",
+  rmSvm: "SVM",
+  rmSvmDesc: "SVMs auflisten und löschen, nachdem ihre Volumes entfernt wurden",
+  rmEdit: "Bearbeiten",
+
+  // --- Teardown: FPolicy engines ---
+  fpEngines: "Engines",
+  fpEngineType: "Typ",
+  fpNoEngines: "Keine Engines",
+  fpEngineNative: "native (integriert)",
+  fpEngineNativeHint: "Die native Engine ist in ONTAP integriert und kann nicht gelöscht werden",
+  fpConfirmDeleteEngine: "Diese Engine löschen. ONTAP lehnt ab, wenn eine Richtlinie sie noch referenziert. Fortfahren?",
+  fpTeardownTitle: "FPolicy-Abbaureihenfolge",
+  fpTeardown1: "Richtlinien deaktivieren",
+  fpTeardown2: "Richtlinien löschen",
+  fpTeardown3: "Die von den Richtlinien referenzierten Events löschen",
+  fpTeardown4: "Zuletzt die Engine löschen",
+
+  // --- Teardown: audit ---
+  auditIntro: "Ein Volume, das Ziel eines Audit-Logs ist, kann nicht gelöscht werden. Entfernen Sie zuerst hier die Audit-Konfiguration.",
+  auditNas: "NAS-Audit",
+  auditObjectStore: "S3-(Object-Store-)Audit",
+  auditEnabled: "Aktiviert",
+  auditLogVolume: "Log-Volume",
+  auditNotConfigured: "Nicht konfiguriert",
+  auditVolumeDependencyHint: "Dieses Volume ist ein Audit-Log-Ziel. Löschen Sie diese Audit-Konfiguration, bevor Sie das Volume löschen.",
+  auditDelete: "Audit löschen",
+  auditConfirmDelete: "Diese Audit-Konfiguration löschen. Falls aktiviert, wird sie zuerst deaktiviert. Fortfahren?",
+  auditDeleted: "Audit-Konfiguration gelöscht",
+
+  // --- Teardown: SVM ---
+  svmIntro: "Das Löschen einer SVM entfernt sie samt ihrem Root-Volume. Solange sie noch Nicht-Root-Volumes besitzt, ist das Löschen nicht möglich.",
+  svmName: "SVM-Name",
+  svmSubtype: "Subtyp",
+  svmDefault: "Standard",
+  svmNone: "Keine SVMs",
+  svmBlockedByVolumes: "Diese SVM besitzt noch {count} Nicht-Root-Volume(s). Löschen Sie diese zuerst.",
+  svmConfirmDelete: "SVM „{name}“ samt Root-Volume löschen. Dies kann nicht rückgängig gemacht werden.",
+  svmTypeToConfirm: "Geben Sie zur Bestätigung den SVM-Namen „{name}“ ein",
+  svmDeleted: "SVM „{name}“ gelöscht",
+
+  // --- Teardown: FlexClone delete ---
+  fcCloneDeleted: "Klon gelöscht",
+  fcConfirmDelete: "Klon „{name}“ löschen. Der Basis-Snapshot auf dem übergeordneten Volume bleibt erhalten. Fortfahren?",
+  fcDeleteTitle: "Dieses Klon-Volume löschen (split macht es eigenständig, delete entfernt es)",
+
+  // --- Teardown: object-store buckets ---
+  osbIntro: "Dies sind ONTAPs eigene Object-Store-Buckets, ein anderer Namespace als die Amazon-S3-Buckets des Kontos.",
+  osbName: "Bucket-Name",
+  osbVolume: "Volume",
+  osbType: "Typ",
+  osbNone: "Keine Object-Store-Buckets",
+  osbConfirmDelete: "Bucket „{name}“ löschen. Alle S3 Access Points, die darüber lesen, verlieren ihren Datenpfad. Fortfahren?",
+  osbDeleted: "Bucket „{name}“ gelöscht",
+
+  // --- Teardown: QoS edit ---
+  rmQosEdit: "QoS-Richtlinie „{name}“ bearbeiten",
+  rmQosUpdated: "QoS-Richtlinie „{name}“ aktualisiert",
+
+  // --- Teardown: SnapLock expired-retention list (read-only) ---
+  slExpiredTitle: "Aufbewahrungsstatus",
+  slExpiredClock: "Compliance-Clock",
+  slExpiredNoClock: "nicht verfügbar",
+  slExpiredReadOnly: "Diese Liste ist schreibgeschützt. Das Löschen einer abgelaufenen Sperre ist irreversibel und wird hier nicht durchgeführt.",
+  slExpiredStatus: "Status",
+  slExpiredResource: "Ressource",
+  slExpiredExpiry: "Ablauf",
+  slExpiredPast: "Abgelaufen",
+  slExpiredPendingWord: "Ausstehend",
+  slExpiredVolume: "Volume",
+  slExpiredSnapshot: "Snapshot",
+
+  // --- Teardown: snapshot policy assignment ---
+  rmSnapAssignTo: "Dem Volume zuweisen",
+  rmSnapSelectPolicy: "Richtlinie auswählen",
+  rmSnapPolicyAssigned: "Richtlinie „{name}“ zugewiesen",
+  rmSnapAssignLockHint: "Diese Richtlinie sperrt Snapshots. Nach der Zuweisung kann kein Snapshot, den dieses Volume erstellt, vor seinem Ablauf gelöscht werden.",
+
+  // --- Teardown: volume delete dependency (clones) ---
+  rmDeleteCloneList: "Klone, die das Löschen des Volumes „{parent}“ blockieren:",
+  rmDeleteCloneListAction: "Führen Sie im FlexClone-Panel split oder delete für diese Klone aus und löschen Sie dann das übergeordnete Volume.",
 };
