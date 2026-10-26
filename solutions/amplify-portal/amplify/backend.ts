@@ -1788,6 +1788,22 @@ const resourceMgmtRole = new iam.Role(dataStack, "ResourceMgmtLambdaRole", {
           actions: ["dynamodb:GetItem", "dynamodb:PutItem", "dynamodb:Scan"],
           resources: [portalSettingsTable.tableArn],
         }),
+        // SVM management goes through the FSx control plane, not ONTAP REST: on FSx
+        // for ONTAP the fsxadmin account is not authorised to delete an SVM through
+        // ONTAP REST (it answers "not authorized", code 6), so listSvms and deleteSvm
+        // call the FSx API. `DescribeStorageVirtualMachines` enumerates and defines no
+        // resource type, so it cannot be narrowed -- same as the platform-discovery
+        // role above. `DeleteStorageVirtualMachine` is scoped to SVMs in this account
+        // and Region; the specific SVM is chosen by the operator at run time and is not
+        // known here.
+        new iam.PolicyStatement({
+          actions: ["fsx:DescribeStorageVirtualMachines"],
+          resources: ["*"],
+        }),
+        new iam.PolicyStatement({
+          actions: ["fsx:DeleteStorageVirtualMachine"],
+          resources: [`arn:${Aws.PARTITION}:fsx:${Aws.REGION}:${Aws.ACCOUNT_ID}:storage-virtual-machine/*`],
+        }),
       ],
     }),
   },

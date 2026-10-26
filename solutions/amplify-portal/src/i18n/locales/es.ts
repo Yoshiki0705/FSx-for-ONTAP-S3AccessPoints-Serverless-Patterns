@@ -1878,4 +1878,90 @@ arpResponseSweepNote: "Los bloqueos se levantan por sí solos al vencer el plazo
   // --- Shared / misc ---
   processing: "Procesando...",
   athenaGuidanceTitle: "Cómo usarlo",
+
+  // --- Teardown: panel navigation (ResourceManagement cards) ---
+  rmAudit: "Auditoría",
+  rmAuditDesc: "Ver y eliminar la configuración de auditoría NAS / S3",
+  rmObjectStore: "Buckets de object-store",
+  rmObjectStoreDesc: "Listar y eliminar los buckets de object-store de ONTAP",
+  rmSvm: "SVM",
+  rmSvmDesc: "Listar y eliminar SVM una vez retirados sus volúmenes",
+  rmEdit: "Editar",
+
+  // --- Teardown: FPolicy engines ---
+  fpEngines: "Motores",
+  fpEngineType: "Tipo",
+  fpNoEngines: "Sin motores",
+  fpEngineNative: "native (integrado)",
+  fpEngineNativeHint: "El motor native está integrado en ONTAP y no se puede eliminar",
+  fpConfirmDeleteEngine: "Eliminar este motor. ONTAP lo rechaza si una política aún lo referencia. ¿Continuar?",
+  fpTeardownTitle: "Orden de desmontaje de FPolicy",
+  fpTeardown1: "Deshabilitar las políticas",
+  fpTeardown2: "Eliminar las políticas",
+  fpTeardown3: "Eliminar los eventos que las políticas referenciaban",
+  fpTeardown4: "Eliminar el motor al final",
+
+  // --- Teardown: audit ---
+  auditIntro: "Un volumen que es destino de un registro de auditoría no se puede eliminar. Elimine primero aquí la configuración de auditoría.",
+  auditNas: "Auditoría NAS",
+  auditObjectStore: "Auditoría S3 (object-store)",
+  auditEnabled: "Habilitada",
+  auditLogVolume: "Volumen de registro",
+  auditNotConfigured: "No configurada",
+  auditVolumeDependencyHint: "Este volumen es un destino de registro de auditoría. Elimine esta configuración de auditoría antes de eliminar el volumen.",
+  auditDelete: "Eliminar auditoría",
+  auditConfirmDelete: "Eliminar esta configuración de auditoría. Si está habilitada, se deshabilitará primero. ¿Continuar?",
+  auditDeleted: "Configuración de auditoría eliminada",
+
+  // --- Teardown: SVM ---
+  svmIntro: "Eliminar una SVM la quita junto con su volumen raíz. No es posible mientras aún posea volúmenes no raíz.",
+  svmName: "Nombre de SVM",
+  svmSubtype: "Subtipo",
+  svmDefault: "Predeterminada",
+  svmNone: "Sin SVM",
+  svmBlockedByVolumes: "Esta SVM aún posee {count} volumen(es) no raíz. Elimínelos primero.",
+  svmConfirmDelete: "Eliminar la SVM «{name}» junto con su volumen raíz. Esta acción no se puede deshacer.",
+  svmTypeToConfirm: "Escriba el nombre de la SVM «{name}» para confirmar",
+  svmDeleted: "SVM «{name}» eliminada",
+
+  // --- Teardown: FlexClone delete ---
+  fcCloneDeleted: "Clon eliminado",
+  fcConfirmDelete: "Eliminar el clon «{name}». El snapshot base en el volumen padre se conserva. ¿Continuar?",
+  fcDeleteTitle: "Eliminar este volumen clon (split lo hace independiente, delete lo elimina)",
+
+  // --- Teardown: object-store buckets ---
+  osbIntro: "Son los buckets de object-store propios de ONTAP, un espacio de nombres distinto de los buckets de Amazon S3 de la cuenta.",
+  osbName: "Nombre del bucket",
+  osbVolume: "Volumen",
+  osbType: "Tipo",
+  osbNone: "Sin buckets de object-store",
+  osbConfirmDelete: "Eliminar el bucket «{name}». Cualquier S3 Access Points que lea a través de él pierde su ruta de datos. ¿Continuar?",
+  osbDeleted: "Bucket «{name}» eliminado",
+
+  // --- Teardown: QoS edit ---
+  rmQosEdit: "Editar la política de QoS «{name}»",
+  rmQosUpdated: "Política de QoS «{name}» actualizada",
+
+  // --- Teardown: SnapLock expired-retention list (read-only) ---
+  slExpiredTitle: "Estado de retención",
+  slExpiredClock: "Reloj de cumplimiento",
+  slExpiredNoClock: "no disponible",
+  slExpiredReadOnly: "Esta lista es de solo lectura. Eliminar un bloqueo caducado es irreversible y no se hace aquí.",
+  slExpiredStatus: "Estado",
+  slExpiredResource: "Recurso",
+  slExpiredExpiry: "Caducidad",
+  slExpiredPast: "Caducado",
+  slExpiredPendingWord: "Pendiente",
+  slExpiredVolume: "Volumen",
+  slExpiredSnapshot: "Snapshot",
+
+  // --- Teardown: snapshot policy assignment ---
+  rmSnapAssignTo: "Asignar al volumen",
+  rmSnapSelectPolicy: "Seleccionar una política",
+  rmSnapPolicyAssigned: "Política «{name}» asignada",
+  rmSnapAssignLockHint: "Esta política bloquea los snapshots. Una vez asignada, ningún snapshot que tome este volumen podrá eliminarse antes de caducar.",
+
+  // --- Teardown: volume delete dependency (clones) ---
+  rmDeleteCloneList: "Clones que bloquean la eliminación del volumen «{parent}»:",
+  rmDeleteCloneListAction: "En el panel de FlexClone, haga split o delete en estos clones y luego elimine el volumen padre.",
 };

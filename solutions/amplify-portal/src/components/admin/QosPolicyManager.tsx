@@ -40,6 +40,16 @@ export function QosPolicyManager() {
   const [assignTo, setAssignTo] = useState<string>(NO_POLICY);
   const [assigning, setAssigning] = useState(false);
 
+  // Inline edit of one policy's limits, keyed by UUID. The fields the handler
+  // accepts depend on the policy type (fixed vs adaptive), so the form reads the
+  // row's current type rather than offering both.
+  const [editFor, setEditFor] = useState<PolicyUuid | null>(null);
+  const [editMaxIops, setEditMaxIops] = useState<number | undefined>(undefined);
+  const [editMaxMbps, setEditMaxMbps] = useState<number | undefined>(undefined);
+  const [editExpectedIops, setEditExpectedIops] = useState<number | undefined>(undefined);
+  const [editPeakIops, setEditPeakIops] = useState<number | undefined>(undefined);
+  const [editing, setEditing] = useState(false);
+
   // Create form
   const [newName, setNewName] = useState("");
   const [policyType, setPolicyType] = useState<"fixed" | "adaptive">("fixed");
@@ -146,6 +156,43 @@ export function QosPolicyManager() {
         else setError(data.error || "Failed");
       }
     } catch (err) { setError(err instanceof Error ? err.message : "Failed"); }
+  };
+
+  const startEdit = (p: QosPolicy) => {
+    setEditFor(p.uuid);
+    setEditMaxIops(p.maxThroughputIops);
+    setEditMaxMbps(p.maxThroughputMbps);
+    setEditExpectedIops(p.expectedIops);
+    setEditPeakIops(p.peakIops);
+    setError(null);
+    setResult(null);
+  };
+
+  const handleUpdate = async (p: QosPolicy) => {
+    setEditing(true);
+    setError(null);
+    try {
+      const data = await adminMutate<{ success?: boolean }>({
+        action: "updateQosPolicy",
+        params: {
+          policyUuid: p.uuid,
+          maxIops: p.type === "fixed" ? editMaxIops : undefined,
+          maxMbps: p.type === "fixed" ? editMaxMbps : undefined,
+          expectedIops: p.type === "adaptive" ? editExpectedIops : undefined,
+          peakIops: p.type === "adaptive" ? editPeakIops : undefined,
+        },
+      });
+      if (data?.success) {
+        setResult(t("rmQosUpdated").replace("{name}", p.name));
+        setEditFor(null);
+        setTimeout(() => setResult(null), 4000);
+        loadPolicies();
+      } else setError(data?.error || t("rmActionFailed"));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : t("rmActionFailed"));
+    } finally {
+      setEditing(false);
+    }
   };
 
   if (loading) return <p className="loading">{t("loading")}</p>;
@@ -268,7 +315,46 @@ export function QosPolicyManager() {
                   ? `${p.maxThroughputIops ? p.maxThroughputIops + " IOPS" : ""}${p.maxThroughputIops && p.maxThroughputMbps ? " / " : ""}${p.maxThroughputMbps ? p.maxThroughputMbps + " MB/s" : ""}`
                   : `${p.expectedIops || "—"} / ${p.peakIops || "—"} IOPS`}
               </td>
-              <td><button onClick={() => handleDelete(p.uuid, p.name)} className="btn-sm btn-danger">✕</button></td>
+              <td>
+                <button onClick={() => startEdit(p)} className="btn-sm" disabled={editing}>{t("rmEdit")}</button>
+                <button onClick={() => handleDelete(p.uuid, p.name)} className="btn-sm btn-danger">✕</button>
+                {editFor === p.uuid && (
+                  <div className="rm-form" role="dialog">
+                    <h4>{t("rmQosEdit").replace("{name}", p.name)}</h4>
+                    {p.type === "fixed" ? (
+                      <>
+                        <div className="rm-form-row">
+                          <label>{t("rmMaxIops")}</label>
+                          <input type="number" value={editMaxIops ?? ""} disabled={editing}
+                            onChange={(e) => setEditMaxIops(parseInt(e.target.value) || undefined)} />
+                        </div>
+                        <div className="rm-form-row">
+                          <label>{t("rmMaxMbps")}</label>
+                          <input type="number" value={editMaxMbps ?? ""} disabled={editing}
+                            onChange={(e) => setEditMaxMbps(parseInt(e.target.value) || undefined)} />
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <div className="rm-form-row">
+                          <label>{t("rmExpectedIops")}</label>
+                          <input type="number" value={editExpectedIops ?? ""} disabled={editing}
+                            onChange={(e) => setEditExpectedIops(parseInt(e.target.value) || undefined)} />
+                        </div>
+                        <div className="rm-form-row">
+                          <label>{t("rmPeakIops")}</label>
+                          <input type="number" value={editPeakIops ?? ""} disabled={editing}
+                            onChange={(e) => setEditPeakIops(parseInt(e.target.value) || undefined)} />
+                        </div>
+                      </>
+                    )}
+                    <div className="rm-form-actions">
+                      <button className="rm-btn-primary" disabled={editing} onClick={() => handleUpdate(p)}>{t("rmApply")}</button>
+                      <button className="rm-btn-secondary" onClick={() => setEditFor(null)}>{t("cancel")}</button>
+                    </div>
+                  </div>
+                )}
+              </td>
             </tr>
           ))}
           {policies.length === 0 && <tr><td colSpan={4} className="empty-state">{t("rmNoQos")}</td></tr>}

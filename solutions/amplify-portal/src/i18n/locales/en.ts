@@ -1910,4 +1910,90 @@ arpResponseSweepNote: "Blocks lift themselves once their expiry passes. To lift 
   // --- Shared / misc ---
   processing: "Processing...",
   athenaGuidanceTitle: "How to use",
+
+  // --- Teardown: panel navigation (ResourceManagement cards) ---
+  rmAudit: "Audit",
+  rmAuditDesc: "View and remove NAS / S3 audit configuration",
+  rmObjectStore: "Object-store buckets",
+  rmObjectStoreDesc: "List and remove ONTAP object-store buckets",
+  rmSvm: "SVM",
+  rmSvmDesc: "List and delete SVMs once their volumes are cleared",
+  rmEdit: "Edit",
+
+  // --- Teardown: FPolicy engines ---
+  fpEngines: "Engines",
+  fpEngineType: "Type",
+  fpNoEngines: "No engines",
+  fpEngineNative: "native (built-in)",
+  fpEngineNativeHint: "The native engine is built into ONTAP and cannot be deleted",
+  fpConfirmDeleteEngine: "Delete this engine. ONTAP refuses if a policy still references it. Continue?",
+  fpTeardownTitle: "FPolicy teardown order",
+  fpTeardown1: "Disable the policies",
+  fpTeardown2: "Delete the policies",
+  fpTeardown3: "Delete the events the policies referenced",
+  fpTeardown4: "Delete the engine last",
+
+  // --- Teardown: audit ---
+  auditIntro: "A volume that is an audit log destination cannot be deleted. Remove the audit configuration here first.",
+  auditNas: "NAS audit",
+  auditObjectStore: "S3 (object-store) audit",
+  auditEnabled: "Enabled",
+  auditLogVolume: "Log volume",
+  auditNotConfigured: "Not configured",
+  auditVolumeDependencyHint: "This volume is an audit log destination. Delete this audit configuration before deleting the volume.",
+  auditDelete: "Delete audit",
+  auditConfirmDelete: "Delete this audit configuration. If it is enabled it will be disabled first. Continue?",
+  auditDeleted: "Audit configuration deleted",
+
+  // --- Teardown: SVM ---
+  svmIntro: "Deleting an SVM removes it with its root volume. It cannot be deleted while it still owns non-root volumes.",
+  svmName: "SVM name",
+  svmSubtype: "Subtype",
+  svmDefault: "Default",
+  svmNone: "No SVMs",
+  svmBlockedByVolumes: "This SVM still owns {count} non-root volume(s). Delete them first.",
+  svmConfirmDelete: "Delete SVM \"{name}\" with its root volume. This cannot be undone.",
+  svmTypeToConfirm: "Type the SVM name \"{name}\" to confirm",
+  svmDeleted: "SVM \"{name}\" deleted",
+
+  // --- Teardown: FlexClone delete ---
+  fcCloneDeleted: "Clone deleted",
+  fcConfirmDelete: "Delete clone \"{name}\". The base snapshot on the parent volume remains. Continue?",
+  fcDeleteTitle: "Delete this clone volume (split makes it independent, delete removes it)",
+
+  // --- Teardown: object-store buckets ---
+  osbIntro: "These are ONTAP's own object-store buckets, a different namespace from the account's Amazon S3 buckets.",
+  osbName: "Bucket name",
+  osbVolume: "Volume",
+  osbType: "Type",
+  osbNone: "No object-store buckets",
+  osbConfirmDelete: "Delete bucket \"{name}\". Any S3 Access Points reading through it lose their data path. Continue?",
+  osbDeleted: "Bucket \"{name}\" deleted",
+
+  // --- Teardown: QoS edit ---
+  rmQosEdit: "Edit QoS policy \"{name}\"",
+  rmQosUpdated: "QoS policy \"{name}\" updated",
+
+  // --- Teardown: SnapLock expired-retention list (read-only) ---
+  slExpiredTitle: "Retention status",
+  slExpiredClock: "Compliance clock",
+  slExpiredNoClock: "unavailable",
+  slExpiredReadOnly: "This list is read-only. Deleting an expired lock is irreversible and is not done here.",
+  slExpiredStatus: "Status",
+  slExpiredResource: "Resource",
+  slExpiredExpiry: "Expiry",
+  slExpiredPast: "Expired",
+  slExpiredPendingWord: "Pending",
+  slExpiredVolume: "Volume",
+  slExpiredSnapshot: "Snapshot",
+
+  // --- Teardown: snapshot policy assignment ---
+  rmSnapAssignTo: "Assign to volume",
+  rmSnapSelectPolicy: "Select a policy",
+  rmSnapPolicyAssigned: "Policy \"{name}\" assigned",
+  rmSnapAssignLockHint: "This policy locks snapshots. Once assigned, every snapshot this volume takes cannot be deleted before it expires.",
+
+  // --- Teardown: volume delete dependency (clones) ---
+  rmDeleteCloneList: "Clones blocking the delete of volume \"{parent}\":",
+  rmDeleteCloneListAction: "In the FlexClone panel, split or delete these clones, then delete the parent volume.",
 };

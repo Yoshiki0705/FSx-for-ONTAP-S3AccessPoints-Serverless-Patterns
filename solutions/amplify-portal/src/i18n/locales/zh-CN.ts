@@ -1868,4 +1868,90 @@ arpResponseSweepNote: "阻止会在设定的期限过后自动解除。如需提
   // --- Shared / misc ---
   processing: "处理中...",
   athenaGuidanceTitle: "使用方法",
+
+  // --- Teardown: panel navigation (ResourceManagement cards) ---
+  rmAudit: "审计",
+  rmAuditDesc: "查看和删除 NAS / S3 审计配置",
+  rmObjectStore: "对象存储桶",
+  rmObjectStoreDesc: "列出并删除 ONTAP 对象存储桶",
+  rmSvm: "SVM",
+  rmSvmDesc: "清理卷之后列出并删除 SVM",
+  rmEdit: "编辑",
+
+  // --- Teardown: FPolicy engines ---
+  fpEngines: "引擎",
+  fpEngineType: "类型",
+  fpNoEngines: "没有引擎",
+  fpEngineNative: "native（内置）",
+  fpEngineNativeHint: "native 引擎为 ONTAP 内置，无法删除",
+  fpConfirmDeleteEngine: "删除此引擎。如果仍有 FPolicy 策略引用它，ONTAP 会拒绝。是否继续？",
+  fpTeardownTitle: "FPolicy 拆除顺序",
+  fpTeardown1: "禁用策略",
+  fpTeardown2: "删除策略",
+  fpTeardown3: "删除策略引用的事件",
+  fpTeardown4: "最后删除引擎",
+
+  // --- Teardown: audit ---
+  auditIntro: "作为审计日志目标的卷无法删除。请先在此删除审计配置。",
+  auditNas: "NAS 审计",
+  auditObjectStore: "S3（对象存储）审计",
+  auditEnabled: "已启用",
+  auditLogVolume: "日志卷",
+  auditNotConfigured: "未配置",
+  auditVolumeDependencyHint: "此卷是审计日志目标。删除卷之前请先删除此审计配置。",
+  auditDelete: "删除审计",
+  auditConfirmDelete: "删除此审计配置。如果已启用，将先禁用。是否继续？",
+  auditDeleted: "已删除审计配置",
+
+  // --- Teardown: SVM ---
+  svmIntro: "删除 SVM 会连同其根卷一起删除。若仍拥有非根卷则无法删除。",
+  svmName: "SVM 名称",
+  svmSubtype: "子类型",
+  svmDefault: "默认",
+  svmNone: "没有 SVM",
+  svmBlockedByVolumes: "此 SVM 仍拥有 {count} 个非根卷。请先删除它们。",
+  svmConfirmDelete: "删除 SVM“{name}”及其根卷。此操作无法撤销。",
+  svmTypeToConfirm: "请输入 SVM 名称“{name}”以确认",
+  svmDeleted: "已删除 SVM“{name}”",
+
+  // --- Teardown: FlexClone delete ---
+  fcCloneDeleted: "已删除克隆",
+  fcConfirmDelete: "删除克隆“{name}”。父卷上的基础 Snapshot 将保留。是否继续？",
+  fcDeleteTitle: "删除此克隆卷（split 为独立化，delete 为删除）",
+
+  // --- Teardown: object-store buckets ---
+  osbIntro: "这些是 ONTAP 自身的对象存储桶，与账户的 Amazon S3 存储桶是不同的命名空间。",
+  osbName: "桶名称",
+  osbVolume: "卷",
+  osbType: "类型",
+  osbNone: "没有对象存储桶",
+  osbConfirmDelete: "删除桶“{name}”。通过它读取的 S3 Access Points 将失去数据路径。是否继续？",
+  osbDeleted: "已删除桶“{name}”",
+
+  // --- Teardown: QoS edit ---
+  rmQosEdit: "编辑 QoS 策略“{name}”",
+  rmQosUpdated: "已更新 QoS 策略“{name}”",
+
+  // --- Teardown: SnapLock expired-retention list (read-only) ---
+  slExpiredTitle: "保留期限状态",
+  slExpiredClock: "合规时钟",
+  slExpiredNoClock: "无法获取",
+  slExpiredReadOnly: "此列表为只读。删除已到期的锁定不可撤销，因此不在此处执行。",
+  slExpiredStatus: "状态",
+  slExpiredResource: "资源",
+  slExpiredExpiry: "到期",
+  slExpiredPast: "已到期",
+  slExpiredPendingWord: "保留中",
+  slExpiredVolume: "卷",
+  slExpiredSnapshot: "Snapshot",
+
+  // --- Teardown: snapshot policy assignment ---
+  rmSnapAssignTo: "分配到卷",
+  rmSnapSelectPolicy: "选择策略",
+  rmSnapPolicyAssigned: "已分配策略“{name}”",
+  rmSnapAssignLockHint: "此策略会锁定 Snapshot。分配后，此卷生成的每个 Snapshot 在到期前都无法删除。",
+
+  // --- Teardown: volume delete dependency (clones) ---
+  rmDeleteCloneList: "阻止删除卷“{parent}”的克隆：",
+  rmDeleteCloneListAction: "请在 FlexClone 面板中对这些克隆执行 split（独立化）或 delete（删除），然后再删除父卷。",
 };

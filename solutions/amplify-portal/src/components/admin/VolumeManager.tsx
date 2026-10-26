@@ -92,6 +92,10 @@ export function VolumeManager() {
   const setError = setActionError;
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [actionResult, setActionResult] = useState<string | null>(null);
+  // Clones that block the delete of their parent, listed when a delete is refused
+  // for that reason. Names only -- the teardown (split or delete) is done from the
+  // FlexClone panel; this just shows what is holding the parent.
+  const [blockingClones, setBlockingClones] = useState<{ parent: string; clones: string[] } | null>(null);
 
   // Create form state
   const [newName, setNewName] = useState("");
@@ -232,7 +236,7 @@ export function VolumeManager() {
         params: { volumeUuid: uuid, volumeName: name, confirm: true },
       });
       if (data) {
-        if (data.success) { setActionResult(t("rmDeleted").replace("{name}", name)); loadVolumes(); }
+        if (data.success) { setActionResult(t("rmDeleted").replace("{name}", name)); setBlockingClones(null); loadVolumes(); }
         // Reloaded on failure too: the delete takes the volume offline first, so a
         // failed one leaves the row's state stale as well as the volume unusable.
         else {
@@ -243,7 +247,22 @@ export function VolumeManager() {
           // parent of an unsplit deleted clone was still refused, while the parent of a
           // split one deleted immediately. The way out is in the message rather than in
           // a document nobody is reading at that moment.
-          setError(/one or more clones/i.test(message) ? `${message} — ${t("rmDeleteBlockedByCloneHint")}` : message);
+          const blockedByClones = /one or more clones/i.test(message);
+          setError(blockedByClones ? `${message} — ${t("rmDeleteBlockedByCloneHint")}` : message);
+          if (blockedByClones) {
+            // Name the clones holding this parent, so the operator can go to the
+            // FlexClone panel and split or delete them. Best-effort: a failure to
+            // list does not replace the delete error the operator needs to see.
+            try {
+              const list = await unwrap<{ clones?: { name: string; parentVolume: string }[] }>(
+                dispatch("adminQuery", { action: "listFlexClones" }),
+              );
+              const mine = (list?.clones ?? []).filter((c) => c.parentVolume === name).map((c) => c.name);
+              if (mine.length > 0) setBlockingClones({ parent: name, clones: mine });
+            } catch { /* leave the delete error as the primary signal */ }
+          } else {
+            setBlockingClones(null);
+          }
           loadVolumes();
         }
       }
@@ -293,6 +312,17 @@ export function VolumeManager() {
 
       {error && <div className="error-message">{error}</div>}
       {actionResult && <div className="success-message">{actionResult}</div>}
+      {blockingClones && (
+        <div className="rm-form" role="status">
+          <p className="rm-hint">
+            {t("rmDeleteCloneList").replace("{parent}", blockingClones.parent)}
+          </p>
+          <ul>
+            {blockingClones.clones.map((c) => <li key={c}>{c}</li>)}
+          </ul>
+          <p className="rm-hint">{t("rmDeleteCloneListAction")}</p>
+        </div>
+      )}
 
       {showCreateForm && (
         <div className="create-form">

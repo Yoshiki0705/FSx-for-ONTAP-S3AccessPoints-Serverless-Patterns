@@ -1925,6 +1925,92 @@ arpResponseSweepNote: "ブロックは指定した期限が過ぎると自動で
   // --- Shared / misc ---
   processing: "処理中...",
   athenaGuidanceTitle: "使い方",
+
+  // --- Teardown: panel navigation (ResourceManagement cards) ---
+  rmAudit: "監査",
+  rmAuditDesc: "NAS / S3 の監査構成の表示と削除",
+  rmObjectStore: "オブジェクトストアバケット",
+  rmObjectStoreDesc: "ONTAP のオブジェクトストアバケットの一覧と削除",
+  rmSvm: "SVM",
+  rmSvmDesc: "SVM の一覧と削除（配下のボリュームを片付けた後）",
+  rmEdit: "編集",
+
+  // --- Teardown: FPolicy engines ---
+  fpEngines: "エンジン",
+  fpEngineType: "種別",
+  fpNoEngines: "エンジンがありません",
+  fpEngineNative: "native（組み込み）",
+  fpEngineNativeHint: "native エンジンは ONTAP 組み込みのため削除できません",
+  fpConfirmDeleteEngine: "このエンジンを削除します。参照している FPolicy ポリシーがあると ONTAP が拒否します。続行しますか？",
+  fpTeardownTitle: "FPolicy の撤去順序",
+  fpTeardown1: "対象のポリシーを無効化する",
+  fpTeardown2: "ポリシーを削除する",
+  fpTeardown3: "ポリシーが参照していたイベントを削除する",
+  fpTeardown4: "最後にエンジンを削除する",
+
+  // --- Teardown: audit ---
+  auditIntro: "監査の出力先になっているボリュームは削除できません。先にここで監査を削除します。",
+  auditNas: "NAS 監査",
+  auditObjectStore: "S3（オブジェクトストア）監査",
+  auditEnabled: "有効",
+  auditLogVolume: "出力先ボリューム",
+  auditNotConfigured: "構成されていません",
+  auditVolumeDependencyHint: "このボリュームは監査ログの出力先です。ボリュームを削除する前に、この監査を削除してください。",
+  auditDelete: "監査を削除",
+  auditConfirmDelete: "この監査構成を削除します。有効な場合は先に無効化してから削除します。続行しますか？",
+  auditDeleted: "監査構成を削除しました",
+
+  // --- Teardown: SVM ---
+  svmIntro: "SVM を削除すると root ボリュームごと削除されます。配下の非 root ボリュームが残っている間は削除できません。",
+  svmName: "SVM 名",
+  svmSubtype: "サブタイプ",
+  svmDefault: "既定",
+  svmNone: "SVM がありません",
+  svmBlockedByVolumes: "この SVM にはまだ {count} 個の非 root ボリュームがあります。先にそれらを削除してください。",
+  svmConfirmDelete: "SVM「{name}」を root ボリュームごと削除します。この操作は元に戻せません。",
+  svmTypeToConfirm: "確認のため SVM 名「{name}」を入力してください",
+  svmDeleted: "SVM「{name}」を削除しました",
+
+  // --- Teardown: FlexClone delete ---
+  fcCloneDeleted: "クローンを削除しました",
+  fcConfirmDelete: "クローン「{name}」を削除します。親ボリュームに作られたベース Snapshot は残ります。続行しますか？",
+  fcDeleteTitle: "このクローンボリュームを削除する（split は独立化、delete は削除）",
+
+  // --- Teardown: object-store buckets ---
+  osbIntro: "ONTAP 自身のオブジェクトストアバケットです。アカウントの Amazon S3 バケットとは別の名前空間です。",
+  osbName: "バケット名",
+  osbVolume: "ボリューム",
+  osbType: "種別",
+  osbNone: "オブジェクトストアバケットがありません",
+  osbConfirmDelete: "バケット「{name}」を削除します。これを経由して読み取っている S3 Access Points はデータ経路を失います。続行しますか？",
+  osbDeleted: "バケット「{name}」を削除しました",
+
+  // --- Teardown: QoS edit ---
+  rmQosEdit: "QoS ポリシー「{name}」を編集",
+  rmQosUpdated: "QoS ポリシー「{name}」を更新しました",
+
+  // --- Teardown: SnapLock expired-retention list (read-only) ---
+  slExpiredTitle: "保持期限の状況",
+  slExpiredClock: "コンプライアンスクロック",
+  slExpiredNoClock: "取得できません",
+  slExpiredReadOnly: "この一覧は読み取り専用です。期限切れロックの削除は元に戻せないため、ここでは行いません。",
+  slExpiredStatus: "状態",
+  slExpiredResource: "リソース",
+  slExpiredExpiry: "満了",
+  slExpiredPast: "期限切れ",
+  slExpiredPendingWord: "保持中",
+  slExpiredVolume: "ボリューム",
+  slExpiredSnapshot: "Snapshot",
+
+  // --- Teardown: snapshot policy assignment ---
+  rmSnapAssignTo: "ボリュームに割り当て",
+  rmSnapSelectPolicy: "ポリシーを選択",
+  rmSnapPolicyAssigned: "ポリシー「{name}」を割り当てました",
+  rmSnapAssignLockHint: "このポリシーは Snapshot をロックします。割り当てると、このボリュームが取得する Snapshot は満了まで削除できません。",
+
+  // --- Teardown: volume delete dependency (clones) ---
+  rmDeleteCloneList: "ボリューム「{parent}」の削除を阻んでいるクローン:",
+  rmDeleteCloneListAction: "FlexClone パネルで、これらのクローンを split（独立化）または delete（削除）してから、親ボリュームを削除してください。",
 } as const;
 
 export type TranslationKeys = keyof typeof ja;

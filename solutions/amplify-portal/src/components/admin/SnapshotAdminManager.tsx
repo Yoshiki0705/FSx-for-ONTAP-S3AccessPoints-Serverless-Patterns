@@ -78,6 +78,14 @@ export function SnapshotAdminManager() {
   const [policyCount, setPolicyCount] = useState(7);
   const [policyRetention, setPolicyRetention] = useState("");
 
+  // Assignment row state: which volume, and which policy to attach to it.
+  const [assignVolumeUuid, setAssignVolumeUuid] = useState<VolumeUuid | null>(null);
+  const [assignPolicy, setAssignPolicy] = useState("");
+  const [assigning, setAssigning] = useState(false);
+  // `snapshotPolicyRetention` is raised by both policy creation and assignment, so
+  // the dialog's confirm needs to know which flow opened it.
+  const [pendingFlow, setPendingFlow] = useState<"create" | "assign" | null>(null);
+
   const clearResult = () => setTimeout(() => setResult(null), 4000);
 
   const policiesQuery = useQuery({
@@ -139,6 +147,7 @@ export function SnapshotAdminManager() {
     if (isZeroPeriod(period)) { setError(null); void handleCreatePolicy(); return; }
 
     setError(null);
+    setPendingFlow("create");
     setPendingSnaplock({
       kind: "snapshotPolicyRetention",
       policyName,
@@ -237,6 +246,70 @@ export function SnapshotAdminManager() {
     } catch (err) { setError(err instanceof Error ? err.message : t("rmActionFailed")); }
   };
 
+  /**
+   * Assign a policy to the selected volume.
+   *
+   * A policy that carries a retention period starts a recurring, irreversible
+   * lock on every snapshot the volume then takes, so attaching one goes through
+   * the consequence dialog -- the same gate as creating such a policy. A policy
+   * with no retention is an ordinary, reversible assignment and submits directly.
+   * The backend enforces the same split (it only requires the acknowledgement for
+   * a policy with retention), so the dialog here cannot be the only guard.
+   */
+  const assignHasRetention = (policyName: string): boolean => {
+    const policy = policies.find((p) => p.name === policyName);
+    return !!policy?.schedules.some((s) => {
+      const period = s.retentionPeriod ? parseIsoPeriod(s.retentionPeriod) : null;
+      return period ? !isZeroPeriod(period) : false;
+    });
+  };
+
+  const handleAssignClick = () => {
+    if (!assignVolumeUuid || !assignPolicy) return;
+    setError(null);
+    if (!assignHasRetention(assignPolicy)) { void handleAssignPolicy(); return; }
+
+    const policy = policies.find((p) => p.name === assignPolicy);
+    const retentionSchedule = policy?.schedules.find((s) => {
+      const period = s.retentionPeriod ? parseIsoPeriod(s.retentionPeriod) : null;
+      return period ? !isZeroPeriod(period) : false;
+    });
+    setPendingFlow("assign");
+    setPendingSnaplock({
+      kind: "snapshotPolicyRetention",
+      policyName: assignPolicy,
+      retentionPeriod: retentionSchedule?.retentionPeriod ?? "",
+      schedule: retentionSchedule?.schedule ?? "",
+      count: retentionSchedule?.count ?? 0,
+    });
+  };
+
+  const handleAssignPolicy = async () => {
+    if (!assignVolumeUuid || !assignPolicy) return;
+    setAssigning(true);
+    setError(null);
+    try {
+      const data = await adminMutate<{ success?: boolean }>({
+        action: "assignSnapshotPolicy",
+        params: {
+          volumeUuid: assignVolumeUuid,
+          policyName: assignPolicy,
+          // Only sent when the policy locks snapshots; the backend requires it in
+          // that case and ignores it otherwise.
+          ...(assignHasRetention(assignPolicy) ? { acknowledgeIrreversible: true as const } : {}),
+        },
+      });
+      if (data?.success) {
+        setResult(t("rmSnapPolicyAssigned").replace("{name}", assignPolicy));
+        clearResult();
+      } else setError(data?.error || t("rmActionFailed"));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : t("rmActionFailed"));
+    } finally {
+      setAssigning(false);
+    }
+  };
+
   if (loading && activeTab === "policies" && policies.length === 0) return <p className="loading">{t("loading")}</p>;
 
   return (
@@ -244,14 +317,18 @@ export function SnapshotAdminManager() {
       {pendingSnaplock && (
         <SnaplockConfirmDialog
           intent={pendingSnaplock}
-          onCancel={() => setPendingSnaplock(null)}
+          onCancel={() => { setPendingSnaplock(null); setPendingFlow(null); }}
           onConfirm={() => {
             const intent = pendingSnaplock;
+            const flow = pendingFlow;
             setPendingSnaplock(null);
-            // This panel raises two different intents, so the confirmation has
-            // to dispatch rather than assume which one is pending.
-            if (intent.kind === "snapshotPolicyRetention") void handleCreatePolicy();
-            else void handleEnableLocking();
+            setPendingFlow(null);
+            // This panel raises the retention intent from two flows (create and
+            // assign) plus the locking intent, so the confirmation dispatches on
+            // the flow rather than the intent kind alone.
+            if (intent.kind === "enableSnapshotLocking") void handleEnableLocking();
+            else if (flow === "assign") void handleAssignPolicy();
+            else void handleCreatePolicy();
           }}
         />
       )}
@@ -315,6 +392,43 @@ export function SnapshotAdminManager() {
               <button onClick={() => setShowCreatePolicy(false)} className="btn-secondary">{t("cancel")}</button>
             </div>
           )}
+
+          {/* Assign a policy to a volume. A policy that carries retention makes this
+              irreversible for every snapshot the volume then takes, so that case
+              goes through the consequence dialog; an ordinary policy does not. */}
+          <div className="rm-enforcement-row">
+            <VolumeSelector
+              label={t("rmSnapAssignTo")}
+              onSelect={(vol) => { setAssignVolumeUuid(vol?.uuid ?? null); setError(null); }}
+              excludeFlexCache
+            />
+            {assignVolumeUuid && (
+              <>
+                <select
+                  value={assignPolicy}
+                  onChange={(e) => setAssignPolicy(e.target.value)}
+                  aria-label={t("rmSnapAssignTo")}
+                >
+                  <option value="">{t("rmSnapSelectPolicy")}</option>
+                  {policies.map((p) => (
+                    <option key={p.uuid} value={p.name}>
+                      {p.name}{assignHasRetention(p.name) ? " 🔒" : ""}
+                    </option>
+                  ))}
+                </select>
+                <button
+                  className="rm-btn-primary"
+                  disabled={assigning || !assignPolicy}
+                  onClick={handleAssignClick}
+                >
+                  {t("rmApply")}
+                </button>
+                {assignPolicy && assignHasRetention(assignPolicy) && (
+                  <span className="rm-hint">{t("rmSnapAssignLockHint")}</span>
+                )}
+              </>
+            )}
+          </div>
 
           <table className="admin-table">
             <thead><tr><th>{t("rmSnapPolicyName")}</th><th>{t("rmSnapSchedules")}</th><th>{t("rmState")}</th><th>{t("rmShareComment")}</th><th>{t("rmActions")}</th></tr></thead>

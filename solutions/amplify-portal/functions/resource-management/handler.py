@@ -885,6 +885,8 @@ def _dispatch(event, context):
             return _create_flexclone(http, headers, event, user_id)
         elif action == "splitFlexClone":
             return _split_flexclone(http, headers, event, user_id)
+        elif action == "deleteFlexClone":
+            return _delete_flexclone_volume(http, headers, event, user_id)
 
         # --- SnapMirror ---
         elif action == "createSnapmirror":
@@ -939,6 +941,18 @@ def _dispatch(event, context):
             return _set_fpolicy_policy_enabled(http, headers, event, user_id)
         elif action == "deleteFpolicyPolicy":
             return _delete_fpolicy_policy(http, headers, event, user_id)
+        elif action == "listFpolicyEngines":
+            return _list_fpolicy_engines(http, headers, event)
+        elif action == "deleteFpolicyEngine":
+            return _delete_fpolicy_engine(http, headers, event, user_id)
+
+        # --- Audit (NAS and object-store) ---
+        elif action == "getAuditConfig":
+            return _get_audit_config(http, headers, event)
+        elif action == "deleteAudit":
+            return _delete_audit(http, headers, event, user_id)
+        elif action == "deleteObjectStoreAudit":
+            return _delete_object_store_audit(http, headers, event, user_id)
 
         # --- Peering (cluster and SVM) ---
         elif action == "listInterclusterLifs":
@@ -961,6 +975,14 @@ def _dispatch(event, context):
             return _accept_svm_peer(http, headers, event, user_id)
         elif action == "deleteSvmPeer":
             return _delete_svm_peer(http, headers, event, user_id)
+
+        # --- SVM management ---
+        elif action == "listSvms":
+            return _list_svms_rm(http, headers, event)
+        elif action == "getSvmDeletionImpact":
+            return _get_svm_deletion_impact(http, headers, event)
+        elif action == "deleteSvm":
+            return _delete_svm(http, headers, event, user_id)
 
         # --- Cluster inventory and services ---
         elif action == "getClusterInfo":
@@ -5274,6 +5296,66 @@ def _split_flexclone(http, headers, event, user_id):
     return {"success": True, "jobId": job_id, "error": None}
 
 
+def _delete_flexclone_volume(http, headers, event, user_id):
+    """Delete a FlexClone volume.
+
+    ONTAP REST: PATCH (offline) + DELETE /api/storage/volumes/{uuid}
+
+    A clone is a volume, so this is the same three-step teardown as a plain volume
+    delete: unmount, offline (waited on), delete (waited on). It is kept separate
+    from `_delete_volume` so the FlexClone panel has a verb of its own and the log
+    line names what was removed -- and so the one thing a clone delete leaves behind
+    can be stated: the base snapshot ONTAP took on the *parent* when the clone was
+    made stays on the parent, and removing it is the operator's to do.
+
+    `splitFlexClone` (make independent) and this (remove) are the two ways out of a
+    clone; the UI offers both from the clone listing.
+    """
+    vol_uuid = event.get("volumeUuid", "")
+    vol_name = event.get("volumeName", "")
+
+    if not vol_uuid:
+        return {"success": False, "error": "volumeUuid is required"}
+    if not event.get("confirm", False):
+        return {"success": False, "error": "confirm=true is required for delete operations"}
+
+    ok, error = _unmount_if_mounted(http, headers, vol_uuid)
+    if not ok:
+        return {"success": False, "error": error}
+
+    offline_data = _ontap_request(
+        http,
+        headers,
+        "PATCH",
+        f"/storage/volumes/{vol_uuid}",
+        body={"state": "offline"},
+    )
+    if offline_data.get("_error"):
+        return {"success": False, "error": f"Failed to offline: {offline_data['_message']}"}
+
+    ok, message = _wait_for_job(http, headers, offline_data.get("job", {}).get("uuid", ""))
+    if not ok:
+        return {"success": False, "error": f"Failed to offline: {message}"}
+
+    data = _ontap_request(http, headers, "DELETE", f"/storage/volumes/{vol_uuid}")
+    if data.get("_error"):
+        return {"success": False, "error": data["_message"]}
+
+    job_id = data.get("job", {}).get("uuid", "")
+    ok, message = _wait_for_job(http, headers, job_id)
+    if not ok:
+        return {"success": False, "jobId": job_id, "error": message}
+
+    logger.info(f"FlexClone deleted: {vol_name or vol_uuid} by {user_id}")
+    return {
+        "success": True,
+        "error": None,
+        "parentSnapshotNote": (
+            "The base snapshot on the parent volume remains; delete it there if it is no longer needed."
+        ),
+    }
+
+
 # ─── SnapMirror inventory ─────────────────────────────────────────────────────
 
 
@@ -6108,6 +6190,365 @@ def _delete_fpolicy_policy(http, headers, event, user_id):
     return {"success": True, "error": None}
 
 
+# How an engine delete fails when the teardown order was not followed. ONTAP
+# refuses to delete an external engine that is still attached to a policy; its
+# message does not say which policy, so the hint points at the order to follow.
+# Source: DELETE /protocols/fpolicy/{svm.uuid}/engines reference ("Deletion of an
+# FPolicy engine that is attached to one or more FPolicy policies is not allowed").
+_FPOLICY_ENGINE_HINTS: tuple[tuple[str, str], ...] = (
+    (
+        "is using",
+        "An external engine cannot be deleted while a policy still references it. "
+        "Disable and delete the policies that name this engine first, then its "
+        "events, then the engine -- that is the FPolicy teardown order.",
+    ),
+    (
+        "9764940",
+        "An external engine cannot be deleted while a policy still references it. "
+        "Disable and delete the policies that name this engine first, then its "
+        "events, then the engine -- that is the FPolicy teardown order.",
+    ),
+    (
+        "attached to one or more",
+        "An external engine cannot be deleted while a policy still references it. "
+        "Disable and delete the policies that name this engine first, then its "
+        "events, then the engine -- that is the FPolicy teardown order.",
+    ),
+    (
+        "in use",
+        "The engine is still referenced by a policy. Remove the policies that name it before deleting the engine.",
+    ),
+)
+
+
+def _fpolicy_engine_hint(message):
+    """Append an actionable hint to an ONTAP FPolicy engine failure, when one is known."""
+    if not message:
+        return message
+    text = str(message)
+    for fragment, hint in _FPOLICY_ENGINE_HINTS:
+        if fragment.lower() in text.lower():
+            return f"{text} — {hint}"
+    return text
+
+
+def _list_fpolicy_engines(http, headers, event):
+    """List FPolicy external engines for the SVM.
+
+    ONTAP REST: GET /api/protocols/fpolicy/{svm.uuid}/engines
+
+    The built-in `native` engine is reported with isNative=True so the UI can keep
+    it visible but non-deletable: ONTAP ships it and it is not the operator's to
+    remove. Only external engines are teardown targets. Verified on ONTAP 9.18.1P6.
+    """
+    svm = event.get("svm", SVM_NAME)
+
+    svm_uuid, err = _get_svm_uuid(http, headers, svm)
+    if err:
+        return {"engines": [], "count": 0, "error": err}
+
+    data = _ontap_request(
+        http,
+        headers,
+        "GET",
+        f"/protocols/fpolicy/{svm_uuid}/engines?fields=name,type&max_records=100",
+    )
+    if data.get("_error"):
+        return {"engines": [], "count": 0, "error": data["_message"]}
+
+    engines = []
+    for e in data.get("records", []):
+        name = e.get("name", "")
+        engines.append(
+            {
+                "name": name,
+                "type": e.get("type", ""),
+                "isNative": name == "native",
+            }
+        )
+
+    return {"engines": engines, "count": len(engines), "error": None}
+
+
+def _delete_fpolicy_engine(http, headers, event, user_id):
+    """Delete an FPolicy external engine.
+
+    ONTAP REST: DELETE /api/protocols/fpolicy/{svm.uuid}/engines/{name}
+
+    The last step of an FPolicy teardown: policy disable -> policy delete -> event
+    delete -> engine delete. ONTAP refuses to delete an engine that a policy still
+    references, so this is the step that can only succeed once the policies and
+    events are gone. The refusal is enriched by `_fpolicy_engine_hint`.
+
+    Synchronous (no job), verified on ONTAP 9.18.1P6: the refusal while a policy
+    still references the engine arrives as code 9764940 ("At least one policy is
+    using ..."). The built-in `native` engine is refused here rather than sent,
+    because deleting it is never the intent and ONTAP would reject it with a less
+    specific message.
+    """
+    svm = event.get("svm", SVM_NAME)
+    name = event.get("name", "")
+    if not name:
+        return {"success": False, "error": "name is required"}
+    if name == "native":
+        return {
+            "success": False,
+            "error": "The native engine is built into ONTAP and cannot be deleted.",
+        }
+    if not event.get("confirm", False):
+        return {"success": False, "error": "confirm=true is required"}
+
+    svm_uuid, err = _get_svm_uuid(http, headers, svm)
+    if err:
+        return {"success": False, "error": err}
+
+    data = _ontap_request(
+        http,
+        headers,
+        "DELETE",
+        f"/protocols/fpolicy/{svm_uuid}/engines/{_seg(name)}",
+    )
+    if data.get("_error"):
+        return {"success": False, "error": _fpolicy_engine_hint(data["_message"])}
+
+    # Read-back: the engine should be gone. A delete that ONTAP accepted but did
+    # not apply would otherwise read as success.
+    check = _ontap_request(
+        http,
+        headers,
+        "GET",
+        f"/protocols/fpolicy/{svm_uuid}/engines?name={_qval(name)}&fields=name&max_records=1",
+    )
+    if not check.get("_error") and check.get("records"):
+        return {"success": False, "error": f"FPolicy engine '{name}' is still present after delete"}
+
+    logger.info(f"FPolicy engine deleted: {name} by {user_id}")
+    return {"success": True, "error": None}
+
+
+# ─── Audit (NAS and object-store) ─────────────────────────────────────────────
+#
+# A volume that is the destination of an SVM's audit log cannot be deleted while
+# it holds that role, so an operator tearing a volume down has to remove the audit
+# configuration first. These actions read the configuration (to show which volume
+# is the destination) and remove it.
+#
+# Two ONTAP facts shape the delete, measured on 9.18.1P6:
+#   - the audit configuration cannot be deleted while it is enabled (the delete is
+#     accepted with a 202 and then fails inside the job with "resource in use"), so
+#     the delete disables it first, the way a volume is taken offline before delete;
+#   - immediately after the disable succeeds the delete fails with "Final
+#     consolidation is in progress", and a retry ~20s later succeeds, so the delete
+#     is retried with a short backoff (see _delete_audit_leg) rather than failing.
+
+
+def _audit_leg(http, headers, svm_uuid, subpath):
+    """Read one audit configuration (NAS when subpath is "", object-store otherwise).
+
+    Returns a small dict the UI can render, or None when nothing is configured --
+    ONTAP answers an unconfigured SVM with an error code 4 ("entry doesn't exist"),
+    and "not configured" is the normal case, not an error to surface.
+
+    The log destination is reported as `log_path` (a junction path), not as
+    `log.volume.name`: measured on ONTAP 9.18.1P6, the create rejects a `log.volume`
+    argument (code 262179) and the read carries `log_path`. `logVolume` keeps the
+    junction path the destination volume is mounted at, which is what the UI shows as
+    the dependency a volume delete must clear.
+    """
+    data = _ontap_request(
+        http,
+        headers,
+        "GET",
+        f"/protocols/audit/{svm_uuid}{subpath}?fields=enabled,log_path",
+    )
+    if data.get("_error"):
+        return None
+    if not data or ("enabled" not in data and "log_path" not in data):
+        return None
+    return {
+        "enabled": bool(data.get("enabled", False)),
+        "logVolume": data.get("log_path", ""),
+        "configured": True,
+    }
+
+
+def _get_audit_config(http, headers, event):
+    """Report the SVM's NAS and object-store audit configuration.
+
+    ONTAP REST:
+      GET /api/protocols/audit/{svm.uuid}
+      GET /api/protocols/audit/{svm.uuid}/object-store
+
+    Used before a volume delete to tell the operator whether that volume is an
+    audit log destination, and in the audit panel to show what a delete would
+    remove. `logVolume` is the dependency a volume teardown has to clear first.
+
+    Measured on ONTAP 9.18.1P6: the destination is reported as `log_path`, read by
+    `_audit_leg`.
+    """
+    svm = event.get("svm", SVM_NAME)
+
+    svm_uuid, err = _get_svm_uuid(http, headers, svm)
+    if err:
+        return {"nasAudit": None, "objectStoreAudit": None, "error": err}
+
+    return {
+        "svm": svm,
+        "nasAudit": _audit_leg(http, headers, svm_uuid, ""),
+        "objectStoreAudit": _audit_leg(http, headers, svm_uuid, "/object-store"),
+        "error": None,
+    }
+
+
+# ONTAP audit delete failures, matched on code or a distinctive fragment. The codes
+# are kept for forward compatibility, but 9.18.1P6 was measured to report these as
+# prose ("resource in use" while enabled, "Final consolidation is in progress" just
+# after disabling), so the fragments are what actually match.
+_AUDIT_HINTS: tuple[tuple[str, str], ...] = (
+    (
+        "140902421",
+        "ONTAP will not delete an audit configuration while it is enabled. The "
+        "portal disables it first; if you still see this, disable auditing and retry.",
+    ),
+    (
+        "resource in use",
+        "ONTAP will not delete an audit configuration while it is enabled. The "
+        "portal disables it first; if you still see this, disable auditing and retry.",
+    ),
+    (
+        "140902422",
+        "A final log consolidation is still in progress. The portal retries for a "
+        "short while; if it still fails, wait a few minutes and retry.",
+    ),
+    (
+        "consolidation",
+        "A final log consolidation is still in progress. The portal retries for a "
+        "short while; if it still fails, wait a few minutes and retry.",
+    ),
+)
+
+# After disabling auditing, ONTAP needs a moment to finish a final log consolidation
+# before the configuration can be deleted -- measured on 9.18.1P6: the delete issued
+# immediately after the disable job succeeded failed with "Final consolidation is in
+# progress", and a retry ~20s later succeeded. So the delete is retried with a short
+# backoff rather than failing on the first consolidation error.
+_AUDIT_DELETE_RETRIES = 6
+_AUDIT_DELETE_BACKOFF = 10.0
+
+
+def _is_audit_consolidation_error(message) -> bool:
+    text = str(message or "").lower()
+    return "consolidation" in text or "140902422" in text
+
+
+def _audit_hint(message):
+    """Append an actionable hint to an ONTAP audit failure, when one is known."""
+    if not message:
+        return message
+    text = str(message)
+    for fragment, hint in _AUDIT_HINTS:
+        if fragment in text:
+            return f"{text} — {hint}"
+    return text
+
+
+def _delete_audit_leg(http, headers, svm_uuid, subpath, user_id, label):
+    """Disable (if enabled) then delete one audit configuration.
+
+    ONTAP refuses the delete while auditing is enabled, so this reads the current
+    state, disables it when needed (a 202 job that is waited on), then deletes it.
+    The two-step mirrors the volume offline-before-delete.
+
+    Measured on ONTAP 9.18.1P6, two things the first version got wrong:
+      - deleting while enabled is accepted with a 202 and then fails inside the job
+        with "resource in use" (not a synchronous 140902421), which the disable step
+        avoids; and
+      - the delete issued immediately after the disable job succeeds fails with
+        "Final consolidation is in progress", and a retry ~20s later succeeds. So the
+        delete is retried with a short backoff rather than failing on that error.
+    """
+    current = _audit_leg(http, headers, svm_uuid, subpath)
+    if current is None:
+        return {"success": False, "error": f"No {label} audit configuration on this SVM"}
+
+    if current["enabled"]:
+        disable = _ontap_request(
+            http,
+            headers,
+            "PATCH",
+            f"/protocols/audit/{svm_uuid}{subpath}",
+            body={"enabled": False},
+        )
+        if disable.get("_error"):
+            return {"success": False, "error": _audit_hint(disable["_message"])}
+        ok, message = _wait_for_job(http, headers, disable.get("job", {}).get("uuid", ""))
+        if not ok:
+            return {"success": False, "error": _audit_hint(message)}
+
+    # Delete, retrying only the final-consolidation error. Any other failure is
+    # returned at once.
+    last_message = ""
+    for attempt in range(_AUDIT_DELETE_RETRIES):
+        data = _ontap_request(http, headers, "DELETE", f"/protocols/audit/{svm_uuid}{subpath}")
+        if data.get("_error"):
+            last_message = data["_message"]
+        else:
+            ok, message = _wait_for_job(http, headers, data.get("job", {}).get("uuid", ""))
+            if ok:
+                last_message = ""
+                break
+            last_message = message
+        if not _is_audit_consolidation_error(last_message):
+            return {"success": False, "error": _audit_hint(last_message)}
+        if attempt < _AUDIT_DELETE_RETRIES - 1:
+            time.sleep(_AUDIT_DELETE_BACKOFF)
+    if last_message:
+        return {"success": False, "error": _audit_hint(last_message)}
+
+    # Read-back: the configuration should be gone.
+    if _audit_leg(http, headers, svm_uuid, subpath) is not None:
+        return {"success": False, "error": f"{label} audit configuration is still present after delete"}
+
+    logger.info(f"{label} audit deleted on {svm_uuid} by {user_id}")
+    return {"success": True, "error": None}
+
+
+def _delete_audit(http, headers, event, user_id):
+    """Delete the SVM's NAS audit configuration.
+
+    ONTAP REST: PATCH (disable) + DELETE /api/protocols/audit/{svm.uuid}
+
+    Verified on ONTAP 9.18.1P6 (see _delete_audit_leg for the measured behaviour).
+    """
+    svm = event.get("svm", SVM_NAME)
+    if not event.get("confirm", False):
+        return {"success": False, "error": "confirm=true is required"}
+
+    svm_uuid, err = _get_svm_uuid(http, headers, svm)
+    if err:
+        return {"success": False, "error": err}
+
+    return _delete_audit_leg(http, headers, svm_uuid, "", user_id, "NAS")
+
+
+def _delete_object_store_audit(http, headers, event, user_id):
+    """Delete the SVM's object-store (S3) audit configuration.
+
+    ONTAP REST: PATCH (disable) + DELETE /api/protocols/audit/{svm.uuid}/object-store
+
+    Verified on ONTAP 9.18.1P6 (see _delete_audit_leg for the measured behaviour).
+    """
+    svm = event.get("svm", SVM_NAME)
+    if not event.get("confirm", False):
+        return {"success": False, "error": "confirm=true is required"}
+
+    svm_uuid, err = _get_svm_uuid(http, headers, svm)
+    if err:
+        return {"success": False, "error": err}
+
+    return _delete_audit_leg(http, headers, svm_uuid, "/object-store", user_id, "Object-store")
+
+
 # ─── Cluster and SVM peering ──────────────────────────────────────────────────
 #
 # Peering is the area that most often forces operators to the ONTAP CLI, because
@@ -6417,6 +6858,212 @@ def _delete_svm_peer(http, headers, event, user_id):
 
     logger.info(f"SVM peer deleted: {uuid} by {user_id}")
     return {"success": True, "error": None}
+
+
+# ─── SVM management ───────────────────────────────────────────────────────────
+#
+# Deleting an SVM removes it with its root volume. It is the widest teardown this
+# portal offers, so two guards sit in front of it: ONTAP will not delete an SVM
+# that still owns non-root volumes, and rather than let that surface as a late
+# ONTAP refusal the impact is read back first and the delete is refused here with
+# the list of what remains. The UI adds a name re-entry on top of the confirm flag.
+#
+# `_list_svms_rm` is named apart from data-protection's `_list_svms`, which returns
+# a different shape for containment-target selection.
+
+
+def _file_system_id(http, headers):
+    """The FSx file system id (fs-...) this handler's ONTAP cluster belongs to.
+
+    FSx names the ONTAP cluster `FsxId<filesystemid without dashes>` -- measured
+    `FsxId002ec851eba809979` for `fs-002ec851eba809979`. Deriving the id from the
+    cluster name avoids a new environment variable (which would be a template change)
+    and keeps the FSx API calls scoped to this file system rather than the whole
+    account. Returns (fs_id, None) or (None, error_message).
+    """
+    data = _ontap_request(http, headers, "GET", "/cluster?fields=name")
+    if data.get("_error"):
+        return None, data["_message"]
+    name = data.get("name", "")
+    if not name.startswith("FsxId"):
+        return None, f"cluster name '{name}' is not an FSx-managed cluster name"
+    return "fs-" + name[len("FsxId") :], None
+
+
+def _list_svms_rm(http, headers, event):
+    """List the SVMs on this file system, with their FSx identifiers.
+
+    AWS FSx API: DescribeStorageVirtualMachines, filtered to this file system.
+
+    Listed through the FSx API rather than ONTAP REST because the SVM delete goes
+    through the FSx API and needs the FSx id (svm-...), which the ONTAP REST listing
+    does not carry -- it reports the ONTAP UUID. Verified on fs-002ec851eba809979.
+    """
+    fs_id, err = _file_system_id(http, headers)
+    if err:
+        return {"svms": [], "count": 0, "error": err}
+
+    try:
+        fsx = boto3.client("fsx")
+        paginator = fsx.get_paginator("describe_storage_virtual_machines")
+        records = []
+        for page in paginator.paginate(Filters=[{"Name": "file-system-id", "Values": [fs_id]}]):
+            records.extend(page.get("StorageVirtualMachines", []))
+    except Exception as e:  # noqa: BLE001
+        return {"svms": [], "count": 0, "error": _fsx_error(e)}
+
+    svms = []
+    for s in records:
+        name = s.get("Name", "")
+        svms.append(
+            {
+                "name": name,
+                "svmId": s.get("StorageVirtualMachineId", ""),
+                "state": s.get("Lifecycle", ""),
+                "subtype": s.get("Subtype", ""),
+                "isDefault": name == SVM_NAME,
+            }
+        )
+
+    return {"svms": svms, "count": len(svms), "error": None}
+
+
+def _svm_volume_breakdown(http, headers, svm_name):
+    """(root_volume | None, non_root_volumes, error) for an SVM.
+
+    Shared by the impact preview and the delete guard so the two cannot disagree
+    about what counts as a non-root volume.
+    """
+    data = _ontap_request(
+        http,
+        headers,
+        "GET",
+        f"/storage/volumes?svm.name={_qval(svm_name)}&fields=name,uuid,nas.path,is_svm_root&max_records=200",
+    )
+    if data.get("_error"):
+        return None, None, data["_message"]
+
+    root = None
+    non_root = []
+    for v in data.get("records", []):
+        entry = {
+            "name": v.get("name", ""),
+            "uuid": v.get("uuid", ""),
+            "junctionPath": v.get("nas", {}).get("path", ""),
+        }
+        if v.get("is_svm_root"):
+            root = entry
+        else:
+            non_root.append(entry)
+    return root, non_root, None
+
+
+def _get_svm_deletion_impact(http, headers, event):
+    """What a delete of this SVM would remove, and whether it is allowed yet.
+
+    ONTAP REST: GET /api/storage/volumes?svm.name=&fields=is_svm_root,...
+
+    The non-root volumes are what the operator must clear first. `canDelete` is
+    true only when none remain. Verified on ONTAP 9.18.1P6: `is_svm_root` separates
+    the root from the rest as expected. Note the FSx-side caveat in `_delete_svm` --
+    the FSx control plane may still count a volume ONTAP has deleted, so a `canDelete`
+    of true here does not guarantee the FSx delete will be accepted immediately.
+    """
+    svm = event.get("svm", SVM_NAME)
+
+    root, non_root, err = _svm_volume_breakdown(http, headers, svm)
+    if err:
+        return {"error": err}
+
+    return {
+        "svm": svm,
+        "rootVolume": root,
+        "nonRootVolumes": non_root,
+        "nonRootCount": len(non_root),
+        "canDelete": len(non_root) == 0,
+        "error": None,
+    }
+
+
+def _delete_svm(http, headers, event, user_id):
+    """Delete an SVM, with its root volume.
+
+    AWS FSx API: DeleteStorageVirtualMachine (NOT ONTAP REST).
+
+    Verified on fs-002ec851eba809979 (ONTAP 9.18.1P6): on FSx for ONTAP the fsxadmin
+    account is not authorised to run ONTAP REST `DELETE /svm/svms/{uuid}` -- it returns
+    ONTAP error code 6, "not authorized for that command", even with no non-root
+    volumes left. The SVM is an AWS-managed resource, so its lifecycle belongs to the
+    FSx control plane, and the delete goes through the FSx API. `svmId` is the FSx
+    identifier (svm-...), distinct from the ONTAP UUID the read-only actions use.
+
+    Two measured consequences of the AWS/ONTAP split shape the behaviour:
+      - the FSx API counts volumes in ONTAP's recovery queue as non-root volumes, so a
+        volume deleted through ONTAP REST (which this portal does) can still block the
+        SVM delete until its recovery-queue entry ages out or is purged;
+      - a volume created or deleted through ONTAP REST is not immediately reflected in
+        the FSx inventory, so the FSx-side non-root count can differ from ONTAP's.
+    Rather than reconcile the two planes here, the FSx API's own refusal
+    ("Cannot delete storage virtual machine while it has non-root volumes: ...") is
+    surfaced, with a note that an ONTAP-side delete may not yet be visible to FSx.
+
+    `confirm=true` is required; the UI also requires the SVM name to be re-typed,
+    because this is the widest-blast-radius delete in the portal.
+    """
+    svm_id = event.get("svmId", "")
+    svm_name = event.get("svm", SVM_NAME)
+    if not svm_id:
+        return {"success": False, "error": "svmId is required"}
+    if not event.get("confirm", False):
+        return {"success": False, "error": "confirm=true is required"}
+
+    try:
+        fsx = boto3.client("fsx")
+    except Exception as e:  # noqa: BLE001
+        return {"success": False, "error": f"Could not build the FSx client ({type(e).__name__})"}
+
+    try:
+        fsx.delete_storage_virtual_machine(StorageVirtualMachineId=svm_id)
+    except Exception as e:  # noqa: BLE001 - botocore raises ClientError subclasses
+        return {"success": False, "error": _fsx_error(e)}
+
+    # Read-back through the FSx control plane. A DELETING lifecycle is the accepted
+    # outcome: the delete runs longer than this request, so it is reported as started
+    # rather than waited to completion. NotFound means it is already gone.
+    not_found = getattr(getattr(fsx, "exceptions", None), "StorageVirtualMachineNotFound", ())
+    lifecycle = "DELETING"
+    try:
+        desc = fsx.describe_storage_virtual_machines(StorageVirtualMachineIds=[svm_id])
+        records = desc.get("StorageVirtualMachines", [])
+        lifecycle = records[0].get("Lifecycle", "DELETING") if records else "DELETED"
+    except not_found:  # the SVM is already gone
+        lifecycle = "DELETED"
+    except Exception:  # noqa: BLE001 - any other read-back failure is non-fatal
+        lifecycle = "DELETING"
+
+    logger.info(f"SVM delete requested via FSx API: {svm_name} ({svm_id}) by {user_id}")
+    return {"success": True, "lifecycle": lifecycle, "error": None}
+
+
+def _fsx_error(exc) -> str:
+    """The message to show for a failed FSx API call.
+
+    botocore's ClientError carries the service message in response['Error']['Message'].
+    The non-root-volume refusal gets a note that an ONTAP-side delete may not yet be
+    visible to the FSx control plane, because that mismatch is the confusing part.
+    """
+    message = ""
+    response = getattr(exc, "response", None)
+    if isinstance(response, dict):
+        message = response.get("Error", {}).get("Message", "")
+    message = message or str(exc)
+    if "non-root volume" in message:
+        message += (
+            " — A volume deleted through ONTAP may still be counted by the FSx control "
+            "plane until its recovery-queue entry clears; delete the volume through the "
+            "FSx side, or wait, before retrying."
+        )
+    return message
 
 
 # ─── Cluster inventory and services ───────────────────────────────────────────

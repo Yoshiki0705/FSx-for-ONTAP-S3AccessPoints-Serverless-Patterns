@@ -1871,4 +1871,90 @@ arpResponseSweepNote: "차단은 지정한 기한이 지나면 자동으로 해�
   // --- Shared / misc ---
   processing: "처리 중...",
   athenaGuidanceTitle: "사용 방법",
+
+  // --- Teardown: panel navigation (ResourceManagement cards) ---
+  rmAudit: "감사",
+  rmAuditDesc: "NAS / S3 감사 구성 보기 및 삭제",
+  rmObjectStore: "오브젝트 스토어 버킷",
+  rmObjectStoreDesc: "ONTAP 오브젝트 스토어 버킷 목록 및 삭제",
+  rmSvm: "SVM",
+  rmSvmDesc: "볼륨을 정리한 후 SVM 목록 및 삭제",
+  rmEdit: "편집",
+
+  // --- Teardown: FPolicy engines ---
+  fpEngines: "엔진",
+  fpEngineType: "유형",
+  fpNoEngines: "엔진이 없습니다",
+  fpEngineNative: "native(기본 제공)",
+  fpEngineNativeHint: "native 엔진은 ONTAP 기본 제공이므로 삭제할 수 없습니다",
+  fpConfirmDeleteEngine: "이 엔진을 삭제합니다. 참조하는 FPolicy 정책이 있으면 ONTAP가 거부합니다. 계속하시겠습니까?",
+  fpTeardownTitle: "FPolicy 제거 순서",
+  fpTeardown1: "정책을 비활성화합니다",
+  fpTeardown2: "정책을 삭제합니다",
+  fpTeardown3: "정책이 참조하던 이벤트를 삭제합니다",
+  fpTeardown4: "마지막으로 엔진을 삭제합니다",
+
+  // --- Teardown: audit ---
+  auditIntro: "감사 로그 대상 볼륨은 삭제할 수 없습니다. 먼저 여기서 감사 구성을 삭제하세요.",
+  auditNas: "NAS 감사",
+  auditObjectStore: "S3(오브젝트 스토어) 감사",
+  auditEnabled: "활성화됨",
+  auditLogVolume: "로그 볼륨",
+  auditNotConfigured: "구성되지 않음",
+  auditVolumeDependencyHint: "이 볼륨은 감사 로그 대상입니다. 볼륨을 삭제하기 전에 이 감사 구성을 삭제하세요.",
+  auditDelete: "감사 삭제",
+  auditConfirmDelete: "이 감사 구성을 삭제합니다. 활성화되어 있으면 먼저 비활성화됩니다. 계속하시겠습니까?",
+  auditDeleted: "감사 구성을 삭제했습니다",
+
+  // --- Teardown: SVM ---
+  svmIntro: "SVM을 삭제하면 루트 볼륨과 함께 삭제됩니다. 루트가 아닌 볼륨이 남아 있으면 삭제할 수 없습니다.",
+  svmName: "SVM 이름",
+  svmSubtype: "하위 유형",
+  svmDefault: "기본값",
+  svmNone: "SVM이 없습니다",
+  svmBlockedByVolumes: "이 SVM에는 아직 루트가 아닌 볼륨이 {count}개 있습니다. 먼저 삭제하세요.",
+  svmConfirmDelete: "SVM \"{name}\"을(를) 루트 볼륨과 함께 삭제합니다. 되돌릴 수 없습니다.",
+  svmTypeToConfirm: "확인을 위해 SVM 이름 \"{name}\"을(를) 입력하세요",
+  svmDeleted: "SVM \"{name}\"을(를) 삭제했습니다",
+
+  // --- Teardown: FlexClone delete ---
+  fcCloneDeleted: "클론을 삭제했습니다",
+  fcConfirmDelete: "클론 \"{name}\"을(를) 삭제합니다. 부모 볼륨의 기본 Snapshot은 남습니다. 계속하시겠습니까?",
+  fcDeleteTitle: "이 클론 볼륨을 삭제합니다(split은 독립화, delete는 삭제)",
+
+  // --- Teardown: object-store buckets ---
+  osbIntro: "ONTAP 자체의 오브젝트 스토어 버킷으로, 계정의 Amazon S3 버킷과는 다른 네임스페이스입니다.",
+  osbName: "버킷 이름",
+  osbVolume: "볼륨",
+  osbType: "유형",
+  osbNone: "오브젝트 스토어 버킷이 없습니다",
+  osbConfirmDelete: "버킷 \"{name}\"을(를) 삭제합니다. 이를 통해 읽는 S3 Access Points는 데이터 경로를 잃습니다. 계속하시겠습니까?",
+  osbDeleted: "버킷 \"{name}\"을(를) 삭제했습니다",
+
+  // --- Teardown: QoS edit ---
+  rmQosEdit: "QoS 정책 \"{name}\" 편집",
+  rmQosUpdated: "QoS 정책 \"{name}\"을(를) 업데이트했습니다",
+
+  // --- Teardown: SnapLock expired-retention list (read-only) ---
+  slExpiredTitle: "보존 기한 상태",
+  slExpiredClock: "컴플라이언스 클록",
+  slExpiredNoClock: "사용할 수 없음",
+  slExpiredReadOnly: "이 목록은 읽기 전용입니다. 만료된 잠금 삭제는 되돌릴 수 없으므로 여기서는 수행하지 않습니다.",
+  slExpiredStatus: "상태",
+  slExpiredResource: "리소스",
+  slExpiredExpiry: "만료",
+  slExpiredPast: "만료됨",
+  slExpiredPendingWord: "보존 중",
+  slExpiredVolume: "볼륨",
+  slExpiredSnapshot: "Snapshot",
+
+  // --- Teardown: snapshot policy assignment ---
+  rmSnapAssignTo: "볼륨에 할당",
+  rmSnapSelectPolicy: "정책 선택",
+  rmSnapPolicyAssigned: "정책 \"{name}\"을(를) 할당했습니다",
+  rmSnapAssignLockHint: "이 정책은 Snapshot을 잠급니다. 할당하면 이 볼륨이 생성하는 Snapshot은 만료 전까지 삭제할 수 없습니다.",
+
+  // --- Teardown: volume delete dependency (clones) ---
+  rmDeleteCloneList: "볼륨 \"{parent}\" 삭제를 막고 있는 클론:",
+  rmDeleteCloneListAction: "FlexClone 패널에서 이 클론들을 split(독립화) 또는 delete(삭제)한 후 부모 볼륨을 삭제하세요.",
 };
