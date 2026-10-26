@@ -88,7 +88,7 @@ the UI keeps the execute button disabled until the re-typed SVM name matches.
 
 **Two constraints measured on fs-002 (FSx for ONTAP specific):**
 
-1. **The SVM delete cannot go through ONTAP REST.** With the fsxadmin account, ONTAP REST
+1. **The SVM delete cannot go through ONTAP REST** [E-013]**.** With the fsxadmin account, ONTAP REST
    `DELETE /svm/svms/{uuid}` is refused with `not authorized for that command` (code 6), even
    with zero non-root volumes. The SVM is an AWS-managed resource, so the delete goes through the
    **AWS FSx API** (`DeleteStorageVirtualMachine`). `deleteSvm` uses the boto3 fsx client, and

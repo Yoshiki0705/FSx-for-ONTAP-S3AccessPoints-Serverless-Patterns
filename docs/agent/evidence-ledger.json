@@ -457,6 +457,42 @@
         "infrastructure/shared-backup-vault-lab/README.en.md"
       ],
       "claim_ja": "論理エアギャップ（LAG）ボールトはコンプライアンスモードの Vault Lock を伴い、グレースタイムの満了後は復旧ポイントを保持している間は削除できず、削除や保持期間の変更はどのユーザーに対しても、また AWS に対しても拒否されます。空のボールトは削除できます。最短の保持期間は 7 日です。"
+    },
+    {
+      "id": "E-013",
+      "claim": "On FSx for ONTAP, the fsxadmin account cannot delete a storage virtual machine through the ONTAP REST API (DELETE /svm/svms/{uuid}); the delete must go through the AWS FSx API (DeleteStorageVirtualMachine). The FSx API also counts volumes in ONTAP's recovery queue as non-root volumes, so an SVM delete can be refused while a volume deleted through ONTAP REST has not yet cleared the FSx control plane's inventory.",
+      "subject": "AWS",
+      "tier": "verified",
+      "premise": true,
+      "sources": [
+        {
+          "url": "https://docs.netapp.com/us-en/ontap-restapi/delete-svm-svms-.html",
+          "read": "full",
+          "retrieved": "2026-10-26",
+          "says": "Documents DELETE /svm/svms/{uuid} as an async (202) operation. Does not state that a managed-service admin account such as FSx for ONTAP's fsxadmin is unauthorised for it; that authorization boundary is an FSx-for-ONTAP property, not an ONTAP REST one."
+        },
+        {
+          "url": "https://docs.aws.amazon.com/fsx/latest/APIReference/API_DeleteStorageVirtualMachine.html",
+          "read": "full",
+          "retrieved": "2026-10-26",
+          "says": "Documents the FSx API DeleteStorageVirtualMachine as the control-plane operation for removing an SVM, and that an SVM cannot be deleted while it still owns non-root volumes."
+        }
+      ],
+      "observation": "ap-northeast-1, fs-002ec851eba809979 (ONTAP 9.18.1P6), disposable SVM. ONTAP REST DELETE /svm/svms/{uuid} as fsxadmin returned ONTAP error code 6 'not authorized for that command', with and without non-root volumes present. The AWS FSx API DeleteStorageVirtualMachine succeeded (DELETING -> gone). The FSx API refused the delete with 'Cannot delete storage virtual machine while it has non-root volumes' while a volume deleted through ONTAP REST still sat in ONTAP's recovery queue; purging the recovery queue and deleting the volume's FSx inventory entry cleared it, after which the SVM delete succeeded.",
+      "why_not_documented_is_not_absent": "The ONTAP REST reference describes the endpoint generically and does not describe FSx for ONTAP's managed-service authorization model, where the SVM lifecycle belongs to the AWS control plane. That fsxadmin is not authorised for the ONTAP-side delete is observed, not stated by either vendor page.",
+      "support_inquiry": {
+        "status": "not-needed",
+        "topic": "Behaviour observed directly on a live file system; the FSx API is the documented control-plane path for SVM deletion."
+      },
+      "feature_request": {
+        "status": "not-applicable"
+      },
+      "appears_in": [
+        "solutions/amplify-portal/docs/ontap-teardown-guide.md",
+        "solutions/amplify-portal/docs/ontap-teardown-guide.en.md"
+      ],
+      "claim_ja": "FSx for ONTAP では、fsxadmin アカウントは ONTAP REST API（DELETE /svm/svms/{uuid}）で SVM を削除できません。削除は AWS FSx API（DeleteStorageVirtualMachine）経由で行う必要があります。また FSx API は ONTAP のリカバリキューにあるボリュームも非 root ボリュームとして数えるため、ONTAP REST で削除したボリュームが FSx コントロールプレーンのインベントリから消えるまで、SVM 削除が拒否されることがあります。",
+      "observation_ja": "ap-northeast-1、fs-002ec851eba809979（ONTAP 9.18.1P6）の使い捨て SVM で確認。fsxadmin による ONTAP REST の DELETE /svm/svms/{uuid} は、非 root ボリュームの有無にかかわらず ONTAP エラーコード 6『not authorized for that command』を返しました。AWS FSx API の DeleteStorageVirtualMachine は成功しました（DELETING→消滅）。ONTAP REST で削除したボリュームが ONTAP のリカバリキューに残る間、FSx API は『Cannot delete storage virtual machine while it has non-root volumes』で削除を拒否し、リカバリキューを purge して FSx 側のボリュームエントリを削除した後に SVM 削除が成功しました。"
     }
   ]
 }

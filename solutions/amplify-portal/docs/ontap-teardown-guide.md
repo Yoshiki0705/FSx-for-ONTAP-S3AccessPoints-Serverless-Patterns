@@ -86,7 +86,7 @@ SVM は配下に非 root ボリュームが残っている間は削除できま�
 
 **実測で判明した 2 つの制約（FSx for ONTAP 特有）:**
 
-1. **SVM 削除は ONTAP REST ではできない。** fs-002 で確認したところ、fsxadmin 権限では
+1. **SVM 削除は ONTAP REST ではできない** [E-013]**。** fs-002 で確認したところ、fsxadmin 権限では
    ONTAP REST の `DELETE /svm/svms/{uuid}` が `not authorized for that command`（code 6）で
    拒否されます（非 root ボリュームが 0 でも）。SVM は AWS が管理するリソースのため、削除は
    **AWS FSx API（`DeleteStorageVirtualMachine`）** で行います。`deleteSvm` は boto3 の fsx
