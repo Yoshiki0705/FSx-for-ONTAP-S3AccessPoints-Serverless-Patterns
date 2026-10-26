@@ -30,7 +30,7 @@ the default because reading what is about to be sent is the cheap step.
 """
 
 # Copied from the canonical checker shared by every project.
-# canonical: ~/.kiro/hooks/scripts/aws_support_inquiry.py  sha256:00b3e96fce7d3c35
+# canonical: ~/.kiro/hooks/scripts/aws_support_inquiry.py  sha256:c668e16c33d462ea
 # Edit the canonical copy, then re-run the installer. Editing this copy alone
 # means one project's gate quietly differs from the rest.
 
@@ -292,6 +292,13 @@ def build_body_ja(entry: dict) -> str:
             "【断定を避けている理由】",
             f"  {entry.get('why_not_documented_is_not_absent_ja') or entry['why_not_documented_is_not_absent']}",
         ]
+    if entry.get("requested_outcome"):
+        # A feature request that only says what is missing leaves the reader to infer
+        # what would satisfy it, and an inferred request is answered as a question.
+        # Stating the wanted behaviour -- and accepting a documentation fix as the
+        # smallest acceptable outcome -- is what turns a report into a request.
+        lines += ["", "【実現したいこと（機能改善のご要望として）】"]
+        lines += [f"  {index}. {item}" for index, item in enumerate(entry["requested_outcome"], start=1)]
     lines += [
         "",
         "【この回答で決まること】",
