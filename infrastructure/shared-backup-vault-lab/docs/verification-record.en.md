@@ -1,4 +1,4 @@
-# Real-environment run: recorded [V1][V2][V3][V4][V5][V6][V7]; not recorded [E13] (status source: docs/verification-record.md)
+# Real-environment run: recorded [V1][V2][V4]; not recorded [V3][V5][V6][V7][E13] (status source: docs/verification-record.md)
 
 🌐 **Language / 言語**: [日本語](verification-record.md) | English
 
@@ -9,6 +9,8 @@ This document is the single source of truth for the state of the shared-vault la
 ## Status
 
 Date and environment of the real-environment run: 2026-10-12 (JST). The owner and the recipient were both in ap-northeast-1, with ap-northeast-3 as the second Region, run with the lab's own scripts and templates. The record table below carries one row per item for V1 to V7. E13 (an environment with organization sharing on) is not recorded because this environment used the invitation path with organization sharing off. MPA was not run (see "Treatment of MPA" below).
+
+The V3, V5, V6 and V7 rows were recorded against the portal at portal-ref `f0eac3fbaffd`. #484 then changed `amplify/backend.ts`, so the current portal-ref no longer matches. Those four items do not hold against the current portal, and the status line lists them under `not recorded`. The rows themselves stay. Re-running them on a real environment and adding rows with the current portal-ref moves them back to `recorded`.
 
 The status-line grammar has an intermediate state until every item holds. Environments are exclusive and cannot satisfy every item at once, so only the items that hold are listed.
 

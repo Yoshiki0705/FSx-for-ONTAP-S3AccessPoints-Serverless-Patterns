@@ -26,6 +26,8 @@ Capacity Pool ティアへの最適な階層化を推奨するパターン。
 | `auto` | cooling > 14日 & Pool > 100 GB | cooling を 14日に短縮 |
 | `all` | — | 推奨なし (既に最大階層化) |
 
+> このツールは階層化ポリシーとクーリング期間を推奨します。読み出し時にコールドデータを SSD へ戻す挙動は `cloud-retrieval-policy` で別途制御され、[cloud-retrieval-policy.md](https://github.com/Yoshiki0705/FSx-for-ONTAP-Observability-integrations/blob/main/docs/ja/cloud-retrieval-policy.md) にまとまっています。
+
 ---
 
 ## コスト試算

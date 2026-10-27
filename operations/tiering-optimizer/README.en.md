@@ -23,6 +23,10 @@ FabricPool configuration (policy + cooling period) with cost savings estimates.
 | `auto` | cooling > 14 days & Pool > 100 GB | Reduce cooling to 14 days |
 | `all` | — | No recommendation (max tiering) |
 
+> This tool recommends the tiering policy and cooling period; how reads restore cold data to
+> SSD is controlled separately by `cloud-retrieval-policy`, covered in
+> [cloud-retrieval-policy.md](https://github.com/Yoshiki0705/FSx-for-ONTAP-Observability-integrations/blob/main/docs/en/cloud-retrieval-policy.md).
+
 ## Cost Estimate
 
 | Tier | Price (ap-northeast-1) |
