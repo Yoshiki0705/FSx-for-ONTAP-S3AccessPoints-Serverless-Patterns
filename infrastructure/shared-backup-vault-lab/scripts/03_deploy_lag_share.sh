@@ -1,5 +1,5 @@
 #!/bin/bash
-# Real-environment run: recorded [V1][V2][V3][V4][V5][V6][V7]; not recorded [E13] (status source: docs/verification-record.md)
+# Real-environment run: recorded [V1][V2][V4]; not recorded [V3][V5][V6][V7][E13] (status source: docs/verification-record.md)
 #
 # 03_deploy_lag_share.sh - create the logically air-gapped (LAG) vault and share it.
 #
