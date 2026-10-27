@@ -1,4 +1,4 @@
-# Real-environment run: recorded [V1][V2][V3][V4][V5][V6][V7]; not recorded [E13] (status source: docs/verification-record.md)
+# Real-environment run: recorded [V1][V2][V4]; not recorded [V3][V5][V6][V7][E13] (status source: docs/verification-record.md)
 
 🌐 **Language / 言語**: 日本語 | [English](verification-record.en.md)
 
@@ -9,6 +9,8 @@
 ## 状態
 
 実機での通しの日付と環境: 2026-10-12（JST）。所有者と受け手の両アカウントを ap-northeast-1 に置き、第 2 リージョンを ap-northeast-3 として、ラボ自身のスクリプトとテンプレートで通しました。下の記録の表に V1〜V7 の結果を 1 行ずつ載せています。E13（組織共有が有効な環境）は、この環境が組織共有を無効にした招待経路のため記録していません。MPA は実行していません（下の「MPA の扱い」）。
+
+V3・V5・V6・V7 の行は portal-ref `f0eac3fbaffd` のポータルで記録したものです。その後 #484 が `amplify/backend.ts` を変更し、現行の portal-ref はこの値と一致しません。そのため、この 4 項目は現行のポータルに対しては成立せず、状態の行では `not recorded` に置いています。記録の行は消していません。実機で再実行し、現行の portal-ref で行を足せば `recorded` に戻ります。
 
 状態の行の文法には、全項目が成立するまでの中間状態があります。環境が排他で全項目を同時に満たせないため、成立した項目だけを並べます。
 
