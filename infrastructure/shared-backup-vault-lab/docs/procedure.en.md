@@ -81,7 +81,7 @@ The cost is read by `06_verify.sh --cost`. What this runbook keeps is the wait u
 
 ## When updating an existing sandbox
 
-A reader who holds an existing sandbox and reruns `make sandbox` with updated dependencies may see `07 --deploy` fail with `UPDATE_FAILED`. The cause is that the AwsCliLayer replacement is refused on an Express-mode sandbox, written up in the AwsCliLayer row of `docs/agent/portal-cdk-quality-gates.md`. The choice of recovery (deleting and recreating removes the Cognito users and DynamoDB) is a decision for someone responsible for the portal's user data. This lab holds no pre-detection; the guidance is read after the failure.
+A reader who holds an existing sandbox and reruns `make sandbox` with updated dependencies may change the AwsCliLayer content. The portal's `backend.ts` puts the asset hash in that layer's logical ID, so the update is create + delete rather than a replacement, and an Express-mode sandbox accepts it (the AwsCliLayer row of `docs/agent/portal-cdk-quality-gates.md`). A sandbox created by a portal from before this mitigation gets the same create + delete once it is deployed with the current `backend.ts`. If `07 --deploy` still stops with `UPDATE_FAILED`, the choice of recovery (deleting and recreating removes the Cognito users and DynamoDB) is a decision for someone responsible for the portal's user data.
 
 ## The MPA path, out of scope for this lab
 

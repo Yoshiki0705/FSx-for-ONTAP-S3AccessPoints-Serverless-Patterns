@@ -20,7 +20,7 @@
 | コピー系の宛先チェックが無いと、データ破壊が「成功」として返る | `copy_object` は宛先の既存オブジェクトを黙って上書きする。`renameFile` は既存キーへの改名で相手を消していた。宛先の存在確認は `head_object` で行い、`overwrite` を明示しない限り拒否する。なお `head_object` は「無い」と「権限が無い」を区別できないが、権限が無ければ続く copy も失敗するので、判定を誤って上書きすることはない |
 | **`s3:CopyObject` を IAM ポリシーに書いても何も許可されない** | そんなアクションは存在しない。`copy_object` が要求するのは source の `s3:GetObject` と **`s3:GetObjectTagging`**、destination の `s3:PutObject` と `s3:PutObjectTagging`。実例: ポータルの list-files ロールに `s3:CopyObject` が書かれていて `GetObjectTagging` が無く、**名前の変更とごみ箱からの復元が AccessDenied で常に失敗していた**。同じロールでの**ごみ箱への移動は成功していた**（同一 source・同一バケットでも要求されないケースがある）ため、最初に試した操作が通ってしまい欠陥が残った。copy を含む経路は**往復の両方向**を実際に叩いて確認する |
 | 例外メッセージからエラー原因を推測する実装 | `str(IndexError(4))` は `"4"` で HTTP 404 に見える。実際に `Path(__file__).parents[4]`（Lambda では親が 3 つ）の IndexError を「CIFS 未設定」と誤報告していた。`type(e).__name__` を含めて報告し、文字列パターンで原因を決めない |
-| **AwsCliLayer の置換が Express の sandbox で拒否される** | `@aws-cdk/asset-awscli-v1` の更新で層の `Content.S3Key` が変わると、論理 ID が内容を含まないため置換になる（既存 sandbox の更新のみ）。デプロイ後に `UPDATE_FAILED`（`ampx` は終了コード 0）。no mitigation applied; follow-up issue to be filed |
+| **AwsCliLayer も論理 ID に asset hash を付ける** | Amplify の BucketDeployment が作る層。`@aws-cdk/asset-awscli-v1` の更新で内容が変わると置換になり拒否される。`backend.ts` が synth 後に ID を付け替える（実測 2026-10-11: `UPDATE_COMPLETE`） |
 
 sandbox が同一 VPC に複数ある状態と、不要な sandbox を消す作業の罠は
 [portal-sandbox-lifecycle](portal-sandbox-lifecycle.md) にある。再デプロイしても直らない

@@ -27,6 +27,8 @@ import * as lambda from "aws-cdk-lib/aws-lambda";
 import * as ec2 from "aws-cdk-lib/aws-ec2";
 import * as s3 from "aws-cdk-lib/aws-s3";
 import { AssetHashType, Aws, Duration, RemovalPolicy, Stack, Token, Validations } from "aws-cdk-lib";
+import { Asset } from "aws-cdk-lib/aws-s3-assets";
+import { AwsCliLayer } from "aws-cdk-lib/lambda-layer-awscli";
 import * as dynamodb from "aws-cdk-lib/aws-dynamodb";
 import * as cloudwatch from "aws-cdk-lib/aws-cloudwatch";
 import * as cloudwatchActions from "aws-cdk-lib/aws-cloudwatch-actions";
@@ -835,6 +837,18 @@ const pillowLayer = new lambda.LayerVersion(dataStack, `PillowLayer${pillowPin.r
     },
   }),
 });
+
+// Amplify's BucketDeployments create AwsCliLayers whose logical ID comes from the construct path.
+// A new @aws-cdk/asset-awscli-v1 then changes Content.S3Key under the same ID, a replacement that
+// a DisableRollback sandbox refuses. Put the asset hash in the ID, as above: create + delete instead.
+for (const awsCliLayer of dataStack.node.findAll().filter((c) => c instanceof AwsCliLayer)) {
+  const asset = awsCliLayer.node.findAll().find((c): c is Asset => c instanceof Asset);
+  if (!asset) {
+    throw new Error(`No asset under ${awsCliLayer.node.path}; its logical ID would not follow its content.`);
+  }
+  const cfnLayer = awsCliLayer.node.defaultChild as lambda.CfnLayerVersion;
+  cfnLayer.overrideLogicalId(`${Stack.of(cfnLayer).getLogicalId(cfnLayer)}${asset.assetHash.slice(0, 12)}`);
+}
 
 // Cognito group -> path prefixes that group may see.
 //
