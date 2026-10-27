@@ -7,7 +7,7 @@ CAVEAT: Results are from a specific test environment and represent a sizing refe
 not a service limit. Actual performance depends on workload characteristics, network
 conditions, and FSx for ONTAP configuration.
 
-Usage:
+Usage (set S3_AP_ALIAS first):
     python3 scripts/benchmark_throughput.py --throughput 256 --concurrency 1,5,10,20,25,50
     python3 scripts/benchmark_throughput.py --throughput 512 --concurrency 1,5,10,20,25,50
 """
@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import statistics
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -23,7 +24,9 @@ from datetime import datetime, timezone
 
 import boto3
 
-S3_AP_ALIAS = "fsxn-eda-s3ap-fhyst3uaibf46uywh5xka84pnz8jaapn1a-ext-s3alias"
+# The access point alias to measure. No default: a real alias is an identifier of
+# one account's resource and does not belong in a public repository.
+S3_AP_ALIAS = os.environ.get("S3_AP_ALIAS", "")
 REGION = "ap-northeast-1"
 ITERATIONS = 50
 WARM_UP = 3
@@ -101,6 +104,8 @@ def main():
 
     concurrency_levels = [int(x) for x in args.concurrency.split(",")]
 
+    if not S3_AP_ALIAS:
+        raise SystemExit("Set S3_AP_ALIAS to the S3 Access Points alias to measure.")
     s3 = boto3.client("s3", region_name=REGION)
 
     run_id = f"s3ap-bench-{datetime.now(timezone.utc).strftime('%Y-%m-%d')}-{args.throughput}mbps"

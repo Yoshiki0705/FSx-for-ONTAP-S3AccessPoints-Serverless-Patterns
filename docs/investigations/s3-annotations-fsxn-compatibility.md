@@ -158,7 +158,7 @@ Processing results are written to a standard S3 bucket with annotations attached
 - botocore version: 1.43.31
 - FSx for ONTAP version: ONTAP 9.17.1P6
 - S3 AP NetworkOrigin: Internet
-- S3 AP Alias: `headobj-test-s3a-ezp398gpuiixusfjkbymuqcnhaubaapn1b-ext-s3alias`
+- S3 AP Alias: `headobj-test-s3a-xxx-ext-s3alias`
 
 ### Step 2 結果（標準 S3 バケット）— ✅ 成功
 

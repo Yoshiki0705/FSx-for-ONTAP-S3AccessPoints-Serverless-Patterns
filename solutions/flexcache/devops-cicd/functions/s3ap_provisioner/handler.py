@@ -71,7 +71,7 @@ def handler(event: dict, context) -> dict:
     )
 
     if SIMULATION_MODE:
-        simulated_alias = f"{s3ap_name}-fhyst3uaibf46uywh5xka84pnz8jaapn1a-ext-s3alias"
+        simulated_alias = f"{s3ap_name}-simulated-ext-s3alias"
         logger.info(f"[SIMULATION] Would create S3AP: {s3ap_name} for volume at {junction_path}")
         return {
             "status": "success",
