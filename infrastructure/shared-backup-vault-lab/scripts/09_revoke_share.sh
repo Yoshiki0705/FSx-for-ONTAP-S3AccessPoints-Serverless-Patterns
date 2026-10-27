@@ -1,5 +1,5 @@
 #!/bin/bash
-# Real-environment run: recorded [V1][V2][V3][V4][V5][V6][V7]; not recorded [E13] (status source: docs/verification-record.md)
+# Real-environment run: recorded [V1][V2][V4]; not recorded [V3][V5][V6][V7][E13] (status source: docs/verification-record.md)
 #
 # 09_revoke_share.sh - the owner revokes the RAM share, and the script measures how
 # long the recipient keeps seeing the shared vault (item V6).
