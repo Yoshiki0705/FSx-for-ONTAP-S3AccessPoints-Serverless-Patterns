@@ -210,7 +210,7 @@ ls -la /mnt/ingest/data/year=2026/month=07/day=22/temp-01.json
 ```
 
 > 📐 **マルチプロトコル整合性**:
-> - S3 AP PutObject 完了 → NFS で即座に一貫したデータが読める（WAFL 原子コミット）
+> - S3 AP PutObject 完了 → NFS で読めるまでは、NFSv3・`actimeo=0` で p50 3 ms（実測 2026-08-09、ap-northeast-1、ONTAP 9.18.1P3D1、64 B、n=30、[S3-Burst の全方向比較](https://github.com/Yoshiki0705/S3-Burst-on-ONTAP-Files/blob/main/docs/ja/verification/cross-protocol-directions.md)）。同日の同一ボリュームの記録では p50 9 ms（ONTAP バージョンは特定できず、[記録](https://github.com/Yoshiki0705/S3-Burst-on-ONTAP-Files/blob/main/docs/ja/verification/s3ap-nfs-visibility.md)）。同じ記録で、既定のマウント（`acdirmin=30` / `acdirmax=60`）ではクライアントの属性キャッシュが効き、削除が NFS 側に反映されるまで 2,171 ms かかった
 > - 同一ファイルへの同時書き込み（S3 + NFS）は避ける。書き込みプロトコルは 1 つに限定を推奨
 
 ---
@@ -246,6 +246,8 @@ graph TD
     SM --> SMONLY[SnapMirror のみ<br/>solutions/flexcache/snapmirror-cross-region-dr/]
 ```
 
+> 図の FlexCache の「~6秒」は測定条件が記録されていない値です。S3 Access Points で書いてから FlexCache の NFS で読めるまでは、NFSv3・`actimeo=0` で p50 8 ms でした（2026-08-09、ap-northeast-1、ONTAP 9.18.1P3D1、同一リージョンの VPC ピアリング、n=30、[S3-Burst の全方向比較](https://github.com/Yoshiki0705/S3-Burst-on-ONTAP-Files/blob/main/docs/ja/verification/cross-protocol-directions.md)）。同じ書き込み経路で、既定のマウントでの値と、リージョンを跨いだ経路での値は未確認です。
+
 ---
 
 ## 機能互換性の注意点
@@ -268,7 +270,7 @@ graph TD
 |------|:--------:|------|------|
 | S3 AP volume → SnapMirror Async source | ✅ | ONTAP 9.12.1+ | [S3 multiprotocol](https://docs.netapp.com/us-en/ontap/s3-multiprotocol/index.html) |
 | S3 AP volume → FlexCache Origin | ✅ | ONTAP 9.12.1+ | [FlexCache features](https://docs.netapp.com/us-en/ontap/flexcache/supported-unsupported-features-concept.html) |
-| FlexCache Cache Volume → S3 AP attach | ✅ | **ONTAP 9.18.1+** | [FlexCache duality FAQ](https://docs.netapp.com/us-en/ontap/flexcache/flexcache-duality-faq.html) |
+| FlexCache Cache Volume → S3 AP attach | ❌ | FSx API が `the volume is a FlexCache` で拒否（実測 2026-07-24 / ONTAP 9.18.1P3D1）。ボリューム種別による拒否で、ONTAP のバージョンでは解決しない。S3 Access Points は Origin volume に取り付ける | [Lakehouse の記録 #26](https://github.com/Yoshiki0705/FSx-for-ONTAP-Lakehouse-Integrations/blob/main/integrations/snapmirror-flexcache-multicloud/docs/BACKLOG.md)、[Hub のノート](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/blob/main/docs/ja/domains/data-utilization/notes/serving-a-replication-destination-over-s3.md)。[FlexCache duality FAQ](https://docs.netapp.com/us-en/ontap/flexcache/flexcache-duality-faq.html) の 9.18.1+ は ONTAP ネイティブの S3 NAS bucket の記載で、別の機構 |
 | SnapMirror Synchronous + S3 NAS bucket | ❌ | — | S3 NAS bucket 非対応 |
 | SVM-DR + S3 NAS bucket | ❌ | — | S3 NAS bucket 非対応 |
 | FlexCache write-back + S3 AP 同一ファイル | ⚠️ | 同一ファイル回避 | XLD revoke で Cache データ破棄 |

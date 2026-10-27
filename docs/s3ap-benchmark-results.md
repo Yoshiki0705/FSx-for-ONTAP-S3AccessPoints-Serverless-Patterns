@@ -35,7 +35,7 @@ FSx for ONTAP S3 Access Points 経由の各 S3 API 操作のレイテンシと�
 
 > **環境制約**: 全結果は Single-AZ, First-generation FSx for ONTAP からの計測です。Multi-AZ または Second-generation ファイルシステムでは異なる結果になる可能性があります。個別に検証してください。
 
-> **注意**: 本計測はインターネット経由（クライアント → S3AP）です。VPC 内 Lambda からのアクセスではネットワークレイテンシが大幅に低下し、スループットが向上します。
+> **注意**: 本計測はインターネット経由（クライアント → S3AP）です。VPC 外の Lambda（AWS 管理の出口）からはレイテンシが下がりましたが、VPC 内 Lambda + VPC Origin の S3 Access Points の経路は未確認です（「制約と注意事項」の 1、再検証: #443）。参考として、別プロジェクトが VPC 内の EC2（c5n.9xlarge、NetworkOrigin=VPC、S3 ゲートウェイエンドポイント経由、boto3 1.43.85、128 MBps）から測った並列度 1 の p50 は、1 MiB の PutObject で 363.7 ms、8 MiB の GetObject で 89.9 ms でした（2026-09-01、ap-northeast-1、[S3-Burst の記録](https://github.com/Yoshiki0705/S3-Burst-on-ONTAP-Files/blob/main/docs/ja/verification/throughput-iops-concurrency.md)）。書き込みは本計測の 1 MB PutObject（P50 164.5 ms）より遅く、VPC 内なら下がるとは言えません。クライアントと SDK の版が違うため、Lambda での値の代わりにはなりません。
 
 ---
 

@@ -303,7 +303,7 @@ CloudTrail S3 データイベントをクエリして「誰が、いつ、何に
 
 ### NFS/SMB でアップロードしたファイルが表示されない場合
 
-ONTAP はクロスプロトコルの強整合性を保証しているため、即座に反映されるはずです（未確認）（再検証: #447）。ファイル一覧をリフレッシュしてみてください。それでも表示されない場合、サブフォルダにある可能性があります。パスを確認してください。
+NFS で書いたファイルが S3 Access Points 経由で読めるまでは、別プロジェクトの実測で p50 44 ms でした（2026-08-09、ap-northeast-1、ONTAP 9.18.1P3D1、NFSv3、`actimeo=0`、64 B、n=30、[S3-Burst の全方向比較](https://github.com/Yoshiki0705/S3-Burst-on-ONTAP-Files/blob/main/docs/ja/verification/cross-protocol-directions.md)）。この値はクライアントのキャッシュを無効にした測定です。既定のマウント（`acdirmin=30` / `acdirmax=60`）では、逆方向（S3 での削除が NFS 側に反映されるまで）に 2,171 ms かかった記録があります（[Hub のノート](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/blob/main/docs/ja/domains/data-utilization/notes/how-long-until-a-write-is-visible.md)）。既定のマウントでのこの方向の値と、SMB で書いた場合の値は未確認です（再検証: #447）。ファイル一覧をリフレッシュしてみてください。それでも表示されない場合、サブフォルダにある可能性があります。パスを確認してください。
 
 ### モバイルでの利用
 

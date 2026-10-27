@@ -302,7 +302,7 @@ Share links use presigned URLs with a time-to-live you choose (5 min, 15 min, or
 
 ### Files uploaded via NFS/SMB not showing
 
-They should appear immediately (ONTAP guarantees cross-protocol strong consistency; unverified, re-verification: #447). Try refreshing the file list. If still missing, the file may be in a subfolder — check the path.
+In a sibling project's measurement, a file written over NFS became readable through S3 Access Points at p50 44 ms (2026-08-09, ap-northeast-1, ONTAP 9.18.1P3D1, NFSv3, `actimeo=0`, 64 B, n=30, [S3-Burst all-direction comparison](https://github.com/Yoshiki0705/S3-Burst-on-ONTAP-Files/blob/main/docs/en/verification/cross-protocol-directions.md)). That measurement disabled client caching. With the default mount (`acdirmin=30` / `acdirmax=60`), the reverse direction (an S3 delete showing on the NFS side) took 2,171 ms ([Hub note, Japanese](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/blob/main/docs/ja/domains/data-utilization/notes/how-long-until-a-write-is-visible.md)). This direction with the default mount, and writes over SMB, are not confirmed (re-verification: #447). Try refreshing the file list. If still missing, the file may be in a subfolder — check the path.
 
 ### Using the portal on mobile
 

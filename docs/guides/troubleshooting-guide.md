@@ -757,7 +757,7 @@ aws lambda invoke \
 
 | 症状 | 原因 | 解決策 |
 |------|------|--------|
-| S3 AP から FlexCache データが見えない | FlexCache volume に S3 AP が attach されていない | FSx コンソールで S3 AP の attach 先を確認 |
+| S3 AP から FlexCache データが見えない | FlexCache volume には S3 Access Points を取り付けられない。FSx API が `the volume is a FlexCache` で拒否する（他プロジェクトの実測 2026-07-24、ONTAP 9.18.1P3D1、[Lakehouse の記録 #26](https://github.com/Yoshiki0705/FSx-for-ONTAP-Lakehouse-Integrations/blob/main/integrations/snapmirror-flexcache-multicloud/docs/BACKLOG.md)） | S3 Access Points を Origin volume に取り付け、S3 API では Origin を読む。拒否はボリューム種別によるもので、ONTAP のバージョンを上げても解決しない（[Hub のノート](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/blob/main/docs/ja/domains/data-utilization/notes/serving-a-replication-destination-over-s3.md)） |
 | S3 AP AccessDenied | IAM ARN 形式エラー | `arn:aws:s3:{region}:{account}:accesspoint/{name}` 形式を使用 |
 | S3 AP タイムアウト | NetworkOrigin 設定の不一致 | VPC 内 Lambda → VPC Origin AP、VPC 外 → Internet Origin AP |
 

@@ -210,7 +210,7 @@ ls -la /mnt/ingest/data/year=2026/month=07/day=22/temp-01.json
 ```
 
 > 📐 **Multi-protocol consistency**:
-> - After S3 AP PutObject completes → NFS reads immediately consistent data (WAFL atomic commit)
+> - After S3 AP PutObject completes, NFS reads it at p50 3 ms on NFSv3 with `actimeo=0` (measured 2026-08-09, ap-northeast-1, ONTAP 9.18.1P3D1, 64 B, n=30, [S3-Burst all-direction comparison](https://github.com/Yoshiki0705/S3-Burst-on-ONTAP-Files/blob/main/docs/en/verification/cross-protocol-directions.md)). A same-volume record from the same day gives p50 9 ms (ONTAP version could not be determined, [record](https://github.com/Yoshiki0705/S3-Burst-on-ONTAP-Files/blob/main/docs/en/verification/s3ap-nfs-visibility.md)). In that record, with the default mount (`acdirmin=30` / `acdirmax=60`) the client attribute cache applies, and a delete took 2,171 ms to show on the NFS side
 > - Avoid concurrent writes to the same file (S3 + NFS). Limit write protocol to one per file
 
 ---
@@ -246,6 +246,8 @@ graph TD
     SM --> SMONLY[SnapMirror only<br/>solutions/flexcache/snapmirror-cross-region-dr/]
 ```
 
+> The "~6s" on the FlexCache node has no recorded measurement conditions. From an S3 Access Points write to a FlexCache NFS read, p50 was 8 ms on NFSv3 with `actimeo=0` (2026-08-09, ap-northeast-1, ONTAP 9.18.1P3D1, same-region VPC peering, n=30, [S3-Burst all-direction comparison](https://github.com/Yoshiki0705/S3-Burst-on-ONTAP-Files/blob/main/docs/en/verification/cross-protocol-directions.md)). For the same write path, values with the default mount and over a cross-region path are not confirmed.
+
 ---
 
 ## Feature Compatibility Notes
@@ -268,7 +270,7 @@ Details: [Design Considerations](../../docs/design-considerations-en.md)
 |--------------|:---------:|-----------|-----------|
 | S3 AP volume → SnapMirror Async source | ✅ | ONTAP 9.12.1+ | [S3 multiprotocol](https://docs.netapp.com/us-en/ontap/s3-multiprotocol/index.html) |
 | S3 AP volume → FlexCache Origin | ✅ | ONTAP 9.12.1+ | [FlexCache features](https://docs.netapp.com/us-en/ontap/flexcache/supported-unsupported-features-concept.html) |
-| FlexCache Cache Volume → S3 AP attach | ✅ | **ONTAP 9.18.1+** | [FlexCache duality FAQ](https://docs.netapp.com/us-en/ontap/flexcache/flexcache-duality-faq.html) |
+| FlexCache Cache Volume → S3 AP attach | ❌ | The FSx API refuses with `the volume is a FlexCache` (measured 2026-07-24 / ONTAP 9.18.1P3D1). The refusal is by volume type, so an ONTAP version does not resolve it. Attach S3 Access Points to the origin volume | [Lakehouse record #26](https://github.com/Yoshiki0705/FSx-for-ONTAP-Lakehouse-Integrations/blob/main/integrations/snapmirror-flexcache-multicloud/docs/BACKLOG.md), [Hub note (Japanese)](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/blob/main/docs/ja/domains/data-utilization/notes/serving-a-replication-destination-over-s3.md). The 9.18.1+ in the [FlexCache duality FAQ](https://docs.netapp.com/us-en/ontap/flexcache/flexcache-duality-faq.html) covers ONTAP-native S3 NAS buckets, a different mechanism |
 | SnapMirror Synchronous + S3 NAS bucket | ❌ | — | S3 NAS bucket unsupported |
 | SVM-DR + S3 NAS bucket | ❌ | — | S3 NAS bucket unsupported |
 | FlexCache write-back + S3 AP same file | ⚠️ | Avoid same-file | XLD revoke discards Cache data |
