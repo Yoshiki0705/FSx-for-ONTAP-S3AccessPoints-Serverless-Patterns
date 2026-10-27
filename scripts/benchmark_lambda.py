@@ -52,7 +52,9 @@ def run_benchmark(bucket_alias, key, concurrency, iterations):
 
 
 def lambda_handler(event, context):
-    bucket_alias = event.get("bucket_alias", "fsxn-eda-s3ap-fhyst3uaibf46uywh5xka84pnz8jaapn1a-ext-s3alias")
+    bucket_alias = event.get("bucket_alias")
+    if not bucket_alias:
+        raise ValueError("bucket_alias is required: the S3 Access Points alias to measure")
     key = event.get("key", "_health/marker.txt")
     concurrencies = event.get("concurrencies", [1, 5, 10, 25, 50])
     iterations_per_concurrency = event.get("iterations", 10)

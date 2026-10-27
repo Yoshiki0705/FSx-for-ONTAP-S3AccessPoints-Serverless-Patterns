@@ -6,7 +6,7 @@ set -euo pipefail
 
 STACK_NAME="fsxn-benchmark-lambda"
 REGION="ap-northeast-1"
-S3AP_ALIAS="fsxn-eda-s3ap-fhyst3uaibf46uywh5xka84pnz8jaapn1a-ext-s3alias"
+S3AP_ALIAS="${S3AP_ALIAS:?set S3AP_ALIAS to the S3 Access Points alias to measure}"
 
 echo "=== Deploying benchmark Lambda ==="
 
