@@ -342,6 +342,49 @@
       }
     },
     {
+      "id": "E-009",
+      "claim": "AWS HealthOmics run inputs and outputs must be Amazon S3 URIs; an FSx for ONTAP S3 Access Point cannot be named as either.",
+      "subject": "AWS",
+      "tier": "documented",
+      "premise": true,
+      "sources": [
+        {
+          "url": "https://docs.aws.amazon.com/omics/latest/api/API_StartRun.html",
+          "read": "full",
+          "retrieved": "2026-09-09",
+          "says": "Every request field is enumerated. outputUri is required and documented as an output S3 URI whose S3 bucket must be in the same Region as the workflow. No field accepts an access point ARN, an alias or a virtual-hosted-style URL."
+        },
+        {
+          "url": "https://docs.aws.amazon.com/omics/latest/dev/workflows-run-inputs.html",
+          "read": "full",
+          "retrieved": "2026-09-09",
+          "says": "Input parameter values are interpreted as Amazon S3 locations: a single object key, a trailing-slash prefix, or a glob pattern for Nextflow. Inputs are staged read-only to a scratch volume dedicated to the run."
+        },
+        {
+          "url": "https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/using-access-points-with-aws-services.html",
+          "read": "full",
+          "retrieved": "2026-09-09",
+          "says": "Lists the integrated services with worked tutorials: Athena, Lambda, AWS Glue, Amazon Bedrock Knowledge Bases, Amazon EMR Serverless, CloudFront and AWS Transfer Family. AWS HealthOmics is not among them."
+        }
+      ],
+      "observation": "",
+      "why_not_documented_is_not_absent": "The bucket-name contract is stated positively on the API reference, so this is not an argument from silence. What remains unestablished is whether standard S3 access points are equally unaccepted -- not tried here -- so the claim is scoped to what the documents say rather than to a cause.",
+      "support_inquiry": {
+        "status": "not-needed",
+        "topic": "The API reference states the S3 bucket contract for outputUri directly, and the FSx integration list does not include HealthOmics. The gap is a feature request, not a question."
+      },
+      "feature_request": {
+        "status": "filed",
+        "where": "docs/aws-feature-requests/lambda-healthomics-s3ap-gaps.md"
+      },
+      "appears_in": [
+        "docs/aws-feature-requests/lambda-healthomics-s3ap-gaps.md",
+        "docs/aws-feature-requests/lambda-healthomics-s3ap-gaps.en.md"
+      ],
+      "claim_ja": "AWS HealthOmics のワークフロー実行の入力・出力は Amazon S3 URI を前提としており、FSx for ONTAP S3 Access Point をどちらにも指定できません。",
+      "why_not_documented_is_not_absent_ja": "outputUri がバケットを前提とする契約であることは API リファレンスに肯定形で記載されているため、記載が無いことを根拠にした主張ではありません。未確立なのは、標準の S3 アクセスポイントでも同様に受け付けられないのかどうかで、当方では試していないため、主張の範囲をドキュメントの記述に限定しています。"
+    },
+    {
       "id": "E-010",
       "claim": "AWS CDK does not declare a CloudWatch log group for the Lambda function behind a CustomResourceProvider, so the log group is created implicitly at first invocation with never-expire retention and survives the stack deletion. There is no released version in which this is fixed.",
       "subject": "AWS",
@@ -493,6 +536,74 @@
       ],
       "claim_ja": "FSx for ONTAP では、fsxadmin アカウントは ONTAP REST API（DELETE /svm/svms/{uuid}）で SVM を削除できません。削除は AWS FSx API（DeleteStorageVirtualMachine）経由で行う必要があります。また FSx API は ONTAP のリカバリキューにあるボリュームも非 root ボリュームとして数えるため、ONTAP REST で削除したボリュームが FSx コントロールプレーンのインベントリから消えるまで、SVM 削除が拒否されることがあります。",
       "observation_ja": "ap-northeast-1、fs-0123456789abcdef0（ONTAP 9.18.1P6）の使い捨て SVM で確認。fsxadmin による ONTAP REST の DELETE /svm/svms/{uuid} は、非 root ボリュームの有無にかかわらず ONTAP エラーコード 6『not authorized for that command』を返しました。AWS FSx API の DeleteStorageVirtualMachine は成功しました（DELETING→消滅）。ONTAP REST で削除したボリュームが ONTAP のリカバリキューに残る間、FSx API は『Cannot delete storage virtual machine while it has non-root volumes』で削除を拒否し、リカバリキューを purge して FSx 側のボリュームエントリを削除した後に SVM 削除が成功しました。"
+    },
+    {
+      "id": "E-014",
+      "claim": "AWS HealthOmics provides no documented mechanism to mount a customer-owned file system into a workflow run task; run storage is provisioned by the service and networkingMode VPC grants network reachability rather than a mount path.",
+      "subject": "AWS",
+      "tier": "open",
+      "premise": false,
+      "sources": [
+        {
+          "url": "https://docs.aws.amazon.com/omics/latest/dev/workflows-run-types.html",
+          "read": "full",
+          "retrieved": "2026-09-09",
+          "says": "Run storage is temporary storage that HealthOmics allocates for the run and presents as a file system. DYNAMIC provisions a file system using the NFS protocol; STATIC uses the Lustre protocol at 1,200 GiB or multiples of 2,400 GiB. Both are described as provisioned by the service."
+        },
+        {
+          "url": "https://docs.aws.amazon.com/omics/latest/api/API_StartRun.html",
+          "read": "full",
+          "retrieved": "2026-09-09",
+          "says": "The storage-related request fields are storageType, storageCapacity and scratchStorageMode. No field names a customer-owned file system, a mount path, or a volume."
+        },
+        {
+          "url": "https://docs.aws.amazon.com/omics/latest/dev/workflows-vpc-networking.html",
+          "read": "full",
+          "retrieved": "2026-09-09",
+          "says": "States that every run executes inside a VPC owned and managed by the HealthOmics service, which is not visible to customers, and that configuring a run to reach the customer VPC has no effect on that managed VPC. VPC mode routes run traffic through ENIs HealthOmics provisions in customer subnets; the listed use cases are reaching resources in the VPC, on-premises resources, other Regions and the internet."
+        }
+      ],
+      "observation": "",
+      "why_not_documented_is_not_absent": "Two separate things are unestablished. Whether a task can issue mount -t nfs itself over the VPC-mode path -- that is, whether the task container carries CAP_SYS_ADMIN -- has not been tried here and no public page was found stating it either way. Whether a workflow definition language offers a mount declaration is likewise not established. The pages read describe service-provisioned storage without saying that a customer file system is unsupported, so the honest tier is open rather than documented.",
+      "support_inquiry": {
+        "status": "answered",
+        "topic": "AWS HealthOmics のプライベートワークフロー実行において、顧客所有のファイルシステム（Amazon FSx for NetApp ONTAP のボリューム）を実行タスクへマウントする、ドキュメントに記載された手段が現時点で存在するかどうかをご確認いただきたいです。networkingMode: VPC により顧客 VPC 内の NFS エクスポートへネットワーク的に到達しうる状態になりますが、これがマウント手段として提供されているのかが読み取れておりません。あわせて、タスクコンテナ内から mount コマンドを実行できるか（CAP_SYS_ADMIN の付与有無）についてもご教示ください。存在しない場合は、今後の対応予定の有無と、機能追加のご要望としてサービスチームへ連携いただくことを希望します。要望の詳細は公開リポジトリの docs/aws-feature-requests/lambda-healthomics-s3ap-gaps.md（FR-8）に記載しています。",
+        "private_ref": ".private/support-case-refs.md",
+        "language": "ja",
+        "service_code": "service-omics",
+        "category_code": "general-guidance",
+        "subject": "HealthOmics の実行タスクへ顧客所有ファイルシステムをマウントする手段の有無について",
+        "filed": "2026-09-09",
+        "answered": "2026-09-15",
+        "outcome": "Answered: no documented mechanism was found, and the request was relayed to the product team. The answer came from vendor support and is not usable as public evidence, so the tier stays `open`. Raising it needs either a public page stating the absence or a measurement taken here."
+      },
+      "feature_request": {
+        "status": "filed",
+        "where": "docs/aws-feature-requests/lambda-healthomics-s3ap-gaps.md",
+        "filed": "2026-09-09",
+        "note": "FR-8. Carried in the same case as the confirmation question, as the 実現したいこと section built from requested_outcome."
+      },
+      "appears_in": [
+        "docs/aws-feature-requests/lambda-healthomics-s3ap-gaps.md",
+        "docs/aws-feature-requests/lambda-healthomics-s3ap-gaps.en.md"
+      ],
+      "subject_service": "AWS HealthOmics",
+      "user_problem": "ゲノム解析のデータ（FASTQ / BAM / VCF）を Amazon FSx for NetApp ONTAP のボリューム上に置き、シーケンサーや研究者は NFS / SMB で同じ場所を参照する構成を取っています。この状態のまま HealthOmics のプライベートワークフローで解析を実行したいと考えています。現在は入力を標準の Amazon S3 バケットへコピーし、出力を再びファイルシステムへ書き戻す Lambda を 2 つ挟む構成になっており、1 サンプルあたり数十 GB の FASTQ に対してコピーが 2 回発生します。AWS Batch（EC2 / ECS のジョブ定義）や AWS Deadline Cloud のカスタマー管理フリートでは実行ホストが利用者側のためファイルシステムを直接マウントできますが、HealthOmics で同等のことができるかが判断できていません。",
+      "decision_blocked": "公開している設計文書に「HealthOmics の実行タスクへ顧客所有ファイルシステムをマウントする手段は無い」と記載してよいかが決まります。誤って「無い」と書くと、この文書を読んだ方が不要な中継コピーを実装することになります。逆に手段があるのに気づいていない場合、当方のパターン設計自体を見直す必要があります。",
+      "ruled_out": [
+        "networkingMode: VPC は到達性を与えるものと理解しています。同じページに、実行は HealthOmics が所有・管理する VPC の内部で行われ、顧客 VPC への接続設定はその管理 VPC に影響しないと記載されているため、マウント手段としては説明されていないと読んでいます。",
+        "storageType / storageCapacity / scratchStorageMode の 3 つはサービス提供ストレージの種別とサイズの指定であり、持ち込みファイルシステムの指定ではないと理解しています。",
+        "S3 Access Point 経由の経路（別途 2026-08 に起票済み）とは別の論点として整理しています。本件はファイルシステムとしてのマウントについての確認です。"
+      ],
+      "requested_outcome": [
+        "第 1 希望: ワークフロー実行のストレージとして、顧客所有のファイルシステム（Amazon FSx for NetApp ONTAP のボリューム）を指定できるようにしていただきたいです。networkingMode: VPC で使用する Configuration リソースに、ファイルシステムとマウントパスを追加する形が、既存の仕組みへの追加として自然だと考えています。",
+        "第 2 希望: 読み取り専用の入力ロケーションとしてのマウントのみでも十分に効果があります。入力は既に読み取り専用としてステージングされる設計であるため、意味論の差は小さいのではないかと考えています。",
+        "第 3 希望（現状の明文化）: 上記がいずれも対象外である場合、実行ストレージがサービス管理であり顧客所有ファイルシステムのマウントには対応しない旨を、ドキュメントに明記していただきたいです。現在は記載が無い状態であるため、VPC networking の説明にある「VPC 内の AWS リソースへの接続」を読んで、ネットワーク到達性とマウント可否を混同し得ます。当方も一度そのように読みかけました。",
+        "実現した場合のドキュメント反映: Amazon FSx for NetApp ONTAP ユーザーガイドの「Using access points with AWS services」の統合サービス一覧にも、対応状況を反映していただけると利用者が判断しやすくなります。"
+      ],
+      "claim_ja": "AWS HealthOmics には、顧客所有のファイルシステムをワークフロー実行タスクへマウントする、ドキュメントに記載された手段が無いのではないか、と考えています。実行ストレージはサービスがプロビジョニングするもので、networkingMode: VPC が与えるのはネットワーク到達性であってマウント経路ではない、という理解です。",
+      "why_not_documented_is_not_absent_ja": "未確立な点が 2 つあります。VPC モードで到達可能になった NFS エクスポートに対して、タスク内から mount コマンドを実行できるか（タスクコンテナに CAP_SYS_ADMIN が付与されているか）は当方で試しておらず、いずれとも記載された公開ページも見つけられていません。ワークフロー定義言語側にマウントを宣言する手段があるかも同様です。確認したページはサービス提供ストレージについて説明しているものの、顧客所有ファイルシステムが非対応であると述べているわけではないため、tier は documented ではなく open としています。",
+      "category_note": "機能のリクエスト（feature-request）のカテゴリも存在しますが、まず「ドキュメントに記載された手段が存在するか」の確認を伴うため、一般的なガイダンスで起票しています。要望として扱っていただくほうが適切であれば振り替えていただければ幸いです。"
     }
   ]
 }
