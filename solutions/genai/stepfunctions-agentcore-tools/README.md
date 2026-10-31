@@ -114,9 +114,21 @@ python3 -m pytest solutions/genai/stepfunctions-agentcore-tools/tests/ -v
 ## 既知の注意点
 
 同一リージョン制約、1 操作 1 pin、日本語入力の `?` 化けと `\uXXXX` 回避、Cedar での
-`input` 条件の制約などは [docs/demo-guide.md](docs/demo-guide.md#既知の注意点) にまとめています。
+`input` 条件の制約などは [docs/demo-guide.md](docs/demo-guide.md) にまとめています。
 
 ## 参考
 
 - [AWS Step Functions as Connector Target（公式）](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/gateway-target-connector-step-functions.html)
 - [AWS Step Functions workflows now available as AI agent tools（What's New）](https://aws.amazon.com/about-aws/whats-new/2026/10/step-functions-workflows-ai-agent-tools/)
+
+---
+
+<!-- playbook-reading:start -->
+## 本番に出す前に読むもの
+
+デプロイしたあとに当たる制約を、どう設計判断に翻訳するかは [FSx for ONTAP Adoption Playbook](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook) 側にあります。同じ内容を 2 か所に置くと、更新が止まった側が更新された側より長く残るためです。
+
+- [データ活用](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/tree/main/docs/ja/domains/data-utilization) — S3 Access Point 経由の制約（全パターン共通）
+- [セキュリティ・ガバナンス](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/tree/main/docs/ja/domains/security-governance) — このパターンで判断が集中するところ
+- [構築](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/tree/main/docs/ja/playbooks/04-build) — 本番前に通す（全パターン共通）
+<!-- playbook-reading:end -->

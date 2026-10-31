@@ -116,9 +116,21 @@ python3 -m pytest solutions/genai/stepfunctions-agentcore-tools/tests/ -v
 
 Same-region constraint, one pin per operation, the Japanese `?` mojibake and the
 `\uXXXX` workaround, and the Cedar `input` limitation are collected in
-[docs/demo-guide.md](docs/demo-guide.md#既知の注意点).
+[docs/demo-guide.md](docs/demo-guide.md).
 
 ## References
 
 - [AWS Step Functions as Connector Target (official)](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/gateway-target-connector-step-functions.html)
 - [AWS Step Functions workflows now available as AI agent tools (What's New)](https://aws.amazon.com/about-aws/whats-new/2026/10/step-functions-workflows-ai-agent-tools/)
+
+---
+
+<!-- playbook-reading:start -->
+## Read before going to production
+
+How the constraints that surface after deploying translate into design decisions is covered in the [FSx for ONTAP Adoption Playbook](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook). The same content in two places means the copy that stops being updated outlives the one that was corrected.
+
+- [Data Utilization](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/tree/main/docs/en/domains/data-utilization) — constraints of reaching data through an access point (every pattern)
+- [Security & Governance](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/tree/main/docs/en/domains/security-governance) — where the decisions concentrate for this pattern
+- [Build](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/tree/main/docs/en/playbooks/04-build) — run through before production (every pattern)
+<!-- playbook-reading:end -->

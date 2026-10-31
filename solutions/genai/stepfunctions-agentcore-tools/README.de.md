@@ -118,9 +118,21 @@ python3 -m pytest solutions/genai/stepfunctions-agentcore-tools/tests/ -v
 
 Die Same-Region-Einschränkung, ein Pin pro Operation, das `?`-Mojibake bei japanischen
 Eingaben und der `\uXXXX`-Workaround sowie die Cedar-`input`-Grenze sind in
-[docs/demo-guide.md](docs/demo-guide.md#既知の注意点) zusammengefasst.
+[docs/demo-guide.md](docs/demo-guide.md) zusammengefasst.
 
 ## Referenzen
 
 - [AWS Step Functions as Connector Target (offiziell)](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/gateway-target-connector-step-functions.html)
 - [AWS Step Functions workflows now available as AI agent tools (What's New)](https://aws.amazon.com/about-aws/whats-new/2026/10/step-functions-workflows-ai-agent-tools/)
+
+---
+
+<!-- playbook-reading:start -->
+## Vor dem Produktivbetrieb lesen
+
+Wie sich die nach der Bereitstellung auftretenden Einschränkungen in Entwurfsentscheidungen übersetzen, steht im [FSx for ONTAP Adoption Playbook](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook) beschrieben. Liegt derselbe Inhalt an zwei Stellen, überlebt die nicht mehr gepflegte Kopie die korrigierte.
+
+- [Datennutzung](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/tree/main/docs/en/domains/data-utilization) — Einschränkungen des Zugriffs über einen Access Point (alle Patterns)
+- [Sicherheit und Governance](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/tree/main/docs/en/domains/security-governance) — wo sich die Entscheidungen für dieses Pattern häufen
+- [Aufbauen](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/tree/main/docs/en/playbooks/04-build) — vor dem Produktivbetrieb durchgehen (alle Patterns)
+<!-- playbook-reading:end -->

@@ -117,9 +117,21 @@ python3 -m pytest solutions/genai/stepfunctions-agentcore-tools/tests/ -v
 
 La contrainte de même région, un pin par opération, le mojibake `?` des entrées
 japonaises et le contournement `\uXXXX`, et la limite Cedar sur `input` sont réunis dans
-[docs/demo-guide.md](docs/demo-guide.md#既知の注意点).
+[docs/demo-guide.md](docs/demo-guide.md).
 
 ## Références
 
 - [AWS Step Functions as Connector Target (officiel)](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/gateway-target-connector-step-functions.html)
 - [AWS Step Functions workflows now available as AI agent tools (What's New)](https://aws.amazon.com/about-aws/whats-new/2026/10/step-functions-workflows-ai-agent-tools/)
+
+---
+
+<!-- playbook-reading:start -->
+## À lire avant la mise en production
+
+La façon de traduire en décisions de conception les contraintes qui apparaissent après le déploiement est documentée dans le [FSx for ONTAP Adoption Playbook](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook). Un même contenu présent à deux endroits laisse survivre la copie qui a cessé d'être mise à jour.
+
+- [Exploitation des données](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/tree/main/docs/en/domains/data-utilization) — contraintes de l'accès via un access point (tous les patterns)
+- [Sécurité et gouvernance](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/tree/main/docs/en/domains/security-governance) — là où se concentrent les décisions pour ce pattern
+- [Construire](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/tree/main/docs/en/playbooks/04-build) — à parcourir avant la production (tous les patterns)
+<!-- playbook-reading:end -->

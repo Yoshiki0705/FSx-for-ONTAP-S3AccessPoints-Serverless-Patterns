@@ -285,6 +285,7 @@ ASSIGNMENT: dict[str, str] = {
     "flexcache/rag-enterprise-files": "ai-ml",
     "genai/kb-selfservice-curation": "ai-ml",
     "genai/quick-agentic-workspace": "ai-ml",
+    "genai/stepfunctions-agentcore-tools": "ai-ml",
     "edge/media-ivs-vod-publishing": "media",
     # Delivery is a question about how end users reach the data, and `02-design` carries
     # exactly that note ("エンドユーザーがデータに届く経路は 4 つある").

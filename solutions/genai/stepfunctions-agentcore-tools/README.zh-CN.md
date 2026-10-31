@@ -109,9 +109,21 @@ python3 -m pytest solutions/genai/stepfunctions-agentcore-tools/tests/ -v
 ## 已知注意事项
 
 同区域约束、每个操作一个 pin、日语输入的 `?` 乱码及 `\uXXXX` 规避、Cedar 的 `input`
-条件限制，均整理在 [docs/demo-guide.md](docs/demo-guide.md#既知の注意点)。
+条件限制，均整理在 [docs/demo-guide.md](docs/demo-guide.md)。
 
 ## 参考
 
 - [AWS Step Functions as Connector Target（官方）](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/gateway-target-connector-step-functions.html)
 - [AWS Step Functions workflows now available as AI agent tools（What's New）](https://aws.amazon.com/about-aws/whats-new/2026/10/step-functions-workflows-ai-agent-tools/)
+
+---
+
+<!-- playbook-reading:start -->
+## 上生产前需要阅读的内容
+
+部署后才会遇到的约束如何转化为设计决策，记录在 [FSx for ONTAP Adoption Playbook](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook)。同一内容放在两处时，停止更新的那份会比已修正的那份存留更久。
+
+- [数据利用](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/tree/main/docs/en/domains/data-utilization) — 通过访问点访问数据的约束（所有模式通用）
+- [安全与治理](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/tree/main/docs/en/domains/security-governance) — 该模式的决策集中之处
+- [构建](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/tree/main/docs/en/playbooks/04-build) — 上生产前通读（所有模式通用）
+<!-- playbook-reading:end -->
