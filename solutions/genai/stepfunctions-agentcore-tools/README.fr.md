@@ -1,6 +1,6 @@
 # Step Functions × AgentCore Gateway — Des workflows comme outils d'agent IA
 
-🌐 **Language / Langue**: [日本語](README.md) | [English](README.en.md) | [한국어](README.ko.md) | [简体中文](README.zh-CN.md) | [繁體中文](README.zh-TW.md) | Français | [Deutsch](README.de.md) | [Español](README.es.md)
+🌐 **Language / 言語**: [日本語](README.md) | [English](README.en.md) | [한국어](README.ko.md) | [简体中文](README.zh-CN.md) | [繁體中文](README.zh-TW.md) | Français | [Deutsch](README.de.md) | [Español](README.es.md)
 
 Un exemple qui expose un workflow Step Functions Standard (Découverte → Traitement →
 Rapport) portant sur des fichiers sur FSx for ONTAP S3 Access Points comme outils
@@ -57,9 +57,10 @@ L'ARN épinglé de la machine à états n'apparaît pas dans l'outil et l'agent 
 
 ## Déploiement
 
-Le Gateway et la cible connecteur Step Functions ne sont pas pris en charge par
-CloudFormation ; le modèle crée donc les Lambda, la machine à états et le rôle de
-service du Gateway, et le script de déploiement crée le Gateway et la cible.
+Le Gateway et la cible connecteur sont des ressources CloudFormation de première
+classe (`AWS::BedrockAgentCore::Gateway` / `GatewayTarget`), donc tout le motif tient
+dans un seul modèle déclaratif. Le script de déploiement est un wrapper
+`sam build` + `sam deploy` qui vérifie `tools/list` ensuite.
 
 ```bash
 # DemoMode (sans FSx for ONTAP)

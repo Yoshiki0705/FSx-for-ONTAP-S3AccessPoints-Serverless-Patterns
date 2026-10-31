@@ -1,6 +1,6 @@
 # Step Functions × AgentCore Gateway — 将工作流作为 AI 代理工具
 
-🌐 **Language / 语言**: [日本語](README.md) | [English](README.en.md) | [한국어](README.ko.md) | 简体中文 | [繁體中文](README.zh-TW.md) | [Français](README.fr.md) | [Deutsch](README.de.md) | [Español](README.es.md)
+🌐 **Language / 言語**: [日本語](README.md) | [English](README.en.md) | [한국어](README.ko.md) | 简体中文 | [繁體中文](README.zh-TW.md) | [Français](README.fr.md) | [Deutsch](README.de.md) | [Español](README.es.md)
 
 本示例通过 Amazon Bedrock AgentCore Gateway 内置的 Step Functions 连接器，将处理
 FSx for ONTAP S3 Access Points 上文件的 Standard Step Functions 工作流（发现 → 处理 →
@@ -56,8 +56,9 @@ AI 代理 ──MCP──▶ AgentCore Gateway (Step Functions 连接器)
 
 ## 部署
 
-Gateway 本体和 Step Functions 连接器目标不受 CloudFormation 支持，因此模板创建
-Lambda、状态机和 Gateway 服务角色，Gateway 与目标由部署脚本创建。
+Gateway 和连接器目标都是 CloudFormation 一等资源
+（`AWS::BedrockAgentCore::Gateway` / `GatewayTarget`），因此整个模式用一个模板声明式完成。
+部署脚本是 `sam build` + `sam deploy` 的封装，部署后验证 `tools/list`。
 
 ```bash
 # DemoMode（无需 FSx for ONTAP）

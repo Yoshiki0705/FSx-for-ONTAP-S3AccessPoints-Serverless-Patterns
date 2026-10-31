@@ -1,6 +1,6 @@
 # Step Functions × AgentCore Gateway — 워크플로를 AI 에이전트 도구로
 
-🌐 **Language / 언어**: [日本語](README.md) | [English](README.en.md) | 한국어 | [简体中文](README.zh-CN.md) | [繁體中文](README.zh-TW.md) | [Français](README.fr.md) | [Deutsch](README.de.md) | [Español](README.es.md)
+🌐 **Language / 言語**: [日本語](README.md) | [English](README.en.md) | 한국어 | [简体中文](README.zh-CN.md) | [繁體中文](README.zh-TW.md) | [Français](README.fr.md) | [Deutsch](README.de.md) | [Español](README.es.md)
 
 FSx for ONTAP S3 Access Points의 파일을 처리하는 Standard Step Functions 워크플로
 (검색 → 처리 → 보고)를 Amazon Bedrock AgentCore Gateway의 내장 Step Functions
@@ -56,9 +56,10 @@ AI 에이전트 ──MCP──▶ AgentCore Gateway (Step Functions 커넥터)
 
 ## 배포
 
-Gateway 본체와 Step Functions 커넥터 대상은 CloudFormation에서 지원되지 않으므로,
-템플릿은 Lambda·상태 머신·Gateway 서비스 역할을 만들고 Gateway와 대상은 배포
-스크립트로 만듭니다.
+Gateway와 커넥터 대상도 CloudFormation 1급 리소스
+(`AWS::BedrockAgentCore::Gateway` / `GatewayTarget`)이므로 하나의 템플릿으로 선언적으로
+완결됩니다. 배포 스크립트는 `sam build` + `sam deploy` 래퍼이며 배포 후 `tools/list`를
+검증합니다.
 
 ```bash
 # DemoMode(FSx for ONTAP 불필요)

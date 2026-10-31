@@ -1,6 +1,6 @@
 # Step Functions × AgentCore Gateway — Flujos de trabajo como herramientas de agente IA
 
-🌐 **Language / Idioma**: [日本語](README.md) | [English](README.en.md) | [한국어](README.ko.md) | [简体中文](README.zh-CN.md) | [繁體中文](README.zh-TW.md) | [Français](README.fr.md) | [Deutsch](README.de.md) | Español
+🌐 **Language / 言語**: [日本語](README.md) | [English](README.en.md) | [한국어](README.ko.md) | [简体中文](README.zh-CN.md) | [繁體中文](README.zh-TW.md) | [Français](README.fr.md) | [Deutsch](README.de.md) | Español
 
 Un ejemplo que expone un flujo de trabajo Standard de Step Functions (Descubrir →
 Procesar → Informar) sobre archivos en FSx for ONTAP S3 Access Points como herramientas
@@ -58,9 +58,10 @@ El ARN fijado de la máquina de estados no aparece en la herramienta y el agente
 
 ## Despliegue
 
-El Gateway y el destino conector de Step Functions no son compatibles con
-CloudFormation; por eso la plantilla crea las Lambdas, la máquina de estados y el rol de
-servicio del Gateway, y el script de despliegue crea el Gateway y el destino.
+El Gateway y el destino conector son recursos de CloudFormation de primera clase
+(`AWS::BedrockAgentCore::Gateway` / `GatewayTarget`), así que todo el patrón cabe en
+una plantilla declarativa. El script de despliegue es un envoltorio
+`sam build` + `sam deploy` que verifica `tools/list` después.
 
 ```bash
 # DemoMode (sin FSx for ONTAP)

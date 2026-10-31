@@ -1,6 +1,6 @@
 # Step Functions × AgentCore Gateway — Workflows als KI-Agenten-Tools
 
-🌐 **Language / Sprache**: [日本語](README.md) | [English](README.en.md) | [한국어](README.ko.md) | [简体中文](README.zh-CN.md) | [繁體中文](README.zh-TW.md) | [Français](README.fr.md) | Deutsch | [Español](README.es.md)
+🌐 **Language / 言語**: [日本語](README.md) | [English](README.en.md) | [한국어](README.ko.md) | [简体中文](README.zh-CN.md) | [繁體中文](README.zh-TW.md) | [Français](README.fr.md) | Deutsch | [Español](README.es.md)
 
 Ein Beispiel, das einen Standard-Step-Functions-Workflow (Ermitteln → Verarbeiten →
 Bericht) über Dateien auf FSx for ONTAP S3 Access Points als KI-Agenten-Tools
@@ -58,9 +58,10 @@ Der angeheftete State-Machine-ARN erscheint nicht im Tool und der Agent kann ihn
 
 ## Bereitstellung
 
-Das Gateway und das Step-Functions-Connector-Ziel werden von CloudFormation nicht
-unterstützt; die Vorlage erstellt daher die Lambdas, die State Machine und die
-Gateway-Servicerolle, und das Deploy-Skript erstellt Gateway und Ziel.
+Das Gateway und das Connector-Ziel sind erstklassige CloudFormation-Ressourcen
+(`AWS::BedrockAgentCore::Gateway` / `GatewayTarget`), daher steckt das ganze Muster
+in einer deklarativen Vorlage. Das Deploy-Skript ist ein `sam build` + `sam deploy`
+Wrapper, der danach `tools/list` prüft.
 
 ```bash
 # DemoMode (ohne FSx for ONTAP)
