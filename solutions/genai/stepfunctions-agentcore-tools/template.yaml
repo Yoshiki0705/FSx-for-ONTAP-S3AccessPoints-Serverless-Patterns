@@ -1,0 +1,366 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  Step Functions x AgentCore Gateway — S3 AP File Processing as AI Agent Tools
+
+  A Standard Step Functions workflow (Discover -> Process -> Report) over FSx for
+  ONTAP S3 Access Points, exposed to AI agents as MCP tools through the Amazon
+  Bedrock AgentCore Gateway Step Functions connector. The agent decides WHEN to run
+  the workflow and WHAT input to pass; the state machine owns the ordered steps.
+
+  This template is fully declarative: the Lambda functions, the Standard state
+  machine, the Gateway service role, the AgentCore Gateway, and the Step Functions
+  connector target are all CloudFormation resources. Deploy it and the gateway's
+  tools/list is ready — no out-of-band create step. See the VerifyToolsCommand output.
+
+Metadata:
+  AWS::ServerlessRepo::Application:
+    Name: fsxn-s3ap-stepfunctions-agentcore-tools
+    Description: Expose an S3 AP file-processing workflow as AI agent tools via AgentCore Gateway
+    Author: FSx for ONTAP S3 Access Points Serverless Patterns
+    Labels: ['fsxn', 's3ap', 'stepfunctions', 'agentcore', 'genai', 'mcp']
+
+Parameters:
+  S3AccessPointAlias:
+    Type: String
+    Description: >
+      S3 Access Point alias for the FSx for ONTAP volume.
+      In DemoMode this can be a regular S3 bucket name.
+
+  DemoMode:
+    Type: String
+    Default: "false"
+    AllowedValues: ["true", "false"]
+    Description: >
+      Enable demo mode (no FSx for ONTAP required). When true, S3AccessPointAlias
+      accepts a regular S3 bucket name. The S3ApHelper abstraction uses the same
+      code path for both, so no handler change is needed.
+
+  NotificationEmail:
+    Type: String
+    Default: ""
+    Description: Email address for SNS notifications (empty to skip subscription)
+
+  FilePrefix:
+    Type: String
+    Default: "input/"
+    Description: S3 prefix to scan for files (e.g., "input/", "idoc-export/")
+
+  BedrockModelId:
+    Type: String
+    Default: "apac.amazon.nova-pro-v1:0"
+    Description: >-
+      Bedrock model ID or inference profile ID for summarization. Amazon Nova on
+      on-demand throughput requires a cross-region inference profile ID (prefix by
+      region: Asia Pacific=apac. / US=us. / Europe=eu.). See
+      docs/bedrock-inference-profiles.md.
+
+  MaxFilesPerExecution:
+    Type: Number
+    Default: 100
+    MinValue: 1
+    MaxValue: 1000
+    Description: Maximum number of files processed per execution
+
+  GatewayName:
+    Type: String
+    Default: "sfn-agentcore-tools-gateway"
+    Description: AgentCore Gateway name (used by the deploy script, not created here)
+
+  LogRetentionInDays:
+    Type: Number
+    Default: 90
+    AllowedValues: [1, 3, 5, 7, 14, 30, 60, 90, 120, 150, 180, 365, 400, 545, 731, 1096, 1827, 2192, 2557, 2922, 3288, 3653]
+    Description: CloudWatch Logs retention in days (90 default; 2557 = 7 years for compliance)
+
+Conditions:
+  HasNotificationEmail: !Not [!Equals [!Ref NotificationEmail, '']]
+
+Globals:
+  Function:
+    Runtime: python3.13
+    Timeout: 120
+    MemorySize: 256
+    Architectures:
+      - arm64
+    Environment:
+      Variables:
+        S3_ACCESS_POINT_ALIAS: !Ref S3AccessPointAlias
+        FILE_PREFIX: !Ref FilePrefix
+        MAX_FILES: !Ref MaxFilesPerExecution
+        BEDROCK_MODEL_ID: !Ref BedrockModelId
+
+Resources:
+  # ------------------------------------------------------------------
+  # SNS Topic (optional email subscription)
+  # ------------------------------------------------------------------
+  NotificationTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: !Sub "${AWS::StackName}-notifications"
+
+  NotificationSubscription:
+    Type: AWS::SNS::Subscription
+    Condition: HasNotificationEmail
+    Properties:
+      TopicArn: !Ref NotificationTopic
+      Protocol: email
+      Endpoint: !Ref NotificationEmail
+
+  # ------------------------------------------------------------------
+  # Shared Lambda Layer (shared/ modules)
+  # ------------------------------------------------------------------
+  SharedLayer:
+    Type: AWS::Serverless::LayerVersion
+    Properties:
+      LayerName: !Sub "${AWS::StackName}-shared"
+      Description: Shared Python modules (s3ap_helper, human_review, data_classification, observability, exceptions)
+      ContentUri: ../../../
+      CompatibleRuntimes:
+        - python3.12
+        - python3.13
+      CompatibleArchitectures:
+        - arm64
+    Metadata:
+      BuildMethod: makefile
+      BuildArchitecture: arm64
+
+  # ------------------------------------------------------------------
+  # Lambda Functions
+  # ------------------------------------------------------------------
+  DiscoveryFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "${AWS::StackName}-discovery"
+      Handler: handler.handler
+      CodeUri: functions/discovery/
+      Description: Lists files on FSx for ONTAP via S3 Access Point
+      Layers:
+        - !Ref SharedLayer
+      Policies:
+        - Statement:
+            - Sid: S3APRead
+              Effect: Allow
+              Action:
+                - s3:GetObject
+                - s3:ListBucket
+                - s3:GetBucketLocation
+              Resource:
+                - !Sub "arn:${AWS::Partition}:s3:${AWS::Region}:${AWS::AccountId}:accesspoint/*"
+                - !Sub "arn:${AWS::Partition}:s3:${AWS::Region}:${AWS::AccountId}:accesspoint/*/object/*"
+
+  ProcessingFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "${AWS::StackName}-processing"
+      Handler: handler.handler
+      CodeUri: functions/processing/
+      Description: Reads a file via S3 AP and summarizes it with Amazon Bedrock
+      Layers:
+        - !Ref SharedLayer
+      Policies:
+        - Statement:
+            - Sid: S3APRead
+              Effect: Allow
+              Action:
+                - s3:GetObject
+                - s3:ListBucket
+                - s3:GetBucketLocation
+              Resource:
+                - !Sub "arn:${AWS::Partition}:s3:${AWS::Region}:${AWS::AccountId}:accesspoint/*"
+                - !Sub "arn:${AWS::Partition}:s3:${AWS::Region}:${AWS::AccountId}:accesspoint/*/object/*"
+            - Sid: BedrockInvoke
+              Effect: Allow
+              Action:
+                - bedrock:InvokeModel
+              Resource:
+                - !Sub "arn:${AWS::Partition}:bedrock:*::foundation-model/*"
+                - !Sub "arn:${AWS::Partition}:bedrock:*:${AWS::AccountId}:inference-profile/*"
+
+  ReportFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "${AWS::StackName}-report"
+      Handler: handler.handler
+      CodeUri: functions/report/
+      Description: Aggregates results and sends an SNS summary
+      MemorySize: 128
+      Layers:
+        - !Ref SharedLayer
+      Environment:
+        Variables:
+          SNS_TOPIC_ARN: !Ref NotificationTopic
+      Policies:
+        - SNSPublishMessagePolicy:
+            TopicName: !GetAtt NotificationTopic.TopicName
+
+  # ------------------------------------------------------------------
+  # Standard State Machine (exposed as agent tools via the Gateway)
+  # ------------------------------------------------------------------
+  ProcessingStateMachine:
+    Type: AWS::Serverless::StateMachine
+    Properties:
+      Name: !Sub "${AWS::StackName}-workflow"
+      DefinitionUri: statemachine/workflow.asl.json
+      DefinitionSubstitutions:
+        DiscoveryFunctionArn: !GetAtt DiscoveryFunction.Arn
+        ProcessingFunctionArn: !GetAtt ProcessingFunction.Arn
+        ReportFunctionArn: !GetAtt ReportFunction.Arn
+      Policies:
+        - LambdaInvokePolicy:
+            FunctionName: !Ref DiscoveryFunction
+        - LambdaInvokePolicy:
+            FunctionName: !Ref ProcessingFunction
+        - LambdaInvokePolicy:
+            FunctionName: !Ref ReportFunction
+
+  # ------------------------------------------------------------------
+  # AgentCore Gateway service role
+  #
+  # The Gateway assumes this role to call Step Functions on the agent's behalf.
+  # IAM is the only boundary for the unpinned operations, so scope it tightly:
+  # pinned ops to the state machine ARN, unpinned ops to its execution ARNs.
+  # ------------------------------------------------------------------
+  GatewayServiceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "${AWS::StackName}-gateway-role"
+      Description: AgentCore Gateway service role for the Step Functions connector target
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: bedrock-agentcore.amazonaws.com
+            Action: sts:AssumeRole
+            Condition:
+              StringEquals:
+                aws:SourceAccount: !Ref AWS::AccountId
+      Policies:
+        - PolicyName: StepFunctionsConnector
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              # Pinned operations act on the state machine ARN.
+              - Sid: StartAndList
+                Effect: Allow
+                Action:
+                  - states:StartExecution
+                  - states:ListExecutions
+                  - states:DescribeStateMachine
+                Resource: !Ref ProcessingStateMachine
+              # Unpinned operations act on an execution ARN the agent supplies.
+              - Sid: DescribeAndHistory
+                Effect: Allow
+                Action:
+                  - states:DescribeExecution
+                  - states:GetExecutionHistory
+                  - states:StopExecution
+                Resource: !Sub "arn:${AWS::Partition}:states:${AWS::Region}:${AWS::AccountId}:execution:${AWS::StackName}-workflow:*"
+
+  # ------------------------------------------------------------------
+  # AgentCore Gateway (MCP) and the Step Functions connector target
+  #
+  # Both are first-class CloudFormation resources
+  # (AWS::BedrockAgentCore::Gateway / ::GatewayTarget), so the whole pattern is
+  # declarative — no out-of-band create step. AuthorizerType is NONE for a PoC;
+  # for production use CUSTOM_JWT or AWS_IAM and add a Policy Engine.
+  # ------------------------------------------------------------------
+  AgentCoreGateway:
+    Type: AWS::BedrockAgentCore::Gateway
+    Properties:
+      Name: !Ref GatewayName
+      ProtocolType: MCP
+      AuthorizerType: NONE
+      RoleArn: !GetAtt GatewayServiceRole.Arn
+      Description: Exposes the S3 AP file-processing workflow as agent tools
+      Tags:
+        UseCase: stepfunctions-agentcore-tools
+        ManagedBy: !Ref AWS::StackName
+
+  # The connector pins the state machine ARN on the four pinnable operations.
+  # The pin is removed from the tool schema and enforced on every call. The two
+  # unpinned operations take an execution ARN the agent supplies. ParameterValues
+  # keys are Step Functions API parameter names, so stateMachineArn stays camelCase.
+  WorkflowConnectorTarget:
+    Type: AWS::BedrockAgentCore::GatewayTarget
+    Properties:
+      GatewayIdentifier: !Ref AgentCoreGateway
+      Name: workflow
+      Description: Standard workflow (Discover->Process->Report) over FSx for ONTAP S3 AP
+      CredentialProviderConfigurations:
+        - CredentialProviderType: GATEWAY_IAM_ROLE
+      TargetConfiguration:
+        Mcp:
+          Connector:
+            Source:
+              ConnectorId: states
+            Configurations:
+              - Name: StartExecution
+                ParameterValues:
+                  stateMachineArn: !Ref ProcessingStateMachine
+              - Name: ListExecutions
+                ParameterValues:
+                  stateMachineArn: !Ref ProcessingStateMachine
+              - Name: DescribeStateMachine
+                ParameterValues:
+                  stateMachineArn: !Ref ProcessingStateMachine
+              - Name: DescribeExecution
+              - Name: GetExecutionHistory
+
+  # ------------------------------------------------------------------
+  # EventBridge Scheduler (keeps the non-agent trigger path available)
+  # ------------------------------------------------------------------
+  SchedulerRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: scheduler.amazonaws.com
+            Action: sts:AssumeRole
+            Condition:
+              StringEquals:
+                aws:SourceAccount: !Ref AWS::AccountId
+      Policies:
+        - PolicyName: StartWorkflow
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action: states:StartExecution
+                Resource: !Ref ProcessingStateMachine
+
+Outputs:
+  StateMachineArn:
+    Description: Standard state machine ARN (pinned on the connector target)
+    Value: !Ref ProcessingStateMachine
+
+  GatewayServiceRoleArn:
+    Description: AgentCore Gateway service role ARN
+    Value: !GetAtt GatewayServiceRole.Arn
+
+  GatewayUrl:
+    Description: AgentCore Gateway MCP endpoint URL
+    Value: !GetAtt AgentCoreGateway.GatewayUrl
+
+  GatewayIdentifier:
+    Description: AgentCore Gateway identifier
+    Value: !Ref AgentCoreGateway
+
+  S3AccessPointAlias:
+    Description: S3 Access Point alias (or demo bucket name)
+    Value: !Ref S3AccessPointAlias
+
+  NotificationTopicArn:
+    Description: SNS topic ARN for workflow summaries
+    Value: !Ref NotificationTopic
+
+  VerifyToolsCommand:
+    Description: List the MCP tools exposed by the gateway
+    Value: !Sub >-
+      curl -s -X POST ${AgentCoreGateway.GatewayUrl}
+      -H 'Content-Type: application/json'
+      -d '{"jsonrpc":"2.0","method":"tools/list","id":"1"}'
