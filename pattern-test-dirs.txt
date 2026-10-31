@@ -100,6 +100,7 @@ solutions/flexcache/life-sciences-research
 solutions/flexcache/rag-enterprise-files
 solutions/genai/kb-selfservice-curation
 solutions/genai/quick-agentic-workspace
+solutions/genai/stepfunctions-agentcore-tools
 solutions/ha/lifekeeper-monitoring
 solutions/industry/adtech-creative-management
 solutions/industry/agri-food-traceability
