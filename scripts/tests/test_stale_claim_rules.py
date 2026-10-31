@@ -543,9 +543,9 @@ COUNT_PHRASINGS = {
         "│   ├── flexcache/                    # FlexCache/FlexClone patterns (10)",
     ),
     "genai-patterns": (
-        2,
-        "**2 GenAI patterns**",
-        "│   ├── genai/                        # GenAI patterns (2)",
+        3,
+        "**3 GenAI patterns**",
+        "│   ├── genai/                        # GenAI patterns (3)",
     ),
     "event-driven-patterns": (
         2,
@@ -562,7 +562,7 @@ COUNT_PHRASINGS = {
         "**6 operations optimization patterns (OPS1-OPS6)**",
         "├── operations/             # Operational optimization patterns (6, all built)",
     ),
-    "pytest-files": (325, "~5,000 Python tests across 325 files", None),
+    "pytest-files": (327, "~5,000 Python tests across 327 files", None),
     "vitest-files": (36, "~530 vitest tests across 36 files", None),
 }
 
