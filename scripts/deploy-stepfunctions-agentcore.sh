@@ -84,11 +84,15 @@ log "=== Step Functions x AgentCore Gateway deployment ==="
 log "  Account: $ACCOUNT_ID  Region: $GATEWAY_REGION  Stack: $STACK_NAME"
 
 # --- Build and deploy (gateway + target are in the template) ---
+# Deploy the BUILT template (.aws-sam/build/template.yaml), not the source. The
+# source SharedLayer ContentUri is ../../../ (the repo root); deploying it directly
+# packages the whole repo (.venv, .hypothesis, ...) — ~1.4 GB. `sam build` rewrites
+# ContentUri to the pruned artifact, so deploy must consume the build output. With
+# no --template-file, sam deploy reads .aws-sam/build/template.yaml.
 log "Building..."
 sam build --template-file "$TEMPLATE_FILE" >/dev/null
 log "Deploying (creates Lambdas, state machine, Gateway, connector target)..."
 sam deploy \
-  --template-file "$TEMPLATE_FILE" \
   --stack-name "$STACK_NAME" \
   --region "$GATEWAY_REGION" \
   --capabilities CAPABILITY_NAMED_IAM \
