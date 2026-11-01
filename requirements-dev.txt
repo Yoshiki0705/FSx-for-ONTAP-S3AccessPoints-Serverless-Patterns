@@ -9,7 +9,7 @@
 # Every version is exact-pinned so a local run and a CI run resolve to the same
 # tool. Upgrades belong to Renovate, or: bump here, then `make install && make lint
 # && make test`.
-pytest==9.1.1
+pytest==9.2.0
 pytest-cov==7.1.0
 pytest-asyncio==1.4.0
 hypothesis==6.167.1
