@@ -75,6 +75,10 @@ Parameters:
 
 Conditions:
   HasNotificationEmail: !Not [!Equals [!Ref NotificationEmail, '']]
+  # In DemoMode the S3AccessPointAlias is a regular bucket name, which IAM
+  # authorizes through a bucket-style ARN, not an access-point ARN. The two
+  # forms are disjoint, so the demo path needs its own grant.
+  IsDemoMode: !Equals [!Ref DemoMode, "true"]
 
 Globals:
   Function:
@@ -148,6 +152,19 @@ Resources:
               Resource:
                 - !Sub "arn:${AWS::Partition}:s3:${AWS::Region}:${AWS::AccountId}:accesspoint/*"
                 - !Sub "arn:${AWS::Partition}:s3:${AWS::Region}:${AWS::AccountId}:accesspoint/*/object/*"
+            # DemoMode only: the alias is a regular bucket, authorized by a bucket ARN.
+            - !If
+              - IsDemoMode
+              - Sid: S3DemoBucketRead
+                Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:ListBucket
+                  - s3:GetBucketLocation
+                Resource:
+                  - !Sub "arn:${AWS::Partition}:s3:::${S3AccessPointAlias}"
+                  - !Sub "arn:${AWS::Partition}:s3:::${S3AccessPointAlias}/*"
+              - !Ref AWS::NoValue
 
   ProcessingFunction:
     Type: AWS::Serverless::Function
@@ -169,6 +186,19 @@ Resources:
               Resource:
                 - !Sub "arn:${AWS::Partition}:s3:${AWS::Region}:${AWS::AccountId}:accesspoint/*"
                 - !Sub "arn:${AWS::Partition}:s3:${AWS::Region}:${AWS::AccountId}:accesspoint/*/object/*"
+            # DemoMode only: the alias is a regular bucket, authorized by a bucket ARN.
+            - !If
+              - IsDemoMode
+              - Sid: S3DemoBucketRead
+                Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:ListBucket
+                  - s3:GetBucketLocation
+                Resource:
+                  - !Sub "arn:${AWS::Partition}:s3:::${S3AccessPointAlias}"
+                  - !Sub "arn:${AWS::Partition}:s3:::${S3AccessPointAlias}/*"
+              - !Ref AWS::NoValue
             - Sid: BedrockInvoke
               Effect: Allow
               Action:
