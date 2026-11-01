@@ -129,6 +129,9 @@ BOX = "box"
 PREFIX_EXEMPT = re.compile(
     r"^(Web ブラウザ|Web browser|利用者|Users|NFS |SMB |Nextcloud|オンプレ|On-prem"
     r"|ユーザー|User|管理者|Admin|ブラウザ|Browser"
+    # An AI agent / MCP client is the caller, not an AWS service. It is drawn with
+    # the generic users/client resource icon, the same as a browser.
+    r"|AI エージェント|AI agent|MCP クライアント|MCP client"
     # Sources outside AWS. A migration figure has to name what the data is coming
     # from, and "Amazon" in front of another vendor's storage would be wrong.
     r"|オブジェクトストレージ|Object storage|SaaS)"
