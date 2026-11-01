@@ -930,9 +930,7 @@ EN: dict[str, str] = {
     ),
     "AI エージェント<br>(MCP クライアント)": "AI agent<br>(MCP client)",
     "AI エージェント": "AI agent",
-    "Amazon Bedrock AgentCore<br>(Step Functions コネクタ)": (
-        "Amazon Bedrock AgentCore<br>(Step Functions connector)"
-    ),
+    "Amazon Bedrock AgentCore<br>(Step Functions コネクタ)": ("Amazon Bedrock AgentCore<br>(Step Functions connector)"),
     "AWS Step Functions<br>(Standard ステートマシン)": "AWS Step Functions<br>(Standard state machine)",
     "AWS Lambda<br>(Discovery)": "AWS Lambda<br>(Discovery)",
     "AWS Lambda<br>(Processing)": "AWS Lambda<br>(Processing)",
@@ -941,7 +939,6 @@ EN: dict[str, str] = {
     "StartExecution ほか": "StartExecution, etc.",
     "発見": "discover",
     "処理": "process",
-    "推論": "inference",
     "集計": "aggregate",
     "コネクタ": "connector",
     "ワークフロー": "workflow",
@@ -954,8 +951,7 @@ EN: dict[str, str] = {
     ),
     "固定したステートマシンは差し替えられない": "The pinned state machine cannot be swapped",
     "pin したステートマシン ARN はツールの引数に出ず、別のステートマシンは起動できない": (
-        "The pinned state machine ARN never appears in the tool arguments, so no other "
-        "state machine can be started"
+        "The pinned state machine ARN never appears in the tool arguments, so no other state machine can be started"
     ),
     # ---- Part 7 ---------------------------------------------------------------
     # The three foundation figures. Column 1 and the inventory box carry most of
