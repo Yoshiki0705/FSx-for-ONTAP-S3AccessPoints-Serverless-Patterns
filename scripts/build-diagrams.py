@@ -837,11 +837,126 @@ def part3_agent_teams() -> Diagram:
     )
 
 
+# --- Part 8: Step Functions x AgentCore Gateway --------------------------------
+def part8_stepfunctions_agentcore() -> Diagram:
+    """The connector pattern: an agent runs a Standard workflow through the Gateway.
+
+    One descending column. The agent decides when to start; AgentCore Gateway exposes
+    the Step Functions operations as MCP tools; the Standard state machine owns the
+    ordered steps (discover -> process -> report). Processing is the one hop that
+    reaches sideways, to Bedrock, so it keeps the right-hand column to itself. Data
+    access stays on the spine: S3 Access Point then FSx for ONTAP.
+    """
+    return Diagram(
+        id="part8-stepfunctions-agentcore",
+        name="Part8 Step Functions x AgentCore",
+        title="Step Functions のワークフローを AgentCore Gateway 経由で AI エージェントのツールに",
+        grid=Grid(col_pitch=320, row_pitch=175, box_w=300),
+        nodes=[
+            Node("agent", "AI エージェント<br>(MCP クライアント)", 0, 0, RESOURCE, USERS),
+            Node("gateway", "Amazon Bedrock AgentCore<br>(Step Functions コネクタ)", 0, 1, SERVICE, AGENTCORE),
+            Node("sfn", "AWS Step Functions<br>(Standard ステートマシン)", 0, 2, SERVICE, SFN),
+            Node("discovery", "AWS Lambda<br>(Discovery)", 0, 3, SERVICE, LAMBDA),
+            Node("processing", "AWS Lambda<br>(Processing)", 0, 4, SERVICE, LAMBDA),
+            Node("bedrock", "Amazon Bedrock<br>(要約・分類)", 1, 4, SERVICE, BEDROCK),
+            Node("report", "AWS Lambda<br>(Report)", 0, 5, SERVICE, LAMBDA),
+            Node("s3ap", "Amazon S3 Access Point", 0, 6, RESOURCE, S3AP),
+            Node("fsxn", "Amazon FSx for<br>NetApp ONTAP", 0, 7, SERVICE, FSXN),
+        ],
+        groups=[Group("aws-cloud", "AWS Cloud", (0, 1), (1, 7))],
+        edges=[
+            Edge("agent", "gateway", "MCP", dy=30),
+            Edge("gateway", "sfn", "StartExecution ほか"),
+            Edge("sfn", "discovery", "発見"),
+            Edge("discovery", "processing", "処理"),
+            Edge("processing", "bedrock", "推論"),
+            Edge("processing", "report", "集計"),
+            Edge("report", "s3ap", "S3 API"),
+            Edge("s3ap", "fsxn"),
+        ],
+        notes=[
+            (
+                "起動判断はエージェント、手順の順序はステートマシン",
+                "エージェントは開始する操作と入力だけを決め、処理の順序と分岐はステートマシンが保証する",
+            ),
+            (
+                "固定したステートマシンは差し替えられない",
+                "pin したステートマシン ARN はツールの引数に出ず、別のステートマシンは起動できない",
+            ),
+        ],
+    )
+
+
+def cover_stepfunctions_agentcore() -> Diagram:
+    """Eyecatch: the four marks the post is about, left to right along one spine.
+
+    A cover, not an architecture figure — the arrows carry the one sentence the title
+    makes: an agent reaches a Standard workflow through the Gateway, and the workflow
+    reaches FSx for ONTAP data through the access point. Kept to four icons so it reads
+    at a cover's size.
+    """
+    return Diagram(
+        id="cover-stepfunctions-agentcore",
+        name="Cover Step Functions x AgentCore",
+        title="Step Functions × AgentCore Gateway — ワークフローを AI エージェントのツールに",
+        grid=Grid(col_pitch=300, box_w=240),
+        nodes=[
+            Node("agent", "AI エージェント", 0, 0, RESOURCE, USERS),
+            Node("gateway", "Amazon Bedrock<br>AgentCore", 1, 0, SERVICE, AGENTCORE),
+            Node("sfn", "AWS Step Functions", 2, 0, SERVICE, SFN),
+            Node("s3ap", "Amazon S3 Access Point", 3, 0, RESOURCE, S3AP),
+            Node("fsxn", "Amazon FSx for<br>NetApp ONTAP", 4, 0, SERVICE, FSXN),
+        ],
+        edges=[
+            Edge("agent", "gateway", "MCP"),
+            Edge("gateway", "sfn", "コネクタ"),
+            Edge("sfn", "s3ap", "ワークフロー"),
+            Edge("s3ap", "fsxn"),
+        ],
+    )
+
+
 # --- English text --------------------------------------------------------------
 # Keyed by the exact Japanese string in the specs above. `translate_diagram()`
 # fails the build when a string is missing or still contains CJK, so a label added
 # to a spec cannot ship without its English counterpart.
 EN: dict[str, str] = {
+    # ---- Part 8: Step Functions x AgentCore Gateway ---------------------------
+    "Step Functions のワークフローを AgentCore Gateway 経由で AI エージェントのツールに": (
+        "Step Functions workflows as AI agent tools through AgentCore Gateway"
+    ),
+    "Step Functions × AgentCore Gateway — ワークフローを AI エージェントのツールに": (
+        "Step Functions × AgentCore Gateway — a workflow as AI agent tools"
+    ),
+    "AI エージェント<br>(MCP クライアント)": "AI agent<br>(MCP client)",
+    "AI エージェント": "AI agent",
+    "Amazon Bedrock AgentCore<br>(Step Functions コネクタ)": (
+        "Amazon Bedrock AgentCore<br>(Step Functions connector)"
+    ),
+    "AWS Step Functions<br>(Standard ステートマシン)": "AWS Step Functions<br>(Standard state machine)",
+    "AWS Lambda<br>(Discovery)": "AWS Lambda<br>(Discovery)",
+    "AWS Lambda<br>(Processing)": "AWS Lambda<br>(Processing)",
+    "AWS Lambda<br>(Report)": "AWS Lambda<br>(Report)",
+    "Amazon Bedrock<br>(要約・分類)": "Amazon Bedrock<br>(summarize / classify)",
+    "StartExecution ほか": "StartExecution, etc.",
+    "発見": "discover",
+    "処理": "process",
+    "推論": "inference",
+    "集計": "aggregate",
+    "コネクタ": "connector",
+    "ワークフロー": "workflow",
+    "起動判断はエージェント、手順の順序はステートマシン": (
+        "The agent decides when to run; the state machine owns the order of the steps"
+    ),
+    "エージェントは開始する操作と入力だけを決め、処理の順序と分岐はステートマシンが保証する": (
+        "The agent decides only the operation to start and its input; the state machine "
+        "guarantees the order and branching of the steps"
+    ),
+    "固定したステートマシンは差し替えられない": "The pinned state machine cannot be swapped",
+    "pin したステートマシン ARN はツールの引数に出ず、別のステートマシンは起動できない": (
+        "The pinned state machine ARN never appears in the tool arguments, so no other "
+        "state machine can be started"
+    ),
     # ---- Part 7 ---------------------------------------------------------------
     # The three foundation figures. Column 1 and the inventory box carry most of
     # these strings, and they are the part the figures are read for, so each keeps
@@ -1507,6 +1622,8 @@ DIAGRAMS = [
     part3_agentchat,
     part3_semantic_search,
     part3_agent_teams,
+    part8_stepfunctions_agentcore,
+    cover_stepfunctions_agentcore,
     part7_amplify,
     part7_blocks,
     part7_nx,
