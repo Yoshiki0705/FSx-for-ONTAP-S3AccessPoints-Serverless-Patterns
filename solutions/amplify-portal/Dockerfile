@@ -4,7 +4,7 @@
 #
 # Note: This serves the static frontend only.
 # Backend (AppSync/Lambda) still runs in AWS — configure amplify_outputs.json.
-FROM node:24-alpine AS builder
+FROM node:26-alpine AS builder
 WORKDIR /app
 COPY package*.json ./
 # node:20-alpine used to be the base and no longer installs: several transitive
