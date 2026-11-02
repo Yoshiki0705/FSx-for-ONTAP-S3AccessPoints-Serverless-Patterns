@@ -1,5 +1,5 @@
 # Runtime dependencies — pinned for deployment reproducibility
-boto3==1.43.118
+boto3==1.43.123
 urllib3==2.8.0
 # jsonschema: shared/lambdas/fpolicy_engine が遅延 import で使う（arm64 / python3.13）。
 #
@@ -20,4 +20,4 @@ urllib3==2.8.0
 # （16 passed, 3 skipped）であることを確認したうえで揃えた。
 jsonschema==4.26.0
 # Optional: X-Ray トレーシング（ENABLE_XRAY=true 時のみ使用）
-aws-xray-sdk==2.15.0
+aws-xray-sdk==2.16.0

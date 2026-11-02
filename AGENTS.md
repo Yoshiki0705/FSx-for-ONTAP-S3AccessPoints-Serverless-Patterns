@@ -4,7 +4,7 @@
 
 ## Project Overview
 FSx for ONTAP S3 Access Points Serverless Patterns — a library of **28 industry-specific use
-cases (UC1-UC28)** + **1 SAP/ERP pattern** + **10 FlexCache/FlexClone patterns** + **2 GenAI
+cases (UC1-UC28)** + **1 SAP/ERP pattern** + **10 FlexCache/FlexClone patterns** + **3 GenAI
 patterns** + **1 HA monitoring pattern** + **2 event-driven patterns** + **2 edge delivery
 patterns** + **6 operations optimization patterns (OPS1-OPS6)**. Each pattern is an independent
 CloudFormation/SAM template sharing the Python modules in `shared/`.
@@ -12,7 +12,7 @@ CloudFormation/SAM template sharing the Python modules in `shared/`.
 **Two pillars**: `solutions/` (S3 AP data processing) + `operations/` (file system operational
 optimization).
 
-**Test coverage**: ~5,000 Python tests across 325 files + ~530 vitest tests across 36 files.
+**Test coverage**: ~5,000 Python tests across 327 files + ~530 vitest tests across 36 files.
 
 > ファイル数は `make drift` がツリーと照合するので古くなれば fail する。テスト総数は 3 系統の
 > 合計なので概数。誰も保守しない厳密な数値より丸めた数値のほうがよい。

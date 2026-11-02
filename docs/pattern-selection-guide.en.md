@@ -96,6 +96,7 @@ All of these are Lambda pipelines reading through an S3 Access Point, and all ru
 | Live streams published as VOD | [media-ivs-vod-publishing](../solutions/edge/media-ivs-vod-publishing/) |
 | Internal knowledge curated by its own users | [kb-selfservice-curation](../solutions/genai/kb-selfservice-curation/) |
 | Access from an agentic workspace | [quick-agentic-workspace](../solutions/genai/quick-agentic-workspace/) |
+| Expose an existing workflow as AI agent tools | [stepfunctions-agentcore-tools](../solutions/genai/stepfunctions-agentcore-tools/) |
 | File workflows adjacent to an ERP | [sap/erp-adjacent](../solutions/sap/erp-adjacent/) |
 
 ---

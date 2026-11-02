@@ -1,0 +1,98 @@
+{
+  "Comment": "Step Functions x AgentCore Gateway — S3 AP file processing (Discover -> Process -> Report). Standard workflow exposed as AI agent tools via the AgentCore Gateway Step Functions connector.",
+  "StartAt": "Discover",
+  "States": {
+    "Discover": {
+      "Type": "Task",
+      "Resource": "${DiscoveryFunctionArn}",
+      "ResultPath": "$.discovery",
+      "Next": "CheckFilesFound",
+      "Retry": [
+        {
+          "ErrorEquals": ["States.TaskFailed", "Lambda.ServiceException", "Lambda.TooManyRequestsException"],
+          "IntervalSeconds": 10,
+          "MaxAttempts": 3,
+          "BackoffRate": 2.0
+        }
+      ],
+      "Catch": [
+        {
+          "ErrorEquals": ["States.ALL"],
+          "ResultPath": "$.error",
+          "Next": "ReportError"
+        }
+      ]
+    },
+    "CheckFilesFound": {
+      "Type": "Choice",
+      "Choices": [
+        {
+          "Variable": "$.discovery.object_count",
+          "NumericGreaterThan": 0,
+          "Next": "ProcessFiles"
+        }
+      ],
+      "Default": "NoFiles"
+    },
+    "NoFiles": {
+      "Type": "Pass",
+      "Result": [],
+      "ResultPath": "$.processed",
+      "Next": "Report"
+    },
+    "ProcessFiles": {
+      "Type": "Map",
+      "ItemsPath": "$.discovery.objects",
+      "MaxConcurrency": 5,
+      "ResultPath": "$.processed",
+      "Iterator": {
+        "StartAt": "ProcessSingleFile",
+        "States": {
+          "ProcessSingleFile": {
+            "Type": "Task",
+            "Resource": "${ProcessingFunctionArn}",
+            "End": true,
+            "Retry": [
+              {
+                "ErrorEquals": ["States.TaskFailed", "Lambda.ServiceException", "Lambda.TooManyRequestsException"],
+                "IntervalSeconds": 10,
+                "MaxAttempts": 2,
+                "BackoffRate": 2.0
+              }
+            ]
+          }
+        }
+      },
+      "Next": "Report",
+      "Catch": [
+        {
+          "ErrorEquals": ["States.ALL"],
+          "ResultPath": "$.error",
+          "Next": "ReportError"
+        }
+      ]
+    },
+    "Report": {
+      "Type": "Task",
+      "Resource": "${ReportFunctionArn}",
+      "End": true,
+      "Retry": [
+        {
+          "ErrorEquals": ["States.TaskFailed"],
+          "IntervalSeconds": 5,
+          "MaxAttempts": 2,
+          "BackoffRate": 2.0
+        }
+      ]
+    },
+    "ReportError": {
+      "Type": "Task",
+      "Resource": "${ReportFunctionArn}",
+      "Parameters": {
+        "status": "ERROR",
+        "error.$": "$.error"
+      },
+      "End": true
+    }
+  }
+}

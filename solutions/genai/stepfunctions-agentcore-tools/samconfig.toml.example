@@ -1,0 +1,35 @@
+# samconfig.toml.example — stepfunctions-agentcore-tools
+#
+# 使用方法:
+#   1. このファイルを samconfig.toml にコピー
+#   2. <PLACEHOLDER> を実際の値に置き換え
+#   3. sam deploy を実行（または scripts/deploy-stepfunctions-agentcore.sh を使う）
+#
+# 注意: samconfig.toml は .gitignore に含まれています。
+# Gateway と Step Functions コネクタターゲットもテンプレートに含まれるので、
+# sam deploy だけで Gateway の tools/list までそろいます（別途の作成手順は不要）。
+
+version = 0.1
+
+[default.deploy.parameters]
+stack_name = "fsxn-s3ap-stepfunctions-agentcore-tools"
+resolve_s3 = true
+s3_prefix = "fsxn-s3ap-stepfunctions-agentcore-tools"
+region = "ap-northeast-1"
+confirm_changeset = true
+capabilities = "CAPABILITY_NAMED_IAM"
+disable_rollback = false
+
+parameter_overrides = [
+    "S3AccessPointAlias=<YOUR_S3AP_ALIAS>-ext-s3alias",
+    "DemoMode=false",
+    "FilePrefix=input/",
+    "BedrockModelId=apac.amazon.nova-pro-v1:0",
+    "MaxFilesPerExecution=100",
+    "NotificationEmail=<YOUR_EMAIL>",
+    "GatewayName=sfn-agentcore-tools-gateway",
+]
+
+[default.build.parameters]
+cached = true
+parallel = true

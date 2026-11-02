@@ -9,11 +9,11 @@
 # Every version is exact-pinned so a local run and a CI run resolve to the same
 # tool. Upgrades belong to Renovate, or: bump here, then `make install && make lint
 # && make test`.
-pytest==9.1.1
+pytest==9.2.0
 pytest-cov==7.1.0
-pytest-asyncio==1.4.0
+pytest-asyncio==1.4.1.post1
 hypothesis==6.167.1
-moto[all]==5.2.3
+moto[all]==5.2.5
 ruff==0.16.6
 cfn-lint==1.59.0
 pyarrow==25.0.1
@@ -29,7 +29,7 @@ Pillow==13.0.0
 # botocore follows it; Renovate bumps both in the aws-sdk-python group, and
 # test_botocore_pin_matches_installed fails when the installed botocore differs
 # from this line.
-botocore==1.43.118
+botocore==1.43.123
 # scripts/tests/test_portal_preflight.py imports jmespath directly: its fake AWS
 # applies the code's own `--query` with it. It was only present as a dependency
 # of boto3 / botocore, which allow `jmespath>=0.7.1,<2.0.0`, so a new release

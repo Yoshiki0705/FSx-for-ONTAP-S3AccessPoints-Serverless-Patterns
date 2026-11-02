@@ -23,7 +23,7 @@ classifiers = [
 ]
 
 dependencies = [
-    "boto3==1.43.118",
+    "boto3==1.43.123",
     "urllib3==2.8.0",
     # requirements.txt と同じ値に保つ。理由と検証内容はそちらのコメント参照。
     "jsonschema==4.26.0",
@@ -36,7 +36,7 @@ dependencies = [
 # there), while nothing consumed `.[dev]` — no workflow, Makefile target, or
 # document referenced it.
 xray = [
-    "aws-xray-sdk==2.15.0",
+    "aws-xray-sdk==2.16.0",
 ]
 
 [project.urls]

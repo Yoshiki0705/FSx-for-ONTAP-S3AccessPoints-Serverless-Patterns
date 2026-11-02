@@ -96,6 +96,7 @@
 | ライブ配信を VOD として公開したい | [media-ivs-vod-publishing](../solutions/edge/media-ivs-vod-publishing/) |
 | 社内ナレッジを利用者自身に育てさせたい | [kb-selfservice-curation](../solutions/genai/kb-selfservice-curation/) |
 | エージェント型のワークスペースから使わせたい | [quick-agentic-workspace](../solutions/genai/quick-agentic-workspace/) |
+| 既存のワークフローを AI エージェントのツールにしたい | [stepfunctions-agentcore-tools](../solutions/genai/stepfunctions-agentcore-tools/) |
 | ERP に隣接するファイルワークフロー | [sap/erp-adjacent](../solutions/sap/erp-adjacent/) |
 
 ---
