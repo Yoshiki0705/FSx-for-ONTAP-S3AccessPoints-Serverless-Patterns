@@ -97,6 +97,7 @@
 | 社内ナレッジを利用者自身に育てさせたい | [kb-selfservice-curation](../solutions/genai/kb-selfservice-curation/) |
 | エージェント型のワークスペースから使わせたい | [quick-agentic-workspace](../solutions/genai/quick-agentic-workspace/) |
 | 既存のワークフローを AI エージェントのツールにしたい | [stepfunctions-agentcore-tools](../solutions/genai/stepfunctions-agentcore-tools/) |
+| 日本語のスキャン文書を東京の Textract で OCR し、AI エージェントから使いたい | [japanese-document-ocr-agent](../solutions/genai/japanese-document-ocr-agent/) |
 | ERP に隣接するファイルワークフロー | [sap/erp-adjacent](../solutions/sap/erp-adjacent/) |
 
 ---

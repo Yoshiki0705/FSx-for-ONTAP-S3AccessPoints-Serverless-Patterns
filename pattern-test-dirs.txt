@@ -98,6 +98,7 @@ solutions/flexcache/dynamic-render-workflow
 solutions/flexcache/gaming-build-pipeline
 solutions/flexcache/life-sciences-research
 solutions/flexcache/rag-enterprise-files
+solutions/genai/japanese-document-ocr-agent
 solutions/genai/kb-selfservice-curation
 solutions/genai/quick-agentic-workspace
 solutions/genai/stepfunctions-agentcore-tools

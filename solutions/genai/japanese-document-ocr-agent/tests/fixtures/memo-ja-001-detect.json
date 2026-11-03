@@ -1,0 +1,528 @@
+{
+ "_note": "Real Textract response from ap-northeast-1 (2026-11-03) for a fictional sample document; Geometry removed.",
+ "DocumentMetadata": {
+  "Pages": 1
+ },
+ "Blocks": [
+  {
+   "BlockType": "PAGE",
+   "Id": "584c18e3-46f3-4b0b-8abe-ca7ce3c1203a",
+   "Relationships": [
+    {
+     "Type": "CHILD",
+     "Ids": [
+      "0705b8b1-cb9b-4a8e-ad10-1bbcbeca1ded",
+      "e541900d-f446-4902-b7e6-282acc3bdbd0",
+      "0644e1af-bf23-4569-adcd-043e6e3d3c80",
+      "5cb8bd26-a601-4506-87cf-3f79427470de",
+      "6f2274c9-05cd-4ee1-817e-874a1f8cf190",
+      "c76d113a-9dd7-441a-8495-41c6dd8c3aed",
+      "e2fc919b-b66d-46c0-9000-7eb2fce63ec9",
+      "c0f88252-9a70-444d-a3f6-f17e5d23678f",
+      "6c560539-4a9e-405b-8e5d-2346ecae999d",
+      "a00265df-ab61-45f2-b351-263929982959",
+      "e5bca351-63d0-4de1-bf75-33785171e636",
+      "82148a25-e104-4ed2-820d-118195e8cccb",
+      "7604588a-ebf2-4e9b-8a6a-e45969b74a6d",
+      "db0e49d4-b64a-4784-920c-699de40d7ea6"
+     ]
+    }
+   ]
+  },
+  {
+   "BlockType": "LINE",
+   "Id": "0705b8b1-cb9b-4a8e-ad10-1bbcbeca1ded",
+   "Text": "業務メモ",
+   "Confidence": 100.0,
+   "Relationships": [
+    {
+     "Type": "CHILD",
+     "Ids": [
+      "d1dcfe64-39d4-456f-875f-42009b49159e"
+     ]
+    }
+   ]
+  },
+  {
+   "BlockType": "LINE",
+   "Id": "e541900d-f446-4902-b7e6-282acc3bdbd0",
+   "Text": "温度範囲は 20~30℃ とする。",
+   "Confidence": 86.91273498535156,
+   "Relationships": [
+    {
+     "Type": "CHILD",
+     "Ids": [
+      "49c2e9db-f957-422d-8eb9-a5e7929186d4",
+      "58c5b36d-6783-4a8d-b1c0-3c5e38a80db0",
+      "33dd4bae-900a-478e-be86-8c28e26cb2ec"
+     ]
+    }
+   ]
+  },
+  {
+   "BlockType": "LINE",
+   "Id": "0644e1af-bf23-4569-adcd-043e6e3d3c80",
+   "Text": "手順: 受付",
+   "Confidence": 98.36575317382812,
+   "Relationships": [
+    {
+     "Type": "CHILD",
+     "Ids": [
+      "880d77af-8f10-4ef8-b84c-dc23b5d93fe0",
+      "c3fb5f9d-4347-48c2-9b15-8ae2100738e0"
+     ]
+    }
+   ]
+  },
+  {
+   "BlockType": "LINE",
+   "Id": "5cb8bd26-a601-4506-87cf-3f79427470de",
+   "Text": "検査",
+   "Confidence": 99.84056091308594,
+   "Relationships": [
+    {
+     "Type": "CHILD",
+     "Ids": [
+      "6d60c671-99e5-4b46-a1a3-297e6469ec72"
+     ]
+    }
+   ]
+  },
+  {
+   "BlockType": "LINE",
+   "Id": "6f2274c9-05cd-4ee1-817e-874a1f8cf190",
+   "Text": "出荷",
+   "Confidence": 99.96014404296875,
+   "Relationships": [
+    {
+     "Type": "CHILD",
+     "Ids": [
+      "00dcd15a-128d-415c-b4d1-d66bce6dd6f0"
+     ]
+    }
+   ]
+  },
+  {
+   "BlockType": "LINE",
+   "Id": "c76d113a-9dd7-441a-8495-41c6dd8c3aed",
+   "Text": "担当者へ連絡する。 ヘッダーを確認する。",
+   "Confidence": 95.49585723876953,
+   "Relationships": [
+    {
+     "Type": "CHILD",
+     "Ids": [
+      "fa2750d0-9259-4267-9130-cfe826454709",
+      "05e13662-5a42-4d5c-ad33-c7f8f5251a1b"
+     ]
+    }
+   ]
+  },
+  {
+   "BlockType": "LINE",
+   "Id": "e2fc919b-b66d-46c0-9000-7eb2fce63ec9",
+   "Text": "括孤 (かっこ) 内の数値を確認する。",
+   "Confidence": 98.2196044921875,
+   "Relationships": [
+    {
+     "Type": "CHILD",
+     "Ids": [
+      "6052cb32-f6c9-4b23-b13b-8c8e030c815f",
+      "e9094d6c-23c0-4b6b-82aa-ec7f87990d48",
+      "9c292e23-2ee8-4f80-9d63-c231e0877498"
+     ]
+    }
+   ]
+  },
+  {
+   "BlockType": "LINE",
+   "Id": "c0f88252-9a70-444d-a3f6-f17e5d23678f",
+   "Text": "AI による検査と OCR の結果を比較する。",
+   "Confidence": 99.72098541259766,
+   "Relationships": [
+    {
+     "Type": "CHILD",
+     "Ids": [
+      "a213e938-9e39-4944-882d-bdbdd2bf08ee",
+      "1d87c055-17b9-4868-a7f6-7cc4862e8d11",
+      "02b6e8ea-edc9-4e39-9192-d5579d91d21e",
+      "a1baffbc-806b-40f5-9838-4628dc710b92"
+     ]
+    }
+   ]
+  },
+  {
+   "BlockType": "LINE",
+   "Id": "6c560539-4a9e-405b-8e5d-2346ecae999d",
+   "Text": "金額: 123, 456円 (全角数字)",
+   "Confidence": 98.08429718017578,
+   "Relationships": [
+    {
+     "Type": "CHILD",
+     "Ids": [
+      "51b9a551-0a34-44c5-b693-1c2311b26362",
+      "48bb2a9e-cef0-41af-8218-dc05aa3ac453",
+      "c2f594a2-9b78-4d83-b66b-24c8f42db520",
+      "ea1199e1-b97c-4cfb-9282-b7db69fed745"
+     ]
+    }
+   ]
+  },
+  {
+   "BlockType": "LINE",
+   "Id": "a00265df-ab61-45f2-b351-263929982959",
+   "Text": "手順番号: 1 2 3",
+   "Confidence": 94.62910461425781,
+   "Relationships": [
+    {
+     "Type": "CHILD",
+     "Ids": [
+      "a5b1a419-cac7-40c2-b677-c58e554e611c",
+      "d505eaeb-7a3f-41b5-8824-29dfde426056",
+      "9e6c48c1-a00e-4125-a4b3-930590727dd0",
+      "02566417-356d-43b4-b85d-e15e9dab8886"
+     ]
+    }
+   ]
+  },
+  {
+   "BlockType": "LINE",
+   "Id": "e5bca351-63d0-4de1-bf75-33785171e636",
+   "Text": "型番: Model-X200 / ABC-123-XYZ / 2026-11-03",
+   "Confidence": 92.20934295654297,
+   "Relationships": [
+    {
+     "Type": "CHILD",
+     "Ids": [
+      "359e339f-4468-4332-9334-f3b1c775ce99",
+      "f9261bca-fb96-4222-afc0-77c10b869f59",
+      "aecf3403-4a48-4d00-a3b8-50b4c129660b",
+      "c8805bfa-6127-456e-828e-4e9192717ca8",
+      "965ae70c-f94e-44e0-a80d-d925ef3dde8e"
+     ]
+    }
+   ]
+  },
+  {
+   "BlockType": "LINE",
+   "Id": "82148a25-e104-4ed2-820d-118195e8cccb",
+   "Text": "区間: 東京-大阪 (全角ハイフン)、 サーバー (長音)",
+   "Confidence": 95.99613189697266,
+   "Relationships": [
+    {
+     "Type": "CHILD",
+     "Ids": [
+      "adb0d97c-22f2-4bd8-a35b-0fd7be249f51",
+      "a1d41aca-b7d1-4126-b7dd-2674ce07cac7",
+      "ecacacc1-0e1c-408b-bf7a-0b9e143b65ae",
+      "76f452ec-6b6d-4f36-a29d-d09e6fc4fcd1",
+      "07634d1d-3300-4ac3-a96c-036e36ee9fd9"
+     ]
+    }
+   ]
+  },
+  {
+   "BlockType": "LINE",
+   "Id": "7604588a-ebf2-4e9b-8a6a-e45969b74a6d",
+   "Text": "連絡先: info@example.com",
+   "Confidence": 96.81122589111328,
+   "Relationships": [
+    {
+     "Type": "CHILD",
+     "Ids": [
+      "777e43a6-ec56-48a3-ae4f-1426c4c55ece",
+      "7d638b2d-ca76-4f8d-bc4a-826fdbc79e5a"
+     ]
+    }
+   ]
+  },
+  {
+   "BlockType": "LINE",
+   "Id": "db0e49d4-b64a-4784-920c-699de40d7ea6",
+   "Text": "URL: https://example.com/docs",
+   "Confidence": 90.51338958740234,
+   "Relationships": [
+    {
+     "Type": "CHILD",
+     "Ids": [
+      "88b36720-acbe-476c-a2a4-0f35937bf776",
+      "f58b7bee-bd6f-404c-a381-5edbc56ae38c"
+     ]
+    }
+   ]
+  },
+  {
+   "BlockType": "WORD",
+   "Id": "d1dcfe64-39d4-456f-875f-42009b49159e",
+   "Text": "業務メモ",
+   "Confidence": 100.0,
+   "TextType": "PRINTED"
+  },
+  {
+   "BlockType": "WORD",
+   "Id": "49c2e9db-f957-422d-8eb9-a5e7929186d4",
+   "Text": "温度範囲は",
+   "Confidence": 99.7608413696289,
+   "TextType": "PRINTED"
+  },
+  {
+   "BlockType": "WORD",
+   "Id": "58c5b36d-6783-4a8d-b1c0-3c5e38a80db0",
+   "Text": "20~30℃",
+   "Confidence": 60.97735595703125,
+   "TextType": "PRINTED"
+  },
+  {
+   "BlockType": "WORD",
+   "Id": "33dd4bae-900a-478e-be86-8c28e26cb2ec",
+   "Text": "とする。",
+   "Confidence": 100.0,
+   "TextType": "PRINTED"
+  },
+  {
+   "BlockType": "WORD",
+   "Id": "880d77af-8f10-4ef8-b84c-dc23b5d93fe0",
+   "Text": "手順:",
+   "Confidence": 96.73150634765625,
+   "TextType": "PRINTED"
+  },
+  {
+   "BlockType": "WORD",
+   "Id": "c3fb5f9d-4347-48c2-9b15-8ae2100738e0",
+   "Text": "受付",
+   "Confidence": 100.0,
+   "TextType": "PRINTED"
+  },
+  {
+   "BlockType": "WORD",
+   "Id": "6d60c671-99e5-4b46-a1a3-297e6469ec72",
+   "Text": "検査",
+   "Confidence": 99.84056091308594,
+   "TextType": "PRINTED"
+  },
+  {
+   "BlockType": "WORD",
+   "Id": "00dcd15a-128d-415c-b4d1-d66bce6dd6f0",
+   "Text": "出荷",
+   "Confidence": 99.96014404296875,
+   "TextType": "PRINTED"
+  },
+  {
+   "BlockType": "WORD",
+   "Id": "fa2750d0-9259-4267-9130-cfe826454709",
+   "Text": "担当者へ連絡する。",
+   "Confidence": 99.88042449951172,
+   "TextType": "PRINTED"
+  },
+  {
+   "BlockType": "WORD",
+   "Id": "05e13662-5a42-4d5c-ad33-c7f8f5251a1b",
+   "Text": "ヘッダーを確認する。",
+   "Confidence": 91.11128997802734,
+   "TextType": "PRINTED"
+  },
+  {
+   "BlockType": "WORD",
+   "Id": "6052cb32-f6c9-4b23-b13b-8c8e030c815f",
+   "Text": "括孤",
+   "Confidence": 95.81473541259766,
+   "TextType": "PRINTED"
+  },
+  {
+   "BlockType": "WORD",
+   "Id": "e9094d6c-23c0-4b6b-82aa-ec7f87990d48",
+   "Text": "(かっこ)",
+   "Confidence": 99.00350952148438,
+   "TextType": "PRINTED"
+  },
+  {
+   "BlockType": "WORD",
+   "Id": "9c292e23-2ee8-4f80-9d63-c231e0877498",
+   "Text": "内の数値を確認する。",
+   "Confidence": 99.84056091308594,
+   "TextType": "PRINTED"
+  },
+  {
+   "BlockType": "WORD",
+   "Id": "a213e938-9e39-4944-882d-bdbdd2bf08ee",
+   "Text": "AI",
+   "Confidence": 99.28252410888672,
+   "TextType": "PRINTED"
+  },
+  {
+   "BlockType": "WORD",
+   "Id": "1d87c055-17b9-4868-a7f6-7cc4862e8d11",
+   "Text": "による検査と",
+   "Confidence": 100.0,
+   "TextType": "PRINTED"
+  },
+  {
+   "BlockType": "WORD",
+   "Id": "02b6e8ea-edc9-4e39-9192-d5579d91d21e",
+   "Text": "OCR",
+   "Confidence": 99.68112182617188,
+   "TextType": "PRINTED"
+  },
+  {
+   "BlockType": "WORD",
+   "Id": "a1baffbc-806b-40f5-9838-4628dc710b92",
+   "Text": "の結果を比較する。",
+   "Confidence": 99.92028045654297,
+   "TextType": "PRINTED"
+  },
+  {
+   "BlockType": "WORD",
+   "Id": "51b9a551-0a34-44c5-b693-1c2311b26362",
+   "Text": "金額:",
+   "Confidence": 93.62244415283203,
+   "TextType": "PRINTED"
+  },
+  {
+   "BlockType": "WORD",
+   "Id": "48bb2a9e-cef0-41af-8218-dc05aa3ac453",
+   "Text": "123,",
+   "Confidence": 99.91051483154297,
+   "TextType": "PRINTED"
+  },
+  {
+   "BlockType": "WORD",
+   "Id": "c2f594a2-9b78-4d83-b66b-24c8f42db520",
+   "Text": "456円",
+   "Confidence": 99.04336547851562,
+   "TextType": "PRINTED"
+  },
+  {
+   "BlockType": "WORD",
+   "Id": "ea1199e1-b97c-4cfb-9282-b7db69fed745",
+   "Text": "(全角数字)",
+   "Confidence": 99.7608413696289,
+   "TextType": "PRINTED"
+  },
+  {
+   "BlockType": "WORD",
+   "Id": "a5b1a419-cac7-40c2-b677-c58e554e611c",
+   "Text": "手順番号:",
+   "Confidence": 96.05389404296875,
+   "TextType": "PRINTED"
+  },
+  {
+   "BlockType": "WORD",
+   "Id": "d505eaeb-7a3f-41b5-8824-29dfde426056",
+   "Text": "1",
+   "Confidence": 99.49238586425781,
+   "TextType": "PRINTED"
+  },
+  {
+   "BlockType": "WORD",
+   "Id": "9e6c48c1-a00e-4125-a4b3-930590727dd0",
+   "Text": "2",
+   "Confidence": 84.32537078857422,
+   "TextType": "PRINTED"
+  },
+  {
+   "BlockType": "WORD",
+   "Id": "02566417-356d-43b4-b85d-e15e9dab8886",
+   "Text": "3",
+   "Confidence": 98.64476776123047,
+   "TextType": "PRINTED"
+  },
+  {
+   "BlockType": "WORD",
+   "Id": "359e339f-4468-4332-9334-f3b1c775ce99",
+   "Text": "型番:",
+   "Confidence": 97.8077163696289,
+   "TextType": "PRINTED"
+  },
+  {
+   "BlockType": "WORD",
+   "Id": "f9261bca-fb96-4222-afc0-77c10b869f59",
+   "Text": "Model-X200",
+   "Confidence": 93.82413482666016,
+   "TextType": "PRINTED"
+  },
+  {
+   "BlockType": "WORD",
+   "Id": "aecf3403-4a48-4d00-a3b8-50b4c129660b",
+   "Text": "/",
+   "Confidence": 92.77263641357422,
+   "TextType": "PRINTED"
+  },
+  {
+   "BlockType": "WORD",
+   "Id": "c8805bfa-6127-456e-828e-4e9192717ca8",
+   "Text": "ABC-123-XYZ /",
+   "Confidence": 76.72193908691406,
+   "TextType": "PRINTED"
+  },
+  {
+   "BlockType": "WORD",
+   "Id": "965ae70c-f94e-44e0-a80d-d925ef3dde8e",
+   "Text": "2026-11-03",
+   "Confidence": 99.92028045654297,
+   "TextType": "PRINTED"
+  },
+  {
+   "BlockType": "WORD",
+   "Id": "adb0d97c-22f2-4bd8-a35b-0fd7be249f51",
+   "Text": "区間:",
+   "Confidence": 97.96715545654297,
+   "TextType": "PRINTED"
+  },
+  {
+   "BlockType": "WORD",
+   "Id": "a1d41aca-b7d1-4126-b7dd-2674ce07cac7",
+   "Text": "東京-大阪",
+   "Confidence": 85.08271026611328,
+   "TextType": "PRINTED"
+  },
+  {
+   "BlockType": "WORD",
+   "Id": "ecacacc1-0e1c-408b-bf7a-0b9e143b65ae",
+   "Text": "(全角ハイフン)、",
+   "Confidence": 98.84407043457031,
+   "TextType": "PRINTED"
+  },
+  {
+   "BlockType": "WORD",
+   "Id": "76f452ec-6b6d-4f36-a29d-d09e6fc4fcd1",
+   "Text": "サーバー",
+   "Confidence": 99.7608413696289,
+   "TextType": "PRINTED"
+  },
+  {
+   "BlockType": "WORD",
+   "Id": "07634d1d-3300-4ac3-a96c-036e36ee9fd9",
+   "Text": "(長音)",
+   "Confidence": 98.32588958740234,
+   "TextType": "PRINTED"
+  },
+  {
+   "BlockType": "WORD",
+   "Id": "777e43a6-ec56-48a3-ae4f-1426c4c55ece",
+   "Text": "連絡先:",
+   "Confidence": 94.18048095703125,
+   "TextType": "PRINTED"
+  },
+  {
+   "BlockType": "WORD",
+   "Id": "7d638b2d-ca76-4f8d-bc4a-826fdbc79e5a",
+   "Text": "info@example.com",
+   "Confidence": 99.44196319580078,
+   "TextType": "PRINTED"
+  },
+  {
+   "BlockType": "WORD",
+   "Id": "88b36720-acbe-476c-a2a4-0f35937bf776",
+   "Text": "URL:",
+   "Confidence": 85.57078552246094,
+   "TextType": "PRINTED"
+  },
+  {
+   "BlockType": "WORD",
+   "Id": "f58b7bee-bd6f-404c-a381-5edbc56ae38c",
+   "Text": "https://example.com/docs",
+   "Confidence": 95.45599365234375,
+   "TextType": "PRINTED"
+  }
+ ],
+ "DetectDocumentTextModelVersion": "1.0"
+}

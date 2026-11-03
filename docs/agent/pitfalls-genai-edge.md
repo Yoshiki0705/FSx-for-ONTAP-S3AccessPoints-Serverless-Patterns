@@ -14,6 +14,10 @@
 | AgentCore Gateway + Quick Desktop: Remote MCP 追加が永続化されない | **Import 方式**（JSON ファイルからの読み込み）を使う。Local/Remote 直接追加は Quick Desktop v0.1000.1495 で不安定 |
 | Quick Web コンソール MCP コネクタ Step 2 エラー | Previous で Step 1 に戻ると OAuth フィールドがクリアされる。一度で全フィールド入力を完了すること。再現しない場合もある（間欠的） |
 | AgentCore Gateway CUSTOM_JWT + Quick Desktop → 403 | NONE auth を PoC に使用。CUSTOM_JWT は認可ポリシー設定が必要（未解決、`docs/agentcore-mcp-remaining-issues.md` 参照） |
+| AgentCore Gateway の `AuthorizerType` を更新すると "Authorizer type cannot be updated for an existing gateway"（2026-11-03、[E-017]） | 変更できない（更新はロールバックされる）。`NONE` から `AWS_IAM` へは新しい Gateway（スタック）を作る。`AWS_IAM` の呼び出しは SigV4 でサービス名 `bedrock-agentcore`、権限は `bedrock-agentcore:InvokeGateway`。署名なしは HTTP 401 |
+| Gateway の Step Functions コネクタ: `DescribeExecution` に `output` が無い、FAILED の実行に `error` / `cause` が無い | `includedData: "ALL_DATA"` を渡す。省略と `METADATA_ONLY` では返らない（2026-11-03、SUCCEEDED と FAILED の両方で比較）。エージェントのシステムプロンプトに書く |
+| Gateway の `GetExecutionHistory` で長い履歴を読めない | ツールの入力は `executionArn` だけで、`maxResults` と `nextToken` がない。71 イベントで約 93 KB（1 イベント約 1.3 KB）。結果の確認は `DescribeExecution` を使い、履歴は原因調査だけにする |
+| Gateway 経由のツール入力の日本語が `??` になる（2026-11-03 に再観測） | エージェントに日本語を渡させない設計にする（許可リストの ASCII ID）。渡す必要があるなら `\uXXXX` に変換する |
 | AgentCore Gateway `create-gateway-target` で Lambda not found | Gateway と Lambda は**同一リージョン**に配置必須。クロスリージョン Lambda 呼び出しは不可 |
 | Quick Desktop サインインで「account name is invalid」 | IAM ユーザー名 ≠ QuickSight ユーザー名。`aws quicksight list-users` で確認。Email ベースのサインインが最もシンプル |
 | KNFSD cache hit speedup が見られない | NVMe なしインスタンス (`t3`, `m6i`) では L2 キャッシュ不可。`m6gd`/`im4gn`/`i3en` を使用 |

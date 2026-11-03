@@ -97,6 +97,7 @@ All of these are Lambda pipelines reading through an S3 Access Point, and all ru
 | Internal knowledge curated by its own users | [kb-selfservice-curation](../solutions/genai/kb-selfservice-curation/) |
 | Access from an agentic workspace | [quick-agentic-workspace](../solutions/genai/quick-agentic-workspace/) |
 | Expose an existing workflow as AI agent tools | [stepfunctions-agentcore-tools](../solutions/genai/stepfunctions-agentcore-tools/) |
+| OCR Japanese scanned documents with Textract in Tokyo and let AI agents run it | [japanese-document-ocr-agent](../solutions/genai/japanese-document-ocr-agent/) |
 | File workflows adjacent to an ERP | [sap/erp-adjacent](../solutions/sap/erp-adjacent/) |
 
 ---

@@ -1,0 +1,858 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  Japanese document OCR x AI agents. Amazon Textract (Tokyo) over FSx for ONTAP S3 Access
+  Points, exposed to agents through the AgentCore Gateway Step Functions connector.
+  A Standard workflow (Discover -> Map(OCR) -> Report) reads scanned documents and runs
+  Textract in the same Region: images go to the synchronous API with the bytes inline; PDF and
+  TIFF go to the asynchronous API through a short-lived staging bucket, because S3 Access Points
+  cannot be read by reference. OCR text goes to a results bucket; the execution output carries
+  only metadata and S3 references. The agent chooses an allow-listed collection ID and a profile.
+
+Metadata:
+  AWS::ServerlessRepo::Application:
+    Name: fsxn-s3ap-japanese-document-ocr-agent
+    Description: Japanese document OCR with Textract (Tokyo) on S3 Access Points, operable by AI agents
+    Author: FSx for ONTAP S3 Access Points Serverless Patterns
+    Labels: ['fsxn', 's3ap', 'textract', 'ocr', 'japanese', 'agentcore', 'stepfunctions', 'genai']
+
+Parameters:
+  S3AccessPointAlias:
+    Type: String
+    Description: >
+      S3 Access Point alias for the FSx for ONTAP volume (Internet network origin; the Lambda
+      functions are not in a VPC). In DemoMode this can be a regular S3 bucket name.
+
+  DemoMode:
+    Type: String
+    Default: "false"
+    AllowedValues: ["true", "false"]
+    Description: >
+      Enable demo mode (no FSx for ONTAP required). When true, S3AccessPointAlias accepts a
+      regular S3 bucket name and the functions get a bucket-style S3 grant.
+
+  DefaultCollectionName:
+    Type: String
+    Default: "default"
+    AllowedPattern: '^[A-Za-z0-9][A-Za-z0-9_-]{0,31}$'
+    Description: >
+      Collection ID of the single collection built from FilePrefix and DefaultProfile when
+      CollectionsJson is empty. ASCII only: the agent passes this ID, never a path.
+
+  FilePrefix:
+    Type: String
+    Default: "input/"
+    MinLength: 1
+    Description: S3 prefix of the default collection (used only when CollectionsJson is empty)
+
+  DefaultProfile:
+    Type: String
+    Default: "text"
+    AllowedValues: ["text", "structure"]
+    Description: >
+      Extraction profile when neither the request nor the collection sets one. text = Textract
+      text detection only (lowest cost). structure = text plus Tables and Layout. Forms is not
+      offered: it does not support Japanese.
+
+  CollectionsJson:
+    Type: String
+    Default: ""
+    Description: >
+      Optional allow-list of collections as a JSON object, for example
+      {"invoices":{"prefix":"scans/invoices/","profile":"structure","classification":"RESTRICTED","fields":["請求書番号","合計金額"]}}.
+      Empty = one collection built from DefaultCollectionName, FilePrefix and DefaultProfile.
+      Lambda environment variables share 4 KB, so keep it to a few collections.
+
+  MaxFilesPerExecution:
+    Type: Number
+    Default: 50
+    MinValue: 1
+    MaxValue: 100
+    Description: >
+      Maximum documents per execution. The cap keeps the execution history (25,000 events for a
+      Standard workflow) and the 256 KiB state limit out of reach; see docs/architecture.md.
+
+  MaxDocumentBytes:
+    Type: Number
+    Default: 52428800
+    MinValue: 1048576
+    MaxValue: 524288000
+    Description: Maximum size of one document in bytes (Textract asynchronous limit is 500 MB)
+
+  MapConcurrency:
+    Type: Number
+    Default: 2
+    MinValue: 1
+    MaxValue: 10
+    Description: >
+      Documents processed in parallel. The Tokyo quota for synchronous Textract calls is 1 TPS and
+      for StartDocumentAnalysis 5 TPS (Endpoints and quotas); raise this only after a quota increase.
+
+  AsyncJobMaxSeconds:
+    Type: Number
+    Default: 600
+    MinValue: 60
+    MaxValue: 3000
+    Description: >
+      How long to wait for one asynchronous job. Textract cannot cancel a job, so a job that
+      times out here may still run and be billed.
+
+  EnableFieldExtraction:
+    Type: String
+    Default: "false"
+    AllowedValues: ["true", "false"]
+    Description: >
+      Extract the fields a collection lists (for example invoice number, total) with Amazon
+      Bedrock, because Textract Forms does not support Japanese. Off by default; when off, the
+      functions get no Bedrock permission.
+
+  BedrockModelId:
+    Type: String
+    Default: "apac.amazon.nova-pro-v1:0"
+    Description: >-
+      Bedrock model ID or inference profile ID for field extraction. Amazon Nova on on-demand
+      throughput requires a cross-region inference profile ID (apac. / us. / eu.). See
+      docs/bedrock-inference-profiles.md. Used only when EnableFieldExtraction is true.
+
+  DataClassification:
+    Type: String
+    Default: "INTERNAL"
+    AllowedValues: ["PUBLIC", "INTERNAL", "RESTRICTED", "HIGHLY_RESTRICTED", "UNCLASSIFIED", "CUI", "CONFIDENTIAL"]
+    Description: Default data classification label for outputs (a collection can override it)
+
+  ReviewAutoApproveThreshold:
+    Type: String
+    Default: "0.95"
+    AllowedPattern: '^(0(\.[0-9]+)?|1(\.0+)?)$'
+    Description: >
+      Mean line confidence (0-1) at or above which a document is auto-approved. The default is a
+      starting point, not a measured optimum: measure the distribution on your own documents.
+
+  ReviewRejectThreshold:
+    Type: String
+    Default: "0.30"
+    AllowedPattern: '^(0(\.[0-9]+)?|1(\.0+)?)$'
+    Description: Mean line confidence (0-1) below which a document is rejected and escalated
+
+  LowConfidenceLineThreshold:
+    Type: String
+    Default: "90"
+    AllowedPattern: '^(100|[0-9]{1,2})(\.[0-9]+)?$'
+    Description: Lines below this confidence (0-100) count as low-confidence
+
+  LowConfidenceCharRatioLimit:
+    Type: String
+    Default: "0.05"
+    AllowedPattern: '^(0(\.[0-9]+)?|1(\.0+)?)$'
+    Description: A document goes to review when more than this share of its characters is in low-confidence lines
+
+  HandwritingWordRatioLimit:
+    Type: String
+    Default: "0.05"
+    AllowedPattern: '^(0(\.[0-9]+)?|1(\.0+)?)$'
+    Description: >
+      A document goes to review when more than this share of its words is detected as handwriting
+      (Textract handwriting recognition supports English only)
+
+  NotificationEmail:
+    Type: String
+    Default: ""
+    Description: Email address for SNS notifications (empty to skip the subscription)
+
+  GatewayName:
+    Type: String
+    Default: "ja-ocr-agent-gateway"
+    AllowedPattern: '^[A-Za-z0-9]([A-Za-z0-9-]{0,46}[A-Za-z0-9])?$'
+    Description: AgentCore Gateway name (up to 48 characters)
+
+  GatewayAuthorizerType:
+    Type: String
+    Default: "NONE"
+    AllowedValues: ["NONE", "AWS_IAM"]
+    Description: >
+      Inbound authorization of the Gateway. NONE lets anyone who knows the URL start an OCR run
+      on the allow-listed collections (no document text is returned): use it only for a PoC.
+      AWS_IAM requires callers to sign requests (SigV4) and hold bedrock-agentcore:InvokeGateway.
+
+  LogRetentionInDays:
+    Type: Number
+    Default: 90
+    AllowedValues: [1, 3, 5, 7, 14, 30, 60, 90, 120, 150, 180, 365, 400, 545, 731, 1096, 1827, 2192, 2557, 2922, 3288, 3653]
+    Description: CloudWatch Logs retention in days (90 default; 2557 = 7 years for compliance)
+
+Conditions:
+  HasNotificationEmail: !Not [!Equals [!Ref NotificationEmail, '']]
+  HasCollectionsJson: !Not [!Equals [!Ref CollectionsJson, '']]
+  # In DemoMode the S3AccessPointAlias is a regular bucket name, which IAM authorizes through a
+  # bucket-style ARN, not an access-point ARN. The two forms are disjoint, so the demo path needs
+  # its own grant (found on a live deploy of the previous Gateway pattern).
+  IsDemoMode: !Equals [!Ref DemoMode, "true"]
+  FieldExtractionEnabled: !Equals [!Ref EnableFieldExtraction, "true"]
+
+Globals:
+  Function:
+    Runtime: python3.13
+    Timeout: 120
+    MemorySize: 256
+    Architectures:
+      - arm64
+    Environment:
+      Variables:
+        S3_ACCESS_POINT_ALIAS: !Ref S3AccessPointAlias
+        STAGING_BUCKET: !Ref StagingBucket
+        OUTPUT_BUCKET: !Ref ResultsBucket
+        OUTPUT_DESTINATION: STANDARD_S3
+        COLLECTIONS_JSON: !If
+          - HasCollectionsJson
+          - !Ref CollectionsJson
+          - !Sub '{"${DefaultCollectionName}":{"prefix":"${FilePrefix}","profile":"${DefaultProfile}"}}'
+        DEFAULT_PROFILE: !Ref DefaultProfile
+        MAX_FILES: !Ref MaxFilesPerExecution
+        MAX_DOCUMENT_BYTES: !Ref MaxDocumentBytes
+        MAP_CONCURRENCY: !Ref MapConcurrency
+        ASYNC_JOB_MAX_SECONDS: !Ref AsyncJobMaxSeconds
+        ENABLE_FIELD_EXTRACTION: !Ref EnableFieldExtraction
+        BEDROCK_MODEL_ID: !Ref BedrockModelId
+        DATA_CLASSIFICATION: !Ref DataClassification
+        REVIEW_AUTO_APPROVE: !Ref ReviewAutoApproveThreshold
+        REVIEW_REJECT: !Ref ReviewRejectThreshold
+        LOW_CONFIDENCE_LINE: !Ref LowConfidenceLineThreshold
+        LOW_CONFIDENCE_CHAR_RATIO: !Ref LowConfidenceCharRatioLimit
+        HANDWRITING_WORD_RATIO: !Ref HandwritingWordRatioLimit
+
+Resources:
+  # ------------------------------------------------------------------
+  # Buckets
+  #
+  # Staging: a short-lived copy of PDF/TIFF documents, only because Textract's asynchronous API
+  # reads S3 buckets and cannot read an S3 Access Point. Deleted by async_collect when the job ends;
+  # the 1-day lifecycle rule is the backstop. Same Region as Textract.
+  # Results: the OCR output. Retained on stack deletion because it is the product.
+  # ------------------------------------------------------------------
+  StagingBucket:
+    Type: AWS::S3::Bucket
+    DeletionPolicy: Delete
+    UpdateReplacePolicy: Delete
+    Properties:
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: aws:kms
+            BucketKeyEnabled: true
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      LifecycleConfiguration:
+        Rules:
+          - Id: ExpireStagedCopies
+            Status: Enabled
+            ExpirationInDays: 1
+            AbortIncompleteMultipartUpload:
+              DaysAfterInitiation: 1
+      Tags:
+        - Key: UseCase
+          Value: japanese-document-ocr-agent
+        - Key: Phase
+          Value: genai
+
+  StagingBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref StagingBucket
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: DenyInsecureTransport
+            Effect: Deny
+            Principal: "*"
+            Action: s3:*
+            Resource:
+              - !GetAtt StagingBucket.Arn
+              - !Sub "${StagingBucket.Arn}/*"
+            Condition:
+              Bool:
+                aws:SecureTransport: "false"
+
+  ResultsBucket:
+    Type: AWS::S3::Bucket
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: aws:kms
+            BucketKeyEnabled: true
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      LifecycleConfiguration:
+        Rules:
+          - Id: AbortIncompleteUploads
+            Status: Enabled
+            AbortIncompleteMultipartUpload:
+              DaysAfterInitiation: 1
+      Tags:
+        - Key: UseCase
+          Value: japanese-document-ocr-agent
+        - Key: Phase
+          Value: genai
+
+  ResultsBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref ResultsBucket
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: DenyInsecureTransport
+            Effect: Deny
+            Principal: "*"
+            Action: s3:*
+            Resource:
+              - !GetAtt ResultsBucket.Arn
+              - !Sub "${ResultsBucket.Arn}/*"
+            Condition:
+              Bool:
+                aws:SecureTransport: "false"
+
+  # ------------------------------------------------------------------
+  # SNS Topic (optional email subscription)
+  # ------------------------------------------------------------------
+  NotificationTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: !Sub "${AWS::StackName}-notifications"
+      KmsMasterKeyId: alias/aws/sns
+      Tags:
+        - Key: UseCase
+          Value: japanese-document-ocr-agent
+        - Key: Phase
+          Value: genai
+
+  NotificationSubscription:
+    Type: AWS::SNS::Subscription
+    Condition: HasNotificationEmail
+    Properties:
+      TopicArn: !Ref NotificationTopic
+      Protocol: email
+      Endpoint: !Ref NotificationEmail
+
+  # ------------------------------------------------------------------
+  # Shared Lambda Layer (shared/ modules)
+  # ------------------------------------------------------------------
+  SharedLayer:
+    Type: AWS::Serverless::LayerVersion
+    Properties:
+      LayerName: !Sub "${AWS::StackName}-shared"
+      Description: Shared Python modules (s3ap_helper, output_writer, textract_helper, human_review, ...)
+      ContentUri: ../../../
+      CompatibleRuntimes:
+        - python3.12
+        - python3.13
+      CompatibleArchitectures:
+        - arm64
+      # SAM keeps a deleted stack's layer versions by default. Every function that uses this layer
+      # is in this stack, so nothing is left depending on an old version; without this a deploy and
+      # cleanup cycle left one orphan layer version per deploy (seen on 2026-11-03).
+      RetentionPolicy: Delete
+    Metadata:
+      BuildMethod: makefile
+      BuildArchitecture: arm64
+
+  # ------------------------------------------------------------------
+  # Lambda functions and their log groups
+  # ------------------------------------------------------------------
+  DiscoveryLogGroup:
+    Type: AWS::Logs::LogGroup
+    DeletionPolicy: Delete
+    UpdateReplacePolicy: Delete
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${AWS::StackName}-discovery"
+      RetentionInDays: !Ref LogRetentionInDays
+
+  DiscoveryFunction:
+    Type: AWS::Serverless::Function
+    DependsOn: DiscoveryLogGroup
+    Properties:
+      FunctionName: !Sub "${AWS::StackName}-discovery"
+      Handler: handler.handler
+      CodeUri: functions/discovery/
+      Description: Validates the agent's request, resolves the collection allow-list, lists and routes documents
+      Layers:
+        - !Ref SharedLayer
+      Policies:
+        - Statement:
+            - Sid: S3APRead
+              Effect: Allow
+              Action:
+                - s3:GetObject
+                - s3:ListBucket
+                - s3:GetBucketLocation
+              Resource:
+                - !Sub "arn:${AWS::Partition}:s3:${AWS::Region}:${AWS::AccountId}:accesspoint/*"
+                - !Sub "arn:${AWS::Partition}:s3:${AWS::Region}:${AWS::AccountId}:accesspoint/*/object/*"
+            # DemoMode only: the alias is a regular bucket, authorized by a bucket ARN.
+            - !If
+              - IsDemoMode
+              - Sid: S3DemoBucketRead
+                Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:ListBucket
+                  - s3:GetBucketLocation
+                Resource:
+                  - !Sub "arn:${AWS::Partition}:s3:::${S3AccessPointAlias}"
+                  - !Sub "arn:${AWS::Partition}:s3:::${S3AccessPointAlias}/*"
+              - !Ref AWS::NoValue
+
+  OcrSyncLogGroup:
+    Type: AWS::Logs::LogGroup
+    DeletionPolicy: Delete
+    UpdateReplacePolicy: Delete
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${AWS::StackName}-ocr-sync"
+      RetentionInDays: !Ref LogRetentionInDays
+
+  OcrSyncFunction:
+    Type: AWS::Serverless::Function
+    DependsOn: OcrSyncLogGroup
+    Properties:
+      FunctionName: !Sub "${AWS::StackName}-ocr-sync"
+      Handler: handler.handler
+      CodeUri: functions/ocr_sync/
+      Description: Reads an image through the S3 Access Point and calls the synchronous Textract API with the bytes inline
+      MemorySize: 512
+      Timeout: 60
+      Layers:
+        - !Ref SharedLayer
+      Policies:
+        - Statement:
+            - Sid: S3APRead
+              Effect: Allow
+              Action:
+                - s3:GetObject
+              Resource:
+                - !Sub "arn:${AWS::Partition}:s3:${AWS::Region}:${AWS::AccountId}:accesspoint/*/object/*"
+            - !If
+              - IsDemoMode
+              - Sid: S3DemoBucketRead
+                Effect: Allow
+                Action:
+                  - s3:GetObject
+                Resource:
+                  - !Sub "arn:${AWS::Partition}:s3:::${S3AccessPointAlias}/*"
+              - !Ref AWS::NoValue
+            # Textract has no resource-level permissions for these operations.
+            - Sid: TextractSync
+              Effect: Allow
+              Action:
+                - textract:DetectDocumentText
+                - textract:AnalyzeDocument
+              Resource: "*"
+            - Sid: WriteResults
+              Effect: Allow
+              Action:
+                - s3:PutObject
+              Resource: !Sub "${ResultsBucket.Arn}/*"
+
+  AsyncStartLogGroup:
+    Type: AWS::Logs::LogGroup
+    DeletionPolicy: Delete
+    UpdateReplacePolicy: Delete
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${AWS::StackName}-async-start"
+      RetentionInDays: !Ref LogRetentionInDays
+
+  AsyncStartFunction:
+    Type: AWS::Serverless::Function
+    DependsOn: AsyncStartLogGroup
+    Properties:
+      FunctionName: !Sub "${AWS::StackName}-async-start"
+      Handler: handler.handler
+      CodeUri: functions/async_start/
+      Description: Copies a PDF/TIFF into the staging bucket (S3 Access Points cannot be read by Textract) and starts the asynchronous job
+      MemorySize: 1024
+      Timeout: 300
+      Layers:
+        - !Ref SharedLayer
+      Policies:
+        - Statement:
+            - Sid: S3APRead
+              Effect: Allow
+              Action:
+                - s3:GetObject
+              Resource:
+                - !Sub "arn:${AWS::Partition}:s3:${AWS::Region}:${AWS::AccountId}:accesspoint/*/object/*"
+            - !If
+              - IsDemoMode
+              - Sid: S3DemoBucketRead
+                Effect: Allow
+                Action:
+                  - s3:GetObject
+                Resource:
+                  - !Sub "arn:${AWS::Partition}:s3:::${S3AccessPointAlias}/*"
+              - !Ref AWS::NoValue
+            # The copy is made with this role, and Textract reads the staged object with it too.
+            - Sid: StageDocument
+              Effect: Allow
+              Action:
+                - s3:PutObject
+                - s3:GetObject
+                - s3:DeleteObject
+                - s3:AbortMultipartUpload
+              Resource: !Sub "${StagingBucket.Arn}/*"
+            - Sid: TextractStart
+              Effect: Allow
+              Action:
+                - textract:StartDocumentTextDetection
+                - textract:StartDocumentAnalysis
+              Resource: "*"
+
+  AsyncCheckLogGroup:
+    Type: AWS::Logs::LogGroup
+    DeletionPolicy: Delete
+    UpdateReplacePolicy: Delete
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${AWS::StackName}-async-check"
+      RetentionInDays: !Ref LogRetentionInDays
+
+  AsyncCheckFunction:
+    Type: AWS::Serverless::Function
+    DependsOn: AsyncCheckLogGroup
+    Properties:
+      FunctionName: !Sub "${AWS::StackName}-async-check"
+      Handler: handler.handler
+      CodeUri: functions/async_check/
+      Description: Checks the status of one asynchronous Textract job
+      MemorySize: 128
+      Timeout: 30
+      Layers:
+        - !Ref SharedLayer
+      Policies:
+        - Statement:
+            - Sid: TextractGet
+              Effect: Allow
+              Action:
+                - textract:GetDocumentTextDetection
+                - textract:GetDocumentAnalysis
+              Resource: "*"
+
+  AsyncCollectLogGroup:
+    Type: AWS::Logs::LogGroup
+    DeletionPolicy: Delete
+    UpdateReplacePolicy: Delete
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${AWS::StackName}-async-collect"
+      RetentionInDays: !Ref LogRetentionInDays
+
+  AsyncCollectFunction:
+    Type: AWS::Serverless::Function
+    DependsOn: AsyncCollectLogGroup
+    Properties:
+      FunctionName: !Sub "${AWS::StackName}-async-collect"
+      Handler: handler.handler
+      CodeUri: functions/async_collect/
+      Description: Reads the finished job's pages, normalizes them, writes the results and deletes the staged copy
+      MemorySize: 1536
+      Timeout: 300
+      Layers:
+        - !Ref SharedLayer
+      Policies:
+        - Statement:
+            - Sid: TextractGet
+              Effect: Allow
+              Action:
+                - textract:GetDocumentTextDetection
+                - textract:GetDocumentAnalysis
+              Resource: "*"
+            - Sid: WriteResults
+              Effect: Allow
+              Action:
+                - s3:PutObject
+              Resource: !Sub "${ResultsBucket.Arn}/*"
+            - Sid: DeleteStagedCopy
+              Effect: Allow
+              Action:
+                - s3:DeleteObject
+              Resource: !Sub "${StagingBucket.Arn}/*"
+
+  ExtractFieldsLogGroup:
+    Type: AWS::Logs::LogGroup
+    DeletionPolicy: Delete
+    UpdateReplacePolicy: Delete
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${AWS::StackName}-extract-fields"
+      RetentionInDays: !Ref LogRetentionInDays
+
+  ExtractFieldsFunction:
+    Type: AWS::Serverless::Function
+    DependsOn: ExtractFieldsLogGroup
+    Properties:
+      FunctionName: !Sub "${AWS::StackName}-extract-fields"
+      Handler: handler.handler
+      CodeUri: functions/extract_fields/
+      Description: Optional. Extracts the fields a collection lists from the OCR text with Amazon Bedrock and checks each against the text
+      MemorySize: 512
+      Timeout: 120
+      Layers:
+        - !Ref SharedLayer
+      Policies:
+        - Statement:
+            - Sid: ReadAndWriteResults
+              Effect: Allow
+              Action:
+                - s3:GetObject
+                - s3:PutObject
+              Resource: !Sub "${ResultsBucket.Arn}/*"
+            # Granted only when field extraction is switched on.
+            - !If
+              - FieldExtractionEnabled
+              - Sid: BedrockInvoke
+                Effect: Allow
+                Action:
+                  - bedrock:InvokeModel
+                Resource:
+                  - !Sub "arn:${AWS::Partition}:bedrock:*::foundation-model/*"
+                  - !Sub "arn:${AWS::Partition}:bedrock:*:${AWS::AccountId}:inference-profile/*"
+              - !Ref AWS::NoValue
+
+  ReportLogGroup:
+    Type: AWS::Logs::LogGroup
+    DeletionPolicy: Delete
+    UpdateReplacePolicy: Delete
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${AWS::StackName}-report"
+      RetentionInDays: !Ref LogRetentionInDays
+
+  ReportFunction:
+    Type: AWS::Serverless::Function
+    DependsOn: ReportLogGroup
+    Properties:
+      FunctionName: !Sub "${AWS::StackName}-report"
+      Handler: handler.handler
+      CodeUri: functions/report/
+      Description: Aggregates the results, writes the manifest and sends the SNS summary
+      MemorySize: 256
+      Timeout: 60
+      Layers:
+        - !Ref SharedLayer
+      Environment:
+        Variables:
+          SNS_TOPIC_ARN: !Ref NotificationTopic
+      Policies:
+        - Statement:
+            # GetObject: re-reads each document's fields.json (the state carries only counts)
+            - Sid: WriteManifestReadFields
+              Effect: Allow
+              Action:
+                - s3:PutObject
+                - s3:GetObject
+              Resource: !Sub "${ResultsBucket.Arn}/*"
+        - SNSPublishMessagePolicy:
+            TopicName: !GetAtt NotificationTopic.TopicName
+
+  # ------------------------------------------------------------------
+  # Standard State Machine (exposed as agent tools through the Gateway)
+  # ------------------------------------------------------------------
+  OcrStateMachineLogGroup:
+    Type: AWS::Logs::LogGroup
+    DeletionPolicy: Delete
+    UpdateReplacePolicy: Delete
+    Properties:
+      LogGroupName: !Sub "/aws/vendedlogs/states/${AWS::StackName}-workflow"
+      RetentionInDays: !Ref LogRetentionInDays
+
+  OcrStateMachine:
+    Type: AWS::Serverless::StateMachine
+    Properties:
+      Name: !Sub "${AWS::StackName}-workflow"
+      DefinitionUri: statemachine/workflow.asl.json
+      DefinitionSubstitutions:
+        DiscoveryFunctionArn: !GetAtt DiscoveryFunction.Arn
+        OcrSyncFunctionArn: !GetAtt OcrSyncFunction.Arn
+        AsyncStartFunctionArn: !GetAtt AsyncStartFunction.Arn
+        AsyncCheckFunctionArn: !GetAtt AsyncCheckFunction.Arn
+        AsyncCollectFunctionArn: !GetAtt AsyncCollectFunction.Arn
+        ExtractFieldsFunctionArn: !GetAtt ExtractFieldsFunction.Arn
+        ReportFunctionArn: !GetAtt ReportFunction.Arn
+      # Level ERROR without execution data: the log records where a run failed, never document text.
+      Logging:
+        Level: ERROR
+        IncludeExecutionData: false
+        Destinations:
+          - CloudWatchLogsLogGroup:
+              LogGroupArn: !GetAtt OcrStateMachineLogGroup.Arn
+      Policies:
+        # SAM does not add the log-delivery permissions when Policies is given explicitly; without
+        # them CreateStateMachine fails with "not authorized to access the Log Destination" (seen on
+        # a live deploy). These CloudWatch Logs delivery actions support only Resource "*".
+        - Statement:
+            - Sid: LogDelivery
+              Effect: Allow
+              Action:
+                - logs:CreateLogDelivery
+                - logs:CreateLogStream
+                - logs:GetLogDelivery
+                - logs:UpdateLogDelivery
+                - logs:DeleteLogDelivery
+                - logs:ListLogDeliveries
+                - logs:PutLogEvents
+                - logs:PutResourcePolicy
+                - logs:DescribeResourcePolicies
+                - logs:DescribeLogGroups
+              Resource: "*"
+        - LambdaInvokePolicy:
+            FunctionName: !Ref DiscoveryFunction
+        - LambdaInvokePolicy:
+            FunctionName: !Ref OcrSyncFunction
+        - LambdaInvokePolicy:
+            FunctionName: !Ref AsyncStartFunction
+        - LambdaInvokePolicy:
+            FunctionName: !Ref AsyncCheckFunction
+        - LambdaInvokePolicy:
+            FunctionName: !Ref AsyncCollectFunction
+        - LambdaInvokePolicy:
+            FunctionName: !Ref ExtractFieldsFunction
+        - LambdaInvokePolicy:
+            FunctionName: !Ref ReportFunction
+      Tags:
+        UseCase: japanese-document-ocr-agent
+        Phase: genai
+
+  # ------------------------------------------------------------------
+  # AgentCore Gateway service role
+  #
+  # The Gateway assumes this role to call Step Functions for the agent. IAM is the only boundary
+  # for the unpinned operations, so scope it tightly: pinned operations to the state machine ARN,
+  # unpinned ones to its execution ARNs. StopExecution and the Send* operations are not exposed,
+  # so they are not granted.
+  # ------------------------------------------------------------------
+  GatewayServiceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "${AWS::StackName}-gateway-role"
+      Description: AgentCore Gateway service role for the Step Functions connector target
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: bedrock-agentcore.amazonaws.com
+            Action: sts:AssumeRole
+            Condition:
+              StringEquals:
+                aws:SourceAccount: !Ref AWS::AccountId
+      Policies:
+        - PolicyName: StepFunctionsConnector
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Sid: StartAndList
+                Effect: Allow
+                Action:
+                  - states:StartExecution
+                  - states:ListExecutions
+                  - states:DescribeStateMachine
+                Resource: !Ref OcrStateMachine
+              - Sid: DescribeAndHistory
+                Effect: Allow
+                Action:
+                  - states:DescribeExecution
+                  - states:GetExecutionHistory
+                Resource: !Sub "arn:${AWS::Partition}:states:${AWS::Region}:${AWS::AccountId}:execution:${AWS::StackName}-workflow:*"
+      Tags:
+        - Key: UseCase
+          Value: japanese-document-ocr-agent
+        - Key: Phase
+          Value: genai
+
+  # ------------------------------------------------------------------
+  # AgentCore Gateway (MCP) and the Step Functions connector target
+  #
+  # Both are CloudFormation resources, so the pattern is declarative end to end. The connector
+  # pins the state machine ARN on the three pinnable operations; the pin is removed from the tool
+  # schema and enforced on every call. ParameterValues keys are Step Functions API parameter
+  # names, so stateMachineArn stays camelCase.
+  # ------------------------------------------------------------------
+  AgentCoreGateway:
+    Type: AWS::BedrockAgentCore::Gateway
+    Properties:
+      Name: !Ref GatewayName
+      ProtocolType: MCP
+      AuthorizerType: !Ref GatewayAuthorizerType
+      RoleArn: !GetAtt GatewayServiceRole.Arn
+      Description: Runs Japanese document OCR on allow-listed collections as agent tools
+      Tags:
+        UseCase: japanese-document-ocr-agent
+        ManagedBy: !Ref AWS::StackName
+
+  OcrConnectorTarget:
+    Type: AWS::BedrockAgentCore::GatewayTarget
+    Properties:
+      GatewayIdentifier: !Ref AgentCoreGateway
+      Name: ocr
+      Description: Standard workflow for Japanese document OCR over FSx for ONTAP S3 Access Points
+      CredentialProviderConfigurations:
+        - CredentialProviderType: GATEWAY_IAM_ROLE
+      TargetConfiguration:
+        Mcp:
+          Connector:
+            Source:
+              ConnectorId: states
+            Configurations:
+              - Name: StartExecution
+                ParameterValues:
+                  stateMachineArn: !Ref OcrStateMachine
+              - Name: ListExecutions
+                ParameterValues:
+                  stateMachineArn: !Ref OcrStateMachine
+              - Name: DescribeStateMachine
+                ParameterValues:
+                  stateMachineArn: !Ref OcrStateMachine
+              - Name: DescribeExecution
+              - Name: GetExecutionHistory
+
+Outputs:
+  StateMachineArn:
+    Description: Standard state machine ARN (pinned on the connector target)
+    Value: !Ref OcrStateMachine
+
+  GatewayServiceRoleArn:
+    Description: AgentCore Gateway service role ARN
+    Value: !GetAtt GatewayServiceRole.Arn
+
+  GatewayUrl:
+    Description: AgentCore Gateway MCP endpoint URL
+    Value: !GetAtt AgentCoreGateway.GatewayUrl
+
+  GatewayIdentifier:
+    Description: AgentCore Gateway identifier (the resource for bedrock-agentcore:InvokeGateway when GatewayAuthorizerType is AWS_IAM)
+    Value: !Ref AgentCoreGateway
+
+  GatewayArn:
+    Description: AgentCore Gateway ARN
+    Value: !GetAtt AgentCoreGateway.GatewayArn
+
+  ResultsBucketName:
+    Description: Bucket holding result.json, text.txt and manifest.json (retained when the stack is deleted)
+    Value: !Ref ResultsBucket
+
+  StagingBucketName:
+    Description: Short-lived staging bucket for PDF/TIFF documents (emptied by the cleanup script)
+    Value: !Ref StagingBucket
+
+  NotificationTopicArn:
+    Description: SNS topic ARN for workflow summaries
+    Value: !Ref NotificationTopic
+
+  VerifyToolsCommand:
+    Description: List the MCP tools exposed by the gateway (GatewayAuthorizerType NONE only)
+    Value: !Sub >-
+      curl -s -X POST ${AgentCoreGateway.GatewayUrl}
+      -H 'Content-Type: application/json'
+      -d '{"jsonrpc":"2.0","method":"tools/list","id":"1"}'

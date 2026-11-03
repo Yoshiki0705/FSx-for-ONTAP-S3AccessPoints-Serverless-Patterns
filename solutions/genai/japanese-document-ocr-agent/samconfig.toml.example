@@ -1,0 +1,45 @@
+# samconfig.toml.example — 日本語文書 OCR × AI エージェント連携パターン
+#
+# Copy to samconfig.toml and edit. `scripts/deploy-japanese-document-ocr-agent.sh` does not need
+# this file; use this file only if you prefer to run `sam deploy` yourself.
+#
+#   cd solutions/genai/japanese-document-ocr-agent
+#   sam build
+#   sam deploy --config-file samconfig.toml
+#
+# Deploy the BUILT template (sam deploy with no --template-file reads .aws-sam/build/template.yaml).
+# Pointing --template-file at the source template re-packages the SharedLayer ContentUri
+# (the repository root, ../../../) and uploads the whole repository.
+#
+# LIMIT: `sam deploy --parameter-overrides` cannot carry CollectionsJson. Checked on a live deploy
+# (2026-11-03): SAM CLI cut the JSON value at its first "{", so the stack parameter became the single
+# character "{" and the discovery function failed with InvalidConfiguration. To use an allow-list of
+# collections, deploy with scripts/deploy-japanese-document-ocr-agent.sh --collections-file, which
+# uses `aws cloudformation deploy` and passes the JSON as ASCII (\uXXXX escapes). CloudFormation
+# also replaces every non-ASCII character in a parameter value with "?", so the escapes matter.
+# Without CollectionsJson, the stack builds one collection from DefaultCollectionName, FilePrefix
+# and DefaultProfile, which is enough to try the pattern.
+
+version = 0.1
+
+[default.deploy.parameters]
+stack_name = "ja-ocr-agent"
+region = "ap-northeast-1"
+resolve_s3 = true
+capabilities = "CAPABILITY_NAMED_IAM"
+confirm_changeset = true
+disable_rollback = false
+
+parameter_overrides = [
+  "S3AccessPointAlias=<your-ap>-ext-s3alias",
+  "DemoMode=false",
+  "DefaultCollectionName=default",
+  "FilePrefix=scans/",
+  "DefaultProfile=text",
+  "MaxFilesPerExecution=50",
+  "MapConcurrency=2",
+  "EnableFieldExtraction=false",
+  "DataClassification=INTERNAL",
+  "GatewayName=ja-ocr-agent-gateway",
+  "GatewayAuthorizerType=NONE",
+]

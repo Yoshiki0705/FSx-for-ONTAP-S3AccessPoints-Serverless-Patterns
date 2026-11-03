@@ -604,6 +604,115 @@
       "claim_ja": "AWS HealthOmics には、顧客所有のファイルシステムをワークフロー実行タスクへマウントする、ドキュメントに記載された手段が無いのではないか、と考えています。実行ストレージはサービスがプロビジョニングするもので、networkingMode: VPC が与えるのはネットワーク到達性であってマウント経路ではない、という理解です。",
       "why_not_documented_is_not_absent_ja": "未確立な点が 2 つあります。VPC モードで到達可能になった NFS エクスポートに対して、タスク内から mount コマンドを実行できるか（タスクコンテナに CAP_SYS_ADMIN が付与されているか）は当方で試しておらず、いずれとも記載された公開ページも見つけられていません。ワークフロー定義言語側にマウントを宣言する手段があるかも同様です。確認したページはサービス提供ストレージについて説明しているものの、顧客所有ファイルシステムが非対応であると述べているわけではないため、tier は documented ではなく open としています。",
       "category_note": "機能のリクエスト（feature-request）のカテゴリも存在しますが、まず「ドキュメントに記載された手段が存在するか」の確認を伴うため、一般的なガイダンスで起票しています。要望として扱っていただくほうが適切であれば振り替えていただければ幸いです。"
+    },
+    {
+      "id": "E-015",
+      "claim": "Amazon Textract in Asia Pacific (Tokyo) does not offer AnalyzeExpense, AnalyzeID, AnalyzeLending or Custom Queries (adapters) at its 2026-11-02 launch.",
+      "subject": "AWS",
+      "tier": "documented",
+      "premise": false,
+      "sources": [
+        {
+          "url": "https://aws.amazon.com/jp/about-aws/whats-new/2026/11/textract-tokyo-zurich/",
+          "read": "full",
+          "retrieved": "2026-11-03",
+          "says": "Lists the six operations supported at launch (DetectDocumentText, AnalyzeDocument, StartDocumentTextDetection, GetDocumentTextDetection, StartDocumentAnalysis, GetDocumentAnalysis) and states that AnalyzeExpense, AnalyzeID, AnalyzeLending and Custom Queries (adapters) are not available in these Regions at this time."
+        }
+      ],
+      "observation": "2026-11-03, ap-northeast-1: `aws textract analyze-expense` and `aws textract analyze-id` each returned AccessDeniedException (not allow listed).",
+      "support_inquiry": {
+        "status": "not-needed",
+        "topic": "The announcement says so directly, and says it is true 'at this time'."
+      },
+      "feature_request": {
+        "status": "not-applicable"
+      },
+      "appears_in": [
+        "docs/cross-region-guide.md",
+        "solutions/genai/japanese-document-ocr-agent/README.md",
+        "solutions/genai/japanese-document-ocr-agent/docs/architecture.md",
+        "solutions/genai/japanese-document-ocr-agent/docs/success-metrics.md",
+        "docs/agent/pitfalls-textract.md"
+      ]
+    },
+    {
+      "id": "E-016",
+      "claim": "Amazon Textract Forms (AnalyzeDocument and StartDocumentAnalysis with FORMS) is limited to English, Spanish, Italian, Portuguese, French and German, so it does not support Japanese. Queries are English only, and handwriting recognition is English only.",
+      "subject": "AWS",
+      "tier": "documented",
+      "premise": true,
+      "sources": [
+        {
+          "url": "https://docs.aws.amazon.com/textract/latest/dg/limits-document.html",
+          "read": "full",
+          "retrieved": "2026-11-03",
+          "says": "Tables, Signatures and Layout support all of the 40+ languages (Japanese included). AnalyzeDocument (Forms), StartDocumentAnalysis (Forms) and GetDocumentAnalysis are limited to English, Spanish, Italian, Portuguese, French and German; all other APIs are limited to English. Handwritten character recognition is only supported in English."
+        }
+      ],
+      "observation": "2026-11-03, ap-northeast-1: FORMS on a Japanese invoice was accepted and returned 13 key-value pairs (mostly right, some wrong); on a Japanese memo it returned 10 pairs split mid-sentence at confidence 53.7. A Queries request with a Japanese question returned InvalidParameterException.",
+      "support_inquiry": {
+        "status": "not-needed",
+        "topic": "The Developer Guide states the limit directly; the pattern does not offer Forms or Queries."
+      },
+      "feature_request": {
+        "status": "not-applicable"
+      },
+      "appears_in": [
+        "solutions/genai/japanese-document-ocr-agent/README.md",
+        "solutions/genai/japanese-document-ocr-agent/docs/architecture.md",
+        "solutions/genai/japanese-document-ocr-agent/docs/success-metrics.md",
+        "docs/agent/pitfalls-textract.md"
+      ]
+    },
+    {
+      "id": "E-017",
+      "claim": "The authorizer type of an AgentCore Gateway cannot be changed after the Gateway is created; moving from NONE to AWS_IAM needs a new Gateway.",
+      "subject": "AWS",
+      "tier": "verified",
+      "premise": false,
+      "sources": [],
+      "observation": "2026-11-03, ap-northeast-1: a CloudFormation stack update that changed GatewayAuthorizerType from NONE to AWS_IAM on an existing AWS::BedrockAgentCore::Gateway failed with 'Authorizer type cannot be updated for an existing gateway' and the stack rolled back cleanly. A second stack created with AWS_IAM worked: an unsigned tools/list returned HTTP 401, a SigV4-signed one returned HTTP 200.",
+      "support_inquiry": {
+        "status": "not-needed",
+        "topic": "The service's own error message states the limit; the pattern documents creating a new stack."
+      },
+      "feature_request": {
+        "status": "not-applicable"
+      },
+      "appears_in": [
+        "docs/agent/pitfalls-genai-edge.md",
+        "solutions/genai/japanese-document-ocr-agent/README.md",
+        "solutions/genai/japanese-document-ocr-agent/docs/architecture.md",
+        "solutions/genai/japanese-document-ocr-agent/docs/demo-guide.md"
+      ]
+    },
+    {
+      "id": "E-018",
+      "claim": "Amazon Textract has no operation to cancel or stop a started asynchronous job (StartDocumentTextDetection, StartDocumentAnalysis).",
+      "subject": "AWS",
+      "tier": "documented",
+      "premise": true,
+      "sources": [
+        {
+          "url": "https://docs.aws.amazon.com/textract/latest/dg/API_Operations.html",
+          "read": "full",
+          "retrieved": "2026-11-03",
+          "says": "Lists the 25 actions Textract supports (Analyze*, Create/Delete/Get/List/Update Adapter*, Detect*, Get*Analysis, Start*Analysis, tagging). None of them cancels or stops a job."
+        }
+      ],
+      "observation": "2026-11-03: the botocore 1.43.123 Textract service model has the same 25 operations; none has a name containing cancel, stop, abort or terminate (the only delete operations are DeleteAdapter and DeleteAdapterVersion).",
+      "support_inquiry": {
+        "status": "not-needed",
+        "topic": "The API reference lists every action and none cancels a job; the pattern waits for AsyncJobMaxSeconds and documents that the charge can continue."
+      },
+      "feature_request": {
+        "status": "not-applicable"
+      },
+      "appears_in": [
+        "solutions/genai/japanese-document-ocr-agent/README.md",
+        "solutions/genai/japanese-document-ocr-agent/docs/architecture.md",
+        "docs/agent/pitfalls-textract.md"
+      ]
     }
   ]
 }

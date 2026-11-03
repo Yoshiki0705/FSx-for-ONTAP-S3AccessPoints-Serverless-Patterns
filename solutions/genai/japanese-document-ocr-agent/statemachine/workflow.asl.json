@@ -1,0 +1,455 @@
+{
+  "Comment": "Japanese document OCR (Textract, Tokyo) exposed to AI agents through the AgentCore Gateway Step Functions connector. Discover -> Map(OCR sync | async) -> Report. OCR text never travels through state; results go to S3 and the execution output carries only metadata and S3 references.",
+  "StartAt": "Discover",
+  "States": {
+    "Discover": {
+      "Type": "Task",
+      "Resource": "${DiscoveryFunctionArn}",
+      "Parameters": {
+        "request.$": "$",
+        "execution_name.$": "$$.Execution.Name"
+      },
+      "ResultPath": "$.discovery",
+      "Retry": [
+        {
+          "ErrorEquals": ["Lambda.ServiceException", "Lambda.TooManyRequestsException", "Lambda.SdkClientException", "S3ApHelperError"],
+          "IntervalSeconds": 5,
+          "MaxAttempts": 3,
+          "BackoffRate": 2.0
+        }
+      ],
+      "Catch": [
+        {
+          "ErrorEquals": ["States.ALL"],
+          "ResultPath": "$.error",
+          "Next": "ReportError"
+        }
+      ],
+      "Next": "HasDocuments"
+    },
+    "HasDocuments": {
+      "Type": "Choice",
+      "Choices": [
+        {
+          "Variable": "$.discovery.object_count",
+          "NumericGreaterThan": 0,
+          "Next": "ProcessDocuments"
+        }
+      ],
+      "Default": "NoDocuments"
+    },
+    "NoDocuments": {
+      "Type": "Pass",
+      "Result": [],
+      "ResultPath": "$.processed",
+      "Next": "Report"
+    },
+    "ProcessDocuments": {
+      "Type": "Map",
+      "ItemsPath": "$.discovery.objects",
+      "MaxConcurrencyPath": "$.discovery.map_concurrency",
+      "ItemSelector": {
+        "doc.$": "$$.Map.Item.Value",
+        "collection.$": "$.discovery.collection",
+        "profile.$": "$.discovery.profile",
+        "classification.$": "$.discovery.classification",
+        "output_prefix.$": "$.discovery.output_prefix",
+        "execution_name.$": "$.discovery.execution_name",
+        "poll_seconds.$": "$.discovery.poll_seconds",
+        "extract_fields.$": "$.discovery.extract_fields",
+        "fields_result": {
+          "status": "not_requested"
+        }
+      },
+      "ItemProcessor": {
+        "ProcessorConfig": {
+          "Mode": "INLINE"
+        },
+        "StartAt": "RouteByType",
+        "States": {
+          "RouteByType": {
+            "Type": "Choice",
+            "Choices": [
+              {
+                "Variable": "$.doc.route",
+                "StringEquals": "sync",
+                "Next": "OcrSync"
+              },
+              {
+                "Variable": "$.doc.route",
+                "StringEquals": "async",
+                "Next": "AsyncStart"
+              }
+            ],
+            "Default": "UnroutableDocument"
+          },
+          "UnroutableDocument": {
+            "Type": "Pass",
+            "Parameters": {
+              "doc_id.$": "$.doc.doc_id",
+              "key.$": "$.doc.key",
+              "route.$": "$.doc.route",
+              "ocr": {
+                "status": "failed",
+                "error": "UnroutableDocument"
+              },
+              "fields": {
+                "status": "not_requested"
+              }
+            },
+            "End": true
+          },
+          "OcrSync": {
+            "Type": "Task",
+            "Resource": "${OcrSyncFunctionArn}",
+            "ResultPath": "$.ocr",
+            "Retry": [
+              {
+                "ErrorEquals": ["TextractThrottled"],
+                "IntervalSeconds": 4,
+                "MaxAttempts": 6,
+                "BackoffRate": 2.0,
+                "MaxDelaySeconds": 60,
+                "JitterStrategy": "FULL"
+              },
+              {
+                "ErrorEquals": ["TextractTransient", "S3ApHelperError", "Lambda.ServiceException", "Lambda.TooManyRequestsException", "Lambda.SdkClientException"],
+                "IntervalSeconds": 5,
+                "MaxAttempts": 3,
+                "BackoffRate": 2.0,
+                "JitterStrategy": "FULL"
+              }
+            ],
+            "Catch": [
+              {
+                "ErrorEquals": ["States.ALL"],
+                "ResultPath": "$.failure",
+                "Next": "RecordFailure"
+              }
+            ],
+            "Next": "AfterOcr"
+          },
+          "AsyncStart": {
+            "Type": "Task",
+            "Resource": "${AsyncStartFunctionArn}",
+            "ResultPath": "$.job",
+            "Retry": [
+              {
+                "ErrorEquals": ["TextractThrottled"],
+                "IntervalSeconds": 4,
+                "MaxAttempts": 6,
+                "BackoffRate": 2.0,
+                "MaxDelaySeconds": 60,
+                "JitterStrategy": "FULL"
+              },
+              {
+                "ErrorEquals": ["TextractTransient", "S3ApHelperError", "Lambda.ServiceException", "Lambda.TooManyRequestsException", "Lambda.SdkClientException"],
+                "IntervalSeconds": 5,
+                "MaxAttempts": 3,
+                "BackoffRate": 2.0,
+                "JitterStrategy": "FULL"
+              }
+            ],
+            "Catch": [
+              {
+                "ErrorEquals": ["States.ALL"],
+                "ResultPath": "$.failure",
+                "Next": "RecordFailure"
+              }
+            ],
+            "Next": "StartOutcome"
+          },
+          "StartOutcome": {
+            "Type": "Choice",
+            "Comment": "async_start returns a failed record (not an exception) when the document itself is rejected.",
+            "Choices": [
+              {
+                "Variable": "$.job.status",
+                "StringEquals": "started",
+                "Next": "AsyncWait"
+              }
+            ],
+            "Default": "StartRejected"
+          },
+          "StartRejected": {
+            "Type": "Pass",
+            "Parameters": {
+              "doc_id.$": "$.doc.doc_id",
+              "key.$": "$.doc.key",
+              "route.$": "$.doc.route",
+              "ocr.$": "$.job",
+              "fields": {
+                "status": "not_requested"
+              }
+            },
+            "End": true
+          },
+          "AsyncWait": {
+            "Type": "Wait",
+            "SecondsPath": "$.job.wait_seconds",
+            "Next": "AsyncCheck"
+          },
+          "AsyncCheck": {
+            "Type": "Task",
+            "Resource": "${AsyncCheckFunctionArn}",
+            "Parameters": {
+              "job.$": "$.job",
+              "profile.$": "$.profile"
+            },
+            "ResultPath": "$.job",
+            "Retry": [
+              {
+                "ErrorEquals": ["TextractThrottled"],
+                "IntervalSeconds": 4,
+                "MaxAttempts": 6,
+                "BackoffRate": 2.0,
+                "MaxDelaySeconds": 60,
+                "JitterStrategy": "FULL"
+              },
+              {
+                "ErrorEquals": ["TextractTransient", "Lambda.ServiceException", "Lambda.TooManyRequestsException", "Lambda.SdkClientException"],
+                "IntervalSeconds": 5,
+                "MaxAttempts": 3,
+                "BackoffRate": 2.0,
+                "JitterStrategy": "FULL"
+              }
+            ],
+            "Catch": [
+              {
+                "ErrorEquals": ["States.ALL"],
+                "ResultPath": "$.check_error",
+                "Next": "AsyncCollect"
+              }
+            ],
+            "Next": "AsyncChoice"
+          },
+          "AsyncChoice": {
+            "Type": "Choice",
+            "Choices": [
+              {
+                "Variable": "$.job.status",
+                "StringEquals": "IN_PROGRESS",
+                "Next": "AsyncWait"
+              }
+            ],
+            "Default": "AsyncCollect"
+          },
+          "AsyncCollect": {
+            "Type": "Task",
+            "Resource": "${AsyncCollectFunctionArn}",
+            "ResultPath": "$.ocr",
+            "Retry": [
+              {
+                "ErrorEquals": ["TextractThrottled"],
+                "IntervalSeconds": 4,
+                "MaxAttempts": 6,
+                "BackoffRate": 2.0,
+                "MaxDelaySeconds": 60,
+                "JitterStrategy": "FULL"
+              },
+              {
+                "ErrorEquals": ["TextractTransient", "S3ApHelperError", "Lambda.ServiceException", "Lambda.TooManyRequestsException", "Lambda.SdkClientException"],
+                "IntervalSeconds": 5,
+                "MaxAttempts": 3,
+                "BackoffRate": 2.0,
+                "JitterStrategy": "FULL"
+              }
+            ],
+            "Catch": [
+              {
+                "ErrorEquals": ["States.ALL"],
+                "ResultPath": "$.failure",
+                "Next": "RecordFailure"
+              }
+            ],
+            "Next": "AfterOcr"
+          },
+          "AfterOcr": {
+            "Type": "Choice",
+            "Choices": [
+              {
+                "And": [
+                  {
+                    "Variable": "$.extract_fields",
+                    "BooleanEquals": true
+                  },
+                  {
+                    "Variable": "$.ocr.status",
+                    "StringEquals": "completed"
+                  }
+                ],
+                "Next": "ExtractFields"
+              }
+            ],
+            "Default": "Summarize"
+          },
+          "ExtractFields": {
+            "Type": "Task",
+            "Resource": "${ExtractFieldsFunctionArn}",
+            "ResultPath": "$.fields_result",
+            "Retry": [
+              {
+                "ErrorEquals": ["BedrockThrottled"],
+                "IntervalSeconds": 4,
+                "MaxAttempts": 6,
+                "BackoffRate": 2.0,
+                "MaxDelaySeconds": 60,
+                "JitterStrategy": "FULL"
+              },
+              {
+                "ErrorEquals": ["S3ApHelperError", "Lambda.ServiceException", "Lambda.TooManyRequestsException", "Lambda.SdkClientException"],
+                "IntervalSeconds": 5,
+                "MaxAttempts": 3,
+                "BackoffRate": 2.0,
+                "JitterStrategy": "FULL"
+              }
+            ],
+            "Catch": [
+              {
+                "ErrorEquals": ["States.ALL"],
+                "ResultPath": "$.fields_error",
+                "Next": "FieldsFailed"
+              }
+            ],
+            "Next": "Summarize"
+          },
+          "FieldsFailed": {
+            "Type": "Pass",
+            "Comment": "Field extraction is optional; losing it must not discard the OCR result.",
+            "Result": {
+              "status": "failed",
+              "error": "ExtractionUnavailable"
+            },
+            "ResultPath": "$.fields_result",
+            "Next": "Summarize"
+          },
+          "Summarize": {
+            "Type": "Pass",
+            "Parameters": {
+              "doc_id.$": "$.doc.doc_id",
+              "key.$": "$.doc.key",
+              "route.$": "$.doc.route",
+              "ocr.$": "$.ocr",
+              "fields.$": "$.fields_result"
+            },
+            "End": true
+          },
+          "RecordFailure": {
+            "Type": "Pass",
+            "Comment": "Keep only the error type. The Cause of a Lambda failure is a long JSON string with a stack trace; copying it would bloat the state.",
+            "Parameters": {
+              "doc_id.$": "$.doc.doc_id",
+              "key.$": "$.doc.key",
+              "route.$": "$.doc.route",
+              "ocr": {
+                "status": "failed",
+                "error.$": "$.failure.Error"
+              },
+              "fields": {
+                "status": "not_requested"
+              }
+            },
+            "End": true
+          }
+        }
+      },
+      "ResultPath": "$.processed",
+      "Catch": [
+        {
+          "ErrorEquals": ["States.ALL"],
+          "ResultPath": "$.error",
+          "Next": "ReportError"
+        }
+      ],
+      "Next": "Report"
+    },
+    "Report": {
+      "Type": "Task",
+      "Resource": "${ReportFunctionArn}",
+      "Parameters": {
+        "discovery": {
+          "collection.$": "$.discovery.collection",
+          "profile.$": "$.discovery.profile",
+          "classification.$": "$.discovery.classification",
+          "output_prefix.$": "$.discovery.output_prefix",
+          "execution_name.$": "$.discovery.execution_name",
+          "truncated.$": "$.discovery.truncated",
+          "skipped_count.$": "$.discovery.skipped_count",
+          "skipped.$": "$.discovery.skipped"
+        },
+        "processed.$": "$.processed",
+        "execution_name.$": "$$.Execution.Name"
+      },
+      "Retry": [
+        {
+          "ErrorEquals": ["Lambda.ServiceException", "Lambda.TooManyRequestsException", "Lambda.SdkClientException", "States.TaskFailed"],
+          "IntervalSeconds": 5,
+          "MaxAttempts": 3,
+          "BackoffRate": 2.0
+        }
+      ],
+      "Catch": [
+        {
+          "ErrorEquals": ["States.ALL"],
+          "ResultPath": "$.error",
+          "Next": "ReportError"
+        }
+      ],
+      "Next": "StatusRouter"
+    },
+    "StatusRouter": {
+      "Type": "Choice",
+      "Choices": [
+        {
+          "Variable": "$.status",
+          "StringEquals": "failed",
+          "Next": "AllDocumentsFailed"
+        }
+      ],
+      "Default": "Done"
+    },
+    "AllDocumentsFailed": {
+      "Type": "Fail",
+      "ErrorPath": "$.error_type",
+      "CausePath": "$.cause"
+    },
+    "Done": {
+      "Type": "Succeed"
+    },
+    "ReportError": {
+      "Type": "Task",
+      "Resource": "${ReportFunctionArn}",
+      "Parameters": {
+        "status": "ERROR",
+        "error.$": "$.error",
+        "execution_name.$": "$$.Execution.Name"
+      },
+      "Retry": [
+        {
+          "ErrorEquals": ["Lambda.ServiceException", "Lambda.TooManyRequestsException", "Lambda.SdkClientException"],
+          "IntervalSeconds": 5,
+          "MaxAttempts": 3,
+          "BackoffRate": 2.0
+        }
+      ],
+      "Catch": [
+        {
+          "ErrorEquals": ["States.ALL"],
+          "ResultPath": "$.report_error",
+          "Next": "ExecutionFailedWithoutReport"
+        }
+      ],
+      "Next": "ExecutionFailed"
+    },
+    "ExecutionFailed": {
+      "Type": "Fail",
+      "ErrorPath": "$.error_type",
+      "CausePath": "$.cause"
+    },
+    "ExecutionFailedWithoutReport": {
+      "Type": "Fail",
+      "Error": "WorkflowFailed",
+      "Cause": "The workflow failed and the failure report could not be produced. See the execution history and the Lambda logs."
+    }
+  }
+}
