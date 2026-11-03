@@ -138,6 +138,13 @@
       "enabled": false
     },
     {
+      "description": "Hold cfn-lint at 1.56.x. cfn-lint 1.59.0 resource schemas add FSx handler permissions (fsx:CreateVolumeFromBackup, secretsmanager:DescribeSecret/GetSecretValue) that infrastructure/shared-backup-vault-lab's test_provisioning_covers_schema_handlers reads from the pinned schema. Covering them means editing required-actions.json, which is a code_digest input for that lab, so the edit un-holds the verification record (test_verification_record) and would require a real-environment re-run to re-record -- out of proportion for a dev-only linter bump with no vuln. Lift this together with the lab's next real-environment verification, bumping cfn-lint and updating required-actions.json + the record digest in the same change. PR #415 closed for this reason.",
+      "matchPackageNames": [
+        "cfn-lint"
+      ],
+      "allowedVersions": "<1.57"
+    },
+    {
       "description": "Hold typescript at 6.x. Measured 2026-09-09 in solutions/amplify-portal/node_modules: typescript-eslint 8.69.0, @typescript-eslint/parser and @typescript-eslint/typescript-estree all declare peerDependencies.typescript '>=4.8.4 <6.1.0'. TypeScript 7.0 (GA 2026-07-08) is outside that range, and `npm run lint` runs eslint with --max-warnings 0, so the bump turns type-aware linting off by breaking it. The compiler itself is a faithful port and tsc would very likely be fine -- the blocker is the tools that use the compiler API, not the compiler. Lift this when typescript-eslint widens the range; check with `node -e \"console.log(require('typescript-eslint/package.json').peerDependencies)\"` rather than from a changelog.",
       "matchPackageNames": [
         "typescript"
