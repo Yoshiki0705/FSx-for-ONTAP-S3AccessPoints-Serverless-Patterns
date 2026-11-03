@@ -134,11 +134,29 @@ class SamTemplate:
         }
 
     def function_env(self, logical_id: str) -> dict[str, Any]:
-        """指定した関数の Environment.Variables を返す"""
+        """指定した関数が実際に受け取る環境変数を返す。
+
+        SAM は `Globals.Function.Environment.Variables` を、`AWS::Serverless::Function` の
+        `Environment.Variables` にキー単位でマージする（同じキーは関数側が優先）。ここでも
+        その結果を返す。Globals を無視すると、Globals に環境変数をまとめたテンプレートが
+        「必須の環境変数を渡していない」と誤って判定される（japanese-document-ocr-agent で発生）。
+        `AWS::Lambda::Function` には Globals が適用されない。
+
+        Args:
+            logical_id: 関数の論理 ID。
+
+        Returns:
+            環境変数名から値（intrinsic はタグのまま）への辞書。関数が無ければ空。
+        """
         body = self.functions().get(logical_id, {})
         props = body.get("Properties") or {}
-        env = props.get("Environment") or {}
-        return env.get("Variables") or {}
+        own = (props.get("Environment") or {}).get("Variables") or {}
+        if body.get("Type") != "AWS::Serverless::Function":
+            return own
+        defaults = (((self.raw.get("Globals") or {}).get("Function") or {}).get("Environment") or {}).get(
+            "Variables"
+        ) or {}
+        return {**defaults, **own}
 
     def all_function_env_names(self) -> set[str]:
         """テンプレート内の全 Lambda 関数の環境変数名の集合

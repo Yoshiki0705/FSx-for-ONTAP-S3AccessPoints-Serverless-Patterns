@@ -1,5 +1,19 @@
 # クロスリージョン設定ガイド
 
+> **2026-11-02 の更新（Textract）**: Amazon Textract が ap-northeast-1（東京）で提供開始されました
+> （[AWS What's New](https://aws.amazon.com/jp/about-aws/whats-new/2026/11/textract-tokyo-zurich/)）。
+> 東京で使えるのは DetectDocumentText、AnalyzeDocument、StartDocumentTextDetection、
+> GetDocumentTextDetection、StartDocumentAnalysis、GetDocumentAnalysis の 6 操作です。
+> AnalyzeExpense、AnalyzeID、AnalyzeLending、Custom Queries は、発表の時点で東京では提供されません（[E-015]）
+> （2026-11-03 に東京で `analyze-expense` と `analyze-id` を呼ぶと `AccessDeniedException` になることを確認）。
+> そのため、以下の「Textract は東京で利用できません」という記述と、UC2 / UC10 / UC12 / UC13 / UC14 などの <!-- allow:not-a-claim: quotes the earlier statement that this note corrects -->
+> 既定のクロスリージョン先（us-east-1）は、**2026-11-02 より前の状態**を表しています。
+> これらのパターンの既定は変更していません（変更は別の作業として扱います）。
+> 東京で Textract を直接使う実装は
+> [japanese-document-ocr-agent](../solutions/genai/japanese-document-ocr-agent/) を参照してください。
+> 東京の同期 API は 1 TPS が上限（[Endpoints and quotas](https://docs.aws.amazon.com/general/latest/gr/textract.html)）なので、
+> 既存パターンの既定を東京へ切り替える場合は、Map の同時実行数を見直す必要があります。
+
 ## 概要
 
 Amazon Textract と Amazon Comprehend Medical は ap-northeast-1（東京）リージョンで利用できません。本ガイドでは、東京リージョンにデプロイした FSx for ONTAP S3 AP パターンからこれらのサービスをクロスリージョンで利用する方法を説明します。

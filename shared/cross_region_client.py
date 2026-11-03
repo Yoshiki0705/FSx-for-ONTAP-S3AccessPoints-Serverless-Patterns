@@ -3,6 +3,15 @@
 ap-northeast-1 非対応の AWS サービス（Textract, Comprehend Medical）を
 対応リージョン（デフォルト: us-east-1）にルーティングするクライアントラッパー。
 
+2026-11-02 の更新: Amazon Textract が ap-northeast-1 で提供開始された
+（DetectDocumentText / AnalyzeDocument / Start・GetDocumentTextDetection /
+Start・GetDocumentAnalysis の 6 操作。AnalyzeExpense / AnalyzeID / AnalyzeLending /
+Custom Queries は東京では提供されない）。以下の「非対応」という記述と既定の
+``us-east-1`` は、それより前の状態を表す。このモジュールの挙動は変更していない。
+東京で Textract を直接呼ぶ実装は ``shared.textract_helper`` と
+``solutions/genai/japanese-document-ocr-agent`` を参照。Comprehend Medical は
+引き続き東京では利用できない。
+
 Lambda 実行ロールの認証情報をそのまま使用し、追加の認証設定は不要。
 TLS 検証はデフォルトで有効。
 

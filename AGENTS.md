@@ -4,7 +4,7 @@
 
 ## Project Overview
 FSx for ONTAP S3 Access Points Serverless Patterns — a library of **28 industry-specific use
-cases (UC1-UC28)** + **1 SAP/ERP pattern** + **10 FlexCache/FlexClone patterns** + **3 GenAI
+cases (UC1-UC28)** + **1 SAP/ERP pattern** + **10 FlexCache/FlexClone patterns** + **4 GenAI
 patterns** + **1 HA monitoring pattern** + **2 event-driven patterns** + **2 edge delivery
 patterns** + **6 operations optimization patterns (OPS1-OPS6)**. Each pattern is an independent
 CloudFormation/SAM template sharing the Python modules in `shared/`.
@@ -12,7 +12,7 @@ CloudFormation/SAM template sharing the Python modules in `shared/`.
 **Two pillars**: `solutions/` (S3 AP data processing) + `operations/` (file system operational
 optimization).
 
-**Test coverage**: ~5,000 Python tests across 327 files + ~530 vitest tests across 36 files.
+**Test coverage**: ~5,000 Python tests across 335 files + ~530 vitest tests across 36 files.
 
 > ファイル数は `make drift` がツリーと照合するので古くなれば fail する。テスト総数は 3 系統の
 > 合計なので概数。誰も保守しない厳密な数値より丸めた数値のほうがよい。
@@ -32,6 +32,7 @@ optimization).
 | ボリューム / FlexCache の作成・削除 | [pitfalls-volume-lifecycle](docs/agent/pitfalls-volume-lifecycle.md) |
 | AD 連携 / SMB / Windows ドメイン参加 | [pitfalls-ad-smb](docs/agent/pitfalls-ad-smb.md) |
 | Bedrock / AgentCore / Quick / KNFSD | [pitfalls-genai-edge](docs/agent/pitfalls-genai-edge.md) |
+| Textract（日本語 OCR）/ OCR ワークフロー | [pitfalls-textract](docs/agent/pitfalls-textract.md) |
 | SnapLock / WORM / Snapshot ロック | [pitfalls-snaplock](docs/agent/pitfalls-snaplock.md) |
 | ARP/AI の状態遷移 / EMS イベント | [pitfalls-arp-ems](docs/agent/pitfalls-arp-ems.md) |
 | ポータルの CDK / cdk-nag | [portal-cdk-quality-gates](docs/agent/portal-cdk-quality-gates.md) |
@@ -146,11 +147,9 @@ KNFSD（Terraform、`infrastructure/knfsd-file-cache/`）は `scripts/{deploy,va
 
 - **Trigger**: EventBridge Scheduler (polling) OR FPolicy EventBridge Rule (event-driven)
 - **Orchestration**: Step Functions state machine per UC
-- **Compute**: Lambda functions (Python 3.13, 256-1024MB)。**アーキテクチャは統一されていない**:
-  `Architectures: [arm64]` を宣言しているのは一部（operations 全体と一部の solutions）で、
-  残りは宣言が無いため Lambda 既定の x86_64 になる。純 Python なので動作は変わらないが
-  GB 秒あたりの単価は arm64 が安い。**新規パターンは arm64 を明示する**。内訳は数えれば
-  分かるので焼き込まない（`grep -rl "arm64" solutions/*/*/template.yaml operations/*/template.yaml`）
+- **Compute**: Lambda (Python 3.13, 256-1024MB)。`Architectures: [arm64]` を宣言しているのは一部で、
+  残りは x86_64 既定。純 Python なので動作は同じだが単価は arm64 が安い。**新規パターンは arm64 を
+  明示する**（内訳: `grep -rl arm64 solutions/*/*/template.yaml operations/*/template.yaml`）
 - **Storage access**: FSx for ONTAP S3 Access Points (read/write via S3ApHelper)
 - **AI/ML**: Bedrock (Nova/Claude), Textract, Comprehend, Rekognition, SageMaker
 - **Analytics**: Athena + Glue Data Catalog

@@ -1,0 +1,1757 @@
+{
+ "_note": "Real Textract response from ap-northeast-1 (2026-11-03) for a fictional sample document; Geometry removed.",
+ "DocumentMetadata": {
+  "Pages": 1
+ },
+ "Blocks": [
+  {
+   "BlockType": "PAGE",
+   "Id": "2172ee97-890c-47e9-9f22-e08c3592ca44",
+   "Relationships": [
+    {
+     "Type": "CHILD",
+     "Ids": [
+      "cd5c0160-4aec-4eeb-935a-3f6f0524536f",
+      "e8d2f87c-3703-4976-8a9f-4d6c07a67737",
+      "8093f104-a5f6-48af-a87c-25a74df5c6b4",
+      "0b830bd6-f0c8-4d46-afb8-86df1fe52b17",
+      "794f4414-59f8-4b7d-9f05-c178118a6e07",
+      "398f3294-645b-4a0d-af0c-65c2dd8ac798",
+      "8e41f0d9-822a-45b5-bbf4-cb4e3824d83b",
+      "07b0a1ea-9432-4de4-8cf3-d1d4615ad6c7",
+      "e751c81a-f926-4b0a-bce9-c8cf77844ffb",
+      "812b58a6-bd59-4bb6-9233-e3f1ac75194b",
+      "94bd7950-cc2f-4fd7-a92d-66a9b0a86bf7",
+      "1718cd39-ec0b-4d13-a925-c62e7787dc0f",
+      "14166870-aea4-45f7-b217-02a085bdb8a7",
+      "45c47b3c-7c00-40d9-b36a-43aceab2528d",
+      "c21fdc88-2f7b-42b2-911c-8c53415ff278",
+      "8dd3fe96-882e-4e08-bca1-797f95be30d5",
+      "bf69acdd-91e9-45bc-8419-d410019e56b5",
+      "c67ac8f9-5be2-4030-ac95-cf0d3df9ee7d",
+      "0b8c4a29-a49d-46db-8e7c-35140df58840",
+      "6597cc05-9a2f-42ab-a53a-906987788438",
+      "b80ab2a1-108f-4296-9dc4-de31de017dad",
+      "8979c93c-c52c-490c-9b0b-7528f0bf9949",
+      "5f042e74-5430-4ddd-9156-aaeb0ea47f9a",
+      "ec314ebc-a9b7-4c2e-a149-ff967e1d829a",
+      "c488b570-6bb3-4c5c-87f9-399a99852a3e",
+      "d4443083-49d3-407b-8ab3-16322995d655",
+      "0d5fc5dc-7237-4751-b20b-a12021b4e602",
+      "d3042d7a-355b-447e-bc8f-f5edfb859c1c",
+      "a735418e-dce3-4610-92c2-0985671a2f8d",
+      "d55d9d9f-babf-40da-99d0-7bbb836eadb2",
+      "544a0e12-146d-41b7-9ccb-594254a249f0",
+      "a09f9d62-a40a-413d-ba8c-2261717c2c21",
+      "3513fd0d-858a-4ead-9fe1-57199a70ffd2",
+      "3ea477fd-94a8-41c9-9936-31536ab80457",
+      "f87a2f76-d124-4b82-9bc0-67fb6336d747",
+      "c0c58e04-7266-4010-abc5-2745fbafd2a9",
+      "d86daa7a-7478-4815-a575-c67d6e349e91",
+      "1bef49e5-5d92-42bd-b3a5-c12b5e5c33c5",
+      "bcb69350-85ab-4aa5-b99e-f0656e191414",
+      "9e7c10ed-008d-4ac5-80ae-9731575950f9",
+      "5f3d62611f3c422c9279a84f275de9f9",
+      "4ad80fab2fe842aba43595ee7ca001a9",
+      "4dbecea2919c4d37bc0a8894bf4c3be8",
+      "c7fd36c50d1f4288ac41ddd3e27b3ba3",
+      "fd9f32b3d28b4703935dd9b1d6a65520",
+      "e107b14f58b9484b865d32b85e9327d7",
+      "9065e8e8a4f74f998125a1d5aeaedd17",
+      "8b6d4e66fa224f8bbc8d1fceb6095a87",
+      "54a32e631f3a48bdbde21494f8a478ee"
+     ]
+    }
+   ]
+  },
+  {
+   "BlockType": "LINE",
+   "Id": "cd5c0160-4aec-4eeb-935a-3f6f0524536f",
+   "Text": "請求書",
+   "Confidence": 99.96014404296875,
+   "Relationships": [
+    {
+     "Type": "CHILD",
+     "Ids": [
+      "2772473d-6b88-4e4e-b3b2-7033cdb8ca79"
+     ]
+    }
+   ]
+  },
+  {
+   "BlockType": "LINE",
+   "Id": "e8d2f87c-3703-4976-8a9f-4d6c07a67737",
+   "Text": "請求書番号: INV-2026-0001",
+   "Confidence": 96.23326110839844,
+   "Relationships": [
+    {
+     "Type": "CHILD",
+     "Ids": [
+      "04a106c6-6386-42b1-90a3-51def902fb0c",
+      "2d5c0a51-7203-4fa1-945a-904c8da8215f"
+     ]
+    }
+   ]
+  },
+  {
+   "BlockType": "LINE",
+   "Id": "8093f104-a5f6-48af-a87c-25a74df5c6b4",
+   "Text": "発行日: 2026年10月15日",
+   "Confidence": 97.44898223876953,
+   "Relationships": [
+    {
+     "Type": "CHILD",
+     "Ids": [
+      "2601a336-bad5-477e-a0ca-ad8705f8f1e2",
+      "b94ea3ac-b038-46b8-8ef5-49c98ed28018"
+     ]
+    }
+   ]
+  },
+  {
+   "BlockType": "LINE",
+   "Id": "0b830bd6-f0c8-4d46-afb8-86df1fe52b17",
+   "Text": "サンプル商事株式会社 御中",
+   "Confidence": 99.92028045654297,
+   "Relationships": [
+    {
+     "Type": "CHILD",
+     "Ids": [
+      "5025ac48-3d28-4b85-9a49-59fe5bfb9100",
+      "20b87bc4-159a-4214-872b-4f7b8e50da5b"
+     ]
+    }
+   ]
+  },
+  {
+   "BlockType": "LINE",
+   "Id": "794f4414-59f8-4b7d-9f05-c178118a6e07",
+   "Text": "下記のとおりご請求申し上げます。",
+   "Confidence": 99.04336547851562,
+   "Relationships": [
+    {
+     "Type": "CHILD",
+     "Ids": [
+      "0bab68d8-28d3-4741-82bf-191e45328d3f"
+     ]
+    }
+   ]
+  },
+  {
+   "BlockType": "LINE",
+   "Id": "398f3294-645b-4a0d-af0c-65c2dd8ac798",
+   "Text": "テスト工業株式会社",
+   "Confidence": 92.58609771728516,
+   "Relationships": [
+    {
+     "Type": "CHILD",
+     "Ids": [
+      "8b01ed03-7d40-4a7a-a66b-474c0aff5186"
+     ]
+    }
+   ]
+  },
+  {
+   "BlockType": "LINE",
+   "Id": "8e41f0d9-822a-45b5-bbf4-cb4e3824d83b",
+   "Text": "登録番号: T1234567890123",
+   "Confidence": 97.46891021728516,
+   "Relationships": [
+    {
+     "Type": "CHILD",
+     "Ids": [
+      "66602e68-cb8f-4321-b606-c125c375228d",
+      "6ce762d4-e35a-4fd1-a85c-8ae1d1051332"
+     ]
+    }
+   ]
+  },
+  {
+   "BlockType": "LINE",
+   "Id": "07b0a1ea-9432-4de4-8cf3-d1d4615ad6c7",
+   "Text": "東京都サンプル区サンプル町1-2-3",
+   "Confidence": 94.22034454345703,
+   "Relationships": [
+    {
+     "Type": "CHILD",
+     "Ids": [
+      "98a70659-00e1-4e55-9c2e-47327c962da0"
+     ]
+    }
+   ]
+  },
+  {
+   "BlockType": "LINE",
+   "Id": "e751c81a-f926-4b0a-bce9-c8cf77844ffb",
+   "Text": "件名: 10月分 製造委託費",
+   "Confidence": 97.52869415283203,
+   "Relationships": [
+    {
+     "Type": "CHILD",
+     "Ids": [
+      "920994e6-ad4b-4366-953a-548820cefbaa",
+      "cbf347e8-0e7d-4b29-8bfb-17192128c28d",
+      "11b2eba1-b791-4fcc-a3c5-5fdca4240cda"
+     ]
+    }
+   ]
+  },
+  {
+   "BlockType": "LINE",
+   "Id": "812b58a6-bd59-4bb6-9233-e3f1ac75194b",
+   "Text": "支払期限: 2026年11月30日",
+   "Confidence": 96.75143432617188,
+   "Relationships": [
+    {
+     "Type": "CHILD",
+     "Ids": [
+      "8743a301-7354-434d-b5ec-35ab5a9280a7",
+      "ae5a40be-46bd-431e-9972-0f760152c622"
+     ]
+    }
+   ]
+  },
+  {
+   "BlockType": "LINE",
+   "Id": "94bd7950-cc2f-4fd7-a92d-66a9b0a86bf7",
+   "Text": "納期: 2026年10月1日~10月10日",
+   "Confidence": 79.65162658691406,
+   "Relationships": [
+    {
+     "Type": "CHILD",
+     "Ids": [
+      "2a7889c1-3d18-4619-acea-f99c962bc669",
+      "8d251647-dafe-43e6-adb8-6800aa4fe5e5"
+     ]
+    }
+   ]
+  },
+  {
+   "BlockType": "LINE",
+   "Id": "1718cd39-ec0b-4d13-a925-c62e7787dc0f",
+   "Text": "品名",
+   "Confidence": 100.0,
+   "Relationships": [
+    {
+     "Type": "CHILD",
+     "Ids": [
+      "6ac13be9-1dd4-4400-8944-0d78ee9db247"
+     ]
+    }
+   ]
+  },
+  {
+   "BlockType": "LINE",
+   "Id": "14166870-aea4-45f7-b217-02a085bdb8a7",
+   "Text": "数量",
+   "Confidence": 99.92028045654297,
+   "Relationships": [
+    {
+     "Type": "CHILD",
+     "Ids": [
+      "f9c3f819-60ef-49ed-a976-4b6e82fe9fe6"
+     ]
+    }
+   ]
+  },
+  {
+   "BlockType": "LINE",
+   "Id": "45c47b3c-7c00-40d9-b36a-43aceab2528d",
+   "Text": "単価",
+   "Confidence": 99.3223876953125,
+   "Relationships": [
+    {
+     "Type": "CHILD",
+     "Ids": [
+      "2edf9bdb-d44f-468d-8dab-b4171828156c"
+     ]
+    }
+   ]
+  },
+  {
+   "BlockType": "LINE",
+   "Id": "c21fdc88-2f7b-42b2-911c-8c53415ff278",
+   "Text": "金額",
+   "Confidence": 99.92028045654297,
+   "Relationships": [
+    {
+     "Type": "CHILD",
+     "Ids": [
+      "e1159bb0-e5c0-416c-83da-bd25dfc6060c"
+     ]
+    }
+   ]
+  },
+  {
+   "BlockType": "LINE",
+   "Id": "8dd3fe96-882e-4e08-bca1-797f95be30d5",
+   "Text": "部品A (精密加工)",
+   "Confidence": 99.58147430419922,
+   "Relationships": [
+    {
+     "Type": "CHILD",
+     "Ids": [
+      "2e1ad15a-8346-4872-9755-9a1e21804e50",
+      "32c84c85-a15e-4d77-927a-838e276854f1"
+     ]
+    }
+   ]
+  },
+  {
+   "BlockType": "LINE",
+   "Id": "bf69acdd-91e9-45bc-8419-d410019e56b5",
+   "Text": "120",
+   "Confidence": 99.48181915283203,
+   "Relationships": [
+    {
+     "Type": "CHILD",
+     "Ids": [
+      "868896ea-91d7-40b1-9206-ad07949efe47"
+     ]
+    }
+   ]
+  },
+  {
+   "BlockType": "LINE",
+   "Id": "c67ac8f9-5be2-4030-ac95-cf0d3df9ee7d",
+   "Text": "¥1,500",
+   "Confidence": 99.60140228271484,
+   "Relationships": [
+    {
+     "Type": "CHILD",
+     "Ids": [
+      "0e9cc1c4-1c53-43bf-ab09-d6ebb8f52cde"
+     ]
+    }
+   ]
+  },
+  {
+   "BlockType": "LINE",
+   "Id": "0b8c4a29-a49d-46db-8e7c-35140df58840",
+   "Text": "¥180,000",
+   "Confidence": 99.88042449951172,
+   "Relationships": [
+    {
+     "Type": "CHILD",
+     "Ids": [
+      "a6273595-f0b1-471a-9db4-38ff5dd151e3"
+     ]
+    }
+   ]
+  },
+  {
+   "BlockType": "LINE",
+   "Id": "6597cc05-9a2f-42ab-a53a-906987788438",
+   "Text": "部品B (表面処理)",
+   "Confidence": 99.16294860839844,
+   "Relationships": [
+    {
+     "Type": "CHILD",
+     "Ids": [
+      "a17d4549-dacd-4e57-88be-e3ec009670ae",
+      "894ad1b6-84b3-41ad-8e97-245d079f4bd2"
+     ]
+    }
+   ]
+  },
+  {
+   "BlockType": "LINE",
+   "Id": "b80ab2a1-108f-4296-9dc4-de31de017dad",
+   "Text": "80",
+   "Confidence": 99.80069732666016,
+   "Relationships": [
+    {
+     "Type": "CHILD",
+     "Ids": [
+      "1a0e759f-7b59-4bfc-b7ee-5b8b79101a74"
+     ]
+    }
+   ]
+  },
+  {
+   "BlockType": "LINE",
+   "Id": "8979c93c-c52c-490c-9b0b-7528f0bf9949",
+   "Text": "¥2,250",
+   "Confidence": 99.64126586914062,
+   "Relationships": [
+    {
+     "Type": "CHILD",
+     "Ids": [
+      "ddd0faba-a350-451a-bf4b-a108d8002740"
+     ]
+    }
+   ]
+  },
+  {
+   "BlockType": "LINE",
+   "Id": "5f042e74-5430-4ddd-9156-aaeb0ea47f9a",
+   "Text": "¥180,000",
+   "Confidence": 99.92028045654297,
+   "Relationships": [
+    {
+     "Type": "CHILD",
+     "Ids": [
+      "e07edb5f-b405-49d2-bf15-5751c41e0a15"
+     ]
+    }
+   ]
+  },
+  {
+   "BlockType": "LINE",
+   "Id": "ec314ebc-a9b7-4c2e-a149-ff967e1d829a",
+   "Text": "検査費用",
+   "Confidence": 99.48181915283203,
+   "Relationships": [
+    {
+     "Type": "CHILD",
+     "Ids": [
+      "2b73f505-9115-40c3-b42e-16fdd3daca50"
+     ]
+    }
+   ]
+  },
+  {
+   "BlockType": "LINE",
+   "Id": "c488b570-6bb3-4c5c-87f9-399a99852a3e",
+   "Text": "1",
+   "Confidence": 99.77220153808594,
+   "Relationships": [
+    {
+     "Type": "CHILD",
+     "Ids": [
+      "6004ef59-fcfb-46fb-8ee6-37027d9a8b16"
+     ]
+    }
+   ]
+  },
+  {
+   "BlockType": "LINE",
+   "Id": "d4443083-49d3-407b-8ab3-16322995d655",
+   "Text": "¥45,000",
+   "Confidence": 99.84056091308594,
+   "Relationships": [
+    {
+     "Type": "CHILD",
+     "Ids": [
+      "b0d3ad60-e6ac-41c8-8597-5306acbc9a84"
+     ]
+    }
+   ]
+  },
+  {
+   "BlockType": "LINE",
+   "Id": "0d5fc5dc-7237-4751-b20b-a12021b4e602",
+   "Text": "¥45,000",
+   "Confidence": 99.84056091308594,
+   "Relationships": [
+    {
+     "Type": "CHILD",
+     "Ids": [
+      "3c0a84a3-8887-490f-adc2-87317ee32518"
+     ]
+    }
+   ]
+  },
+  {
+   "BlockType": "LINE",
+   "Id": "d3042d7a-355b-447e-bc8f-f5edfb859c1c",
+   "Text": "運送費",
+   "Confidence": 99.80069732666016,
+   "Relationships": [
+    {
+     "Type": "CHILD",
+     "Ids": [
+      "842c3f51-e62f-4e31-be12-7164c87599a9"
+     ]
+    }
+   ]
+  },
+  {
+   "BlockType": "LINE",
+   "Id": "a735418e-dce3-4610-92c2-0985671a2f8d",
+   "Text": "3",
+   "Confidence": 99.0832290649414,
+   "Relationships": [
+    {
+     "Type": "CHILD",
+     "Ids": [
+      "30a09dc1-4c3e-4810-902e-10e22f7ca374"
+     ]
+    }
+   ]
+  },
+  {
+   "BlockType": "LINE",
+   "Id": "d55d9d9f-babf-40da-99d0-7bbb836eadb2",
+   "Text": "¥12,000",
+   "Confidence": 99.7608413696289,
+   "Relationships": [
+    {
+     "Type": "CHILD",
+     "Ids": [
+      "356d8951-adce-4a7b-8419-ca68037be793"
+     ]
+    }
+   ]
+  },
+  {
+   "BlockType": "LINE",
+   "Id": "544a0e12-146d-41b7-9ccb-594254a249f0",
+   "Text": "¥36,000",
+   "Confidence": 99.80069732666016,
+   "Relationships": [
+    {
+     "Type": "CHILD",
+     "Ids": [
+      "aae6a161-d5e7-4cb1-b02a-5dca26776f5a"
+     ]
+    }
+   ]
+  },
+  {
+   "BlockType": "LINE",
+   "Id": "a09f9d62-a40a-413d-ba8c-2261717c2c21",
+   "Text": "小計 ¥441,000",
+   "Confidence": 99.88042449951172,
+   "Relationships": [
+    {
+     "Type": "CHILD",
+     "Ids": [
+      "654c17a4-d731-482f-b78b-f336fb6da815",
+      "e02d70d1-8b3f-4027-ae8e-6f0784fcbb09"
+     ]
+    }
+   ]
+  },
+  {
+   "BlockType": "LINE",
+   "Id": "3513fd0d-858a-4ead-9fe1-57199a70ffd2",
+   "Text": "消費税 (10%) ¥44,100",
+   "Confidence": 99.3126220703125,
+   "Relationships": [
+    {
+     "Type": "CHILD",
+     "Ids": [
+      "23244131-58e4-44e6-9c80-2628074d4e26",
+      "b8e8ab73-cf81-4fa8-a013-141901299ad5",
+      "c1fd99e9-b62a-4021-89cb-95c363f400bf"
+     ]
+    }
+   ]
+  },
+  {
+   "BlockType": "LINE",
+   "Id": "3ea477fd-94a8-41c9-9936-31536ab80457",
+   "Text": "合計金額 (税込) ¥485,100",
+   "Confidence": 98.82546997070312,
+   "Relationships": [
+    {
+     "Type": "CHILD",
+     "Ids": [
+      "bad3cf6f-ed92-465f-9adb-e9a337727f34",
+      "00196d30-7d26-43a6-bba8-3d6ccd9f99c3",
+      "8d8d5e49-cdc7-4f21-b468-f576eab17fd8"
+     ]
+    }
+   ]
+  },
+  {
+   "BlockType": "LINE",
+   "Id": "f87a2f76-d124-4b82-9bc0-67fb6336d747",
+   "Text": "振込先: サンプル銀行 本店 普通 1234567",
+   "Confidence": 98.98756408691406,
+   "Relationships": [
+    {
+     "Type": "CHILD",
+     "Ids": [
+      "f30f0168-b082-49b7-a068-b43371abe8e1",
+      "565158e8-2015-439a-a3f9-b096d2878d57",
+      "4bf61f8e-7edb-4588-bdd1-9f79e6761502",
+      "006103b6-3413-4296-b229-59433a7680df",
+      "986ac044-3640-4c69-a5c1-6f51f23ca9b0"
+     ]
+    }
+   ]
+  },
+  {
+   "BlockType": "LINE",
+   "Id": "c0c58e04-7266-4010-abc5-2745fbafd2a9",
+   "Text": "検査: AI 外観検査装置による全数検査済み",
+   "Confidence": 97.94058227539062,
+   "Relationships": [
+    {
+     "Type": "CHILD",
+     "Ids": [
+      "03cd5558-76d3-4f8e-9064-ab1eca6de7c2",
+      "fd097180-50a4-4eb0-90af-a04014f84cd5",
+      "55efe6f0-90c0-43cd-a195-2a29ac2bd56c"
+     ]
+    }
+   ]
+  },
+  {
+   "BlockType": "LINE",
+   "Id": "d86daa7a-7478-4815-a575-c67d6e349e91",
+   "Text": "備考: 部品A",
+   "Confidence": 96.55213165283203,
+   "Relationships": [
+    {
+     "Type": "CHILD",
+     "Ids": [
+      "735a1657-d1d9-4035-af1f-62da7d4d7eb5",
+      "57eed8d8-70ec-4cc0-b256-c86e12474175"
+     ]
+    }
+   ]
+  },
+  {
+   "BlockType": "LINE",
+   "Id": "1bef49e5-5d92-42bd-b3a5-c12b5e5c33c5",
+   "Text": "組立ラインへ直送します。",
+   "Confidence": 98.12659454345703,
+   "Relationships": [
+    {
+     "Type": "CHILD",
+     "Ids": [
+      "026368fd-0e7f-4b22-b7cf-2641d15499ff"
+     ]
+    }
+   ]
+  },
+  {
+   "BlockType": "LINE",
+   "Id": "bcb69350-85ab-4aa5-b99e-f0656e191414",
+   "Text": "ご不明な点は担当者へご連絡ください。",
+   "Confidence": 98.12659454345703,
+   "Relationships": [
+    {
+     "Type": "CHILD",
+     "Ids": [
+      "6a4d424d-da9a-4431-8f55-5a813fa1dd5e"
+     ]
+    }
+   ]
+  },
+  {
+   "BlockType": "WORD",
+   "Id": "2772473d-6b88-4e4e-b3b2-7033cdb8ca79",
+   "Text": "請求書",
+   "Confidence": 99.96014404296875,
+   "TextType": "PRINTED"
+  },
+  {
+   "BlockType": "WORD",
+   "Id": "04a106c6-6386-42b1-90a3-51def902fb0c",
+   "Text": "請求書番号:",
+   "Confidence": 92.66581726074219,
+   "TextType": "PRINTED"
+  },
+  {
+   "BlockType": "WORD",
+   "Id": "2d5c0a51-7203-4fa1-945a-904c8da8215f",
+   "Text": "INV-2026-0001",
+   "Confidence": 99.80069732666016,
+   "TextType": "PRINTED"
+  },
+  {
+   "BlockType": "WORD",
+   "Id": "2601a336-bad5-477e-a0ca-ad8705f8f1e2",
+   "Text": "発行日:",
+   "Confidence": 95.13711547851562,
+   "TextType": "PRINTED"
+  },
+  {
+   "BlockType": "WORD",
+   "Id": "b94ea3ac-b038-46b8-8ef5-49c98ed28018",
+   "Text": "2026年10月15日",
+   "Confidence": 99.7608413696289,
+   "TextType": "PRINTED"
+  },
+  {
+   "BlockType": "WORD",
+   "Id": "5025ac48-3d28-4b85-9a49-59fe5bfb9100",
+   "Text": "サンプル商事株式会社",
+   "Confidence": 99.84056091308594,
+   "TextType": "PRINTED"
+  },
+  {
+   "BlockType": "WORD",
+   "Id": "20b87bc4-159a-4214-872b-4f7b8e50da5b",
+   "Text": "御中",
+   "Confidence": 100.0,
+   "TextType": "PRINTED"
+  },
+  {
+   "BlockType": "WORD",
+   "Id": "0bab68d8-28d3-4741-82bf-191e45328d3f",
+   "Text": "下記のとおりご請求申し上げます。",
+   "Confidence": 99.04336547851562,
+   "TextType": "PRINTED"
+  },
+  {
+   "BlockType": "WORD",
+   "Id": "8b01ed03-7d40-4a7a-a66b-474c0aff5186",
+   "Text": "テスト工業株式会社",
+   "Confidence": 92.58609771728516,
+   "TextType": "PRINTED"
+  },
+  {
+   "BlockType": "WORD",
+   "Id": "66602e68-cb8f-4321-b606-c125c375228d",
+   "Text": "登録番号:",
+   "Confidence": 95.0573959350586,
+   "TextType": "PRINTED"
+  },
+  {
+   "BlockType": "WORD",
+   "Id": "6ce762d4-e35a-4fd1-a85c-8ae1d1051332",
+   "Text": "T1234567890123",
+   "Confidence": 99.88042449951172,
+   "TextType": "PRINTED"
+  },
+  {
+   "BlockType": "WORD",
+   "Id": "98a70659-00e1-4e55-9c2e-47327c962da0",
+   "Text": "東京都サンプル区サンプル町1-2-3",
+   "Confidence": 94.22034454345703,
+   "TextType": "PRINTED"
+  },
+  {
+   "BlockType": "WORD",
+   "Id": "920994e6-ad4b-4366-953a-548820cefbaa",
+   "Text": "件名:",
+   "Confidence": 92.82525634765625,
+   "TextType": "PRINTED"
+  },
+  {
+   "BlockType": "WORD",
+   "Id": "cbf347e8-0e7d-4b29-8bfb-17192128c28d",
+   "Text": "10月分",
+   "Confidence": 99.88042449951172,
+   "TextType": "PRINTED"
+  },
+  {
+   "BlockType": "WORD",
+   "Id": "11b2eba1-b791-4fcc-a3c5-5fdca4240cda",
+   "Text": "製造委託費",
+   "Confidence": 99.88042449951172,
+   "TextType": "PRINTED"
+  },
+  {
+   "BlockType": "WORD",
+   "Id": "8743a301-7354-434d-b5ec-35ab5a9280a7",
+   "Text": "支払期限:",
+   "Confidence": 93.58258819580078,
+   "TextType": "PRINTED"
+  },
+  {
+   "BlockType": "WORD",
+   "Id": "ae5a40be-46bd-431e-9972-0f760152c622",
+   "Text": "2026年11月30日",
+   "Confidence": 99.92028045654297,
+   "TextType": "PRINTED"
+  },
+  {
+   "BlockType": "WORD",
+   "Id": "2a7889c1-3d18-4619-acea-f99c962bc669",
+   "Text": "納期:",
+   "Confidence": 94.45950317382812,
+   "TextType": "PRINTED"
+  },
+  {
+   "BlockType": "WORD",
+   "Id": "8d251647-dafe-43e6-adb8-6800aa4fe5e5",
+   "Text": "2026年10月1日~10月10日",
+   "Confidence": 64.84375,
+   "TextType": "PRINTED"
+  },
+  {
+   "BlockType": "WORD",
+   "Id": "6ac13be9-1dd4-4400-8944-0d78ee9db247",
+   "Text": "品名",
+   "Confidence": 100.0,
+   "TextType": "PRINTED"
+  },
+  {
+   "BlockType": "WORD",
+   "Id": "f9c3f819-60ef-49ed-a976-4b6e82fe9fe6",
+   "Text": "数量",
+   "Confidence": 99.92028045654297,
+   "TextType": "PRINTED"
+  },
+  {
+   "BlockType": "WORD",
+   "Id": "2edf9bdb-d44f-468d-8dab-b4171828156c",
+   "Text": "単価",
+   "Confidence": 99.3223876953125,
+   "TextType": "PRINTED"
+  },
+  {
+   "BlockType": "WORD",
+   "Id": "e1159bb0-e5c0-416c-83da-bd25dfc6060c",
+   "Text": "金額",
+   "Confidence": 99.92028045654297,
+   "TextType": "PRINTED"
+  },
+  {
+   "BlockType": "WORD",
+   "Id": "2e1ad15a-8346-4872-9755-9a1e21804e50",
+   "Text": "部品A",
+   "Confidence": 99.7608413696289,
+   "TextType": "PRINTED"
+  },
+  {
+   "BlockType": "WORD",
+   "Id": "32c84c85-a15e-4d77-927a-838e276854f1",
+   "Text": "(精密加工)",
+   "Confidence": 99.40210723876953,
+   "TextType": "PRINTED"
+  },
+  {
+   "BlockType": "WORD",
+   "Id": "868896ea-91d7-40b1-9206-ad07949efe47",
+   "Text": "120",
+   "Confidence": 99.48181915283203,
+   "TextType": "PRINTED"
+  },
+  {
+   "BlockType": "WORD",
+   "Id": "0e9cc1c4-1c53-43bf-ab09-d6ebb8f52cde",
+   "Text": "¥1,500",
+   "Confidence": 99.60140228271484,
+   "TextType": "PRINTED"
+  },
+  {
+   "BlockType": "WORD",
+   "Id": "a6273595-f0b1-471a-9db4-38ff5dd151e3",
+   "Text": "¥180,000",
+   "Confidence": 99.88042449951172,
+   "TextType": "PRINTED"
+  },
+  {
+   "BlockType": "WORD",
+   "Id": "a17d4549-dacd-4e57-88be-e3ec009670ae",
+   "Text": "部品B",
+   "Confidence": 99.80069732666016,
+   "TextType": "PRINTED"
+  },
+  {
+   "BlockType": "WORD",
+   "Id": "894ad1b6-84b3-41ad-8e97-245d079f4bd2",
+   "Text": "(表面処理)",
+   "Confidence": 98.52519226074219,
+   "TextType": "PRINTED"
+  },
+  {
+   "BlockType": "WORD",
+   "Id": "1a0e759f-7b59-4bfc-b7ee-5b8b79101a74",
+   "Text": "80",
+   "Confidence": 99.80069732666016,
+   "TextType": "PRINTED"
+  },
+  {
+   "BlockType": "WORD",
+   "Id": "ddd0faba-a350-451a-bf4b-a108d8002740",
+   "Text": "¥2,250",
+   "Confidence": 99.64126586914062,
+   "TextType": "PRINTED"
+  },
+  {
+   "BlockType": "WORD",
+   "Id": "e07edb5f-b405-49d2-bf15-5751c41e0a15",
+   "Text": "¥180,000",
+   "Confidence": 99.92028045654297,
+   "TextType": "PRINTED"
+  },
+  {
+   "BlockType": "WORD",
+   "Id": "2b73f505-9115-40c3-b42e-16fdd3daca50",
+   "Text": "検査費用",
+   "Confidence": 99.48181915283203,
+   "TextType": "PRINTED"
+  },
+  {
+   "BlockType": "WORD",
+   "Id": "6004ef59-fcfb-46fb-8ee6-37027d9a8b16",
+   "Text": "1",
+   "Confidence": 99.77220153808594,
+   "TextType": "PRINTED"
+  },
+  {
+   "BlockType": "WORD",
+   "Id": "b0d3ad60-e6ac-41c8-8597-5306acbc9a84",
+   "Text": "¥45,000",
+   "Confidence": 99.84056091308594,
+   "TextType": "PRINTED"
+  },
+  {
+   "BlockType": "WORD",
+   "Id": "3c0a84a3-8887-490f-adc2-87317ee32518",
+   "Text": "¥45,000",
+   "Confidence": 99.84056091308594,
+   "TextType": "PRINTED"
+  },
+  {
+   "BlockType": "WORD",
+   "Id": "842c3f51-e62f-4e31-be12-7164c87599a9",
+   "Text": "運送費",
+   "Confidence": 99.80069732666016,
+   "TextType": "PRINTED"
+  },
+  {
+   "BlockType": "WORD",
+   "Id": "30a09dc1-4c3e-4810-902e-10e22f7ca374",
+   "Text": "3",
+   "Confidence": 99.0832290649414,
+   "TextType": "PRINTED"
+  },
+  {
+   "BlockType": "WORD",
+   "Id": "356d8951-adce-4a7b-8419-ca68037be793",
+   "Text": "¥12,000",
+   "Confidence": 99.7608413696289,
+   "TextType": "PRINTED"
+  },
+  {
+   "BlockType": "WORD",
+   "Id": "aae6a161-d5e7-4cb1-b02a-5dca26776f5a",
+   "Text": "¥36,000",
+   "Confidence": 99.80069732666016,
+   "TextType": "PRINTED"
+  },
+  {
+   "BlockType": "WORD",
+   "Id": "654c17a4-d731-482f-b78b-f336fb6da815",
+   "Text": "小計",
+   "Confidence": 99.88042449951172,
+   "TextType": "PRINTED"
+  },
+  {
+   "BlockType": "WORD",
+   "Id": "e02d70d1-8b3f-4027-ae8e-6f0784fcbb09",
+   "Text": "¥441,000",
+   "Confidence": 99.88042449951172,
+   "TextType": "PRINTED"
+  },
+  {
+   "BlockType": "WORD",
+   "Id": "23244131-58e4-44e6-9c80-2628074d4e26",
+   "Text": "消費税",
+   "Confidence": 99.92028045654297,
+   "TextType": "PRINTED"
+  },
+  {
+   "BlockType": "WORD",
+   "Id": "b8e8ab73-cf81-4fa8-a013-141901299ad5",
+   "Text": "(10%)",
+   "Confidence": 98.84407043457031,
+   "TextType": "PRINTED"
+  },
+  {
+   "BlockType": "WORD",
+   "Id": "c1fd99e9-b62a-4021-89cb-95c363f400bf",
+   "Text": "¥44,100",
+   "Confidence": 99.17350769042969,
+   "TextType": "PRINTED"
+  },
+  {
+   "BlockType": "WORD",
+   "Id": "bad3cf6f-ed92-465f-9adb-e9a337727f34",
+   "Text": "合計金額",
+   "Confidence": 99.92028045654297,
+   "TextType": "PRINTED"
+  },
+  {
+   "BlockType": "WORD",
+   "Id": "00196d30-7d26-43a6-bba8-3d6ccd9f99c3",
+   "Text": "(税込)",
+   "Confidence": 98.32588958740234,
+   "TextType": "PRINTED"
+  },
+  {
+   "BlockType": "WORD",
+   "Id": "8d8d5e49-cdc7-4f21-b468-f576eab17fd8",
+   "Text": "¥485,100",
+   "Confidence": 98.23023223876953,
+   "TextType": "PRINTED"
+  },
+  {
+   "BlockType": "WORD",
+   "Id": "f30f0168-b082-49b7-a068-b43371abe8e1",
+   "Text": "振込先:",
+   "Confidence": 95.21683502197266,
+   "TextType": "PRINTED"
+  },
+  {
+   "BlockType": "WORD",
+   "Id": "565158e8-2015-439a-a3f9-b096d2878d57",
+   "Text": "サンプル銀行",
+   "Confidence": 99.84056091308594,
+   "TextType": "PRINTED"
+  },
+  {
+   "BlockType": "WORD",
+   "Id": "4bf61f8e-7edb-4588-bdd1-9f79e6761502",
+   "Text": "本店",
+   "Confidence": 99.96014404296875,
+   "TextType": "PRINTED"
+  },
+  {
+   "BlockType": "WORD",
+   "Id": "006103b6-3413-4296-b229-59433a7680df",
+   "Text": "普通",
+   "Confidence": 99.96014404296875,
+   "TextType": "PRINTED"
+  },
+  {
+   "BlockType": "WORD",
+   "Id": "986ac044-3640-4c69-a5c1-6f51f23ca9b0",
+   "Text": "1234567",
+   "Confidence": 99.96014404296875,
+   "TextType": "PRINTED"
+  },
+  {
+   "BlockType": "WORD",
+   "Id": "03cd5558-76d3-4f8e-9064-ab1eca6de7c2",
+   "Text": "検査:",
+   "Confidence": 95.8545913696289,
+   "TextType": "PRINTED"
+  },
+  {
+   "BlockType": "WORD",
+   "Id": "fd097180-50a4-4eb0-90af-a04014f84cd5",
+   "Text": "AI",
+   "Confidence": 99.68112182617188,
+   "TextType": "PRINTED"
+  },
+  {
+   "BlockType": "WORD",
+   "Id": "55efe6f0-90c0-43cd-a195-2a29ac2bd56c",
+   "Text": "外観検査装置による全数検査済み",
+   "Confidence": 98.2860336303711,
+   "TextType": "PRINTED"
+  },
+  {
+   "BlockType": "WORD",
+   "Id": "735a1657-d1d9-4035-af1f-62da7d4d7eb5",
+   "Text": "備考:",
+   "Confidence": 93.26371002197266,
+   "TextType": "PRINTED"
+  },
+  {
+   "BlockType": "WORD",
+   "Id": "57eed8d8-70ec-4cc0-b256-c86e12474175",
+   "Text": "部品A",
+   "Confidence": 99.84056091308594,
+   "TextType": "PRINTED"
+  },
+  {
+   "BlockType": "WORD",
+   "Id": "026368fd-0e7f-4b22-b7cf-2641d15499ff",
+   "Text": "組立ラインへ直送します。",
+   "Confidence": 98.12659454345703,
+   "TextType": "PRINTED"
+  },
+  {
+   "BlockType": "WORD",
+   "Id": "6a4d424d-da9a-4431-8f55-5a813fa1dd5e",
+   "Text": "ご不明な点は担当者へご連絡ください。",
+   "Confidence": 98.12659454345703,
+   "TextType": "PRINTED"
+  },
+  {
+   "BlockType": "TABLE",
+   "Id": "9e7c10ed-008d-4ac5-80ae-9731575950f9",
+   "Confidence": 98.095703125,
+   "EntityTypes": [
+    "STRUCTURED_TABLE"
+   ],
+   "Relationships": [
+    {
+     "Type": "CHILD",
+     "Ids": [
+      "55811423-4909-4e5e-91ec-15ab37640178",
+      "8de2b29b-f1ef-4540-865c-cd90b0850713",
+      "e94ecccf-37e4-4d0c-8c19-89c2284b4592",
+      "9a1eb02d-f97c-4e32-a11d-097e7885a4ce",
+      "e31e96ea-7728-402e-a387-5e6eb584fa90",
+      "b0bc9ba5-87a1-45f0-a096-8a2381072a15",
+      "63f54dce-0597-40e3-9435-20a3e75ed11c",
+      "2a84595d-9db7-4c9f-9fe1-0b19f1e6612e",
+      "97b5357d-c400-4cd1-9760-38660ae020dd",
+      "e154ec9a-257c-4090-9e7c-dc6950a7d991",
+      "e9a295d4-eb6e-4772-b6ba-4ec1e17bea8d",
+      "69be8e40-38b3-4366-9082-665abd553e22",
+      "f6371d1f-683f-458d-89a9-eb924446b507",
+      "779d6c15-d124-4658-bd33-3c9ce36be4a5",
+      "1309ec9f-adbf-4940-bfaf-88eb50f5f554",
+      "54f83ba3-b2be-4cd0-8a29-5835de55fce6",
+      "465d3119-5229-475d-9980-cc0f1f504218",
+      "b8dfa6dc-136d-43c8-ac88-ca3f659039d3",
+      "672cd368-c9fd-4ca2-9652-dd47dbf00969",
+      "a54fb23a-fade-41ee-907b-a48129dc3659",
+      "cf258a8d-bc1d-4ed2-99ae-6b5213142c51",
+      "018232ef-19e7-4772-be0b-925ff4776b10",
+      "f914cc3f-0e04-4eb8-8031-693540e83037",
+      "27a9c8c7-d9e3-4377-9180-5bddfbd8725b"
+     ]
+    },
+    {
+     "Type": "MERGED_CELL",
+     "Ids": [
+      "19c9267f-8fd1-466f-bbba-9765594810fb"
+     ]
+    },
+    {
+     "Type": "TABLE_FOOTER",
+     "Ids": [
+      "affd3428-de46-474d-bad9-f4c13e9e1c21",
+      "950b7d26-dbfc-429f-835c-bcbe60436964",
+      "aafb2632-6766-4658-8616-8c5a903fdd9c",
+      "4b86298f-fe6a-4f04-abff-8fc8c815ced0"
+     ]
+    }
+   ]
+  },
+  {
+   "BlockType": "CELL",
+   "Id": "55811423-4909-4e5e-91ec-15ab37640178",
+   "Confidence": 94.23828125,
+   "RowIndex": 1,
+   "ColumnIndex": 1,
+   "RowSpan": 1,
+   "ColumnSpan": 1,
+   "EntityTypes": [
+    "COLUMN_HEADER"
+   ],
+   "Relationships": [
+    {
+     "Type": "CHILD",
+     "Ids": [
+      "6ac13be9-1dd4-4400-8944-0d78ee9db247"
+     ]
+    }
+   ]
+  },
+  {
+   "BlockType": "CELL",
+   "Id": "8de2b29b-f1ef-4540-865c-cd90b0850713",
+   "Confidence": 87.158203125,
+   "RowIndex": 1,
+   "ColumnIndex": 2,
+   "RowSpan": 1,
+   "ColumnSpan": 1,
+   "EntityTypes": [
+    "COLUMN_HEADER"
+   ],
+   "Relationships": [
+    {
+     "Type": "CHILD",
+     "Ids": [
+      "f9c3f819-60ef-49ed-a976-4b6e82fe9fe6"
+     ]
+    }
+   ]
+  },
+  {
+   "BlockType": "CELL",
+   "Id": "e94ecccf-37e4-4d0c-8c19-89c2284b4592",
+   "Confidence": 91.552734375,
+   "RowIndex": 1,
+   "ColumnIndex": 3,
+   "RowSpan": 1,
+   "ColumnSpan": 1,
+   "EntityTypes": [
+    "COLUMN_HEADER"
+   ],
+   "Relationships": [
+    {
+     "Type": "CHILD",
+     "Ids": [
+      "2edf9bdb-d44f-468d-8dab-b4171828156c"
+     ]
+    }
+   ]
+  },
+  {
+   "BlockType": "CELL",
+   "Id": "9a1eb02d-f97c-4e32-a11d-097e7885a4ce",
+   "Confidence": 92.626953125,
+   "RowIndex": 1,
+   "ColumnIndex": 4,
+   "RowSpan": 1,
+   "ColumnSpan": 1,
+   "EntityTypes": [
+    "COLUMN_HEADER"
+   ],
+   "Relationships": [
+    {
+     "Type": "CHILD",
+     "Ids": [
+      "e1159bb0-e5c0-416c-83da-bd25dfc6060c"
+     ]
+    }
+   ]
+  },
+  {
+   "BlockType": "CELL",
+   "Id": "e31e96ea-7728-402e-a387-5e6eb584fa90",
+   "Confidence": 94.189453125,
+   "RowIndex": 2,
+   "ColumnIndex": 1,
+   "RowSpan": 1,
+   "ColumnSpan": 1,
+   "Relationships": [
+    {
+     "Type": "CHILD",
+     "Ids": [
+      "2e1ad15a-8346-4872-9755-9a1e21804e50",
+      "32c84c85-a15e-4d77-927a-838e276854f1"
+     ]
+    }
+   ]
+  },
+  {
+   "BlockType": "CELL",
+   "Id": "b0bc9ba5-87a1-45f0-a096-8a2381072a15",
+   "Confidence": 87.109375,
+   "RowIndex": 2,
+   "ColumnIndex": 2,
+   "RowSpan": 1,
+   "ColumnSpan": 1,
+   "Relationships": [
+    {
+     "Type": "CHILD",
+     "Ids": [
+      "868896ea-91d7-40b1-9206-ad07949efe47"
+     ]
+    }
+   ]
+  },
+  {
+   "BlockType": "CELL",
+   "Id": "63f54dce-0597-40e3-9435-20a3e75ed11c",
+   "Confidence": 91.50390625,
+   "RowIndex": 2,
+   "ColumnIndex": 3,
+   "RowSpan": 1,
+   "ColumnSpan": 1,
+   "Relationships": [
+    {
+     "Type": "CHILD",
+     "Ids": [
+      "0e9cc1c4-1c53-43bf-ab09-d6ebb8f52cde"
+     ]
+    }
+   ]
+  },
+  {
+   "BlockType": "CELL",
+   "Id": "2a84595d-9db7-4c9f-9fe1-0b19f1e6612e",
+   "Confidence": 92.578125,
+   "RowIndex": 2,
+   "ColumnIndex": 4,
+   "RowSpan": 1,
+   "ColumnSpan": 1,
+   "Relationships": [
+    {
+     "Type": "CHILD",
+     "Ids": [
+      "a6273595-f0b1-471a-9db4-38ff5dd151e3"
+     ]
+    }
+   ]
+  },
+  {
+   "BlockType": "CELL",
+   "Id": "97b5357d-c400-4cd1-9760-38660ae020dd",
+   "Confidence": 93.115234375,
+   "RowIndex": 3,
+   "ColumnIndex": 1,
+   "RowSpan": 1,
+   "ColumnSpan": 1,
+   "Relationships": [
+    {
+     "Type": "CHILD",
+     "Ids": [
+      "a17d4549-dacd-4e57-88be-e3ec009670ae",
+      "894ad1b6-84b3-41ad-8e97-245d079f4bd2"
+     ]
+    }
+   ]
+  },
+  {
+   "BlockType": "CELL",
+   "Id": "e154ec9a-257c-4090-9e7c-dc6950a7d991",
+   "Confidence": 86.083984375,
+   "RowIndex": 3,
+   "ColumnIndex": 2,
+   "RowSpan": 1,
+   "ColumnSpan": 1,
+   "Relationships": [
+    {
+     "Type": "CHILD",
+     "Ids": [
+      "1a0e759f-7b59-4bfc-b7ee-5b8b79101a74"
+     ]
+    }
+   ]
+  },
+  {
+   "BlockType": "CELL",
+   "Id": "e9a295d4-eb6e-4772-b6ba-4ec1e17bea8d",
+   "Confidence": 90.4296875,
+   "RowIndex": 3,
+   "ColumnIndex": 3,
+   "RowSpan": 1,
+   "ColumnSpan": 1,
+   "Relationships": [
+    {
+     "Type": "CHILD",
+     "Ids": [
+      "ddd0faba-a350-451a-bf4b-a108d8002740"
+     ]
+    }
+   ]
+  },
+  {
+   "BlockType": "CELL",
+   "Id": "69be8e40-38b3-4366-9082-665abd553e22",
+   "Confidence": 91.50390625,
+   "RowIndex": 3,
+   "ColumnIndex": 4,
+   "RowSpan": 1,
+   "ColumnSpan": 1,
+   "Relationships": [
+    {
+     "Type": "CHILD",
+     "Ids": [
+      "e07edb5f-b405-49d2-bf15-5751c41e0a15"
+     ]
+    }
+   ]
+  },
+  {
+   "BlockType": "CELL",
+   "Id": "f6371d1f-683f-458d-89a9-eb924446b507",
+   "Confidence": 93.994140625,
+   "RowIndex": 4,
+   "ColumnIndex": 1,
+   "RowSpan": 1,
+   "ColumnSpan": 1,
+   "Relationships": [
+    {
+     "Type": "CHILD",
+     "Ids": [
+      "2b73f505-9115-40c3-b42e-16fdd3daca50"
+     ]
+    }
+   ]
+  },
+  {
+   "BlockType": "CELL",
+   "Id": "779d6c15-d124-4658-bd33-3c9ce36be4a5",
+   "Confidence": 86.865234375,
+   "RowIndex": 4,
+   "ColumnIndex": 2,
+   "RowSpan": 1,
+   "ColumnSpan": 1,
+   "Relationships": [
+    {
+     "Type": "CHILD",
+     "Ids": [
+      "6004ef59-fcfb-46fb-8ee6-37027d9a8b16"
+     ]
+    }
+   ]
+  },
+  {
+   "BlockType": "CELL",
+   "Id": "1309ec9f-adbf-4940-bfaf-88eb50f5f554",
+   "Confidence": 91.259765625,
+   "RowIndex": 4,
+   "ColumnIndex": 3,
+   "RowSpan": 1,
+   "ColumnSpan": 1,
+   "Relationships": [
+    {
+     "Type": "CHILD",
+     "Ids": [
+      "b0d3ad60-e6ac-41c8-8597-5306acbc9a84"
+     ]
+    }
+   ]
+  },
+  {
+   "BlockType": "CELL",
+   "Id": "54f83ba3-b2be-4cd0-8a29-5835de55fce6",
+   "Confidence": 92.333984375,
+   "RowIndex": 4,
+   "ColumnIndex": 4,
+   "RowSpan": 1,
+   "ColumnSpan": 1,
+   "Relationships": [
+    {
+     "Type": "CHILD",
+     "Ids": [
+      "3c0a84a3-8887-490f-adc2-87317ee32518"
+     ]
+    }
+   ]
+  },
+  {
+   "BlockType": "CELL",
+   "Id": "465d3119-5229-475d-9980-cc0f1f504218",
+   "Confidence": 93.26171875,
+   "RowIndex": 5,
+   "ColumnIndex": 1,
+   "RowSpan": 1,
+   "ColumnSpan": 1,
+   "Relationships": [
+    {
+     "Type": "CHILD",
+     "Ids": [
+      "842c3f51-e62f-4e31-be12-7164c87599a9"
+     ]
+    }
+   ]
+  },
+  {
+   "BlockType": "CELL",
+   "Id": "b8dfa6dc-136d-43c8-ac88-ca3f659039d3",
+   "Confidence": 86.23046875,
+   "RowIndex": 5,
+   "ColumnIndex": 2,
+   "RowSpan": 1,
+   "ColumnSpan": 1,
+   "Relationships": [
+    {
+     "Type": "CHILD",
+     "Ids": [
+      "30a09dc1-4c3e-4810-902e-10e22f7ca374"
+     ]
+    }
+   ]
+  },
+  {
+   "BlockType": "CELL",
+   "Id": "672cd368-c9fd-4ca2-9652-dd47dbf00969",
+   "Confidence": 90.576171875,
+   "RowIndex": 5,
+   "ColumnIndex": 3,
+   "RowSpan": 1,
+   "ColumnSpan": 1,
+   "Relationships": [
+    {
+     "Type": "CHILD",
+     "Ids": [
+      "356d8951-adce-4a7b-8419-ca68037be793"
+     ]
+    }
+   ]
+  },
+  {
+   "BlockType": "CELL",
+   "Id": "a54fb23a-fade-41ee-907b-a48129dc3659",
+   "Confidence": 91.650390625,
+   "RowIndex": 5,
+   "ColumnIndex": 4,
+   "RowSpan": 1,
+   "ColumnSpan": 1,
+   "Relationships": [
+    {
+     "Type": "CHILD",
+     "Ids": [
+      "aae6a161-d5e7-4cb1-b02a-5dca26776f5a"
+     ]
+    }
+   ]
+  },
+  {
+   "BlockType": "CELL",
+   "Id": "cf258a8d-bc1d-4ed2-99ae-6b5213142c51",
+   "Confidence": 45.41015625,
+   "RowIndex": 6,
+   "ColumnIndex": 1,
+   "RowSpan": 1,
+   "ColumnSpan": 1
+  },
+  {
+   "BlockType": "CELL",
+   "Id": "018232ef-19e7-4772-be0b-925ff4776b10",
+   "Confidence": 45.41015625,
+   "RowIndex": 6,
+   "ColumnIndex": 2,
+   "RowSpan": 1,
+   "ColumnSpan": 1
+  },
+  {
+   "BlockType": "CELL",
+   "Id": "f914cc3f-0e04-4eb8-8031-693540e83037",
+   "Confidence": 45.41015625,
+   "RowIndex": 6,
+   "ColumnIndex": 3,
+   "RowSpan": 1,
+   "ColumnSpan": 1,
+   "Relationships": [
+    {
+     "Type": "CHILD",
+     "Ids": [
+      "bad3cf6f-ed92-465f-9adb-e9a337727f34"
+     ]
+    }
+   ]
+  },
+  {
+   "BlockType": "CELL",
+   "Id": "27a9c8c7-d9e3-4377-9180-5bddfbd8725b",
+   "Confidence": 45.41015625,
+   "RowIndex": 6,
+   "ColumnIndex": 4,
+   "RowSpan": 1,
+   "ColumnSpan": 1,
+   "Relationships": [
+    {
+     "Type": "CHILD",
+     "Ids": [
+      "654c17a4-d731-482f-b78b-f336fb6da815",
+      "e02d70d1-8b3f-4027-ae8e-6f0784fcbb09",
+      "23244131-58e4-44e6-9c80-2628074d4e26",
+      "b8e8ab73-cf81-4fa8-a013-141901299ad5",
+      "c1fd99e9-b62a-4021-89cb-95c363f400bf",
+      "00196d30-7d26-43a6-bba8-3d6ccd9f99c3",
+      "8d8d5e49-cdc7-4f21-b468-f576eab17fd8"
+     ]
+    }
+   ]
+  },
+  {
+   "BlockType": "MERGED_CELL",
+   "Id": "19c9267f-8fd1-466f-bbba-9765594810fb",
+   "Confidence": 45.41015625,
+   "RowIndex": 6,
+   "ColumnIndex": 1,
+   "RowSpan": 1,
+   "ColumnSpan": 4,
+   "Relationships": [
+    {
+     "Type": "CHILD",
+     "Ids": [
+      "cf258a8d-bc1d-4ed2-99ae-6b5213142c51",
+      "018232ef-19e7-4772-be0b-925ff4776b10",
+      "f914cc3f-0e04-4eb8-8031-693540e83037",
+      "27a9c8c7-d9e3-4377-9180-5bddfbd8725b"
+     ]
+    }
+   ]
+  },
+  {
+   "BlockType": "TABLE_FOOTER",
+   "Id": "affd3428-de46-474d-bad9-f4c13e9e1c21",
+   "Confidence": 53.3203125,
+   "Relationships": [
+    {
+     "Type": "CHILD",
+     "Ids": [
+      "f30f0168-b082-49b7-a068-b43371abe8e1",
+      "565158e8-2015-439a-a3f9-b096d2878d57",
+      "4bf61f8e-7edb-4588-bdd1-9f79e6761502",
+      "006103b6-3413-4296-b229-59433a7680df",
+      "986ac044-3640-4c69-a5c1-6f51f23ca9b0"
+     ]
+    }
+   ]
+  },
+  {
+   "BlockType": "TABLE_FOOTER",
+   "Id": "950b7d26-dbfc-429f-835c-bcbe60436964",
+   "Confidence": 83.349609375,
+   "Relationships": [
+    {
+     "Type": "CHILD",
+     "Ids": [
+      "03cd5558-76d3-4f8e-9064-ab1eca6de7c2",
+      "fd097180-50a4-4eb0-90af-a04014f84cd5",
+      "55efe6f0-90c0-43cd-a195-2a29ac2bd56c"
+     ]
+    }
+   ]
+  },
+  {
+   "BlockType": "TABLE_FOOTER",
+   "Id": "aafb2632-6766-4658-8616-8c5a903fdd9c",
+   "Confidence": 91.9921875,
+   "Relationships": [
+    {
+     "Type": "CHILD",
+     "Ids": [
+      "735a1657-d1d9-4035-af1f-62da7d4d7eb5",
+      "57eed8d8-70ec-4cc0-b256-c86e12474175",
+      "026368fd-0e7f-4b22-b7cf-2641d15499ff"
+     ]
+    }
+   ]
+  },
+  {
+   "BlockType": "TABLE_FOOTER",
+   "Id": "4b86298f-fe6a-4f04-abff-8fc8c815ced0",
+   "Confidence": 85.009765625,
+   "Relationships": [
+    {
+     "Type": "CHILD",
+     "Ids": [
+      "6a4d424d-da9a-4431-8f55-5a813fa1dd5e"
+     ]
+    }
+   ]
+  },
+  {
+   "BlockType": "LAYOUT_TITLE",
+   "Id": "5f3d62611f3c422c9279a84f275de9f9",
+   "Confidence": 94.5251693725586,
+   "Relationships": [
+    {
+     "Type": "CHILD",
+     "Ids": [
+      "cd5c0160-4aec-4eeb-935a-3f6f0524536f"
+     ]
+    }
+   ]
+  },
+  {
+   "BlockType": "LAYOUT_TEXT",
+   "Id": "4ad80fab2fe842aba43595ee7ca001a9",
+   "Confidence": 94.1019058227539,
+   "Relationships": [
+    {
+     "Type": "CHILD",
+     "Ids": [
+      "e8d2f87c-3703-4976-8a9f-4d6c07a67737",
+      "8093f104-a5f6-48af-a87c-25a74df5c6b4"
+     ]
+    }
+   ]
+  },
+  {
+   "BlockType": "LAYOUT_SECTION_HEADER",
+   "Id": "4dbecea2919c4d37bc0a8894bf4c3be8",
+   "Confidence": 79.72612762451172,
+   "Relationships": [
+    {
+     "Type": "CHILD",
+     "Ids": [
+      "0b830bd6-f0c8-4d46-afb8-86df1fe52b17"
+     ]
+    }
+   ]
+  },
+  {
+   "BlockType": "LAYOUT_TEXT",
+   "Id": "c7fd36c50d1f4288ac41ddd3e27b3ba3",
+   "Confidence": 79.91475677490234,
+   "Relationships": [
+    {
+     "Type": "CHILD",
+     "Ids": [
+      "794f4414-59f8-4b7d-9f05-c178118a6e07"
+     ]
+    }
+   ]
+  },
+  {
+   "BlockType": "LAYOUT_TEXT",
+   "Id": "fd9f32b3d28b4703935dd9b1d6a65520",
+   "Confidence": 95.89051818847656,
+   "Relationships": [
+    {
+     "Type": "CHILD",
+     "Ids": [
+      "398f3294-645b-4a0d-af0c-65c2dd8ac798",
+      "8e41f0d9-822a-45b5-bbf4-cb4e3824d83b",
+      "07b0a1ea-9432-4de4-8cf3-d1d4615ad6c7"
+     ]
+    }
+   ]
+  },
+  {
+   "BlockType": "LAYOUT_TEXT",
+   "Id": "e107b14f58b9484b865d32b85e9327d7",
+   "Confidence": 94.63114166259766,
+   "Relationships": [
+    {
+     "Type": "CHILD",
+     "Ids": [
+      "e751c81a-f926-4b0a-bce9-c8cf77844ffb",
+      "812b58a6-bd59-4bb6-9233-e3f1ac75194b",
+      "94bd7950-cc2f-4fd7-a92d-66a9b0a86bf7"
+     ]
+    }
+   ]
+  },
+  {
+   "BlockType": "LAYOUT_TABLE",
+   "Id": "9065e8e8a4f74f998125a1d5aeaedd17",
+   "Confidence": 95.45194244384766,
+   "Relationships": [
+    {
+     "Type": "CHILD",
+     "Ids": [
+      "c21fdc88-2f7b-42b2-911c-8c53415ff278",
+      "1718cd39-ec0b-4d13-a925-c62e7787dc0f",
+      "14166870-aea4-45f7-b217-02a085bdb8a7",
+      "45c47b3c-7c00-40d9-b36a-43aceab2528d",
+      "8dd3fe96-882e-4e08-bca1-797f95be30d5",
+      "bf69acdd-91e9-45bc-8419-d410019e56b5",
+      "c67ac8f9-5be2-4030-ac95-cf0d3df9ee7d",
+      "0b8c4a29-a49d-46db-8e7c-35140df58840",
+      "6597cc05-9a2f-42ab-a53a-906987788438",
+      "b80ab2a1-108f-4296-9dc4-de31de017dad",
+      "8979c93c-c52c-490c-9b0b-7528f0bf9949",
+      "5f042e74-5430-4ddd-9156-aaeb0ea47f9a",
+      "ec314ebc-a9b7-4c2e-a149-ff967e1d829a",
+      "c488b570-6bb3-4c5c-87f9-399a99852a3e",
+      "d4443083-49d3-407b-8ab3-16322995d655",
+      "0d5fc5dc-7237-4751-b20b-a12021b4e602",
+      "d3042d7a-355b-447e-bc8f-f5edfb859c1c",
+      "544a0e12-146d-41b7-9ccb-594254a249f0",
+      "a735418e-dce3-4610-92c2-0985671a2f8d",
+      "d55d9d9f-babf-40da-99d0-7bbb836eadb2"
+     ]
+    }
+   ]
+  },
+  {
+   "BlockType": "LAYOUT_TEXT",
+   "Id": "8b6d4e66fa224f8bbc8d1fceb6095a87",
+   "Confidence": 95.86085510253906,
+   "Relationships": [
+    {
+     "Type": "CHILD",
+     "Ids": [
+      "a09f9d62-a40a-413d-ba8c-2261717c2c21",
+      "3513fd0d-858a-4ead-9fe1-57199a70ffd2",
+      "3ea477fd-94a8-41c9-9936-31536ab80457"
+     ]
+    }
+   ]
+  },
+  {
+   "BlockType": "LAYOUT_TEXT",
+   "Id": "54a32e631f3a48bdbde21494f8a478ee",
+   "Confidence": 92.48526763916016,
+   "Relationships": [
+    {
+     "Type": "CHILD",
+     "Ids": [
+      "f87a2f76-d124-4b82-9bc0-67fb6336d747",
+      "c0c58e04-7266-4010-abc5-2745fbafd2a9",
+      "1bef49e5-5d92-42bd-b3a5-c12b5e5c33c5",
+      "d86daa7a-7478-4815-a575-c67d6e349e91",
+      "bcb69350-85ab-4aa5-b99e-f0656e191414"
+     ]
+    }
+   ]
+  }
+ ],
+ "AnalyzeDocumentModelVersion": "1.0"
+}

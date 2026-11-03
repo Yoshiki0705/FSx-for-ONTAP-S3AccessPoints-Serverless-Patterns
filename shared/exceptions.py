@@ -8,6 +8,14 @@
 - FsxHelperError: FSx API エラー (shared.fsx_helper から再エクスポート)
 - S3ApHelperError: S3 Access Point エラー
 - CrossRegionClientError: クロスリージョン API エラー
+- TextractError / TextractThrottled / TextractTransient / TextractRejected:
+  Textract 呼び出しの失敗。Step Functions の Retry は例外のクラス名で照合するため、
+  再試行する失敗（Throttled, Transient）としない失敗（Rejected）をクラスで分ける
+- BedrockThrottled: Bedrock のスロットリング・一時的な失敗。待てば成功しうるので
+  Step Functions で再試行する（クラス名で照合する）
+- InvalidInput / InvalidConfiguration: AI エージェントなど呼び出し側の入力、または
+  サーバー側の設定が不正。再試行しても直らないので、Step Functions は再試行せず
+  実行を FAILED で終える（エージェントが DescribeExecution で理由を読める）
 
 デコレータ:
 - lambda_error_handler: Lambda 関数の未処理例外をキャッチし、構造化レスポンスを返す
@@ -57,6 +65,42 @@ class CrossRegionClientError(Exception):
         self.target_region = target_region
         self.service_name = service_name
         self.original_error = original_error
+
+
+class TextractError(Exception):
+    """Textract 呼び出しの失敗の基底クラス
+
+    Attributes:
+        error_code: AWS のエラーコード (例: "ThrottlingException")。接続エラーなどでは None
+    """
+
+    def __init__(self, message: str, error_code: str | None = None):
+        super().__init__(message)
+        self.error_code = error_code
+
+
+class TextractThrottled(TextractError):
+    """スロットリング。待てば成功しうるので Step Functions で再試行する"""
+
+
+class TextractTransient(TextractError):
+    """サービス側の一時的な失敗やタイムアウト。再試行する"""
+
+
+class TextractRejected(TextractError):
+    """入力や権限の問題。再試行しても結果は変わらない"""
+
+
+class BedrockThrottled(Exception):
+    """Bedrock のスロットリングや一時的な失敗。待てば成功しうるので Step Functions で再試行する"""
+
+
+class InvalidInput(Exception):
+    """呼び出し側（AI エージェントなど）の入力が不正。再試行しても直らない"""
+
+
+class InvalidConfiguration(Exception):
+    """サーバー側の設定（許可リストなど）が不正。再試行しても直らない"""
 
 
 class StreamingError(Exception):
