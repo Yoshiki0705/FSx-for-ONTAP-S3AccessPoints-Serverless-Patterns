@@ -94,6 +94,7 @@
     "fsx:CreateFileSystem",
     "fsx:CreateStorageVirtualMachine",
     "fsx:CreateVolume",
+    "fsx:CreateVolumeFromBackup",
     "fsx:DeleteFileSystem",
     "fsx:DeleteStorageVirtualMachine",
     "fsx:DeleteVolume",
@@ -160,7 +161,9 @@
     "ram:ListResourceSharePermissions",
     "ram:TagResource",
     "ram:UntagResource",
-    "ram:UpdateResourceShare"
+    "ram:UpdateResourceShare",
+    "secretsmanager:DescribeSecret",
+    "secretsmanager:GetSecretValue"
   ],
   "cloudformation-provisioning-recipient": [
     "ec2:CreateNetworkInterface",
