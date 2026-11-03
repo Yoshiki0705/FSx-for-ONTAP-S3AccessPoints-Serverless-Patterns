@@ -16,7 +16,7 @@ hypothesis==6.170.14
 moto[all]==5.2.5
 ruff==0.17.3
 cfn-lint==1.59.0
-pyarrow==25.0.1
+pyarrow==26.0.0
 bandit==1.9.4
 pip-audit==2.10.1
 # Decodes images in the thumbnail tests. Must match
