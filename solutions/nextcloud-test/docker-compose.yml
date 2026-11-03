@@ -7,7 +7,7 @@
 
 services:
   nextcloud:
-    image: nextcloud:34
+    image: nextcloud:35
     container_name: nextcloud-s3ap-test
     ports:
       - "8080:80"
