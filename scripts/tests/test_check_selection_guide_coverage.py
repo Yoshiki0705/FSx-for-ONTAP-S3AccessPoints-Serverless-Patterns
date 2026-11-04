@@ -142,5 +142,5 @@ def test_the_real_pattern_count_is_what_the_families_add_up_to() -> None:
     """
     found = patterns()
     assert len([p for p in found if p.startswith("solutions/industry/")]) == 28
-    assert len([p for p in found if p.startswith("operations/")]) == 6
+    assert len([p for p in found if p.startswith("operations/")]) == 7
     assert "solutions/amplify-portal" in found

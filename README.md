@@ -8,7 +8,7 @@
 
 > FSx for ONTAP 上のエンタープライズ NAS データを、**データコピーなしに** S3 API 経由でサーバーレス処理する **45+ パターン**のリファレンス実装集です。
 >
-> 28 業界別 UC + 6 Operations (OPS) + 10 FlexCache/FlexClone/SnapMirror + 2 GenAI + SAP + HA 監視 + Event-Driven + Edge 配信 + ファイルポータル UI
+> 28 業界別 UC + 7 Operations (OPS) + 10 FlexCache/FlexClone/SnapMirror + 2 GenAI + SAP + HA 監視 + Event-Driven + Edge 配信 + ファイルポータル UI
 
 | | |
 |---|---|

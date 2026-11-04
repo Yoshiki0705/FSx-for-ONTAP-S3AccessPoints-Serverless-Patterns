@@ -15,7 +15,7 @@
 | 1 | **どのパターンか決める** | このページ |
 | 2 | 動かす | 各パターンの `README` と `docs/demo-guide.md` |
 | 3 | 本番に出す前に読む | 各 README 末尾の「本番に出す前に読むもの」（Playbook のモジュールへ） |
-| 4 | 運用する | [operations/](#運用最適化-ops16未使用容量とコストを下げる) の OPS1-6 |
+| 4 | 運用する | [operations/](#運用最適化-ops17未使用容量とコストを下げる) の OPS1-7 |
 
 ---
 
@@ -113,7 +113,7 @@
 
 ---
 
-## 5. 運用最適化（OPS1-6）— 未使用容量とコストを下げる
+## 5. 運用最適化（OPS1-7）— 未使用容量とコストを下げる
 
 **S3 Access Point を使わない側の柱です。** すでに動いているファイルシステムに対して行う操作で、パターンを deploy する話とは独立に使えます。
 
@@ -125,6 +125,7 @@
 | Snapshot の保持を整理したい | [OPS4 snapshot-lifecycle](../operations/snapshot-lifecycle/) |
 | コストを FinOps の枠に載せたい | [OPS5 cost-optimization](../operations/cost-optimization/) |
 | QoS ポリシーを監視したい | [OPS6 qos-monitoring](../operations/qos-monitoring/) |
+| ONTAP のバージョンごとに、管理者が使えるコマンドと REST API の差分を残したい | [OPS7 ontap-catalog-snapshot](../operations/ontap-catalog-snapshot/) |
 
 ---
 

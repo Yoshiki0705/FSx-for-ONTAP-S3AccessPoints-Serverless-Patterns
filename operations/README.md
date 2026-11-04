@@ -25,6 +25,7 @@ ONTAP REST API + CloudWatch + Lambda/Step Functions による**ネイティブ A
 | OPS4 | [`snapshot-lifecycle/`](snapshot-lifecycle/) | 保持ポリシー準拠チェック + Snapshot Policy 乖離検出 + Human Review 削除 | 2nd |
 | OPS5 | [`cost-optimization/`](cost-optimization/) | 横断コスト可視化 + 単位経済 + 配賦 + 予測 + Anomaly Detection + AI サマリ | 5th |
 | OPS6 | [`qos-monitoring/`](qos-monitoring/) | QoS ポリシー遵守率 + 帯域争奪検出 + ワークロード分離推奨 | 6th |
+| OPS7 | [`ontap-catalog-snapshot/`](ontap-catalog-snapshot/) | ONTAP のバージョンごとに、管理者が使える CLI コマンドと REST API を記録し、前回との差分を残す（単一 Lambda、Step Functions なし）。`fsxadmin` を使う D28 の例外あり | 随時 |
 
 ---
 
