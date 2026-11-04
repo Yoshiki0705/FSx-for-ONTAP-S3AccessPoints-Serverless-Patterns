@@ -84,6 +84,7 @@ solutions/amplify-portal/functions/search-files
 security
 operations/capacity-rightsizing
 operations/cost-optimization
+operations/ontap-catalog-snapshot
 operations/qos-monitoring
 operations/snapshot-lifecycle
 operations/storage-efficiency

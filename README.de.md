@@ -8,7 +8,7 @@
 
 > **45+ Referenzmuster** für die serverlose Verarbeitung von Enterprise-NAS-Daten auf FSx for ONTAP über S3 Access Points — **keine Datenkopie erforderlich**.
 >
-> 28 Branchen-UCs + 6 Operations (OPS) + 10 FlexCache/FlexClone/SnapMirror + 2 GenAI + SAP + HA-Überwachung + Event-Driven + Edge-Bereitstellung + File Portal UI
+> 28 Branchen-UCs + 7 Operations (OPS) + 10 FlexCache/FlexClone/SnapMirror + 2 GenAI + SAP + HA-Überwachung + Event-Driven + Edge-Bereitstellung + File Portal UI
 
 | | |
 |---|---|

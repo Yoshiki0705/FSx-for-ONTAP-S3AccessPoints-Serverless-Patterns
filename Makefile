@@ -21,7 +21,7 @@
 	test-genai-kb-selfservice-curation test-ha-lifekeeper lint lint-python lint-python-check \
 	lint-python-format format-python lint-cfn drift drift-published security build-uc1 \
 	build-sap deploy-uc1 deploy-sap clean build-SharedLayer build-uc12 deploy-uc12 test-ops1 \
-	test-ops4 test-ops3 test-ops2 test-ops5 test-ops6 test-ops lint-ops lint-cfn-ops \
+	test-ops4 test-ops3 test-ops2 test-ops5 test-ops6 test-ops7 test-ops lint-ops lint-cfn-ops \
 	build-ops1 deploy-ops1 security-report security-cfn propose-cleanup ontap-preflight \
 	discover-s3ap check-group-ap-tags portal-preflight portal-grant-roles \
 	portal-demo-user portal-hosting portal-hosting-url \
@@ -851,6 +851,8 @@ test-ops5:
 
 test-ops6:
 	$(PYTHON) -m pytest operations/qos-monitoring/tests/ -v
+test-ops7:
+	$(PYTHON) -m pytest operations/ontap-catalog-snapshot/tests/ -v
 
 test-ops:
 	$(PYTHON) -m pytest operations/ --tb=short -q
@@ -870,7 +872,8 @@ lint-cfn-ops:
 		operations/tiering-optimizer/template.yaml \
 		operations/storage-efficiency/template.yaml \
 		operations/cost-optimization/template.yaml \
-		operations/qos-monitoring/template.yaml
+		operations/qos-monitoring/template.yaml \
+		operations/ontap-catalog-snapshot/template.yaml
 
 build-ops1:
 	cd operations/capacity-rightsizing && sam build

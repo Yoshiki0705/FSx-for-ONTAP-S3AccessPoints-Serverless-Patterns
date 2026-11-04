@@ -6,13 +6,13 @@
 FSx for ONTAP S3 Access Points Serverless Patterns — a library of **28 industry-specific use
 cases (UC1-UC28)** + **1 SAP/ERP pattern** + **10 FlexCache/FlexClone patterns** + **4 GenAI
 patterns** + **1 HA monitoring pattern** + **2 event-driven patterns** + **2 edge delivery
-patterns** + **6 operations optimization patterns (OPS1-OPS6)**. Each pattern is an independent
+patterns** + **7 operations optimization patterns (OPS1-OPS7)**. Each pattern is an independent
 CloudFormation/SAM template sharing the Python modules in `shared/`.
 
 **Two pillars**: `solutions/` (S3 AP data processing) + `operations/` (file system operational
 optimization).
 
-**Test coverage**: ~5,000 Python tests across 335 files + ~530 vitest tests across 36 files.
+**Test coverage**: ~5,000 Python tests across 337 files + ~530 vitest tests across 36 files.
 
 > ファイル数は `make drift` がツリーと照合するので古くなれば fail する。テスト総数は 3 系統の
 > 合計なので概数。誰も保守しない厳密な数値より丸めた数値のほうがよい。
@@ -122,7 +122,7 @@ KNFSD（Terraform、`infrastructure/knfsd-file-cache/`）は `scripts/{deploy,va
 | `solutions/industry/` | UC1-UC28 の業種別パターン。1 ディレクトリ = 独立してデプロイ可能な 1 パターン |
 | `solutions/{sap,flexcache,genai,ha,event-driven,edge}/` | 業種横断のパターン群 |
 | `solutions/amplify-portal/` | Amplify Gen2 のファイルポータル（`amplify/` が CDK、`src/` が React） |
-| `operations/` | OPS1-OPS6。ファイルシステム運用最適化（S3 AP を使わない側の柱） |
+| `operations/` | OPS1-OPS7。ファイルシステム運用最適化（S3 AP を使わない側の柱） |
 | `infrastructure/` | パターンに属さない共有基盤（AD 検証環境、KNFSD 読み取りキャッシュ） |
 | `shared/` | 全パターンが import する Python モジュール。`s3ap_helper.py` が中核抽象 |
 | `shared/schemas/` | イベント / レスポンスの TypedDict |

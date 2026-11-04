@@ -1,0 +1,22 @@
+{
+  "schema": 1,
+  "ontap_version": "9.18.1P6",
+  "ontap_release": "NetApp Release 9.18.1P6: Fri Aug 07 23:43:59 UTC 2026",
+  "cluster_name": "<cluster>",
+  "file_system_id": "fs-0123456789abcdef0",
+  "ran_as": "fsxadmin",
+  "counts": {
+    "cli_commands_available": 1744,
+    "rest_endpoints": 570,
+    "role_entries": 494,
+    "ontapi_mappings": 1045,
+    "rest_get_probed": 219,
+    "rest_get_http": {"200": 167, "400": 2, "401": 2, "403": 43, "404": 3, "500": 2}
+  },
+  "unavailable": {},
+  "probe_truncated": false,
+  "get_only": true,
+  "bodies_stored": false,
+  "timestamp": "2026-11-04T09:00:00Z",
+  "output_prefix": "ontap-catalog/fs-0123456789abcdef0/9.18.1P6/20261104T090000Z"
+}

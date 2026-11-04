@@ -8,7 +8,7 @@
 
 > **45+ patrones de referencia** para el procesamiento serverless de datos NAS empresariales en FSx for ONTAP mediante S3 Access Points — **sin necesidad de copiar datos**.
 >
-> 28 casos de uso por industria + 6 Operations (OPS) + 10 FlexCache/FlexClone/SnapMirror + 2 GenAI + SAP + monitoreo HA + Event-Driven + distribución Edge + File Portal UI
+> 28 casos de uso por industria + 7 Operations (OPS) + 10 FlexCache/FlexClone/SnapMirror + 2 GenAI + SAP + monitoreo HA + Event-Driven + distribución Edge + File Portal UI
 
 | | |
 |---|---|

@@ -84,9 +84,9 @@ through Amazon Athena and the AWS Glue Data Catalog.
   `solutions/ha/` — agentic workspaces and self-service knowledge bases; CDN and VOD delivery;
   real-time FPolicy detection; ERP-adjacent file workflows; HA monitoring.
 
-**`operations/` — optimising a file system that already runs.** 6 patterns (OPS1-OPS6):
+**`operations/` — optimising a file system that already runs.** 7 patterns (OPS1-OPS7):
 capacity rightsizing, storage efficiency, FabricPool tiering, snapshot lifecycle, cost optimisation,
-QoS monitoring. **These do not use S3 Access Points**, so a constraint about access points does not
+QoS monitoring, and a per-version snapshot of the ONTAP commands and REST APIs the administrator can use. **These do not use S3 Access Points**, so a constraint about access points does not
 apply to them.
 
 ## Design decisions worth knowing before reading the code
