@@ -558,11 +558,11 @@ COUNT_PHRASINGS = {
         "│   └── edge/                         # CDN/edge delivery patterns (2)",
     ),
     "operations-patterns": (
-        6,
-        "**6 operations optimization patterns (OPS1-OPS6)**",
-        "├── operations/             # Operational optimization patterns (6, all built)",
+        7,
+        "**7 operations optimization patterns (OPS1-OPS7)**",
+        "├── operations/             # Operational optimization patterns (7, all built)",
     ),
-    "pytest-files": (335, "~5,000 Python tests across 335 files", None),
+    "pytest-files": (337, "~5,000 Python tests across 337 files", None),
     "vitest-files": (36, "~530 vitest tests across 36 files", None),
 }
 

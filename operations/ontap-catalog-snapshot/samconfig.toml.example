@@ -1,0 +1,28 @@
+# Copy to samconfig.toml and replace the placeholders. samconfig.toml is ignored by git.
+version = 0.1
+
+[default.global.parameters]
+stack_name = "fsxn-ontap-catalog-snapshot"
+
+[default.build.parameters]
+cached = true
+
+[default.deploy.parameters]
+region = "ap-northeast-1"
+resolve_s3 = true
+capabilities = "CAPABILITY_IAM"
+confirm_changeset = true
+parameter_overrides = [
+  "FileSystemId=fs-0123456789abcdef0",
+  "ManagementEndpoint=management.fs-0123456789abcdef0.fsx.ap-northeast-1.amazonaws.com",
+  "OntapSecretArn=arn:aws:secretsmanager:ap-northeast-1:123456789012:secret:fsxn/admin-XXXXXX",
+  "VpcSubnetIds=subnet-0123456789abcdef0",
+  # Run scripts/discover-network.sh <file-system-id> <region> to look the next five values up.
+  "CreateSecurityGroup=true",
+  "VpcId=vpc-0123456789abcdef0",
+  "FsxSecurityGroupId=sg-0123456789abcdef0",
+  "SecretsEndpointSecurityGroupId=sg-0123456789abcdef1",
+  "S3PrefixListId=pl-0123456789abcdef0",
+  "ScheduleExpression=rate(7 days)",
+  "ProbeRestGet=true",
+]

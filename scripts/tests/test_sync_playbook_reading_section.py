@@ -371,8 +371,11 @@ def test_every_operations_readme_exists_for_both_locales() -> None:
             assert (Path("operations") / name / suffix).exists(), f"{name}/{suffix}"
 
 
-def test_the_real_operations_tree_is_the_six_ops_patterns() -> None:
-    assert len(operations_dirs()) == 6
+def test_the_real_operations_tree_matches_the_directories_on_disk() -> None:
+    """Pinned as a property of the tree, not a hardcoded number that goes stale when a pattern lands."""
+    repo = Path(__file__).resolve().parents[2]
+    on_disk = sorted(p.name for p in (repo / "operations").iterdir() if (p / "template.yaml").exists())
+    assert operations_dirs() == on_disk
 
 
 # --- the operations pillar does not go through an access point ---
