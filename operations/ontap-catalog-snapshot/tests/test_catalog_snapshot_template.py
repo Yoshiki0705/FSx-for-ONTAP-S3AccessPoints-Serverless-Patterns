@@ -62,7 +62,9 @@ def test_the_function_runs_in_the_vpc_on_arm64(tpl: dict[str, Any]) -> None:
 
 
 def test_the_secret_policy_names_exactly_one_secret(tpl: dict[str, Any]) -> None:
-    statements = [s for p in function(tpl)["Policies"] if isinstance(p, dict) for s in p["Statement"] if isinstance(s, dict)]
+    statements = [
+        s for p in function(tpl)["Policies"] if isinstance(p, dict) for s in p["Statement"] if isinstance(s, dict)
+    ]
     secret = next(s for s in statements if s.get("Sid") == "ReadTheOneSecret")
     assert secret["Resource"] == {"Ref": "OntapSecretArn"}
     assert set(secret["Action"]) == {"secretsmanager:GetSecretValue", "secretsmanager:DescribeSecret"}
@@ -81,7 +83,9 @@ def test_no_statement_uses_a_wildcard_action_or_resource(tpl: dict[str, Any]) ->
 
 
 def test_listing_is_limited_to_the_output_prefix(tpl: dict[str, Any]) -> None:
-    statements = [s for p in function(tpl)["Policies"] if isinstance(p, dict) for s in p["Statement"] if isinstance(s, dict)]
+    statements = [
+        s for p in function(tpl)["Policies"] if isinstance(p, dict) for s in p["Statement"] if isinstance(s, dict)
+    ]
     listing = next(s for s in statements if s.get("Sid") == "ListOutputPrefix")
     assert listing["Action"] == "s3:ListBucket"
     assert "s3:prefix" in listing["Condition"]["StringLike"], "ListBucket must be limited to the output prefix"
@@ -105,7 +109,12 @@ def test_the_output_bucket_keeps_history_and_survives_stack_deletion(tpl: dict[s
     assert props["PublicAccessBlockConfiguration"] == dict.fromkeys(
         ("BlockPublicAcls", "BlockPublicPolicy", "IgnorePublicAcls", "RestrictPublicBuckets"), True
     )
-    assert props["BucketEncryption"]["ServerSideEncryptionConfiguration"][0]["ServerSideEncryptionByDefault"]["SSEAlgorithm"] == "aws:kms"
+    assert (
+        props["BucketEncryption"]["ServerSideEncryptionConfiguration"][0]["ServerSideEncryptionByDefault"][
+            "SSEAlgorithm"
+        ]
+        == "aws:kms"
+    )
 
 
 def test_every_environment_variable_the_handler_reads_is_set_by_the_template(tpl: dict[str, Any]) -> None:
@@ -183,7 +192,9 @@ def test_the_created_group_opens_only_https_and_nothing_inbound(tpl: dict[str, A
 def test_egress_to_the_internet_is_a_switch_that_is_off_by_default(tpl: dict[str, Any]) -> None:
     assert tpl["Parameters"]["AllowOutboundHttpsToInternet"]["Default"] == "false"
     open_rules = [
-        r for r in _sg_egress(tpl) if isinstance(r, dict) and "Fn::If" in r and r["Fn::If"][1].get("CidrIp") == "0.0.0.0/0"
+        r
+        for r in _sg_egress(tpl)
+        if isinstance(r, dict) and "Fn::If" in r and r["Fn::If"][1].get("CidrIp") == "0.0.0.0/0"
     ]
     assert len(open_rules) == 1 and open_rules[0]["Fn::If"][0] == "AllowInternet"
 
@@ -202,7 +213,13 @@ def test_a_group_that_cannot_reach_anything_is_refused_at_deploy_time(tpl: dict[
     """Rules fail the deployment up front, not the first invocation 15 minutes later."""
     rules = tpl["Rules"]
     text = repr(rules)
-    for needle in ("VpcId", "FsxSecurityGroupId", "SecretsEndpointSecurityGroupId", "S3PrefixListId", "AllowOutboundHttpsToInternet"):
+    for needle in (
+        "VpcId",
+        "FsxSecurityGroupId",
+        "SecretsEndpointSecurityGroupId",
+        "S3PrefixListId",
+        "AllowOutboundHttpsToInternet",
+    ):
         assert needle in text, f"a Rule must cover {needle}"
     assert "VpcSecurityGroupIds" in text, "with CreateSecurityGroup=false the group ids must be given"
 

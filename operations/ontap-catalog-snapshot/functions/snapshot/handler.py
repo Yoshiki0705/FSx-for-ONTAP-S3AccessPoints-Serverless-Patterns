@@ -232,7 +232,8 @@ def collect(cfg: Config, transport: Transport, remaining_ms: Callable[[], int]) 
     truncated = False
     if cfg.probe_rest_get:
         targets = [
-            x for x in rest
+            x
+            for x in rest
             if "GET" in x.get("supported_operations", [])
             and SAFE_ENDPOINT.match(x.get("endpoint", ""))
             and ".." not in x["endpoint"]
@@ -243,7 +244,11 @@ def collect(cfg: Config, transport: Transport, remaining_ms: Callable[[], int]) 
                 break
             reply = transport.get(f"/api{x['endpoint']}?max_records=1")
             check_reply(reply, "GET probe")
-            probe[x["endpoint"]] = {"http": reply.status, "code": reply.error_code, "message": mask(reply.error_message)}
+            probe[x["endpoint"]] = {
+                "http": reply.status,
+                "code": reply.error_code,
+                "message": mask(reply.error_message),
+            }
             time.sleep(PROBE_PAUSE_S)
 
     endpoints = []
@@ -312,9 +317,7 @@ def diff_snapshots(prev: dict[str, Any] | None, cur: Result) -> dict[str, Any]:
     rest_prev = {e["endpoint"]: e for e in prev.get("rest-endpoints", [])}
     rest_cur = {e["endpoint"]: e for e in cur.files.get("rest-endpoints", [])}
     changed_probe = sorted(
-        ep
-        for ep in rest_cur.keys() & rest_prev.keys()
-        if rest_cur[ep].get("get_http") != rest_prev[ep].get("get_http")
+        ep for ep in rest_cur.keys() & rest_prev.keys() if rest_cur[ep].get("get_http") != rest_prev[ep].get("get_http")
     )
     out = {
         "previous_version": prev.get("ontap_version"),
@@ -324,7 +327,9 @@ def diff_snapshots(prev: dict[str, Any] | None, cur: Result) -> dict[str, Any]:
         "rest_endpoints_removed": sorted(rest_prev.keys() - rest_cur.keys()),
         "rest_get_http_changed": changed_probe,
     }
-    out["changed"] = any(bool(v) for k, v in out.items() if k.endswith(("added", "removed", "changed")) and k != "changed")
+    out["changed"] = any(
+        bool(v) for k, v in out.items() if k.endswith(("added", "removed", "changed")) and k != "changed"
+    )
     return out
 
 
@@ -437,13 +442,19 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
             context.get_remaining_time_in_millis,
         )
     except AuthenticationAbort as exc:
-        logger.error("STOPPED: %s. The credential was used once or a few times; do not re-run until it is fixed.", exc.reason)
+        logger.error(
+            "STOPPED: %s. The credential was used once or a few times; do not re-run until it is fixed.", exc.reason
+        )
         raise
     except SnapshotError as exc:
         logger.error("STOPPED: %s", exc.reason)
         raise
 
-    summary = {"ontap_version": result.manifest["ontap_version"], "counts": result.manifest["counts"], "changed": result.diff.get("changed")}
+    summary = {
+        "ontap_version": result.manifest["ontap_version"],
+        "counts": result.manifest["counts"],
+        "changed": result.diff.get("changed"),
+    }
     logger.info("snapshot written: %s", json.dumps(summary))
     if cfg.notification_topic_arn and result.diff.get("changed"):
         boto3.client("sns").publish(
