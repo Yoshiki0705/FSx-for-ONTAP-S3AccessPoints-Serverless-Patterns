@@ -114,6 +114,18 @@ BLOCK: list[tuple[str, str, str]] = [
         "retention.maximum を短く指定しても上限にはなりません（下の測定を参照）。",
     ),
     (
+        # ONTAP CLI delete of a volume whose name says it is a SnapLock volume. The
+        # FSx-API delete asks (below); this CLI form had no rule at all, so an audit
+        # log or WORM volume could be deleted from the CLI without any prompt. Anchored
+        # to a real invocation -- `volume delete` followed by a flag -- so prose such as
+        # "the SnapLock volume delete is refused" in a PR body does not match.
+        r"\bvolume\s+delete\s+-\w[^|;&]{0,300}snaplock",
+        "SnapLock ボリュームの ONTAP CLI による削除",
+        "未満了の WORM ファイルや監査ログがあるボリュームは削除に失敗するか、"
+        "削除が成功しても親リソースの削除をブロックし続けます。"
+        "満了時刻と影響範囲を先に確認し、所有者の承認を得てください。",
+    ),
+    (
         r"privileged[-_]?delete" + SEP + r"permanently_disabled",
         "PrivilegedDelete=PERMANENTLY_DISABLED",
         "終端状態です。enterprise モードが compliance 相当になり、以後 privileged delete が永久に使えません。",

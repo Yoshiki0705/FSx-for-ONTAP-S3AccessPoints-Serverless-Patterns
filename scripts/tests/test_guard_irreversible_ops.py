@@ -190,6 +190,15 @@ BLOCK_CASES: list[tuple[str, dict[str, object]]] = [
             )
         },
     ),
+    # --- ONTAP CLI delete of a SnapLock-named volume ---
+    (
+        "ONTAP CLI volume delete of a SnapLock audit volume",
+        {"command": "volume delete -vserver svm1 -volume snaplock_audit_log"},
+    ),
+    (
+        "ONTAP CLI volume delete of a SnapLock volume over ssh",
+        {"command": "ssh admin@cluster 'volume delete -vserver svm1 -volume snaplock_vol1 -force true'"},
+    ),
     # --- Terminal states ---
     (
         "PrivilegedDelete permanently disabled",
@@ -467,6 +476,20 @@ ALLOW_CASES: list[tuple[str, dict[str, object]]] = [
     (
         "reading a file",
         {"command": "cat README.md"},
+    ),
+    # Prose and ordinary work beside the volume-delete rule: the rule needs a real
+    # `volume delete -<flag>` invocation naming a SnapLock volume.
+    (
+        "PR body describing a SnapLock volume that cannot be deleted",
+        {"command": "gh pr create --title x --body 'the SnapLock audit log volume delete is refused'"},
+    ),
+    (
+        "commit message about SnapLock volume delete",
+        {"command": "git commit -m 'docs: snaplock volume delete refuses both forms'"},
+    ),
+    (
+        "ONTAP CLI volume delete of an ordinary scratch volume",
+        {"command": "volume delete -vserver svm1 -volume tmp_scratch"},
     ),
     (
         "running the test suite",
