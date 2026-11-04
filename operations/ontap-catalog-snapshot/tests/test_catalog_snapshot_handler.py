@@ -42,15 +42,29 @@ def err(status: int, code: str, message: str) -> snap.Reply:
 class FakeOntap:
     """Answers by path prefix and records every request it receives."""
 
-    def __init__(self, rest: list[dict[str, Any]] | None = None, version: str = "NetApp Release 9.18.1P6: Fri Aug 07") -> None:
+    def __init__(
+        self, rest: list[dict[str, Any]] | None = None, version: str = "NetApp Release 9.18.1P6: Fri Aug 07"
+    ) -> None:
         self.requests: list[str] = []
         self.version = version
-        self.rest = rest if rest is not None else [
-            {"endpoint": "/cluster/nodes", "supported_operations": ["GET"], "commands": ["system node show"]},
-            {"endpoint": "/security/multi-admin-verify", "supported_operations": ["GET", "PATCH"], "commands": ["security multi-admin-verify"]},
-            {"endpoint": "/storage/volumes/{uuid}", "supported_operations": ["GET", "PATCH", "DELETE"], "commands": ["volume show"]},
-            {"endpoint": "/storage/volumes", "supported_operations": ["POST"], "commands": ["volume create"]},
-        ]
+        self.rest = (
+            rest
+            if rest is not None
+            else [
+                {"endpoint": "/cluster/nodes", "supported_operations": ["GET"], "commands": ["system node show"]},
+                {
+                    "endpoint": "/security/multi-admin-verify",
+                    "supported_operations": ["GET", "PATCH"],
+                    "commands": ["security multi-admin-verify"],
+                },
+                {
+                    "endpoint": "/storage/volumes/{uuid}",
+                    "supported_operations": ["GET", "PATCH", "DELETE"],
+                    "commands": ["volume show"],
+                },
+                {"endpoint": "/storage/volumes", "supported_operations": ["POST"], "commands": ["volume create"]},
+            ]
+        )
         self.capability = [
             {"object_name": "volume.clone", "operation_name": "create"},
             {"object_name": "volume", "operation_name": "show"},
@@ -71,7 +85,19 @@ class FakeOntap:
         if path.startswith(BASE + "/show-ontapi"):
             return ok({"records": [{"ontapi": "aggr-create", "command": "storage aggregate create"}]})
         if path.startswith(BASE):
-            return ok({"records": [{"vserver": "FsxId0123456789abcdef0", "role": "fsxadmin", "cmddirname": "DEFAULT", "access": "all", "query": ""}]})
+            return ok(
+                {
+                    "records": [
+                        {
+                            "vserver": "FsxId0123456789abcdef0",
+                            "role": "fsxadmin",
+                            "cmddirname": "DEFAULT",
+                            "access": "all",
+                            "query": "",
+                        }
+                    ]
+                }
+            )
         if path == "/api/security/multi-admin-verify?max_records=1":
             return err(403, "6", "not authorized for that command")
         return ok({"records": []})
@@ -99,7 +125,12 @@ class FakeS3:
 
 
 def cfg(**kw: Any) -> snap.Config:
-    base = dict(management_endpoint="management.fs-0123456789abcdef0.fsx.ap-northeast-1.amazonaws.com", secret_arn="arn:aws:secretsmanager:ap-northeast-1:123456789012:secret:x-XXXXXX", bucket="b", file_system_id="fs-0123456789abcdef0")
+    base = dict(
+        management_endpoint="management.fs-0123456789abcdef0.fsx.ap-northeast-1.amazonaws.com",
+        secret_arn="arn:aws:secretsmanager:ap-northeast-1:123456789012:secret:x-XXXXXX",
+        bucket="b",
+        file_system_id="fs-0123456789abcdef0",
+    )
     base.update(kw)
     return snap.Config(**base)  # type: ignore[arg-type]
 
@@ -145,11 +176,15 @@ def test_a_401_without_an_ontap_code_is_treated_as_a_refused_credential() -> Non
 
 
 def test_a_role_authorization_401_is_data_not_a_reason_to_stop() -> None:
-    ontap = FakeOntap(rest=[
-        {"endpoint": "/storage/snaplock/litigations", "supported_operations": ["GET"], "commands": []},
-        {"endpoint": "/cluster/nodes", "supported_operations": ["GET"], "commands": []},
-    ])
-    ontap.overrides["/api/storage/snaplock/litigations"] = err(401, "13763280", 'Only a user with the security login role "vsadmin-snaplock" is allowed')
+    ontap = FakeOntap(
+        rest=[
+            {"endpoint": "/storage/snaplock/litigations", "supported_operations": ["GET"], "commands": []},
+            {"endpoint": "/cluster/nodes", "supported_operations": ["GET"], "commands": []},
+        ]
+    )
+    ontap.overrides["/api/storage/snaplock/litigations"] = err(
+        401, "13763280", 'Only a user with the security login role "vsadmin-snaplock" is allowed'
+    )
     result = snap.collect(cfg(), ontap, LONG)
     by = {e["endpoint"]: e for e in result.files["rest-endpoints"]}
     assert by["/storage/snaplock/litigations"]["get_http"] == 401
@@ -356,8 +391,12 @@ def test_handler_end_to_end_with_moto(monkeypatch: pytest.MonkeyPatch, caplog: p
 def test_handler_propagates_a_refused_credential_so_the_invocation_fails(monkeypatch: pytest.MonkeyPatch) -> None:
     region = "ap-northeast-1"
     sm = boto3.client("secretsmanager", region_name=region)
-    arn = sm.create_secret(Name="ontap-admin", SecretString=json.dumps({"username": "fsxadmin", "password": PASSWORD}))["ARN"]
-    boto3.client("s3", region_name=region).create_bucket(Bucket="snap-bucket", CreateBucketConfiguration={"LocationConstraint": region})
+    arn = sm.create_secret(Name="ontap-admin", SecretString=json.dumps({"username": "fsxadmin", "password": PASSWORD}))[
+        "ARN"
+    ]
+    boto3.client("s3", region_name=region).create_bucket(
+        Bucket="snap-bucket", CreateBucketConfiguration={"LocationConstraint": region}
+    )
     monkeypatch.setenv("AWS_DEFAULT_REGION", region)
     monkeypatch.setenv("ONTAP_MANAGEMENT_ENDPOINT", "management.example.invalid")
     monkeypatch.setenv("ONTAP_SECRET_ARN", arn)
