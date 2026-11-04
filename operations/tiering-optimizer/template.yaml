@@ -240,18 +240,24 @@ Resources:
 
   CollectFunctionLogGroup:
     Type: AWS::Logs::LogGroup
+    DeletionPolicy: Delete
+    UpdateReplacePolicy: Delete
     Properties:
       LogGroupName: !Sub "/aws/lambda/${CollectFunction}"
       RetentionInDays: !Ref LogRetentionInDays
 
   AnalyzeFunctionLogGroup:
     Type: AWS::Logs::LogGroup
+    DeletionPolicy: Delete
+    UpdateReplacePolicy: Delete
     Properties:
       LogGroupName: !Sub "/aws/lambda/${AnalyzeFunction}"
       RetentionInDays: !Ref LogRetentionInDays
 
   ReportFunctionLogGroup:
     Type: AWS::Logs::LogGroup
+    DeletionPolicy: Delete
+    UpdateReplacePolicy: Delete
     Properties:
       LogGroupName: !Sub "/aws/lambda/${ReportFunction}"
       RetentionInDays: !Ref LogRetentionInDays
