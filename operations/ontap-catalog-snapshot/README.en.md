@@ -47,7 +47,7 @@ EventBridge (rate) ──→ Lambda: snapshot (in VPC) ──→ ONTAP managemen
                               └──→ S3 (snapshot and diff) ──→ SNS (optional, counts only)
 ```
 
-The other six patterns under `operations/` use Step Functions (collect, analyze, report). This one is a **single Lambda**: a Step Functions retry of `States.TaskFailed` can re-run with a credential that was already refused. It also does not use `shared/ontap_client.py`, which embeds `urllib3.Retry(total=3)` and raises on a 401 without telling its causes apart, so it cannot stop at the first refused credential. The handler uses only the standard library and boto3.
+The other six patterns under `operations/` use Step Functions (collect, analyze, report). This one is a **single Lambda**: a Step Functions retry of `States.TaskFailed` can re-run with a credential that was already refused. It also does not use `shared/ontap_client.py`, which embeds `urllib3.Retry(total=3)` and raises on a 401 without telling its causes apart, so it has no stop at the first refused credential. The handler uses only the standard library and boto3.
 
 The function needs a route from the VPC to S3 and Secrets Manager (existing VPC endpoints or a NAT gateway). The template creates none.
 
@@ -184,7 +184,7 @@ One run uses the same administrator credential hundreds of times. **Repeating fa
 
 The stop works **only within one run**. After a refused credential, if the schedule is enabled, **the function uses the same credential again the next week.**
 
-While the refusal continues, one failed authentication accumulates every week and the administrator can be locked. ONTAP REST cannot tell a lockout from a wrong password, and recovery is limited to resetting the password (`FsxAdminPassword` of `aws fsx update-file-system`) and updating the secret.
+While the refusal continues, one failed authentication accumulates every week and the administrator can be locked. This Lambda does not tell a lockout from a wrong password, and whether ONTAP offers a way to tell them apart was not checked. The recovery used here is resetting the password (`FsxAdminPassword` of `aws fsx update-file-system`) and updating the secret.
 
 **What the operator does:** when a run stops on a failed authentication (the Lambda fails), do not run it again until the cause is fixed. Disable the EventBridge rule if needed.
 
