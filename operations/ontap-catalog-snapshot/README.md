@@ -47,7 +47,7 @@ EventBridge (rate) ──→ Lambda: snapshot (VPC 内) ──→ ONTAP 管理�
                               └──→ S3（スナップショットと差分）──→ SNS（任意、件数のみ）
 ```
 
-`operations/` の他の 6 パターンは Step Functions（collect、analyze、report）ですが、このパターンは**単一の Lambda** です。理由は、Step Functions の `States.TaskFailed` のリトライが、拒否された認証情報での再実行になりうるためです。`shared/ontap_client.py` も使いません。共有クライアントは `urllib3.Retry(total=3)` を内蔵し、401 を区別せずに例外にするので、「最初の認証失敗で止める」を持てません。ハンドラは標準ライブラリと boto3 だけで書いてあります。
+`operations/` の他の 6 パターンは Step Functions（collect、analyze、report）ですが、このパターンは**単一の Lambda** です。理由は、Step Functions の `States.TaskFailed` のリトライが、拒否された認証情報での再実行になりうるためです。`shared/ontap_client.py` も使いません。共有クライアントは `urllib3.Retry(total=3)` を内蔵し、401 を区別せずに例外にするので、「最初の認証失敗で止める」処理がありません。ハンドラは標準ライブラリと boto3 だけで書いてあります。
 
 VPC 内の Lambda から S3 とシークレットに出る経路（既存の VPC エンドポイントか NAT ゲートウェイ）が必要です。このテンプレートは作りません。
 
@@ -184,7 +184,7 @@ cat /tmp/out.json
 
 停止が働くのは **1 回の実行の中だけ** です。認証が拒否されても、スケジュールが有効なら、**次の週に同じ認証情報をもう一度使います。**
 
-その結果、拒否が続く間は週に 1 回ずつ認証の失敗が積み上がり、管理ユーザーがロックされることがあります。ONTAP の REST ではロックとパスワード誤りを区別できず、復旧はパスワードの再設定（`aws fsx update-file-system` の `FsxAdminPassword`）とシークレットの更新に限られます。
+その結果、拒否が続く間は週に 1 回ずつ認証の失敗が積み上がり、管理ユーザーがロックされることがあります。この Lambda はロックとパスワード誤りを区別しません。ONTAP に区別する手段があるかは確認していません。ここで使う復旧は、パスワードの再設定（`aws fsx update-file-system` の `FsxAdminPassword`）とシークレットの更新に限られます。
 
 **運用者の対応:** 認証の失敗で実行が止まった（Lambda が失敗した）ら、原因を直すまで再実行しません。必要なら EventBridge のルールを無効にします。
 
