@@ -17,18 +17,16 @@ jobs:
       - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: "3.13"
-      - name: Install cfn-lint
-        # Read the pin from requirements-dev.txt rather than repeating the version.
-        # A floating `pip install cfn-lint` lets a new release fail this job on
-        # unchanged templates.
-        run: pip install "$(grep -m1 '^cfn-lint==' requirements-dev.txt)"
-      - name: Lint all CloudFormation templates
-        id: cfn-lint
-        run: |
-          cfn-lint '**/*.yaml' --ignore-templates '**/node_modules/**' || echo "lint_failed=true" >> $GITHUB_ENV
-      - name: Set lint outcome
-        if: env.lint_failed == 'true'
-        run: echo "LINT_RESULT=failure" >> $GITHUB_OUTPUT
+      - name: Install pinned dev tooling
+        # The same requirements-dev.txt pin that validators.yml installs, so Stage 1 and the
+        # blocking validator apply the same rules. A floating `pip install cfn-lint` lets a new
+        # release fail this job on unchanged templates.
+        run: pip install -r requirements-dev.txt
+      - name: Lint every registered CloudFormation template
+        # Errors fail the job. The exit code must not be discarded: this stage once appended a
+        # fallback command to the lint call, stayed green whatever cfn-lint reported, and CI Final
+        # Status repeated the green.
+        run: make lint-cfn
 
   test:
     name: "Stage 2: Unit Tests & PBT"
@@ -404,7 +402,6 @@ jobs:
             "Staleness:${{ needs.staleness-checks.result }}" \
             "Portal:${{ needs.portal-test.result }}" \
             "Storage Browser demo:${{ needs.storage-browser-demo-build.result }}" \
-            "Security (CFN):${{ needs.security-cfn.result }}" \
             "Security (Python):${{ needs.security-python.result }}"; do
             name="${stage%%:*}"
             result="${stage##*:}"

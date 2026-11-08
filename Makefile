@@ -461,6 +461,7 @@ drift:
 # under 3.x. `zizmor .` could not fail either, so the workflow named "Actions
 # Security Lint" was advisory without saying so.
 	$(PYTHON) -m pytest scripts/tests/test_workflow_gate_integrity.py --tb=short -q
+	$(PYTHON) -m pytest scripts/tests/test_ops_lint_gates.py --tb=short -q
 # The cfn-guard rules and the gate that runs them. Only the tests run here: the scan
 # itself needs the cfn-guard binary, which is installed in CI but not assumed on a
 # laptop, so it lives in `make security-cfn` and the tests skip when it is absent.
@@ -865,7 +866,7 @@ lint-ops:
 	$(VENV_RUFF) check operations/ shared/ontap_metrics.py shared/demo_data_loader.py shared/schemas/ops_events.py
 
 lint-cfn-ops:
-	$(VENV_CFN_LINT) operations/capacity-rightsizing/template.yaml \
+	$(VENV_CFN_LINT) --non-zero-exit-code error operations/capacity-rightsizing/template.yaml \
 		operations/snapshot-lifecycle/template.yaml \
 		operations/tiering-optimizer/template.yaml \
 		operations/storage-efficiency/template.yaml \
