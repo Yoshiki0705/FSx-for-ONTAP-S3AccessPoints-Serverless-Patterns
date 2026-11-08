@@ -46,13 +46,13 @@ optimization).
 | 構成図の作成・再生成・寸法 | [diagram-regeneration](docs/agent/diagram-regeneration.md) |
 | 画面撮影 / E2E / ブラウザ自動化 | [pitfalls-browser-automation](docs/agent/pitfalls-browser-automation.md) |
 | 新パターンの追加と公開判定 | [new-pattern](docs/agent/new-pattern.md) |
-| 多段タスクの判断記録 / 監査役 / ばらつき測定 | [agent-workflow-discipline](docs/agent/agent-workflow-discipline.md) |
+| 判断記録 / 監査役 / ばらつき測定 | [agent-workflow-discipline](docs/agent/agent-workflow-discipline.md) |
 | ドキュメント全体を探す | [docs/index.md](docs/index.md) |
 | README / ドキュメント構成の設計 | グローバル steering `documentation-design` |
 | 成果物のレビュー観点 | グローバル steering `sa-persona-review-board` |
 
 > 不可逆操作・命名・PII・認可のように**知らないと事故る情報は上の表に移していない**。
-> ロード条件のマッチ運に賭けられないため、常時ロードかフック強制のままにしてある。
+> ロード条件のマッチ運に賭けられないため、常時ロードかフック強制のまま。
 
 ## 着手前に grill を通す条件
 

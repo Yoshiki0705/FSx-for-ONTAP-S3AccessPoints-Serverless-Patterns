@@ -69,3 +69,4 @@ object size / 並列度 / throughput capacity）もそちら。
 | 新パターンの追加・公開判定 | [new-pattern](new-pattern.md) |
 | 検証ランの実施（ポータル性能等） | 変更前構成のばらつきを先に測る（上記）。tier は 3 語 |
 | ベンダー能力主張を書く | [evidence-discipline](evidence-discipline.md) + ledger 登録 |
+| AGENTS.md に索引行を足す | 足す前に `python3 scripts/check_agent_context_budget.py` をローカルで回す（予算 28,000 B の直前で、1 行で超える） |
