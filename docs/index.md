@@ -13,7 +13,7 @@
 | FSx for ONTAP なしで試す | [Demo Mode ガイド](demo-mode-guide.md) |
 | **仕様・上限値・設計判断の根拠を知る** | [Adoption Playbook](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook) — [ナビゲーション](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/blob/main/docs/ja/navigation.md) / [決定ツリー 8 本](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/tree/main/docs/ja/reference/decision-trees) |
 | 本番に出す前に読む | 各パターン README 末尾の「本番に出す前に読むもの」 |
-| 運用でコストと容量を下げる | [operations/](../operations/) の OPS1-6 |
+| 運用でコストと容量を下げる | [operations/](../operations/) の OPS1-7 |
 | 利用者にブラウザから使わせる | [ファイルポータル](../solutions/amplify-portal/) |
 | 実際に踏んだ罠を引く | [作業別のノート](#作業別のノートdocsagent) |
 

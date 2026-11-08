@@ -1,0 +1,9 @@
+{
+  "previous_version": "9.18.1P6",
+  "cli_commands_added": ["security multi-admin-verify show"],
+  "cli_commands_removed": [],
+  "rest_endpoints_added": [],
+  "rest_endpoints_removed": [],
+  "rest_get_http_changed": ["/security/multi-admin-verify"],
+  "changed": true
+}

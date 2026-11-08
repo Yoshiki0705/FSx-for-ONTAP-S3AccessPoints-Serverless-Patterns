@@ -1,0 +1,421 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  FSx for ONTAP - ONTAP command and REST API catalog snapshot.
+  A scheduled Lambda that reads, as the ONTAP administrator in a secret, which CLI commands and REST
+  endpoints this ONTAP version offers, and writes a versioned snapshot with a diff to S3.
+  GET requests only. Stops at the first refused credential.
+Metadata:
+  # The optional security group ids default to '' and are used only under a Condition. cfn-lint resolves the
+  # empty default and reports W1030 on it, so that one check is off for this template.
+  cfn-lint:
+    config:
+      ignore_checks: [W1030]
+  AWS::ServerlessRepo::Application:
+    Name: fsxn-ontap-catalog-snapshot
+    Description: Snapshot of the ONTAP commands and REST APIs available to the administrator, per ONTAP version.
+    Labels: [fsx, ontap, operations, security]
+    SemanticVersion: 0.1.0
+# -------------------------------------------------------------------
+# Parameters
+# -------------------------------------------------------------------
+Parameters:
+  FileSystemId:
+    Type: String
+    AllowedPattern: '^fs-[0-9a-f]{8,17}$'
+    Description: Amazon FSx for NetApp ONTAP file system ID. Used to name the output and to cross-check the secret's FileSystemId tag.
+  ManagementEndpoint:
+    Type: String
+    AllowedPattern: '^[A-Za-z0-9.-]+$'
+    Description: >
+      DNS name of the file system management endpoint (aws fsx describe-file-systems, OntapConfiguration.Endpoints.Management.DNSName)
+      or its IP address. A DNS name is passed in so that the function needs no call to the FSx API.
+  OntapSecretArn:
+    Type: String
+    AllowedPattern: '^arn:aws[a-z-]*:secretsmanager:[a-z0-9-]+:[0-9]{12}:secret:.+$'
+    Description: >
+      Secret holding JSON with username and password of the ONTAP administrator. Use the secret that belongs to this file system;
+      every file system uses the user name fsxadmin, and a wrong secret counts as a failed login.
+  SecretKmsKeyArn:
+    Type: String
+    Default: ''
+    Description: ARN of the customer managed KMS key that encrypts the secret. Leave empty when the secret uses the AWS managed key.
+  VpcSubnetIds:
+    Type: CommaDelimitedList
+    Description: Subnets that can reach the management endpoint, Secrets Manager and S3 (existing VPC endpoints or a NAT gateway).
+  CreateSecurityGroup:
+    Type: String
+    Default: 'true'
+    AllowedValues: ['true', 'false']
+    Description: >
+      'true' creates the security group the function needs (outbound HTTPS only, no inbound) and adds the matching
+      inbound HTTPS rules to the file system and Secrets Manager endpoint groups. 'false' uses VpcSecurityGroupIds as given
+      and creates no rule anywhere. Run scripts/discover-network.sh to look the values up.
+  VpcId:
+    Type: String
+    Default: ''
+    AllowedPattern: '^(vpc-[0-9a-f]{8,17})?$'
+    Description: VPC of the subnets. Needed when CreateSecurityGroup is 'true'.
+  FsxSecurityGroupId:
+    Type: String
+    Default: ''
+    AllowedPattern: '^(sg-[0-9a-f]{8,17})?$'
+    Description: >
+      Security group of the file system network interfaces (the one on the management endpoint).
+      Needed when CreateSecurityGroup is 'true'. An inbound HTTPS rule from the function group is added to it.
+  SecretsEndpointSecurityGroupId:
+    Type: String
+    Default: ''
+    AllowedPattern: '^(sg-[0-9a-f]{8,17})?$'
+    Description: >
+      Security group of the Secrets Manager interface VPC endpoint. Leave empty when the function reaches Secrets Manager
+      through a NAT gateway (set AllowOutboundHttpsToInternet to 'true'). May be the same group as FsxSecurityGroupId.
+  S3PrefixListId:
+    Type: String
+    Default: ''
+    AllowedPattern: '^(pl-[0-9a-f]{8,17})?$'
+    Description: >
+      Managed prefix list of the S3 gateway VPC endpoint (com.amazonaws.<region>.s3). Leave empty when S3 is reached
+      through a NAT gateway.
+  AllowOutboundHttpsToInternet:
+    Type: String
+    Default: 'false'
+    AllowedValues: ['true', 'false']
+    Description: >
+      'true' adds an outbound HTTPS rule to 0.0.0.0/0 so that Secrets Manager and S3 are reached through a NAT gateway.
+      Leave 'false' when both have VPC endpoints.
+  VpcSecurityGroupIds:
+    Type: CommaDelimitedList
+    Default: ''
+    Description: Security groups for the function, used only when CreateSecurityGroup is 'false'. They must allow outbound HTTPS to the file system security group, Secrets Manager and S3.
+  ExistingOutputBucketName:
+    Type: String
+    Default: ''
+    Description: Bucket to write to. Leave empty to create a versioned, encrypted bucket that is kept when the stack is deleted.
+  OutputPrefix:
+    Type: String
+    Default: ontap-catalog
+    AllowedPattern: '^[A-Za-z0-9._/-]+$'
+  ScheduleState:
+    Type: String
+    Default: ENABLED
+    AllowedValues: [ENABLED, DISABLED]
+    Description: >
+      ENABLED runs the snapshot on ScheduleExpression. DISABLED creates no schedule, so the function runs only when you invoke it.
+      Use this instead of an empty ScheduleExpression: sam deploy ignores an empty parameter value and falls back to the default.
+  ScheduleExpression:
+    Type: String
+    Default: rate(7 days)
+    MinLength: 1
+    Description: EventBridge schedule expression, used when ScheduleState is ENABLED.
+  ProbeRestGet:
+    Type: String
+    Default: 'true'
+    AllowedValues: ['true', 'false']
+    Description: Send one GET to every REST endpoint that has no path parameter. Only the HTTP code is kept.
+  ProbeMaxEndpoints:
+    Type: Number
+    Default: 400
+    MinValue: 1
+    MaxValue: 2000
+  VerifySsl:
+    Type: String
+    Default: 'false'
+    AllowedValues: ['true', 'false']
+    Description: Verify the management endpoint certificate. The default endpoint certificate is not signed by a public CA.
+  NotificationTopicArn:
+    Type: String
+    Default: ''
+    Description: SNS topic that receives a summary (counts only) when the catalog changed. Leave empty for no notification.
+  LogRetentionInDays:
+    Type: Number
+    Default: 90
+    AllowedValues: [1, 3, 5, 7, 14, 30, 60, 90, 120, 150, 180, 365, 400, 545, 731, 1096, 1827, 2192, 2557, 2922, 3288, 3653]
+# -------------------------------------------------------------------
+# Conditions
+# -------------------------------------------------------------------
+Rules:
+  VpcIdWhenCreatingTheGroup:
+    RuleCondition: !Equals [!Ref CreateSecurityGroup, 'true']
+    Assertions:
+      - Assert: !Not [!Equals [!Ref VpcId, '']]
+        AssertDescription: VpcId is required when CreateSecurityGroup is true.
+      - Assert: !Not [!Equals [!Ref FsxSecurityGroupId, '']]
+        AssertDescription: FsxSecurityGroupId is required when CreateSecurityGroup is true, or the function cannot reach the management endpoint.
+      - Assert: !Or
+          - !Not [!Equals [!Ref SecretsEndpointSecurityGroupId, '']]
+          - !Equals [!Ref AllowOutboundHttpsToInternet, 'true']
+        AssertDescription: Set SecretsEndpointSecurityGroupId (VPC endpoint) or AllowOutboundHttpsToInternet=true (NAT gateway), or the function cannot read the secret.
+      - Assert: !Or
+          - !Not [!Equals [!Ref S3PrefixListId, '']]
+          - !Equals [!Ref AllowOutboundHttpsToInternet, 'true']
+        AssertDescription: Set S3PrefixListId (gateway endpoint) or AllowOutboundHttpsToInternet=true (NAT gateway), or the function cannot write to S3.
+  SecurityGroupIdsWhenNotCreatingTheGroup:
+    RuleCondition: !Equals [!Ref CreateSecurityGroup, 'false']
+    Assertions:
+      - Assert: !Not [!EachMemberEquals [!Ref VpcSecurityGroupIds, '']]
+        AssertDescription: VpcSecurityGroupIds is required when CreateSecurityGroup is false.
+Conditions:
+  CreateSg: !Equals [!Ref CreateSecurityGroup, 'true']
+  HasS3PrefixList: !Not [!Equals [!Ref S3PrefixListId, '']]
+  AllowInternet: !Equals [!Ref AllowOutboundHttpsToInternet, 'true']
+  HasDistinctEndpointSg: !And
+    - !Not [!Equals [!Ref SecretsEndpointSecurityGroupId, '']]
+    - !Not [!Equals [!Ref SecretsEndpointSecurityGroupId, !Ref FsxSecurityGroupId]]
+  CreateFsxIngress: !And
+    - !Equals [!Ref CreateSecurityGroup, 'true']
+    - !Not [!Equals [!Ref FsxSecurityGroupId, '']]
+  CreateEndpointIngress: !And
+    - !Equals [!Ref CreateSecurityGroup, 'true']
+    - !Condition HasDistinctEndpointSg
+  CreateBucket: !Equals [!Ref ExistingOutputBucketName, '']
+  HasSchedule: !Equals [!Ref ScheduleState, 'ENABLED']
+  HasSecretKmsKey: !Not [!Equals [!Ref SecretKmsKeyArn, '']]
+  HasNotificationTopic: !Not [!Equals [!Ref NotificationTopicArn, '']]
+# -------------------------------------------------------------------
+# Resources
+# -------------------------------------------------------------------
+Resources:
+  # The records of what each ONTAP version offered are the point of this job, so the bucket is kept
+  # when the stack is deleted and old versions of an object are kept when it is overwritten.
+  OutputBucket:
+    Type: AWS::S3::Bucket
+    Condition: CreateBucket
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      BucketName: !Sub '${AWS::StackName}-${AWS::AccountId}-${AWS::Region}'
+      VersioningConfiguration:
+        Status: Enabled
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: aws:kms
+            BucketKeyEnabled: true
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      OwnershipControls:
+        Rules:
+          - ObjectOwnership: BucketOwnerEnforced
+      Tags:
+        - Key: Project
+          Value: fsxn-ontap-catalog-snapshot
+        - Key: Layer
+          Value: operations
+        - Key: Component
+          Value: snapshot-output
+  OutputBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Condition: CreateBucket
+    Properties:
+      Bucket: !Ref OutputBucket
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: DenyInsecureTransport
+            Effect: Deny
+            Principal: '*'
+            Action: 's3:*'
+            Resource:
+              - !GetAtt OutputBucket.Arn
+              - !Sub '${OutputBucket.Arn}/*'
+            Condition:
+              Bool:
+                'aws:SecureTransport': 'false'
+  # The function needs outbound HTTPS to three places and nothing inbound. Listing the egress rules
+  # explicitly is what removes the default "allow all outbound" rule.
+  FunctionSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Condition: CreateSg
+    Properties:
+      GroupDescription: !Sub 'ONTAP catalog snapshot function (${AWS::StackName}): outbound HTTPS only, no inbound'
+      VpcId: !Ref VpcId
+      SecurityGroupEgress:
+        - Description: ONTAP management endpoint
+          IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          DestinationSecurityGroupId: !Ref FsxSecurityGroupId
+        - !If
+          - HasDistinctEndpointSg
+          - Description: Secrets Manager interface VPC endpoint
+            IpProtocol: tcp
+            FromPort: 443
+            ToPort: 443
+            DestinationSecurityGroupId: !Ref SecretsEndpointSecurityGroupId
+          - !Ref AWS::NoValue
+        - !If
+          - HasS3PrefixList
+          - Description: S3 gateway VPC endpoint
+            IpProtocol: tcp
+            FromPort: 443
+            ToPort: 443
+            DestinationPrefixListId: !Ref S3PrefixListId
+          - !Ref AWS::NoValue
+        - !If
+          - AllowInternet
+          - Description: Secrets Manager and S3 through a NAT gateway
+            IpProtocol: tcp
+            FromPort: 443
+            ToPort: 443
+            CidrIp: 0.0.0.0/0
+          - !Ref AWS::NoValue
+      Tags:
+        - Key: UseCase
+          Value: OPS7-OntapCatalogSnapshot
+        - Key: Pattern
+          Value: operations
+  # These two rules are added to groups this stack does not own. They are removed again with the stack.
+  FsxIngressFromFunction:
+    Type: AWS::EC2::SecurityGroupIngress
+    Condition: CreateFsxIngress
+    Properties:
+      Description: !Sub 'ONTAP catalog snapshot (${AWS::StackName}) to the management endpoint'
+      GroupId: !Ref FsxSecurityGroupId
+      IpProtocol: tcp
+      FromPort: 443
+      ToPort: 443
+      SourceSecurityGroupId: !Ref FunctionSecurityGroup
+  SecretsEndpointIngressFromFunction:
+    Type: AWS::EC2::SecurityGroupIngress
+    Condition: CreateEndpointIngress
+    Properties:
+      Description: !Sub 'ONTAP catalog snapshot (${AWS::StackName}) to Secrets Manager'
+      GroupId: !Ref SecretsEndpointSecurityGroupId
+      IpProtocol: tcp
+      FromPort: 443
+      ToPort: 443
+      SourceSecurityGroupId: !Ref FunctionSecurityGroup
+  SnapshotLogGroup:
+    Type: AWS::Logs::LogGroup
+    DeletionPolicy: Delete
+    UpdateReplacePolicy: Delete
+    Properties:
+      LogGroupName: !Sub '/aws/lambda/${AWS::StackName}-snapshot'
+      RetentionInDays: !Ref LogRetentionInDays
+  SnapshotFunction:
+    Type: AWS::Serverless::Function
+    DependsOn: SnapshotLogGroup
+    Properties:
+      FunctionName: !Sub '${AWS::StackName}-snapshot'
+      Description: Reads the ONTAP command and REST API catalog and writes a snapshot to S3. GET only.
+      CodeUri: functions/snapshot/
+      Handler: handler.handler
+      Runtime: python3.13
+      Architectures: [arm64]
+      Timeout: 900
+      MemorySize: 512
+      # One run at a time: two runs would use the administrator credential in parallel.
+      ReservedConcurrentExecutions: 1
+      # No automatic retry. A retry would use a credential that may already have been refused.
+      EventInvokeConfig:
+        MaximumRetryAttempts: 0
+      VpcConfig:
+        SubnetIds: !Ref VpcSubnetIds
+        SecurityGroupIds: !If
+          - CreateSg
+          - [!Ref FunctionSecurityGroup]
+          - !Ref VpcSecurityGroupIds
+      Environment:
+        Variables:
+          ONTAP_MANAGEMENT_ENDPOINT: !Ref ManagementEndpoint
+          ONTAP_SECRET_ARN: !Ref OntapSecretArn
+          FILE_SYSTEM_ID: !Ref FileSystemId
+          OUTPUT_BUCKET: !If [CreateBucket, !Ref OutputBucket, !Ref ExistingOutputBucketName]
+          OUTPUT_PREFIX: !Ref OutputPrefix
+          PROBE_REST_GET: !Ref ProbeRestGet
+          PROBE_MAX_ENDPOINTS: !Ref ProbeMaxEndpoints
+          VERIFY_SSL: !Ref VerifySsl
+          NOTIFICATION_TOPIC_ARN: !Ref NotificationTopicArn
+          LOG_LEVEL: INFO
+      Policies:
+        - AWSLambdaVPCAccessExecutionRole
+        - Version: '2012-10-17'
+          Statement:
+            - Sid: ReadTheOneSecret
+              Effect: Allow
+              Action:
+                - secretsmanager:GetSecretValue
+                - secretsmanager:DescribeSecret
+              Resource: !Ref OntapSecretArn
+            - !If
+              - HasSecretKmsKey
+              - Sid: DecryptTheSecret
+                Effect: Allow
+                Action: kms:Decrypt
+                Resource: !Ref SecretKmsKeyArn
+              - !Ref AWS::NoValue
+            - Sid: WriteSnapshots
+              Effect: Allow
+              Action:
+                - s3:PutObject
+                - s3:GetObject
+              Resource: !If
+                - CreateBucket
+                - !Sub '${OutputBucket.Arn}/${OutputPrefix}/*'
+                - !Sub 'arn:${AWS::Partition}:s3:::${ExistingOutputBucketName}/${OutputPrefix}/*'
+            # Without ListBucket, S3 answers a missing key with AccessDenied, and a first run cannot
+            # be told from a real permission problem. Scoped to the output prefix.
+            - Sid: ListOutputPrefix
+              Effect: Allow
+              Action: s3:ListBucket
+              Resource: !If
+                - CreateBucket
+                - !GetAtt OutputBucket.Arn
+                - !Sub 'arn:${AWS::Partition}:s3:::${ExistingOutputBucketName}'
+              Condition:
+                StringLike:
+                  's3:prefix': !Sub '${OutputPrefix}/*'
+            - !If
+              - HasNotificationTopic
+              - Sid: Notify
+                Effect: Allow
+                Action: sns:Publish
+                Resource: !Ref NotificationTopicArn
+              - !Ref AWS::NoValue
+      Tags:
+        Project: fsxn-ontap-catalog-snapshot
+        Layer: operations
+        Component: snapshot
+        UseCase: OPS7-OntapCatalogSnapshot
+        Pattern: operations
+  ScheduleRule:
+    Type: AWS::Events::Rule
+    Condition: HasSchedule
+    Properties:
+      Description: Runs the ONTAP catalog snapshot.
+      ScheduleExpression: !Ref ScheduleExpression
+      State: ENABLED
+      Targets:
+        - Id: snapshot
+          Arn: !GetAtt SnapshotFunction.Arn
+          # A failed run is not retried: it may mean the credential was refused.
+          RetryPolicy:
+            MaximumRetryAttempts: 0
+  SchedulePermission:
+    Type: AWS::Lambda::Permission
+    Condition: HasSchedule
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !Ref SnapshotFunction
+      Principal: events.amazonaws.com
+      SourceArn: !GetAtt ScheduleRule.Arn
+# -------------------------------------------------------------------
+# Outputs
+# -------------------------------------------------------------------
+Outputs:
+  FunctionName:
+    Description: Invoke this function to take a snapshot now.
+    Value: !Ref SnapshotFunction
+  OutputBucketName:
+    Value: !If [CreateBucket, !Ref OutputBucket, !Ref ExistingOutputBucketName]
+  FunctionSecurityGroupId:
+    Condition: CreateSg
+    Description: Security group created for the function.
+    Value: !Ref FunctionSecurityGroup
+  OutputLocation:
+    Value: !Sub 's3://${OutputPrefix}/${FileSystemId}/'
+    Description: Key prefix of the snapshots inside the bucket.

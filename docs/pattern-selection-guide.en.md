@@ -15,7 +15,7 @@ A guide for choosing among every pattern in this repository, based on the custom
 | 1 | **Decide which pattern** | This page |
 | 2 | Run it | Each pattern's `README` and `docs/demo-guide.md` |
 | 3 | Read before going to production | The "read before going to production" section at the end of each README, which points into the Playbook |
-| 4 | Operate it | OPS1-6 under [operations/](#operations-optimisation-ops16--lowering-idle-capacity-and-cost) |
+| 4 | Operate it | OPS1-7 under [operations/](#operations-optimisation-ops17--lowering-idle-capacity-and-cost) |
 
 ---
 
@@ -113,7 +113,7 @@ All of these are Lambda pipelines reading through an S3 Access Point, and all ru
 
 ---
 
-## 5. Operations optimisation (OPS1-6) — lowering idle capacity and cost
+## 5. Operations optimisation (OPS1-7) — lowering idle capacity and cost
 
 **This is the pillar that does not use S3 Access Points.** These act on a file system that is already running, independently of deploying any pattern.
 
@@ -125,6 +125,7 @@ All of these are Lambda pipelines reading through an S3 Access Point, and all ru
 | Tidying snapshot retention | [OPS4 snapshot-lifecycle](../operations/snapshot-lifecycle/) |
 | Bringing cost into a FinOps process | [OPS5 cost-optimization](../operations/cost-optimization/) |
 | Monitoring QoS policies | [OPS6 qos-monitoring](../operations/qos-monitoring/) |
+| Keeping a per-version record of the commands and REST APIs the administrator can use | [OPS7 ontap-catalog-snapshot](../operations/ontap-catalog-snapshot/) |
 
 ---
 
