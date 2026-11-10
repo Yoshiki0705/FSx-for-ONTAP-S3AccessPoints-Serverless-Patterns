@@ -20,7 +20,7 @@ interface FavoriteItem {
  * UX-1: Favorites / Pinned files and folders.
  *
  * Provides:
- * - FavoriteButton: ⭐ toggle button for any file or folder in the listing
+ * - FavoriteButton: ⭐ toggle button for any file or folder in the listing check-ui-ignore
  * - FavoritesView: filtered view showing only pinned entries
  *
  * Data model: DynamoDB "Favorite" table with owner-based auth.
