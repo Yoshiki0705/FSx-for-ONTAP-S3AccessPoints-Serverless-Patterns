@@ -7,7 +7,7 @@ import { useTranslation, LOCALES, type Locale } from "../i18n";
  * UX design principles (per Smashing Magazine best practices):
  * - Show current language in native script (日本語, not "Japanese")
  * - No flags (flags = countries, not languages)
- * - Globe icon (🌐) as universal visual cue
+ * - Globe icon (🌐) as universal visual cue check-ui-ignore
  * - Pill shape (rounded) — compact, modern appearance
  * - Click to open, click outside to close
  * - Keyboard accessible (Enter/Escape)

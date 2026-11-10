@@ -5,7 +5,7 @@
  * - P0: Markdown rendering (bold, lists, headers, code)
  * - P1: Typing animation effect on response arrival
  * - P2: Citation badges showing files the agent read
- * - P3: Feedback buttons (👍/👎) per response
+ * - P3: Feedback buttons (👍/👎) per response check-ui-ignore
  * - P4: Timeline trace with colored agent bars and duration
  * - P5: Guardrail detail (input/output assessment)
  * - P6: Response metadata (model + execution time)

@@ -103,11 +103,11 @@ function PreviewTrigger({
 /**
  * Inline file preview with presigned URL image loading.
  *
- * For image files: shows 🖼️ icon. On click, fetches a presigned URL
+ * For image files: shows 🖼️ icon. On click, fetches a presigned URL check-ui-ignore
  * from the getPresignedUrl AppSync query and displays the actual image
  * in a popover. Presigned URLs are time-limited (5 min default).
  *
- * For non-image files: shows 📄 icon with download-on-click.
+ * For non-image files: shows 📄 icon with download-on-click. check-ui-ignore
  *
  * Architecture:
  *   Click → AppSync getPresignedUrl → Lambda → boto3 generate_presigned_url

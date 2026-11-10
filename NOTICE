@@ -1,0 +1,6 @@
+fsxn-s3ap-serverless-patterns
+This repository contains material derived from the following work.
+unslop-ai-app by Minoru Onda (https://github.com/minorun365/unslop-ai-app),
+Copyright 2026 Minoru Onda, licensed under the Apache License 2.0.
+Derived files:
+  - tools/check-ui.mjs (modified; the full license is in tools/LICENSE)
