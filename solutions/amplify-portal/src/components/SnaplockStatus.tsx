@@ -6,6 +6,7 @@ import { adminMutate, adminQuery, dispatch, protectionMutate, protectionQuery } 
 import { daysFromNow, type SnapshotId } from "../lib/dispatchActions";
 import { useActiveSvm } from "../hooks/useActiveSvm";
 import { useStorageAdmin } from "../hooks/useStorageAdmin";
+import { Icon } from "./Icon";
 import { OntapFailureNotice } from "./OntapFailureNotice";
 import { SnaplockConfirmDialog } from "./SnaplockConfirmDialog";
 import { VolumeScopeBadge } from "./VolumeScopeBadge";
@@ -329,7 +330,7 @@ export function SnaplockStatus() {
   if (loading && !statusQuery.data) {
     return (
       <div className="protection-section">
-        <h2>🔒 {t("lockTitle")}</h2>
+        <h2><Icon name="lock" className="icon-lead" />{t("lockTitle")}</h2>
         <p className="loading">{t("loading")}</p>
       </div>
     );
@@ -354,7 +355,7 @@ export function SnaplockStatus() {
         />
       )}
       <div className="protection-header">
-        <h2>🔒 {t("lockTitle")}</h2>
+        <h2><Icon name="lock" className="icon-lead" />{t("lockTitle")}</h2>
         {/* From the response, so it names the volume these panels describe, and it says
             which of the two it is: the selection, or the deployment's default. */}
         <VolumeScopeBadge volumeName={volumeName} isDefault={!volumeInScope} />
@@ -391,17 +392,17 @@ export function SnaplockStatus() {
         <button role="tab" aria-selected={activePanel === "snaplock"}
           className={`panel-tab ${activePanel === "snaplock" ? "active" : ""}`}
           onClick={() => setActivePanel("snaplock")}>
-          🔒 ONTAP SnapLock
+          <Icon name="lock" className="icon-lead" />ONTAP SnapLock
         </button>
         <button role="tab" aria-selected={activePanel === "s3lock"}
           className={`panel-tab ${activePanel === "s3lock" ? "active" : ""}`}
           onClick={() => setActivePanel("s3lock")}>
-          🪣 S3 Object Lock
+          <Icon name="archive" className="icon-lead" />S3 Object Lock
         </button>
         <button role="tab" aria-selected={activePanel === "tamperproof"}
           className={`panel-tab ${activePanel === "tamperproof" ? "active" : ""}`}
           onClick={() => setActivePanel("tamperproof")}>
-          🔐 Tamperproof Snapshot
+          <Icon name="lock-keyhole" className="icon-lead" />Tamperproof Snapshot
         </button>
       </div>
 
@@ -418,7 +419,9 @@ export function SnaplockStatus() {
               <div className="status-dot status-dot-active" />
               <div className="status-label">
                 <span className="status-title">
-                  {snaplock.type === "compliance" ? "🔒 Compliance Mode" : "🔐 Enterprise Mode"}
+                  {snaplock.type === "compliance"
+                    ? <><Icon name="lock" className="icon-lead" />Compliance Mode</>
+                    : <><Icon name="lock-keyhole" className="icon-lead" />Enterprise Mode</>}
                 </span>
                 <span className="status-subtitle">
                   {snaplock.type === "compliance"
@@ -438,7 +441,7 @@ export function SnaplockStatus() {
           )}
 
           {/* P1: Inline SnapLock volumes list */}
-          <h4 style={{ marginTop: "1.5rem" }}>🔒 {t("lockSnaplockVolumes")} ({snaplockVolumes.length})</h4>
+          <h4 style={{ marginTop: "1.5rem" }}><Icon name="lock" className="icon-lead" />{t("lockSnaplockVolumes")} ({snaplockVolumes.length})</h4>
 
           {snaplockVolumes.length > 0 ? (
             <table className="admin-table" style={{ marginTop: "0.5rem" }}>
@@ -456,7 +459,9 @@ export function SnaplockStatus() {
                     <td>{vol.name}</td>
                     <td>
                       <span className={`state-badge ${vol.snaplockType === "compliance" ? "state-warning" : "state-online"}`}>
-                        {vol.snaplockType === "compliance" ? "🔒 Compliance" : "🔐 Enterprise"}
+                        {vol.snaplockType === "compliance"
+                          ? <><Icon name="lock" className="icon-lead" />Compliance</>
+                          : <><Icon name="lock-keyhole" className="icon-lead" />Enterprise</>}
                       </span>
                     </td>
                     <td>{vol.sizeGiB} GiB</td>
@@ -505,7 +510,7 @@ export function SnaplockStatus() {
 
           <div style={{ marginTop: "1rem" }}>
             <button className="btn-secondary" onClick={() => { sessionStorage.setItem("rm-panel", "volumes"); window.location.hash = "resources"; }}>
-              🔧 {t("lockGoToVolumeManager")}
+              <Icon name="wrench" className="icon-lead" />{t("lockGoToVolumeManager")}
             </button>
           </div>
             </>
@@ -522,7 +527,7 @@ export function SnaplockStatus() {
             <div className="status-label">
               <span className="status-title">
                 {s3LockStatus?.objectLockEnabled
-                  ? `✅ ${t("lockS3Enabled")}`
+                  ? <><Icon name="check-circle" className="icon-lead" />{t("lockS3Enabled")}</>
                   : t("lockS3NotEnabled")}
               </span>
               <span className="status-subtitle">
@@ -546,8 +551,8 @@ export function SnaplockStatus() {
                 <div className="detail-label">{t("lockS3Mode")}</div>
                 <div className="detail-value">
                   {s3LockStatus.defaultRetention.mode === "GOVERNANCE"
-                    ? `🔒 Governance`
-                    : `🔐 Compliance`}
+                    ? <><Icon name="lock" className="icon-lead" />Governance</>
+                    : <><Icon name="lock-keyhole" className="icon-lead" />Compliance</>}
                 </div>
               </div>
               <div className="detail-card">
@@ -567,7 +572,7 @@ export function SnaplockStatus() {
           <div style={{ marginTop: "1.5rem" }}>
             {/* Opening the form enables the bucket query, so no explicit load. */}
             <button className="btn-primary" onClick={() => setShowS3Config(!showS3Config)}>
-              🔧 {t("lockS3ConfigureBtn")}
+              <Icon name="wrench" className="icon-lead" />{t("lockS3ConfigureBtn")}
             </button>
           </div>
 
@@ -660,7 +665,7 @@ export function SnaplockStatus() {
             <>
               {/* P1: Inline Lock Snapshot action */}
               <div className="create-form" style={{ marginTop: "1rem" }}>
-                <h4>🔐 {t("lockSnapshotAction")}</h4>
+                <h4><Icon name="lock-keyhole" className="icon-lead" />{t("lockSnapshotAction")}</h4>
                 <div className="form-row">
                   <div className="form-group">
                     <label>{t("lockSelectSnapshot")}</label>
@@ -695,7 +700,7 @@ export function SnaplockStatus() {
                       className="btn-primary"
                       disabled={lockingInProgress || !lockTargetSnap}
                     >
-                      {lockingInProgress ? t("loading") : `🔐 ${t("lockLockBtn")}`}
+                      {lockingInProgress ? t("loading") : <><Icon name="lock-keyhole" className="icon-lead" />{t("lockLockBtn")}</>}
                     </button>
                   </div>
                 </div>
@@ -703,7 +708,7 @@ export function SnaplockStatus() {
               </div>
 
               {/* Locked snapshots table */}
-              <h4 style={{ marginTop: "1.5rem" }}>🔐 {t("lockLockedSnapshots")} ({lockedSnapshots.length})</h4>
+              <h4 style={{ marginTop: "1.5rem" }}><Icon name="lock-keyhole" className="icon-lead" />{t("lockLockedSnapshots")} ({lockedSnapshots.length})</h4>
 
               {lockedSnapshots.length > 0 ? (
                 <table className="admin-table" style={{ marginTop: "0.5rem" }}>
@@ -721,7 +726,7 @@ export function SnaplockStatus() {
                         <td>{formatDate(snap.createTime)}</td>
                         <td>
                           <span className="lock-badge locked">
-                            🔐 {formatDate(snap.expiryTime || snap.snaplockExpiryTime)}
+                            <Icon name="lock-keyhole" className="icon-lead" />{formatDate(snap.expiryTime || snap.snaplockExpiryTime)}
                           </span>
                         </td>
                       </tr>
@@ -743,7 +748,7 @@ export function SnaplockStatus() {
 
               <button className="btn-primary" style={{ marginTop: "1rem" }}
                 onClick={() => { sessionStorage.setItem("rm-panel", "snapshotAdmin"); window.location.hash = "resources"; }}>
-                🔧 {t("lockGoToSnapshotAdmin")}
+                <Icon name="wrench" className="icon-lead" />{t("lockGoToSnapshotAdmin")}
               </button>
             </>
           )}

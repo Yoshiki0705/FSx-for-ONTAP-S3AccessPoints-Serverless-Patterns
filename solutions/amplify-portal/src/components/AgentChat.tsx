@@ -5,7 +5,7 @@
  * - P0: Markdown rendering (bold, lists, headers, code)
  * - P1: Typing animation effect on response arrival
  * - P2: Citation badges showing files the agent read
- * - P3: Feedback buttons (👍/👎) per response check-ui-ignore
+ * - P3: Feedback buttons (thumbs up/down) per response
  * - P4: Timeline trace with colored agent bars and duration
  * - P5: Guardrail detail (input/output assessment)
  * - P6: Response metadata (model + execution time)
@@ -20,6 +20,7 @@ import { AgentFileSidebar } from "./AgentFileSidebar";
 import { dispatch } from "../lib/dispatch";
 import type { ParamsOf } from "../lib/dispatchActions";
 import { parseResponse } from "../utils/parseResponse";
+import { Icon, type IconName } from "./Icon";
 
 /** Cache key for the saved chat sessions, shared with the delete action. */
 const SESSIONS_KEY = ["agents", "listSessions"];
@@ -90,18 +91,18 @@ const AGENT_COLORS: Record<string, { bg: string; text: string; border: string }>
   },
 };
 
-const AGENT_ICONS: Record<string, string> = {
-  "file-explorer": "📁",
-  "knowledge-analyst": "🧠",
-  "safety-controller": "🛡️",
-  "general": "⚙️",
+const AGENT_ICONS: Record<string, IconName> = {
+  "file-explorer": "folder",
+  "knowledge-analyst": "brain",
+  "safety-controller": "shield",
+  "general": "settings",
 };
 
 // --- Suggested Prompts (Card Grid) ---
 
 interface TaskCard {
   id: string;
-  icon: string;
+  icon: IconName;
   // Typed as TranslationKeys, not string, so a key that no locale defines is a
   // compile error here rather than a card rendering its own key name at runtime.
   // These were `string`, which forced `t(card.titleKey as any)` at each use.
@@ -117,7 +118,7 @@ interface TaskCard {
 const TASK_CARDS: TaskCard[] = [
   {
     id: "browse",
-    icon: "📂",
+    icon: "folder",
     titleKey: "cardBrowseTitle",
     descKey: "cardBrowseDesc",
     promptKey: "agentSuggestList",
@@ -126,7 +127,7 @@ const TASK_CARDS: TaskCard[] = [
   },
   {
     id: "search",
-    icon: "🔍",
+    icon: "search",
     titleKey: "cardSearchTitle",
     descKey: "cardSearchDesc",
     promptKey: "agentSuggestSearch",
@@ -135,7 +136,7 @@ const TASK_CARDS: TaskCard[] = [
   },
   {
     id: "knowledge",
-    icon: "🧠",
+    icon: "brain",
     titleKey: "cardKnowledgeTitle",
     descKey: "cardKnowledgeDesc",
     promptKey: "cardKnowledgePrompt",
@@ -144,7 +145,7 @@ const TASK_CARDS: TaskCard[] = [
   },
   {
     id: "analyze",
-    icon: "📊",
+    icon: "bar-chart",
     titleKey: "cardAnalyzeTitle",
     descKey: "cardAnalyzeDesc",
     promptKey: "agentSuggestAnalyze",
@@ -153,7 +154,7 @@ const TASK_CARDS: TaskCard[] = [
   },
   {
     id: "protect",
-    icon: "🛡️",
+    icon: "shield",
     titleKey: "cardProtectTitle",
     descKey: "cardProtectDesc",
     promptKey: "cardProtectPrompt",
@@ -162,7 +163,7 @@ const TASK_CARDS: TaskCard[] = [
   },
   {
     id: "recent",
-    icon: "🕐",
+    icon: "clock",
     titleKey: "cardRecentTitle",
     descKey: "cardRecentDesc",
     promptKey: "agentSuggestRecent",
@@ -549,23 +550,23 @@ export function AgentChat({
   };
 
   const clearHistory = () => { setMessages([]); setError(null); setPendingApproval(null); setCurrentSessionId(""); };
-  const handleApprove = () => { setPendingApproval(null); setMessages((prev) => [...prev, { id: generateId(), role: "system", content: `✅ ${t("approvalApproved")}`, timestamp: Date.now() }]); };
-  const handleReject = () => { setPendingApproval(null); setMessages((prev) => [...prev, { id: generateId(), role: "system", content: `❌ ${t("approvalRejected")}`, timestamp: Date.now() }]); };
+  const handleApprove = () => { setPendingApproval(null); setMessages((prev) => [...prev, { id: generateId(), role: "system", content: t("approvalApproved"), timestamp: Date.now() }]); };
+  const handleReject = () => { setPendingApproval(null); setMessages((prev) => [...prev, { id: generateId(), role: "system", content: t("approvalRejected"), timestamp: Date.now() }]); };
 
   return (
     <div className="agent-chat">
       {/* Header */}
       <div className="agent-chat-header">
-        <h2>🤖 {t("agentTitle")}</h2>
+        <h2><Icon name="bot" className="icon-lead" />{t("agentTitle")}</h2>
         <div className="agent-header-actions">
           {chatHistoryEnabled && (
-            <button className="btn-sm" onClick={() => setShowHistory(!showHistory)} title={t("chatHistoryTitle")}>📜</button>
+            <button className="btn-sm" onClick={() => setShowHistory(!showHistory)} title={t("chatHistoryTitle")}><Icon name="file-text" /></button>
           )}
           {referencedFiles.length > 0 && (
-            <button className="btn-sm" onClick={() => setShowFileSidebar(!showFileSidebar)} title={t("sidebarFileInfo")}>📂</button>
+            <button className="btn-sm" onClick={() => setShowFileSidebar(!showFileSidebar)} title={t("sidebarFileInfo")}><Icon name="folder" /></button>
           )}
           {messages.length > 0 && (
-            <button className="btn-sm" onClick={clearHistory} title={t("agentClear")}>🗑️</button>
+            <button className="btn-sm" onClick={clearHistory} title={t("agentClear")}><Icon name="trash" /></button>
           )}
         </div>
       </div>
@@ -577,7 +578,7 @@ export function AgentChat({
       {runTarget && (
         <div className="agent-run-target" role="status">
           <span>
-            {runTarget.kind === "team" ? "🧩" : "🤖"}{" "}
+            <Icon name={runTarget.kind === "team" ? "puzzle" : "bot"} className="icon-lead" />
             {t(runTarget.kind === "team" ? "agentRunningTeam" : "agentRunningAgent").replace(
               "{name}",
               runTarget.name,
@@ -599,21 +600,21 @@ export function AgentChat({
           onClick={() => setAgentMode("kb")}
           title={t("modeKbDesc")}
         >
-          🧠 {t("modeKb")}
+          <Icon name="brain" className="icon-lead" />{t("modeKb")}
         </button>
         <button
           className={`mode-pill ${agentMode === "agent" ? "active" : ""}`}
           onClick={() => setAgentMode("agent")}
           title={t("modeAgentDesc")}
         >
-          📁 {t("modeAgent")}
+          <Icon name="folder" className="icon-lead" />{t("modeAgent")}
         </button>
         <button
           className={`mode-pill ${agentMode === "multi" ? "active" : ""}`}
           onClick={() => setAgentMode("multi")}
           title={t("modeMultiDesc")}
         >
-          🤖 {t("modeMulti")}
+          <Icon name="bot" className="icon-lead" />{t("modeMulti")}
         </button>
       </div>
       )}
@@ -622,7 +623,7 @@ export function AgentChat({
       {showHistory && (
         <div className="chat-history-panel">
           <div className="chat-history-header">
-            <h4>📜 {t("chatHistoryTitle")}</h4>
+            <h4><Icon name="file-text" className="icon-lead" />{t("chatHistoryTitle")}</h4>
             <button className="btn-sm" onClick={() => { clearHistory(); setShowHistory(false); }}>+ {t("chatHistoryNew")}</button>
           </div>
           {sessions.length === 0 ? (
@@ -647,7 +648,7 @@ export function AgentChat({
       <div className="agent-chat-messages" role="log" aria-label={t("agentTitle")}>
         {messages.length === 0 && !loading && (
           <div className="agent-chat-welcome">
-            <div className="agent-welcome-icon">🤖</div>
+            <div className="agent-welcome-icon"><Icon name="bot" /></div>
             <h3>{t("agentWelcomeTitle")}</h3>
             <p>{t("agentWelcomeDesc")}</p>
 
@@ -667,7 +668,7 @@ export function AgentChat({
                   onClick={() => sendMessage(t(card.promptKey))}
                 >
                   <div className="card-top">
-                    <span className="card-icon">{card.icon}</span>
+                    <span className="card-icon"><Icon name={card.icon} /></span>
                     <span className="card-agent-tag">{card.agent}</span>
                   </div>
                   <div className="card-title">{t(card.titleKey)}</div>
@@ -683,9 +684,9 @@ export function AgentChat({
             {/* Header */}
             <div className="agent-message-header">
               <span className="agent-message-role">
-                {msg.role === "user" ? `👤 ${t("agentYou")}` :
-                 msg.role === "assistant" ? `🤖 ${t("agentAssistant")}` :
-                 `⚠️ ${t("agentSystem")}`}
+                {msg.role === "user" ? <><Icon name="user" className="icon-lead" />{t("agentYou")}</> :
+                 msg.role === "assistant" ? <><Icon name="bot" className="icon-lead" />{t("agentAssistant")}</> :
+                 <><Icon name="alert-triangle" className="icon-lead" />{t("agentSystem")}</>}
               </span>
               <span className="agent-message-time">
                 {new Date(msg.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
@@ -697,7 +698,7 @@ export function AgentChat({
               <div className="agent-trace-timeline">
                 <details open={msg.toolCalls.length <= 3}>
                   <summary className="trace-summary">
-                    🔧 {t("agentToolCalls")} ({msg.toolCalls.length})
+                    <Icon name="wrench" className="icon-lead" />{t("agentToolCalls")} ({msg.toolCalls.length})
                     {msg.responseTimeMs && (
                       <span className="trace-duration">{(msg.responseTimeMs / 1000).toFixed(1)}s</span>
                     )}
@@ -710,10 +711,10 @@ export function AgentChat({
                         <div key={idx} className="trace-item" style={{ borderLeftColor: colors.border, background: colors.bg }}>
                           <div className="trace-item-header">
                             <span className="trace-status">
-                              {tc.status === "completed" ? "✅" : tc.status === "error" ? "❌" : "⏳"}
+                              <Icon name={tc.status === "completed" ? "check-circle" : tc.status === "error" ? "x-circle" : "hourglass"} />
                             </span>
                             <span className="trace-agent-badge" style={{ color: colors.text, borderColor: colors.border }}>
-                              {icon} {tc.agent || "general"}
+                              {icon && <Icon name={icon} className="icon-lead" />}{tc.agent || "general"}
                             </span>
                             <span className="trace-tool-name">{tc.name}</span>
                           </div>
@@ -739,7 +740,7 @@ export function AgentChat({
             {/* P2: Citations (files the agent read) */}
             {msg.toolCalls && extractCitations(msg.toolCalls).length > 0 && (
               <div className="agent-citations">
-                <span className="citation-label">📄 Sources:</span>
+                <span className="citation-label"><Icon name="file" className="icon-lead" />Sources:</span>
                 {extractCitations(msg.toolCalls).map((file, i) => (
                   <span key={i} className="citation-badge" title={file}>
                     {file.split("/").pop()}
@@ -758,7 +759,7 @@ export function AgentChat({
                 {/* P5: Guardrail detail */}
                 {msg.guardrailApplied && (
                   <span className="agent-guardrail-badge" title={t("guardrailTooltip")}>
-                    🛡️ {t("guardrailApplied")}
+                    <Icon name="shield" className="icon-lead" />{t("guardrailApplied")}
                   </span>
                 )}
               </div>
@@ -767,13 +768,13 @@ export function AgentChat({
             {/* P3: Feedback Buttons */}
             {msg.role === "assistant" && !msg.feedback && (
               <div className="agent-feedback">
-                <button className="feedback-btn" onClick={() => handleFeedback(msg.id, "positive")} title={t("acGoodResponse")}>👍</button>
-                <button className="feedback-btn" onClick={() => handleFeedback(msg.id, "negative")} title={t("acBadResponse")}>👎</button>
+                <button className="feedback-btn" onClick={() => handleFeedback(msg.id, "positive")} title={t("acGoodResponse")}><Icon name="thumbs-up" /></button>
+                <button className="feedback-btn" onClick={() => handleFeedback(msg.id, "negative")} title={t("acBadResponse")}><Icon name="thumbs-down" /></button>
               </div>
             )}
             {msg.feedback && (
               <div className="agent-feedback-done">
-                {msg.feedback === "positive" ? "👍" : "👎"} Thanks!
+                <Icon name={msg.feedback === "positive" ? "thumbs-up" : "thumbs-down"} className="icon-lead" />Thanks!
               </div>
             )}
           </div>
@@ -783,7 +784,7 @@ export function AgentChat({
         {loading && (
           <div className="agent-message agent-message-assistant">
             <div className="agent-message-header">
-              <span className="agent-message-role">🤖 {t("agentAssistant")}</span>
+              <span className="agent-message-role"><Icon name="bot" className="icon-lead" />{t("agentAssistant")}</span>
             </div>
             <div className="agent-typing-indicator">
               <span className="typing-dot" />
@@ -799,8 +800,8 @@ export function AgentChat({
       {/* Error */}
       {error && !loading && (
         <div className="agent-chat-error">
-          <span>⚠️ {error}</span>
-          <button className="btn-sm" onClick={() => setError(null)}>✕</button>
+          <span><Icon name="alert-triangle" className="icon-lead" />{error}</span>
+          <button className="btn-sm" onClick={() => setError(null)} aria-label={t("close")}><Icon name="close" /></button>
         </div>
       )}
 
@@ -814,7 +815,7 @@ export function AgentChat({
         {attachedImage && (
           <div className="agent-image-preview">
             <img src={attachedImage.preview} alt="Attached" />
-            <button className="agent-image-remove" onClick={() => setAttachedImage(null)}>✕</button>
+            <button className="agent-image-remove" onClick={() => setAttachedImage(null)} aria-label={t("close")}><Icon name="close" /></button>
           </div>
         )}
         <div className="agent-input-row">
@@ -826,7 +827,7 @@ export function AgentChat({
                 title={t("multimodalAttach")}
                 disabled={loading}
               >
-                📎
+                <Icon name="paperclip" />
               </button>
               <input
                 ref={fileInputRef}
@@ -848,7 +849,7 @@ export function AgentChat({
             aria-label={t("agentInputLabel")}
           />
           <button className="agent-send-btn" onClick={() => sendMessage()} disabled={loading || (!input.trim() && !attachedImage)} aria-label={t("agentSendLabel")}>
-            {loading ? "⏳" : "➤"}
+            {loading ? <Icon name="hourglass" /> : <Icon name="send" />}
           </button>
         </div>
       </div>

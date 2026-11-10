@@ -6,6 +6,7 @@ import { useTranslation } from "../i18n";
 import { useActiveSvm } from "../hooks/useActiveSvm";
 import { useStorageAdmin } from "../hooks/useStorageAdmin";
 import { ArpResponseActions } from "./ArpResponseActions";
+import { Icon } from "./Icon";
 import { OntapFailureNotice } from "./OntapFailureNotice";
 import { VolumeScopeBadge } from "./VolumeScopeBadge";
 import { SvmSelector } from "./admin/SvmSelector";
@@ -141,7 +142,7 @@ export function ArpStatus() {
   return (
     <div className="protection-section">
       <div className="protection-header">
-        <h2>🛡️ {t("arpTitle")}</h2>
+        <h2><Icon name="shield" className="icon-lead" />{t("arpTitle")}</h2>
         {/* The badge stays whichever way the volume was chosen: it comes from the
             response, so it names the volume the figures below actually describe. The
             selector alone would not -- it reads "select a volume" until something is
@@ -220,7 +221,7 @@ export function ArpStatus() {
           {/* Protection Details */}
           <div className="protection-cards">
             <div className="protection-card">
-              <div className="card-icon">🧠</div>
+              <div className="card-icon"><Icon name="brain" /></div>
               <div className="card-content">
                 <h3>{t("arpAiMlDetection")}</h3>
                 <p>{arp.state === "enabled" ? t("arpActive") : arp.state === "dry_run" ? t("arpLearning") : t("arpInactive")}</p>
@@ -229,7 +230,7 @@ export function ArpStatus() {
             </div>
 
             <div className="protection-card">
-              <div className="card-icon">📸</div>
+              <div className="card-icon"><Icon name="camera" /></div>
               <div className="card-content">
                 <h3>{t("arpAutoSnapshot")}</h3>
                 <p>{arp.state === "enabled" ? t("arpArmed") : t("arpRequiresEnabled")}</p>
@@ -242,7 +243,7 @@ export function ArpStatus() {
             </div>
 
             <div className="protection-card">
-              <div className="card-icon">🔐</div>
+              <div className="card-icon"><Icon name="lock-keyhole" /></div>
               <div className="card-content">
                 <h3>{t("arpSnapshotTamperproof")}</h3>
                 <p>{arp.state === "enabled" ? t("arpAutoLocked") : "—"}</p>

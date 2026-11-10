@@ -27,6 +27,7 @@ import {
   type ReactNode,
 } from "react";
 import { useTranslation } from "../i18n";
+import { Icon } from "../components/Icon";
 
 /** How a notice reads. An error stays until dismissed; the rest time out. */
 export type ToastTone = "success" | "error" | "info";
@@ -162,7 +163,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
               onClick={() => dismiss(toast.id)}
               aria-label={t("toastDismiss")}
             >
-              ✕
+              <Icon name="close" />
             </button>
           </div>
         ))}

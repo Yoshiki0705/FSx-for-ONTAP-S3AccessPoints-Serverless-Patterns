@@ -1,4 +1,5 @@
 import { useTranslation } from "../i18n";
+import { Icon, StatusDot } from "./Icon";
 /**
  * FlexClone status display for Results tab.
  *
@@ -36,16 +37,16 @@ export function FlexCloneStatus({ cloneInfo }: FlexCloneStatusProps) {
   const { t } = useTranslation();
   const statusIcon = (status: string | undefined) => {
     switch (status) {
-      case "online": return "🟢";
-      case "creating": return "🟡";
-      case "deleted": return "⚫";
-      default: return "⚪";
+      case "online": return <StatusDot tone="ok" />;
+      case "creating": return <StatusDot tone="warning" />;
+      case "deleted": return <StatusDot tone="off" />;
+      default: return <StatusDot tone="neutral" />;
     }
   };
 
   return (
     <div className="flexclone-status" aria-label={t("fcsAria")}>
-      <h4>🔄 FlexClone Volume</h4>
+      <h4><Icon name="refresh" className="icon-lead" />FlexClone Volume</h4>
       <dl className="clone-details">
         <dt>{t("volume")}</dt>
         <dd>{cloneInfo.volumeName || "-"}</dd>

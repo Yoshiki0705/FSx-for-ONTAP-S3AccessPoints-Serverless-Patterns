@@ -13,6 +13,7 @@
 
 import { useState } from "react";
 import { useTranslation } from "../i18n";
+import { Icon, isIconName, type IconName } from "./Icon";
 import {
   SNAPLOCK_CONFIRM_KEYWORD,
   confirmationLevel,
@@ -32,10 +33,10 @@ interface SnaplockConfirmDialogProps {
   now?: Date;
 }
 
-const SEVERITY_ICON: Record<SnaplockSeverity, string> = {
-  irreversible: "⛔",
-  blocksDeletion: "🔒",
-  info: "ℹ️",
+const SEVERITY_ICON: Record<SnaplockSeverity, IconName | "ℹ"> = {
+  irreversible: "ban",
+  blocksDeletion: "lock",
+  info: "ℹ",
 };
 
 /** Locale-formatted absolute date. Falls back to the ISO string. */
@@ -83,7 +84,10 @@ export function SnaplockConfirmDialog({
     return (
       <li key={`${c.messageKey}-${index}`} className={`slc-item slc-${c.severity}`}>
         <span className="slc-icon" aria-hidden="true">
-          {SEVERITY_ICON[c.severity]}
+          {(() => {
+            const glyph = SEVERITY_ICON[c.severity];
+            return isIconName(glyph) ? <Icon name={glyph} /> : glyph;
+          })()}
         </span>
         <span className="slc-text">{text}</span>
       </li>

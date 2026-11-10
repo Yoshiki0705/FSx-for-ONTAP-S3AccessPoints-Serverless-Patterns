@@ -2,6 +2,7 @@ import { useState, useCallback } from "react";
 import { generateClient } from "aws-amplify/data";
 import type { Schema } from "../../amplify/data/resource";
 import { useTranslation } from "../i18n";
+import { Icon } from "./Icon";
 
 const client = generateClient<Schema>();
 
@@ -138,7 +139,7 @@ export function ShareLink({ fileKey, fileName, canShareLinks }: ShareLinkProps) 
         title={`${t("slShareTitle")}: ${fileName}`}
         aria-label={`${t("slGenerateAria")}: ${fileName}`}
       >
-        🔗
+        <Icon name="link" />
       </button>
 
       {showPanel && (
@@ -148,7 +149,7 @@ export function ShareLink({ fileKey, fileName, canShareLinks }: ShareLinkProps) 
               {t("slShareTitle")}: {fileName}
             </span>
             <button className="share-link-close" onClick={handleClose} aria-label={t("close")}>
-              ✕
+              <Icon name="close" />
             </button>
           </div>
 
@@ -206,11 +207,11 @@ export function ShareLink({ fileKey, fileName, canShareLinks }: ShareLinkProps) 
               download button use, so the server shortens its lifetime instead. */}
           {generatedUrl && !qrCode && (canShareLinks ? (
             <button className="share-link-generate" onClick={generateQr} disabled={qrLoading}>
-              {qrLoading ? t("slQrGenerating") : `📱 ${t("slQrGenerate")}`}
+              {qrLoading ? t("slQrGenerating") : <><Icon name="smartphone" className="icon-lead" />{t("slQrGenerate")}</>}
             </button>
           ) : (
             <p className="form-note" title={t("roleExternalShareDeniedTitle")}>
-              🔒 {t("roleExternalShareDenied")}
+              <Icon name="lock" className="icon-lead" />{t("roleExternalShareDenied")}
             </p>
           ))}
 

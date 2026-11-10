@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { generateClient } from "aws-amplify/data";
 import type { Schema } from "../../amplify/data/resource";
 import { useTranslation } from "../i18n";
+import { Icon } from "./Icon";
 
 const client = generateClient<Schema>();
 
@@ -85,22 +86,22 @@ export function AiMetadataBadges({ metadata }: AiMetadataBadgesProps) {
       )}
       {!!rekognitionLabels && (
         <span className="ai-meta-badge" title={t("aiMetaLabels")}>
-          🏞 {rekognitionLabels}
+          <Icon name="image" className="icon-lead" />{rekognitionLabels}
         </span>
       )}
       {!!comprehendEntities && (
         <span className="ai-meta-badge" title={t("aiMetaEntities")}>
-          🔤 {comprehendEntities}
+          <Icon name="type" className="icon-lead" />{comprehendEntities}
         </span>
       )}
       {!!textractLength && (
         <span className="ai-meta-badge" title={t("aiMetaTextLength")}>
-          📝 {textractLength.toLocaleString()}
+          <Icon name="file-text" className="icon-lead" />{textractLength.toLocaleString()}
         </span>
       )}
       {bedrockSummary && (
         <span className="ai-meta-badge" title={bedrockSummary}>
-          ✨ {t("aiMetaSummary")}
+          <Icon name="sparkles" className="icon-lead" />{t("aiMetaSummary")}
         </span>
       )}
     </span>

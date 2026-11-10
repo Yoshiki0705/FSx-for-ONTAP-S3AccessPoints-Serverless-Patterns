@@ -8,6 +8,8 @@ import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "../i18n";
 import { dispatch } from "../lib/dispatch";
+import { Icon } from "./Icon";
+import { AgentIcon } from "./AgentIcon";
 
 /** Cache key for the teams + agents bundle, shared with the delete action. */
 const TEAMS_KEY = ["agents", "teamsAndAgents"];
@@ -157,11 +159,11 @@ export function AgentTeams({ onSelectTeam }: AgentTeamsProps) {
       <div className="agent-teams">
         <div className="teams-wizard">
           <div className="teams-wizard-header">
-            <h3>🧩 {t("teamsWizardTitle")}</h3>
-            <button className="btn-sm" onClick={() => setShowWizard(false)}>✕</button>
+            <h3><Icon name="puzzle" className="icon-lead" />{t("teamsWizardTitle")}</h3>
+            <button className="btn-sm" onClick={() => setShowWizard(false)} aria-label={t("close")}><Icon name="close" /></button>
           </div>
 
-          {wizError && <div className="teams-error">⚠️ {wizError}</div>}
+          {wizError && <div className="teams-error"><Icon name="alert-triangle" className="icon-lead" />{wizError}</div>}
 
           {/* Step 1: Name */}
           <div className="wizard-step">
@@ -180,7 +182,7 @@ export function AgentTeams({ onSelectTeam }: AgentTeamsProps) {
             <div className="wizard-agent-pool">
               {availableAgents.map((agent) => (
                 <button key={agent.agentId} className="wizard-agent-chip" onClick={() => addAgentToTeam(agent)}>
-                  + {agent.icon} {agent.name}
+                  + <AgentIcon value={agent.icon} className="icon-lead" />{agent.name}
                 </button>
               ))}
               {availableAgents.length === 0 && <span className="teams-hint">{t("teamsNoMoreAgents")}</span>}
@@ -194,14 +196,14 @@ export function AgentTeams({ onSelectTeam }: AgentTeamsProps) {
               <div className="wizard-team-list">
                 {wizAgents.map((agent) => (
                   <div key={agent.agentId} className="wizard-team-member">
-                    <span className="team-member-icon">{agent.icon}</span>
+                    <span className="team-member-icon"><AgentIcon value={agent.icon} /></span>
                     <span className="team-member-name">{agent.name}</span>
                     <select value={agent.role} onChange={(e) => setAgentRole(agent.agentId, e.target.value)}>
                       <option value="supervisor">Supervisor</option>
                       <option value="collaborator">Collaborator</option>
                       <option value="reviewer">Reviewer</option>
                     </select>
-                    <button className="btn-sm" onClick={() => removeAgentFromTeam(agent.agentId)}>✕</button>
+                    <button className="btn-sm" onClick={() => removeAgentFromTeam(agent.agentId)} aria-label={t("delete")}><Icon name="close" /></button>
                   </div>
                 ))}
               </div>
@@ -220,7 +222,7 @@ export function AgentTeams({ onSelectTeam }: AgentTeamsProps) {
           <div className="creator-actions">
             <button className="btn-secondary" onClick={() => setShowWizard(false)}>{t("cancel")}</button>
             <button className="btn-primary" onClick={createTeam} disabled={wizSaving}>
-              {wizSaving ? "⏳" : "🧩"} {t("teamsCreate")}
+              <Icon name={wizSaving ? "hourglass" : "puzzle"} className="icon-lead" />{t("teamsCreate")}
             </button>
           </div>
         </div>
@@ -232,7 +234,7 @@ export function AgentTeams({ onSelectTeam }: AgentTeamsProps) {
   return (
     <div className="agent-teams">
       <div className="teams-header">
-        <h2>🧩 {t("teamsTitle")}</h2>
+        <h2><Icon name="puzzle" className="icon-lead" />{t("teamsTitle")}</h2>
         <button className="btn-primary" onClick={() => setShowWizard(true)}>+ {t("teamsCreate")}</button>
       </div>
 
@@ -255,17 +257,17 @@ export function AgentTeams({ onSelectTeam }: AgentTeamsProps) {
               <div className="team-card-agents">
                 {team.agents.map((a) => (
                   <span key={a.agentId} className="team-agent-badge" title={`${a.name} (${a.role})`}>
-                    {a.icon} <span className="team-role-tag">{a.role}</span>
+                    <AgentIcon value={a.icon} className="icon-lead" /><span className="team-role-tag">{a.role}</span>
                   </span>
                 ))}
               </div>
               <div className="team-card-actions">
                 {onSelectTeam && (
                   <button className="btn-sm" onClick={() => onSelectTeam(team.teamId, team.name)}>
-                    💬 {t("teamsUse")}
+                    <Icon name="message" className="icon-lead" />{t("teamsUse")}
                   </button>
                 )}
-                <button className="btn-sm" onClick={() => deleteTeam(team.teamId)}>🗑️</button>
+                <button className="btn-sm" onClick={() => deleteTeam(team.teamId)} aria-label={t("delete")}><Icon name="trash" /></button>
               </div>
             </div>
           ))}

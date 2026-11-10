@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useTranslation } from "../i18n";
+import { Icon, type IconName } from "./Icon";
 import { VolumeManager } from "./admin/VolumeManager";
 import { ExportPolicyManager } from "./admin/ExportPolicyManager";
 import { QosPolicyManager } from "./admin/QosPolicyManager";
@@ -54,7 +55,7 @@ type AdminPanel =
 
 interface PanelDef {
   id: AdminPanel;
-  icon: string;
+  icon: IconName;
   label: string;
   description: string;
   category: "storage" | "access" | "protection" | "services" | "cluster";
@@ -104,41 +105,41 @@ export function ResourceManagement({ aiSettings, onAiSettingsChange }: ResourceM
 
   const panels: PanelDef[] = [
     // Storage
-    { id: "volumes", icon: "💾", label: t("rmVolumes"), description: t("rmVolumesDesc"), category: "storage" },
-    { id: "qtrees", icon: "🌳", label: t("rmQtrees"), description: t("rmQtreesDesc"), category: "storage" },
-    { id: "quotas", icon: "📊", label: t("rmQuotas"), description: t("rmQuotasDesc"), category: "storage" },
-    { id: "efficiency", icon: "📈", label: t("rmEfficiency"), description: t("rmEfficiencyDesc"), category: "storage" },
-    { id: "flexCache", icon: "⚡", label: t("rmFlexCache"), description: t("rmFlexCacheDesc"), category: "storage" },
-    { id: "flexClone", icon: "🧬", label: t("rmFlexClone"), description: t("rmFlexCloneDesc"), category: "storage" },
-    { id: "objectStore", icon: "🪣", label: t("rmObjectStore"), description: t("rmObjectStoreDesc"), category: "storage" },
+    { id: "volumes", icon: "hard-drive", label: t("rmVolumes"), description: t("rmVolumesDesc"), category: "storage" },
+    { id: "qtrees", icon: "git-branch", label: t("rmQtrees"), description: t("rmQtreesDesc"), category: "storage" },
+    { id: "quotas", icon: "bar-chart", label: t("rmQuotas"), description: t("rmQuotasDesc"), category: "storage" },
+    { id: "efficiency", icon: "trending-up", label: t("rmEfficiency"), description: t("rmEfficiencyDesc"), category: "storage" },
+    { id: "flexCache", icon: "zap", label: t("rmFlexCache"), description: t("rmFlexCacheDesc"), category: "storage" },
+    { id: "flexClone", icon: "copy", label: t("rmFlexClone"), description: t("rmFlexCloneDesc"), category: "storage" },
+    { id: "objectStore", icon: "archive", label: t("rmObjectStore"), description: t("rmObjectStoreDesc"), category: "storage" },
     // Access Control
-    { id: "exportPolicies", icon: "📋", label: t("rmExportPolicies"), description: t("rmExportPoliciesDesc"), category: "access" },
-    { id: "cifsShares", icon: "📁", label: t("rmCifsShares"), description: t("rmCifsSharesDesc"), category: "access" },
-    { id: "qos", icon: "⚡", label: t("rmQosPolicies"), description: t("rmQosPoliciesDesc"), category: "access" },
-    { id: "localUsers", icon: "👤", label: t("rmLocalUsers"), description: t("rmLocalUsersDesc"), category: "access" },
-    { id: "nameMapping", icon: "🔗", label: t("rmNameMapping"), description: t("rmNameMappingDesc"), category: "access" },
+    { id: "exportPolicies", icon: "clipboard-list", label: t("rmExportPolicies"), description: t("rmExportPoliciesDesc"), category: "access" },
+    { id: "cifsShares", icon: "folder", label: t("rmCifsShares"), description: t("rmCifsSharesDesc"), category: "access" },
+    { id: "qos", icon: "zap", label: t("rmQosPolicies"), description: t("rmQosPoliciesDesc"), category: "access" },
+    { id: "localUsers", icon: "user", label: t("rmLocalUsers"), description: t("rmLocalUsersDesc"), category: "access" },
+    { id: "nameMapping", icon: "link", label: t("rmNameMapping"), description: t("rmNameMappingDesc"), category: "access" },
     // Protection
-    { id: "arpAdmin", icon: "🛡️", label: t("rmArpAdmin"), description: t("rmArpAdminDesc"), category: "protection" },
-    { id: "snapshotAdmin", icon: "📸", label: t("rmSnapshotAdmin"), description: t("rmSnapshotAdminDesc"), category: "protection" },
-    { id: "snaplock", icon: "🔒", label: t("rmSnaplock"), description: t("rmSnaplockDesc"), category: "protection" },
-    { id: "snapMirror", icon: "🔄", label: t("rmSnapMirror"), description: t("rmSnapMirrorDesc"), category: "protection" },
-    { id: "vscan", icon: "🦠", label: t("rmVscan"), description: t("rmVscanDesc"), category: "protection" },
-    { id: "fpolicy", icon: "📜", label: t("rmFpolicy"), description: t("rmFpolicyDesc"), category: "protection" },
-    { id: "audit", icon: "🧾", label: t("rmAudit"), description: t("rmAuditDesc"), category: "protection" },
+    { id: "arpAdmin", icon: "shield", label: t("rmArpAdmin"), description: t("rmArpAdminDesc"), category: "protection" },
+    { id: "snapshotAdmin", icon: "camera", label: t("rmSnapshotAdmin"), description: t("rmSnapshotAdminDesc"), category: "protection" },
+    { id: "snaplock", icon: "lock", label: t("rmSnaplock"), description: t("rmSnaplockDesc"), category: "protection" },
+    { id: "snapMirror", icon: "refresh", label: t("rmSnapMirror"), description: t("rmSnapMirrorDesc"), category: "protection" },
+    { id: "vscan", icon: "bug", label: t("rmVscan"), description: t("rmVscanDesc"), category: "protection" },
+    { id: "fpolicy", icon: "file-text", label: t("rmFpolicy"), description: t("rmFpolicyDesc"), category: "protection" },
+    { id: "audit", icon: "file-text", label: t("rmAudit"), description: t("rmAuditDesc"), category: "protection" },
     // Cluster — the areas the AWS console does not cover
-    { id: "peering", icon: "🔗", label: t("rmPeering"), description: t("rmPeeringDesc"), category: "cluster" },
-    { id: "svm", icon: "🏢", label: t("rmSvm"), description: t("rmSvmDesc"), category: "cluster" },
-    { id: "cluster", icon: "🖥️", label: t("rmCluster"), description: t("rmClusterDesc"), category: "cluster" },
+    { id: "peering", icon: "link", label: t("rmPeering"), description: t("rmPeeringDesc"), category: "cluster" },
+    { id: "svm", icon: "building", label: t("rmSvm"), description: t("rmSvmDesc"), category: "cluster" },
+    { id: "cluster", icon: "monitor", label: t("rmCluster"), description: t("rmClusterDesc"), category: "cluster" },
     // AI & Services
-    { id: "aiSettings", icon: "🤖", label: t("rmAiSettings"), description: t("rmAiSettingsDesc"), category: "services" },
+    { id: "aiSettings", icon: "bot", label: t("rmAiSettings"), description: t("rmAiSettingsDesc"), category: "services" },
   ];
 
-  const categories = [
-    { key: "storage", label: t("rmCatStorage"), icon: "🗄️" },
-    { key: "access", label: t("rmCatAccess"), icon: "🔐" },
-    { key: "protection", label: t("rmCatProtection"), icon: "🛡️" },
-    { key: "cluster", label: t("rmCatCluster"), icon: "🖥️" },
-    { key: "services", label: t("rmCatServices"), icon: "🤖" },
+  const categories: ReadonlyArray<{ key: PanelDef["category"]; label: string; icon: IconName }> = [
+    { key: "storage", label: t("rmCatStorage"), icon: "database" },
+    { key: "access", label: t("rmCatAccess"), icon: "lock-keyhole" },
+    { key: "protection", label: t("rmCatProtection"), icon: "shield" },
+    { key: "cluster", label: t("rmCatCluster"), icon: "monitor" },
+    { key: "services", label: t("rmCatServices"), icon: "bot" },
   ] as const;
 
   // Render the detail panel when one is selected
@@ -150,7 +151,7 @@ export function ResourceManagement({ aiSettings, onAiSettingsChange }: ResourceM
           <button onClick={() => setActivePanel(null)} className="rm-back-btn">
             ← {t("rmBackToOverview")}
           </button>
-          <h2>{current?.icon} {current?.label}</h2>
+          <h2>{current && <Icon name={current.icon} className="icon-lead" />}{current?.label}</h2>
           <PlatformSelector />
           <SvmSelector />
         </div>
@@ -187,7 +188,7 @@ export function ResourceManagement({ aiSettings, onAiSettingsChange }: ResourceM
   return (
     <div className="resource-management">
       <div className="rm-overview-header">
-        <h2>🔧 {t("rmTitle")}</h2>
+        <h2><Icon name="wrench" className="icon-lead" />{t("rmTitle")}</h2>
         <span className="rm-badge">{t("rmAdminOnly")}</span>
         <PlatformSelector />
           <SvmSelector />
@@ -200,7 +201,7 @@ export function ResourceManagement({ aiSettings, onAiSettingsChange }: ResourceM
         return (
           <div className="rm-category" key={cat.key}>
             <h3 className="rm-category-title">
-              <span className="rm-category-icon">{cat.icon}</span>
+              <span className="rm-category-icon"><Icon name={cat.icon} /></span>
               {cat.label}
             </h3>
             <div className="rm-card-grid">
@@ -211,7 +212,7 @@ export function ResourceManagement({ aiSettings, onAiSettingsChange }: ResourceM
                   onClick={() => setActivePanel(panel.id)}
                   aria-label={panel.label}
                 >
-                  <span className="rm-card-icon">{panel.icon}</span>
+                  <span className="rm-card-icon"><Icon name={panel.icon} /></span>
                   <div className="rm-card-text">
                     <span className="rm-card-title">{panel.label}</span>
                     <span className="rm-card-desc">{panel.description}</span>

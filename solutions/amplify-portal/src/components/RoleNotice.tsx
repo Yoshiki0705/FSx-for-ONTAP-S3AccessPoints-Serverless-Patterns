@@ -15,6 +15,7 @@
  * describes their decision.
  */
 import { useTranslation } from "../i18n";
+import { Icon } from "./Icon";
 import { usePortalRole, type PortalCapabilities } from "../hooks/usePortalRole";
 
 /**
@@ -26,7 +27,7 @@ import { usePortalRole, type PortalCapabilities } from "../hooks/usePortalRole";
 export function RoleNotice({ title, description }: { title: string; description: string }) {
   return (
     <div className="agent-disabled">
-      <div className="agent-disabled-icon">🔒</div>
+      <div className="agent-disabled-icon"><Icon name="lock" /></div>
       <h3>{title}</h3>
       <p>{description}</p>
     </div>
@@ -76,7 +77,7 @@ export function ReadOnlyBanner({ capabilities }: { capabilities: PortalCapabilit
   return (
     <div className="role-readonly-banner" role="status">
       <span className="role-readonly-icon" aria-hidden="true">
-        👁️
+        <Icon name="eye" />
       </span>
       <div>
         <strong>{t("roleReadOnlyTitle")}</strong>

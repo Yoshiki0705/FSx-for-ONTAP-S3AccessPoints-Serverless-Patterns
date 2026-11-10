@@ -11,6 +11,8 @@ import { useTranslation } from "../i18n";
 import { dispatch } from "../lib/dispatch";
 import { errorMessage } from "../lib/portalQuery";
 import { useCurrentUserId } from "../hooks/useCurrentUserId";
+import { Icon } from "./Icon";
+import { AgentIcon, AGENT_ICON_CHOICES, resolveAgentIcon } from "./AgentIcon";
 
 interface AgentItem {
   agentId: string;
@@ -162,7 +164,7 @@ export function AgentDirectory({ onCreateAgent, onRunAgent }: AgentDirectoryProp
         <div className="agent-dir-detail">
           <button className="btn-sm" onClick={() => setSelectedAgent(null)}>← {t("agentDirBack")}</button>
           <div className="agent-dir-detail-header">
-            <span className="agent-dir-detail-icon">{selectedAgent.icon}</span>
+            <span className="agent-dir-detail-icon"><AgentIcon value={selectedAgent.icon} /></span>
             <div>
               <h3>{selectedAgent.name}</h3>
               <span className="agent-dir-category-badge">{selectedAgent.category}</span>
@@ -213,14 +215,20 @@ export function AgentDirectory({ onCreateAgent, onRunAgent }: AgentDirectoryProp
                     value={editDraft.category}
                     onChange={(e) => setEditDraft({ ...editDraft, category: e.target.value })}
                   />
-                  <label htmlFor="agent-edit-icon">{t("agentDirFieldIcon")}</label>
-                  <input
-                    id="agent-edit-icon"
-                    type="text"
-                    maxLength={4}
-                    value={editDraft.icon}
-                    onChange={(e) => setEditDraft({ ...editDraft, icon: e.target.value })}
-                  />
+                  <label>{t("agentDirFieldIcon")}</label>
+                  <div className="icon-picker">
+                    {AGENT_ICON_CHOICES.map((choice) => (
+                      <button
+                        key={choice}
+                        type="button"
+                        className={`icon-option ${resolveAgentIcon(editDraft.icon) === choice ? "selected" : ""}`}
+                        onClick={() => setEditDraft({ ...editDraft, icon: choice })}
+                        aria-label={choice}
+                      >
+                        <Icon name={choice} />
+                      </button>
+                    ))}
+                  </div>
                   <label htmlFor="agent-edit-prompt">{t("agentDirFieldSystemPrompt")}</label>
                   <textarea
                     id="agent-edit-prompt"
@@ -266,7 +274,7 @@ export function AgentDirectory({ onCreateAgent, onRunAgent }: AgentDirectoryProp
                     className="btn-primary"
                     onClick={() => onRunAgent(selectedAgent.agentId, selectedAgent.name)}
                   >
-                    💬 {t("agentDirUseInChat")}
+                    <Icon name="message" className="icon-lead" />{t("agentDirUseInChat")}
                   </button>
                 )}
                 {/* Only the creator may edit or delete: the registry enforces it
@@ -286,11 +294,11 @@ export function AgentDirectory({ onCreateAgent, onRunAgent }: AgentDirectoryProp
                           isShared: selectedAgent.isShared,
                         })}
                       >
-                        ✏️ {t("agentDirEdit")}
+                        <Icon name="pencil" className="icon-lead" />{t("agentDirEdit")}
                       </button>
                     )}
                     <button className="btn-danger" onClick={() => deleteAgent(selectedAgent.agentId)}>
-                      🗑️ {t("agentDirDelete")}
+                      <Icon name="trash" className="icon-lead" />{t("agentDirDelete")}
                     </button>
                   </>
                 )}
@@ -306,7 +314,7 @@ export function AgentDirectory({ onCreateAgent, onRunAgent }: AgentDirectoryProp
     <div className="agent-directory">
       {/* Header */}
       <div className="agent-dir-header">
-        <h2>🤖 {t("agentDirTitle")}</h2>
+        <h2><Icon name="bot" className="icon-lead" />{t("agentDirTitle")}</h2>
         {onCreateAgent && (
           <button className="btn-primary" onClick={onCreateAgent}>+ {t("agentDirCreate")}</button>
         )}
@@ -334,7 +342,7 @@ export function AgentDirectory({ onCreateAgent, onRunAgent }: AgentDirectoryProp
         </div>
       </div>
 
-      {error && <div className="agent-dir-error">⚠️ {error}</div>}
+      {error && <div className="agent-dir-error"><Icon name="alert-triangle" className="icon-lead" />{error}</div>}
 
       {/* Agent Grid */}
       {loading ? (
@@ -355,7 +363,7 @@ export function AgentDirectory({ onCreateAgent, onRunAgent }: AgentDirectoryProp
               onClick={() => loadAgentDetail(agent.agentId)}
             >
               <div className="agent-dir-card-header">
-                <span className="agent-dir-card-icon">{agent.icon}</span>
+                <span className="agent-dir-card-icon"><AgentIcon value={agent.icon} /></span>
                 {agent.isShared && <span className="agent-dir-shared-dot" title={t("agentDirShared")}>●</span>}
               </div>
               <h4 className="agent-dir-card-name">{agent.name}</h4>

@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { generateClient } from "aws-amplify/data";
 import type { Schema } from "../../amplify/data/resource";
 import { useTranslation } from "../i18n";
+import { Icon } from "./Icon";
 
 const client = generateClient<Schema>();
 
@@ -74,10 +75,10 @@ export function FileTagsEditor({
   return (
     <div className="file-tags-editor">
       <div className="tags-list">
-        {tags.map((t) => (
-          <span key={t.id} className="tag-chip" style={{ background: t.color }}>
-            {t.tag}
-            <button className="tag-remove" onClick={() => removeTag(t.id)}>✕</button>
+        {tags.map((tg) => (
+          <span key={tg.id} className="tag-chip" style={{ background: tg.color }}>
+            {tg.tag}
+            <button className="tag-remove" onClick={() => removeTag(tg.id)} aria-label={`${t("delete")}: ${tg.tag}`}><Icon name="close" /></button>
           </span>
         ))}
       </div>

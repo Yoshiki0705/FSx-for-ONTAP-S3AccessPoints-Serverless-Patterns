@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { fileMutate } from "../lib/dispatch";
 import { useTranslation } from "../i18n";
+import { Icon } from "./Icon";
 import { useToast } from "../lib/toast";
 
 /** Prefix the backend moves trashed objects under. Mirrors functions/list-files. */
@@ -150,7 +151,7 @@ export function FileRowActions({ fileKey, fileName, currentPrefix, onChanged }: 
         title={t("flRename")}
         aria-label={t("flRename")}
       >
-        ✏️
+        <Icon name="pencil" />
       </button>
       <button
         className="fl-btn"
@@ -159,7 +160,7 @@ export function FileRowActions({ fileKey, fileName, currentPrefix, onChanged }: 
         title={t("flTrash")}
         aria-label={t("flTrash")}
       >
-        🗑️
+        <Icon name="trash" />
       </button>
       {error && <span className="fl-error">{error}</span>}
     </>
@@ -218,7 +219,7 @@ export function RestoreFromTrashButton({ trashKey, onChanged }: RestoreProps) {
         title={t("flRestore")}
         aria-label={t("flRestore")}
       >
-        {busy ? "…" : "♻️"}
+        {busy ? "…" : <Icon name="undo" />}
       </button>
       {error && <span className="fl-error">{error}</span>}
     </>
@@ -293,7 +294,7 @@ export function UploadLink({ destinationPrefix }: UploadLinkProps) {
   return (
     <div className="fl-upload-link">
       <button className="upload-link-btn" onClick={() => setOpen((v) => !v)} aria-expanded={open}>
-        📤 {t("flUploadLink")}
+        <Icon name="upload" className="icon-lead" />{t("flUploadLink")}
       </button>
       {open && (
         <div className="fl-upload-panel">
@@ -404,7 +405,7 @@ export function CreateFolderButton({ currentPrefix, onChanged }: CreateFolderPro
   return (
     <div className="fl-new-folder">
       <button className="rm-btn-sm" onClick={() => setOpen((v) => !v)} aria-expanded={open}>
-        📁➕ {t("flNewFolder")}
+        <Icon name="folder-plus" className="icon-lead" />{t("flNewFolder")}
       </button>
       {open && (
         <div className="fl-new-folder-panel">
@@ -521,7 +522,7 @@ export function CopyMoveButton({ fileKey, fileName, currentPrefix, onChanged }: 
         aria-label={t("flCopyMove")}
         aria-expanded={open}
       >
-        📋
+        <Icon name="clipboard-list" />
       </button>
       {open && (
         <div className="fl-copy-move-panel" role="dialog" aria-label={t("flCopyMove")}>
@@ -624,7 +625,7 @@ export function DeleteForeverButton({ trashKey, fileName, onChanged }: DeleteFor
         title={t("flDeleteForever")}
         aria-label={t("flDeleteForever")}
       >
-        {busy ? "…" : "🔥"}
+        {busy ? "…" : <Icon name="flame" />}
       </button>
       {error && <span className="fl-error">{error}</span>}
     </>

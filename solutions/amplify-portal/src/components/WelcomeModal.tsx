@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useTranslation } from "../i18n";
+import { Icon, type IconName } from "./Icon";
 
 const STORAGE_KEY = "portal-welcome-dismissed";
 
@@ -29,9 +30,9 @@ export function WelcomeModal() {
   };
 
   const steps = [
-    { icon: "📂", title: t("welcomeStep1Title"), desc: t("welcomeStep1Desc") },
-    { icon: "⚡", title: t("welcomeStep2Title"), desc: t("welcomeStep2Desc") },
-    { icon: "🔒", title: t("welcomeStep3Title"), desc: t("welcomeStep3Desc") },
+    { icon: "folder" as IconName, title: t("welcomeStep1Title"), desc: t("welcomeStep1Desc") },
+    { icon: "zap" as IconName, title: t("welcomeStep2Title"), desc: t("welcomeStep2Desc") },
+    { icon: "lock" as IconName, title: t("welcomeStep3Title"), desc: t("welcomeStep3Desc") },
   ];
 
   return (
@@ -40,7 +41,7 @@ export function WelcomeModal() {
         <h2>{t("welcomeTitle")}</h2>
 
         <div className="welcome-step">
-          <div className="welcome-step-icon">{steps[step].icon}</div>
+          <div className="welcome-step-icon"><Icon name={steps[step].icon} /></div>
           <h3>{steps[step].title}</h3>
           <p>{steps[step].desc}</p>
         </div>
@@ -58,7 +59,7 @@ export function WelcomeModal() {
             </button>
           ) : (
             <button className="btn-primary" onClick={handleDismiss}>
-              {t("welcomeStart")} 🚀
+              {t("welcomeStart")} <Icon name="arrow-right" />
             </button>
           )}
         </div>

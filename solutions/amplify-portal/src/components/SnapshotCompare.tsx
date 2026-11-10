@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useTranslation } from "../i18n";
 import { fileQuery } from "../lib/dispatch";
 import { errorMessage } from "../lib/portalQuery";
+import { Icon, StatusDot } from "./Icon";
 
 interface FileItem {
   key: string;
@@ -147,11 +148,11 @@ export function SnapshotCompare({ cloneApAlias, cloneLabel }: SnapshotComparePro
 
   const getStatusIcon = (status: string) => {
     switch (status) {
-      case "modified": return "✏️";
-      case "added": return "➕";
-      case "deleted": return "🗑️";
-      case "unchanged": return "⚪";
-      default: return "❓";
+      case "modified": return <Icon name="pencil" />;
+      case "added": return <Icon name="plus" />;
+      case "deleted": return <Icon name="trash" />;
+      case "unchanged": return <StatusDot tone="neutral" />;
+      default: return <StatusDot tone="off" />;
     }
   };
 
@@ -201,10 +202,10 @@ export function SnapshotCompare({ cloneApAlias, cloneLabel }: SnapshotComparePro
       {!loading && compareResults.length > 0 && (
         <div className="compare-stats">
           <span className="stat-total">{stats.total} files</span>
-          {stats.modified > 0 && <span className="stat-modified">✏️ {stats.modified} modified</span>}
-          {stats.added > 0 && <span className="stat-added">➕ {stats.added} added</span>}
-          {stats.deleted > 0 && <span className="stat-deleted">🗑️ {stats.deleted} deleted</span>}
-          <span className="stat-unchanged">⚪ {stats.unchanged} unchanged</span>
+          {stats.modified > 0 && <span className="stat-modified"><Icon name="pencil" className="icon-lead" />{stats.modified} modified</span>}
+          {stats.added > 0 && <span className="stat-added"><Icon name="plus" className="icon-lead" />{stats.added} added</span>}
+          {stats.deleted > 0 && <span className="stat-deleted"><Icon name="trash" className="icon-lead" />{stats.deleted} deleted</span>}
+          <span className="stat-unchanged"><StatusDot tone="neutral" />{stats.unchanged} unchanged</span>
         </div>
       )}
 

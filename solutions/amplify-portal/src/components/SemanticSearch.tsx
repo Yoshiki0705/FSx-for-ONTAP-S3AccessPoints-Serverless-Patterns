@@ -16,6 +16,7 @@ import { useState, useCallback, useRef } from "react";
 import { generateClient } from "aws-amplify/data";
 import type { Schema } from "../../amplify/data/resource";
 import { useTranslation } from "../i18n";
+import { Icon } from "./Icon";
 
 const client = generateClient<Schema>();
 
@@ -129,7 +130,7 @@ export function SemanticSearch({ onNavigateToFile }: SemanticSearchProps) {
     <div className="semantic-search">
       {/* Search header */}
       <div className="search-header">
-        <h2>🔍 {t("searchTitle")}</h2>
+        <h2><Icon name="search" className="icon-lead" />{t("searchTitle")}</h2>
       </div>
 
       {/* Search form */}
@@ -148,8 +149,9 @@ export function SemanticSearch({ onNavigateToFile }: SemanticSearchProps) {
             type="submit"
             className="search-submit-btn"
             disabled={loading || !query.trim()}
+            aria-label={t("searchTitle")}
           >
-            {loading ? "⏳" : "🔍"}
+            <Icon name={loading ? "hourglass" : "search"} />
           </button>
         </div>
 
@@ -162,7 +164,7 @@ export function SemanticSearch({ onNavigateToFile }: SemanticSearchProps) {
             role="radio"
             aria-checked={mode === "keyword"}
           >
-            📂 {t("searchModeKeyword")}
+            <Icon name="folder" className="icon-lead" />{t("searchModeKeyword")}
           </button>
           <button
             type="button"
@@ -171,7 +173,7 @@ export function SemanticSearch({ onNavigateToFile }: SemanticSearchProps) {
             role="radio"
             aria-checked={mode === "semantic"}
           >
-            🧠 {t("searchModeSemantic")}
+            <Icon name="brain" className="icon-lead" />{t("searchModeSemantic")}
           </button>
         </div>
 
@@ -184,7 +186,7 @@ export function SemanticSearch({ onNavigateToFile }: SemanticSearchProps) {
       {/* Error display */}
       {error && (
         <div className="search-error">
-          <span>⚠️ {error}</span>
+          <span><Icon name="alert-triangle" className="icon-lead" />{error}</span>
         </div>
       )}
 
@@ -206,7 +208,7 @@ export function SemanticSearch({ onNavigateToFile }: SemanticSearchProps) {
           <div className="search-results-header">
             <span>{results.length} {t("searchResultsFound")}</span>
             {mode === "semantic" && (
-              <span className="search-badge">🧠 {t("searchModeSemantic")}</span>
+              <span className="search-badge"><Icon name="brain" className="icon-lead" />{t("searchModeSemantic")}</span>
             )}
           </div>
 
@@ -222,7 +224,7 @@ export function SemanticSearch({ onNavigateToFile }: SemanticSearchProps) {
               >
                 <div className="result-header">
                   <span className="result-icon">
-                    {result.fileKey.endsWith("/") ? "📁" : "📄"}
+                    <Icon name={result.fileKey.endsWith("/") ? "folder" : "file"} />
                   </span>
                   <span className="result-path" title={result.fileKey}>
                     {highlightMatch(result.fileKey, query)}

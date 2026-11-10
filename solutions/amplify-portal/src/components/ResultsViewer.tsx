@@ -3,6 +3,7 @@ import { generateClient } from "aws-amplify/data";
 import type { Schema } from "../../amplify/data/resource";
 import { FlexCloneStatus } from "./FlexCloneStatus";
 import { useTranslation } from "../i18n";
+import { Icon } from "./Icon";
 import { errorMessage } from "../lib/portalQuery";
 
 const client = generateClient<Schema>();
@@ -96,7 +97,7 @@ export function ResultsViewer({ executionArn, inputPrefix, onNavigateToFolder }:
             onClick={() => onNavigateToFolder(inputPrefix)}
             title={`Navigate to ${inputPrefix}`}
           >
-            📂 /{inputPrefix}
+            <Icon name="folder" className="icon-lead" />/{inputPrefix}
           </button>
         </nav>
       )}
