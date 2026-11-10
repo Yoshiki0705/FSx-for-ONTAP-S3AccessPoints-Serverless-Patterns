@@ -226,7 +226,7 @@ export function AuditLog() {
 
       {error && (
         <div className="protection-info" style={{ marginTop: "1rem" }}>
-          <h3>{t("auditConfigRequired")}</h3>
+          <h3><Icon name="alert-triangle" className="icon-lead" />{t("auditConfigRequired")}</h3>
           <p>{t("auditConfigRequiredDesc")}</p>
           <ul>
             <li>{t("auditConfigStep1")}</li>
@@ -275,7 +275,7 @@ export function AuditLog() {
                         <Icon name="x-circle" className="icon-lead" />{evt.errorCode}
                       </span>
                     ) : (
-                      <span className="audit-success"><Icon name="check-circle" /></span>
+                      <span className="audit-success" role="img" aria-label={t("auditStatusSuccess")}><Icon name="check-circle" /></span>
                     )}
                   </td>
                 </tr>

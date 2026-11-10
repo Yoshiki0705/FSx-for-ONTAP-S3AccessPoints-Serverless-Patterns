@@ -197,7 +197,7 @@ export function AiSettingsManager({ initialSettings, onSettingsChange }: AiSetti
 
         {/* KB Setup Guide (collapsible) */}
         <details className="ai-settings-setup-guide">
-          <summary>{t("aiSettingsSetupGuide")}</summary>
+          <summary><Icon name="book-open" className="icon-lead" />{t("aiSettingsSetupGuide")}</summary>
           <div className="setup-guide-content">
             <p className="setup-intro">{t("aiSettingsSetupIntro")}</p>
 

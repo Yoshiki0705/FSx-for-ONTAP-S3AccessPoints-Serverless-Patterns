@@ -110,7 +110,7 @@ export function RecentFiles({ onFileSelect }: RecentFilesProps) {
   if (loading) {
     return (
       <div className="recent-files">
-        <h2>{t("recentTitle")}</h2>
+        <h2><Icon name="clock" className="icon-lead" />{t("recentTitle")}</h2>
         <p className="loading">{t("recentLoading")}</p>
       </div>
     );
@@ -119,7 +119,7 @@ export function RecentFiles({ onFileSelect }: RecentFilesProps) {
   return (
     <div className="recent-files">
       <div className="recent-header">
-        <h2>{t("recentTitle")}</h2>
+        <h2><Icon name="clock" className="icon-lead" />{t("recentTitle")}</h2>
         <button onClick={() => void refetch()} className="refresh-btn" title={t("refresh")}>
           ↻
         </button>
