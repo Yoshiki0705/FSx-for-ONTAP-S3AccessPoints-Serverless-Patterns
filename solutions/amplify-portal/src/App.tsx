@@ -24,6 +24,7 @@ import { AgentTeams } from "./components/AgentTeams";
 import { SemanticSearch } from "./components/SemanticSearch";
 import { LanguageSwitcher } from "./components/LanguageSwitcher";
 import { ThemeToggle } from "./components/ThemeToggle";
+import { Icon, type IconName } from "./components/Icon";
 import { WelcomeModal } from "./components/WelcomeModal";
 import { useTranslation } from "./i18n";
 import { useStorageAdmin } from "./hooks/useStorageAdmin";
@@ -50,29 +51,29 @@ function isNarrowViewport(): boolean {
   return typeof window !== "undefined" && window.innerWidth <= NARROW_VIEWPORT;
 }
 
-const NAV_ITEMS: { id: Section; icon: string; labelKey: TranslationKeys; group: "browse" | "actions" | "protection" | "admin" }[] = [
+const NAV_ITEMS: { id: Section; icon: IconName; labelKey: TranslationKeys; group: "browse" | "actions" | "protection" | "admin" }[] = [
   // Browse group
-  { id: "files", icon: "📂", labelKey: "navAllFiles", group: "browse" },
-  { id: "favorites", icon: "⭐", labelKey: "navFavorites", group: "browse" },
-  { id: "recent", icon: "🕐", labelKey: "navRecent", group: "browse" },
-  { id: "watch", icon: "🔔", labelKey: "navFolderWatch", group: "browse" },
-  { id: "upload", icon: "📤", labelKey: "navUpload", group: "browse" },
+  { id: "files", icon: "folder", labelKey: "navAllFiles", group: "browse" },
+  { id: "favorites", icon: "star", labelKey: "navFavorites", group: "browse" },
+  { id: "recent", icon: "clock", labelKey: "navRecent", group: "browse" },
+  { id: "watch", icon: "bell", labelKey: "navFolderWatch", group: "browse" },
+  { id: "upload", icon: "upload", labelKey: "navUpload", group: "browse" },
   // AI & Processing group
-  { id: "process", icon: "⚡", labelKey: "navAiProcessing", group: "actions" },
-  { id: "agent", icon: "🤖", labelKey: "navAgent", group: "actions" },
-  { id: "search", icon: "🔍", labelKey: "navSearch", group: "actions" },
-  { id: "history", icon: "📋", labelKey: "navJobHistory", group: "actions" },
-  { id: "analytics", icon: "📊", labelKey: "navAnalytics", group: "actions" },
-  { id: "agentDir", icon: "🗂️", labelKey: "navAgentDir", group: "actions" },
+  { id: "process", icon: "zap", labelKey: "navAiProcessing", group: "actions" },
+  { id: "agent", icon: "bot", labelKey: "navAgent", group: "actions" },
+  { id: "search", icon: "search", labelKey: "navSearch", group: "actions" },
+  { id: "history", icon: "clipboard-list", labelKey: "navJobHistory", group: "actions" },
+  { id: "analytics", icon: "bar-chart", labelKey: "navAnalytics", group: "actions" },
+  { id: "agentDir", icon: "folders", labelKey: "navAgentDir", group: "actions" },
   // Data Protection group
-  { id: "snapshots", icon: "📸", labelKey: "navSnapshots", group: "protection" },
-  { id: "lock", icon: "🔒", labelKey: "navLock", group: "protection" },
-  { id: "arp", icon: "🛡️", labelKey: "navArp", group: "protection" },
-  { id: "recovery", icon: "☁️", labelKey: "navRecovery", group: "protection" },
+  { id: "snapshots", icon: "camera", labelKey: "navSnapshots", group: "protection" },
+  { id: "lock", icon: "lock", labelKey: "navLock", group: "protection" },
+  { id: "arp", icon: "shield", labelKey: "navArp", group: "protection" },
+  { id: "recovery", icon: "cloud", labelKey: "navRecovery", group: "protection" },
   // Admin group
-  { id: "resources", icon: "🔧", labelKey: "navResources", group: "admin" },
-  { id: "versions", icon: "🔄", labelKey: "navVersionDiff", group: "admin" },
-  { id: "audit", icon: "🔍", labelKey: "navAuditTrail", group: "admin" },
+  { id: "resources", icon: "wrench", labelKey: "navResources", group: "admin" },
+  { id: "versions", icon: "refresh", labelKey: "navVersionDiff", group: "admin" },
+  { id: "audit", icon: "search", labelKey: "navAuditTrail", group: "admin" },
 ];
 
 const GROUP_LABELS: Record<string, TranslationKeys> = {
@@ -288,7 +289,7 @@ function App() {
           onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
           aria-label={sidebarCollapsed ? t("expandNav") : t("collapseNav")}
         >
-          {sidebarCollapsed ? "☰" : "✕"}
+          <Icon name={sidebarCollapsed ? "menu" : "close"} />
         </button>
         <h1 className="portal-title">{t("appTitle")}</h1>
         <div className="topbar-spacer" />
@@ -340,7 +341,7 @@ function App() {
                 }}
                 aria-current={activeSection === item.id ? "page" : undefined}
               >
-                <span className="sidebar-icon">{item.icon}</span>
+                <span className="sidebar-icon"><Icon name={item.icon} /></span>
                 <span className="sidebar-label">{t(item.labelKey)}</span>
               </button>
             ))}
@@ -502,10 +503,10 @@ function AgentDirectoryPage({ onRun }: { onRun: (target: RunTarget) => void }) {
       {/* Tab bar */}
       <div className="agent-dir-tabs">
         <button className={`agent-dir-tab ${view === "directory" ? "active" : ""}`} onClick={() => setView("directory")}>
-          🗂️ {t("agentDirTitle")}
+          <Icon name="folders" className="icon-lead" />{t("agentDirTitle")}
         </button>
         <button className={`agent-dir-tab ${view === "teams" ? "active" : ""}`} onClick={() => setView("teams")}>
-          🧩 {t("teamsTitle")}
+          <Icon name="puzzle" className="icon-lead" />{t("teamsTitle")}
         </button>
       </div>
 
@@ -539,7 +540,7 @@ function AdminOnly() {
   const { t } = useTranslation();
   return (
     <div className="agent-disabled">
-      <div className="agent-disabled-icon">🔒</div>
+      <div className="agent-disabled-icon"><Icon name="lock" /></div>
       <h3>{t("adminOnlyTitle")}</h3>
       <p>{t("adminOnlyDesc")}</p>
     </div>
@@ -551,7 +552,7 @@ function AgentDisabled() {
   const { t } = useTranslation();
   return (
     <div className="agent-disabled">
-      <div className="agent-disabled-icon">🔒</div>
+      <div className="agent-disabled-icon"><Icon name="lock" /></div>
       <h3>{t("aiDisabledTitle")}</h3>
       <p>{t("aiDisabledDesc")}</p>
     </div>
