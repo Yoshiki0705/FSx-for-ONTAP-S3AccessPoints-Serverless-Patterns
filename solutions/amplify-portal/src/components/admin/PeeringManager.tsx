@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useTranslation } from "../../i18n";
 import { errorMessage } from "../../lib/portalQuery";
 import { adminMutate, adminQuery, type DispatchCall } from "../../lib/dispatch";
+import { Icon } from "../Icon";
 
 interface InterclusterLif {
   name: string;
@@ -155,18 +156,18 @@ export function PeeringManager() {
     <div className="peering-manager">
       <div className="lu-tabs">
         <button className={`lu-tab ${tab === "cluster" ? "active" : ""}`} onClick={() => setTab("cluster")}>
-          🔗 {t("peerClusterTab")}
+          <Icon name="link" className="icon-lead" />{t("peerClusterTab")}
         </button>
         <button className={`lu-tab ${tab === "svm" ? "active" : ""}`} onClick={() => setTab("svm")}>
-          🗂️ {t("peerSvmTab")}
+          <Icon name="folders" className="icon-lead" />{t("peerSvmTab")}
         </button>
         <button className={`lu-tab ${tab === "lifs" ? "active" : ""}`} onClick={() => setTab("lifs")}>
-          🌐 {t("peerLifTab")}
+          <Icon name="globe" className="icon-lead" />{t("peerLifTab")}
         </button>
       </div>
 
-      {error && <div className="rm-error">⚠️ {error}</div>}
-      {success && <div className="rm-success">✅ {success}</div>}
+      {error && <div className="rm-error"><Icon name="alert-triangle" className="icon-lead" />{error}</div>}
+      {success && <div className="rm-success"><Icon name="check-circle" className="icon-lead" />{success}</div>}
 
       {generatedPassphrase && (
         <div className="peer-passphrase" role="status">
@@ -191,7 +192,7 @@ export function PeeringManager() {
               {healthyLifs > 0 ? t("peerLifReady") : t("peerLifMissing")}
             </span>
             <button className="rm-btn-sm" onClick={loadData}>
-              🔄 {t("refresh")}
+              <Icon name="refresh" className="icon-lead" />{t("refresh")}
             </button>
           </div>
           <p className="rm-hint">{t("peerLifHint")}</p>

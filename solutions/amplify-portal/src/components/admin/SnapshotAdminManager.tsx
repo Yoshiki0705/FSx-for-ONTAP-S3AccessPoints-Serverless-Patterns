@@ -11,6 +11,7 @@ import {
   parseIsoPeriod,
   type SnaplockIntent,
 } from "../../utils/snaplockConsequences";
+import { Icon } from "../Icon";
 
 // The typed keyword now lives with the confirmation dialog, as
 // SNAPLOCK_CONFIRM_KEYWORD, so that every irreversible SnapLock action asks for
@@ -412,7 +413,7 @@ export function SnapshotAdminManager() {
                   <option value="">{t("rmSnapSelectPolicy")}</option>
                   {policies.map((p) => (
                     <option key={p.uuid} value={p.name}>
-                      {p.name}{assignHasRetention(p.name) ? " 🔒" : ""}
+                      {p.name}{assignHasRetention(p.name) ? ` (${t("snapshotsLockBtn")})` : ""}
                     </option>
                   ))}
                 </select>
@@ -440,7 +441,7 @@ export function SnapshotAdminManager() {
                     {p.schedules.map((s, i) => (
                       <div key={i}>
                         <code>{s.schedule}</code> × {s.count}
-                        {s.retentionPeriod && <span className="badge"> 🔒 {s.retentionPeriod}</span>}
+                        {s.retentionPeriod && <span className="badge"> <Icon name="lock" className="icon-lead" />{s.retentionPeriod}</span>}
                       </div>
                     ))}
                   </td>
@@ -499,7 +500,7 @@ export function SnapshotAdminManager() {
               <div className="detail-card">
                 <div className="detail-label">{t("rmSnapLockingState")}</div>
                 <div className={`detail-value ${lockConfig.snapshotLockingEnabled ? "text-success" : ""}`}>
-                  {lockConfig.snapshotLockingEnabled ? `🔒 ${t("stateEnabled")}` : `— ${t("stateDisabled")}`}
+                  {lockConfig.snapshotLockingEnabled ? <><Icon name="lock" className="icon-lead" />{t("stateEnabled")}</> : `— ${t("stateDisabled")}`}
                 </div>
               </div>
               <div className="detail-card">
@@ -513,7 +514,7 @@ export function SnapshotAdminManager() {
 
               {!lockConfig.snapshotLockingEnabled && (
                 <button onClick={handleEnableLockingClick} className="btn-primary" style={{ marginTop: "1rem" }}>
-                  🔒 {t("rmSnapEnableLocking")}
+                  <Icon name="lock" className="icon-lead" />{t("rmSnapEnableLocking")}
                 </button>
               )}
             </div>

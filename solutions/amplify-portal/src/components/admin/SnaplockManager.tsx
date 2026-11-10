@@ -6,6 +6,7 @@ import type { VolumeUuid } from "../../lib/dispatchActions";
 import { SnaplockConfirmDialog } from "../SnaplockConfirmDialog";
 import { VolumeSelector } from "./VolumeSelector";
 import type { SnaplockIntent } from "../../utils/snaplockConsequences";
+import { Icon } from "../Icon";
 
 interface ExpiredEntry {
   resourceType: "volume" | "snapshot";
@@ -202,8 +203,8 @@ export function SnaplockManager() {
             <div className="detail-card">
               <div className="detail-label">{t("rmSnaplockType")}</div>
               <div className={`detail-value ${config.isEnabled ? "text-success" : ""}`}>
-                {config.type === "compliance" ? "🔒 Compliance" :
-                 config.type === "enterprise" ? "🔐 Enterprise" : "— Not configured"}
+                {config.type === "compliance" ? <><Icon name="lock" className="icon-lead" />Compliance</> :
+                 config.type === "enterprise" ? <><Icon name="lock-keyhole" className="icon-lead" />Enterprise</> : "— Not configured"}
               </div>
             </div>
             <div className="detail-card">
@@ -230,7 +231,7 @@ export function SnaplockManager() {
 
           {!config.isEnabled && (
             <div className="info-message" style={{ marginTop: "1rem" }}>
-              <strong>ℹ️ {t("slNewVolumeOnly")}</strong>
+              <strong>ℹ {t("slNewVolumeOnly")}</strong>
               <p style={{ margin: "0.5rem 0 0", fontSize: "0.85rem", color: "var(--color-text-secondary)" }}>
                 {t("slNewVolumeOnlyWhy")} {t("slNewVolumeOnlyHow")}
               </p>

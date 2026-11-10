@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useTranslation } from "../../i18n";
 import { adminMutate, adminQuery, type DispatchCall } from "../../lib/dispatch";
+import { Icon } from "../Icon";
 
 interface VscanPolicy {
   name: string;
@@ -104,12 +105,12 @@ export function VscanManager() {
       {/* The "not configured" warning only makes sense while Vscan is off. */}
       {!enabled && (
         <div className="rm-error" style={{ background: "var(--color-warning-bg)", borderColor: "var(--color-warning)", color: "var(--color-warning-text)" }}>
-          ⚠️ {t("vsNotConfigured")}
+          <Icon name="alert-triangle" className="icon-lead" />{t("vsNotConfigured")}
         </div>
       )}
 
       <div className="vs-guide-section">
-        <h4>📋 {t("vsSetupOverview")}</h4>
+        <h4><Icon name="clipboard-list" className="icon-lead" />{t("vsSetupOverview")}</h4>
         <p className="rm-hint">{t("vsSetupOverviewDesc")}</p>
       </div>
 
@@ -198,12 +199,12 @@ export function VscanManager() {
         <p className="rm-hint">
           <a href="https://docs.netapp.com/us-en/ontap/antivirus/vscan-partner-solutions.html"
             target="_blank" rel="noopener noreferrer">
-            📚 {t("vsPartnerDocsLink")}
+            <Icon name="book-open" className="icon-lead" />{t("vsPartnerDocsLink")}
           </a>
           {" | "}
           <a href="https://mysupport.netapp.com/matrix/"
             target="_blank" rel="noopener noreferrer">
-            🔍 {t("vsImtLink")}
+            <Icon name="search" className="icon-lead" />{t("vsImtLink")}
           </a>
         </p>
       </div>
@@ -235,12 +236,12 @@ export function VscanManager() {
         <p className="rm-hint">
           <a href="https://aws.amazon.com/blogs/storage/securing-your-amazon-fsx-for-ontap-windows-share-smb-against-viruses/"
             target="_blank" rel="noopener noreferrer">
-            📖 {t("vsAwsBlogLink")}
+            <Icon name="book-open" className="icon-lead" />{t("vsAwsBlogLink")}
           </a>
           {" | "}
           <a href="https://github.com/aws-samples/securing-amazon-fsx-for-ontap-against-viruses"
             target="_blank" rel="noopener noreferrer">
-            💻 {t("vsGitHubSampleLink")}
+            <Icon name="monitor" className="icon-lead" />{t("vsGitHubSampleLink")}
           </a>
         </p>
       </div>
@@ -271,12 +272,12 @@ vserver vscan enable -vserver <svm-name>`}</pre>
         <p className="rm-hint">
           <a href="https://docs.netapp.com/us-en/ontap/antivirus/install-ontap-antivirus-connector-task.html"
             target="_blank" rel="noopener noreferrer">
-            📚 {t("vsInstallGuideLink")}
+            <Icon name="book-open" className="icon-lead" />{t("vsInstallGuideLink")}
           </a>
           {" | "}
           <a href="https://kb.netapp.com/Advice_and_Troubleshooting/Data_Storage_Software/ONTAP_OS/Antiviurs_Vscan_setup_and_troubleshooting_for_ONTAP"
             target="_blank" rel="noopener noreferrer">
-            🔧 {t("vsTroubleshootLink")}
+            <Icon name="wrench" className="icon-lead" />{t("vsTroubleshootLink")}
           </a>
         </p>
       </div>
@@ -292,8 +293,8 @@ vserver vscan enable -vserver <svm-name>`}</pre>
   // ─── Main Render ───
   return (
     <div className="vscan-manager">
-      {error && <div className="rm-error">⚠️ {error}</div>}
-      {success && <div className="rm-success">✅ {success}</div>}
+      {error && <div className="rm-error"><Icon name="alert-triangle" className="icon-lead" />{error}</div>}
+      {success && <div className="rm-success"><Icon name="check-circle" className="icon-lead" />{success}</div>}
 
       {loading ? (
         <div className="rm-loading">{t("ontapConnecting")}</div>
@@ -316,12 +317,12 @@ vserver vscan enable -vserver <svm-name>`}</pre>
             {enabled && (
               <>
                 <button className="rm-btn-sm" onClick={loadData}>
-                  🔄 {t("refresh")}
+                  <Icon name="refresh" className="icon-lead" />{t("refresh")}
                 </button>
                 {/* The scanner-side setup steps stay useful after Vscan is on, so keep
                     them reachable rather than only showing them while it is off. */}
                 <button className="rm-btn-sm" onClick={() => setShowGuide((v) => !v)}>
-                  📖 {showGuide ? t("vsHideSetupGuide") : t("vsShowSetupGuide")}
+                  <Icon name="book-open" className="icon-lead" />{showGuide ? t("vsHideSetupGuide") : t("vsShowSetupGuide")}
                 </button>
               </>
             )}
@@ -333,7 +334,7 @@ vserver vscan enable -vserver <svm-name>`}</pre>
             <>
               {showGuide && renderSetupGuide()}
               <div className="lu-toolbar" style={{ marginTop: "1rem" }}>
-                <h4 style={{ margin: 0 }}>📋 {t("vsPolicies")}</h4>
+                <h4 style={{ margin: 0 }}><Icon name="clipboard-list" className="icon-lead" />{t("vsPolicies")}</h4>
                 <button
                   className="rm-btn-primary"
                   disabled={busy}
@@ -428,7 +429,7 @@ vserver vscan enable -vserver <svm-name>`}</pre>
                             {p.enabled ? t("luActive") : t("luDisabled")}
                           </span>
                         </td>
-                        <td>{p.mandatory ? "✅" : "—"}</td>
+                        <td>{p.mandatory ? <Icon name="check-circle" /> : "—"}</td>
                         <td>
                           {p.maxFileSize > 0
                             ? `${Math.round(p.maxFileSize / (1024 * 1024))} MB`

@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useTranslation } from "../../i18n";
 import { errorMessage } from "../../lib/portalQuery";
 import { adminMutate, adminQuery } from "../../lib/dispatch";
+import { Icon } from "../Icon";
 
 interface LocalUser {
   name: string;
@@ -308,19 +309,19 @@ export function LocalUserManager() {
           className={`lu-tab ${tab === "users" ? "active" : ""}`}
           onClick={() => setTab("users")}
         >
-          👤 {t("luUsersTab")}
+          <Icon name="user" className="icon-lead" />{t("luUsersTab")}
         </button>
         <button
           className={`lu-tab ${tab === "groups" ? "active" : ""}`}
           onClick={() => setTab("groups")}
         >
-          👥 {t("luGroupsTab")}
+          <Icon name="users" className="icon-lead" />{t("luGroupsTab")}
         </button>
       </div>
 
       {/* Messages */}
-      {error && <div className="rm-error">⚠️ {error}</div>}
-      {success && <div className="rm-success">✅ {success}</div>}
+      {error && <div className="rm-error"><Icon name="alert-triangle" className="icon-lead" />{error}</div>}
+      {success && <div className="rm-success"><Icon name="check-circle" className="icon-lead" />{success}</div>}
 
       {loading ? (
         <div className="rm-loading">{t("ontapConnecting")}</div>
@@ -554,7 +555,7 @@ export function LocalUserManager() {
                                     onClick={() => handleRemoveMember(group, m.name)}
                                     title={t("luRemoveMember")}
                                   >
-                                    ✕
+                                    <Icon name="close" />
                                   </button>
                                 </li>
                               ))}

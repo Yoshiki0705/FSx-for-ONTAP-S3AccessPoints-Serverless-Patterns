@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useTranslation } from "../../i18n";
 import { errorMessage } from "../../lib/portalQuery";
 import { adminMutate, adminQuery, type DispatchCall } from "../../lib/dispatch";
+import { Icon } from "../Icon";
 
 interface FPolicyPolicy {
   name: string;
@@ -135,14 +136,14 @@ export function FPolicyManager() {
   return (
     <div className="fpolicy-manager">
       <div className="lu-tabs">
-        <button className={`lu-tab ${tab === "policies" ? "active" : ""}`} onClick={() => setTab("policies")}>📋 {t("fpPolicies")}</button>
-        <button className={`lu-tab ${tab === "events" ? "active" : ""}`} onClick={() => setTab("events")}>📡 {t("fpEvents")}</button>
-        <button className={`lu-tab ${tab === "engines" ? "active" : ""}`} onClick={() => setTab("engines")}>⚙️ {t("fpEngines")}</button>
-        <button className={`lu-tab ${tab === "connections" ? "active" : ""}`} onClick={() => setTab("connections")}>🔌 {t("fpConnections")}</button>
+        <button className={`lu-tab ${tab === "policies" ? "active" : ""}`} onClick={() => setTab("policies")}><Icon name="clipboard-list" className="icon-lead" />{t("fpPolicies")}</button>
+        <button className={`lu-tab ${tab === "events" ? "active" : ""}`} onClick={() => setTab("events")}><Icon name="signal" className="icon-lead" />{t("fpEvents")}</button>
+        <button className={`lu-tab ${tab === "engines" ? "active" : ""}`} onClick={() => setTab("engines")}><Icon name="settings" className="icon-lead" />{t("fpEngines")}</button>
+        <button className={`lu-tab ${tab === "connections" ? "active" : ""}`} onClick={() => setTab("connections")}><Icon name="plug" className="icon-lead" />{t("fpConnections")}</button>
       </div>
 
-      {error && <div className="rm-error">⚠️ {error}</div>}
-      {success && <div className="rm-success">✅ {success}</div>}
+      {error && <div className="rm-error"><Icon name="alert-triangle" className="icon-lead" />{error}</div>}
+      {success && <div className="rm-success"><Icon name="check-circle" className="icon-lead" />{success}</div>}
 
       {(tab === "policies" || tab === "events") && (
         <div className="lu-toolbar">

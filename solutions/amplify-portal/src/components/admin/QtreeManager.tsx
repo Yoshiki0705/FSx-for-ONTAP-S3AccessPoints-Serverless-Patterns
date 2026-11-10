@@ -5,6 +5,7 @@ import { errorMessage, unwrap } from "../../lib/portalQuery";
 import { adminMutate, dispatch } from "../../lib/dispatch";
 import type { QtreeId } from "../../lib/dispatchActions";
 import { VolumeSelector } from "./VolumeSelector";
+import { Icon } from "../Icon";
 
 /** The security styles ONTAP accepts on a qtree. */
 type SecurityStyle = "unix" | "ntfs" | "mixed";
@@ -263,7 +264,7 @@ export function QtreeManager() {
               // ONTAP reports the volume's own root as a qtree with an empty name, so
               // every volume has one and it is always the first row. It is not
               // something anyone created and ONTAP will not delete it, so it is named
-              // here and carries no delete button -- a blank row with a ✕ beside it
+              // here and carries no delete button -- a blank row with a delete button beside it
               // read as a qtree whose name had failed to load.
               const isVolumeRoot = !q.name;
               return (
@@ -364,7 +365,7 @@ export function QtreeManager() {
                               {t("qtRename")}
                             </button>
                             <button onClick={() => handleDelete(q.volumeName, q.id, q.name)}
-                              className="btn-sm btn-danger">✕</button>
+                              className="btn-sm btn-danger" aria-label={t("rmDelete")}><Icon name="close" /></button>
                           </span>
                         )}
                       </td>

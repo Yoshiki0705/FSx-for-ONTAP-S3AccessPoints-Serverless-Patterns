@@ -4,6 +4,7 @@ import { useTranslation } from "../../i18n";
 import { errorMessage } from "../../lib/portalQuery";
 import { adminMutate, adminQuery, type DispatchCall } from "../../lib/dispatch";
 import type { SnapmirrorUuid } from "../../lib/dispatchActions";
+import { Icon } from "../Icon";
 
 /** Success message per write action. */
 const SUCCESS_KEY = {
@@ -299,8 +300,8 @@ export function SnapMirrorStatus() {
 
   return (
     <div className="snapmirror-status">
-      {error && <div className="rm-error">⚠️ {error}</div>}
-      {success && <div className="rm-success">✅ {success}</div>}
+      {error && <div className="rm-error"><Icon name="alert-triangle" className="icon-lead" />{error}</div>}
+      {success && <div className="rm-success"><Icon name="check-circle" className="icon-lead" />{success}</div>}
 
       <div className="lu-toolbar">
         <span className="lu-count">
@@ -310,7 +311,7 @@ export function SnapMirrorStatus() {
           + {t("smCreate")}
         </button>
         <button className="rm-btn-sm" onClick={loadRelationships}>
-          🔄 {t("refresh")}
+          <Icon name="refresh" className="icon-lead" />{t("refresh")}
         </button>
       </div>
 
@@ -318,7 +319,7 @@ export function SnapMirrorStatus() {
           portal problem when it is a peering problem. Listed before the form rather
           than surfaced as an error afterwards. */}
       <details className="vs-guide-section" style={{ marginBottom: "1rem" }}>
-        <summary>📋 {t("smPrereqTitle")}</summary>
+        <summary><Icon name="clipboard-list" className="icon-lead" />{t("smPrereqTitle")}</summary>
         <ul className="rm-hint">
           <li>{t("smPrereqClusterPeer")}</li>
           <li>{t("smPrereqSvmPeer")}</li>
@@ -334,7 +335,7 @@ export function SnapMirrorStatus() {
           {/* Without a peer that permits snapmirror there is nothing to choose, and
               the create would fail on the remote cluster rather than here. */}
           {eligiblePeers.length === 0 ? (
-            <p className="rm-error">⚠️ {t("smNoEligiblePeer")}</p>
+            <p className="rm-error"><Icon name="alert-triangle" className="icon-lead" />{t("smNoEligiblePeer")}</p>
           ) : (
             <>
               <div className="rm-form-row">
@@ -494,7 +495,7 @@ export function SnapMirrorStatus() {
                     disabled={busyUuid === r.uuid}
                     onClick={() => setConfirmFor({ uuid: r.uuid, action: "breakSnapmirror" })}
                   >
-                    ✂ {t("smBreak")}
+                    <Icon name="scissors" className="icon-lead" />{t("smBreak")}
                   </button>
                 )}
                 <button

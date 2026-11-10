@@ -5,6 +5,7 @@ import { errorMessage, unwrap } from "../../lib/portalQuery";
 import { adminMutate, dispatch } from "../../lib/dispatch";
 import type { VolumeUuid } from "../../lib/dispatchActions";
 import { copyText } from "../../utils/clipboard";
+import { Icon } from "../Icon";
 
 interface Lif {
   name: string;
@@ -300,7 +301,7 @@ export function VolumeMountPanel({
                   <div key={share.name} className="mount-share">
                     <p className="rm-hint">
                       {share.name} → <code>{share.path}</code>
-                      {share.encryption && <span className="badge-lock" title={t("vmSmbEncrypted")}>🔒</span>}
+                      {share.encryption && <span className="badge-lock" title={t("vmSmbEncrypted")}><Icon name="lock" /></span>}
                     </p>
                     <div className="vs-code-block">
                       <pre>{uncPaths(info, share).join("\n")}</pre>

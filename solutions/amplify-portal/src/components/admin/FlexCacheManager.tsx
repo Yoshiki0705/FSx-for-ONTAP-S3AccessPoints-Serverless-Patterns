@@ -4,6 +4,7 @@ import { useTranslation } from "../../i18n";
 import { errorMessage } from "../../lib/portalQuery";
 import { adminMutate, adminQuery } from "../../lib/dispatch";
 import type { VolumeUuid } from "../../lib/dispatchActions";
+import { Icon } from "../Icon";
 
 // The client used to be built here with `{ authMode: "userPool" }`. That is already
 // the schema's `defaultAuthorizationMode`, so the shared client behaves identically
@@ -217,8 +218,8 @@ export function FlexCacheManager() {
 
   return (
     <div className="flexcache-manager">
-      {error && <div className="rm-error">⚠️ {error}</div>}
-      {success && <div className="rm-success">✅ {success}</div>}
+      {error && <div className="rm-error"><Icon name="alert-triangle" className="icon-lead" />{error}</div>}
+      {success && <div className="rm-success"><Icon name="check-circle" className="icon-lead" />{success}</div>}
 
       {/* Multi-FS indicator */}
       <div className="rm-hint" style={{ marginBottom: "0.5rem", fontSize: "0.75rem", opacity: 0.7 }}>
@@ -234,7 +235,7 @@ export function FlexCacheManager() {
           which is gitignored precisely because it holds internal addresses. Publishing
           one to the browser bundle would leak it to every signed-in user.
         */}
-        🖥️ {t("fcacheTargetFs")}: default
+        <Icon name="monitor" className="icon-lead" />{t("fcacheTargetFs")}: default
       </div>
 
       <div className="lu-toolbar">
@@ -249,7 +250,7 @@ export function FlexCacheManager() {
           in both modes, and ONTAP keeps the data coherent either way. What the modes
           differ on is where the write is acknowledged. */}
       <details className="vs-guide-section" style={{ marginBottom: "1rem" }}>
-        <summary>✍️ {t("fcacheWriteTitle")}</summary>
+        <summary><Icon name="pencil" className="icon-lead" />{t("fcacheWriteTitle")}</summary>
         <p className="rm-hint">{t("fcacheWriteIntro")}</p>
         <ul className="rm-hint">
           <li>{t("fcacheWriteAround")}</li>
@@ -262,7 +263,7 @@ export function FlexCacheManager() {
             target="_blank"
             rel="noopener noreferrer"
           >
-            📚 {t("fcacheWriteDocs")}
+            <Icon name="book-open" className="icon-lead" />{t("fcacheWriteDocs")}
           </a>
         </p>
       </details>
@@ -272,7 +273,7 @@ export function FlexCacheManager() {
           panels now hide cache volumes rather than failing on them -- which is only
           not mysterious if the reason is written down somewhere. */}
       <details className="vs-guide-section" style={{ marginBottom: "1rem" }}>
-        <summary>⚠️ {t("fcacheLimitsTitle")}</summary>
+        <summary><Icon name="alert-triangle" className="icon-lead" />{t("fcacheLimitsTitle")}</summary>
         <p className="rm-hint">{t("fcacheLimitsIntro")}</p>
         <ul className="rm-hint">
           <li>{t("fcacheLimitsTiering")}</li>
@@ -285,7 +286,7 @@ export function FlexCacheManager() {
             target="_blank"
             rel="noopener noreferrer"
           >
-            📚 {t("fcacheLimitsDocs")}
+            <Icon name="book-open" className="icon-lead" />{t("fcacheLimitsDocs")}
           </a>
         </p>
       </details>
@@ -369,12 +370,12 @@ export function FlexCacheManager() {
           </div>
           {creating && (
             <p className="rm-hint" style={{ marginTop: "0.5rem", color: "var(--color-primary-text)" }}>
-              ⏳ {t("fcacheCreatingHint")}
+              <Icon name="hourglass" className="icon-lead" />{t("fcacheCreatingHint")}
             </p>
           )}
           {!creating && (
             <p className="rm-hint" style={{ marginTop: "0.5rem" }}>
-              ⚠️ {t("fcacheAsyncNote")}
+              <Icon name="alert-triangle" className="icon-lead" />{t("fcacheAsyncNote")}
             </p>
           )}
         </div>
@@ -386,7 +387,7 @@ export function FlexCacheManager() {
         <div className="vs-setup-guide">
           <p className="rm-empty">{t("fcacheNoCaches")}</p>
           <div className="vs-guide-section">
-            <h4>💡 {t("fcacheAboutTitle")}</h4>
+            <h4><Icon name="lightbulb" className="icon-lead" />{t("fcacheAboutTitle")}</h4>
             <p className="rm-hint">
               {t("fcacheAboutDesc")}
             </p>
@@ -395,11 +396,11 @@ export function FlexCacheManager() {
             </p>
             <p className="rm-hint">
               <a href="https://docs.netapp.com/us-en/ontap/flexcache/index.html" target="_blank" rel="noopener noreferrer">
-                📚 FlexCache (NetApp Docs)
+                <Icon name="book-open" className="icon-lead" />FlexCache (NetApp Docs)
               </a>
               {" | "}
               <a href="https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/managing-volumes.html" target="_blank" rel="noopener noreferrer">
-                📖 FSx for ONTAP (AWS Docs)
+                <Icon name="book-open" className="icon-lead" />FSx for ONTAP (AWS Docs)
               </a>
             </p>
           </div>
@@ -410,30 +411,30 @@ export function FlexCacheManager() {
             <div key={cache.uuid} className="lu-group-card">
               <div className="lu-group-header">
                 <div className="lu-group-info">
-                  <span className="lu-group-name">⚡ {cache.name}</span>
+                  <span className="lu-group-name"><Icon name="zap" className="icon-lead" />{cache.name}</span>
                   <span className="lu-group-desc" style={{ display: "flex", alignItems: "center", gap: "0.5rem", flexWrap: "wrap" }}>
                     {cache.origins.length > 0 && (
                       <span style={{ background: "var(--color-surface-subtle)", padding: "2px 8px", borderRadius: "4px", fontSize: "0.8rem" }}>
-                        📦 {cache.origins[0].volumeName}@{cache.origins[0].svmName}
+                        <Icon name="package" className="icon-lead" />{cache.origins[0].volumeName}@{cache.origins[0].svmName}
                       </span>
                     )}
                     <span style={{ color: "var(--color-primary-text)" }}>→</span>
                     <span style={{ background: "var(--color-surface-subtle)", padding: "2px 8px", borderRadius: "4px", fontSize: "0.8rem" }}>
-                      ⚡ {cache.name}@{cache.svmName}
+                      <Icon name="zap" className="icon-lead" />{cache.name}@{cache.svmName}
                     </span>
                     <span style={{ fontSize: "0.75rem", color: "var(--color-text-secondary)" }}>
                       {cache.sizeGiB} GiB | {cache.path}
                     </span>
                     {cache.origins.length > 0 && (
                       <span style={{ fontSize: "0.7rem", color: "var(--color-text-secondary)", marginLeft: "0.5rem" }} title="Cache metrics available via ONTAP REST API /storage/flexcache/flexcaches/{uuid}?fields=cache_hit_ratio">
-                        📊 {t("fcacheMetricsHint")}
+                        <Icon name="bar-chart" className="icon-lead" />{t("fcacheMetricsHint")}
                       </span>
                     )}
-                    {cache.globalFileLocking && <span className="lu-badge">🔒 Global Lock</span>}
+                    {cache.globalFileLocking && <span className="lu-badge"><Icon name="lock" className="icon-lead" />Global Lock</span>}
                     {/* Always shown, in both states: a row with no write badge reads
                         as a cache that does not take writes. */}
                     <span className={`lu-badge ${cache.writebackEnabled ? "active" : ""}`}>
-                      ✍️ {cache.writebackEnabled ? t("fcacheModeWriteback") : t("fcacheModeWritearound")}
+                      <Icon name="pencil" className="icon-lead" />{cache.writebackEnabled ? t("fcacheModeWriteback") : t("fcacheModeWritearound")}
                     </span>
                   </span>
                 </div>
