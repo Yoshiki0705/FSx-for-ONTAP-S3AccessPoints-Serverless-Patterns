@@ -4,6 +4,7 @@ import { useTranslation } from "../../i18n";
 import { adminMutate, adminQuery, dispatch } from "../../lib/dispatch";
 import type { ParamsOf, VolumeUuid } from "../../lib/dispatchActions";
 import { errorMessage, unwrap } from "../../lib/portalQuery";
+import { Icon } from "../Icon";
 
 /** The states ARP can be moved to, taken from the action that applies them. */
 type ArpState = NonNullable<ParamsOf<"adminMutation", "updateArpStateAdmin">["state"]>;
@@ -342,13 +343,13 @@ export function ArpAdminManager() {
                   <button onClick={() => handleStateChange(vol, "enabled")} className="btn-sm" title={t("arpResume")}>▶</button>
                 )}
                 {vol.state !== "disabled" && (
-                  <button onClick={() => handleStateChange(vol, "disabled")} className="btn-sm btn-danger" title={t("arpDisable")}>✕</button>
+                  <button onClick={() => handleStateChange(vol, "disabled")} className="btn-sm btn-danger" title={t("arpDisable")}><Icon name="close" /></button>
                 )}
                 {vol.attackProbability !== "none" && (
-                  <button onClick={() => handleViewSuspects(vol)} className="btn-sm" title={t("arpViewSuspects")}>🔍</button>
+                  <button onClick={() => handleViewSuspects(vol)} className="btn-sm" title={t("arpViewSuspects")}><Icon name="search" /></button>
                 )}
                 {vol.state === "enabled" && (
-                  <button onClick={() => handleSurgeAsNormal(vol)} className="btn-sm" title={t("arpMarkSurgeNormal")}>📊</button>
+                  <button onClick={() => handleSurgeAsNormal(vol)} className="btn-sm" title={t("arpMarkSurgeNormal")}><Icon name="bar-chart" /></button>
                 )}
               </td>
             </tr>

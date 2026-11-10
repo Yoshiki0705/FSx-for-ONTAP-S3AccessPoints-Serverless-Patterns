@@ -4,6 +4,7 @@ import { useTranslation } from "../../i18n";
 import { adminMutate, adminQuery, type DispatchCall } from "../../lib/dispatch";
 import type { ParamsOf } from "../../lib/dispatchActions";
 import { errorMessage } from "../../lib/portalQuery";
+import { Icon } from "../Icon";
 
 interface ClusterInfo {
   name: string;
@@ -224,27 +225,27 @@ export function ClusterManager() {
     <div className="cluster-manager">
       <div className="lu-tabs">
         <button className={`lu-tab ${tab === "overview" ? "active" : ""}`} onClick={() => setTab("overview")}>
-          🖥️ {t("clOverviewTab")}
+          <Icon name="monitor" className="icon-lead" />{t("clOverviewTab")}
         </button>
         <button
           className={`lu-tab ${tab === "interfaces" ? "active" : ""}`}
           onClick={() => setTab("interfaces")}
         >
-          🌐 {t("clInterfacesTab")}
+          <Icon name="globe" className="icon-lead" />{t("clInterfacesTab")}
         </button>
         <button className={`lu-tab ${tab === "services" ? "active" : ""}`} onClick={() => setTab("services")}>
-          ⚙️ {t("clServicesTab")}
+          <Icon name="settings" className="icon-lead" />{t("clServicesTab")}
         </button>
         <button className={`lu-tab ${tab === "jobs" ? "active" : ""}`} onClick={() => setTab("jobs")}>
-          📜 {t("clJobsTab")}
+          <Icon name="file-text" className="icon-lead" />{t("clJobsTab")}
         </button>
         <button className={`lu-tab ${tab === "events" ? "active" : ""}`} onClick={() => setTab("events")}>
-          🔔 {t("clEventsTab")}
+          <Icon name="bell" className="icon-lead" />{t("clEventsTab")}
         </button>
       </div>
 
-      {error && <div className="rm-error">⚠️ {error}</div>}
-      {success && <div className="rm-success">✅ {success}</div>}
+      {error && <div className="rm-error"><Icon name="alert-triangle" className="icon-lead" />{error}</div>}
+      {success && <div className="rm-success"><Icon name="check-circle" className="icon-lead" />{success}</div>}
 
       {loading ? (
         <div className="rm-loading">{t("ontapConnecting")}</div>
@@ -256,7 +257,7 @@ export function ClusterManager() {
               {cluster?.version && <span className="lu-group-desc">{cluster.version}</span>}
             </span>
             <button className="rm-btn-sm" onClick={loadData}>
-              🔄 {t("refresh")}
+              <Icon name="refresh" className="icon-lead" />{t("refresh")}
             </button>
           </div>
 
@@ -284,7 +285,7 @@ export function ClusterManager() {
                       <span className={`lu-badge ${n.state === "up" ? "active" : "disabled"}`}>{n.state}</span>
                     </td>
                     <td>{formatUptime(n.uptimeSeconds)}</td>
-                    <td>{n.haEnabled ? n.haPartners.join(", ") || "✅" : "—"}</td>
+                    <td>{n.haEnabled ? n.haPartners.join(", ") || <Icon name="check-circle" /> : "—"}</td>
                   </tr>
                 ))}
               </tbody>
@@ -329,7 +330,7 @@ export function ClusterManager() {
               {interfaces.length} {t("clInterfacesTab")}
             </span>
             <button className="rm-btn-sm" onClick={loadData}>
-              🔄 {t("refresh")}
+              <Icon name="refresh" className="icon-lead" />{t("refresh")}
             </button>
           </div>
           {interfaces.length === 0 ? (
@@ -536,7 +537,7 @@ export function ClusterManager() {
               {jobs.length} {t("clJobsTab")}
             </span>
             <button className="rm-btn-sm" onClick={loadData}>
-              🔄 {t("refresh")}
+              <Icon name="refresh" className="icon-lead" />{t("refresh")}
             </button>
           </div>
           <p className="rm-hint">{t("clJobsHint")}</p>
@@ -580,7 +581,7 @@ export function ClusterManager() {
               {t("clEventCount").replace("{count}", String(emsEvents.length))}
             </span>
             <button className="rm-btn-sm" onClick={loadData}>
-              🔄 {t("refresh")}
+              <Icon name="refresh" className="icon-lead" />{t("refresh")}
             </button>
           </div>
           <p className="rm-hint">{t("clEventsHint")}</p>

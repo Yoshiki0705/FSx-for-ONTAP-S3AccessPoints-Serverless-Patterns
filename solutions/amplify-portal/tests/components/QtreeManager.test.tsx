@@ -121,7 +121,7 @@ describe("QtreeManager", () => {
 
       await waitFor(() => expect(screen.getByText("team_share")).toBeTruthy());
       // One button for the real qtree, none for the root.
-      expect(screen.getAllByRole("button", { name: "✕" })).toHaveLength(1);
+      expect(screen.getAllByRole("button", { name: "Delete" })).toHaveLength(1);
     });
   });
 

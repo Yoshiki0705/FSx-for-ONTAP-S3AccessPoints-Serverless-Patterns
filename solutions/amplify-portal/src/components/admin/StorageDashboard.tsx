@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useTranslation } from "../../i18n";
 import { dispatch } from "../../lib/dispatch";
 import { parseResponse } from "../../utils/parseResponse";
+import { Icon } from "../Icon";
 
 interface DashboardData {
   volumeCount: number;
@@ -96,7 +97,7 @@ export function StorageDashboard({ onNavigate }: { onNavigate: (panel: string) =
       <div className="dashboard-grid">
         {/* Card 1: Volume Capacity */}
         <div className="dashboard-card" onClick={() => onNavigate("volumes")} style={{ cursor: "pointer" }}>
-          <div className="card-icon">💾</div>
+          <div className="card-icon"><Icon name="hard-drive" /></div>
           <div className="card-content">
             <div className="card-value">{data.volumeCount}</div>
             <div className="card-label">{t("dashVolumes")}</div>
@@ -108,19 +109,19 @@ export function StorageDashboard({ onNavigate }: { onNavigate: (panel: string) =
 
         {/* Card 2: ARP/AI Protection */}
         <div className="dashboard-card" onClick={() => onNavigate("arp")} style={{ cursor: "pointer" }}>
-          <div className="card-icon">{data.arpThreats > 0 ? "🚨" : "🛡️"}</div>
+          <div className="card-icon"><Icon name={data.arpThreats > 0 ? "alert-triangle" : "shield"} /></div>
           <div className="card-content">
             <div className="card-value">{data.arpProtected}</div>
             <div className="card-label">{t("dashArpProtected")}</div>
             <div className={`card-metric ${data.arpThreats > 0 ? "metric-danger" : "metric-ok"}`}>
-              {data.arpThreats > 0 ? `⚠️ ${data.arpThreats} ${t("dashThreats")}` : `✅ ${t("dashNoThreats")}`}
+              {data.arpThreats > 0 ? <><Icon name="alert-triangle" className="icon-lead" />{data.arpThreats} {t("dashThreats")}</> : <><Icon name="check-circle" className="icon-lead" />{t("dashNoThreats")}</>}
             </div>
           </div>
         </div>
 
         {/* Card 3: Locked Snapshots */}
         <div className="dashboard-card" onClick={() => onNavigate("snapshotAdmin")} style={{ cursor: "pointer" }}>
-          <div className="card-icon">🔐</div>
+          <div className="card-icon"><Icon name="lock-keyhole" /></div>
           <div className="card-content">
             <div className="card-value">{data.lockedSnapshots}</div>
             <div className="card-label">{t("dashLockedSnaps")}</div>
@@ -130,7 +131,7 @@ export function StorageDashboard({ onNavigate }: { onNavigate: (panel: string) =
 
         {/* Card 4: Storage Efficiency */}
         <div className="dashboard-card" onClick={() => onNavigate("efficiency")} style={{ cursor: "pointer" }}>
-          <div className="card-icon">📊</div>
+          <div className="card-icon"><Icon name="bar-chart" /></div>
           <div className="card-content">
             <div className="card-value">{data.efficiencyRatio}x</div>
             <div className="card-label">{t("dashEfficiency")}</div>

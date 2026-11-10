@@ -10,6 +10,7 @@ import { VolumeMountPanel } from "./VolumeMountPanel";
 import { durationLabel, durationRange } from "../../utils/duration";
 import { oneOf } from "../../utils/oneOf";
 import type { SnaplockIntent } from "../../utils/snaplockConsequences";
+import { Icon } from "../Icon";
 
 interface Volume {
   name: string;
@@ -409,10 +410,10 @@ export function VolumeManager() {
                   <small>{durationRange("P1D", "P10950D", t)}</small>
                 </div>
                 <div className="info-message" style={{ marginTop: "0.5rem" }}>
-                  ⚠️ {t("rmSnaplockRetentionWarning")}
+                  <Icon name="alert-triangle" className="icon-lead" />{t("rmSnaplockRetentionWarning")}
                   {" "}
                   <a href="https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/how-snaplock-works.html" target="_blank" rel="noopener noreferrer" style={{ color: "var(--color-primary-text)" }}>
-                    📖 {t("rmSnaplockDocs")}
+                    <Icon name="book-open" className="icon-lead" />{t("rmSnaplockDocs")}
                   </a>
                 </div>
               </>
@@ -546,7 +547,7 @@ export function VolumeManager() {
             <tr key={vol.uuid}>
               <td className="vol-name">
                 {vol.name}
-                {vol.snaplockType !== "non_snaplock" && <span className="badge-lock">🔒</span>}
+                {vol.snaplockType !== "non_snaplock" && <span className="badge-lock"><Icon name="lock" /></span>}
                 {/* The path clients reach the volume through, under the name it
                     belongs to rather than in a column of its own -- the table is
                     already wide, and the two are read together.
@@ -600,7 +601,7 @@ export function VolumeManager() {
                   </span>
                   {vol.snapshotSpillBytes > 0 && (
                     <span className="capacity-spill" title={t("rmSnapshotSpillTitle")}>
-                      ⚠ {t("rmSnapshotSpill")}: {capacityLabel(vol.snapshotSpillBytes)}
+                      <Icon name="alert-triangle" className="icon-lead" />{t("rmSnapshotSpill")}: {capacityLabel(vol.snapshotSpillBytes)}
                     </span>
                   )}
                 </div>
@@ -631,7 +632,7 @@ export function VolumeManager() {
                     title={t("rmBringOnlineTitle")}>{t("rmBringOnline")}</button>
                 )}
                 <button onClick={() => handleDelete(vol.uuid, vol.name)} className="btn-sm btn-danger"
-                  title={t("rmDelete")}>✕</button>
+                  title={t("rmDelete")}><Icon name="close" /></button>
               </td>
             </tr>
           ))}

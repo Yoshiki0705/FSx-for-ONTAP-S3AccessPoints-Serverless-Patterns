@@ -4,6 +4,7 @@ import { useTranslation } from "../../i18n";
 import { errorMessage, unwrap } from "../../lib/portalQuery";
 import { adminMutate, dispatch } from "../../lib/dispatch";
 import { VolumeSelector, type VolumeInfo } from "./VolumeSelector";
+import { Icon } from "../Icon";
 
 /** A rule as `listQuotaRules` returns it.
  *
@@ -516,7 +517,7 @@ export function QuotaManager() {
                         }}>
                           {t("quEdit")}
                         </button>
-                        <button onClick={() => handleDelete(r)} className="btn-sm btn-danger">✕</button>
+                        <button onClick={() => handleDelete(r)} className="btn-sm btn-danger" aria-label={t("rmDelete")}><Icon name="close" /></button>
                       </span>
                     </td>
                   </>

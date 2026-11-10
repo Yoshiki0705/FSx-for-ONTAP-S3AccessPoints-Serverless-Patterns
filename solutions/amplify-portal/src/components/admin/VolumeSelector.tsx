@@ -230,10 +230,10 @@ export function VolumeSelector({ onSelect, label, showUuid = false, autoSelectFi
           {volumes.map((vol) => (
             <option key={vol.uuid} value={vol.uuid}>
               {vol.name} ({vol.sizeGiB} GiB, {vol.securityStyle})
-              {vol.flexcacheEndpointType === "cache" ? " ⚡FlexCache" : ""}
-              {vol.flexcacheEndpointType === "origin" ? " 📦origin" : ""}
+              {vol.flexcacheEndpointType === "cache" ? " FlexCache" : ""}
+              {vol.flexcacheEndpointType === "origin" ? " origin" : ""}
               {showUuid ? ` [${vol.uuid.slice(0, 8)}...]` : ""}
-              {vol.snaplockType !== "non_snaplock" ? " 🔒" : ""}
+              {vol.snaplockType !== "non_snaplock" ? " SnapLock" : ""}
             </option>
           ))}
         </select>

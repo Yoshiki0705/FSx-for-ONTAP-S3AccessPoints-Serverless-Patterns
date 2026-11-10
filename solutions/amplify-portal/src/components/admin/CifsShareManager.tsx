@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useTranslation } from "../../i18n";
 import { errorMessage, unwrap } from "../../lib/portalQuery";
 import { adminMutate, dispatch } from "../../lib/dispatch";
+import { Icon } from "../Icon";
 
 interface CifsShare {
   name: string;
@@ -138,19 +139,19 @@ export function CifsShareManager() {
 
       {/* Info: encryption context */}
       <div className="info-message" style={{ marginBottom: "1rem" }}>
-        🔒 {t("rmSmbEncryptionNote")}
+        <Icon name="lock" className="icon-lead" />{t("rmSmbEncryptionNote")}
       </div>
 
       {/* Info: CA share explanation */}
       <details style={{ marginBottom: "1rem", fontSize: "0.85rem" }}>
         <summary style={{ cursor: "pointer", fontWeight: 500 }}>
-          ℹ️ {t("rmCaShareExplanationTitle")}
+          ℹ {t("rmCaShareExplanationTitle")}
         </summary>
         <div style={{ marginTop: "0.5rem", padding: "0.5rem", background: "var(--color-surface-subtle)", borderRadius: "4px" }}>
           <p style={{ margin: "0 0 0.5rem" }}>{t("rmCaShareExplanationDesc")}</p>
           <a href="https://docs.netapp.com/us-en/ontap/smb-hyper-v-sql/configure-solutions-concept.html"
             target="_blank" rel="noopener noreferrer" style={{ fontSize: "0.8rem" }}>
-            📖 ONTAP Docs: Hyper-V and SQL Server over SMB solutions
+            <Icon name="book-open" className="icon-lead" />ONTAP Docs: Hyper-V and SQL Server over SMB solutions
           </a>
         </div>
       </details>
@@ -174,7 +175,7 @@ export function CifsShareManager() {
               <td>{s.comment || "-"}</td>
               <td>
                 {s.encryption ? (
-                  <span className="state-badge state-online">✅ {t("rmSmbEncryptionOn")}</span>
+                  <span className="state-badge state-online"><Icon name="check-circle" className="icon-lead" />{t("rmSmbEncryptionOn")}</span>
                 ) : (
                   <span className="badge">— {t("rmSmbEncryptionOff")}</span>
                 )}

@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useTranslation } from "../../i18n";
 import { errorMessage } from "../../lib/portalQuery";
 import { adminMutate, adminQuery } from "../../lib/dispatch";
+import { Icon } from "../Icon";
 
 interface ObjectStoreBucket {
   name: string;
@@ -75,8 +76,8 @@ export function ObjectStoreBucketManager() {
 
   return (
     <div className="objectstore-manager">
-      {error && <div className="rm-error">⚠️ {error}</div>}
-      {success && <div className="rm-success">✅ {success}</div>}
+      {error && <div className="rm-error"><Icon name="alert-triangle" className="icon-lead" />{error}</div>}
+      {success && <div className="rm-success"><Icon name="check-circle" className="icon-lead" />{success}</div>}
 
       <p className="rm-hint">{t("osbIntro")}</p>
 

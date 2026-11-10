@@ -18,6 +18,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "../../i18n";
 import { adminMutate, dispatch } from "../../lib/dispatch";
 import { errorMessage, unwrap } from "../../lib/portalQuery";
+import { Icon } from "../Icon";
 
 /**
  * The settings this panel can change.
@@ -129,21 +130,21 @@ export function AiSettingsManager({ initialSettings, onSettingsChange }: AiSetti
   };
 
   if (loading) {
-    return <div className="ai-settings-loading">⏳ {t("aiSettingsLoading")}</div>;
+    return <div className="ai-settings-loading"><Icon name="hourglass" className="icon-lead" />{t("aiSettingsLoading")}</div>;
   }
 
   return (
     <div className="ai-settings-manager">
       <p className="ai-settings-desc">{t("aiSettingsDesc")}</p>
 
-      {error && <div className="ai-settings-error">⚠️ {error}</div>}
-      {successMsg && <div className="ai-settings-success">✅ {successMsg}</div>}
+      {error && <div className="ai-settings-error"><Icon name="alert-triangle" className="icon-lead" />{error}</div>}
+      {successMsg && <div className="ai-settings-success"><Icon name="check-circle" className="icon-lead" />{successMsg}</div>}
 
       {/* ─── AI Agent (instant-ready) ─── */}
       <div className="ai-settings-feature-section">
         <div className="ai-settings-toggle-card">
           <div className="toggle-info">
-            <span className="toggle-icon">🤖</span>
+            <span className="toggle-icon"><Icon name="bot" /></span>
             <div>
               <h4>{t("aiSettingsAgentTitle")}</h4>
               <p>{t("aiSettingsAgentDesc")}</p>
@@ -158,12 +159,12 @@ export function AiSettingsManager({ initialSettings, onSettingsChange }: AiSetti
             />
             <span className="toggle-slider" />
           </label>
-          {saving === "aiAgentEnabled" && <span className="toggle-saving">⏳</span>}
+          {saving === "aiAgentEnabled" && <span className="toggle-saving"><Icon name="hourglass" /></span>}
         </div>
         <div className="ai-settings-feature-meta">
-          <span className="meta-badge ready">✅ {t("aiSettingsReady")}</span>
+          <span className="meta-badge ready"><Icon name="check-circle" className="icon-lead" />{t("aiSettingsReady")}</span>
           <span className="meta-cost">~$0.001 / {t("aiSettingsPerRequest")}</span>
-          <span className="meta-setup">⚡ {t("aiSettingsInstant")}</span>
+          <span className="meta-setup"><Icon name="zap" className="icon-lead" />{t("aiSettingsInstant")}</span>
         </div>
       </div>
 
@@ -171,7 +172,7 @@ export function AiSettingsManager({ initialSettings, onSettingsChange }: AiSetti
       <div className="ai-settings-feature-section">
         <div className="ai-settings-toggle-card">
           <div className="toggle-info">
-            <span className="toggle-icon">🔍</span>
+            <span className="toggle-icon"><Icon name="search" /></span>
             <div>
               <h4>{t("aiSettingsSearchTitle")}</h4>
               <p>{t("aiSettingsSearchDesc")}</p>
@@ -186,12 +187,12 @@ export function AiSettingsManager({ initialSettings, onSettingsChange }: AiSetti
             />
             <span className="toggle-slider" />
           </label>
-          {saving === "aiSearchEnabled" && <span className="toggle-saving">⏳</span>}
+          {saving === "aiSearchEnabled" && <span className="toggle-saving"><Icon name="hourglass" /></span>}
         </div>
         <div className="ai-settings-feature-meta">
-          <span className="meta-badge setup-needed">⚙️ {t("aiSettingsKbRequired")}</span>
+          <span className="meta-badge setup-needed"><Icon name="settings" className="icon-lead" />{t("aiSettingsKbRequired")}</span>
           <span className="meta-cost">~$1–10 / {t("aiSettingsPerMonth")}</span>
-          <span className="meta-setup">🕐 {t("aiSettingsSetupTime")}</span>
+          <span className="meta-setup"><Icon name="clock" className="icon-lead" />{t("aiSettingsSetupTime")}</span>
         </div>
 
         {/* KB Setup Guide (collapsible) */}
@@ -211,7 +212,7 @@ export function AiSettingsManager({ initialSettings, onSettingsChange }: AiSetti
               </thead>
               <tbody>
                 <tr className="recommended">
-                  <td><strong>S3 Vectors</strong> ⭐</td>
+                  <td><strong>S3 Vectors</strong> <Icon name="star" /></td>
                   <td>~$1–10</td>
                   <td>~10 {t("aiSettingsMinutes")}</td>
                 </tr>
@@ -233,7 +234,7 @@ export function AiSettingsManager({ initialSettings, onSettingsChange }: AiSetti
             </ol>
 
             <div className="setup-note">
-              <strong>💡 {t("aiSettingsNote")}</strong>
+              <strong><Icon name="lightbulb" className="icon-lead" />{t("aiSettingsNote")}</strong>
               <p>{t("aiSettingsNoteDesc")}</p>
             </div>
           </div>
@@ -244,7 +245,7 @@ export function AiSettingsManager({ initialSettings, onSettingsChange }: AiSetti
       <div className="ai-settings-feature-section">
         <div className="ai-settings-toggle-card">
           <div className="toggle-info">
-            <span className="toggle-icon">🖼️</span>
+            <span className="toggle-icon"><Icon name="image" /></span>
             <div>
               <h4>{t("aiSettingsMultimodalTitle")}</h4>
               <p>{t("aiSettingsMultimodalDesc")}</p>
@@ -259,10 +260,10 @@ export function AiSettingsManager({ initialSettings, onSettingsChange }: AiSetti
             />
             <span className="toggle-slider" />
           </label>
-          {saving === "aiMultimodalEnabled" && <span className="toggle-saving">⏳</span>}
+          {saving === "aiMultimodalEnabled" && <span className="toggle-saving"><Icon name="hourglass" /></span>}
         </div>
         <div className="ai-settings-feature-meta">
-          <span className="meta-badge ready">✅ {t("aiSettingsReady")}</span>
+          <span className="meta-badge ready"><Icon name="check-circle" className="icon-lead" />{t("aiSettingsReady")}</span>
           <span className="meta-cost">~$0.003 / {t("aiSettingsPerImage")}</span>
         </div>
       </div>
@@ -271,7 +272,7 @@ export function AiSettingsManager({ initialSettings, onSettingsChange }: AiSetti
       <div className="ai-settings-feature-section">
         <div className="ai-settings-toggle-card">
           <div className="toggle-info">
-            <span className="toggle-icon">📜</span>
+            <span className="toggle-icon"><Icon name="file-text" /></span>
             <div>
               <h4>{t("aiSettingsChatHistoryTitle")}</h4>
               <p>{t("aiSettingsChatHistoryDesc")}</p>
@@ -286,10 +287,10 @@ export function AiSettingsManager({ initialSettings, onSettingsChange }: AiSetti
             />
             <span className="toggle-slider" />
           </label>
-          {saving === "chatHistoryEnabled" && <span className="toggle-saving">⏳</span>}
+          {saving === "chatHistoryEnabled" && <span className="toggle-saving"><Icon name="hourglass" /></span>}
         </div>
         <div className="ai-settings-feature-meta">
-          <span className="meta-badge ready">✅ {t("aiSettingsReady")}</span>
+          <span className="meta-badge ready"><Icon name="check-circle" className="icon-lead" />{t("aiSettingsReady")}</span>
           <span className="meta-cost">~$0 / {t("aiSettingsPerMonth")}</span>
         </div>
       </div>
@@ -304,7 +305,7 @@ export function AiSettingsManager({ initialSettings, onSettingsChange }: AiSetti
       <div className="ai-settings-feature-section">
         <div className="ai-settings-toggle-card">
           <div className="toggle-info">
-            <span className="toggle-icon">🔔</span>
+            <span className="toggle-icon"><Icon name="bell" /></span>
             <div>
               <h4>{t("aiSettingsFolderWatchTitle")}</h4>
               <p>{t("aiSettingsFolderWatchDesc")}</p>
@@ -319,10 +320,10 @@ export function AiSettingsManager({ initialSettings, onSettingsChange }: AiSetti
             />
             <span className="toggle-slider" />
           </label>
-          {saving === "folderWatchEnabled" && <span className="toggle-saving">⏳</span>}
+          {saving === "folderWatchEnabled" && <span className="toggle-saving"><Icon name="hourglass" /></span>}
         </div>
         <div className="ai-settings-feature-meta">
-          <span className="meta-badge ready">✅ {t("aiSettingsReady")}</span>
+          <span className="meta-badge ready"><Icon name="check-circle" className="icon-lead" />{t("aiSettingsReady")}</span>
           <span className="meta-cost">~$0 / {t("aiSettingsPerMonth")}</span>
         </div>
         <p className="rm-hint">{t("aiSettingsFolderWatchPrereq")}</p>
@@ -337,16 +338,16 @@ export function AiSettingsManager({ initialSettings, onSettingsChange }: AiSetti
       <div className="ai-settings-feature-section">
         <div className="ai-settings-toggle-card">
           <div className="toggle-info">
-            <span className="toggle-icon">🔀</span>
+            <span className="toggle-icon"><Icon name="shuffle" /></span>
             <div>
               <h4>{t("aiSettingsSmartRoutingTitle")}</h4>
               <p>{t("aiSettingsSmartRoutingDesc")}</p>
             </div>
           </div>
-          <span className="meta-badge setup-needed">⚙️ {t("aiSettingsDeployTimeOnly")}</span>
+          <span className="meta-badge setup-needed"><Icon name="settings" className="icon-lead" />{t("aiSettingsDeployTimeOnly")}</span>
         </div>
         <div className="ai-settings-feature-meta">
-          <span className="meta-badge setup-needed">⚙️ {t("aiSettingsGroupMapping")}</span>
+          <span className="meta-badge setup-needed"><Icon name="settings" className="icon-lead" />{t("aiSettingsGroupMapping")}</span>
           <span className="meta-cost">$0</span>
         </div>
         <p className="form-note">{t("aiSettingsSmartRoutingConfigNote")}</p>
@@ -358,7 +359,7 @@ export function AiSettingsManager({ initialSettings, onSettingsChange }: AiSetti
         <table className="ai-settings-table">
           <tbody>
             <tr>
-              <td>🤖 {t("aiSettingsAgentTitle")}</td>
+              <td><Icon name="bot" className="icon-lead" />{t("aiSettingsAgentTitle")}</td>
               <td>
                 <span className={`status-badge ${settings.aiAgentEnabled ? "enabled" : "disabled"}`}>
                   {settings.aiAgentEnabled ? t("stateEnabled") : t("stateDisabled")}
@@ -366,7 +367,7 @@ export function AiSettingsManager({ initialSettings, onSettingsChange }: AiSetti
               </td>
             </tr>
             <tr>
-              <td>🔍 {t("aiSettingsSearchTitle")}</td>
+              <td><Icon name="search" className="icon-lead" />{t("aiSettingsSearchTitle")}</td>
               <td>
                 <span className={`status-badge ${settings.aiSearchEnabled ? "enabled" : "disabled"}`}>
                   {settings.aiSearchEnabled ? t("stateEnabled") : t("stateDisabled")}
@@ -374,7 +375,7 @@ export function AiSettingsManager({ initialSettings, onSettingsChange }: AiSetti
               </td>
             </tr>
             <tr>
-              <td>🖼️ {t("aiSettingsMultimodalTitle")}</td>
+              <td><Icon name="image" className="icon-lead" />{t("aiSettingsMultimodalTitle")}</td>
               <td>
                 <span className={`status-badge ${settings.aiMultimodalEnabled ? "enabled" : "disabled"}`}>
                   {settings.aiMultimodalEnabled ? t("stateEnabled") : t("stateDisabled")}
@@ -382,7 +383,7 @@ export function AiSettingsManager({ initialSettings, onSettingsChange }: AiSetti
               </td>
             </tr>
             <tr>
-              <td>📜 {t("aiSettingsChatHistoryTitle")}</td>
+              <td><Icon name="file-text" className="icon-lead" />{t("aiSettingsChatHistoryTitle")}</td>
               <td>
                 <span className={`status-badge ${settings.chatHistoryEnabled ? "enabled" : "disabled"}`}>
                   {settings.chatHistoryEnabled ? t("stateEnabled") : t("stateDisabled")}
@@ -390,7 +391,7 @@ export function AiSettingsManager({ initialSettings, onSettingsChange }: AiSetti
               </td>
             </tr>
             <tr>
-              <td>🔀 {t("aiSettingsSmartRoutingTitle")}</td>
+              <td><Icon name="shuffle" className="icon-lead" />{t("aiSettingsSmartRoutingTitle")}</td>
               <td>
                 <span className="status-badge">{t("aiSettingsDeployTimeOnly")}</span>
               </td>

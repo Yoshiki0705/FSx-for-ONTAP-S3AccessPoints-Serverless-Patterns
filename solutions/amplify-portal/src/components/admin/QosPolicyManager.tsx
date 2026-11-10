@@ -5,6 +5,7 @@ import { errorMessage, unwrap } from "../../lib/portalQuery";
 import { adminMutate, dispatch } from "../../lib/dispatch";
 import type { PolicyUuid } from "../../lib/dispatchActions";
 import { VolumeSelector, type VolumeInfo } from "./VolumeSelector";
+import { Icon } from "../Icon";
 
 /** ONTAP's reserved keyword for "no policy". Not a UI placeholder. */
 const NO_POLICY = "none";
@@ -317,7 +318,7 @@ export function QosPolicyManager() {
               </td>
               <td>
                 <button onClick={() => startEdit(p)} className="btn-sm" disabled={editing}>{t("rmEdit")}</button>
-                <button onClick={() => handleDelete(p.uuid, p.name)} className="btn-sm btn-danger">✕</button>
+                <button onClick={() => handleDelete(p.uuid, p.name)} className="btn-sm btn-danger" aria-label={t("rmDelete")}><Icon name="close" /></button>
                 {editFor === p.uuid && (
                   <div className="rm-form" role="dialog">
                     <h4>{t("rmQosEdit").replace("{name}", p.name)}</h4>

@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useTranslation } from "../../i18n";
 import { errorMessage, unwrap } from "../../lib/portalQuery";
 import { adminMutate, adminQuery, dispatch } from "../../lib/dispatch";
+import { Icon } from "../Icon";
 
 interface ExportPolicy { id: number; name: string; ruleCount: number; }
 interface ExportRule { index: number; clients: string[]; roRule: string[]; rwRule: string[]; superuser: string[]; protocols: string[]; }
@@ -200,7 +201,7 @@ export function ExportPolicyManager() {
                   <td className="action-cell">
                     <button onClick={() => selectPolicy(p)} className="btn-sm">{t("rmViewRules")}</button>
                     {p.name !== "default" && (
-                      <button onClick={() => handleDeletePolicy(p)} className="btn-sm btn-danger" title={t("rmDelete")}>✕</button>
+                      <button onClick={() => handleDeletePolicy(p)} className="btn-sm btn-danger" title={t("rmDelete")}><Icon name="close" /></button>
                     )}
                   </td>
                 </tr>
@@ -287,7 +288,7 @@ export function ExportPolicyManager() {
                   <td><code>{r.roRule.join(",")}</code></td>
                   <td><code>{r.rwRule.join(",")}</code></td>
                   <td><code>{r.superuser.join(",")}</code></td>
-                  <td><button onClick={() => handleDeleteRule(r.index)} className="btn-sm btn-danger">✕</button></td>
+                  <td><button onClick={() => handleDeleteRule(r.index)} className="btn-sm btn-danger" aria-label={t("rmDelete")}><Icon name="close" /></button></td>
                 </tr>
               ))}
               {rules.length === 0 && <tr><td colSpan={6} className="empty-state">{t("rmNoRules")}</td></tr>}

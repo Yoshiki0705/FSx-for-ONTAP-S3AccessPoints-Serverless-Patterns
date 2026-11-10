@@ -4,6 +4,7 @@ import { errorMessage } from "../../lib/portalQuery";
 import { adminMutate, adminQuery } from "../../lib/dispatch";
 import type { VolumeUuid } from "../../lib/dispatchActions";
 import { useTranslation } from "../../i18n";
+import { Icon } from "../Icon";
 
 interface FlexClone {
   name: string;
@@ -120,8 +121,8 @@ export function FlexCloneManager() {
 
   return (
     <div className="flexclone-manager">
-      {error && <div className="rm-error">⚠️ {error}</div>}
-      {success && <div className="rm-success">✅ {success}</div>}
+      {error && <div className="rm-error"><Icon name="alert-triangle" className="icon-lead" />{error}</div>}
+      {success && <div className="rm-success"><Icon name="check-circle" className="icon-lead" />{success}</div>}
 
       <div className="lu-toolbar">
         <span className="lu-count">{clones.length} FlexClones</span>

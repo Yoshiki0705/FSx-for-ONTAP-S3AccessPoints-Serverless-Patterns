@@ -5,6 +5,7 @@ import { errorMessage, unwrap } from "../../lib/portalQuery";
 import { adminMutate, dispatch } from "../../lib/dispatch";
 import type { VolumeUuid } from "../../lib/dispatchActions";
 import { durationLabel, elapsedLabel } from "../../utils/duration";
+import { Icon } from "../Icon";
 
 /**
  * ONTAP's own state values. The panel maps them to sentences rather than showing the
@@ -466,7 +467,7 @@ export function VolumeRebalancePanel({ volumeUuid, volumeName, onClose }: Props)
             target="_blank"
             rel="noreferrer"
           >
-            📋 {t("rblVerificationLink")}
+            <Icon name="clipboard-list" className="icon-lead" />{t("rblVerificationLink")}
           </a>
         </p>
       </details>
