@@ -147,6 +147,19 @@ export default tseslint.config(
     },
   },
   {
+    // Node scripts. The capture script also hands callbacks to page.evaluate, which
+    // run in the browser, so it uses both sets of globals (document, localStorage
+    // alongside process, console).
+    files: ["scripts/**/*.mjs"],
+    languageOptions: {
+      ecmaVersion: 2022,
+      globals: {
+        ...globals.browser,
+        ...globals.node,
+      },
+    },
+  },
+  {
     // Playwright specs are type-checked and run by Playwright's own runner and
     // are excluded from tsconfig, so linting them here would report unresolved
     // imports for a dependency that is intentionally provisioned via npx.
