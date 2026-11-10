@@ -2,6 +2,7 @@ import { useState } from "react";
 import { generateClient } from "aws-amplify/data";
 import type { Schema } from "../../amplify/data/resource";
 import { useTranslation } from "../i18n";
+import { Icon } from "./Icon";
 
 const client = generateClient<Schema>();
 
@@ -97,7 +98,7 @@ export function DocumentAnalysis({ fileKey, fileName, blocked = false }: Documen
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
       >
-        🔎 {open ? t("docAnalysisHide") : t("docAnalysisShow")}
+        <Icon name="search" className="icon-lead" />{open ? t("docAnalysisHide") : t("docAnalysisShow")}
       </button>
 
       {open && (
@@ -106,7 +107,7 @@ export function DocumentAnalysis({ fileKey, fileName, blocked = false }: Documen
             // Same boundary as the rest of the AI features: the guard is about
             // where the bytes go, and these two send them to Textract and
             // Comprehend.
-            <p className="fl-warning">🚫 {t("aiPhiBlocked")}</p>
+            <p className="fl-warning"><Icon name="ban" className="icon-lead" />{t("aiPhiBlocked")}</p>
           ) : (
             <>
               <p className="rm-hint">{t("docAnalysisHint")}</p>

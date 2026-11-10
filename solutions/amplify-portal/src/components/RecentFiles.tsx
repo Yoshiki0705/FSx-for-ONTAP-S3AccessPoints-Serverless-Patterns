@@ -3,6 +3,7 @@ import { errorMessage } from "../lib/portalQuery";
 import { generateClient } from "aws-amplify/data";
 import type { Schema } from "../../amplify/data/resource";
 import { useTranslation } from "../i18n";
+import { Icon, type IconName } from "./Icon";
 
 const client = generateClient<Schema>();
 
@@ -53,14 +54,14 @@ export function RecentFiles({ onFileSelect }: RecentFilesProps) {
 
   const error = errorMessage(queryError, "Failed to load recent files");
 
-  const getActionIcon = (action: string | null): string => {
+  const getActionIcon = (action: string | null): IconName => {
     switch (action) {
-      case "view": return "👁️";
-      case "download": return "📥";
-      case "ai_query": return "🤖";
-      case "preview": return "🖼️";
-      case "share": return "🔗";
-      default: return "📄";
+      case "view": return "eye";
+      case "download": return "download";
+      case "ai_query": return "bot";
+      case "preview": return "image";
+      case "share": return "link";
+      default: return "file";
     }
   };
 
@@ -153,7 +154,7 @@ export function RecentFiles({ onFileSelect }: RecentFilesProps) {
               }}
             >
               <span className="recent-action-icon" title={getActionLabel(item.action)}>
-                {getActionIcon(item.action)}
+                <Icon name={getActionIcon(item.action)} />
               </span>
               <div className="recent-file-info">
                 <span className="recent-file-name">{getFileName(item)}</span>

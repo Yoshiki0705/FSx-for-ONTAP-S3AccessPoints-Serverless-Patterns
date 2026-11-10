@@ -5,6 +5,7 @@ import { arpMutate, arpQuery, dispatch } from "../lib/dispatch";
 import { errorMessage } from "../lib/portalQuery";
 import { useIncidentState } from "../hooks/useIncidentState";
 import { parseResponse } from "../utils/parseResponse";
+import { Icon, StatusDot } from "./Icon";
 
 interface ActiveBlock {
   pattern?: string;
@@ -456,10 +457,10 @@ export function ArpResponseActions({ threatLevel, volumeName }: ArpResponseActio
       {/* Incident lifecycle state badge */}
       {incident.state !== "none" && (
         <div className={`incident-badge incident-${incident.state}`}>
-          {incident.state === "detected" && `🔴 ${t("incidentDetected")}`}
-          {incident.state === "contained" && `🟠 ${t("incidentContained")}`}
-          {incident.state === "investigating" && `🟡 ${t("incidentInvestigating")}`}
-          {incident.state === "resolved" && `🟢 ${t("incidentResolved")}`}
+          {incident.state === "detected" && <><StatusDot tone="error" />{t("incidentDetected")}</>}
+          {incident.state === "contained" && <><StatusDot tone="warning" />{t("incidentContained")}</>}
+          {incident.state === "investigating" && <><StatusDot tone="warning" />{t("incidentInvestigating")}</>}
+          {incident.state === "resolved" && <><StatusDot tone="ok" />{t("incidentResolved")}</>}
           {(incident.state === "contained" || incident.state === "investigating") && (
             <button className="btn-sm" style={{ marginLeft: "0.5rem" }} onClick={() => {
               if (incident.state === "contained") markInvestigating();
@@ -476,7 +477,7 @@ export function ArpResponseActions({ threatLevel, volumeName }: ArpResponseActio
       {/* Threat-level-aware banner */}
       {(threatLevel === "high" || threatLevel === "moderate") && (
         <div className="arp-response-alert" role="alert">
-          <span className="alert-icon">⚠️</span>
+          <span className="alert-icon"><Icon name="alert-triangle" /></span>
           <span>{t("arpResponseAlertActive")}</span>
         </div>
       )}
@@ -624,7 +625,7 @@ export function ArpResponseActions({ threatLevel, volumeName }: ArpResponseActio
                   key={req.label}
                   className={req.met ? "arp-requirement-met" : "arp-requirement-missing"}
                 >
-                  {req.met ? "✓" : "—"} {req.label}: {req.need}
+                  {req.met ? <Icon name="check" className="icon-lead" /> : "—"} {req.label}: {req.need}
                 </li>
               ))}
             </ul>
@@ -637,7 +638,7 @@ export function ArpResponseActions({ threatLevel, volumeName }: ArpResponseActio
               className="btn-danger"
               title={actionTitle(0, t("arpResponseContainTooltip"))}
             >
-              {loading ? t("processing") : `🛡️ ${t("arpResponseContainBtn")}`}
+              {loading ? t("processing") : <><Icon name="shield" className="icon-lead" />{t("arpResponseContainBtn")}</>}
             </button>
             <button
               onClick={() => setPending("blockSmb")}
@@ -645,7 +646,7 @@ export function ArpResponseActions({ threatLevel, volumeName }: ArpResponseActio
               className="btn-warning"
               title={actionTitle(1, t("arpResponseBlockSmbTooltip"))}
             >
-              {`🚫 ${t("arpResponseBlockSmb")}`}
+              <Icon name="ban" className="icon-lead" />{t("arpResponseBlockSmb")}
             </button>
             <button
               onClick={() => setPending("blockNfs")}
@@ -653,7 +654,7 @@ export function ArpResponseActions({ threatLevel, volumeName }: ArpResponseActio
               className="btn-warning"
               title={actionTitle(2, t("arpResponseBlockNfsTooltip"))}
             >
-              {`🚫 ${t("arpResponseBlockNfs")}`}
+              <Icon name="ban" className="icon-lead" />{t("arpResponseBlockNfs")}
             </button>
             <button
               onClick={() => setPending("disconnect")}
@@ -661,7 +662,7 @@ export function ArpResponseActions({ threatLevel, volumeName }: ArpResponseActio
               className="btn-warning"
               title={actionTitle(3, t("arpResponseDisconnectTooltip"))}
             >
-              {`🔌 ${t("arpResponseDisconnect")}`}
+              <Icon name="plug" className="icon-lead" />{t("arpResponseDisconnect")}
             </button>
           </div>
 

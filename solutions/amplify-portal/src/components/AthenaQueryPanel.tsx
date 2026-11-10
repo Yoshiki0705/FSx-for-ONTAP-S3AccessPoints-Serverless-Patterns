@@ -2,6 +2,7 @@ import { useState, useCallback } from "react";
 import { generateClient } from "aws-amplify/data";
 import type { Schema } from "../../amplify/data/resource";
 import { useTranslation } from "../i18n";
+import { Icon } from "./Icon";
 import { withNodes } from "../utils/richText";
 import { CatalogBrowser } from "./CatalogBrowser";
 
@@ -97,7 +98,7 @@ export function AthenaQueryPanel() {
         </div>
       </div>
       <p style={{ margin: "0 0 0.75rem", fontSize: "0.8rem", color: "var(--color-text-secondary)" }}>
-        📦 <strong>{t("aqDatabaseAria")}</strong>:{" "}
+        <Icon name="package" className="icon-lead" /><strong>{t("aqDatabaseAria")}</strong>:{" "}
         {withNodes(t("aqDatabaseExplain"), {
           db: <code>default</code>,
           cmd: <code>SHOW DATABASES</code>,
@@ -114,11 +115,11 @@ export function AthenaQueryPanel() {
 
       <div className="athena-guidance" style={{ marginBottom: "1rem", padding: "0.75rem", background: "var(--color-surface-subtle)", borderRadius: "6px", fontSize: "0.85rem" }}>
         <p style={{ margin: "0 0 0.5rem" }}>
-          <strong>💡 {t("athenaGuidanceTitle")}</strong>: {t("aqGuidanceBody")}
+          <strong><Icon name="lightbulb" className="icon-lead" />{t("athenaGuidanceTitle")}</strong>: {t("aqGuidanceBody")}
         </p>
         <details>
           <summary style={{ cursor: "pointer", color: "var(--color-primary-text)" }}>
-            📝 {t("aqExamplesToggle")}
+            <Icon name="file-text" className="icon-lead" />{t("aqExamplesToggle")}
           </summary>
           <div style={{ marginTop: "0.5rem" }}>
             <p style={{ margin: "0.25rem 0", fontFamily: "monospace", fontSize: "0.8rem" }}>
@@ -159,12 +160,12 @@ export function AthenaQueryPanel() {
       {error && (
         <div className={`athena-error ${status === "SETUP_REQUIRED" ? "athena-setup-hint" : ""}`}
              style={status === "SETUP_REQUIRED" ? { background: "var(--color-warning-bg)", borderColor: "var(--color-warning)", color: "var(--color-warning-text)", padding: "1rem", borderRadius: "6px", border: "1px solid" } : undefined}>
-          {status === "SETUP_REQUIRED" && <strong>⚙️ {t("aqSetupRequired")}</strong>}
+          {status === "SETUP_REQUIRED" && <strong><Icon name="settings" className="icon-lead" />{t("aqSetupRequired")}</strong>}
           {status === "SETUP_REQUIRED" && <br/>}
           {error}
           {status === "SETUP_REQUIRED" && (
             <details style={{ marginTop: "0.5rem" }}>
-              <summary style={{ cursor: "pointer" }}>📖 {t("aqSetupToggle")}</summary>
+              <summary style={{ cursor: "pointer" }}><Icon name="book-open" className="icon-lead" />{t("aqSetupToggle")}</summary>
               <ol style={{ marginTop: "0.5rem", paddingLeft: "1.5rem", fontSize: "0.85rem" }}>
                 <li>{t("aqSetupStep1")}</li>
                 <li>

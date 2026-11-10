@@ -7,6 +7,7 @@ import { recoveryPointsQuery, restoreMutate } from "../lib/dispatch";
 import { useStorageAdmin } from "../hooks/useStorageAdmin";
 import { restoreAllowedSvmIds } from "../lib/portalOutputs";
 import { RestoreConfirmDialog, type RestoreFormValues } from "./RestoreConfirmDialog";
+import { Icon } from "./Icon";
 
 /**
  * One AWS Backup recovery point, as the handler returns it.
@@ -385,7 +386,7 @@ export function RecoveryPoints() {
   return (
     <div className="protection-section">
       <div className="protection-header">
-        <h2>☁️ {t("rpTitle")}</h2>
+        <h2><Icon name="cloud" className="icon-lead" />{t("rpTitle")}</h2>
         <button onClick={refresh} className="refresh-btn" aria-label={t("refresh")}>
           ↻
         </button>
@@ -536,7 +537,7 @@ export function RecoveryPoints() {
                     {point.backupVaultName || "—"}
                     {airGapped && (
                       <span className="state-badge state-online" style={{ marginLeft: "0.5rem" }}>
-                        🔒 {t("rpVaultAirgapped")}
+                        <Icon name="lock" className="icon-lead" />{t("rpVaultAirgapped")}
                       </span>
                     )}
                     {selectedShared !== null && point.ownerAccountId && (
@@ -584,7 +585,7 @@ export function RecoveryPoints() {
       <p className="status-subtitle" style={{ display: "block", marginTop: "1rem" }}>
         {t("rpMonitoringNote")}{" "}
         <a href={observabilityHref} target="_blank" rel="noopener noreferrer" style={{ color: "var(--color-primary-text)" }}>
-          📖 {t("rpMonitoringLink")}
+          <Icon name="book-open" className="icon-lead" />{t("rpMonitoringLink")}
         </a>
       </p>
     </div>

@@ -3,6 +3,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { generateClient } from "aws-amplify/data";
 import type { Schema } from "../../amplify/data/resource";
 import { useTranslation } from "../i18n";
+import { Icon } from "./Icon";
 
 const client = generateClient<Schema>();
 
@@ -20,7 +21,7 @@ interface FavoriteItem {
  * UX-1: Favorites / Pinned files and folders.
  *
  * Provides:
- * - FavoriteButton: ⭐ toggle button for any file or folder in the listing check-ui-ignore
+ * - FavoriteButton: star toggle button for any file or folder in the listing
  * - FavoritesView: filtered view showing only pinned entries
  *
  * Data model: DynamoDB "Favorite" table with owner-based auth.
@@ -108,7 +109,7 @@ export function FavoriteButton({
       title={isFavorite ? t("favoritesRemove") : t("favoritesAdd")}
       aria-label={isFavorite ? t("favoritesRemove") : t("favoritesAdd")}
     >
-      {isFavorite ? "★" : "☆"}
+      <Icon name="star" fill={isFavorite ? "currentColor" : "none"} />
     </button>
   );
 }
@@ -171,7 +172,7 @@ export function FavoritesView({
               role="button"
               tabIndex={0}
             >
-              {isFolderKey(fav.fileKey) ? "📁" : "📄"}{" "}
+              <Icon name={isFolderKey(fav.fileKey) ? "folder" : "file"} className="icon-lead" />
               {fav.fileName || baseName(fav.fileKey)}
             </span>
             <span className="favorite-path" title={fav.fileKey}>
@@ -181,8 +182,9 @@ export function FavoritesView({
               className="favorite-remove"
               onClick={() => removeFavorite(fav.id)}
               title={t("favoritesRemove")}
+              aria-label={t("favoritesRemove")}
             >
-              ✕
+              <Icon name="close" />
             </button>
           </div>
         ))}

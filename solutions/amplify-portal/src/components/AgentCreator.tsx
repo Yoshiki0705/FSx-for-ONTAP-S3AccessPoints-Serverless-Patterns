@@ -2,11 +2,13 @@
  * AgentCreator — Form to create a custom AI agent.
  *
  * Ported from RAG-FSxN-CDK agent-creator-form pattern.
- * Fields: name, description, system prompt, tools (checkboxes), icon (emoji picker), category, shared toggle.
+ * Fields: name, description, system prompt, tools (checkboxes), icon (icon picker), category, shared toggle.
  */
 import { useState } from "react";
 import { useTranslation } from "../i18n";
 import { dispatch } from "../lib/dispatch";
+import { Icon } from "./Icon";
+import { AGENT_ICON_CHOICES } from "./AgentIcon";
 
 const AVAILABLE_TOOLS = [
   { id: "list_files", label: "list_files", desc: "Browse directories" },
@@ -17,7 +19,6 @@ const AVAILABLE_TOOLS = [
   { id: "request_action_approval", label: "request_action_approval", desc: "HITL approval gate" },
 ];
 
-const ICON_OPTIONS = ["🤖", "📊", "🔍", "🧠", "🛡️", "📁", "⚡", "🔬", "📋", "🎯", "💡", "🏭"];
 
 const CATEGORY_OPTIONS = ["custom", "file-ops", "knowledge", "security", "analytics", "automation"];
 
@@ -32,7 +33,7 @@ export function AgentCreator({ onCreated, onCancel }: AgentCreatorProps) {
   const [description, setDescription] = useState("");
   const [systemPrompt, setSystemPrompt] = useState("");
   const [tools, setTools] = useState<string[]>(["list_files", "read_file", "search_files"]);
-  const [icon, setIcon] = useState("🤖");
+  const [icon, setIcon] = useState("bot");
   const [category, setCategory] = useState("custom");
   const [isShared, setIsShared] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -83,11 +84,11 @@ export function AgentCreator({ onCreated, onCancel }: AgentCreatorProps) {
   return (
     <div className="agent-creator">
       <div className="agent-creator-header">
-        <h2>✨ {t("agentCreatorTitle")}</h2>
-        {onCancel && <button className="btn-sm" onClick={onCancel}>✕</button>}
+        <h2><Icon name="sparkles" className="icon-lead" />{t("agentCreatorTitle")}</h2>
+        {onCancel && <button className="btn-sm" onClick={onCancel} aria-label={t("close")}><Icon name="close" /></button>}
       </div>
 
-      {error && <div className="agent-creator-error">⚠️ {error}</div>}
+      {error && <div className="agent-creator-error"><Icon name="alert-triangle" className="icon-lead" />{error}</div>}
 
       <form onSubmit={handleSubmit} className="agent-creator-form">
         {/* Icon + Name Row */}
@@ -95,14 +96,15 @@ export function AgentCreator({ onCreated, onCancel }: AgentCreatorProps) {
           <div className="creator-field icon-field">
             <label>{t("agentCreatorIcon")}</label>
             <div className="icon-picker">
-              {ICON_OPTIONS.map((emoji) => (
+              {AGENT_ICON_CHOICES.map((choice) => (
                 <button
-                  key={emoji}
+                  key={choice}
                   type="button"
-                  className={`icon-option ${icon === emoji ? "selected" : ""}`}
-                  onClick={() => setIcon(emoji)}
+                  className={`icon-option ${icon === choice ? "selected" : ""}`}
+                  onClick={() => setIcon(choice)}
+                  aria-label={choice}
                 >
-                  {emoji}
+                  <Icon name={choice} />
                 </button>
               ))}
             </div>
@@ -201,7 +203,7 @@ export function AgentCreator({ onCreated, onCancel }: AgentCreatorProps) {
             </button>
           )}
           <button type="submit" className="btn-primary" disabled={saving}>
-            {saving ? "⏳" : "✨"} {t("agentCreatorSubmit")}
+            <Icon name={saving ? "hourglass" : "sparkles"} className="icon-lead" />{t("agentCreatorSubmit")}
           </button>
         </div>
       </form>

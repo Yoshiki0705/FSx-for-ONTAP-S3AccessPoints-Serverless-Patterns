@@ -13,6 +13,7 @@
  */
 import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "../i18n";
+import { Icon, type IconName } from "./Icon";
 
 /** What the user asked for, which is not the same as what is displayed. */
 export type ThemeChoice = "light" | "dark" | "system";
@@ -35,10 +36,10 @@ function systemTheme(): "light" | "dark" {
   return window.matchMedia?.("(prefers-color-scheme: dark)").matches ? "dark" : "light";
 }
 
-const OPTIONS: { choice: ThemeChoice; icon: string; labelKey: "themeLight" | "themeDark" | "themeSystem" }[] = [
-  { choice: "light", icon: "☀️", labelKey: "themeLight" },
-  { choice: "dark", icon: "🌙", labelKey: "themeDark" },
-  { choice: "system", icon: "🖥️", labelKey: "themeSystem" },
+const OPTIONS: { choice: ThemeChoice; icon: IconName; labelKey: "themeLight" | "themeDark" | "themeSystem" }[] = [
+  { choice: "light", icon: "sun", labelKey: "themeLight" },
+  { choice: "dark", icon: "moon", labelKey: "themeDark" },
+  { choice: "system", icon: "monitor", labelKey: "themeSystem" },
 ];
 
 export function ThemeToggle() {
@@ -82,7 +83,7 @@ export function ThemeToggle() {
           title={t(option.labelKey)}
           aria-label={t(option.labelKey)}
         >
-          <span aria-hidden="true">{option.icon}</span>
+          <Icon name={option.icon} />
         </button>
       ))}
     </div>

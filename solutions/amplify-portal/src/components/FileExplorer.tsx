@@ -22,6 +22,7 @@ import {
   TRASH_PREFIX,
 } from "./FileLifecycle";
 import { useTranslation } from "../i18n";
+import { Icon } from "./Icon";
 import { usePortalRole } from "../hooks/usePortalRole";
 import { ReadOnlyBanner } from "./RoleNotice";
 import { useToast } from "../lib/toast";
@@ -458,7 +459,7 @@ export function FileExplorer({
           title={isRegulatedPath(currentPrefix) ? t("aiPhiBlocked") : t("filesProcessFolder")}
           disabled={!portalSettings.processingEnabled || isRegulatedPath(currentPrefix)}
         >
-          {isRegulatedPath(currentPrefix) ? `🚫 ${t("aiPhiBlockedShort")}` : t("filesProcessFolder")}
+          {isRegulatedPath(currentPrefix) ? <><Icon name="ban" className="icon-lead" />{t("aiPhiBlockedShort")}</> : t("filesProcessFolder")}
         </button>
         {/* Not offered inside the trash: a folder created there would be a place to
             put things that the restore path has no meaning for. */}
@@ -481,7 +482,7 @@ export function FileExplorer({
           title={inTrash ? t("flLeaveTrash") : t("flOpenTrash")}
           aria-pressed={inTrash}
         >
-          🗑️ {inTrash ? t("flLeaveTrash") : t("flOpenTrash")}
+          <Icon name="trash" className="icon-lead" />{inTrash ? t("flLeaveTrash") : t("flOpenTrash")}
         </button>
         <button
           className="compare-btn"
@@ -489,7 +490,7 @@ export function FileExplorer({
           title={showCompare ? t("scClose") : t("scCompare")}
           aria-expanded={showCompare}
         >
-          🔍 {showCompare ? t("scClose") : t("scCompare")}
+          <Icon name="search" className="icon-lead" />{showCompare ? t("scClose") : t("scCompare")}
         </button>
       </div>
 
@@ -546,7 +547,7 @@ export function FileExplorer({
               String(selectedKeys.size)
             )}
           >
-            {inTrash ? `♻️ ${t("filesBulkRestore")}` : `🗑️ ${t("filesBulkTrash")}`}
+            {inTrash ? <><Icon name="undo" className="icon-lead" />{t("filesBulkRestore")}</> : <><Icon name="trash" className="icon-lead" />{t("filesBulkTrash")}</>}
           </button>
           <button
             className="rm-btn-sm"
@@ -623,7 +624,7 @@ export function FileExplorer({
             Making the row itself `role="button"` did reach the keyboard, but it
             nested the favourite star inside another control and took its label
             into the row's accessible name, which came out as "Add to favourites
-            📁 ai-outputs - -". A button on the name is announced as the folder it
+            ai-outputs - -". A button on the name is announced as the folder it
             opens, and the star beside it stays a control of its own. Clicking
             anywhere in the row still works, which is the pointer affordance every
             file manager has. */}
@@ -632,7 +633,7 @@ export function FileExplorer({
             <span className="file-item-actions">
               <span className="file-select-spacer" aria-hidden="true" />
               <span className="favorite-btn-spacer" aria-hidden="true" />
-              <span className="icon">📁</span>
+              <span className="file-glyph"><Icon name="folder" /></span>
             </span>
             <span className="name">
               <button
@@ -664,7 +665,7 @@ export function FileExplorer({
                     object, so sending it a prefix would leave the contents behind. */}
                 <span className="file-select-spacer" aria-hidden="true" />
                 <FavoriteButton fileKey={folder} fileName={folderName} />
-                <span className="icon">📁</span>
+                <span className="file-glyph"><Icon name="folder" /></span>
               </span>
               <span className="name">
                 <button
@@ -740,7 +741,7 @@ export function FileExplorer({
                       aria-label={t("tagsEdit")}
                       aria-expanded={tagsOpen}
                     >
-                      🏷️
+                      <Icon name="tag" />
                     </button>
                     {/* Every control below writes through `fileMutation`. The banner
                         above the listing carries the explanation, so the row menu

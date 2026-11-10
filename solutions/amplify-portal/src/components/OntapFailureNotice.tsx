@@ -15,6 +15,7 @@
  * message plus an HTTP status, and it goes in a support case verbatim.
  */
 import { useTranslation, type TranslationKeys } from "../i18n";
+import { Icon } from "./Icon";
 
 /** Kept in step with OntapFailure in shared/ontap_diagnosis.py. */
 export type OntapErrorClass =
@@ -103,7 +104,7 @@ export function OntapFailureNotice({ error, errorClass, errorStatus, errorCode }
         <p>{failure ? t(NEXT_STEPS[failure]) : t("ontapFailUnknownStep")}</p>
 
         {failure && REACHED_ONTAP.includes(failure) && (
-          <p className="ontap-failure-reassurance">✅ {t("ontapFailReachedOntap")}</p>
+          <p className="ontap-failure-reassurance"><Icon name="check-circle" className="icon-lead" />{t("ontapFailReachedOntap")}</p>
         )}
 
         {command && (

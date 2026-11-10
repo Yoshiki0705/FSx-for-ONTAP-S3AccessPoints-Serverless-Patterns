@@ -10,6 +10,7 @@ import { useQuery } from "@tanstack/react-query";
 import { dispatch } from "../lib/dispatch";
 import { errorMessage } from "../lib/portalQuery";
 import { useTranslation } from "../i18n";
+import { Icon } from "./Icon";
 
 interface FilePermissions {
   securityStyle: string;
@@ -81,8 +82,8 @@ export function AgentFileSidebar({ referencedFiles, visible, onClose }: AgentFil
   return (
     <div className="agent-file-sidebar">
       <div className="afs-header">
-        <h4>📂 {t("sidebarFileInfo")}</h4>
-        <button className="btn-sm" onClick={onClose}>✕</button>
+        <h4><Icon name="folder" className="icon-lead" />{t("sidebarFileInfo")}</h4>
+        <button className="btn-sm" onClick={onClose} aria-label={t("close")}><Icon name="close" /></button>
       </div>
 
       {/* File List */}
@@ -93,7 +94,7 @@ export function AgentFileSidebar({ referencedFiles, visible, onClose }: AgentFil
             className={`afs-file-item ${file === selectedFile ? "active" : ""}`}
             onClick={() => setSelectedFile(file)}
           >
-            <span className="afs-file-icon">📄</span>
+            <span className="afs-file-icon"><Icon name="file" /></span>
             <span className="afs-file-name">{file.split("/").pop()}</span>
           </button>
         ))}
@@ -109,7 +110,7 @@ export function AgentFileSidebar({ referencedFiles, visible, onClose }: AgentFil
 
           {loading && <div className="afs-loading">⏳ {t("sidebarLoadingPerms")}</div>}
 
-          {error && <div className="afs-error">⚠️ {error}</div>}
+          {error && <div className="afs-error"><Icon name="alert-triangle" className="icon-lead" />{error}</div>}
 
           {permissions && (
             <div className="afs-permissions">

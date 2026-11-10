@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { useTranslation, LOCALES, type Locale } from "../i18n";
+import { Icon } from "./Icon";
 
 /**
  * Language switcher — pill-shaped custom dropdown.
@@ -7,7 +8,7 @@ import { useTranslation, LOCALES, type Locale } from "../i18n";
  * UX design principles (per Smashing Magazine best practices):
  * - Show current language in native script (日本語, not "Japanese")
  * - No flags (flags = countries, not languages)
- * - Globe icon (🌐) as universal visual cue check-ui-ignore
+ * - Globe icon as universal visual cue
  * - Pill shape (rounded) — compact, modern appearance
  * - Click to open, click outside to close
  * - Keyboard accessible (Enter/Escape)
@@ -57,7 +58,7 @@ export function LanguageSwitcher() {
         aria-haspopup="listbox"
         aria-label={t("languageLabel")}
       >
-        <span className="lang-globe">🌐</span>
+        <span className="lang-globe"><Icon name="globe" /></span>
         <span className="lang-current">{currentLabel}</span>
         <span className="lang-chevron">{open ? "▴" : "▾"}</span>
       </button>

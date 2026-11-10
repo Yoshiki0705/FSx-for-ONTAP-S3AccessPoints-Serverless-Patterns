@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useTranslation } from "../i18n";
+import { Icon } from "./Icon";
 
 /**
  * UX-4: PDF Inline Viewer.
@@ -48,7 +49,7 @@ export function PdfViewer({
               }}
               aria-label={t("pdfClose")}
             >
-              ✕ {t("pdfClose")}
+              <Icon name="close" className="icon-lead" />{t("pdfClose")}
             </button>
           )}
         </div>

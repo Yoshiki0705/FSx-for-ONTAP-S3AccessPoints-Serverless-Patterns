@@ -3,6 +3,7 @@ import { generateClient } from "aws-amplify/data";
 import type { Schema } from "../../amplify/data/resource";
 import { portalSettings } from "../portal-settings";
 import { useTranslation } from "../i18n";
+import { Icon } from "./Icon";
 
 const client = generateClient<Schema>();
 
@@ -79,7 +80,7 @@ export function RestoreFromSnapshot({ currentPrefix }: RestoreFromSnapshotProps)
         onClick={() => setShowDialog(true)}
         title={t("rfsButtonTitle")}
       >
-        📸 {t("rfsTitle")}
+        <Icon name="camera" className="icon-lead" />{t("rfsTitle")}
       </button>
 
       {result && <div className="success-message">{result}</div>}

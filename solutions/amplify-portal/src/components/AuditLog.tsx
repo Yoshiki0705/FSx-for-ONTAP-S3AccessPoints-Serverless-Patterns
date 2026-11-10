@@ -2,6 +2,7 @@ import { useState } from "react";
 import { generateClient } from "aws-amplify/data";
 import type { Schema } from "../../amplify/data/resource";
 import { useTranslation } from "../i18n";
+import { Icon, type IconName } from "./Icon";
 
 const client = generateClient<Schema>();
 
@@ -110,20 +111,20 @@ export function AuditLog() {
     }
   };
 
-  const getActionIcon = (action: string): string => {
+  const getActionIcon = (action: string): IconName => {
     switch (action) {
       // CloudTrail: the S3 API call.
-      case "GetObject": return "📖";
-      case "PutObject": return "📝";
-      case "DeleteObject": return "🗑️";
-      case "ListBucket": return "📂";
+      case "GetObject": return "book-open";
+      case "PutObject": return "file-text";
+      case "DeleteObject": return "trash";
+      case "ListBucket": return "folder";
       // Portal ledger: what the user asked the portal to do. Distinct names, because a
       // minted URL is not a read and an upload link is not a write -- not yet.
-      case "DOWNLOAD": return "⬇️";
-      case "SHARE_LINK": return "🔗";
-      case "UPLOAD_LINK": return "⬆️";
-      case "DELETE": return "🗑️";
-      default: return "❓";
+      case "DOWNLOAD": return "download";
+      case "SHARE_LINK": return "link";
+      case "UPLOAD_LINK": return "upload";
+      case "DELETE": return "trash";
+      default: return "file";
     }
   };
 
@@ -258,7 +259,7 @@ export function AuditLog() {
                   <td className="audit-time">{formatDate(evt.timestamp)}</td>
                   <td>
                     <span title={evt.action}>
-                      {getActionIcon(evt.action)} {evt.action}
+                      <Icon name={getActionIcon(evt.action)} className="icon-lead" />{evt.action}
                     </span>
                   </td>
                   <td className="audit-user" title={evt.userArn}>
@@ -271,10 +272,10 @@ export function AuditLog() {
                   <td>
                     {evt.errorCode ? (
                       <span className="audit-denied" title={evt.errorMessage}>
-                        ❌ {evt.errorCode}
+                        <Icon name="x-circle" className="icon-lead" />{evt.errorCode}
                       </span>
                     ) : (
-                      <span className="audit-success">✅</span>
+                      <span className="audit-success"><Icon name="check-circle" /></span>
                     )}
                   </td>
                 </tr>

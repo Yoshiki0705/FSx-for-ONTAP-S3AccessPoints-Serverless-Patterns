@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { generateClient } from "aws-amplify/data";
 import type { Schema } from "../../amplify/data/resource";
 import { useTranslation } from "../i18n";
+import { Icon } from "./Icon";
 
 const client = generateClient<Schema>();
 
@@ -114,7 +115,7 @@ export function CatalogBrowser({ onSelectTable }: CatalogBrowserProps) {
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
       >
-        🗂️ {open ? t("catalogHide") : t("catalogShow")}
+        <Icon name="folders" className="icon-lead" />{open ? t("catalogHide") : t("catalogShow")}
       </button>
 
       {open && (

@@ -2,6 +2,7 @@ import { useState } from "react";
 import { generateClient } from "aws-amplify/data";
 import type { Schema } from "../../amplify/data/resource";
 import { useTranslation } from "../i18n";
+import { Icon } from "./Icon";
 import { parseResponse } from "../utils/parseResponse";
 
 const client = generateClient<Schema>();
@@ -88,7 +89,7 @@ export function FolderDownload({ currentPrefix }: FolderDownloadProps) {
         title={t("zipDownloadTitle")}
         style={{ padding: "0.4rem 0.75rem", fontSize: "0.85rem", background: "var(--color-surface-subtle)", color: "var(--color-text)", border: "1px solid var(--color-border-strong)", borderRadius: "6px", cursor: loading ? "wait" : "pointer" }}
       >
-        {loading ? `⏳ ${t("zipDownloadGenerating")}` : `📦 ${t("zipDownloadBtn")}`}
+        {loading ? <><Icon name="hourglass" className="icon-lead" />{t("zipDownloadGenerating")}</> : <><Icon name="package" className="icon-lead" />{t("zipDownloadBtn")}</>}
       </button>
 
       {result && (
@@ -109,12 +110,12 @@ export function FolderDownload({ currentPrefix }: FolderDownloadProps) {
           {result.success ? (
             <>
               <div style={{ fontWeight: 600, marginBottom: "0.25rem" }}>
-                ✅ {t("zipDownloadReady")}
+                <Icon name="check-circle" className="icon-lead" />{t("zipDownloadReady")}
               </div>
               <div>{t("zipDownloadFileCount")}: {result.fileCount}</div>
               <div>{t("zipDownloadSize")}: {formatBytes(result.totalBytes || 0)}</div>
               {result.demoMode && (
-                <div style={{ color: "var(--color-warning-text)", marginTop: "0.25rem" }}>⚠️ DemoMode</div>
+                <div style={{ color: "var(--color-warning-text)", marginTop: "0.25rem" }}><Icon name="alert-triangle" className="icon-lead" />DemoMode</div>
               )}
               {result.downloadUrl && (
                 <a
@@ -128,14 +129,14 @@ export function FolderDownload({ currentPrefix }: FolderDownloadProps) {
               )}
             </>
           ) : (
-            <div style={{ color: "var(--color-error-text)" }}>❌ {result.error}</div>
+            <div style={{ color: "var(--color-error-text)" }}><Icon name="x-circle" className="icon-lead" />{result.error}</div>
           )}
           <button
             onClick={() => setResult(null)}
             style={{ position: "absolute", top: "0.25rem", right: "0.5rem", background: "none", border: "none", cursor: "pointer", fontSize: "1rem" }}
             aria-label={t("cancel")}
           >
-            ✕
+            <Icon name="close" />
           </button>
         </div>
       )}

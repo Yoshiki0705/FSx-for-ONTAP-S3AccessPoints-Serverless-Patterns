@@ -5,6 +5,7 @@ import type { Schema } from "../../amplify/data/resource";
 import { fileQuery } from "../lib/dispatch";
 import { errorMessage } from "../lib/portalQuery";
 import { useTranslation } from "../i18n";
+import { Icon } from "./Icon";
 
 const client = generateClient<Schema>();
 
@@ -144,7 +145,7 @@ export function FolderWatch() {
   return (
     <div className="folder-watch">
       <div className="fw-header">
-        <h2>🔔 {t("fwTitle")}</h2>
+        <h2><Icon name="bell" className="icon-lead" />{t("fwTitle")}</h2>
         <p className="rm-hint">{t("fwIntro")}</p>
       </div>
 
@@ -214,7 +215,7 @@ export function FolderWatch() {
                   </td>
                   <td>
                     <button className="rm-btn-danger-sm" onClick={() => void removeWatch(w.id)}>
-                      ✕ {t("fwRemove")}
+                      <Icon name="close" className="icon-lead" />{t("fwRemove")}
                     </button>
                   </td>
                 </tr>

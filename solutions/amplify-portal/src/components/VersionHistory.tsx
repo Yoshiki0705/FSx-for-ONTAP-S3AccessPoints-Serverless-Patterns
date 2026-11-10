@@ -18,6 +18,7 @@ import { SvmSelector } from "./admin/SvmSelector";
 import { PlatformSelector } from "./admin/PlatformSelector";
 import { VolumeSelector } from "./admin/VolumeSelector";
 import { parseResponse } from "../utils/parseResponse";
+import { Icon } from "./Icon";
 import type { SnaplockIntent } from "../utils/snaplockConsequences";
 
 interface Snapshot {
@@ -261,7 +262,7 @@ export function VersionHistory({ mode = "browse" }: { mode?: "browse" | "diff" }
       )}
       {mode === "diff" && (
         <div className="version-diff-notice" style={{ padding: "1rem", background: "var(--color-warning-bg)", border: "1px solid var(--color-warning)", borderRadius: "8px", marginBottom: "1rem" }}>
-          <strong>🔄 {t("vhDiffTitle")}</strong>
+          <strong><Icon name="refresh" className="icon-lead" />{t("vhDiffTitle")}</strong>
           <p style={{ margin: "0.25rem 0 0", fontSize: "0.85rem", color: "var(--color-warning-text)" }}>
             {t("vhDiffNotice")}
           </p>
@@ -389,11 +390,11 @@ export function VersionHistory({ mode = "browse" }: { mode?: "browse" | "diff" }
                 <td>
                   {snap.isLocked ? (
                     <span className="lock-badge locked" title={`Locked until: ${snap.expiryTime || snap.snaplockExpiryTime || "unknown"}`}>
-                      🔐 {snap.expiryTime ? formatDate(snap.expiryTime) : "Locked"}
+                      <Icon name="lock-keyhole" className="icon-lead" />{snap.expiryTime ? formatDate(snap.expiryTime) : "Locked"}
                     </span>
                   ) : (
                     <span className="lock-badge unlocked" title={t("vhNotLockedTitle")}>
-                      🔓
+                      <Icon name="unlock" />
                     </span>
                   )}
                 </td>

@@ -11,6 +11,7 @@
  * - Approve requires conscious decision
  */
 import { useTranslation } from "../i18n";
+import { Icon, type IconName } from "./Icon";
 
 export interface ApprovalRequest {
   actionType: string;
@@ -25,15 +26,15 @@ interface ActionApprovalProps {
   onReject: () => void;
 }
 
-const ACTION_ICONS: Record<string, string> = {
-  delete: "🗑️",
-  lock: "🔒",
-  block_user: "🚫",
-  block_ip: "🚫",
-  enable_snaplock: "🔐",
-  modify_retention: "⏱️",
-  contain_threat: "🛡️",
-  unknown: "⚠️",
+const ACTION_ICONS: Record<string, IconName> = {
+  delete: "trash",
+  lock: "lock",
+  block_user: "ban",
+  block_ip: "ban",
+  enable_snaplock: "lock-keyhole",
+  modify_retention: "clock",
+  contain_threat: "shield",
+  unknown: "alert-triangle",
 };
 
 export function ActionApproval({ request, onApprove, onReject }: ActionApprovalProps) {
@@ -44,7 +45,7 @@ export function ActionApproval({ request, onApprove, onReject }: ActionApprovalP
     <div className="approval-overlay" onClick={onReject}>
       <div className="approval-modal" onClick={(e) => e.stopPropagation()} role="alertdialog" aria-modal="true" aria-labelledby="approval-title">
         <div className="approval-header">
-          <span className="approval-icon">{icon}</span>
+          <span className="approval-icon"><Icon name={icon} /></span>
           <h3 id="approval-title">{t("approvalTitle")}</h3>
         </div>
 
@@ -69,7 +70,7 @@ export function ActionApproval({ request, onApprove, onReject }: ActionApprovalP
           {/* Reversibility warning */}
           {!request.isReversible && (
             <div className="approval-warning">
-              <span className="warning-icon">⚠️</span>
+              <span className="warning-icon"><Icon name="alert-triangle" /></span>
               <span>{t("approvalIrreversible")}</span>
             </div>
           )}
@@ -77,10 +78,10 @@ export function ActionApproval({ request, onApprove, onReject }: ActionApprovalP
 
         <div className="approval-actions">
           <button className="approval-reject-btn" onClick={onReject} autoFocus>
-            ❌ {t("approvalReject")}
+            <Icon name="x-circle" className="icon-lead" />{t("approvalReject")}
           </button>
           <button className="approval-approve-btn" onClick={onApprove}>
-            ✅ {t("approvalApprove")}
+            <Icon name="check-circle" className="icon-lead" />{t("approvalApprove")}
           </button>
         </div>
       </div>

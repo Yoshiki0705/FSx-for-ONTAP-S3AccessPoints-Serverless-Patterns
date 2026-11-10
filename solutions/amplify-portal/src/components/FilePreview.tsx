@@ -2,6 +2,7 @@ import { useState, useCallback } from "react";
 import { generateClient } from "aws-amplify/data";
 import type { Schema } from "../../amplify/data/resource";
 import { PdfViewer } from "./PdfViewer";
+import { Icon, type IconName } from "./Icon";
 import { useTranslation } from "../i18n";
 
 const client = generateClient<Schema>();
@@ -63,7 +64,7 @@ function PreviewTrigger({
   onActivate,
   thumbnailUrl,
 }: {
-  glyph: string;
+  glyph: IconName;
   label: string;
   title: string;
   loading: boolean;
@@ -94,7 +95,7 @@ function PreviewTrigger({
           onError={() => setImageFailed(true)}
         />
       ) : (
-        <span aria-hidden="true">{loading ? "⏳" : glyph}</span>
+        <Icon name={loading ? "hourglass" : glyph} />
       )}
     </button>
   );
@@ -103,11 +104,11 @@ function PreviewTrigger({
 /**
  * Inline file preview with presigned URL image loading.
  *
- * For image files: shows 🖼️ icon. On click, fetches a presigned URL check-ui-ignore
+ * For image files: shows an image icon. On click, fetches a presigned URL
  * from the getPresignedUrl AppSync query and displays the actual image
  * in a popover. Presigned URLs are time-limited (5 min default).
  *
- * For non-image files: shows 📄 icon with download-on-click. check-ui-ignore
+ * For non-image files: shows a file icon with download-on-click.
  *
  * Architecture:
  *   Click → AppSync getPresignedUrl → Lambda → boto3 generate_presigned_url
@@ -194,9 +195,9 @@ export function FilePreview({ fileKey, fileName, onSelect, thumbnailUrl }: FileP
 
   if (!isPreviewable) {
     return (
-      <span className="icon file-preview-trigger">
+      <span className="file-glyph file-preview-trigger">
         <PreviewTrigger
-          glyph="📄"
+          glyph="file"
           loading={loading}
           title={t("fpvClickDownload")}
           label={t("fpvAriaDownload").replace("{name}", fileName)}
@@ -212,9 +213,9 @@ export function FilePreview({ fileKey, fileName, onSelect, thumbnailUrl }: FileP
   // PDF preview: use iframe with Presigned URL
   if (isPdf) {
     return (
-      <span className="icon file-preview-trigger" style={{ position: "relative" }}>
+      <span className="file-glyph file-preview-trigger" style={{ position: "relative" }}>
         <PreviewTrigger
-          glyph="📕"
+          glyph="file-text"
           loading={loading}
           title={t("fpvClickPdf")}
           label={t("fpvAriaPdf").replace("{name}", fileName)}
@@ -244,9 +245,9 @@ export function FilePreview({ fileKey, fileName, onSelect, thumbnailUrl }: FileP
   // DOCX preview: fetch and render with docx-preview
   if (isDocx) {
     return (
-      <span className="icon file-preview-trigger" style={{ position: "relative" }}>
+      <span className="file-glyph file-preview-trigger" style={{ position: "relative" }}>
         <PreviewTrigger
-          glyph="📝"
+          glyph="file-text"
           loading={loading}
           title={t("fpvClickDoc")}
           label={t("fpvAriaDocx").replace("{name}", fileName)}
@@ -268,7 +269,7 @@ export function FilePreview({ fileKey, fileName, onSelect, thumbnailUrl }: FileP
                 className="preview-close"
                 onClick={(e) => { e.stopPropagation(); setShowPreview(false); }}
                 aria-label={t("fpvClosePreview")}
-              >✕</button>
+              ><Icon name="close" /></button>
             </span>
             <DocxPreviewPane url={previewUrl} />
             <span className="preview-footer">
@@ -284,9 +285,9 @@ export function FilePreview({ fileKey, fileName, onSelect, thumbnailUrl }: FileP
   }
 
   return (
-    <span className="icon file-preview-trigger" style={{ position: "relative" }}>
+    <span className="file-glyph file-preview-trigger" style={{ position: "relative" }}>
       <PreviewTrigger
-        glyph="🖼️"
+        glyph="image"
         loading={loading}
         thumbnailUrl={thumbnailUrl}
         title={t("fpvClickPreview")}
@@ -313,7 +314,7 @@ export function FilePreview({ fileKey, fileName, onSelect, thumbnailUrl }: FileP
               }}
               aria-label={t("fpvClosePreview")}
             >
-              ✕
+              <Icon name="close" />
             </button>
           </span>
           <img
