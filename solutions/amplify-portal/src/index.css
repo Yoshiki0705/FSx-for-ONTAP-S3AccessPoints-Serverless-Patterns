@@ -311,7 +311,10 @@ body {
   font-weight: 500;
 }
 
-.sidebar-icon { font-size: 1rem; }
+.sidebar-icon { font-size: 1rem; display: inline-flex; }
+/* Line icons (components/Icon.tsx). They follow the text colour, so both themes work. */
+.icon { display: inline-block; flex-shrink: 0; vertical-align: -0.125em; }
+.icon-lead { margin-inline-end: 0.4em; }
 .sidebar-label { white-space: nowrap; }
 
 /* Main content */
