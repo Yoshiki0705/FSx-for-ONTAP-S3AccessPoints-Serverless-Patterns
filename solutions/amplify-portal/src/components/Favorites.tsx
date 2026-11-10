@@ -156,7 +156,7 @@ export function FavoritesView({
 
   return (
     <div className="favorites-view">
-      <h3>{t("favoritesTitle")}</h3>
+      <h3><Icon name="star" className="icon-lead" />{t("favoritesTitle")}</h3>
       <div className="favorites-list">
         {favorites.map((fav) => (
           <div key={fav.id} className="favorite-item">

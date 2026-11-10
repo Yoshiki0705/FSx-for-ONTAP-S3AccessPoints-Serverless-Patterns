@@ -15,7 +15,7 @@
  * message plus an HTTP status, and it goes in a support case verbatim.
  */
 import { useTranslation, type TranslationKeys } from "../i18n";
-import { Icon } from "./Icon";
+import { Icon, type IconName } from "./Icon";
 
 /** Kept in step with OntapFailure in shared/ontap_diagnosis.py. */
 export type OntapErrorClass =
@@ -45,6 +45,13 @@ const HEADINGS: Record<OntapErrorClass, TranslationKeys> = {
   ONTAP_ERROR: "ontapFailOntapErrorTitle",
 };
 
+const ICONS: Record<OntapErrorClass, IconName> = {
+  NOT_CONFIGURED: "settings",
+  UNREACHABLE: "plug",
+  CREDENTIALS_REJECTED: "key",
+  NOT_FOUND: "search",
+  ONTAP_ERROR: "alert-triangle",
+};
 const NEXT_STEPS: Record<OntapErrorClass, TranslationKeys> = {
   NOT_CONFIGURED: "ontapFailNotConfiguredStep",
   UNREACHABLE: "ontapFailUnreachableStep",
@@ -100,7 +107,7 @@ export function OntapFailureNotice({ error, errorClass, errorStatus, errorCode }
   return (
     <div className="protection-section ontap-failure" style={{ marginTop: "1rem" }}>
       <div className="protection-info">
-        <h3>{failure ? t(HEADINGS[failure]) : t("ontapFailUnknownTitle")}</h3>
+        <h3><Icon name={failure ? ICONS[failure] : "signal"} className="icon-lead" />{failure ? t(HEADINGS[failure]) : t("ontapFailUnknownTitle")}</h3>
         <p>{failure ? t(NEXT_STEPS[failure]) : t("ontapFailUnknownStep")}</p>
 
         {failure && REACHED_ONTAP.includes(failure) && (

@@ -195,7 +195,7 @@ export function ShareLink({ fileKey, fileName, canShareLinks }: ShareLinkProps) 
                 onClick={(e) => (e.target as HTMLInputElement).select()}
               />
               <button className="share-link-copy" onClick={copyToClipboard}>
-                {copied ? t("slCopied") : t("slCopy")}
+                {copied ? <><Icon name="check" className="icon-lead" />{t("slCopied")}</> : t("slCopy")}
               </button>
             </div>
           )}

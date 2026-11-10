@@ -336,7 +336,7 @@ export function VersionHistory({ mode = "browse" }: { mode?: "browse" | "diff" }
               className={`filter-tab ${filter === "tamperproof" ? "active" : ""}`}
               onClick={() => setFilter("tamperproof")}
             >
-              {t("snapshotsFilterTamperproof")} ({tamperproofCount})
+              <Icon name="lock-keyhole" className="icon-lead" />{t("snapshotsFilterTamperproof")} ({tamperproofCount})
             </button>
             <button
               role="tab"
@@ -344,7 +344,7 @@ export function VersionHistory({ mode = "browse" }: { mode?: "browse" | "diff" }
               className={`filter-tab ${filter === "scheduled" ? "active" : ""}`}
               onClick={() => setFilter("scheduled")}
             >
-              {t("snapshotsFilterScheduled")}
+              <Icon name="calendar" className="icon-lead" />{t("snapshotsFilterScheduled")}
             </button>
             <button
               role="tab"
@@ -352,7 +352,7 @@ export function VersionHistory({ mode = "browse" }: { mode?: "browse" | "diff" }
               className={`filter-tab ${filter === "arp" ? "active" : ""}`}
               onClick={() => setFilter("arp")}
             >
-              {t("snapshotsFilterArp")} ({arpCount})
+              <Icon name="shield" className="icon-lead" />{t("snapshotsFilterArp")} ({arpCount})
             </button>
             <button
               role="tab"
@@ -360,7 +360,7 @@ export function VersionHistory({ mode = "browse" }: { mode?: "browse" | "diff" }
               className={`filter-tab ${filter === "manual" ? "active" : ""}`}
               onClick={() => setFilter("manual")}
             >
-              {t("snapshotsFilterManual")}
+              <Icon name="hand" className="icon-lead" />{t("snapshotsFilterManual")}
             </button>
           </div>
 
@@ -419,7 +419,7 @@ export function VersionHistory({ mode = "browse" }: { mode?: "browse" | "diff" }
                       title={t("snapshotsLockBtn")}
                       onClick={() => handleLockSnapshot(snap.snapshotId!)}
                     >
-                      {t("snapshotsLockBtn")}
+                      <Icon name="lock" className="icon-lead" />{t("snapshotsLockBtn")}
                     </button>
                   )}
                 </td>
@@ -439,7 +439,7 @@ export function VersionHistory({ mode = "browse" }: { mode?: "browse" | "diff" }
       {lockDialog && (
         <div className="lock-dialog" role="dialog" aria-labelledby="lock-dialog-title">
           <div className="dialog-content">
-            <h3 id="lock-dialog-title">{t("snapshotsLockDialogTitle")}</h3>
+            <h3 id="lock-dialog-title"><Icon name="lock-keyhole" className="icon-lead" />{t("snapshotsLockDialogTitle")}</h3>
             <p className="dialog-description">{t("snapshotsLockDialogDesc")}</p>
             <div className="dialog-field">
               <label htmlFor="lock-days">{t("snapshotsLockDaysLabel")}</label>
@@ -460,7 +460,7 @@ export function VersionHistory({ mode = "browse" }: { mode?: "browse" | "diff" }
                 onClick={submitLock}
                 disabled={lockLoading}
               >
-                {lockLoading ? t("snapshotsLocking") : t("snapshotsLockConfirmBtn")}
+                {lockLoading ? t("snapshotsLocking") : <><Icon name="lock-keyhole" className="icon-lead" />{t("snapshotsLockConfirmBtn")}</>}
               </button>
               <button
                 className="action-btn cancel-btn"
