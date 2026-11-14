@@ -269,7 +269,7 @@ graph TD
 | 構成 | サポート | 条件 | 参考 |
 |------|:--------:|------|------|
 | S3 AP volume → SnapMirror Async source | ✅ | ONTAP 9.17.1+ | [S3 multiprotocol](https://docs.netapp.com/us-en/ontap/s3-multiprotocol/index.html) |
-| S3 AP volume → FlexCache Origin | ✅ | ONTAP 9.17.1+ | [FlexCache features](https://docs.netapp.com/us-en/ontap/flexcache/supported-unsupported-features-concept.html) |
+| S3 AP volume → FlexCache Origin | ✅ | ONTAP 9.17.1+ | [FlexCache features](https://docs.netapp.com/us-en/ontap/flexcache/supported-unsupported-features-concept.html) | <!-- allow:not-a-claim: the link target name contains "unsupported"; the row lists a supported feature -->
 | FlexCache Cache Volume → S3 AP attach | ❌ | FSx API が `the volume is a FlexCache` で拒否（実測 2026-07-24 / ONTAP 9.18.1P3D1）。ボリューム種別による拒否で、ONTAP のバージョンでは解決しない。S3 Access Points は Origin volume に取り付ける | [Lakehouse の記録 #26](https://github.com/Yoshiki0705/FSx-for-ONTAP-Lakehouse-Integrations/blob/main/integrations/snapmirror-flexcache-multicloud/docs/BACKLOG.md)、[Hub のノート](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/blob/main/docs/ja/domains/data-utilization/notes/serving-a-replication-destination-over-s3.md)。[FlexCache duality FAQ](https://docs.netapp.com/us-en/ontap/flexcache/flexcache-duality-faq.html) の 9.18.1+ は ONTAP ネイティブの S3 NAS bucket の記載で、別の機構 |
 | SnapMirror Synchronous + S3 NAS bucket | ❌ | — | S3 NAS bucket 非対応 |
 | SVM-DR + S3 NAS bucket | ❌ | — | S3 NAS bucket 非対応 |
