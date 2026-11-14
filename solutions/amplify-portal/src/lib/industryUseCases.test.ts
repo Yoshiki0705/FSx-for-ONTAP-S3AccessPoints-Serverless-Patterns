@@ -31,6 +31,9 @@ describe("industry processing patterns", () => {
     const resolver = readFileSync(resolve(root, "amplify/data/resolvers/start-processing.js"), "utf8");
     expect(resolver).toContain('parts.slice(1).join("-").toLowerCase()');
     expect(resolver).toContain('template.split("{slug}").join(slug)');
+    // APPSYNC_JS has no String(), regular expressions or similar globals: `aws appsync evaluate-code`
+    // rejected String(...) here with INVALID_FUNCTION_INVOCATION, which unit tests under Node cannot show.
+    expect(resolver).not.toMatch(/\bString\(|\bNumber\(|new RegExp|\.match\(/);
   });
 
   it("has a directory under solutions/industry for every industry pattern", () => {

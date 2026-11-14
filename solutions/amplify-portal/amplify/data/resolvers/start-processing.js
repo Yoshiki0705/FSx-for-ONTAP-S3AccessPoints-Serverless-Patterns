@@ -23,7 +23,7 @@ export function request(ctx) {
   // `{slug}` is replaced with the directory name derived from the key, so each pattern
   // starts its own state machine. Patterns that do not follow that naming (OPS1, FC7)
   // and deployments without a template use STATE_MACHINE_ARN.
-  const parts = String(ctx.arguments.pattern).split("_");
+  const parts = pattern.split("_");
   const isIndustryPattern = parts.length > 1 && parts[0].indexOf("UC") === 0;
   const slug = isIndustryPattern ? parts.slice(1).join("-").toLowerCase() : "";
   const template = ctx.env.STATE_MACHINE_ARN_TEMPLATE;
