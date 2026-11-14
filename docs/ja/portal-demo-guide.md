@@ -16,7 +16,7 @@ Box、Google Drive、SharePoint 等の SaaS ファイル管理と同等の体験
 
 ### 前提条件
 
-- FSx for ONTAP ファイルシステム (ONTAP 9.14.1+)
+- FSx for ONTAP ファイルシステム (ONTAP 9.17.1+、2026-11-14 時点の基準)
 - S3 Access Point が AVAILABLE (Internet-origin)
 - Node.js 18.17+
 - AWS CLI v2 (認証設定済み)

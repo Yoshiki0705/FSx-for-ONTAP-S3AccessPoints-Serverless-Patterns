@@ -54,7 +54,7 @@ Do you have FSx for ONTAP already deployed?
 | AWS CLI | v2.15+ with configured credentials |
 | SAM CLI | v1.100+ (for `sam build` / `sam deploy`) |
 | Python | 3.12+ (Lambda runtime target) |
-| ONTAP version | 9.14.1+ (S3 Access Point support); 9.15.1+ for FPolicy mandatory mode |
+| ONTAP version | 9.17.1+ (baseline as of 2026-11-14: every FSx for ONTAP file system in use, existing or new, is 9.17.1 or later, so the S3 Access Points (9.14.1) and FPolicy mandatory mode (9.15.1) minimums are met) |
 | VPC | FSx for ONTAP deployed in a VPC; private subnets available for Lambda |
 | Secrets Manager | ONTAP admin credentials stored as a JSON secret |
 

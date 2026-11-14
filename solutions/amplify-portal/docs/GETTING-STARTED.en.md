@@ -13,7 +13,7 @@
 | npm | ✅ | 10.x or later | `npm --version` |
 | AWS CLI | ✅ | 2.x | `aws --version` |
 | Amplify CLI | ✅ | latest | `npx ampx --version` |
-| FSx for ONTAP | — | ONTAP 9.15+ | Not needed for DemoMode. Required for admin features |
+| FSx for ONTAP | — | ONTAP 9.17.1+ (baseline as of 2026-11-14) | Not needed for DemoMode. Required for admin features |
 | S3 Access Point | — | — | If you have none, see [the deployment guide](../../../docs/en/deployment-guide.md) (`aws fsx create-and-attach-s3-access-point`). DemoMode takes a regular S3 bucket name instead |
 | Bedrock model access | — | — | Only for the AI features. See [the AI quick start](../../../docs/en/ai-features-quick-start.md) (enable `amazon.nova-lite-v1:0`) |
 | Docker | — | 24.x or later | `docker --version` (only when using Nextcloud) |

@@ -41,7 +41,7 @@ graph LR
 
 ## 前提条件
 
-- FSx for ONTAP 文件系统（ONTAP 9.12.1 或更高版本）
+- FSx for ONTAP 文件系统（ONTAP 9.17.1 或更高版本、截至 2026-11-14）
 - 2 个 SVM（Origin 用 / Cache 用。可使用同一 SVM，但建议分离）
 - fsxadmin 凭证已存储在 Secrets Manager 中
 - AWS CLI v2 + `fsx` 子命令可用
