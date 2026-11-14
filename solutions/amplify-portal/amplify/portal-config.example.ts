@@ -37,6 +37,15 @@ export interface PortalConfig {
   region: string;
   s3ApAlias: string;
   stateMachineArn: string;
+  /**
+   * Optional. One state machine per processing pattern, keyed by the pattern name
+   * (`UC10_CONSTRUCTION_BIM`, `OPS1_CAPACITY_RIGHTSIZING`). A pattern that is not listed
+   * starts `stateMachineArn`. Each entry becomes an AppSync environment variable
+   * (`SFN_ARN_UC10`); AppSync allows 50 per API.
+   * Find the ARNs with `aws stepfunctions list-state-machines` after deploying the
+   * patterns: the stack names differ between deployments, so they are not derived.
+   */
+  stateMachineArns?: Partial<Record<string, string>>;
   stateMachineResourceScope: string;
   s3ApResourceArns: string[];
   groupApMapping: Record<string, string>;
@@ -241,6 +250,7 @@ export const config: PortalConfig = {
    * source; leaving it empty is now a legible state rather than a broken one.
    */
   stateMachineArn: process.env.AMPLIFY_PORTAL_SFN_ARN || "",
+  stateMachineArns: {},
 
   // ─── Optional (defaults work for sandbox) ──────────────────────────────
 

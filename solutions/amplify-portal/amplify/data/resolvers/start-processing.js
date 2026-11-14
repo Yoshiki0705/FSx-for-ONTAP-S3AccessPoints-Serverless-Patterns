@@ -14,16 +14,28 @@ export function request(ctx) {
   // Absent rather than wrong when unconfigured: the variable is only set when the
   // config names a state machine, so DemoMode reports that processing is not
   // configured instead of failing against an ARN nobody owns.
-  const stateMachineArn = ctx.env.STATE_MACHINE_ARN;
+  //
+  // One state machine per pattern. `backend.ts` publishes each entry of
+  // `config.stateMachineArns` as `SFN_ARN_<prefix>` (for example `SFN_ARN_UC10` for
+  // `UC10_CONSTRUCTION_BIM`). A pattern without its own entry starts STATE_MACHINE_ARN.
+  // An explicit map rather than a naming rule: the stacks deployed from
+  // solutions/industry/ are named in more than one way (`fsxn-uc10-construction-bim`,
+  // `fsxn-construction-bim`, `fsxn-chemical-sds`), so no single rule finds them.
+  // One variable per pattern because an AppSync variable holds at most 512 characters,
+  // which a map of 28 ARNs does not fit.
+  const prefix = pattern.split("_")[0];
+  const stateMachineArn = ctx.env["SFN_ARN_" + prefix] || ctx.env.STATE_MACHINE_ARN;
   if (!stateMachineArn) {
     return util.error(
       "No Step Functions state machine is configured for this deployment. " +
-        "Set stateMachineArn in amplify/portal-config.ts (or AMPLIFY_PORTAL_SFN_ARN) and redeploy.",
+        "Set stateMachineArn (or stateMachineArns for one pattern) in amplify/portal-config.ts " +
+        "(or AMPLIFY_PORTAL_SFN_ARN) and redeploy.",
       "ConfigurationError"
     );
   }
-
+  // `pattern` is part of the input so that a single shared state machine can branch on it.
   const input = JSON.stringify({
+    pattern: pattern,
     inputPrefix: inputPrefix,
     parameters: parameters || {},
     triggeredBy: "amplify-portal",

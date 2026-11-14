@@ -54,4 +54,14 @@ describe("JobSubmitForm", () => {
     renderForm("documents/contracts/");
     expect(screen.getByLabelText(/Input Prefix/i)).toHaveValue("documents/contracts/");
   });
+
+  it("lists UC1 to UC28 and OPS1 with the industry and task text", () => {
+    renderForm("");
+    const options = screen.getAllByRole("option");
+    expect(options).toHaveLength(29);
+    // The test locale is English (jsdom). UC15 is defense, UC3 is manufacturing: the old list had them mislabeled.
+    expect(options[2]).toHaveTextContent(/^UC3 Manufacturing: /);
+    expect(options[14]).toHaveTextContent(/^UC15 Defense: /);
+    expect(options[28]).toHaveTextContent(/^OPS1 /);
+  });
 });

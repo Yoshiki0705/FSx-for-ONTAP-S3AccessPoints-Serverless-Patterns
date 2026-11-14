@@ -20,6 +20,7 @@ import os
 from typing import Any
 
 from shared.exceptions import lambda_error_handler
+from shared.industry_focus import normalize_industry
 from shared.observability import EmfMetrics
 from shared.s3ap_helper import S3ApHelper
 
@@ -35,7 +36,8 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
 
     Args:
         event: ワークフロー入力。エージェントが StartExecution に渡した
-            `input` JSON がそのまま届く（例: {"file_prefix": "...", "max_files": 50}）。
+            `input` JSON がそのまま届く（例: {"file_prefix": "...", "max_files": 50}）。任意の `industry`
+            （例: "legal"）は各オブジェクトに引き継がれ、要約の注目点を切り替える。
         context: Lambda コンテキスト。
 
     Returns:
@@ -61,12 +63,15 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
     truncated = len(objects) > max_files
     objects = objects[:max_files]
 
+    # Optional. Only an id in shared.industry_focus is accepted; anything else is dropped.
+    industry = normalize_industry(event.get("industry"))
     manifest = [
         {
             "key": obj["Key"],
             "size": obj["Size"],
             "last_modified": _isoformat(obj.get("LastModified")),
             "category": _categorize(obj["Key"]),
+            **({"industry": industry} if industry else {}),
         }
         for obj in objects
     ]

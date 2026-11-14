@@ -16,6 +16,11 @@
  * Sets:  blog     the Before/After pairs (output file is NN-name.png under --out)
  *        replace  the existing documentation screenshots, written to their repo paths
  *                 (--out is the repository root; default ../..)
+ *        industry the industry use cases: processing patterns, a started job, the job
+ *                 history and the agent creator's industry templates, in Japanese and
+ *                 English (written to their repo paths, like `replace`). The "started"
+ *                 shot calls StartExecution on the configured state machine, so it runs a
+ *                 real workflow each time; it is skipped unless --allow-start is given.
  *
  * Masking: placeholders are applied to the page text immediately before each capture
  * with one page.evaluate (not addInitScript, which accumulates, and not a
@@ -69,6 +74,39 @@ const BLOG = [
 ];
 
 const SHOTS = "solutions/amplify-portal/docs/screenshots";
+// --- Industry use cases -----------------------------------------------------------
+// The prefix for the started job. OPS1 does not read files, so any prefix works.
+const JOB_PREFIX = "industry-demo/";
+const pickPattern = (pattern) => async (page) => {
+  await page.locator("#pattern").selectOption(pattern);
+  await page.waitForTimeout(300);
+};
+const startJob = (pattern) => async (page) => {
+  await pickPattern(pattern)(page);
+  await page.locator("#prefix").fill(JOB_PREFIX);
+  await page.locator(".job-submit-form button[type=submit]").click();
+  // A started job switches to the history view, which polls the execution. Wait for it to end.
+  await page.waitForSelector("text=/SUCCEEDED|FAILED|TIMED_OUT|ABORTED/", { timeout: 90000 });
+};
+const openTemplate = (templateId) => async (page) => {
+  await page.locator(".agent-dir-tab").first().click().catch(() => {});
+  await page.locator("button.btn-primary", { hasText: /新規作成|Create|New/ }).first().click();
+  await page.locator("#agent-template").selectOption(templateId);
+  await page.waitForTimeout(300);
+};
+const IND = "solutions/amplify-portal/docs/screenshots/industry";
+const INDUSTRY = [];
+for (const lang of ["ja", "en"]) {
+  INDUSTRY.push(
+    [`${IND}/process-patterns-${lang}.png`, { hash: "process", lang, act: pickPattern("UC10_CONSTRUCTION_BIM") }],
+    [`${IND}/agent-template-healthcare-${lang}.png`, { hash: "agentDir", lang, act: openTemplate("healthcare") }],
+    [`${IND}/agent-template-legal-${lang}.png`, { hash: "agentDir", lang, act: openTemplate("legal") }],
+  );
+}
+INDUSTRY.push(
+  [`${IND}/process-started-ja.png`, { hash: "process", act: startJob("OPS1_CAPACITY_RIGHTSIZING"), starts: true }],
+  [`${IND}/history-ja.png`, { hash: "history" }],
+);
 const DEMO = "docs/screenshots/portal-demo";
 const LANGS = { ja: "ja", en: "en", ko: "ko", de: "de", es: "es", fr: "fr", zhcn: "zh-CN", zhtw: "zh-TW" };
 const REPLACE = [];
@@ -128,7 +166,7 @@ const opt = (name, fallback) => {
   return i >= 0 ? argv[i + 1] : fallback;
 };
 if (argv.includes("--list")) {
-  for (const [n, o] of [...BLOG, ...REPLACE]) console.log(n, JSON.stringify({ ...o, act: o.act ? "yes" : undefined }));
+  for (const [n, o] of [...BLOG, ...REPLACE, ...INDUSTRY]) console.log(n, JSON.stringify({ ...o, act: o.act ? "yes" : undefined }));
   process.exit(0);
 }
 const BASE = opt("base", "http://localhost:5173");
@@ -193,7 +231,10 @@ async function maskAndScan(page) {
 }
 
 // --- Run -------------------------------------------------------------------------
-const wanted = (SET === "blog" ? BLOG : SET === "replace" ? REPLACE : [...BLOG, ...REPLACE]).filter(
+const ALLOW_START = argv.includes("--allow-start");
+const wanted = (
+  SET === "blog" ? BLOG : SET === "replace" ? REPLACE : SET === "industry" ? INDUSTRY.filter(([, o]) => ALLOW_START || !o.starts) : [...BLOG, ...REPLACE]
+).filter(
   ([name]) => ONLY.length === 0 || ONLY.some((o) => name.includes(o)),
 );
 if (wanted.length === 0) {

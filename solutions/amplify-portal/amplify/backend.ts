@@ -530,6 +530,15 @@ if (config.stateMachineArn) {
   );
 }
 
+// One state machine per pattern, from `config.stateMachineArns`. See start-processing.js.
+// Each entry becomes `SFN_ARN_<prefix>` (`UC10_CONSTRUCTION_BIM` -> `SFN_ARN_UC10`).
+for (const [pattern, arn] of Object.entries(config.stateMachineArns ?? {})) {
+  if (!arn) continue;
+  dataResources.cfnResources.cfnGraphqlApi.addPropertyOverride(
+    `EnvironmentVariables.SFN_ARN_${pattern.split("_")[0]}`,
+    arn
+  );
+}
 // --- Lambda Data Source for ListFiles ---
 const listFilesRole = new iam.Role(dataStack, "ListFilesLambdaRole", {
   assumedBy: new iam.ServicePrincipal("lambda.amazonaws.com"),
