@@ -1959,6 +1959,7 @@ arpResponseSweepNote: "차단은 지정한 기한이 지나면 자동으로 해�
   rmDeleteCloneList: "볼륨 \"{parent}\" 삭제를 막고 있는 클론:",
   rmDeleteCloneListAction: "FlexClone 패널에서 이 클론들을 split(독립화) 또는 delete(삭제)한 후 부모 볼륨을 삭제하세요.",
   // --- Industry use cases: job patterns and agent templates ---
+  jhView: "보기",
   ucIndustry_UC1_LEGAL_COMPLIANCE: "법무",
   ucTask_UC1_LEGAL_COMPLIANCE: "NTFS ACL 감사 및 컴플라이언스 보고",
   ucIndustry_UC2_FINANCIAL_IDP: "금융",

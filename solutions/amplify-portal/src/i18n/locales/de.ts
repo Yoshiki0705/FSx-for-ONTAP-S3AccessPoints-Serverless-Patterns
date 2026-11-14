@@ -1971,6 +1971,7 @@ arpResponseSweepNote: "Sperren heben sich nach Ablauf der Frist selbst auf. Für
   rmDeleteCloneList: "Klone, die das Löschen des Volumes „{parent}“ blockieren:",
   rmDeleteCloneListAction: "Führen Sie im FlexClone-Panel split oder delete für diese Klone aus und löschen Sie dann das übergeordnete Volume.",
   // --- Industry use cases: job patterns and agent templates ---
+  jhView: "Anzeigen",
   ucIndustry_UC1_LEGAL_COMPLIANCE: "Recht",
   ucTask_UC1_LEGAL_COMPLIANCE: "NTFS-ACL-Audit und Compliance-Berichte",
   ucIndustry_UC2_FINANCIAL_IDP: "Finanzen",

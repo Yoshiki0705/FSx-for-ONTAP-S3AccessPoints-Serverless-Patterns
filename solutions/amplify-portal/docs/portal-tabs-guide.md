@@ -264,13 +264,9 @@ FSx for ONTAP File Portal はサイドバーナビゲーション（4 グルー�
 | 入力パス指定 | 処理対象ディレクトリ |
 | ジョブ投入 | Step Functions StartExecution（AppSync HTTP resolver） |
 
-パターンの一覧は、業種名と処理内容を選択中の言語で表示します（UC1 から UC28 と OPS1 の 29 件。FC7 は画面に出しません）。次の画像は、サインインなしでこのフォームだけを描画して撮ったもので、デプロイした環境ではありません。
+パターンの一覧は、業種名と処理内容を選択中の言語で表示します（UC1 から UC28 と OPS1 の 29 件。FC7 は画面に出しません）。パターンごとのステートマシンの設定、ジョブ履歴、エージェント作成の業種テンプレートは、[業種別ユースケース](industry-use-cases.md)にデプロイした環境のスクリーンショット付きでまとめています。
 
-![処理パターンの一覧](screenshots/job-patterns-industry-ja.png)
-
-エージェント作成では、業種のテンプレートを選ぶと名前・説明・システムプロンプト・ツールが入ります。
-
-![業種テンプレートからのエージェント作成](screenshots/agent-creator-industry-template-ja.png)
+![処理パターンの一覧](screenshots/industry/process-patterns-ja.png)
 
 ---
 

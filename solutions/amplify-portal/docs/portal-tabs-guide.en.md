@@ -264,6 +264,10 @@ This order cannot be swapped. Because a watch is your own record you can registe
 | Input path | The directory to process |
 | Job submission | Step Functions StartExecution (AppSync HTTP resolver) |
 
+The list shows each pattern's industry and task in the selected language (29 entries: UC1 to UC28 and OPS1; FC7 is not shown). The per-pattern state machine setting, the job history and the agent creator's industry templates are covered, with screenshots from a deployed environment, in [Industry use cases](industry-use-cases.en.md).
+
+![Processing pattern list](screenshots/industry/process-patterns-en.png)
+
 ---
 
 ### AI Chat (tool-executing agent)

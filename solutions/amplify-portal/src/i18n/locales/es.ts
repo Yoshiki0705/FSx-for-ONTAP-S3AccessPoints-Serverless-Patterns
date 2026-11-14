@@ -1966,6 +1966,7 @@ arpResponseSweepNote: "Los bloqueos se levantan por sí solos al vencer el plazo
   rmDeleteCloneList: "Clones que bloquean la eliminación del volumen «{parent}»:",
   rmDeleteCloneListAction: "En el panel de FlexClone, haga split o delete en estos clones y luego elimine el volumen padre.",
   // --- Industry use cases: job patterns and agent templates ---
+  jhView: "Ver",
   ucIndustry_UC1_LEGAL_COMPLIANCE: "Legal",
   ucTask_UC1_LEGAL_COMPLIANCE: "Auditoría NTFS ACL e informes de cumplimiento",
   ucIndustry_UC2_FINANCIAL_IDP: "Finanzas",

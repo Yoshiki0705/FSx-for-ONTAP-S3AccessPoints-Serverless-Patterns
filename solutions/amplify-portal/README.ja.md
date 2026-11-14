@@ -19,6 +19,7 @@ AWS はビルディングブロック（S3 API、Cognito、AppSync）を提供�
 - **[管理機能マップ](docs/admin-capability-map.md)** — 各インターフェースの担当範囲、20 パネルの実装状況、System Manager の機能領域との対応、ONTAP REST エンドポイント対応
 - **[リソース管理デモガイド](docs/resource-management-demo-guide.md)** — 20 パネルの操作手順（FlexCache / FlexClone / SnapMirror / ローカルユーザー / 名前マッピング / Vscan / FPolicy / クラスター・SVM ピアリング / クラスター情報を含む）
 - **[管理者デモガイド](../../docs/en/admin-resource-management-demo.md)** — リソース管理 + ARP/AI の E2E デモシナリオ
+- **[業種別ユースケース](docs/industry-use-cases.md)** — UC1 から UC28 の処理パターン、パターンごとのステートマシン、ジョブ履歴、業種別のエージェントテンプレート（スクリーンショット付き）
 - **[AI Agent デモガイド](docs/ai-agent-demo-guide.md)** — AI Agent Chat、セマンティック検索、ガードレール、HITL
 - **[構成図インデックス](../../docs/architecture-diagrams.md)** — 全 13 枚の構成図（ライトテーマ / ダークテーマ）
 

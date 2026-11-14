@@ -1998,6 +1998,7 @@ arpResponseSweepNote: "Blocks lift themselves once their expiry passes. To lift 
   rmDeleteCloneList: "Clones blocking the delete of volume \"{parent}\":",
   rmDeleteCloneListAction: "In the FlexClone panel, split or delete these clones, then delete the parent volume.",
   // --- Industry use cases: job patterns and agent templates ---
+  jhView: "View",
   ucIndustry_UC1_LEGAL_COMPLIANCE: "Legal",
   ucTask_UC1_LEGAL_COMPLIANCE: "NTFS ACL audit & compliance reporting",
   ucIndustry_UC2_FINANCIAL_IDP: "Finance",

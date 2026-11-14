@@ -3,8 +3,7 @@ import { generateClient } from "aws-amplify/data";
 import type { Schema } from "../../amplify/data/resource";
 import { portalSettings } from "../portal-settings";
 import { useTranslation } from "../i18n";
-import { SELECTABLE_PATTERNS, type SelectablePattern } from "../lib/industryUseCases";
-import type { TranslationKeys } from "../i18n";
+import { SELECTABLE_PATTERNS, patternLabel, type SelectablePattern } from "../lib/industryUseCases";
 
 const client = generateClient<Schema>();
 
@@ -24,14 +23,6 @@ interface JobSubmitFormProps {
  * - Add optional parameters
  * - Submit and trigger Step Functions execution
  */
-/** "UC1 Legal: NTFS ACL audit ...": the pattern number, the industry, then the task. */
-function patternLabel(key: SelectablePattern, t: (key: TranslationKeys) => string): string {
-  const number = key.split("_")[0];
-  const industry = t(`ucIndustry_${key}` as TranslationKeys);
-  const task = t(`ucTask_${key}` as TranslationKeys);
-  return `${number} ${industry}: ${task}`;
-}
-
 export function JobSubmitForm({ initialPrefix, onJobStarted }: JobSubmitFormProps) {
   const { t } = useTranslation();
   const [prefix, setPrefix] = useState(initialPrefix);

@@ -41,6 +41,7 @@ See also: [File Portal UI Selection Guide (Amplify / Nextcloud / Custom)](../../
 - **[Admin Capability Map](docs/admin-capability-map.en.md)** — interface coverage, implementation status for all 20 panels, mapping to System Manager capability areas, ONTAP REST endpoint mapping
 - **[Resource Management Demo Guide](docs/resource-management-demo-guide.en.md)** — steps for all 20 panels (including FlexCache / FlexClone / SnapMirror / Local users / Name mapping / Vscan / FPolicy / Cluster and SVM peering / Cluster information)
 - **[Admin Demo Guide](../../docs/en/admin-resource-management-demo.md)** — E2E demo scenarios for Resource Management + ARP/AI
+- **[Industry Use Cases](docs/industry-use-cases.en.md)** — the UC1 to UC28 processing patterns, one state machine per pattern, job history, and industry agent templates, with screenshots
 - **[AI Agent Demo Guide](docs/ai-agent-demo-guide.en.md)** — AI Agent Chat, Semantic Search, Guardrails, HITL
 - **[Architecture Diagram Index](../../docs/architecture-diagrams.en.md)** — all 13 figures (light theme / dark theme)
 

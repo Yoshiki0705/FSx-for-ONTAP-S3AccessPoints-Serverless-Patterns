@@ -1956,6 +1956,7 @@ arpResponseSweepNote: "阻止会在设定的期限过后自动解除。如需提
   rmDeleteCloneList: "阻止删除卷“{parent}”的克隆：",
   rmDeleteCloneListAction: "请在 FlexClone 面板中对这些克隆执行 split（独立化）或 delete（删除），然后再删除父卷。",
   // --- Industry use cases: job patterns and agent templates ---
+  jhView: "查看",
   ucIndustry_UC1_LEGAL_COMPLIANCE: "法务",
   ucTask_UC1_LEGAL_COMPLIANCE: "NTFS ACL 审计与合规报告",
   ucIndustry_UC2_FINANCIAL_IDP: "金融",

@@ -148,7 +148,7 @@ export function ResultsViewer({ executionArn, inputPrefix, onNavigateToFolder }:
           )}
 
           <button onClick={fetchStatus} disabled={loading} className="refresh-btn">
-            {loading ? "Refreshing..." : "Refresh"}
+            {loading ? `${t("refresh")}…` : t("refresh")}
           </button>
         </div>
       )}

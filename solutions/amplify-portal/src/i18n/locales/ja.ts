@@ -2013,6 +2013,7 @@ arpResponseSweepNote: "ブロックは指定した期限が過ぎると自動で
   rmDeleteCloneList: "ボリューム「{parent}」の削除を阻んでいるクローン:",
   rmDeleteCloneListAction: "FlexClone パネルで、これらのクローンを split（独立化）または delete（削除）してから、親ボリュームを削除してください。",
   // --- Industry use cases: job patterns and agent templates ---
+  jhView: "表示",
   ucIndustry_UC1_LEGAL_COMPLIANCE: "法務",
   ucTask_UC1_LEGAL_COMPLIANCE: "NTFS ACL 監査・コンプライアンスレポート",
   ucIndustry_UC2_FINANCIAL_IDP: "金融",

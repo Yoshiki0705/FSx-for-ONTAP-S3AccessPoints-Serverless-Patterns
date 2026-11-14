@@ -58,3 +58,16 @@ export function patternSlug(key: string): string | null {
   const match = /^UC\d+_(.+)$/.exec(key);
   return match ? match[1].toLowerCase().replace(/_/g, "-") : null;
 }
+
+/**
+ * "UC10 Construction: BIM model management" for a pattern with translated labels, or the
+ * key with spaces for one without (FC7, and keys stored by older versions in job history).
+ */
+export function patternLabel(key: string, t: (key: never) => string): string {
+  const industryKey = `ucIndustry_${key}`;
+  const taskKey = `ucTask_${key}`;
+  const industry = (t as (k: string) => string)(industryKey);
+  const task = (t as (k: string) => string)(taskKey);
+  if (industry === industryKey || task === taskKey) return key.replace(/_/g, " ");
+  return `${key.split("_")[0]} ${industry}: ${task}`;
+}

@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { ja, en, ko, zhCN, zhTW, fr, de, es } from "../i18n/locales";
-import { INDUSTRY_USE_CASES, SELECTABLE_PATTERNS, patternSlug } from "./industryUseCases";
+import { INDUSTRY_USE_CASES, SELECTABLE_PATTERNS, patternLabel, patternSlug } from "./industryUseCases";
 import { AGENT_INDUSTRY_TEMPLATES, buildSystemPrompt } from "./agentIndustryTemplates";
 
 const root = resolve(__dirname, "../..");
@@ -55,6 +55,17 @@ describe("industry processing patterns", () => {
       expect(messages[template.descKey], `${name}: ${template.descKey}`).toBeTruthy();
       expect(messages[template.descKey].length).toBeLessThanOrEqual(200);
     }
+  });
+});
+
+describe("patternLabel", () => {
+  const t = ((key: string) => (en as Record<string, string>)[key] ?? key) as never;
+  it("uses the translated industry and task", () => {
+    expect(patternLabel("UC10_CONSTRUCTION_BIM", t)).toBe(`UC10 ${en.ucIndustry_UC10_CONSTRUCTION_BIM}: ${en.ucTask_UC10_CONSTRUCTION_BIM}`);
+  });
+  it("falls back to the key for patterns without labels, such as FC7 or old history rows", () => {
+    expect(patternLabel("FC7_FLEXCLONE_RESTORE", t)).toBe("FC7 FLEXCLONE RESTORE");
+    expect(patternLabel("UC3_HEALTHCARE_IMAGING", t)).toBe("UC3 HEALTHCARE IMAGING");
   });
 });
 

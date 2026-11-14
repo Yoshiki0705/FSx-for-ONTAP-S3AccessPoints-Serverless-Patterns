@@ -1967,6 +1967,7 @@ arpResponseSweepNote: "Les blocages se lèvent d'eux-mêmes à l'échéance. Pou
   rmDeleteCloneList: "Clones bloquant la suppression du volume « {parent} » :",
   rmDeleteCloneListAction: "Dans le panneau FlexClone, faites split ou delete sur ces clones, puis supprimez le volume parent.",
   // --- Industry use cases: job patterns and agent templates ---
+  jhView: "Afficher",
   ucIndustry_UC1_LEGAL_COMPLIANCE: "Juridique",
   ucTask_UC1_LEGAL_COMPLIANCE: "Audit NTFS ACL et rapports de conformité",
   ucIndustry_UC2_FINANCIAL_IDP: "Finance",

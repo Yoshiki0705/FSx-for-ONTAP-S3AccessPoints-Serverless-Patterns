@@ -1956,6 +1956,7 @@ arpResponseSweepNote: "封鎖會在設定的期限過後自動解除。如需提
   rmDeleteCloneList: "阻止刪除磁碟區「{parent}」的複本：",
   rmDeleteCloneListAction: "請在 FlexClone 面板中對這些複本執行 split（獨立化）或 delete（刪除），再刪除父磁碟區。",
   // --- Industry use cases: job patterns and agent templates ---
+  jhView: "檢視",
   ucIndustry_UC1_LEGAL_COMPLIANCE: "法務",
   ucTask_UC1_LEGAL_COMPLIANCE: "NTFS ACL 稽核與合規報告",
   ucIndustry_UC2_FINANCIAL_IDP: "金融",

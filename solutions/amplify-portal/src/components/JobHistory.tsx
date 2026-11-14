@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { generateClient } from "aws-amplify/data";
 import type { Schema } from "../../amplify/data/resource";
 import { useTranslation } from "../i18n";
+import { patternLabel } from "../lib/industryUseCases";
 
 const client = generateClient<Schema>();
 
@@ -35,11 +36,38 @@ export function JobHistory({ onSelectExecution }: JobHistoryProps) {
             (b.startDate || "").localeCompare(a.startDate || "")
           );
           setJobs(sorted);
+          void settleRunning(sorted);
         }
       } catch (err) {
         setError(err instanceof Error ? err.message : "Failed to load history");
       } finally {
         setLoading(false);
+      }
+    }
+    // A row is written as RUNNING when the job starts and nothing else updates it, so
+    // without this every job stayed RUNNING in the history for good. Ask Step Functions
+    // once for the rows that still say RUNNING and store the final state.
+    async function settleRunning(rows: Schema["JobExecution"]["type"][]) {
+      const running = rows.filter((row) => row.status === "RUNNING");
+      const updates = await Promise.all(
+        running.map(async (row) => {
+          try {
+            const { data } = await client.queries.getJobStatus({ executionArn: row.executionArn });
+            if (!data?.status || data.status === "RUNNING") return null;
+            await client.models.JobExecution.update({
+              id: row.id,
+              status: data.status,
+              stopDate: data.stopDate ?? undefined,
+            });
+            return { id: row.id, status: data.status };
+          } catch {
+            return null; // Leave the row as it is; the next visit tries again.
+          }
+        })
+      );
+      const done = new Map(updates.filter((u) => u !== null).map((u) => [u!.id, u!.status]));
+      if (done.size > 0) {
+        setJobs((prev) => prev.map((row) => (done.has(row.id) ? { ...row, status: done.get(row.id)! } : row)));
       }
     }
     fetchHistory();
@@ -87,7 +115,7 @@ export function JobHistory({ onSelectExecution }: JobHistoryProps) {
           <tbody>
             {jobs.map((job) => (
               <tr key={job.id}>
-                <td>{job.pattern.replace(/_/g, " ")}</td>
+                <td>{patternLabel(job.pattern, t)}</td>
                 <td className="prefix">{job.inputPrefix}</td>
                 <td>
                   <span className={`status-badge ${statusColor(job.status)}`}>
@@ -104,7 +132,7 @@ export function JobHistory({ onSelectExecution }: JobHistoryProps) {
                     className="view-btn"
                     onClick={() => onSelectExecution(job.executionArn)}
                   >
-                    View
+                    {t("jhView")}
                   </button>
                 </td>
               </tr>
