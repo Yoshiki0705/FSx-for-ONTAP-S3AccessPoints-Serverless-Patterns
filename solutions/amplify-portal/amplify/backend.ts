@@ -530,6 +530,14 @@ if (config.stateMachineArn) {
   );
 }
 
+// One state machine per industry pattern, named by template. See start-processing.js.
+// Optional: without it every pattern starts the single state machine above.
+if (config.stateMachineArnTemplate) {
+  dataResources.cfnResources.cfnGraphqlApi.addPropertyOverride(
+    "EnvironmentVariables.STATE_MACHINE_ARN_TEMPLATE",
+    config.stateMachineArnTemplate
+  );
+}
 // --- Lambda Data Source for ListFiles ---
 const listFilesRole = new iam.Role(dataStack, "ListFilesLambdaRole", {
   assumedBy: new iam.ServicePrincipal("lambda.amazonaws.com"),

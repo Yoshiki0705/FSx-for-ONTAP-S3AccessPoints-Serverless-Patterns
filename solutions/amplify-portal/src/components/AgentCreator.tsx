@@ -9,6 +9,7 @@ import { useTranslation } from "../i18n";
 import { dispatch } from "../lib/dispatch";
 import { Icon } from "./Icon";
 import { AGENT_ICON_CHOICES } from "./AgentIcon";
+import { AGENT_INDUSTRY_TEMPLATES, buildSystemPrompt } from "../lib/agentIndustryTemplates";
 
 const AVAILABLE_TOOLS = [
   { id: "list_files", label: "list_files", desc: "Browse directories" },
@@ -39,6 +40,17 @@ export function AgentCreator({ onCreated, onCancel }: AgentCreatorProps) {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Fills the form from an industry template. Every field stays editable.
+  function applyTemplate(templateId: string) {
+    const template = AGENT_INDUSTRY_TEMPLATES.find((item) => item.id === templateId);
+    if (!template) return;
+    setName(t(template.nameKey));
+    setDescription(t(template.descKey));
+    setSystemPrompt(buildSystemPrompt(template));
+    setTools(template.tools);
+    setCategory(template.category);
+    if ((AGENT_ICON_CHOICES as string[]).includes(template.icon)) setIcon(template.icon);
+  }
   function toggleTool(toolId: string) {
     setTools((prev) =>
       prev.includes(toolId) ? prev.filter((t) => t !== toolId) : [...prev, toolId]
@@ -91,6 +103,23 @@ export function AgentCreator({ onCreated, onCancel }: AgentCreatorProps) {
       {error && <div className="agent-creator-error"><Icon name="alert-triangle" className="icon-lead" />{error}</div>}
 
       <form onSubmit={handleSubmit} className="agent-creator-form">
+        {/* Industry template */}
+        <div className="creator-field">
+          <label htmlFor="agent-template">{t("agentCreatorTemplate")}</label>
+          <select
+            id="agent-template"
+            defaultValue=""
+            onChange={(e) => applyTemplate(e.target.value)}
+          >
+            <option value="">{t("agentCreatorTemplateNone")}</option>
+            {AGENT_INDUSTRY_TEMPLATES.map((template) => (
+              <option key={template.id} value={template.id}>
+                {t(template.nameKey)}
+              </option>
+            ))}
+          </select>
+          <span className="field-hint">{t("agentCreatorTemplateHint")}</span>
+        </div>
         {/* Icon + Name Row */}
         <div className="creator-row">
           <div className="creator-field icon-field">

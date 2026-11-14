@@ -37,6 +37,14 @@ export interface PortalConfig {
   region: string;
   s3ApAlias: string;
   stateMachineArn: string;
+  /**
+   * Optional. ARN template for one state machine per industry pattern, with `{slug}` for the
+   * pattern directory name under `solutions/industry/` (for example `legal-compliance`).
+   * Example: `arn:aws:states:ap-northeast-1:<account>:stateMachine:fsxn-s3ap-{slug}-workflow`.
+   * When set, UC1-UC28 each start their own state machine; OPS1 and FC7 and any deployment
+   * without a template use `stateMachineArn`.
+   */
+  stateMachineArnTemplate?: string;
   stateMachineResourceScope: string;
   s3ApResourceArns: string[];
   groupApMapping: Record<string, string>;
@@ -241,6 +249,7 @@ export const config: PortalConfig = {
    * source; leaving it empty is now a legible state rather than a broken one.
    */
   stateMachineArn: process.env.AMPLIFY_PORTAL_SFN_ARN || "",
+  stateMachineArnTemplate: process.env.AMPLIFY_PORTAL_SFN_ARN_TEMPLATE || "",
 
   // ─── Optional (defaults work for sandbox) ──────────────────────────────
 

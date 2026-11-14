@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Conventional Commits](https://www.conventionalcommits.org/).
 
 ## [Unreleased]
+### Added
+- **File portal: all industry patterns in the AI processing tab.** The job form lists UC1 to UC28 (and OPS1) with the industry and task in the selected language, in 8 languages. `startProcessing` now sends `pattern` in the Step Functions input, and an optional `stateMachineArnTemplate` (`AMPLIFY_PORTAL_SFN_ARN_TEMPLATE`, with `{slug}` for the directory name under `solutions/industry/`) starts one state machine per pattern. Without the template every pattern still starts the single `stateMachineArn`
+- **File portal: industry agent templates.** The agent creator can start from 16 industry templates (contracts and policies, financial documents, quality and maintenance, clinical procedures, claims, ordinances, construction, education, HR, property and leases, logistics, telecom incidents, retail, traceability, lab and safety data, ESG and grants). A template fills in the name, description, system prompt, tools and category; every field stays editable
+- **Step Functions × AgentCore Gateway pattern: optional `industry` input.** One of 21 industry ids (`shared/industry_focus.py`) adds the industry's points of attention to the summary prompt. Unknown values are ignored and never reach the prompt. `docs/demo-guide.md` lists the ids
+### Fixed
+- **File portal: wrong pattern names.** `UC3_HEALTHCARE_IMAGING`, `UC10_MEDIA_PRODUCTION` and `UC15_MANUFACTURING_QC` named industries that do not match the pattern carrying that number (UC3 is manufacturing analytics, UC10 construction BIM, UC15 defense satellite). They are removed from the `ProcessingPattern` enum; job history rows keep the old string. Before this change the selected pattern was used only in the execution name, so every choice started the same state machine
 
 ### Changed
 - **Directory restructuring**: All 42 pattern directories moved into `solutions/` category hierarchy

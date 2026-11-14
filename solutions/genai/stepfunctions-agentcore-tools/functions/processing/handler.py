@@ -24,6 +24,7 @@ import boto3
 
 from shared.exceptions import lambda_error_handler
 from shared.human_review import evaluate_confidence
+from shared.industry_focus import focus_hint, normalize_industry
 from shared.observability import EmfMetrics
 from shared.s3ap_helper import S3ApHelper
 
@@ -66,7 +67,8 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
     raw = helper.get_object_bytes(key, max_bytes=max_bytes)
     content = raw.decode("utf-8", errors="replace")
 
-    summary, confidence = _summarize(content, category, key, model_id)
+    industry = normalize_industry(event.get("industry"))
+    summary, confidence = _summarize(content, category, key, model_id, industry)
 
     decision = evaluate_confidence(confidence)
 
@@ -87,7 +89,7 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
     }
 
 
-def _summarize(content: str, category: str, key: str, model_id: str) -> tuple[str, float]:
+def _summarize(content: str, category: str, key: str, model_id: str, industry: str | None = None) -> tuple[str, float]:
     """Bedrock Nova でファイル内容を要約し、要約と確信度を返す。
 
     Args:
@@ -95,12 +97,14 @@ def _summarize(content: str, category: str, key: str, model_id: str) -> tuple[st
         category: discovery が推定したカテゴリ。
         key: オブジェクトキー。
         model_id: Bedrock モデル ID / 推論プロファイル ID。
+        industry: 業種 ID（任意）。表にある値だけが要約の注目点として使われる。
 
     Returns:
         tuple[str, float]: (要約テキスト, 確信度 0.0-1.0)。
             Bedrock 呼び出しに失敗した場合は要約にエラー文、確信度 0.0 を返す。
     """
     prompt = (
+        f"{focus_hint(industry)}"
         f"以下は '{os.path.basename(key)}'（カテゴリ: {category}）の内容です。"
         "ドキュメントタイプ・主要フィールド・1-2 文の要約を日本語で述べてください。\n\n"
         f"--- 内容（先頭部分） ---\n{content[:3000]}\n--- ここまで ---"

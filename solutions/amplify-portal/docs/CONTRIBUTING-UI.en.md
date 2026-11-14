@@ -286,14 +286,11 @@ grep -n "processingEnabled" src/portal-settings.ts            # whether the tab 
 | Place | What it decides |
 |---|---|
 | `ProcessingPattern` in `amplify/data/resource.ts` | **The set of values the API accepts** (a GraphQL enum). AppSync rejects anything not listed |
-| The `ProcessingPattern` type and `PATTERN_DESCRIPTIONS` in `src/components/JobSubmitForm.tsx` | **The dropdown and its descriptions** |
+| `src/lib/industryUseCases.ts` and `src/components/JobSubmitForm.tsx` | **The dropdown** (industry and task text come from the `ucIndustry_*` / `ucTask_*` translation keys) |
 | `amplify/data/resolvers/start-processing.js` | **Which state machine is called**, and the input JSON it receives |
 | `processingEnabled` in `src/portal-settings.ts` | Whether the tab appears at all |
 
-> **These four do not stay in step by themselves.** Today the enum has seven values (including
-> `FC7_FLEXCLONE_RESTORE`) while the screen lists six, so FC7 is accepted by the API and
-> unreachable from the UI. Adding a value to the screen alone fails the other way, because
-> AppSync rejects it. **The same value has to be in both.**
+> **The enum and the screen list need the same values.** Adding a value to the screen alone is rejected by AppSync. `src/lib/industryUseCases.test.ts` checks that UC1 to UC28 and OPS1 match between the enum and the list, and that FC7 is the one value kept off the screen.
 
 ### Required before it can work at all
 

@@ -280,13 +280,11 @@ grep -n "processingEnabled" src/portal-settings.ts            # タブを出す�
 | 触る場所 | 何を決めているか |
 |---|---|
 | `amplify/data/resource.ts` の `ProcessingPattern` | **API が受け付ける値の集合**（GraphQL の enum）。ここに無い値は AppSync が拒否します |
-| `src/components/JobSubmitForm.tsx` の `ProcessingPattern` 型と `PATTERN_DESCRIPTIONS` | **画面のドロップダウンに出る一覧と説明文** |
+| `src/lib/industryUseCases.ts` と `src/components/JobSubmitForm.tsx` | **画面のドロップダウンに出る一覧**（業種名と処理内容は `ucIndustry_*` / `ucTask_*` の翻訳キー） |
 | `amplify/data/resolvers/start-processing.js` | **どのステートマシンを呼ぶか**、および渡す入力 JSON |
 | `src/portal-settings.ts` の `processingEnabled` | タブ自体を出すかどうか |
 
-> **この 4 つは自動では揃いません。** 現に enum は 7 個（`FC7_FLEXCLONE_RESTORE` を含む）ですが、
-> 画面の一覧は 6 個で、FC7 は API が受け付けるのに画面から選べません。逆に画面にだけ足しても、
-> enum に無ければ AppSync が拒否します。**両方に同じ値を書く必要があります。**
+> **enum と画面の一覧は、同じ値を両方に書く必要があります。** 画面にだけ足すと AppSync が拒否します。`src/lib/industryUseCases.test.ts` が、UC1 から UC28 と OPS1 が enum と一覧で一致すること、FC7 だけが画面に出ない例外であることを検査します。
 
 ### 動かす前に必ず必要な設定（ここが未設定だと必ず失敗します）
 

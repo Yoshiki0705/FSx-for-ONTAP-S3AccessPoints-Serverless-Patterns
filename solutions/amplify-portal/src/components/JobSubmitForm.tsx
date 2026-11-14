@@ -3,44 +3,39 @@ import { generateClient } from "aws-amplify/data";
 import type { Schema } from "../../amplify/data/resource";
 import { portalSettings } from "../portal-settings";
 import { useTranslation } from "../i18n";
+import { SELECTABLE_PATTERNS, type SelectablePattern } from "../lib/industryUseCases";
+import type { TranslationKeys } from "../i18n";
 
 const client = generateClient<Schema>();
 
-type ProcessingPattern =
-  | "UC1_LEGAL_COMPLIANCE"
-  | "UC3_HEALTHCARE_IMAGING"
-  | "UC6_SEMICONDUCTOR_EDA"
-  | "UC10_MEDIA_PRODUCTION"
-  | "UC15_MANUFACTURING_QC"
-  | "OPS1_CAPACITY_RIGHTSIZING";
+type ProcessingPattern = SelectablePattern;
 
 interface JobSubmitFormProps {
   initialPrefix: string;
   onJobStarted: (executionArn: string) => void;
 }
 
-const PATTERN_DESCRIPTIONS: Record<ProcessingPattern, string> = {
-  UC1_LEGAL_COMPLIANCE: "Legal document classification and compliance check",
-  UC3_HEALTHCARE_IMAGING: "Medical imaging analysis and DICOM processing",
-  UC6_SEMICONDUCTOR_EDA: "EDA file validation and design rule check",
-  UC10_MEDIA_PRODUCTION: "Media asset transcoding and metadata extraction",
-  UC15_MANUFACTURING_QC: "Manufacturing quality control image inspection",
-  OPS1_CAPACITY_RIGHTSIZING: "Volume capacity analysis and recommendations",
-};
-
 /**
  * Job submission form.
  *
  * Allows users to:
- * - Select a processing pattern (UC1-UC28, OPS1-OPS6)
+ * - Select a processing pattern (industry patterns UC1-UC28, or an operations pattern)
  * - Specify input prefix (pre-filled from FileExplorer)
  * - Add optional parameters
  * - Submit and trigger Step Functions execution
  */
+/** "UC1 Legal: NTFS ACL audit ...": the pattern number, the industry, then the task. */
+function patternLabel(key: SelectablePattern, t: (key: TranslationKeys) => string): string {
+  const number = key.split("_")[0];
+  const industry = t(`ucIndustry_${key}` as TranslationKeys);
+  const task = t(`ucTask_${key}` as TranslationKeys);
+  return `${number} ${industry}: ${task}`;
+}
+
 export function JobSubmitForm({ initialPrefix, onJobStarted }: JobSubmitFormProps) {
   const { t } = useTranslation();
   const [prefix, setPrefix] = useState(initialPrefix);
-  const [pattern, setPattern] = useState<ProcessingPattern>("UC1_LEGAL_COMPLIANCE");
+  const [pattern, setPattern] = useState<ProcessingPattern>(SELECTABLE_PATTERNS[0]);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -108,9 +103,9 @@ export function JobSubmitForm({ initialPrefix, onJobStarted }: JobSubmitFormProp
             onChange={(e) => setPattern(e.target.value as ProcessingPattern)}
             disabled={!portalSettings.processingEnabled}
           >
-            {Object.entries(PATTERN_DESCRIPTIONS).map(([key, desc]) => (
+            {SELECTABLE_PATTERNS.map((key) => (
               <option key={key} value={key}>
-                {key.replace(/_/g, " ")} — {desc}
+                {patternLabel(key, t)}
               </option>
             ))}
           </select>
