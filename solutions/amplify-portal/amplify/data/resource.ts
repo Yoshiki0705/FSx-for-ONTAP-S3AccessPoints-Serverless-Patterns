@@ -547,6 +547,32 @@ const schema = a.schema({
     })
     .authorization((allow) => [allow.owner()]),
 
+  // =========================================================================
+  // Generic Dispatch: GenU-style tools (functions/file-tools)
+  // toolsQuery: config, translate, proofread, diagram, webExtract, listUseCases,
+  //   runUseCase. Nothing persistent is written; any signed-in user. The handler applies
+  //   the file boundary to `key`.
+  // toolsMutation: saveUseCase, deleteUseCase, generateImage, saveResult. Writes, so the
+  //   write roles only. Its resolver sets writeOperation=true; the query's sets it to
+  //   false, and the handler refuses these actions without it.
+  // =========================================================================
+  toolsQuery: a
+    .query()
+    .arguments({ action: a.string().required(), params: a.json() })
+    .returns(a.json())
+    .authorization((allow) => [allow.authenticated()])
+    .handler(a.handler.custom({ dataSource: "FileToolsLambdaDataSource", entry: "./resolvers/tools-dispatch.js" })),
+  toolsMutation: a
+    .mutation()
+    .arguments({ action: a.string().required(), params: a.json() })
+    .returns(a.json())
+    .authorization((allow) =>
+      rolesOrAuthenticated(
+        () => allow.authenticated(),
+        () => allow.groups(WRITE_ROLES)
+      )
+    )
+    .handler(a.handler.custom({ dataSource: "FileToolsLambdaDataSource", entry: "./resolvers/tools-write-dispatch.js" })),
   // --- AI/Analytics (unique data sources — keep as-is) ---
   askAboutFile: a
     .mutation()

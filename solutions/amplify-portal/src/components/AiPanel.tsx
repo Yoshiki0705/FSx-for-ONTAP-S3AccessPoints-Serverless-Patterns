@@ -12,6 +12,8 @@ interface AiPanelProps {
   selectedFileKey: string | null;
   /** File name for display */
   selectedFileName: string | null;
+  /** Opens the Tools section on this file (translate, proofread, diagram). */
+  onOpenTool?: (tool: "translate" | "proofread" | "diagram") => void;
 }
 
 interface ChatMessage {
@@ -31,7 +33,7 @@ interface ChatMessage {
  * The panel appears alongside the file explorer and operates on
  * the currently selected file.
  */
-export function AiPanel({ selectedFileKey, selectedFileName }: AiPanelProps) {
+export function AiPanel({ selectedFileKey, selectedFileName, onOpenTool }: AiPanelProps) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -114,6 +116,13 @@ export function AiPanel({ selectedFileKey, selectedFileName }: AiPanelProps) {
         </span>
       </div>
 
+      {onOpenTool && !isRegulatedPath(selectedFileKey) && (
+        <div className="ai-panel-tools" aria-label={t("ftOpenTools")}>
+          <button type="button" className="btn-secondary btn-sm" onClick={() => onOpenTool("translate")}>{t("ftOpenTranslate")}</button>
+          <button type="button" className="btn-secondary btn-sm" onClick={() => onOpenTool("proofread")}>{t("ftOpenProofread")}</button>
+          <button type="button" className="btn-secondary btn-sm" onClick={() => onOpenTool("diagram")}>{t("ftOpenDiagram")}</button>
+        </div>
+      )}
       {/* A scanned document has no text layer for the chat below to read, so
           extraction sits above it rather than beside it. */}
       <DocumentAnalysis
