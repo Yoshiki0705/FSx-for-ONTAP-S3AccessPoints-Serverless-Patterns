@@ -8,7 +8,7 @@
 # Prerequisites:
 #   - AWS CLI v2 configured with appropriate credentials
 #   - An existing FSx for ONTAP file system (or use DemoMode)
-#   - Node.js 18+ and npm
+#   - Node.js 22.12+ and npm
 #
 # Usage:
 #   ./scripts/setup-prerequisites.sh

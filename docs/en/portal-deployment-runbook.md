@@ -11,7 +11,7 @@ Step-by-step operational guide for deploying, updating, and tearing down the FSx
 | Requirement | How to verify | Notes |
 |---|---|---|
 | AWS CLI v2 | `aws --version` | Must be configured with credentials |
-| Node.js 18.17+ | `node --version` | Required by Amplify Gen2 CDK |
+| Node.js 22.12+ | `node --version` | Required by Amplify Gen2 CDK |
 | AWS Account | `aws sts get-caller-identity` | Note your Account ID |
 | FSx for ONTAP | `aws fsx describe-file-systems` | ONTAP 9.14.1+ recommended |
 | S3 AP (Internet-origin) | See Step 1 below | Or use DemoMode (regular S3 bucket) |
