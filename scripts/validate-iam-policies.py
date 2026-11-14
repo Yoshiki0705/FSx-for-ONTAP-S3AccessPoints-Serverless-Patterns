@@ -38,6 +38,7 @@ from pathlib import Path
 
 import boto3
 import yaml
+from botocore.config import Config
 
 
 def extract_iam_policies(template_path: Path) -> list[dict]:
@@ -256,7 +257,17 @@ def main():
     parser.add_argument("--region", default="us-east-1", help="AWS region for Access Analyzer API")
     args = parser.parse_args()
 
-    client = boto3.client("accessanalyzer", region_name=args.region)
+    # ValidatePolicy is called once per policy (about 240 in one run), and the job runs
+    # alongside other PRs' runs in the same account. With the default two retries it
+    # failed on TooManyRequestsException three times on one PR in a day, each time
+    # with no finding in the policies themselves. Adaptive mode backs off client-side
+    # and retries throttling up to the given count, so throttling is no longer
+    # reported as a policy error.
+    client = boto3.client(
+        "accessanalyzer",
+        region_name=args.region,
+        config=Config(retries={"max_attempts": 10, "mode": "adaptive"}),
+    )
 
     total_errors = 0
     total_warnings = 0
