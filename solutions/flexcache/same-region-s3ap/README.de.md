@@ -41,7 +41,7 @@ graph LR
 
 ## Voraussetzungen
 
-- FSx for ONTAP Dateisystem (ONTAP 9.12.1 oder höher)
+- FSx for ONTAP Dateisystem (ONTAP 9.17.1 oder höher, Stand 2026-11-14)
 - 2 SVMs (eine für Origin, eine für Cache; gleiche SVM möglich, Trennung empfohlen)
 - fsxadmin-Anmeldedaten in Secrets Manager gespeichert
 - AWS CLI v2 mit `fsx`-Unterbefehl verfügbar

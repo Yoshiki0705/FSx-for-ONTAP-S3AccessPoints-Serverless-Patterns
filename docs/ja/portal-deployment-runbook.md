@@ -13,7 +13,7 @@ FSx for ONTAP ファイルポータルのデプロイ・更新・削除の運用
 | AWS CLI v2 | `aws --version` | 認証情報設定済み |
 | Node.js 18.17+ | `node --version` | Amplify Gen2 CDK に必要 |
 | AWS アカウント | `aws sts get-caller-identity` | Account ID を控える |
-| FSx for ONTAP | `aws fsx describe-file-systems` | ONTAP 9.14.1+ 推奨 |
+| FSx for ONTAP | `aws fsx describe-file-systems` | ONTAP 9.17.1+（2026-11-14 時点の基準） |
 | S3 AP (Internet-origin) | 下記 Step 1 参照 | DemoMode なら通常 S3 バケットでも可 |
 
 ---

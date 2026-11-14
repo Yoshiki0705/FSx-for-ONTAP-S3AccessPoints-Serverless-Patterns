@@ -242,7 +242,7 @@ The premise this entry was placed in group A on did not hold under measurement (
 | Item | Detail |
 |------|--------|
 | Operations | `updateArpStateAdmin`, `enableArpBulk`, `clearArpSuspects` |
-| Prerequisites | ONTAP 9.10.1 or later (this environment is 9.18.1P3D1) |
+| Prerequisites | ONTAP 9.17.1 or later (baseline as of 2026-11-14; this environment is 9.18.1P3D1) |
 | Impact | **`dry_run` is not available.** Asking for it leaves the volume `enabled`, which is active protection: snapshots are created automatically on a suspicion |
 | Confirm | The `state` in the response -- read back, not echoed -- agrees with what the UI shows |
 | Rollback | Set it back to `disabled`, but it stays `disable_in_progress` for over ten minutes |

@@ -16,8 +16,10 @@ The FPolicy Event-Driven pattern has 3 deployment profiles based on requirements
 | **Retry / Dedup** | Best-effort | DynamoDB idempotency | DynamoDB + S3 Object Lock lineage |
 | **Alarm Profile** | Minimal (error only) | Full (latency + error + backlog) | Full + audit trail |
 | **Event Loss Tolerance** | Acceptable | Near-zero (compensated by retry) | Zero (Persistent Store + audit) |
-| **Minimum ONTAP Version** | 9.14.1+ | 9.15.1+ | 9.15.1+ |
+| **Minimum ONTAP Version** | 9.17.1+ | 9.17.1+ | 9.17.1+ |
 | **Intended Use** | Functional verification, demos, PoC | Production workloads | Financial regulation, healthcare, government |
+
+> **Baseline as of 2026-11-14**: every FSx for ONTAP file system in use, existing or newly deployed, is ONTAP 9.17.1 or later, so the profile minimums above are all 9.17.1+. The versions where individual features appeared (Persistent Store 9.14.1, `is-mandatory` 9.15.1) are history and are met by the baseline.
 
 ---
 

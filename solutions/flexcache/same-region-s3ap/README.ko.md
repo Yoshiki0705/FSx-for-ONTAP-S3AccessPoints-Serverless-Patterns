@@ -41,7 +41,7 @@ graph LR
 
 ## 사전 요구 사항
 
-- FSx for ONTAP 파일 시스템 (ONTAP 9.12.1 이상)
+- FSx for ONTAP 파일 시스템 (ONTAP 9.17.1 이상, 2026-11-14 기준)
 - SVM 2개 (Origin용 / Cache용. 동일 SVM 가능하나 분리 권장)
 - Secrets Manager에 fsxadmin 자격 증명 저장 완료
 - AWS CLI v2 + `fsx` 하위 명령 사용 가능

@@ -16,8 +16,10 @@ FPolicy Event-Driven パターンには、要件に応じた 3 つのデプロ�
 | **Retry / Dedup** | Best-effort | DynamoDB idempotency | DynamoDB + S3 Object Lock lineage |
 | **Alarm Profile** | Minimal (error only) | Full (latency + error + backlog) | Full + audit trail |
 | **Event Loss Tolerance** | 許容 | Near-zero (retry で補完) | Zero (Persistent Store + 監査) |
-| **最低 ONTAP バージョン** | 9.14.1+ | 9.15.1+ | 9.15.1+ |
+| **最低 ONTAP バージョン** | 9.17.1+ | 9.17.1+ | 9.17.1+ |
 | **想定用途** | 機能検証、デモ、PoC | 本番ワークロード | 金融規制、医療、政府 |
+
+> **2026-11-14 時点の基準**: 稼働中・新規デプロイを問わず、FSx for ONTAP のファイルシステムはすべて ONTAP 9.17.1 以上です。そのため上の表の最低バージョンはどのプロファイルも 9.17.1+ です。個別の機能が登場したバージョン（Persistent Store は 9.14.1、`is-mandatory` は 9.15.1）は経緯であり、この基準で満たされます。
 
 ---
 

@@ -47,7 +47,7 @@ graph LR
 - 2 个 FSx for ONTAP 集群（区域 A 和区域 B）
 - 已建立 VPC Peering（允许 TCP 11104、11105、ICMP）
 - 每个集群的 fsxadmin 凭证已存储在 Secrets Manager 中
-- ONTAP 9.12.1 或更高版本（Origin 上支持 S3 NAS 存储桶）
+- ONTAP 9.17.1 或更高版本（Origin 上支持 S3 NAS 存储桶、截至 2026-11-14）
 - AWS CLI v2
 
 ## 部署

@@ -16,7 +16,7 @@ Check the prerequisites, then run the setup steps from top to bottom.
 
 ### Prerequisites
 
-- FSx for ONTAP file system (ONTAP 9.14.1+)
+- FSx for ONTAP file system (ONTAP 9.17.1+, baseline as of 2026-11-14)
 - S3 Access Point in AVAILABLE state (Internet-origin)
 - Node.js 18.17+
 - AWS CLI v2 (configured with credentials)

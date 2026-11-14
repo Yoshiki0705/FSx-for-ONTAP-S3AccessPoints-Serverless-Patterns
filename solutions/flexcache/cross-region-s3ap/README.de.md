@@ -47,7 +47,7 @@ graph LR
 - 2 FSx for ONTAP-Cluster (Region A und Region B)
 - VPC Peering eingerichtet (TCP 11104, 11105, ICMP erlaubt)
 - fsxadmin-Anmeldedaten für jeden Cluster in Secrets Manager gespeichert
-- ONTAP 9.12.1 oder höher (S3 NAS-Bucket-Unterstützung auf Origin)
+- ONTAP 9.17.1 oder höher (S3 NAS-Bucket-Unterstützung auf Origin, Stand 2026-11-14)
 - AWS CLI v2
 
 ## Bereitstellung
