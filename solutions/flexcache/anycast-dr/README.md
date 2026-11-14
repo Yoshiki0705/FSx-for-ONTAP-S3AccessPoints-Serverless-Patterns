@@ -94,6 +94,8 @@ graph TB
 | Global file lock | 9.14.1 | |
 | Writeback | 9.15.1 | |
 
+> 2026-11-14 時点の基準: FSx for ONTAP は 9.17.1 以上のため、上のすべての最低バージョンは満たされます。
+
 ### FSx for ONTAP での機能公開範囲
 
 - FlexCache の作成・管理: ✅ ONTAP REST API / CLI 経由で可能

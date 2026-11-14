@@ -128,7 +128,7 @@ Satisfies both tenant isolation and time-series access patterns in multi-tenant 
 | < 64 KB | Metadata processing overhead is relatively larger | Batching/aggregation can be advantageous |
 | 64 KB – 1 MB | Typical document / JSON size range | Optimal for most serverless patterns |
 | > 1 MB | Data transfer dominates. Performance gap with Amazon S3 narrows for larger objects | Consider Multipart Upload |
-| 5-50 GB | Exceeds the 5 GB single PutObject limit | Multipart Upload required (ONTAP 9.16.1+) |
+| 5-50 GB | Exceeds the 5 GB single PutObject limit | Multipart Upload required (supported from ONTAP 9.16.1; met by the 9.17.1+ baseline as of 2026-11-14) |
 | > 50 GB | Exceeds the S3 AP object size limit (50 GB) | Split the file, or place it via NFS/SMB |
 
 ### Throughput Design
@@ -213,7 +213,7 @@ FSx for ONTAP S3 AP is "S3 compatible" but NOT "identical to Amazon S3." Conside
 | Feature | S3 AP Support | Alternative | Notes |
 |---------|:------------:|-------------|-------|
 | GetObject / PutObject | ✅ | — | 50 GB object limit (single PutObject 5 GB) |
-| Multipart Upload | ✅ | — | ONTAP 9.16.1+ |
+| Multipart Upload | ✅ | — | Supported from ONTAP 9.16.1 (met by the 9.17.1+ baseline as of 2026-11-14) |
 | ListObjectsV2 | ✅ | — | Prefix / Delimiter / MaxKeys supported |
 | HeadObject | ✅ | — | |
 | DeleteObject | ✅ | — | |
@@ -363,7 +363,7 @@ Items to verify in a PoC for serverless patterns using FSx for ONTAP S3 AP:
 
 - [ ] Confirm dependency on conditional writes (Delta Lake / Iceberg, etc.)
 - [ ] Confirm dependency on S3 Event Notification (need for FPolicy alternative)
-- [ ] Confirm Multipart Upload needs (ONTAP version requirement: 9.16.1+)
+- [ ] Confirm Multipart Upload needs (ONTAP version requirement: 9.16.1+, met by the 9.17.1+ baseline as of 2026-11-14)
 - [ ] Confirm presigned URL expiry is short enough for the requirement
 
 ### Security

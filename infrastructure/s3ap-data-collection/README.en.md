@@ -260,7 +260,7 @@ Key differences when implementing serverless patterns on this infrastructure:
 | **S3 Event Notification unsupported** | Can't use PutObject-triggered Lambda | EventBridge Scheduler polling. **FPolicy does not see a PutObject through the access point**, so it is not a substitute (measured 2026-08-26, ONTAP 9.18.1P3D1) |
 | **Versioning unsupported** | No object generation management | ONTAP Snapshot (volume-level point-in-time) |
 | **ListObjectsV2 performance** | Delay with large file directories | Hive partitioning + prefix-limited + external catalog |
-| **50 GB object limit (single PutObject 5 GB)** | Files above 50 GB need splitting | Multipart Upload for 5-50 GB (ONTAP 9.16.1+) |
+| **50 GB object limit (single PutObject 5 GB)** | Files above 50 GB need splitting | Multipart Upload for 5-50 GB (supported from ONTAP 9.16.1; met by the 9.17.1+ baseline as of 2026-11-14) |
 
 Details: [Design Considerations](../../docs/design-considerations-en.md)
 
@@ -268,8 +268,8 @@ Details: [Design Considerations](../../docs/design-considerations-en.md)
 
 | Configuration | Supported | Condition | Reference |
 |--------------|:---------:|-----------|-----------|
-| S3 AP volume → SnapMirror Async source | ✅ | ONTAP 9.12.1+ | [S3 multiprotocol](https://docs.netapp.com/us-en/ontap/s3-multiprotocol/index.html) |
-| S3 AP volume → FlexCache Origin | ✅ | ONTAP 9.12.1+ | [FlexCache features](https://docs.netapp.com/us-en/ontap/flexcache/supported-unsupported-features-concept.html) |
+| S3 AP volume → SnapMirror Async source | ✅ | ONTAP 9.17.1+ | [S3 multiprotocol](https://docs.netapp.com/us-en/ontap/s3-multiprotocol/index.html) |
+| S3 AP volume → FlexCache Origin | ✅ | ONTAP 9.17.1+ | [FlexCache features](https://docs.netapp.com/us-en/ontap/flexcache/supported-unsupported-features-concept.html) |
 | FlexCache Cache Volume → S3 AP attach | ❌ | The FSx API refuses with `the volume is a FlexCache` (measured 2026-07-24 / ONTAP 9.18.1P3D1). The refusal is by volume type, so an ONTAP version does not resolve it. Attach S3 Access Points to the origin volume | [Lakehouse record #26](https://github.com/Yoshiki0705/FSx-for-ONTAP-Lakehouse-Integrations/blob/main/integrations/snapmirror-flexcache-multicloud/docs/BACKLOG.md), [Hub note (Japanese)](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/blob/main/docs/ja/domains/data-utilization/notes/serving-a-replication-destination-over-s3.md). The 9.18.1+ in the [FlexCache duality FAQ](https://docs.netapp.com/us-en/ontap/flexcache/flexcache-duality-faq.html) covers ONTAP-native S3 NAS buckets, a different mechanism |
 | SnapMirror Synchronous + S3 NAS bucket | ❌ | — | S3 NAS bucket unsupported |
 | SVM-DR + S3 NAS bucket | ❌ | — | S3 NAS bucket unsupported |

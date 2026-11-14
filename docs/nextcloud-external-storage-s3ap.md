@@ -352,7 +352,7 @@ curl -s https://nextcloud.example.com/status.php | jq .
 | 制約 | 影響 | 回避策 |
 |------|------|--------|
 | **Presigned URL（2026-09 の訂正で Supported）** | Nextcloud が S3 AP への直接ダウンロードリンクを Presigned URL で生成可能（GetObject の署名付きリクエストとして動作） | 選択肢 A: Presigned URL を利用しダイレクトダウンロード（サーバー負荷軽減）。選択肢 B: サーバープロセス経由プロキシ（発行後の取り消しと操作記録が必要な場合）。 |
-| **オブジェクト上限 50 GB（単一 PUT は 5 GB）** | 50 GB 超のファイルはアップロード不可 | Nextcloud はマルチパートアップロードを使用するため 5〜50 GB は対応可。ONTAP バージョン（9.15.1+）での S3 AP マルチパートサポートを確認。 |
+| **オブジェクト上限 50 GB（単一 PUT は 5 GB）** | 50 GB 超のファイルはアップロード不可 | Nextcloud はマルチパートアップロードを使用するため 5〜50 GB は対応可。マルチパートサポートは 9.17.1+ の基準（2026-11-14 時点）で満たされる。 |
 | **ListObjectsV2 最大 1000/リクエスト** | 大規模ディレクトリにページネーションが必要 | Nextcloud の S3 バックエンドライブラリが自動処理。 |
 | **S3 イベント通知なし** | S3 AP アップロードイベントでトリガーできない | Nextcloud Flow/Workflow の webhook、またはスケジュールスキャンを使用。**FPolicy は使えない**: S3 AP 経由のアップロードは FPolicy 通知を発火しない（実測 2026-08-26 / ONTAP 9.18.1P3D1）。 |
 | **AD-joined SVM: DC 到達性必須** | AD DC がダウンすると全 S3 AP 操作が失敗（AccessDenied） | AD DC の健全性を監視。[AD-Joined SVM S3 AP 前提条件](./en/ad-joined-svm-s3ap-prerequisites.md)を参照。 |
@@ -467,4 +467,4 @@ Amplify Gen2 のポータルを使う / 併用する**場合は、拡張の手�
 
 ---
 
-*最終更新: 2025-07 | 対象: Nextcloud 25+ / FSx for ONTAP S3 AP (ONTAP 9.14.1+)*
+*最終更新: 2025-07（ONTAP バージョンの記述のみ 2026-11-14 に更新） | 対象: Nextcloud 25+ / FSx for ONTAP S3 AP (ONTAP 9.17.1+、2026-11-14 時点の基準)*

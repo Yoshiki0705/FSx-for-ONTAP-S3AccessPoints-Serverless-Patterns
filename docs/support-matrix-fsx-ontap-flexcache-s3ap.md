@@ -16,9 +16,9 @@
 | FlexCache cache volume | ✅ | ✅ | ✅ | ✅ |
 | 同一クラスタ内 FlexCache | ✅ | ✅ | ✅ | ✅ |
 | クロスクラスタ FlexCache | ✅ (Peering) | ✅ | ✅ | ⚠️ 構成依存 |
-| FlexCache prepopulate | ✅ (ONTAP 9.13.1+) | ✅ | ✅ | ✅ |
-| FlexCache writeback | ⚠️ バージョン依存 | ✅ (9.15.1+) | ⚠️ バージョン依存 | ✅ |
-| FlexCache global file lock | ⚠️ バージョン依存 | ✅ (9.14.1+) | ⚠️ バージョン依存 | ✅ |
+| FlexCache prepopulate | ✅ (ONTAP 9.13.1+。2026-11-14 時点の基準 9.17.1+ で満たされる) | ✅ | ✅ | ✅ |
+| FlexCache writeback | ✅ (9.15.1+。2026-11-14 時点の基準 9.17.1+ で満たされる) | ✅ (9.15.1+) | ⚠️ バージョン依存 | ✅ |
+| FlexCache global file lock | ✅ (9.14.1+。2026-11-14 時点の基準 9.17.1+ で満たされる) | ✅ (9.14.1+) | ⚠️ バージョン依存 | ✅ |
 | FlexCache disconnected mode | ⚠️ 未確認 | ✅ (9.12.1+) | ⚠️ 未確認 | ✅ |
 
 ### S3 Access Points

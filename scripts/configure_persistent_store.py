@@ -10,7 +10,7 @@ VPC 内の Lambda (IP Updater) 経由で ONTAP API を呼び出す。
 前提条件:
 - AWS CLI が設定済み
 - fsxn-fpolicy-ip-updater Lambda がデプロイ済み
-- ONTAP 9.14.1+ (Persistent Store サポート)
+- ONTAP 9.17.1+ (2026-11-14 時点の基準。Persistent Store は 9.14.1 以降で対応)
 
 使用方法:
     python3 scripts/configure_persistent_store.py [--check|--create|--attach]

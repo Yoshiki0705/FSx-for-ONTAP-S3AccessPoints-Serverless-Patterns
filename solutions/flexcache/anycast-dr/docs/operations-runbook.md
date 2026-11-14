@@ -159,7 +159,7 @@ except OntapClientError as e:
 
 ### 対応
 
-1. **Disconnected mode 確認** (ONTAP 9.12.1+)
+1. **Disconnected mode 確認** (ONTAP 9.17.1+、2026-11-14 時点の基準)
    - FlexCache は既にキャッシュ済みデータの読み取りを継続
    - 新規データの読み取りは失敗する
 

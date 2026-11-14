@@ -66,7 +66,7 @@ graph TD
 ### 前提条件
 
 - FSx for ONTAP 間の SnapMirror 関係が構成済み
-- ONTAP REST API (9.13.1+) で SnapMirror break/resync をサポート
+- ONTAP REST API で SnapMirror break/resync をサポート（9.13.1 以降。2026-11-14 時点の基準 9.17.1+ で満たされる）
 - `shared/ontap_client.py` で SnapMirror API メソッド追加が必要
 - restore-verification パターン (`FSx-for-ONTAP-Observability-integrations`) の知見を流用
 
