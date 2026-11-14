@@ -14,7 +14,7 @@ A minimal React app demonstrating [Storage Browser for S3](https://ui.docs.ampli
 
 - An FSx for ONTAP S3 Access Point (Internet origin, Lifecycle = AVAILABLE)
 - IAM credentials with `s3:ListBucket`, `s3:GetObject`, `s3:PutObject`, `s3:DeleteObject` on the AP ARN
-- Node.js 18+
+- Node.js 22.12+
 
 ## Setup
 

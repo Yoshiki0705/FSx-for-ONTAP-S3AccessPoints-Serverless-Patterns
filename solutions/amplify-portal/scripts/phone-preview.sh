@@ -89,9 +89,9 @@ serving() { curl -sf -o /dev/null --max-time 3 "http://localhost:$PORT" 2>/dev/n
 # ------------------------------------------------------------------
 echo "▶ Preflight"
 
-command -v node >/dev/null 2>&1 || fail "node not found." "Install Node.js 20 or newer: https://nodejs.org"
+command -v node >/dev/null 2>&1 || fail "node not found." "Install Node.js 22 or newer: https://nodejs.org"
 NODE_MAJOR="$(node --version | sed 's/^v\([0-9]*\).*/\1/')"
-[ "$NODE_MAJOR" -ge 20 ] || fail "Node.js 20 or newer required (found $(node --version))."
+[ "$NODE_MAJOR" -ge 22 ] || fail "Node.js 22 or newer required (found $(node --version))."
 echo "  ✔ node $(node --version)"
 
 [ -d node_modules ] || fail "Dependencies not installed." "Run: npm install"
