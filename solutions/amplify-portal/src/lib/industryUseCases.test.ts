@@ -27,10 +27,11 @@ describe("industry processing patterns", () => {
     expect(patternSlug("OPS1_CAPACITY_RIGHTSIZING")).toBeNull();
   });
 
-  it("derives the same directory name in the resolver", () => {
+  it("routes each pattern to its own state machine in the resolver", () => {
     const resolver = readFileSync(resolve(root, "amplify/data/resolvers/start-processing.js"), "utf8");
-    expect(resolver).toContain('parts.slice(1).join("-").toLowerCase()');
-    expect(resolver).toContain('template.split("{slug}").join(slug)');
+    expect(resolver).toContain('ctx.env["SFN_ARN_" + prefix] || ctx.env.STATE_MACHINE_ARN');
+    const backend = readFileSync(resolve(root, "amplify/backend.ts"), "utf8");
+    expect(backend).toContain("EnvironmentVariables.SFN_ARN_${pattern.split(\"_\")[0]}");
     // APPSYNC_JS has no String(), regular expressions or similar globals: `aws appsync evaluate-code`
     // rejected String(...) here with INVALID_FUNCTION_INVOCATION, which unit tests under Node cannot show.
     expect(resolver).not.toMatch(/\bString\(|\bNumber\(|new RegExp|\.match\(/);

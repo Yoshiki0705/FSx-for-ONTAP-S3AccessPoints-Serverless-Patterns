@@ -530,12 +530,13 @@ if (config.stateMachineArn) {
   );
 }
 
-// One state machine per industry pattern, named by template. See start-processing.js.
-// Optional: without it every pattern starts the single state machine above.
-if (config.stateMachineArnTemplate) {
+// One state machine per pattern, from `config.stateMachineArns`. See start-processing.js.
+// Each entry becomes `SFN_ARN_<prefix>` (`UC10_CONSTRUCTION_BIM` -> `SFN_ARN_UC10`).
+for (const [pattern, arn] of Object.entries(config.stateMachineArns ?? {})) {
+  if (!arn) continue;
   dataResources.cfnResources.cfnGraphqlApi.addPropertyOverride(
-    "EnvironmentVariables.STATE_MACHINE_ARN_TEMPLATE",
-    config.stateMachineArnTemplate
+    `EnvironmentVariables.SFN_ARN_${pattern.split("_")[0]}`,
+    arn
   );
 }
 // --- Lambda Data Source for ListFiles ---

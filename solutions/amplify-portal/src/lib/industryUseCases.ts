@@ -3,10 +3,9 @@
  *
  * UC1 to UC28 follow the numbering of the industry patterns under
  * `solutions/industry/` in this repository (see the table in the top-level
- * README). A pattern key is `UC<n>_<DIRECTORY_NAME>`, so the directory name,
- * and with it the state machine name `fsxn-s3ap-<directory>-workflow`, can be
- * derived from the key. `amplify/data/resolvers/start-processing.js` does the
- * same derivation on the server side.
+ * README). A pattern key is `UC<n>_<DIRECTORY_NAME>`. Which state machine a pattern
+ * starts is configured per pattern (`stateMachineArns` in `amplify/portal-config.ts`),
+ * not derived from the key, because deployed stacks are named in more than one way.
  *
  * `amplify/data/resource.ts` lists the same keys in the `ProcessingPattern`
  * enum. `src/lib/industryUseCases.test.ts` fails when the two drift apart.

@@ -15,25 +15,21 @@ export function request(ctx) {
   // config names a state machine, so DemoMode reports that processing is not
   // configured instead of failing against an ARN nobody owns.
   //
-  // One state machine per industry pattern. The industry patterns under
-  // solutions/industry/ each deploy a stack `fsxn-s3ap-<directory>` whose state machine
-  // is named `fsxn-s3ap-<directory>-workflow`, and a pattern key is
-  // `UC<n>_<DIRECTORY_NAME>`. When STATE_MACHINE_ARN_TEMPLATE is set (for example
-  // `arn:aws:states:ap-northeast-1:<account>:stateMachine:fsxn-s3ap-{slug}-workflow`),
-  // `{slug}` is replaced with the directory name derived from the key, so each pattern
-  // starts its own state machine. Patterns that do not follow that naming (OPS1, FC7)
-  // and deployments without a template use STATE_MACHINE_ARN.
-  const parts = pattern.split("_");
-  const isIndustryPattern = parts.length > 1 && parts[0].indexOf("UC") === 0;
-  const slug = isIndustryPattern ? parts.slice(1).join("-").toLowerCase() : "";
-  const template = ctx.env.STATE_MACHINE_ARN_TEMPLATE;
-  const stateMachineArn =
-    template && slug ? template.split("{slug}").join(slug) : ctx.env.STATE_MACHINE_ARN;
+  // One state machine per pattern. `backend.ts` publishes each entry of
+  // `config.stateMachineArns` as `SFN_ARN_<prefix>` (for example `SFN_ARN_UC10` for
+  // `UC10_CONSTRUCTION_BIM`). A pattern without its own entry starts STATE_MACHINE_ARN.
+  // An explicit map rather than a naming rule: the stacks deployed from
+  // solutions/industry/ are named in more than one way (`fsxn-uc10-construction-bim`,
+  // `fsxn-construction-bim`, `fsxn-chemical-sds`), so no single rule finds them.
+  // One variable per pattern because an AppSync variable holds at most 512 characters,
+  // which a map of 28 ARNs does not fit.
+  const prefix = pattern.split("_")[0];
+  const stateMachineArn = ctx.env["SFN_ARN_" + prefix] || ctx.env.STATE_MACHINE_ARN;
   if (!stateMachineArn) {
     return util.error(
       "No Step Functions state machine is configured for this deployment. " +
-        "Set stateMachineArn or stateMachineArnTemplate in amplify/portal-config.ts " +
-        "(or AMPLIFY_PORTAL_SFN_ARN / AMPLIFY_PORTAL_SFN_ARN_TEMPLATE) and redeploy.",
+        "Set stateMachineArn (or stateMachineArns for one pattern) in amplify/portal-config.ts " +
+        "(or AMPLIFY_PORTAL_SFN_ARN) and redeploy.",
       "ConfigurationError"
     );
   }
