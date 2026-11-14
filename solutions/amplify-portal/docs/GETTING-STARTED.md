@@ -13,7 +13,7 @@
 | npm | ✅ | 10.x 以上 | `npm --version` |
 | AWS CLI | ✅ | 2.x | `aws --version` |
 | Amplify CLI | ✅ | 最新版 | `npx ampx --version` |
-| FSx for ONTAP | — | ONTAP 9.15+ | DemoMode なら不要。admin 機能に必要 |
+| FSx for ONTAP | — | ONTAP 9.17.1+（2026-11-14 時点の基準） | DemoMode なら不要。admin 機能に必要 |
 | S3 Access Point | — | — | 未作成なら [デプロイガイドの作成手順](../../../docs/ja/deployment-guide.md)（`aws fsx create-and-attach-s3-access-point`）。DemoMode では通常の S3 バケット名で代替 |
 | Bedrock モデルアクセス | — | — | AI 機能を使うときのみ。[AI 機能クイックスタート](../../../docs/ja/ai-features-quick-start.md)（`amazon.nova-lite-v1:0` の有効化） |
 | Docker | — | 24.x 以上 | `docker --version`（Nextcloud 利用時のみ） |

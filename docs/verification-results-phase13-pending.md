@@ -15,7 +15,7 @@
 |---|---------|---------|--------|--------|
 | A-1 | FlexCache volume の ONTAP REST API 経由作成 | FSx for ONTAP + Secrets Manager | FlexCache 作成 API のパラメータ/レスポンス形式が想定と異なる可能性 | **高** |
 | A-2 | FlexCache volume の ONTAP REST API 経由削除 | A-1 で作成した FlexCache | 削除時の volume busy エラーハンドリング | **高** |
-| A-3 | FlexCache prepopulate の実行と完了待ち | A-1 + ONTAP 9.13.1+ | prepopulate の dir_paths 指定形式、ジョブ完了時間 | **高** |
+| A-3 | FlexCache prepopulate の実行と完了待ち | A-1 + ONTAP 9.17.1+（2026-11-14 時点の基準） | prepopulate の dir_paths 指定形式、ジョブ完了時間 | **高** |
 | A-4 | ONTAP 非同期ジョブ (GET /cluster/jobs/{uuid}) のポーリング | A-1 | ジョブ状態遷移（queued→running→success）の実際の挙動 | **高** |
 | A-5 | FlexCache 一覧取得（名前フィルタ） | FSx for ONTAP | list_flexcaches の fields パラメータ互換性 | 中 |
 | A-6 | 冪等性チェック（同名 FlexCache 存在時のスキップ） | A-1 | 409 Conflict レスポンスの実際の形式 | 中 |

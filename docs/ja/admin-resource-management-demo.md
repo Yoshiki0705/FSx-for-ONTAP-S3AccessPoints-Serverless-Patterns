@@ -21,7 +21,7 @@
 | Cognito グループ | `storage-admin`（すべての管理操作に必須） |
 | Lambda の VPC | FSx for ONTAP ファイルシステムと同一 VPC |
 | シークレット | `fsx-ontap-fsxadmin-credentials`（username/password の JSON） |
-| ONTAP バージョン | 9.13.1 以降（ARP/AI は 9.16 以降） |
+| ONTAP バージョン | 9.17.1 以降（2026-11-14 時点の基準。ARP/AI の要件 9.16 以降は満たされる） |
 
 ## クイックスタート（デプロイ）
 

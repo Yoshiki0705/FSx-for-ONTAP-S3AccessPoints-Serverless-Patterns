@@ -43,7 +43,7 @@ graph LR
 
 > 📐 **設計ガイド**: S3 AP のディレクトリ設計、性能特性、PoC チェックリストは [設計考慮事項](../../../docs/design-considerations.md) を参照。
 
-- FSx for ONTAP ファイルシステム（ONTAP 9.12.1 以上）
+- FSx for ONTAP ファイルシステム（ONTAP 9.17.1 以上、2026-11-14 時点）
 - 2 つの SVM（Origin 用 / Cache 用。同一 SVM でも可だが分離を推奨）
 - Secrets Manager に fsxadmin 認証情報が格納済み
 - AWS CLI v2 + `fsx` サブコマンドが利用可能

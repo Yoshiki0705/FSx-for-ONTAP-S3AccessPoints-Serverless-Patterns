@@ -47,7 +47,7 @@ graph LR
 - 2개의 FSx for ONTAP 클러스터 (리전 A 및 리전 B)
 - VPC Peering 설정 완료 (TCP 11104, 11105, ICMP 허용)
 - 각 클러스터의 fsxadmin 자격 증명이 Secrets Manager에 저장
-- ONTAP 9.12.1 이상 (Origin에서 S3 NAS 버킷 지원)
+- ONTAP 9.17.1 이상 (Origin에서 S3 NAS 버킷 지원, 2026-11-14 기준)
 - AWS CLI v2
 
 ## 배포

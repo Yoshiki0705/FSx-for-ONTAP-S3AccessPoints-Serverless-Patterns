@@ -54,7 +54,7 @@ FSx for ONTAP は既にデプロイ済みですか？
 | AWS CLI | v2.15 以上（認証情報設定済み） |
 | SAM CLI | v1.100 以上（`sam build` / `sam deploy` 用） |
 | Python | 3.12 以上（Lambda ランタイムターゲット） |
-| ONTAP バージョン | 9.14.1 以上（S3 AP サポート）; FPolicy mandatory モードは 9.15.1 以上 |
+| ONTAP バージョン | 9.17.1 以上（2026-11-14 時点の基準。稼働中・新規の FSx for ONTAP はすべて 9.17.1 以上のため、S3 Access Points（9.14.1）と FPolicy mandatory モード（9.15.1）の最低版は満たされる） |
 | VPC | FSx for ONTAP がデプロイされた VPC; Lambda 用プライベートサブネットが利用可能 |
 | Secrets Manager | ONTAP 管理者認証情報を JSON シークレットとして格納済み |
 

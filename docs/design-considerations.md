@@ -128,7 +128,7 @@ s3://<ap-alias>/tenant-b/2026/07/22/invoice.csv
 | < 64 KB | メタデータ処理のオーバーヘッドが相対的に大きい | バッチ処理で集約が有利な場面がある |
 | 64 KB – 1 MB | 一般的なドキュメント / JSON サイズ | 多くのサーバーレスパターンで最適なレンジ |
 | > 1 MB | データ転送が支配的。大きいほど Amazon S3 との性能差が縮小する傾向 | Multipart Upload の利用を検討 |
-| 5-50 GB | 単一 PutObject の 5 GB 上限を超える | Multipart Upload 必須（ONTAP 9.16.1+） |
+| 5-50 GB | 単一 PutObject の 5 GB 上限を超える | Multipart Upload 必須（ONTAP 9.16.1 以降で対応。2026-11-14 時点の基準 9.17.1+ で満たされる） |
 | > 50 GB | S3 AP のオブジェクトサイズ上限（50 GB）を超える | 分割、または NFS/SMB 経由で配置 |
 
 ### スループット設計
@@ -213,7 +213,7 @@ FSx for ONTAP S3 AP は「S3 互換」だが「Amazon S3 と同一」ではな�
 | 機能 | S3 AP 対応 | 代替手段 | 備考 |
 |------|:----------:|---------|------|
 | GetObject / PutObject | ✅ | — | オブジェクト上限 50 GB（単一 PutObject は 5 GB） |
-| Multipart Upload | ✅ | — | ONTAP 9.16.1 以上 |
+| Multipart Upload | ✅ | — | ONTAP 9.16.1 以上で対応（2026-11-14 時点の基準 9.17.1+ で満たされる） |
 | ListObjectsV2 | ✅ | — | Prefix / Delimiter / MaxKeys 対応 |
 | HeadObject | ✅ | — | |
 | DeleteObject | ✅ | — | |
@@ -362,7 +362,7 @@ FSx for ONTAP S3 AP を使用するサーバーレスパターンの PoC で確�
 
 - [ ] 条件付き書き込みへの依存有無を確認（Delta Lake / Iceberg 等）
 - [ ] S3 Event Notification への依存有無を確認（FPolicy 代替の要否）
-- [ ] Multipart Upload の要否を確認（ONTAP バージョン要件: 9.16.1+）
+- [ ] Multipart Upload の要否を確認（ONTAP バージョン要件: 9.16.1+。2026-11-14 時点の基準 9.17.1+ で満たされる）
 - [ ] Presigned URL の有効期限が要件に対して短く設定されているか確認
 
 ### セキュリティ

@@ -561,7 +561,7 @@ class OntapClient:
         """FlexCache Prepopulate 実行
 
         指定ディレクトリのデータを事前にキャッシュにフェッチする。
-        ONTAP 9.13.1+ が必要。
+        ONTAP 9.13.1 以降で対応（2026-11-14 時点の基準 9.17.1+ で満たされる）。
 
         Args:
             uuid: FlexCache UUID

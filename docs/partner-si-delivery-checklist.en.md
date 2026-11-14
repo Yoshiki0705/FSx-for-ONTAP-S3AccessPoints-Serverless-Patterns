@@ -48,7 +48,7 @@ Details: [Trigger Mode Decision Guide](trigger-mode-decision-guide.en.md)
 |-------------------|----------|------------|---------------------|
 | Purpose | Functional verification/demo | Production workloads | Regulatory compliance |
 | Event loss | Acceptable | Near-zero | Zero |
-| ONTAP version | 9.14.1+ | 9.15.1+ | 9.15.1+ |
+| ONTAP version | 9.17.1+ | 9.17.1+ | 9.17.1+ |
 | Persistent Store | Not required | Recommended | Required |
 | Idempotency guarantee | Not required | DynamoDB | DynamoDB + S3 Object Lock |
 | Audit trail | Not required | Recommended | Required |

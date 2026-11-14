@@ -19,7 +19,7 @@
 - [ ] NFS マウント成功
 - [ ] SMB アクセス成功（該当する場合）
 - [ ] 読み取りデータの整合性確認
-- [ ] Prepopulate 実行成功（ONTAP 9.13.1+）
+- [ ] Prepopulate 実行成功（ONTAP 9.17.1+、2026-11-14 時点の基準）
 - [ ] FlexCache volume 削除成功
 
 ## Phase 3: S3 AP + FlexCache 検証

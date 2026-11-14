@@ -21,7 +21,7 @@ The request path is Browser → AppSync (Cognito auth) → Lambda (VPC) → ONTA
 | Cognito Group | `storage-admin` (required for all admin operations) |
 | Lambda VPC | Same VPC as FSx for ONTAP file system |
 | Secret | `fsx-ontap-fsxadmin-credentials` (username/password JSON) |
-| ONTAP Version | 9.13.1+ (ARP/AI requires 9.16+) |
+| ONTAP Version | 9.17.1+ (baseline as of 2026-11-14; ARP/AI requires 9.16+, which this meets) |
 
 ## Quick Start (Deploy)
 

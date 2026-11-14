@@ -8,7 +8,7 @@ NetApp パートナーが導入先環境に FSx for ONTAP S3 AP Serverless Patte
 
 ## 1. ONTAP Prerequisites
 
-- [ ] ONTAP バージョン確認: 9.15.1 以上（Persistent Store + protobuf 対応）
+- [ ] ONTAP バージョン確認: 9.17.1 以上（2026-11-14 時点の基準。Persistent Store は 9.14.1、protobuf は 9.15.1 から対応しており満たされる）
 - [ ] FPolicy ポリシーモード: **async non-mandatory**（Persistent Store 必須条件）
 - [ ] SVM 構成確認: SVM 名、管理 LIF IP、データ LIF IP
 - [ ] **ファイルシステム管理 IP 確認**: `aws fsx describe-file-systems --query 'FileSystems[0].OntapConfiguration.Endpoints.Management.IpAddresses[0]'`（fsxadmin はこの IP でのみ認証可能。SVM 管理 IP では不可）

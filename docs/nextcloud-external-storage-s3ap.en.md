@@ -352,7 +352,7 @@ curl -s https://nextcloud.example.com/status.php | jq .
 | Constraint | Impact | Workaround |
 |-----------|--------|-----------|
 | **Presigned URLs (corrected to Supported in 2026-09)** | Nextcloud can generate direct download links via Presigned URL (works as a signed GetObject request) | Option A: Use Presigned URL for direct download (reduces server load). Option B: Proxy through the server process (when revocation after issue and per-access records are required). |
-| **50 GB object size limit (single PUT 5 GB)** | Files above 50 GB cannot be uploaded | Nextcloud uses multipart upload for large files, which covers 5-50 GB. Verify S3 AP multipart support with your ONTAP version (9.15.1+). |
+| **50 GB object size limit (single PUT 5 GB)** | Files above 50 GB cannot be uploaded | Nextcloud uses multipart upload for large files, which covers 5-50 GB. Multipart support is met by the 9.17.1+ baseline (as of 2026-11-14). |
 | **ListObjectsV2 max 1000/request** | Large directories need pagination | Nextcloud handles this automatically via its S3 backend library. |
 | **No S3 event notifications** | Cannot trigger on S3 AP upload events | Use a Nextcloud Flow/Workflow webhook, or a scheduled scan. **FPolicy is not an option**: an upload through the S3 access point raises no FPolicy notification (measured 2026-08-26, ONTAP 9.18.1P3D1). |
 | **AD-joined SVM: DC must be reachable** | If AD DC is down, all S3 AP operations fail (AccessDenied) | Monitor AD DC health. See [AD-Joined SVM S3 AP Prerequisites](./en/ad-joined-svm-s3ap-prerequisites.md). |
@@ -466,4 +466,4 @@ How the two divide responsibilities is in
 
 ---
 
-*Last updated: 2025-07 | Applies to: Nextcloud 25+ / FSx for ONTAP S3 AP (ONTAP 9.14.1+)*
+*Last updated: 2025-07 (ONTAP version statements updated 2026-11-14) | Applies to: Nextcloud 25+ / FSx for ONTAP S3 AP (ONTAP 9.17.1+, baseline as of 2026-11-14)*

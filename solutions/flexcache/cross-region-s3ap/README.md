@@ -49,7 +49,7 @@ graph LR
 - FSx for ONTAP × 2 クラスタ（リージョン A / リージョン B）
 - VPC Peering 確立済み（TCP 11104, 11105, ICMP 許可）
 - 各クラスタの fsxadmin 認証情報が Secrets Manager に格納済み
-- ONTAP 9.12.1 以上（Origin の S3 NAS bucket サポート）
+- ONTAP 9.17.1 以上（Origin の S3 NAS bucket サポート、2026-11-14 時点）
 - AWS CLI v2
 
 ## デプロイ
