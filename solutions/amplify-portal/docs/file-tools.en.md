@@ -14,6 +14,7 @@ The Tools section in the sidebar translates, proofreads and diagrams files on FS
 | Web extraction | URL | Summary, body extraction, or an answer to a question |
 | Image generation | Prompt | Generates an image and saves it as PNG into the target folder. Off by default |
 | Run code | The selected file or text, and a task | The model writes a Python program, runs it in a sandbox with no network, and answers from the output. Shows the answer, the program, and the outcome and output of each run. Off by default |
+| Video analysis | The selected video (mp4, mov, webm, mkv) and a request | Nova 2 Lite watches the video and answers the request (a summary if left empty). It answers in one call, so a video over 50 MB is refused. Off by default |
 | Minutes | The selected recording | Amazon Transcribe transcribes it with speakers separated, and the text model writes a summary, decisions, action items and the main points. Off by default |
 | My use cases | The selected file, or text | Runs a saved template with the input in place of `{{input}}` |
 
@@ -62,6 +63,12 @@ Transcribe takes minutes and AppSync waits at most 30 s for a resolver, so `func
 The minutes prompt forbids inventing an owner or a due date and writes the headings in the language of the recording. The transcript is wrapped in `<input>`, and the system prompt says not to follow instructions inside it. A transcript over 30,000 characters is cut to its first part, and the screen says so.
 
 Transcribe's output goes to a dedicated ordinary S3 bucket (`MinutesTranscriptBucket`: private, encrypted, expires after 1 day), not to the access point. The Lambda role gains `transcribe:StartTranscriptionJob` and `GetTranscriptionJob` (only on `transcription-job/portal-minutes-*`), and `s3:PutObject` and `s3:GetObject` on `transcripts/*` of that bucket. Transcribe reads the input and writes the output with the caller's permissions, so reading the access point uses the existing permission. The viewer role can use it: nothing is written to a user's folder, so it has the same permission as `toolsQuery`.
+## Video Analysis
+When enabled, a Video analysis tab appears. Select a video (mp4, mov, webm, mkv) and type a request (a summary if left empty). The model is `jp.amazon.nova-2-lite-v1:0`, and the video is passed to the Bedrock Converse `video` block as `s3://<access point alias>/<key>`: no upload and no staging bucket. The file checks (boundary, regulated folders, classification, external callers), the extension and the size run in the same order as for minutes, before the model is called. The system prompt says that text and speech inside the video are content to report, never instructions.
+
+AppSync waits at most 30 s, so **one call (`video`) has to finish within 25 s, and only files too large for that are refused.** The model call has a 20 s read timeout and the whole action is cut at 25 s; both answer that the analysis did not finish in time. The size limit is `VIDEO_ANALYSIS_MAX_MB` (default 50). A larger video is refused before the model is called with `file too large for synchronous analysis (limit N MB)`. The basis for the limit is the measurement in "Results for Video Analysis" below. An asynchronous route for videos that do not fit is left for a separate change, if this limit proves too small in practice.
+
+The screen shows the limit and a note that text on screen can lose its last character from one run to the next, so the original video should be checked when accuracy matters. The Lambda role gains only `bedrock:InvokeModel` on the Nova 2 Lite inference profile and the Tokyo and Osaka foundation models. Reading the video uses the existing access point permission. The viewer role can use it. Nothing is written to a user's folder.
 ## Settings
 
 Set through `tools` in `amplify/portal-config.ts` or environment variables. An existing `portal-config.ts` without `tools` falls back to the environment variables.
@@ -72,6 +79,8 @@ Set through `tools` in `amplify/portal-config.ts` or environment variables. An e
 | `AMPLIFY_PORTAL_IMAGE_GENERATION_REGION` | `us-west-2` | Region where the image model is called |
 | `AMPLIFY_PORTAL_IMAGE_GENERATION_MODEL_ID` | `stability.stable-image-core-v1:1` | Image model. An inference profile (`us.` and so on) also works; IAM follows it |
 | `AMPLIFY_PORTAL_WEB_EXTRACT_ENABLED` | `true` | Web extraction |
+| `AMPLIFY_PORTAL_VIDEO_ANALYSIS_ENABLED` | `false` | Video analysis. `tools.videoAnalysis.enabled` in `portal-config.ts` |
+| `AMPLIFY_PORTAL_VIDEO_ANALYSIS_MAX_MB` | `50` | Largest video accepted for analysis (1 to 200). The measured value is the default. `tools.videoAnalysis.maxMegabytes` |
 | `AMPLIFY_PORTAL_MINUTES_ENABLED` | `false` | Minutes. `tools.minutes` in `portal-config.ts`. Only when `true` do the transcript bucket, the Transcribe permissions and the tab exist |
 | `AMPLIFY_PORTAL_CODE_EXECUTION_ENABLED` | `false` | Run code. `tools.codeExecution` in `portal-config.ts`. Only when `true` do the Lambda's `CODE_INTERPRETER_ENABLED`, the IAM statement and the tab exist |
 
@@ -158,6 +167,49 @@ Set through `tools` in `amplify/portal-config.ts` or environment variables. An e
 | The same user sends `minutes-start` for the allowed `other/board.mp3` | The job started |
 
 **Not checked**: speaker separation: the two synthetic voices came back as one speaker (`spk_0`), so the minutes also named `spk_0` as the owner. Accuracy on a real meeting recording was not measured. Long recordings (tens of minutes).
+
+## Results for Video Analysis
+**Checked (automated tests)**: `functions/file-tools/tests/test_file_tools.py` and `tests/components/FileTools.test.tsx`, with the model and S3 stubbed.
+
+- With the setting `false`, nothing runs and the model is not called; an external caller is refused
+- Bedrock gets the access point alias URI, the system prompt holds no file name, and the request is wrapped in `<input>`
+- An unreadable video, one that classification bars from AI, an extension outside the list and a video over the limit do not reach the model. The refusal for size carries the limit in its message, and the limit is a setting
+- A call over 25 s and a read timeout from the model call both answer that the analysis did not finish in time
+- The asynchronous `video-start` and `video-status` do not exist
+- The screen shows the tab only when enabled, shows the limit, the time and the on-screen text note, sends only the file key and the request through `video`, and shows a refusal
+
+**Measuring the limit (2026-11-16, ap-northeast-1)**: events of the shape AppSync sends were invoked directly on a throwaway Lambda (this repository's `index.py` and `shared/`, a least-privilege role, 512 MB), against synthetic videos on an access point on a throwaway volume. The model was `jp.amazon.nova-2-lite-v1:0` and the request was the default summary. Each point was measured 3 times. Times are the whole Lambda invocation. On the size axis, the size was changed through the bitrate of a 60-second video (video only). On the length axis, the length of a test pattern with a sine tone was changed at about 1.5 Mbps.
+
+| Axis | Video | Run 1 | Run 2 | Run 3 | Slowest |
+|---|---|---|---|---|---|
+| Size (60 s) | 4 MB | 6.6 s | 4.9 s | 4.2 s | 6.6 s |
+| | 15 MB | 5.5 s | 5.6 s | 6.1 s | 6.1 s |
+| | 46 MB | 6.9 s | 7.3 s | 7.6 s | 7.6 s |
+| | 90 MB | 8.6 s | 7.9 s | 8.1 s | 8.6 s |
+| | 195 MB | 12.1 s | 11.1 s | 12.0 s | 12.1 s |
+| Length (about 1.5 Mbps) | 10 s (1 MB) | 4.5 s | 4.0 s | 4.8 s | 4.8 s |
+| | 1 min (11 MB) | 7.4 s | 6.3 s | 5.0 s | 7.4 s |
+| | 5 min (56 MB) | 18.1 s | 14.5 s | 13.5 s | 18.1 s |
+| | 7 min (78 MB) | 25.7 s (timed out) | 15.2 s | 18.9 s | 25.7 s |
+| | 10 min (112 MB) | 25.1 s (timed out) | 25.0 s (timed out) | 25.1 s (timed out) | timed out |
+
+**Reading it**: the time follows the length of the video, not its size. A 60-second video took 12.1 s even at 195 MB, while a 10-minute video of the same 112 MB timed out all three times, and a 7-minute one (78 MB) timed out once. The largest point on the length axis that always fit in 25 s is 5 minutes (56 MB, slowest 18.1 s). The size of a file does not tell its length, so the default limit is **50 MB**, just under that 5-minute point; at about 1.5 Mbps it is roughly four and a half minutes. The limit has these edges:
+
+- A long video at a low bitrate can fit in 50 MB and still take more than 25 s. It then answers that the analysis did not finish in time.
+- A short video at a high bitrate is refused above 50 MB even though time would allow it (12 s at 195 MB). Raise `VIDEO_ANALYSIS_MAX_MB` for such videos.
+- All of this is one kind of synthetic video. Real footage, other bitrates and busy periods were not measured. No check on the length of the video was added; if needed, one that reads the length from the `moov` box can be added in a separate change.
+
+**Checked through AppSync, Cognito, the screen and CDK (2026-11-16, ap-northeast-1)**: this build (synchronous only) was deployed to an existing Amplify sandbox with `AMPLIFY_PORTAL_VIDEO_ANALYSIS_ENABLED=true` (CDK, about 210 s; Lambda timeout 30 s, `VIDEO_ANALYSIS_MAX_MB=50`) and checked with two throwaway Cognito users. `viewer` can read only `video/` and `auditor` only `other/`. The videos are the ones from the measurement above.
+
+| What was checked | Result |
+|---|---|
+| The `viewer` user selects the 1-minute, 11 MB video and presses "Analyze the video" | A Japanese answer appeared on screen in 6.1 s from the click |
+| The same user runs the 60-second, 90 MB video | `file too large for synchronous analysis (limit 50 MB)` appeared on screen in 1.5 s |
+| The same user sends the 5-minute, 56 MB video to AppSync | The same refusal (56 MB is over 50 MB) |
+| The same user sends `video-start` and `video-status` | `unknown action` |
+| The `auditor` user sends a video under `video/` | `key is outside the prefixes your groups may access` |
+
+**Not checked**: the quality of the analysis on real footage. On the synthetic videos the model sometimes answered that it could not respond (8 of the 26 answers in this measurement: 8 of 15 on the size axis, which is video-only noise, and 0 of 11 on the length axis). Whether the same happens with real footage is not known.
 
 ## Related Documents
 

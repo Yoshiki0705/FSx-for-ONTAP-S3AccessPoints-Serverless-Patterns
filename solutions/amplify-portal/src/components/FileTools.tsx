@@ -16,12 +16,13 @@ import { Icon, type IconName } from "./Icon";
 
 const client = generateClient<Schema>();
 
-export type ToolTab = "translate" | "proofread" | "diagram" | "webExtract" | "image" | "code" | "minutes" | "useCases";
+export type ToolTab = "translate" | "proofread" | "diagram" | "webExtract" | "image" | "code" | "minutes" | "video" | "useCases";
 
 interface ToolsConfig {
-  tools: { webExtract: boolean; image: boolean; useCases: boolean; code?: boolean; minutes?: boolean };
+  tools: { webExtract: boolean; image: boolean; useCases: boolean; code?: boolean; minutes?: boolean; video?: boolean };
   image: { region: string; modelId: string; crossRegion: boolean } | null;
   code?: { maxRuns: number; runSeconds: number; totalSeconds: number } | null;
+  video?: { extensions: string[]; maxMegabytes: number; seconds: number } | null;
   minutes?: { languages: string[]; extensions: string[]; maxMegabytes: number; minSpeakers: number; maxSpeakers: number } | null;
 }
 interface CodeRun {
@@ -152,7 +153,10 @@ export function FileTools({ selectedFileKey, selectedFolder, canWrite, canSaveUs
   // Minutes
   const [minLanguage, setMinLanguage] = useState("ja-JP");
   const [minSpeakers, setMinSpeakers] = useState(2);
-  const [minJob, setMinJob] = useState<string | null>(null);
+  // A job running in the background: which status action to ask, and what to say if it fails.
+  const [poll, setPoll] = useState<{ action: string; params: Record<string, unknown>; failed: TranslationKeys } | null>(null);
+  // Video analysis
+  const [videoTask, setVideoTask] = useState("");
   // Use cases
   const [useCases, setUseCases] = useState<UseCase[]>([]);
   const [editing, setEditing] = useState<Partial<UseCase> | null>(null);
@@ -179,38 +183,38 @@ export function FileTools({ selectedFileKey, selectedFolder, canWrite, canSaveUs
     if (tab === "useCases") loadUseCases();
   }, [tab, loadUseCases]);
 
-  // While a minutes job runs, ask for its state every 5 s. The job lives in Amazon Transcribe,
-  // so a reload loses only the screen's handle on it.
+  // While a background job runs, ask for its state every 5 s. The job lives in Amazon Transcribe
+  // (minutes) or in a bucket (video), so a reload loses only the screen's handle on it.
   useEffect(() => {
-    if (!minJob) return;
+    if (!poll) return;
     let polls = 0;
     let stopped = false;
     const timer = setInterval(async () => {
       polls += 1;
       try {
-        const out = await callTool("minutes-status", { jobName: minJob });
+        const out = await callTool(poll.action, poll.params);
         if (stopped) return;
         if (out.status === "COMPLETED") {
           setResult(out);
-          setMinJob(null);
+          setPoll(null);
         } else if (out.status === "FAILED") {
-          setError(t("ftMinutesFailed").replace("{reason}", String(out.reason || "")));
-          setMinJob(null);
+          setError(t(poll.failed).replace("{reason}", String(out.reason || "")));
+          setPoll(null);
         } else if (polls >= POLL_LIMIT) {
           setError(t("ftMinutesTimeout"));
-          setMinJob(null);
+          setPoll(null);
         }
       } catch (e) {
         if (stopped) return;
         setError(e instanceof Error ? e.message : String(e));
-        setMinJob(null);
+        setPoll(null);
       }
     }, POLL_MS);
     return () => {
       stopped = true;
       clearInterval(timer);
     };
-  }, [minJob, t]);
+  }, [poll, t]);
   const run = async (fn: () => Promise<void>) => {
     setBusy(true);
     setError("");
@@ -241,6 +245,7 @@ export function FileTools({ selectedFileKey, selectedFolder, canWrite, canSaveUs
     { id: "image", icon: "image", label: "ftTabsImage", show: config?.tools.image ?? false },
     { id: "code", icon: "wrench", label: "ftTabsCode", show: config?.tools.code ?? false },
     { id: "minutes", icon: "users", label: "ftTabsMinutes", show: config?.tools.minutes ?? false },
+    { id: "video", icon: "eye", label: "ftTabsVideo", show: config?.tools.video ?? false },
     { id: "useCases", icon: "sparkles", label: "ftTabsUsecases", show: config?.tools.useCases ?? true },
   ];
   const current = tabs.some((x) => x.id === tab && x.show) ? tab : "translate";
@@ -560,14 +565,14 @@ export function FileTools({ selectedFileKey, selectedFolder, canWrite, canSaveUs
               <input id="ft-min-speakers" type="number" min={config.minutes.minSpeakers} max={config.minutes.maxSpeakers} value={minSpeakers} onChange={(e) => setMinSpeakers(Number(e.target.value))} />
             </div>
           </div>
-          <button type="button" className="btn-primary" disabled={busy || !!minJob || !selectedFileKey} onClick={() => run(async () => {
+          <button type="button" className="btn-primary" disabled={busy || !!poll || !selectedFileKey} onClick={() => run(async () => {
             setResult(null);
             const out = await callTool("minutes-start", { key: selectedFileKey, language: minLanguage, speakers: minSpeakers });
-            setMinJob(String(out.jobName));
+            setPoll({ action: "minutes-status", params: { jobName: String(out.jobName) }, failed: "ftMinutesFailed" });
           })}>
-            <Icon name="users" className="icon-lead" />{busy || minJob ? t("ftRunning") : t("ftMinutesRun")}
+            <Icon name="users" className="icon-lead" />{busy || poll ? t("ftRunning") : t("ftMinutesRun")}
           </button>
-          {minJob && <p className="rm-hint" role="status">{t("ftMinutesWorking")}</p>}
+          {poll?.action === "minutes-status" && <p className="rm-hint" role="status">{t("ftMinutesWorking")}</p>}
           {result && typeof result.result === "string" && (
             <>
               {result.truncated === true && <p className="rm-hint">{t("ftMinutesTruncated")}</p>}
@@ -575,6 +580,31 @@ export function FileTools({ selectedFileKey, selectedFolder, canWrite, canSaveUs
               {textResult(result.result, `${baseName}.minutes.md`)}
             </>
           )}
+        </section>
+      )}
+      {current === "video" && config?.video && (
+        <section role="tabpanel">
+          <div className="ft-notice" role="note">
+            {t("ftVideoNoteSync").replace("{mb}", String(config.video.maxMegabytes)).replace("{seconds}", String(config.video.seconds))}
+            <small>{config.video.extensions.join(", ")}</small>
+            <small>{t("ftVideoCaveat")}</small>
+          </div>
+          {selectedFileKey ? (
+            <div className="ft-file"><Icon name="file-text" className="icon-lead" />{selectedFileKey}</div>
+          ) : (
+            <small>{t("ftVideoNofile")}</small>
+          )}
+          <div className="form-group">
+            <label htmlFor="ft-video-task">{t("ftVideoTask")}</label>
+            <textarea id="ft-video-task" rows={3} value={videoTask} onChange={(e) => setVideoTask(e.target.value)} placeholder={t("ftVideoTaskplaceholder")} />
+          </div>
+          <button type="button" className="btn-primary" disabled={busy || !selectedFileKey} onClick={() => run(async () => {
+            setResult(null);
+            setResult(await callTool("video", { key: selectedFileKey, task: videoTask.trim() || undefined, language: document.documentElement.lang || "ja" }));
+          })}>
+            <Icon name="eye" className="icon-lead" />{busy ? t("ftRunning") : t("ftVideoRun")}
+          </button>
+          {result && typeof result.result === "string" && (<>{folderBlock}{textResult(result.result, `${baseName}.video.md`)}</>)}
         </section>
       )}
       {current === "useCases" && (

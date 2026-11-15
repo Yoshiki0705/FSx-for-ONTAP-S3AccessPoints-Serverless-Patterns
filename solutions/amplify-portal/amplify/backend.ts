@@ -2269,8 +2269,15 @@ api.addLambdaDataSource("AskAboutFileLambdaDataSource", askAboutFileFunction);
 // AMPLIFY_PORTAL_* variables, so an existing portal-config.ts keeps working unchanged.
 // Read through a cast: a portal-config.ts copied before `tools` existed has its own
 // PortalConfig without the field, and must keep compiling.
-const configTools = (config as { tools?: { webExtract?: boolean; imageGeneration?: { enabled?: boolean; region?: string; modelId?: string }; codeExecution?: boolean; minutes?: boolean } }).tools;
+const configTools = (config as { tools?: { webExtract?: boolean; imageGeneration?: { enabled?: boolean; region?: string; modelId?: string }; codeExecution?: boolean; minutes?: boolean; videoAnalysis?: { enabled?: boolean; maxMegabytes?: number } } }).tools;
 const toolsSettings = {
+  // Video analysis: Nova 2 Lite reads the video from the access point in one call. The size limit is
+  // the largest file that answered inside AppSync's 30 s when it was measured (docs/file-tools.md).
+  videoAnalysis:
+    configTools?.videoAnalysis?.enabled ?? process.env.AMPLIFY_PORTAL_VIDEO_ANALYSIS_ENABLED === "true",
+  videoAnalysisMaxMb: Number(
+    configTools?.videoAnalysis?.maxMegabytes ?? process.env.AMPLIFY_PORTAL_VIDEO_ANALYSIS_MAX_MB ?? 50
+  ),
   // Minutes: Amazon Transcribe on a recording, then the text model. Off unless enabled.
   minutes: configTools?.minutes ?? process.env.AMPLIFY_PORTAL_MINUTES_ENABLED === "true",
   // Code execution in the AgentCore built-in Code Interpreter. Off unless enabled.
@@ -2293,10 +2300,15 @@ const toolsSettings = {
 if (!/^[a-z]{2}(-gov)?-[a-z]+-\d$/.test(toolsSettings.imageRegion)) {
   throw new Error(`tools.imageGeneration.region is not a Region name: ${toolsSettings.imageRegion}`);
 }
+if (!Number.isInteger(toolsSettings.videoAnalysisMaxMb) || toolsSettings.videoAnalysisMaxMb < 1 || toolsSettings.videoAnalysisMaxMb > 200) {
+  throw new Error(`tools.videoAnalysis.maxMegabytes must be a whole number from 1 to 200: ${toolsSettings.videoAnalysisMaxMb}`);
+}
 if (!/^[a-z0-9.:-]+$/.test(toolsSettings.imageModelId)) {
   throw new Error(`tools.imageGeneration.modelId is not a model ID: ${toolsSettings.imageModelId}`);
 }
 const TOOLS_MODEL_ID = "jp.anthropic.claude-haiku-4-5-20251001-v1:0";
+const VIDEO_MODEL_ID = "jp.amazon.nova-2-lite-v1:0";
+const videoEnabled = toolsSettings.videoAnalysis;
 // Saved use cases: PK the Cognito username, so a user reads and runs only their own.
 const userUseCasesTable = new dynamodb.Table(dataStack, "UserUseCasesTable", {
   partitionKey: { name: "userId", type: dynamodb.AttributeType.STRING },
@@ -2367,6 +2379,20 @@ const fileToolsRole = new iam.Role(dataStack, "FileToolsLambdaRole", {
               }),
             ]
           : []),
+        // Video analysis: the Nova profile routes to Tokyo and Osaka. Bedrock reads the video from
+        // the access point with this role (s3ApArns above).
+        ...(videoEnabled
+          ? [
+              new iam.PolicyStatement({
+                actions: ["bedrock:InvokeModel"],
+                resources: [
+                  `arn:aws:bedrock:${Aws.REGION}:${Aws.ACCOUNT_ID}:inference-profile/${VIDEO_MODEL_ID}`,
+                  `arn:aws:bedrock:ap-northeast-1::foundation-model/${VIDEO_MODEL_ID.replace(/^jp\./, "")}`,
+                  `arn:aws:bedrock:ap-northeast-3::foundation-model/${VIDEO_MODEL_ID.replace(/^jp\./, "")}`,
+                ],
+              }),
+            ]
+          : []),
         // Minutes: create and read this tool's own jobs, and read and write the transcript
         // folder. Transcribe uses these credentials to read the recording from the access point
         // (s3ApArns above) and to write its output.
@@ -2404,6 +2430,9 @@ const fileToolsFunction = new lambda.Function(dataStack, "FileToolsFunction", {
     IMAGE_GENERATION_REGION: toolsSettings.imageRegion,
     IMAGE_GENERATION_MODEL_ID: toolsSettings.imageModelId,
     CODE_INTERPRETER_ENABLED: String(toolsSettings.codeExecution),
+    VIDEO_ANALYSIS_ENABLED: String(videoEnabled),
+    VIDEO_ANALYSIS_MAX_MB: String(toolsSettings.videoAnalysisMaxMb),
+    VIDEO_MODEL_ID,
     MINUTES_ENABLED: String(!!minutesBucket),
     MINUTES_BUCKET: minutesBucket?.bucketName ?? "",
     CLASSIFICATION_TABLE_NAME: process.env.CLASSIFICATION_TABLE_NAME || "",

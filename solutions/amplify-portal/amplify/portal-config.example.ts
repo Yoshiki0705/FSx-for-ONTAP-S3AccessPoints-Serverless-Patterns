@@ -84,6 +84,7 @@ export interface PortalConfig {
     imageGeneration?: { enabled: boolean; region?: string; modelId?: string };
     codeExecution?: boolean;
     minutes?: boolean;
+    videoAnalysis?: { enabled: boolean; maxMegabytes?: number };
   };
   bedrockKbId: string;
 
@@ -496,6 +497,14 @@ export const config: PortalConfig = {
     // labels, then the text model writes minutes. Adds a private transcript bucket (objects
     // expire after 1 day) and the Transcribe permissions. Off unless enabled.
     minutes: process.env.AMPLIFY_PORTAL_MINUTES_ENABLED === "true",
+    // Video analysis (Nova 2 Lite reads the video straight from the access point, in one call).
+    // maxMegabytes: a larger file is refused before the model is called, because the call has to
+    // finish inside AppSync's 30 s. The default is the measured limit (docs/file-tools.md); raise it
+    // only after measuring your own videos.
+    videoAnalysis: {
+      enabled: process.env.AMPLIFY_PORTAL_VIDEO_ANALYSIS_ENABLED === "true",
+      maxMegabytes: Number(process.env.AMPLIFY_PORTAL_VIDEO_ANALYSIS_MAX_MB || 50),
+    },
   },
 
   /**
