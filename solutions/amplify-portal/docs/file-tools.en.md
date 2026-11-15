@@ -137,7 +137,7 @@ Set through `tools` in `amplify/portal-config.ts` or environment variables. An e
 | What was checked | Result |
 |---|---|
 | Transcribe reads the alias `s3://` URI | It did. The job finished in about 11 s and its output landed under `transcripts/<hash>/` in the bucket |
-| A key with a space and Japanese characters (`minutes/会議 録音.mp3`) | Finished the same way |
+| A key with a space and non-ASCII (Japanese) characters | Finished the same way |
 | `minutes-start` duration (including `head_object` and creating the job) | 1.9 s |
 | `minutes-status` duration (including reading the output and one model call) | 2.0 s |
 | The minutes | A summary, decisions (release on December 5), action items and the main points. The missing due date was written as not stated |
@@ -145,8 +145,9 @@ Set through `tools` in `amplify/portal-config.ts` or environment variables. An e
 | An extension outside the allow list (`.pdf`) | Refused |
 | Another user passing someone else's job name to `minutes-status` | `job not found`; Transcribe was not asked |
 | Shape of `audio_segments` | Carries `speaker_label` and `transcript`, as assumed |
+| Events of the shape AppSync sends, invoked directly on a throwaway Lambda (this repository's `index.py` and `shared/`, with a role of the same least-privilege policy as the CDK) | `minutes-start` 1.6 s, about 15 s from start to completion, minutes returned. Another user got `job not found`. The role's Transcribe and S3 permissions were sufficient |
 
-**Not checked**: a call through AppSync and Cognito, and the screen in a browser. A real deployment (the CDK bucket and IAM; the check ran with administrator credentials, so the Lambda role's least-privilege policy was not exercised). Speaker separation: the two synthetic voices came back as one speaker (`spk_0`), so the minutes also named `spk_0` as the owner. Accuracy on a real meeting recording was not measured. Long recordings (tens of minutes).
+**Not checked**: a call through AppSync and Cognito, and the screen in a browser. Deploying with CDK (the bucket and IAM definitions themselves; the least-privilege check used a throwaway role with the same content written by hand). Speaker separation: the two synthetic voices came back as one speaker (`spk_0`), so the minutes also named `spk_0` as the owner. Accuracy on a real meeting recording was not measured. Long recordings (tens of minutes).
 
 ## Related Documents
 
