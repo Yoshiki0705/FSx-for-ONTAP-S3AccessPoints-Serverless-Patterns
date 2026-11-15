@@ -741,6 +741,34 @@
         "solutions/amplify-portal/docs/file-tools.md",
         "solutions/amplify-portal/docs/file-tools.en.md"
       ]
+    },
+    {
+      "id": "E-020",
+      "claim": "HeadObject on a key that does not exist returns 403 Forbidden, not 404, when the caller lacks s3:ListBucket; through an FSx for ONTAP S3 Access Point too.",
+      "subject": "AWS",
+      "tier": "verified",
+      "premise": true,
+      "sources": [
+        {
+          "url": "https://docs.aws.amazon.com/AmazonS3/latest/API/API_HeadObject.html",
+          "read": "full",
+          "retrieved": "2026-11-15",
+          "says": "If the object doesn't exist, the error depends on s3:ListBucket: with it Amazon S3 returns 404 Not Found, without it 403 Forbidden."
+        }
+      ],
+      "observation": "2026-11-15, ap-northeast-1, Amplify sandbox: the file-tools Lambda role with s3:GetObject and s3:PutObject on the access point got 403 from HeadObject on a not-yet-existing key through an FSx for ONTAP S3 Access Point, so saving a result failed. After adding s3:ListBucket to the role, the same call returned 404 and two saves wrote .en.md and .en-1.md.",
+      "support_inquiry": {
+        "status": "not-needed",
+        "topic": "Documented in the S3 API reference and reproduced through the access point."
+      },
+      "feature_request": {
+        "status": "not-applicable"
+      },
+      "appears_in": [
+        "solutions/amplify-portal/docs/file-tools.md",
+        "solutions/amplify-portal/docs/file-tools.en.md",
+        "solutions/amplify-portal/amplify/backend.ts"
+      ]
     }
   ]
 }
