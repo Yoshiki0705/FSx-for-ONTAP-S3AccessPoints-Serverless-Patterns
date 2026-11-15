@@ -132,7 +132,21 @@ Set through `tools` in `amplify/portal-config.ts` or environment variables. An e
 - The transcript is wrapped in `<input>`, and a run of the same speaker becomes one line. A long transcript is cut to its first part and `truncated` is returned
 - The screen shows the tab only when enabled, sends only the file key, polls every 5 s, shows the minutes on completion, and shows the reason on failure
 
-**Not checked**: deploying, a real Transcribe job, transcribing a recording on the access point (including that Transcribe can read the alias `s3://` URI, and keys with spaces or Japanese characters), the real shape of the speaker labels in `audio_segments`, and a run by two users with different permissions. Speaker separation accuracy was not measured either. The live check is done separately.
+**Checked live (2026-11-16, ap-northeast-1)**: with a throwaway volume, access point and output bucket, the handler in `functions/file-tools/index.py` was called directly from a workstation against real Transcribe, the S3 access point and Bedrock. AppSync and Cognito were not in the path. The recording is a 17-second, 141 KB mp3 made with two Japanese Polly voices. Times are single observations.
+
+| What was checked | Result |
+|---|---|
+| Transcribe reads the alias `s3://` URI | It did. The job finished in about 11 s and its output landed under `transcripts/<hash>/` in the bucket |
+| A key with a space and Japanese characters (`minutes/会議 録音.mp3`) | Finished the same way |
+| `minutes-start` duration (including `head_object` and creating the job) | 1.9 s |
+| `minutes-status` duration (including reading the output and one model call) | 2.0 s |
+| The minutes | A summary, decisions (release on December 5), action items and the main points. The missing due date was written as not stated |
+| A `team-b` user asking for a `minutes/` key; a `team-a` user asking for an `other/` key outside the allowed prefix | Both refused with `key is outside the prefixes your groups may access` (0.0 s). No job was created |
+| An extension outside the allow list (`.pdf`) | Refused |
+| Another user passing someone else's job name to `minutes-status` | `job not found`; Transcribe was not asked |
+| Shape of `audio_segments` | Carries `speaker_label` and `transcript`, as assumed |
+
+**Not checked**: a call through AppSync and Cognito, and the screen in a browser. A real deployment (the CDK bucket and IAM; the check ran with administrator credentials, so the Lambda role's least-privilege policy was not exercised). Speaker separation: the two synthetic voices came back as one speaker (`spk_0`), so the minutes also named `spk_0` as the owner. Accuracy on a real meeting recording was not measured. Long recordings (tens of minutes).
 
 ## Related Documents
 
