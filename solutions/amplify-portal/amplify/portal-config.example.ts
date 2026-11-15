@@ -85,6 +85,7 @@ export interface PortalConfig {
     codeExecution?: boolean;
     minutes?: boolean;
     videoAnalysis?: { enabled: boolean; maxMegabytes?: number };
+    videoGeneration?: { enabled: boolean; outputBucket?: string; region?: string };
   };
   bedrockKbId: string;
 
@@ -504,6 +505,15 @@ export const config: PortalConfig = {
     videoAnalysis: {
       enabled: process.env.AMPLIFY_PORTAL_VIDEO_ANALYSIS_ENABLED === "true",
       maxMegabytes: Number(process.env.AMPLIFY_PORTAL_VIDEO_ANALYSIS_MAX_MB || 50),
+    },
+    // Video generation (Luma Ray v2, us-west-2 only). The prompt and the video are processed and
+    // stored outside Japan, and the Tools screen says so before anything is sent. The output bucket
+    // must already exist in that Region: deploy infrastructure/video-output-bucket.yaml there and use its
+    // BucketName. Enabling without outputBucket stops the deploy.
+    videoGeneration: {
+      enabled: process.env.AMPLIFY_PORTAL_VIDEO_GENERATION_ENABLED === "true",
+      outputBucket: process.env.AMPLIFY_PORTAL_VIDEO_GENERATION_BUCKET || "",
+      region: process.env.AMPLIFY_PORTAL_VIDEO_GENERATION_REGION || "us-west-2",
     },
   },
 

@@ -852,6 +852,17 @@ describe("Two-axis portal authorization", () => {
     expect(exampleSource).toMatch(/aiEnabled: (false|process\.env\.\w+ === "true")/);
   });
 
+  it("stops the deploy when video generation is enabled without an output bucket, naming the key", () => {
+    // The bucket sits in the model's Region, which this stack cannot create, so enabling the tool
+    // without an existing bucket has to fail at synth rather than deploy a tool that cannot work.
+    expect(backendSource).toContain("tools.videoGeneration.outputBucket is required when video generation is enabled");
+    expect(backendSource).toContain("infrastructure/video-output-bucket.yaml");
+  });
+  it("keeps video generation off by default and scopes its permissions to the videos folder", () => {
+    expect(exampleSource).toMatch(/enabled: process\.env\.AMPLIFY_PORTAL_VIDEO_GENERATION_ENABLED === "true"/);
+    expect(backendSource).toContain("arn:aws:s3:::${toolsSettings.videoGenBucket}/videos/*");
+    expect(backendSource).not.toMatch(/arn:aws:s3:::\$\{toolsSettings\.videoGenBucket\}\/\*/);
+  });
   it("keeps MFA at the mode that shipped, and says what it means", () => {
     // Not raised to REQUIRED with the others. Requiring MFA changes what every user has
     // to carry to sign in, which is an organisation's decision rather than a default --

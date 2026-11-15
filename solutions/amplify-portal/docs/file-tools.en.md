@@ -15,6 +15,7 @@ The Tools section in the sidebar translates, proofreads and diagrams files on FS
 | Image generation | Prompt | Generates an image and saves it as PNG into the target folder. Off by default |
 | Run code | The selected file or text, and a task | The model writes a Python program, runs it in a sandbox with no network, and answers from the output. Shows the answer, the program, and the outcome and output of each run. Off by default |
 | Video analysis | The selected video (mp4, mov, webm, mkv) and a request | Nova 2 Lite watches the video and answers the request (a summary if left empty). It answers in one call, so a video over 50 MB is refused. Off by default |
+| Video generation | A prompt | Luma Ray v2 makes a 5-second video, played and downloaded through a link valid for 10 minutes. The model exists only in us-west-2, so the prompt and the video are processed and stored outside Japan. Off by default |
 | Minutes | The selected recording | Amazon Transcribe transcribes it with speakers separated, and the text model writes a summary, decisions, action items and the main points. Off by default |
 | My use cases | The selected file, or text | Runs a saved template with the input in place of `{{input}}` |
 
@@ -52,6 +53,7 @@ When enabled, a Run code tab appears. Given a task (for example: total the sales
 | Runs | At most 2 | A second run fits only when the first failure came back early. A task that does not fit is reported as not finished in time |
 
 The sandbox has no network. Only the selected file you can read (up to 100 KB) or the text you type goes in. The viewer role can use it: it only reads and writes nothing to a folder, so it has the same permission as `toolsQuery` (saving the result still needs a write role, as for the other tools). The Lambda role gains three actions, `bedrock-agentcore:StartCodeInterpreterSession`, `InvokeCodeInterpreter` and `StopCodeInterpreterSession`, on `arn:aws:bedrock-agentcore:<region>:aws:code-interpreter/aws.codeinterpreter.v1` only (the account part is literally `aws`).
+
 ## Minutes
 When enabled, a Minutes tab appears. Select a recording in the file list (mp3, m4a, wav, flac, ogg, mp4, webm; up to 200 MB), then choose the recording's language (ja-JP, en-US, ko-KR, zh-CN, fr-FR, de-DE, es-ES) and the maximum number of speakers (2 to 10).
 
@@ -63,12 +65,26 @@ Transcribe takes minutes and AppSync waits at most 30 s for a resolver, so `func
 The minutes prompt forbids inventing an owner or a due date and writes the headings in the language of the recording. The transcript is wrapped in `<input>`, and the system prompt says not to follow instructions inside it. A transcript over 30,000 characters is cut to its first part, and the screen says so.
 
 Transcribe's output goes to a dedicated ordinary S3 bucket (`MinutesTranscriptBucket`: private, encrypted, expires after 1 day), not to the access point. The Lambda role gains `transcribe:StartTranscriptionJob` and `GetTranscriptionJob` (only on `transcription-job/portal-minutes-*`), and `s3:PutObject` and `s3:GetObject` on `transcripts/*` of that bucket. Transcribe reads the input and writes the output with the caller's permissions, so reading the access point uses the existing permission. The viewer role can use it: nothing is written to a user's folder, so it has the same permission as `toolsQuery`.
+
 ## Video Analysis
 When enabled, a Video analysis tab appears. Select a video (mp4, mov, webm, mkv) and type a request (a summary if left empty). The model is `jp.amazon.nova-2-lite-v1:0`, and the video is passed to the Bedrock Converse `video` block as `s3://<access point alias>/<key>`: no upload and no staging bucket. The file checks (boundary, regulated folders, classification, external callers), the extension and the size run in the same order as for minutes, before the model is called. The system prompt says that text and speech inside the video are content to report, never instructions.
 
 AppSync waits at most 30 s, so **one call (`video`) has to finish within 25 s, and only files too large for that are refused.** The model call has a 20 s read timeout and the whole action is cut at 25 s; both answer that the analysis did not finish in time. The size limit is `VIDEO_ANALYSIS_MAX_MB` (default 50). A larger video is refused before the model is called with `file too large for synchronous analysis (limit N MB)`. The basis for the limit is the measurement in "Results for Video Analysis" below. An asynchronous route for videos that do not fit is left for a separate change, if this limit proves too small in practice.
 
 **The audio is not analyzed.** Nova 2 Lite's video understanding uses the frames only (one per second for videos of 16 minutes or less) and does not process the audio track ([Amazon Nova 2 multimodal understanding](https://docs.aws.amazon.com/nova/latest/nova2-userguide/using-multimodal-models.html), "No audio support"). Use Minutes when what was said matters. The screen shows the limit, that the audio is not analyzed, and that text on screen can lose its last character from one run to the next, so the original video should be checked when accuracy matters. The Lambda role gains only `bedrock:InvokeModel` on the Nova 2 Lite inference profile and the Tokyo and Osaka foundation models. Reading the video uses the existing access point permission. The viewer role can use it. Nothing is written to a user's folder.
+
+## Video Generation
+When enabled, a Video generation tab appears. Type a prompt and choose an aspect ratio (16:9, 9:16) and a resolution (540p, 720p), and `luma.ray-v2:0` makes a 5-second video. **This model exists only in us-west-2 (of 12 Regions checked with `list-foundation-models` on 2026-11-16), so the prompt and the generated video are processed and stored outside Japan.** The screen says so before anything is sent (the same pattern as image generation). Only values that were actually run are allowed. The 2,000-character prompt cap is this tool's own.
+
+Generation takes 36 to 74 s, which does not fit AppSync's 30 s, so the work is split into `video-generate-start` and `video-generate-status`.
+
+1. `video-generate-start`: calls `StartAsyncInvoke` on Bedrock Runtime in us-west-2. The output goes to `s3://<output bucket>/videos/<hash of the user ID>/<uuid>/`. When several are started at once and one gets `ThrottlingException`, it answers that the model is busy.
+2. `video-generate-status`: called by the screen every 5 s. The `invocationArn` the client sends is checked for its shape (Region and a 12-digit account), passed to `GetAsyncInvoke`, and answered "job not found" unless the output location the service reports is the calling user's folder (`videos/<hash>/`). When complete, it returns a presigned URL (10 minutes) for `output.mp4`.
+
+The output bucket is an **existing bucket you name**. An Amplify stack deploys to one Region and the bucket must sit beside the model, so the portal's CDK does not create it. Deploy `infrastructure/video-output-bucket.yaml` in us-west-2 and put its `BucketName` output into `tools.videoGeneration.outputBucket` (or `AMPLIFY_PORTAL_VIDEO_GENERATION_BUCKET`). The bucket is private, encrypted, TLS-only, and expires objects after 1 day. Enabling the tool with an empty `outputBucket` stops the deploy with a message that names `tools.videoGeneration.outputBucket`.
+
+The Lambda role gains `bedrock:InvokeModel` and `StartAsyncInvoke` on the model, `bedrock:InvokeModel` and `GetAsyncInvoke` on the account's `async-invoke/*`, and `s3:PutObject` and `s3:GetObject` on `videos/*` of the output bucket. The presigned URL is signed for the Region endpoint of the output bucket. The viewer role can use it. Nothing is written to a user's folder.
+
 ## Settings
 
 Set through `tools` in `amplify/portal-config.ts` or environment variables. An existing `portal-config.ts` without `tools` falls back to the environment variables.
@@ -79,6 +95,9 @@ Set through `tools` in `amplify/portal-config.ts` or environment variables. An e
 | `AMPLIFY_PORTAL_IMAGE_GENERATION_REGION` | `us-west-2` | Region where the image model is called |
 | `AMPLIFY_PORTAL_IMAGE_GENERATION_MODEL_ID` | `stability.stable-image-core-v1:1` | Image model. An inference profile (`us.` and so on) also works; IAM follows it |
 | `AMPLIFY_PORTAL_WEB_EXTRACT_ENABLED` | `true` | Web extraction |
+| `AMPLIFY_PORTAL_VIDEO_GENERATION_ENABLED` | `false` | Video generation. `tools.videoGeneration.enabled` in `portal-config.ts` |
+| `AMPLIFY_PORTAL_VIDEO_GENERATION_BUCKET` | none | Existing bucket for the videos, in the model's Region. Required when enabled |
+| `AMPLIFY_PORTAL_VIDEO_GENERATION_REGION` | `us-west-2` | Region where the video model is called |
 | `AMPLIFY_PORTAL_VIDEO_ANALYSIS_ENABLED` | `false` | Video analysis. `tools.videoAnalysis.enabled` in `portal-config.ts` |
 | `AMPLIFY_PORTAL_VIDEO_ANALYSIS_MAX_MB` | `50` | Largest video accepted for analysis (1 to 200). The measured value is the default. `tools.videoAnalysis.maxMegabytes` |
 | `AMPLIFY_PORTAL_MINUTES_ENABLED` | `false` | Minutes. `tools.minutes` in `portal-config.ts`. Only when `true` do the transcript bucket, the Transcribe permissions and the tab exist |
@@ -221,6 +240,47 @@ Set through `tools` in `amplify/portal-config.ts` or environment variables. An e
 **Dealing with invented speech**: the model gets no audio, so it invents an answer when asked what was said. Writing "the audio is not given to you; do not describe speech" in the system prompt did not stop that (4 of 4 runs). Adding the same note to the user message made it answer "the audio is not analyzed" for speech, but it then **refused to write out the on-screen text as well** (4 of 4 runs across two wordings). Reading text on screen is worth more in this tool, so the user-message note is not used; the system prompt and the screen's "the audio is not analyzed; use Minutes for what was said" carry it. **Answers about what was said have no basis, as the screen states.**
 
 **Not checked**: other kinds of footage (work recordings, surveillance cameras, screen recordings); a way to make the model itself reliably stop inventing speech.
+
+## Results for Video Generation
+**Checked (automated tests)**: `functions/file-tools/tests/test_file_tools.py`, `tests/components/FileTools.test.tsx` and `tests/infrastructure/backend-assertions.test.ts`.
+
+- With the setting `false`, nothing runs and the model is not called; an external caller is refused
+- A disallowed aspect ratio or resolution, an empty prompt and an over-long prompt are refused before the model. The output folder carries the hash, not the user ID itself
+- Another user's video, a folder that only starts with the caller's folder name, an output location containing `..`, and an ARN from another Region are "job not found" and are not signed
+- The presigned URL is for the model Region's endpoint and valid for 10 minutes
+- The screen shows the tab only when enabled, says before sending that processing is outside Japan, polls every 5 s and shows the video on completion
+- Enabling without an output bucket stops the deploy; the permissions are limited to `videos/*`
+
+**Checked live (2026-11-16, us-west-2 / ap-northeast-1)**: events of the shape AppSync sends were invoked directly on a throwaway Lambda (this repository's `index.py` and `shared/`, with a role of the same least-privilege policy as the CDK). The output bucket came from `infrastructure/video-output-bucket.yaml` deployed to us-west-2. AppSync and Cognito were not in the path. Times are single observations; two videos were made.
+
+| What was checked | Result |
+|---|---|
+| 540p, 16:9 | Start 1.5 s. 36.0 s from the model's submit to its end. Output 960×544, 5.17 s, H.264, about 1.2 MB |
+| 720p, 9:16 | Start 0.9 s. 74.0 s from submit to end (97 s until the 6-second poll saw it). Output 720×1280, about 1.6 MB |
+| Download through the presigned URL | HTTP 200 |
+| Another user passing the same ARN to `video-generate-status` | `job not found`, before and after completion |
+| An ARN from another Region | `job not found`; the model is not asked |
+| `cfn-lint` and deploying `infrastructure/video-output-bucket.yaml` to us-west-2 | Passed |
+
+**Three defects found and fixed in this check**:
+1. `StartAsyncInvoke` failed with `AccessDeniedException`. The call is also authorized as `bedrock:InvokeModel` on the account's `async-invoke/*`, which was added to the role.
+2. The output location the service returns is the folder that was passed with the invocation ID appended and no trailing `/` (`.../<uuid>/<invocation ID>`). The check demanded a trailing `/`, so a finished video was answered "job not found". `output.mp4` sits under that location.
+3. The presigned URL for a us-west-2 bucket was addressed to the global endpoint (`<bucket>.s3.amazonaws.com`), which redirects and then fails with `SignatureDoesNotMatch`. Naming the Region endpoint fixed it.
+
+**Checked through AppSync, Cognito, the screen and CDK (2026-11-16, ap-northeast-1)**: the branch containing this change was deployed to an existing Amplify sandbox with `AMPLIFY_PORTAL_VIDEO_GENERATION_ENABLED=true` (the output bucket is the throwaway one above) and checked with a throwaway Cognito user, in the same environment as the minutes and video analysis checks.
+
+| What was checked | Result |
+|---|---|
+| Deploying with CDK | Succeeded (about 160 s). The Lambda role's permissions are the ones CDK made; `StartAsyncInvoke`, `GetAsyncInvoke` and the presigned URL worked as they were |
+| Opening the Video generation tab | Before anything was sent, it said the model runs in `us-west-2`, that the prompt and the video are processed and stored outside Japan, and that each video is 5 seconds and takes 1 to 2 minutes |
+| A prompt at 540p, 16:9, then "Generate the video" | 69 s from the click until the video appeared. The browser's `<video>` loaded it: 960×544, 5.17 s. The link was addressed to the model Region's endpoint (`<bucket>.s3.us-west-2.amazonaws.com`) |
+| A made-up ARN sent to AppSync | `job not found` |
+
+**Two started at once (2026-11-16, us-west-2)**: calling `video-generate-start` from two threads at the same moment started one (1.5 s, and it completed); the other hit `ThrottlingException` after boto3's default retries and returned "the video model is busy; try again in a minute" in 10.0 s. One observation.
+
+**Price (looked up with the Price List API on 2026-11-16, us-west-2)**: Luma Ray2 is billed as AWS Marketplace usage by the seconds of video generated: `videoMediumFpsStandardRes` at 0.75 USD per second and `videoMediumFpsHdRes` at 1.50 USD per second. Reading 540p as Standard and 720p as HD, one 5-second video is 3.75 USD at 540p and 7.50 USD at 720p (the mapping to resolutions is inferred from the names and was not checked against a bill). Each call costs more than the other Bedrock models here, which is one reason the tool is off by default.
+
+**Not checked**: the quality of the videos. Four videos were made in all on the live checks (three at 540p, one at 720p).
 
 ## Related Documents
 

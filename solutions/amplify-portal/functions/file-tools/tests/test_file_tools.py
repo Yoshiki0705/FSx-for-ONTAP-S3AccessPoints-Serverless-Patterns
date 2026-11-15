@@ -824,3 +824,151 @@ class TestVideoAnalysis:
         for action in ("video-start", "video-status"):
             assert call(m, action=action, key="team-a/clip.mp4", jobId="a" * 32)["success"] is False
         assert not m.video_bedrock.converse.called
+
+
+GEN_BUCKET = "gen-bucket"
+GEN_ARN = "arn:aws:bedrock:us-west-2:123456789012:async-invoke/abc123xyz"
+
+
+def generation_module(enabled: bool = True) -> Any:
+    m = load({"VIDEO_GENERATION_ENABLED": str(enabled).lower(), "VIDEO_GENERATION_BUCKET": GEN_BUCKET})
+    m.gen = MagicMock()
+    m.gen.start_async_invoke.return_value = {"invocationArn": GEN_ARN}
+    m.video_gen_runtime = MagicMock(return_value=m.gen)
+    m.gen_s3 = MagicMock()
+    m.gen_s3.generate_presigned_url.return_value = "https://signed.example/output.mp4"
+    m.video_gen_s3 = MagicMock(return_value=m.gen_s3)
+    return m
+
+
+def gen_job(m: Any, user: str, status: str = "Completed", prefix: str | None = None) -> dict:
+    # What the service returns: the folder it was given, plus the invocation ID, with no trailing slash.
+    folder = prefix or f"videos/{m.user_hash(user)}/f00d/abc123xyz"
+    job = {"status": status, "outputDataConfig": {"s3OutputDataConfig": {"s3Uri": f"s3://{GEN_BUCKET}/{folder}"}}}
+    if status == "Failed":
+        job["failureMessage"] = "content blocked"
+    return job
+
+
+class TestVideoGeneration:
+    def test_it_does_nothing_unless_enabled(self) -> None:
+        m = generation_module(enabled=False)
+        assert call(m, action="video-generate-start", prompt="a rack")["success"] is False
+        assert call(m, action="video-generate-status", invocationArn=GEN_ARN)["success"] is False
+        assert not m.video_gen_runtime.called
+        assert call(m, action="config")["tools"]["videoGeneration"] is False
+
+    def test_config_says_the_model_runs_in_another_region(self) -> None:
+        cfg = call(generation_module(), action="config")
+        assert cfg["videoGeneration"]["region"] == "us-west-2" and cfg["videoGeneration"]["crossRegion"] is True
+
+    def test_an_external_caller_is_refused(self) -> None:
+        m = generation_module()
+        assert call(m, action="video-generate-start", prompt="x", groups=["team-a", "external"])["success"] is False
+        assert not m.gen.start_async_invoke.called
+
+    def test_start_sends_only_values_that_were_run_and_writes_under_the_callers_hash(self) -> None:
+        m = generation_module()
+        out = call(
+            m,
+            action="video-generate-start",
+            prompt="a server rack",
+            aspectRatio="9:16",
+            resolution="720p",
+            userId="alice",
+        )
+        assert out["success"] is True and out["invocationArn"] == GEN_ARN
+        kwargs = m.gen.start_async_invoke.call_args.kwargs
+        assert kwargs["modelId"] == "luma.ray-v2:0"
+        assert kwargs["modelInput"] == {
+            "prompt": "a server rack",
+            "aspect_ratio": "9:16",
+            "resolution": "720p",
+            "duration": "5s",
+        }
+        uri = kwargs["outputDataConfig"]["s3OutputDataConfig"]["s3Uri"]
+        assert uri.startswith(f"s3://{GEN_BUCKET}/videos/{m.user_hash('alice')}/") and uri.endswith("/")
+        assert "alice" not in uri
+
+    def test_other_values_are_refused_before_the_model(self) -> None:
+        m = generation_module()
+        for bad in (
+            {"prompt": ""},
+            {"prompt": "x" * 2001},
+            {"prompt": "x", "aspectRatio": "4:3"},
+            {"prompt": "x", "resolution": "1080p"},
+        ):
+            assert call(m, action="video-generate-start", **bad)["success"] is False
+        assert not m.gen.start_async_invoke.called
+
+    def test_throttling_is_reported_as_busy(self) -> None:
+        from botocore.exceptions import ClientError
+
+        m = generation_module()
+        m.gen.start_async_invoke.side_effect = ClientError(
+            {"Error": {"Code": "ThrottlingException", "Message": "x"}}, "StartAsyncInvoke"
+        )
+        out = call(m, action="video-generate-start", prompt="x")
+        assert out["success"] is False and "busy" in out["error"]
+
+    def test_a_finished_job_returns_a_short_lived_link_to_output_mp4(self) -> None:
+        m = generation_module()
+        m.gen.get_async_invoke.return_value = gen_job(m, "alice")
+        out = call(m, action="video-generate-status", invocationArn=GEN_ARN, userId="alice")
+        assert out["status"] == "COMPLETED" and out["url"] == "https://signed.example/output.mp4"
+        kwargs = m.gen_s3.generate_presigned_url.call_args
+        assert kwargs.kwargs["ExpiresIn"] == 600
+        assert kwargs.kwargs["Params"] == {
+            "Bucket": GEN_BUCKET,
+            "Key": f"videos/{m.user_hash('alice')}/f00d/abc123xyz/output.mp4",
+        }
+
+    def test_a_job_that_wrote_into_another_users_folder_is_not_found_and_not_signed(self) -> None:
+        m = generation_module()
+        m.gen.get_async_invoke.return_value = gen_job(m, "alice")
+        out = call(m, action="video-generate-status", invocationArn=GEN_ARN, userId="bob")
+        assert out["success"] is False and out["error"] == "job not found"
+        assert not m.gen_s3.generate_presigned_url.called
+
+    def test_a_folder_that_only_starts_like_the_callers_is_not_accepted(self) -> None:
+        m = generation_module()
+        for prefix in (f"videos/{m.user_hash('alice')}x/f/", f"videos/{m.user_hash('alice')}/../bob/f/", "other/f/"):
+            m.gen.get_async_invoke.return_value = gen_job(m, "alice", prefix=prefix)
+            assert call(m, action="video-generate-status", invocationArn=GEN_ARN, userId="alice")["success"] is False
+        assert not m.gen_s3.generate_presigned_url.called
+
+    def test_an_arn_that_is_not_an_invocation_here_is_not_found_and_not_asked(self) -> None:
+        m = generation_module()
+        for arn in (
+            "",
+            "x",
+            "arn:aws:bedrock:eu-west-1:123456789012:async-invoke/abc",
+            "arn:aws:s3:::b",
+            GEN_ARN + "/../x",
+        ):
+            assert call(m, action="video-generate-status", invocationArn=arn)["success"] is False
+        assert not m.gen.get_async_invoke.called
+
+    def test_running_and_failed_jobs_are_reported(self) -> None:
+        m = generation_module()
+        m.gen.get_async_invoke.return_value = gen_job(m, "alice", status="InProgress")
+        assert call(m, action="video-generate-status", invocationArn=GEN_ARN, userId="alice")["status"] == "IN_PROGRESS"
+        m.gen.get_async_invoke.return_value = gen_job(m, "alice", status="Failed")
+        out = call(m, action="video-generate-status", invocationArn=GEN_ARN, userId="alice")
+        assert out["status"] == "FAILED" and out["reason"] == "content blocked"
+
+
+class TestVideoGenerationLink:
+    def test_the_link_is_signed_for_the_models_region_endpoint_not_the_global_one(self) -> None:
+        real = load({"VIDEO_GENERATION_ENABLED": "true", "VIDEO_GENERATION_BUCKET": GEN_BUCKET})
+        credentials = {
+            "AWS_ACCESS_KEY_ID": "AKIDEXAMPLE",
+            "AWS_SECRET_ACCESS_KEY": "secret",
+            "AWS_SESSION_TOKEN": "token",
+        }
+        with patch.dict(os.environ, credentials):
+            url = real.video_gen_s3().generate_presigned_url(
+                "get_object", Params={"Bucket": GEN_BUCKET, "Key": "videos/h/f/i/output.mp4"}, ExpiresIn=600
+            )
+        assert url.startswith(f"https://{GEN_BUCKET}.s3.us-west-2.amazonaws.com/videos/h/f/i/output.mp4?")
+        assert "X-Amz-Expires=600" in url

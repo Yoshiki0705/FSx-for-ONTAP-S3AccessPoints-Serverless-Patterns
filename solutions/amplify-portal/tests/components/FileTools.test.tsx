@@ -21,6 +21,13 @@ const videoConfig = {
     video: { extensions: ["mp4", "mov"], maxMegabytes: 20, seconds: 25 },
   }),
 };
+const genConfig = {
+  data: JSON.stringify({
+    success: true,
+    tools: { webExtract: true, image: false, useCases: true, videoGeneration: true },
+    videoGeneration: { region: "us-west-2", modelId: "luma.ray-v2:0", crossRegion: true, aspectRatios: ["16:9", "9:16"], resolutions: ["540p", "720p"], maxPromptChars: 2000 },
+  }),
+};
 const config = (image: boolean, code = false, minutes = false) => ({
   data: JSON.stringify({
     success: true,
@@ -229,5 +236,40 @@ describe("FileTools", () => {
     await screen.findByRole("note");
     fireEvent.click(screen.getByRole("button", { name: /Analyze the video/ }));
     expect((await screen.findByRole("alert")).textContent).toContain("limit 20 MB");
+  });
+
+  it("hides video generation unless the server enables it", async () => {
+    toolsQuery.mockResolvedValue(config(false));
+    renderTools();
+    await waitFor(() => expect(toolsQuery).toHaveBeenCalled());
+    expect(screen.queryByRole("tab", { name: /Video generation/ })).toBeNull();
+  });
+  it("says before anything is sent that video generation runs outside Japan, then polls and plays the video", async () => {
+    let polls = 0;
+    toolsQuery.mockImplementation(async ({ action }: { action: string }) => {
+      if (action === "config") return genConfig;
+      if (action === "video-generate-start") return { data: JSON.stringify({ success: true, invocationArn: "arn:aws:bedrock:us-west-2:123456789012:async-invoke/abc", status: "IN_PROGRESS" }) };
+      polls += 1;
+      return { data: JSON.stringify(polls < 2 ? { success: true, status: "IN_PROGRESS" } : { success: true, status: "COMPLETED", url: "https://signed.example/output.mp4" }) };
+    });
+    renderTools({ initialTab: "videoGen" });
+    const note = await screen.findByRole("note");
+    expect(note.textContent).toContain("us-west-2");
+    expect(note.textContent).toContain("outside Japan");
+    expect(toolsQuery.mock.calls.some((c) => c[0].action === "video-generate-start")).toBe(false);
+    fireEvent.change(screen.getByLabelText("Prompt"), { target: { value: "a data center" } });
+    fireEvent.change(screen.getByLabelText("Resolution"), { target: { value: "720p" } });
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      fireEvent.click(screen.getByRole("button", { name: /Generate the video/ }));
+      await screen.findByRole("status");
+      await vi.advanceTimersByTimeAsync(10000);
+    } finally {
+      vi.useRealTimers();
+    }
+    await waitFor(() => expect(document.querySelector("video")?.getAttribute("src")).toBe("https://signed.example/output.mp4"));
+    const start = toolsQuery.mock.calls.find((c) => c[0].action === "video-generate-start")![0];
+    expect(JSON.parse(start.params)).toEqual({ prompt: "a data center", aspectRatio: "16:9", resolution: "720p" });
+    expect(toolsMutation).not.toHaveBeenCalled();
   });
 });

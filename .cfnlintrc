@@ -14,6 +14,9 @@ templates:
   # scripts/tests/test_cfn_template_coverage.py fails if a template under the lab is
   # missing from this list, and the cfn-lint job in validators.yml is blocking.
   - "infrastructure/shared-backup-vault-lab/cloudformation/*.yaml"
+  # The portal's video generation output bucket (us-west-2). New, so registered here rather than
+  # added to the unlinted ratchet in scripts/tests/test_cfn_template_coverage.py.
+  - "solutions/amplify-portal/infrastructure/video-output-bucket.yaml"
 
 ignore_templates:
   - "shared/cfn/*.yaml"
