@@ -2269,8 +2269,11 @@ api.addLambdaDataSource("AskAboutFileLambdaDataSource", askAboutFileFunction);
 // AMPLIFY_PORTAL_* variables, so an existing portal-config.ts keeps working unchanged.
 // Read through a cast: a portal-config.ts copied before `tools` existed has its own
 // PortalConfig without the field, and must keep compiling.
-const configTools = (config as { tools?: { webExtract?: boolean; imageGeneration?: { enabled?: boolean; region?: string; modelId?: string } } }).tools;
+const configTools = (config as { tools?: { webExtract?: boolean; imageGeneration?: { enabled?: boolean; region?: string; modelId?: string }; codeExecution?: boolean } }).tools;
 const toolsSettings = {
+  // Code execution in the AgentCore built-in Code Interpreter. Off unless enabled.
+  codeExecution:
+    configTools?.codeExecution ?? process.env.AMPLIFY_PORTAL_CODE_EXECUTION_ENABLED === "true",
   webExtract:
     configTools?.webExtract ?? process.env.AMPLIFY_PORTAL_WEB_EXTRACT_ENABLED !== "false",
   imageEnabled:
@@ -2333,6 +2336,20 @@ const fileToolsRole = new iam.Role(dataStack, "FileToolsLambdaRole", {
         }),
         // Classification rules, as ask-about-file reads them.
         new iam.PolicyStatement({ actions: ["dynamodb:GetItem"], resources: [portalSettingsTable.tableArn] }),
+        // Code execution: start, run and stop a session of the built-in Code Interpreter,
+        // and nothing else. The account part of that resource ARN is the literal "aws".
+        ...(toolsSettings.codeExecution
+          ? [
+              new iam.PolicyStatement({
+                actions: [
+                  "bedrock-agentcore:StartCodeInterpreterSession",
+                  "bedrock-agentcore:InvokeCodeInterpreter",
+                  "bedrock-agentcore:StopCodeInterpreterSession",
+                ],
+                resources: [`arn:aws:bedrock-agentcore:${Aws.REGION}:aws:code-interpreter/aws.codeinterpreter.v1`],
+              }),
+            ]
+          : []),
       ],
     }),
   },
@@ -2354,13 +2371,16 @@ const fileToolsFunction = new lambda.Function(dataStack, "FileToolsFunction", {
     IMAGE_GENERATION_ENABLED: String(toolsSettings.imageEnabled),
     IMAGE_GENERATION_REGION: toolsSettings.imageRegion,
     IMAGE_GENERATION_MODEL_ID: toolsSettings.imageModelId,
+    CODE_INTERPRETER_ENABLED: String(toolsSettings.codeExecution),
     CLASSIFICATION_TABLE_NAME: process.env.CLASSIFICATION_TABLE_NAME || "",
     AI_BLOCKED_LEVELS: process.env.AI_BLOCKED_LEVELS || "CONFIDENTIAL,CUI,HIGHLY_RESTRICTED,RESTRICTED",
   },
   layers: [sharedPythonLayer],
   memorySize: 512,
   // Image generation and a long translation can each take tens of seconds; AppSync's own
-  // resolver limit is 30 s, which the frontend surfaces as a timeout.
+  // resolver limit is 30 s, which the frontend surfaces as a timeout. Code execution plans
+  // for 25 s of that (functions/file-tools CODE_TOTAL_SECONDS); raising this does not help,
+  // because AppSync gives up first.
   timeout: Duration.seconds(30),
   description: "GenU-style tools: translate, proofread, diagram, web extraction, image generation, use cases",
 });
