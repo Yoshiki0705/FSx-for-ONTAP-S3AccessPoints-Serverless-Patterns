@@ -72,6 +72,10 @@ describe("Backend Infrastructure Structure", () => {
       // reason as the reader: it reaches the AWS Backup control plane. A write
       // handler, so its role carries StartRestoreJob/PassRole the reader must not.
       "RestoreFunction",
+      // GenU-style tools (translate, proofread, diagram, web extraction, image, use
+      // cases). Outside the VPC: it needs internet egress for web extraction and calls
+      // Bedrock and the S3 Access Points, not the ONTAP management LIF.
+      "FileToolsFunction",
     ];
 
     it("defines all expected Lambda functions", () => {

@@ -77,6 +77,12 @@ export interface PortalConfig {
     shareLinksByRole: Record<string, boolean>;
   };
 
+  // GenU-style tools (Tools section). Optional: when omitted, the AMPLIFY_PORTAL_* variables
+  // below decide, and image generation stays off.
+  tools?: {
+    webExtract?: boolean;
+    imageGeneration?: { enabled: boolean; region?: string; modelId?: string };
+  };
   bedrockKbId: string;
 
   // Bedrock Guardrails (PII detection/masking + content filtering)
@@ -464,6 +470,23 @@ export const config: PortalConfig = {
    * Leave empty to disable full-text search.
    */
   bedrockKbId: process.env.AMPLIFY_PORTAL_BEDROCK_KB_ID || "",
+  /**
+   * GenU-style tools: translate, proofread, diagram and run a saved use case on a file,
+   * extract a web page, and generate an image into a folder.
+   * Image generation is off unless enabled. Its model runs in `region`, which can be
+   * outside Japan: the prompt and the generated image are then processed there, and the
+   * Tools screen says so before the user sends anything.
+   * Web extraction fetches pages from the function (internet egress) and refuses private,
+   * link-local and metadata addresses.
+   */
+  tools: {
+    webExtract: process.env.AMPLIFY_PORTAL_WEB_EXTRACT_ENABLED !== "false",
+    imageGeneration: {
+      enabled: process.env.AMPLIFY_PORTAL_IMAGE_GENERATION_ENABLED === "true",
+      region: process.env.AMPLIFY_PORTAL_IMAGE_GENERATION_REGION || "us-west-2",
+      modelId: process.env.AMPLIFY_PORTAL_IMAGE_GENERATION_MODEL_ID || "stability.stable-image-core-v1:1",
+    },
+  },
 
   /**
    * Bedrock Guardrail ID and version for PII detection/masking.

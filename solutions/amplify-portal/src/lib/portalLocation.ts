@@ -19,7 +19,7 @@ export type Section =
   | "files" | "favorites" | "recent" | "watch" | "upload"
   | "process" | "agent" | "search" | "history" | "analytics"
   | "snapshots" | "arp" | "lock" | "recovery"
-  | "versions" | "audit" | "resources" | "agentDir";
+  | "versions" | "audit" | "resources" | "agentDir" | "tools";
 
 /**
  * Sections that may appear in the URL hash.
@@ -37,7 +37,7 @@ export type Section =
 export const SECTIONS: Section[] = [
   "files", "favorites", "recent", "upload", "process", "agent", "search",
   "history", "analytics", "snapshots", "arp", "lock", "recovery", "versions",
-  "audit", "resources", "agentDir",
+  "audit", "resources", "agentDir", "tools",
 ];
 
 /** Where the hash points. */

@@ -2264,6 +2264,108 @@ const askAboutFileFunction = new lambda.Function(
 
 api.addLambdaDataSource("AskAboutFileLambdaDataSource", askAboutFileFunction);
 
+// --- GenU-style tools (translate, proofread, diagram, web extraction, image, use cases) ---
+// Settings: `config.tools` when the local portal-config.ts has it, otherwise the
+// AMPLIFY_PORTAL_* variables, so an existing portal-config.ts keeps working unchanged.
+// Read through a cast: a portal-config.ts copied before `tools` existed has its own
+// PortalConfig without the field, and must keep compiling.
+const configTools = (config as { tools?: { webExtract?: boolean; imageGeneration?: { enabled?: boolean; region?: string; modelId?: string } } }).tools;
+const toolsSettings = {
+  webExtract:
+    configTools?.webExtract ?? process.env.AMPLIFY_PORTAL_WEB_EXTRACT_ENABLED !== "false",
+  imageEnabled:
+    configTools?.imageGeneration?.enabled ??
+    process.env.AMPLIFY_PORTAL_IMAGE_GENERATION_ENABLED === "true",
+  imageRegion:
+    configTools?.imageGeneration?.region ||
+    process.env.AMPLIFY_PORTAL_IMAGE_GENERATION_REGION ||
+    "us-west-2",
+  imageModelId:
+    configTools?.imageGeneration?.modelId ||
+    process.env.AMPLIFY_PORTAL_IMAGE_GENERATION_MODEL_ID ||
+    "stability.stable-image-core-v1:1",
+};
+if (!/^[a-z]{2}(-gov)?-[a-z]+-\d$/.test(toolsSettings.imageRegion)) {
+  throw new Error(`tools.imageGeneration.region is not a Region name: ${toolsSettings.imageRegion}`);
+}
+if (!/^[a-z0-9.:-]+$/.test(toolsSettings.imageModelId)) {
+  throw new Error(`tools.imageGeneration.modelId is not a model ID: ${toolsSettings.imageModelId}`);
+}
+const TOOLS_MODEL_ID = "jp.anthropic.claude-haiku-4-5-20251001-v1:0";
+// Saved use cases: PK the Cognito username, so a user reads and runs only their own.
+const userUseCasesTable = new dynamodb.Table(dataStack, "UserUseCasesTable", {
+  partitionKey: { name: "userId", type: dynamodb.AttributeType.STRING },
+  sortKey: { name: "useCaseId", type: dynamodb.AttributeType.STRING },
+  billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
+  // Templates somebody wrote; nothing regenerates them.
+  pointInTimeRecoverySpecification: { pointInTimeRecoveryEnabled: true },
+});
+const imageModelArns = toolsSettings.imageModelId.match(/^(us|eu|apac|jp|global)\./)
+  ? [
+      // A cross-Region inference profile, and the model in the Regions it routes to.
+      `arn:aws:bedrock:${toolsSettings.imageRegion}:${Aws.ACCOUNT_ID}:inference-profile/${toolsSettings.imageModelId}`,
+      `arn:aws:bedrock:*::foundation-model/${toolsSettings.imageModelId.replace(/^[a-z]+\./, "")}`,
+    ]
+  : [`arn:aws:bedrock:${toolsSettings.imageRegion}::foundation-model/${toolsSettings.imageModelId}`];
+const fileToolsRole = new iam.Role(dataStack, "FileToolsLambdaRole", {
+  assumedBy: new iam.ServicePrincipal("lambda.amazonaws.com"),
+  managedPolicies: [iam.ManagedPolicy.fromAwsManagedPolicyName("service-role/AWSLambdaBasicExecutionRole")],
+  inlinePolicies: {
+    FileTools: new iam.PolicyDocument({
+      statements: [
+        // Read for the file input, Put for saving results and images into a folder.
+        // ListBucket so that HeadObject on a name not yet taken answers 404: without it S3
+        // answers 403 for a missing key too, and "missing" cannot be told from "denied".
+        new iam.PolicyStatement({ actions: ["s3:GetObject", "s3:PutObject", "s3:ListBucket"], resources: s3ApArns }),
+        new iam.PolicyStatement({
+          actions: ["bedrock:InvokeModel"],
+          resources: [
+            // The jp. profile routes to Tokyo and Osaka.
+            `arn:aws:bedrock:${Aws.REGION}:${Aws.ACCOUNT_ID}:inference-profile/${TOOLS_MODEL_ID}`,
+            `arn:aws:bedrock:ap-northeast-1::foundation-model/${TOOLS_MODEL_ID.replace(/^jp\./, "")}`,
+            `arn:aws:bedrock:ap-northeast-3::foundation-model/${TOOLS_MODEL_ID.replace(/^jp\./, "")}`,
+            ...(toolsSettings.imageEnabled ? imageModelArns : []),
+          ],
+        }),
+        new iam.PolicyStatement({
+          actions: ["dynamodb:GetItem", "dynamodb:PutItem", "dynamodb:DeleteItem", "dynamodb:Query"],
+          resources: [userUseCasesTable.tableArn],
+        }),
+        // Classification rules, as ask-about-file reads them.
+        new iam.PolicyStatement({ actions: ["dynamodb:GetItem"], resources: [portalSettingsTable.tableArn] }),
+      ],
+    }),
+  },
+});
+const fileToolsFunction = new lambda.Function(dataStack, "FileToolsFunction", {
+  runtime: lambda.Runtime.PYTHON_3_13,
+  architecture: lambda.Architecture.ARM_64,
+  handler: "index.handler",
+  code: functionCode("functions/file-tools"),
+  role: fileToolsRole,
+  environment: {
+    GROUP_AP_MAPPING: JSON.stringify(config.groupApMapping || {}),
+    GROUP_PATH_PREFIXES: JSON.stringify(groupPathPrefixes),
+    EXTERNAL_AI_ENABLED: String(config.externalDefaults.aiEnabled),
+    S3_AP_ALIAS: config.s3ApAlias,
+    TOOLS_MODEL_ID,
+    USE_CASES_TABLE_NAME: userUseCasesTable.tableName,
+    WEB_EXTRACT_ENABLED: String(toolsSettings.webExtract),
+    IMAGE_GENERATION_ENABLED: String(toolsSettings.imageEnabled),
+    IMAGE_GENERATION_REGION: toolsSettings.imageRegion,
+    IMAGE_GENERATION_MODEL_ID: toolsSettings.imageModelId,
+    CLASSIFICATION_TABLE_NAME: process.env.CLASSIFICATION_TABLE_NAME || "",
+    AI_BLOCKED_LEVELS: process.env.AI_BLOCKED_LEVELS || "CONFIDENTIAL,CUI,HIGHLY_RESTRICTED,RESTRICTED",
+  },
+  layers: [sharedPythonLayer],
+  memorySize: 512,
+  // Image generation and a long translation can each take tens of seconds; AppSync's own
+  // resolver limit is 30 s, which the frontend surfaces as a timeout.
+  timeout: Duration.seconds(30),
+  description: "GenU-style tools: translate, proofread, diagram, web extraction, image generation, use cases",
+});
+api.addLambdaDataSource("FileToolsLambdaDataSource", fileToolsFunction);
+
 // --- Lambda Data Source for DetectLabels (Rekognition) ---
 const detectLabelsRole = new iam.Role(dataStack, "DetectLabelsLambdaRole", {
   assumedBy: new iam.ServicePrincipal("lambda.amazonaws.com"),

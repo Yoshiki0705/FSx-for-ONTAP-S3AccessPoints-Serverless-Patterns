@@ -6,6 +6,7 @@ import { ResultsViewer } from "./components/ResultsViewer";
 import { JobHistory } from "./components/JobHistory";
 import { LoadingSkeleton } from "./components/LoadingSkeleton";
 import { AiPanel } from "./components/AiPanel";
+import { FileTools, type ToolTab } from "./components/FileTools";
 import { AthenaQueryPanel } from "./components/AthenaQueryPanel";
 import { StorageBrowserTab } from "./components/StorageBrowserTab";
 import { FavoritesView, isFolderKey } from "./components/Favorites";
@@ -65,6 +66,7 @@ const NAV_ITEMS: { id: Section; icon: IconName; labelKey: TranslationKeys; group
   { id: "history", icon: "clipboard-list", labelKey: "navJobHistory", group: "actions" },
   { id: "analytics", icon: "bar-chart", labelKey: "navAnalytics", group: "actions" },
   { id: "agentDir", icon: "folders", labelKey: "navAgentDir", group: "actions" },
+  { id: "tools", icon: "sparkles", labelKey: "navTools", group: "actions" },
   // Data Protection group
   { id: "snapshots", icon: "camera", labelKey: "navSnapshots", group: "protection" },
   { id: "lock", icon: "lock", labelKey: "navLock", group: "protection" },
@@ -145,6 +147,7 @@ function App() {
   const [prefixNonce, setPrefixNonce] = useState(0);
   const [activeJobArn, setActiveJobArn] = useState<string | null>(null);
   const [selectedFileKey, setSelectedFileKey] = useState<string | null>(null);
+  const [toolTab, setToolTab] = useState<ToolTab | undefined>(undefined);
 
   /** Show the file explorer at the given folder, even if it is already there. */
   const openInFiles = (prefix: string) => {
@@ -271,6 +274,7 @@ function App() {
     hiddenSections.add("agent");
     hiddenSections.add("search");
     hiddenSections.add("agentDir");
+    hiddenSections.add("tools");
   }
 
   if (authStatus !== "authenticated") {
@@ -409,6 +413,16 @@ function App() {
             back on from the admin panel; `ExternalAiDenied` means this account is
             external and the switch is a deploy-time setting. Showing the first to an
             external member would send them to a panel they cannot open. */}
+        {activeSection === "tools" && (capabilities?.canUseAi === false ? (
+          <ExternalAiDenied />
+        ) : (
+          <FileTools
+            selectedFileKey={selectedFileKey}
+            selectedFolder={selectedPrefix}
+            canWrite={capabilities?.canWrite ?? false}
+            initialTab={toolTab}
+          />
+        ))}
         {activeSection === "agent" && (capabilities?.canUseAi === false ? (
           <ExternalAiDenied />
         ) : aiAgentEnabled ? (
@@ -483,6 +497,10 @@ function App() {
           <AiPanel
             selectedFileKey={selectedFileKey}
             selectedFileName={selectedFileName}
+            onOpenTool={capabilities?.canUseAi === false ? undefined : (tool) => {
+              setToolTab(tool);
+              setActiveSection("tools");
+            }}
           />
         </aside>
       )}

@@ -45,6 +45,7 @@ AWS はビルディングブロック（S3 API、Cognito、AppSync）を提供�
 | **Multi-Agent Teams** | ロール割当（Supervisor/Collaborator/Reviewer）付きチームウィザード |
 | **KB Smart Routing** | マルチテナントアクセス制御のためのグループベース KB 検索スコープフィルタリング |
 | **Admin Feature Gates** | AI 機能はデフォルト無効、管理パネルから機能単位でトグル |
+| **ツール** | 選択中のファイルの翻訳・校正・図の生成（Mermaid）、Web 抽出、フォルダに保存する画像の生成（既定で無効。us-west-2 で処理）、保存したプロンプトのテンプレート。ファイルの読み取りは AI の質問と同じ境界を通る（[ガイド](docs/file-tools.md)） |
 
 ## アーキテクチャ
 
@@ -132,7 +133,7 @@ sequenceDiagram
 
 ---
 
-## ポータル UI — サイドバーレイアウト（18 セクション）
+## ポータル UI — サイドバーレイアウト（19 セクション）
 
 ![Sidebar Layout](docs/screenshots/portal-sidebar-layout.png)
 *左サイドバー: グループ化されたナビゲーション。中央: アクティブなセクションコンテンツ。右: AI アシスタント（ファイル選択時）。*
@@ -150,6 +151,7 @@ sequenceDiagram
 | | Job History | 過去の実行履歴（DynamoDB、オーナースコープ） |
 | | Analytics | Glue Data Catalog 上の Athena SQL |
 | | Agent Directory | 保存済みエージェント定義の実行・編集・共有 |
+| | ツール | 選択中のファイルの翻訳・校正・図の生成、Web 抽出、フォルダへの画像の生成（既定で無効）、保存したユースケース |
 | **Data Protection** | Snapshots | ONTAP スナップショット一覧 + FlexClone リストア |
 | | Lock | SnapLock (WORM) + S3 Object Lock ステータス |
 | | ARP/AI | Autonomous Ransomware Protection ステータス |

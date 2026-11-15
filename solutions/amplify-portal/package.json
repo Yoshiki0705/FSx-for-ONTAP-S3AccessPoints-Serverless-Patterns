@@ -2,7 +2,7 @@
   "name": "fsxn-s3ap-amplify-portal",
   "version": "0.1.0",
   "private": true,
-  "description": "File portal UI for FSx for ONTAP S3 AP serverless patterns \u2014 Amplify Gen2 + React",
+  "description": "File portal UI for FSx for ONTAP S3 AP serverless patterns — Amplify Gen2 + React",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -32,6 +32,7 @@
     "@tanstack/react-query": "5.107.1",
     "aws-amplify": "^6.0.0",
     "docx-preview": "^0.4.0",
+    "mermaid": "12.3.0",
     "react": "^19.2.8",
     "react-dom": "^19.2.8"
   },

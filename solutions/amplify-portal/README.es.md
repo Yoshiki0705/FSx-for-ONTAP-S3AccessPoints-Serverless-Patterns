@@ -41,6 +41,7 @@ Ver también: [Guía de selección de UI del portal de archivos (Amplify / Nextc
 | **Multi-Agent Teams** | Asistente de equipo con asignación de roles (Supervisor/Collaborator/Reviewer) |
 | **KB Smart Routing** | Filtrado de alcance de búsqueda KB basado en grupos para control de acceso multi-tenant |
 | **Admin Feature Gates** | Funcionalidades AI deshabilitadas por defecto, activables por función desde el panel admin |
+| **Herramientas** | Traducir, revisar y diagramar (Mermaid) el archivo seleccionado, extracción web, generación de imágenes guardadas en la carpeta (desactivada por defecto; se procesa en us-west-2), plantillas de prompt guardadas |
 
 ## Arquitectura
 
@@ -128,7 +129,7 @@ sequenceDiagram
 
 ---
 
-## UI del Portal — Diseño de la barra lateral (18 secciones)
+## UI del Portal — Diseño de la barra lateral (19 secciones)
 
 ![Sidebar Layout](docs/screenshots/portal-sidebar-layout.png)
 *Barra lateral izquierda: navegación agrupada. Centro: contenido de la sección activa. Derecha: asistente AI (al seleccionar archivo).*
@@ -146,6 +147,7 @@ sequenceDiagram
 | | Job History | Ejecuciones pasadas (DynamoDB, ámbito del propietario) |
 | | Analytics | SQL Athena sobre Glue Data Catalog |
 | | Agent Directory | Ejecutar, editar o compartir una definición de agente guardada |
+| | Herramientas | Traducir, revisar y diagramar un archivo, extraer una página web, generar una imagen en una carpeta (desactivado por defecto), casos de uso guardados |
 | **Data Protection** | Snapshots | Lista de snapshots ONTAP + restauración FlexClone |
 | | Lock | SnapLock (WORM) + estado de S3 Object Lock |
 | | ARP/AI | Estado de Autonomous Ransomware Protection |

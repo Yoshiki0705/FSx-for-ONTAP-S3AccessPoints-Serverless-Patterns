@@ -41,6 +41,7 @@ AWS 提供了构建模块（S3 API、Cognito、AppSync），但没有提供集�
 | **Multi-Agent Teams** | 角色分配（Supervisor/Collaborator/Reviewer）团队向导 |
 | **KB Smart Routing** | 多租户访问控制的基于组的 KB 搜索范围过滤 |
 | **Admin Feature Gates** | AI 功能默认禁用，从管理面板按功能切换 |
+| **工具** | 对选中文件翻译、校对、生成图表（Mermaid），网页提取，生成图片并保存到文件夹（默认关闭，在 us-west-2 处理），已保存的提示模板 |
 
 ## 架构
 
@@ -128,7 +129,7 @@ sequenceDiagram
 
 ---
 
-## 门户 UI — 侧边栏布局（18 个部分）
+## 门户 UI — 侧边栏布局（19 个部分）
 
 ![Sidebar Layout](docs/screenshots/portal-sidebar-layout.png)
 *左侧边栏：分组导航。中央：活动部分内容。右侧：AI 助手（文件选择时）。*
@@ -146,6 +147,7 @@ sequenceDiagram
 | | Job History | 历史执行记录（DynamoDB，所有者范围） |
 | | Analytics | 基于 Glue Data Catalog 的 Athena SQL |
 | | Agent Directory | 运行、编辑或共享已保存的代理定义 |
+| | 工具 | 对选中文件进行翻译、校对、生成图表，网页提取，生成图片到文件夹（默认关闭），已保存的用例 |
 | **Data Protection** | Snapshots | ONTAP 快照列表 + FlexClone 恢复 |
 | | Lock | SnapLock (WORM) + S3 Object Lock 状态 |
 | | ARP/AI | Autonomous Ransomware Protection 状态 |

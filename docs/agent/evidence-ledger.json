@@ -713,6 +713,62 @@
         "solutions/genai/japanese-document-ocr-agent/docs/architecture.md",
         "docs/agent/pitfalls-textract.md"
       ]
+    },
+    {
+      "id": "E-019",
+      "claim": "Amazon Bedrock offers no image-output model in ap-northeast-1, and of the 14 Regions checked, text-to-image models (Stability AI Stable Image Core and Ultra, SD3.5 Large) are offered only in us-west-2, on demand, with no cross-Region inference profile.",
+      "subject": "AWS",
+      "tier": "verified",
+      "premise": true,
+      "sources": [
+        {
+          "url": "https://docs.aws.amazon.com/bedrock/latest/userguide/model-card-amazon-nova-canvas.html",
+          "read": "full",
+          "retrieved": "2026-11-14",
+          "says": "Amazon Nova Canvas shows Legacy (EOL: 2026-09-30) for us-east-1, eu-west-1 and ap-northeast-1, with no Geo or Global inference."
+        }
+      ],
+      "observation": "2026-11-14: `aws bedrock list-foundation-models --by-output-modality IMAGE` returned 0 models in ap-northeast-1. In us-west-2 it returned stability.stable-image-core-v1:1, stability.stable-image-ultra-v1:1 and stability.sd3-5-large-v1:0 with inferenceTypesSupported ON_DEMAND, and no us.* inference profile for them (the us.stability.* profiles exist only for the editing models such as upscale and inpaint). us-east-1 listed only the editing models. us-east-2, eu-west-1, eu-central-1, eu-west-3, ap-southeast-1, ap-southeast-2, ap-northeast-2, ap-northeast-3, ap-south-1, ca-central-1 and sa-east-1 listed none of the three. An InvokeModel call to stability.stable-image-core-v1:1 in us-west-2 returned an image (finish_reasons [null]).",
+      "support_inquiry": {
+        "status": "not-needed",
+        "topic": "The model list is an API answer, re-runnable by anyone; the design follows it and the image Region is a setting."
+      },
+      "feature_request": {
+        "status": "not-applicable"
+      },
+      "appears_in": [
+        "CHANGELOG.md",
+        "solutions/amplify-portal/docs/file-tools.md",
+        "solutions/amplify-portal/docs/file-tools.en.md"
+      ]
+    },
+    {
+      "id": "E-020",
+      "claim": "HeadObject on a key that does not exist returns 403 Forbidden, not 404, when the caller lacks s3:ListBucket; through an FSx for ONTAP S3 Access Point too.",
+      "subject": "AWS",
+      "tier": "verified",
+      "premise": true,
+      "sources": [
+        {
+          "url": "https://docs.aws.amazon.com/AmazonS3/latest/API/API_HeadObject.html",
+          "read": "full",
+          "retrieved": "2026-11-15",
+          "says": "If the object doesn't exist, the error depends on s3:ListBucket: with it Amazon S3 returns 404 Not Found, without it 403 Forbidden."
+        }
+      ],
+      "observation": "2026-11-15, ap-northeast-1, Amplify sandbox: the file-tools Lambda role with s3:GetObject and s3:PutObject on the access point got 403 from HeadObject on a not-yet-existing key through an FSx for ONTAP S3 Access Point, so saving a result failed. After adding s3:ListBucket to the role, the same call returned 404 and two saves wrote .en.md and .en-1.md.",
+      "support_inquiry": {
+        "status": "not-needed",
+        "topic": "Documented in the S3 API reference and reproduced through the access point."
+      },
+      "feature_request": {
+        "status": "not-applicable"
+      },
+      "appears_in": [
+        "solutions/amplify-portal/docs/file-tools.md",
+        "solutions/amplify-portal/docs/file-tools.en.md",
+        "solutions/amplify-portal/amplify/backend.ts"
+      ]
     }
   ]
 }

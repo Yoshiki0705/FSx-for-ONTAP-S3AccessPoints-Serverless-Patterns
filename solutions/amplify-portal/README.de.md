@@ -41,6 +41,7 @@ Siehe auch: [UI-Auswahlguide für das Dateiportal (Amplify / Nextcloud / Custom)
 | **Multi-Agent Teams** | Team-Assistent mit Rollenzuweisung (Supervisor/Collaborator/Reviewer) |
 | **KB Smart Routing** | Gruppenbasierte KB-Suchbereichsfilterung für Multi-Tenant-Zugriffskontrolle |
 | **Admin Feature Gates** | AI-Funktionen standardmäßig deaktiviert, pro Funktion vom Admin-Panel umschaltbar |
+| **Werkzeuge** | Übersetzen, Korrekturlesen und Diagramm (Mermaid) der ausgewählten Datei, Web-Extraktion, Bildgenerierung in den Ordner (standardmäßig aus; Verarbeitung in us-west-2), gespeicherte Prompt-Vorlagen |
 
 ## Architektur
 
@@ -128,7 +129,7 @@ sequenceDiagram
 
 ---
 
-## Portal-UI — Seitenleisten-Layout (18 Bereiche)
+## Portal-UI — Seitenleisten-Layout (19 Bereiche)
 
 ![Sidebar Layout](docs/screenshots/portal-sidebar-layout.png)
 *Linke Seitenleiste: gruppierte Navigation. Mitte: aktiver Bereichsinhalt. Rechts: AI-Assistent (bei Dateiauswahl).*
@@ -146,6 +147,7 @@ sequenceDiagram
 | | Job History | Vergangene Ausführungen (DynamoDB, Eigentümer-Bereich) |
 | | Analytics | Athena SQL auf Glue Data Catalog |
 | | Agent Directory | Gespeicherte Agentendefinitionen ausführen, bearbeiten oder teilen |
+| | Werkzeuge | Datei übersetzen, korrekturlesen und als Diagramm darstellen, Webseite extrahieren, Bild in einen Ordner erzeugen (standardmäßig aus), gespeicherte Anwendungsfälle |
 | **Data Protection** | Snapshots | ONTAP-Snapshot-Liste + FlexClone-Wiederherstellung |
 | | Lock | SnapLock (WORM) + S3 Object Lock-Status |
 | | ARP/AI | Autonomous Ransomware Protection-Status |
