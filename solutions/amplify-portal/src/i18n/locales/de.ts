@@ -2166,6 +2166,7 @@ arpResponseSweepNote: "Sperren heben sich nach Ablauf der Frist selbst auf. Für
   ftImageSavedTo: "Das Bild wird im Ordner gespeichert (eine vorhandene Datei mit gleichem Namen wird nicht überschrieben)",
   ftFileName: "Dateiname",
   ftNoWrite: "Zum Speichern in einem Ordner ist Schreibberechtigung nötig.",
+  ftUsecasesNoRole: "Zum Speichern von Anwendungsfällen ist eine Portalrolle nötig. Bitten Sie einen Administrator, Sie einer Gruppe hinzuzufügen.",
   ftOpenTranslate: "Übersetzen",
   ftOpenProofread: "Korrekturlesen",
   ftOpenDiagram: "Diagramm",

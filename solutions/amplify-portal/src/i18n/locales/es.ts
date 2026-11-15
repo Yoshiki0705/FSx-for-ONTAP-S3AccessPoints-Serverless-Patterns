@@ -2161,6 +2161,7 @@ arpResponseSweepNote: "Los bloqueos se levantan por sí solos al vencer el plazo
   ftImageSavedTo: "La imagen se guarda en la carpeta (no se sobrescribe un archivo existente con el mismo nombre)",
   ftFileName: "Nombre del archivo",
   ftNoWrite: "Guardar en una carpeta requiere permiso de escritura.",
+  ftUsecasesNoRole: "Guardar casos de uso requiere un rol del portal. Pida a un administrador que le añada a un grupo.",
   ftOpenTranslate: "Traducir",
   ftOpenProofread: "Revisar",
   ftOpenDiagram: "Diagrama",

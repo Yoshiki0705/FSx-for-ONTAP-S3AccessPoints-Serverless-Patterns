@@ -2,8 +2,9 @@
 
 What matters most is what reaches the model and where writes land:
 - a file outside the caller's boundary is refused before anything reads it;
-- the read mutation cannot write into a folder (only the write mutation's resolver sets
-  `writeOperation`);
+- the query cannot write: only the write mutation's resolver sets `writeOperation`
+  (folder writes) and only the use-case mutation's sets `useCaseOperation` (use cases),
+  and neither flag stands in for the other;
 - web extraction refuses addresses that are not public, on every redirect hop, and
   connects to the address it checked;
 - use cases are keyed by the caller.
@@ -250,22 +251,52 @@ class TestUseCases:
         table.query.return_value = {"Items": []}
         m.use_cases_table = lambda: table
         out = call(
-            m, action="saveUseCase", title="Brief", template="Brief: {{input}}", userId="alice", writeOperation=True
+            m, action="saveUseCase", title="Brief", template="Brief: {{input}}", userId="alice", useCaseOperation=True
         )
         assert out["success"] is True
         assert table.put_item.call_args.kwargs["Item"]["userId"] == "alice"
 
-    @pytest.mark.parametrize("action", ["saveUseCase", "deleteUseCase", "generateImage", "saveResult"])
-    def test_writes_are_refused_through_the_query(self, action: str) -> None:
+    # Each row: the action, the flags its call carries, and the refusal it must get.
+    # The query sets both flags false. The use-case mutation (open to viewers) must not
+    # reach a folder write, and the write mutation must not stand in for it either.
+    @pytest.mark.parametrize(
+        ("action", "flags", "expected"),
+        [
+            ("saveUseCase", {}, "use-case operation"),
+            ("deleteUseCase", {}, "use-case operation"),
+            ("saveUseCase", {"writeOperation": True}, "use-case operation"),
+            ("generateImage", {}, "write operation"),
+            ("saveResult", {}, "write operation"),
+            ("generateImage", {"useCaseOperation": True}, "write operation"),
+            ("saveResult", {"useCaseOperation": True}, "write operation"),
+        ],
+    )
+    def test_writes_need_their_own_endpoint(self, action: str, flags: dict, expected: str) -> None:
         m = load()
         table = MagicMock()
         m.use_cases_table = lambda: table
         out = call(
-            m, action=action, title="t", template="x", useCaseId="uc-1", folder="team-a", content="c", prompt="p"
+            m,
+            action=action,
+            title="t",
+            template="x",
+            useCaseId="uc-1",
+            folder="team-a",
+            content="c",
+            prompt="p",
+            **flags,
         )
-        assert out["success"] is False and "write operation" in out["error"]
+        assert out["success"] is False and expected in out["error"]
         assert not table.put_item.called and not table.delete_item.called
         assert not m.S3ApHelper.return_value.put_object.called
+
+    def test_deleting_a_use_case_is_keyed_by_the_caller(self) -> None:
+        m = load()
+        table = MagicMock()
+        m.use_cases_table = lambda: table
+        out = call(m, action="deleteUseCase", useCaseId="uc-1", userId="alice", useCaseOperation=True)
+        assert out == {"success": True, "deleted": True}
+        assert table.delete_item.call_args.kwargs["Key"] == {"userId": "alice", "useCaseId": "uc-1"}
 
     def test_running_another_users_use_case_finds_nothing(self) -> None:
         m = load()

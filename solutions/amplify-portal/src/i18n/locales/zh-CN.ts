@@ -2151,6 +2151,7 @@ arpResponseSweepNote: "阻止会在设定的期限过后自动解除。如需提
   ftImageSavedTo: "图片会保存到该文件夹（不会覆盖同名文件）",
   ftFileName: "文件名",
   ftNoWrite: "保存到文件夹需要写入权限。",
+  ftUsecasesNoRole: "保存用例需要门户角色。请联系管理员将您加入组。",
   ftOpenTranslate: "翻译",
   ftOpenProofread: "校对",
   ftOpenDiagram: "生成图表",

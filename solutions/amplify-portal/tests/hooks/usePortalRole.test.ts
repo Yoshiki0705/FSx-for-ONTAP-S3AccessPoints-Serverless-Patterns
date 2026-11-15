@@ -49,7 +49,18 @@ describe("capabilitiesFromGroups, with the role rules on", () => {
     expect(caps.canWrite).toBe(false);
     expect(caps.canAudit).toBe(false);
     expect(caps.hasNoRole).toBe(true);
+    expect(caps.canSaveUseCases).toBe(false);
     expect(caps.roles).toEqual([]);
+  });
+
+  it("lets every portal role save use cases, a viewer included", async () => {
+    // A use case is the caller's own template and writes nothing to the file system,
+    // so it does not follow `canWrite`. Mirrors USE_CASE_ROLES in data/resource.ts.
+    const { capabilitiesFromGroups } = await withOutputs(ENFORCED);
+    for (const role of ["viewer", "contributor", "storage-admin", "auditor"]) {
+      expect(capabilitiesFromGroups([role]).canSaveUseCases, role).toBe(true);
+    }
+    expect(capabilitiesFromGroups(["viewer"]).canWrite).toBe(false);
   });
 
   it("separates a viewer from an account with no role at all", async () => {

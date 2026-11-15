@@ -71,6 +71,13 @@ export type PortalCapabilities = {
    * longer lifetimes go away.
    */
   canShareLinks: boolean;
+  /**
+   * Save and delete the caller's own use cases in Tools. `toolsUseCaseMutation` names
+   * every portal role, `viewer` included, because a use case is a personal template
+   * and writes nothing to the file system. Under `enforceRoles`, an account in no group
+   * yet still cannot.
+   */
+  canSaveUseCases: boolean;
   /** Use the AI endpoints: ask-about-file, semantic search, labels, OCR, agent chat. */
   canUseAi: boolean;
   /**
@@ -116,6 +123,7 @@ export function capabilitiesFromGroups(groups: string[]): PortalCapabilities {
     canWrite: !enforceRoles || holdsAny(WRITE_ROLES),
     canAudit: !enforceRoles || holdsAny(AUDIT_ROLES),
     canShareLinks: !isExternal || roleAllowsShareLinks,
+    canSaveUseCases: !enforceRoles || roles.length > 0,
     canUseAi: !isExternal || externalAiEnabled,
     // Not gated on `enforceRoles`: this one is IAM, granted per group in `backend.ts`.
     canUploadDirect: !isExternal && holdsAny(WRITE_ROLES),

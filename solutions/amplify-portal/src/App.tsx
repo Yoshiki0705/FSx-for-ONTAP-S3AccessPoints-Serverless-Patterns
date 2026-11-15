@@ -420,6 +420,7 @@ function App() {
             selectedFileKey={selectedFileKey}
             selectedFolder={selectedPrefix}
             canWrite={capabilities?.canWrite ?? false}
+            canSaveUseCases={capabilities?.canSaveUseCases ?? false}
             initialTab={toolTab}
           />
         ))}

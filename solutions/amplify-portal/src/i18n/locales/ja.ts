@@ -2208,6 +2208,7 @@ arpResponseSweepNote: "ブロックは指定した期限が過ぎると自動で
   ftImageSavedTo: "画像は保存先フォルダに保存されます（同じ名前のファイルは上書きしません）",
   ftFileName: "ファイル名",
   ftNoWrite: "フォルダへの保存には書き込みの権限が要ります。",
+  ftUsecasesNoRole: "ユースケースを保存するには、ポータルのロールが必要です。管理者にグループへの追加を依頼してください。",
   ftOpenTranslate: "翻訳",
   ftOpenProofread: "校正",
   ftOpenDiagram: "図にする",

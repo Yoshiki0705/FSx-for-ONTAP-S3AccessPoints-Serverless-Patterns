@@ -780,6 +780,23 @@ describe("Two-axis portal authorization", () => {
     expect(unguarded).toEqual([]);
   });
 
+  it("splits the tools' folder writes from their use-case writes", () => {
+    // toolsUseCaseMutation is open to viewers. If folder writes ever went through it,
+    // a viewer could write into the file system, so the two must stay separate.
+    const rule = (operation: string) => {
+      const body = dataSchemaSource.slice(dataSchemaSource.indexOf(`${operation}: a`));
+      return body.slice(0, body.indexOf(".handler("));
+    };
+    expect(rule("toolsMutation")).toContain("allow.groups(WRITE_ROLES)");
+    expect(rule("toolsUseCaseMutation")).toContain("allow.groups(USE_CASE_ROLES)");
+    expect(dataSchemaSource).toMatch(/const USE_CASE_ROLES = \[\.\.\.PORTAL_ROLES\]/);
+    const resolver = (file: string) =>
+      readFileSync(resolve(__dirname, "../../amplify/data/resolvers", file), "utf-8");
+    expect(resolver("tools-dispatch.js")).toMatch(/writeOperation: false, useCaseOperation: false \}/);
+    expect(resolver("tools-write-dispatch.js")).toMatch(/writeOperation: true, useCaseOperation: false \}/);
+    expect(resolver("tools-use-case-dispatch.js")).toMatch(/writeOperation: false, useCaseOperation: true \}/);
+  });
+
   it("limits writes to contributor and above", () => {
     const writeRoles = /const WRITE_ROLES = \[([^\]]+)\]/.exec(dataSchemaSource);
     expect(writeRoles).not.toBeNull();

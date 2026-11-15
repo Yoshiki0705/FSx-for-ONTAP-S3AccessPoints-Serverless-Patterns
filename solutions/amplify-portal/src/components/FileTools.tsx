@@ -43,8 +43,15 @@ function capital(s: string): string {
 }
 
 /** Calls the tools Lambda through AppSync and unwraps `{success, error}`. */
-async function callTool(action: string, params: Record<string, unknown>, write = false): Promise<Record<string, unknown>> {
-  const op = write ? client.mutations.toolsMutation : client.queries.toolsQuery;
+/** Which endpoint a call goes through: see the comment on the schema's tools section. */
+type Endpoint = "query" | "write" | "useCase";
+async function callTool(action: string, params: Record<string, unknown>, endpoint: Endpoint = "query"): Promise<Record<string, unknown>> {
+  const op =
+    endpoint === "write"
+      ? client.mutations.toolsMutation
+      : endpoint === "useCase"
+        ? client.mutations.toolsUseCaseMutation
+        : client.queries.toolsQuery;
   const res = await op({ action, params: JSON.stringify(params) });
   if (res.errors?.length) throw new Error(res.errors[0].message);
   const data = (typeof res.data === "string" ? JSON.parse(res.data) : res.data) as Record<string, unknown> | null;
@@ -96,10 +103,12 @@ interface FileToolsProps {
   selectedFileKey: string | null;
   selectedFolder: string;
   canWrite: boolean;
+  /** Save and delete use cases. Separate from canWrite: viewers may, see usePortalRole. */
+  canSaveUseCases: boolean;
   initialTab?: ToolTab;
 }
 
-export function FileTools({ selectedFileKey, selectedFolder, canWrite, initialTab }: FileToolsProps) {
+export function FileTools({ selectedFileKey, selectedFolder, canWrite, canSaveUseCases, initialTab }: FileToolsProps) {
   const { t } = useTranslation();
   const [config, setConfig] = useState<ToolsConfig | null>(null);
   const [tab, setTab] = useState<ToolTab>(initialTab || "translate");
@@ -169,7 +178,7 @@ export function FileTools({ selectedFileKey, selectedFolder, canWrite, initialTa
 
   const save = (content: string, format: "markdown" | "mermaid", name: string) =>
     run(async () => {
-      const out = await callTool("saveResult", { folder, fileName: name, content, format }, true);
+      const out = await callTool("saveResult", { folder, fileName: name, content, format }, "write");
       setNotice(t("ftSaved").replace("{key}", String(out.key)));
     });
 
@@ -407,7 +416,7 @@ export function FileTools({ selectedFileKey, selectedFolder, canWrite, initialTa
               </div>
               <small>{t("ftImageSavedTo")}</small>
               <button type="button" className="btn-primary" disabled={busy || !prompt.trim()} onClick={() => run(async () => {
-                const out = await callTool("generateImage", { prompt, negativePrompt: negative, aspectRatio: aspect, folder, fileName }, true);
+                const out = await callTool("generateImage", { prompt, negativePrompt: negative, aspectRatio: aspect, folder, fileName }, "write");
                 setResult(out);
                 setNotice(t("ftSaved").replace("{key}", String(out.key)));
               })}>
@@ -424,11 +433,11 @@ export function FileTools({ selectedFileKey, selectedFolder, canWrite, initialTa
       {current === "useCases" && (
         <section role="tabpanel">
           <p className="rm-hint">{t("ftUsecasesIntro")}</p>
-          {canWrite ? (
+          {canSaveUseCases ? (
             <button type="button" className="btn-primary" onClick={() => setEditing({ title: "", description: "", template: t("ftUsecasesTemplateexample") })}>{/* i18n-placeholder-checked: {{input}} is the template syntax the user types, shown as is */}
               <Icon name="plus" className="icon-lead" />{t("ftUsecasesNew")}
             </button>
-          ) : <small>{t("ftNoWrite")}</small>}
+          ) : <small>{t("ftUsecasesNoRole")}</small>}
           {editing && (
             <div className="ft-editor">
               <div className="form-group">
@@ -445,7 +454,7 @@ export function FileTools({ selectedFileKey, selectedFolder, canWrite, initialTa
                 <small>{t("ftUsecasesTemplatehelp")}</small>{/* i18n-placeholder-checked: {{input}} is the template syntax, shown as is */}
               </div>
               <div className="ft-actions">
-                <button type="button" className="btn-primary" disabled={busy} onClick={() => run(async () => { await callTool("saveUseCase", editing, true); setEditing(null); loadUseCases(); })}>{t("ftUsecasesSave")}</button>
+                <button type="button" className="btn-primary" disabled={busy} onClick={() => run(async () => { await callTool("saveUseCase", editing, "useCase"); setEditing(null); loadUseCases(); })}>{t("ftUsecasesSave")}</button>
                 <button type="button" className="btn-secondary" onClick={() => setEditing(null)}>{t("ftUsecasesCancel")}</button>
               </div>
             </div>
@@ -460,8 +469,8 @@ export function FileTools({ selectedFileKey, selectedFolder, canWrite, initialTa
                   </div>
                   <div className="ft-actions">
                     <button type="button" className="btn-secondary btn-sm" aria-label={t("ftUsecasesRun")} onClick={() => { setActive(u); setResult(null); }}><Icon name="zap" /></button>
-                    {canWrite && <button type="button" className="btn-secondary btn-sm" aria-label={t("ftUsecasesEdit")} onClick={() => setEditing(u)}><Icon name="pencil" /></button>}
-                    {canWrite && <button type="button" className="btn-secondary btn-sm" aria-label={t("ftUsecasesDelete")} onClick={() => run(async () => { await callTool("deleteUseCase", { useCaseId: u.useCaseId }, true); if (active?.useCaseId === u.useCaseId) setActive(null); loadUseCases(); })}><Icon name="trash" /></button>}
+                    {canSaveUseCases && <button type="button" className="btn-secondary btn-sm" aria-label={t("ftUsecasesEdit")} onClick={() => setEditing(u)}><Icon name="pencil" /></button>}
+                    {canSaveUseCases && <button type="button" className="btn-secondary btn-sm" aria-label={t("ftUsecasesDelete")} onClick={() => run(async () => { await callTool("deleteUseCase", { useCaseId: u.useCaseId }, "useCase"); if (active?.useCaseId === u.useCaseId) setActive(null); loadUseCases(); })}><Icon name="trash" /></button>}
                   </div>
                 </li>
               ))}

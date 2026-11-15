@@ -2,6 +2,7 @@ import { type ClientSchema, a, defineData } from "@aws-amplify/backend";
 
 import { config } from "../portal-config";
 import {
+  PORTAL_ROLES,
   ROLE_AUDITOR,
   ROLE_CONTRIBUTOR,
   ROLE_STORAGE_ADMIN,
@@ -50,6 +51,17 @@ const WRITE_ROLES = [ROLE_CONTRIBUTOR, ROLE_STORAGE_ADMIN];
  * imply read access to everybody else's activity.
  */
 const AUDIT_ROLES = [ROLE_AUDITOR, ROLE_STORAGE_ADMIN];
+
+/**
+ * Saved use cases (functions/file-tools): every portal role, `viewer` included.
+ *
+ * A use case is the caller's own prompt template, stored under their user ID in a
+ * table of its own. Saving one writes nothing to the file system and reads no file,
+ * so it is not a write in the sense of `WRITE_ROLES`. It stays a guarded rule rather
+ * than `allow.authenticated()` so that, with roles enforced, an account placed in no
+ * group yet cannot store data either.
+ */
+const USE_CASE_ROLES = [...PORTAL_ROLES];
 
 /**
  * AppSync GraphQL schema for the File Portal.
@@ -552,9 +564,12 @@ const schema = a.schema({
   // toolsQuery: config, translate, proofread, diagram, webExtract, listUseCases,
   //   runUseCase. Nothing persistent is written; any signed-in user. The handler applies
   //   the file boundary to `key`.
-  // toolsMutation: saveUseCase, deleteUseCase, generateImage, saveResult. Writes, so the
-  //   write roles only. Its resolver sets writeOperation=true; the query's sets it to
-  //   false, and the handler refuses these actions without it.
+  // toolsMutation: generateImage, saveResult. Writes into a folder, so the write roles
+  //   only. Its resolver sets writeOperation=true; the other two set it to false, and
+  //   the handler refuses these actions without it.
+  // toolsUseCaseMutation: saveUseCase, deleteUseCase. The caller's own templates, so
+  //   every portal role (USE_CASE_ROLES). Its resolver sets useCaseOperation=true; the
+  //   other two set it to false, and the handler refuses these actions without it.
   // =========================================================================
   toolsQuery: a
     .query()
@@ -573,6 +588,17 @@ const schema = a.schema({
       )
     )
     .handler(a.handler.custom({ dataSource: "FileToolsLambdaDataSource", entry: "./resolvers/tools-write-dispatch.js" })),
+  toolsUseCaseMutation: a
+    .mutation()
+    .arguments({ action: a.string().required(), params: a.json() })
+    .returns(a.json())
+    .authorization((allow) =>
+      rolesOrAuthenticated(
+        () => allow.authenticated(),
+        () => allow.groups(USE_CASE_ROLES)
+      )
+    )
+    .handler(a.handler.custom({ dataSource: "FileToolsLambdaDataSource", entry: "./resolvers/tools-use-case-dispatch.js" })),
   // --- AI/Analytics (unique data sources — keep as-is) ---
   askAboutFile: a
     .mutation()
