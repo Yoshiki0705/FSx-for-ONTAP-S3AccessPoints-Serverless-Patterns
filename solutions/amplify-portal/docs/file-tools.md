@@ -147,7 +147,17 @@ Transcribe の出力先は、アクセスポイントではなく専用の通常
 | `audio_segments` の形 | `speaker_label` と `transcript` を持つ。想定どおり |
 | 使い捨ての Lambda（このリポジトリの `index.py` と `shared/`、CDK と同じ最小権限のロール）に、AppSync が送る形のイベントを直接送る | `minutes-start` 1.6 秒、開始から完了まで約 15 秒、議事録が返った。他の利用者は `job not found`。ロールの Transcribe と S3 の権限は足りていた |
 
-**確認していないこと**: AppSync と Cognito を通した呼び出しと画面（ブラウザ）での表示。CDK でのデプロイ（バケットと IAM の定義そのもの。最小権限の確認は、手で同じ内容を書いた使い捨てのロールで行いました）。話者の分離: 声の違う 2 人の合成音声が 1 人（`spk_0`）にまとまり、そのため議事録の担当者も `spk_0` になりました。分離の精度は、実際の会議の録音では測っていません。長い録音（数十分）。
+**AppSync、Cognito、画面、CDK を通した確認（2026-11-16、ap-northeast-1）**: この変更を含むブランチを、既存の Amplify sandbox に `AMPLIFY_PORTAL_MINUTES_ENABLED=true` でデプロイし（CDK、約 160 秒）、使い捨ての Cognito 利用者 2 人（`viewer` と `auditor`。どちらも `internal`）でサインインしました。アクセスポイントは使い捨てのボリューム上のもので、許可するプレフィックスは `viewer` が `minutes/` と `video/`、`auditor` が `other/` です。画面は `npm run dev` で開き、AppSync への直接の呼び出しはサインインしたブラウザのトークンで行いました。
+
+| 確認したこと | 結果 |
+|---|---|
+| `viewer` の利用者がファイルの一覧を開く | `minutes` と `video` だけが見え、`other` は見えない |
+| 同じ利用者が `minutes/meeting.mp3` を選び、「議事録」のタブで「議事録を作る」 | 21 秒で議事録が画面に出た。閲覧ロール（書き込みなし）で使えた。CDK が作った出力バケットと IAM のロールで動いた |
+| `auditor` の利用者が `minutes/meeting.mp3` で `minutes-start` を AppSync に送る | `key is outside the prefixes your groups may access` |
+| 同じ利用者が、`viewer` の利用者のジョブ名で `minutes-status` を送る | `job not found` |
+| 同じ利用者が、許可内の `other/board.mp3` で `minutes-start` を送る | ジョブが始まった |
+
+**確認していないこと**: 話者の分離: 声の違う 2 人の合成音声が 1 人（`spk_0`）にまとまり、そのため議事録の担当者も `spk_0` になりました。分離の精度は、実際の会議の録音では測っていません。長い録音（数十分）。
 
 ## 関連ドキュメント
 

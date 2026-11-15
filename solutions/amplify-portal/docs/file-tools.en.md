@@ -147,7 +147,17 @@ Set through `tools` in `amplify/portal-config.ts` or environment variables. An e
 | Shape of `audio_segments` | Carries `speaker_label` and `transcript`, as assumed |
 | Events of the shape AppSync sends, invoked directly on a throwaway Lambda (this repository's `index.py` and `shared/`, with a role of the same least-privilege policy as the CDK) | `minutes-start` 1.6 s, about 15 s from start to completion, minutes returned. Another user got `job not found`. The role's Transcribe and S3 permissions were sufficient |
 
-**Not checked**: a call through AppSync and Cognito, and the screen in a browser. Deploying with CDK (the bucket and IAM definitions themselves; the least-privilege check used a throwaway role with the same content written by hand). Speaker separation: the two synthetic voices came back as one speaker (`spk_0`), so the minutes also named `spk_0` as the owner. Accuracy on a real meeting recording was not measured. Long recordings (tens of minutes).
+**Checked through AppSync, Cognito, the screen and CDK (2026-11-16, ap-northeast-1)**: the branch containing this change was deployed to an existing Amplify sandbox with `AMPLIFY_PORTAL_MINUTES_ENABLED=true` (CDK, about 160 s), and two throwaway Cognito users signed in (`viewer` and `auditor`, both also `internal`). The access point is on a throwaway volume. The allowed prefixes are `minutes/` and `video/` for `viewer`, and `other/` for `auditor`. The screen ran from `npm run dev`, and direct AppSync calls used the signed-in browser's token.
+
+| What was checked | Result |
+|---|---|
+| The `viewer` user opens the file list | Only `minutes` and `video` are visible; `other` is not |
+| The same user selects `minutes/meeting.mp3` and presses "Make minutes" on the Minutes tab | The minutes appeared on screen in 21 s. The viewer role (no write permission) could use it, with the output bucket and IAM role that CDK created |
+| The `auditor` user sends `minutes-start` to AppSync for `minutes/meeting.mp3` | `key is outside the prefixes your groups may access` |
+| The same user sends `minutes-status` with the `viewer` user's job name | `job not found` |
+| The same user sends `minutes-start` for the allowed `other/board.mp3` | The job started |
+
+**Not checked**: speaker separation: the two synthetic voices came back as one speaker (`spk_0`), so the minutes also named `spk_0` as the owner. Accuracy on a real meeting recording was not measured. Long recordings (tens of minutes).
 
 ## Related Documents
 
