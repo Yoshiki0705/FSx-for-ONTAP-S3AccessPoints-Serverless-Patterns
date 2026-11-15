@@ -10,6 +10,7 @@ What matters most is what reaches the model and where writes land:
 
 `S3ApHelper`, Bedrock, DNS and the HTTP request are stubbed.
 """
+
 from __future__ import annotations
 
 import importlib.util
@@ -110,11 +111,19 @@ class TestWrites:
         m = load()
         png = b"\x89PNG fake"
         client = MagicMock()
-        client.invoke_model.return_value = {"body": MagicMock(read=lambda: json.dumps({"images": [__import__("base64").b64encode(png).decode()], "finish_reasons": [None]}).encode())}
+        client.invoke_model.return_value = {
+            "body": MagicMock(
+                read=lambda: json.dumps(
+                    {"images": [__import__("base64").b64encode(png).decode()], "finish_reasons": [None]}
+                ).encode()
+            )
+        }
         m.image_client = lambda: client
         helper = m.S3ApHelper.return_value
         helper.head_object.side_effect = [{"ContentLength": 1}, S3ApHelperError("missing", error_code="404")]
-        out = call(m, action="generateImage", folder="team-a/images", fileName="rack", prompt="a rack", writeOperation=True)
+        out = call(
+            m, action="generateImage", folder="team-a/images", fileName="rack", prompt="a rack", writeOperation=True
+        )
         assert out["success"] is True
         assert out["key"] == "team-a/images/rack-1.png"
         helper.put_object.assert_called_once()
@@ -174,13 +183,19 @@ class TestWebExtraction:
 
     def test_a_host_with_any_private_answer_is_refused(self) -> None:
         m = load()
-        with patch.object(m.socket, "getaddrinfo", return_value=[(0, 0, 0, "", (ip(93, 184, 216, 34), 0)), (0, 0, 0, "", (ip(10, 1, 2, 3), 0))]):
+        with patch.object(
+            m.socket,
+            "getaddrinfo",
+            return_value=[(0, 0, 0, "", (ip(93, 184, 216, 34), 0)), (0, 0, 0, "", (ip(10, 1, 2, 3), 0))],
+        ):
             with pytest.raises(m.ToolError):
                 m.resolve_public("example.com")
 
     def test_every_redirect_hop_is_checked_and_the_checked_address_is_used(self) -> None:
         m = load()
-        m.resolve = lambda host: ip(93, 184, 216, 34) if host == "example.com" else (_ for _ in ()).throw(m.ToolError("not allowed"))
+        m.resolve = lambda host: (
+            ip(93, 184, 216, 34) if host == "example.com" else (_ for _ in ()).throw(m.ToolError("not allowed"))
+        )
         connected: list[str] = []
 
         def request(parts: Any, address: str) -> tuple[int, dict, bytes]:
@@ -196,7 +211,11 @@ class TestWebExtraction:
     def test_the_visible_text_of_a_page_reaches_the_model(self) -> None:
         m = load()
         m.resolve = lambda host: ip(93, 184, 216, 34)
-        m.request_page = lambda parts, address: (200, {"content-type": "text/html; charset=utf-8"}, b"<title>T</title><script>evil()</script><h1>Hello</h1><p>World &amp; more</p>")
+        m.request_page = lambda parts, address: (
+            200,
+            {"content-type": "text/html; charset=utf-8"},
+            b"<title>T</title><script>evil()</script><h1>Hello</h1><p>World &amp; more</p>",
+        )
         out = call(m, action="webExtract", url="https://example.com/", task="summary")
         assert out["success"] is True and out["title"] == "T"
         sent = model_input(m)
@@ -206,7 +225,9 @@ class TestWebExtraction:
 class TestDiagramAndProofread:
     def test_click_handlers_and_init_directives_are_dropped(self) -> None:
         m = load()
-        code = m.extract_mermaid('```mermaid\n%%{init: {"securityLevel":"loose"}}%%\nflowchart TD\nA-->B\nclick A "javascript:alert(1)"\n```')
+        code = m.extract_mermaid(
+            '```mermaid\n%%{init: {"securityLevel":"loose"}}%%\nflowchart TD\nA-->B\nclick A "javascript:alert(1)"\n```'
+        )
         assert code == "flowchart TD\nA-->B"
 
     def test_output_that_is_not_mermaid_is_rejected(self) -> None:
@@ -216,7 +237,9 @@ class TestDiagramAndProofread:
 
     def test_proofreading_json_in_a_fence(self) -> None:
         m = load()
-        out = m.parse_proofread('```json\n{"corrected":"Fixed","issues":[{"original":"teh","suggestion":"the","reason":"typo"}]}\n```')
+        out = m.parse_proofread(
+            '```json\n{"corrected":"Fixed","issues":[{"original":"teh","suggestion":"the","reason":"typo"}]}\n```'
+        )
         assert out == {"corrected": "Fixed", "issues": [{"original": "teh", "suggestion": "the", "reason": "typo"}]}
 
 
@@ -226,7 +249,9 @@ class TestUseCases:
         table = MagicMock()
         table.query.return_value = {"Items": []}
         m.use_cases_table = lambda: table
-        out = call(m, action="saveUseCase", title="Brief", template="Brief: {{input}}", userId="alice", writeOperation=True)
+        out = call(
+            m, action="saveUseCase", title="Brief", template="Brief: {{input}}", userId="alice", writeOperation=True
+        )
         assert out["success"] is True
         assert table.put_item.call_args.kwargs["Item"]["userId"] == "alice"
 
@@ -235,7 +260,9 @@ class TestUseCases:
         m = load()
         table = MagicMock()
         m.use_cases_table = lambda: table
-        out = call(m, action=action, title="t", template="x", useCaseId="uc-1", folder="team-a", content="c", prompt="p")
+        out = call(
+            m, action=action, title="t", template="x", useCaseId="uc-1", folder="team-a", content="c", prompt="p"
+        )
         assert out["success"] is False and "write operation" in out["error"]
         assert not table.put_item.called and not table.delete_item.called
         assert not m.S3ApHelper.return_value.put_object.called

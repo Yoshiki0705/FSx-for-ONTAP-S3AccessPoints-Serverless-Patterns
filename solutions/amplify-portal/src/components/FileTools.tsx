@@ -425,7 +425,7 @@ export function FileTools({ selectedFileKey, selectedFolder, canWrite, initialTa
         <section role="tabpanel">
           <p className="rm-hint">{t("ftUsecasesIntro")}</p>
           {canWrite ? (
-            <button type="button" className="btn-primary" onClick={() => setEditing({ title: "", description: "", template: t("ftUsecasesTemplateexample") })}>
+            <button type="button" className="btn-primary" onClick={() => setEditing({ title: "", description: "", template: t("ftUsecasesTemplateexample") })}>{/* i18n-placeholder-checked: {{input}} is the template syntax the user types, shown as is */}
               <Icon name="plus" className="icon-lead" />{t("ftUsecasesNew")}
             </button>
           ) : <small>{t("ftNoWrite")}</small>}
@@ -442,7 +442,7 @@ export function FileTools({ selectedFileKey, selectedFolder, canWrite, initialTa
               <div className="form-group">
                 <label htmlFor="ft-uc-template">{t("ftUsecasesTemplate")}</label>
                 <textarea id="ft-uc-template" rows={6} value={editing.template || ""} onChange={(e) => setEditing({ ...editing, template: e.target.value })} />
-                <small>{t("ftUsecasesTemplatehelp")}</small>
+                <small>{t("ftUsecasesTemplatehelp")}</small>{/* i18n-placeholder-checked: {{input}} is the template syntax, shown as is */}
               </div>
               <div className="ft-actions">
                 <button type="button" className="btn-primary" disabled={busy} onClick={() => run(async () => { await callTool("saveUseCase", editing, true); setEditing(null); loadUseCases(); })}>{t("ftUsecasesSave")}</button>

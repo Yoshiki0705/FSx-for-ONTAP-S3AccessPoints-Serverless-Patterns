@@ -67,6 +67,7 @@ See also: [File Portal UI Selection Guide (Amplify / Nextcloud / Custom)](../../
 | **Multi-Agent Teams** | Team wizard with role assignment (Supervisor/Collaborator/Reviewer) |
 | **KB Smart Routing** | Group-based KB search scope filtering for multi-tenant access control |
 | **Admin Feature Gates** | AI features disabled by default, toggled per-feature from admin panel |
+| **Tools** | Translate / proofread / diagram (Mermaid) the selected file, web extraction, image generation saved into the folder (off by default; runs in us-west-2), and saved prompt templates. File reads take the same boundary as the AI Q&A ([guide](docs/file-tools.en.md)) |
 
 ## Architecture
 
@@ -154,7 +155,7 @@ sequenceDiagram
 
 ---
 
-## Portal UI — Sidebar Layout (18 Sections)
+## Portal UI — Sidebar Layout (19 Sections)
 
 ![Sidebar Layout](docs/screenshots/portal-sidebar-layout.png)
 *Left sidebar: grouped navigation. Center: active section content. Right: AI assistant (on file selection).*
@@ -172,6 +173,7 @@ sequenceDiagram
 | | Job History | Past executions (DynamoDB, owner-scoped) |
 | | Analytics | Athena SQL on Glue Data Catalog |
 | | Agent Directory | Stored agent definitions; run, edit or share one |
+| | Tools | Translate, proofread and diagram a file, extract a web page, generate an image into a folder (off by default), saved use cases |
 | **Data Protection** | Snapshots | ONTAP snapshot listing + FlexClone restore |
 | | Lock | SnapLock (WORM) + S3 Object Lock status |
 | | ARP/AI | Autonomous Ransomware Protection status |

@@ -9,7 +9,7 @@
 
 ## Overview
 
-The File Portal for Amazon FSx for NetApp ONTAP (hereafter FSx for ONTAP) is organised as a sidebar navigation with 4 groups and 18 sections. Each section provides an independent capability, and all of them access data on the same FSx for ONTAP S3 Access Point.
+The File Portal for Amazon FSx for NetApp ONTAP (hereafter FSx for ONTAP) is organised as a sidebar navigation with 4 groups and 19 sections. Each section provides an independent capability, and all of them access data on the same FSx for ONTAP S3 Access Point.
 
 ![Sidebar layout](screenshots/portal-sidebar-layout.png)
 

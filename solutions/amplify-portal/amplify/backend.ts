@@ -2313,8 +2313,10 @@ const fileToolsRole = new iam.Role(dataStack, "FileToolsLambdaRole", {
   inlinePolicies: {
     FileTools: new iam.PolicyDocument({
       statements: [
-        // Read for the file input, Head + Put for saving results and images into a folder.
-        new iam.PolicyStatement({ actions: ["s3:GetObject", "s3:PutObject"], resources: s3ApArns }),
+        // Read for the file input, Put for saving results and images into a folder.
+        // ListBucket so that HeadObject on a name not yet taken answers 404: without it S3
+        // answers 403 for a missing key too, and "missing" cannot be told from "denied".
+        new iam.PolicyStatement({ actions: ["s3:GetObject", "s3:PutObject", "s3:ListBucket"], resources: s3ApArns }),
         new iam.PolicyStatement({
           actions: ["bedrock:InvokeModel"],
           resources: [

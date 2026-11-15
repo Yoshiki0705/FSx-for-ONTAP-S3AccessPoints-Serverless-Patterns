@@ -66,6 +66,9 @@
   --color-warning-text: #92400e;
   --color-bg: #f9fafb;
   --color-surface: #ffffff;
+  /* Behind a Mermaid diagram (Tools). White in both themes: Mermaid draws with its own
+     light palette, and its dark lines are unreadable on the dark surface. */
+  --color-diagram-bg: #ffffff;
   /* Striped rows, table headings, hover fills — anything a shade off the surface. */
   --color-surface-subtle: #f1f5f9;
   --color-surface-hover: #f3f6f9;
@@ -131,6 +134,8 @@
   /* Not #000: a page that dark makes every surface above it glare. */
   --color-bg: #14171c;
   --color-surface: #1c2128;
+  /* Same as light: see the light block. Mermaid's palette needs a light backdrop. */
+  --color-diagram-bg: #ffffff;
   --color-surface-subtle: #232a33;
   --color-surface-hover: #2a323d;
   --color-border: #30363d;
@@ -7275,7 +7280,7 @@ button[type="submit"]:disabled {
 .ft-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
 .ft-table th, .ft-table td { padding: 0.35rem 0.5rem; border-top: 1px solid var(--color-border); text-align: left; vertical-align: top; }
 .ft-table del { text-decoration-color: var(--color-error); }
-.ft-diagram { overflow: auto; padding: 1rem; border: 1px solid var(--color-border); border-radius: var(--radius); background: #fff; }
+.ft-diagram { overflow: auto; padding: 1rem; border: 1px solid var(--color-border); border-radius: var(--radius); background: var(--color-diagram-bg); }
 .ft-notice { display: flex; flex-direction: column; gap: 0.25rem; padding: 0.6rem 0.75rem; border: 1px solid var(--color-warning); border-radius: var(--radius); background: var(--color-warning-bg); color: var(--color-warning-text); font-size: 0.85rem; }
 .ft-image { max-width: 100%; max-height: 512px; border: 1px solid var(--color-border); border-radius: var(--radius); }
 .ft-editor { display: flex; flex-direction: column; gap: 0.5rem; padding: 0.75rem; border: 1px solid var(--color-border); border-radius: var(--radius); }

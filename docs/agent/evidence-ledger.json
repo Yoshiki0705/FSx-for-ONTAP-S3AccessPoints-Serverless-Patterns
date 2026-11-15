@@ -713,6 +713,34 @@
         "solutions/genai/japanese-document-ocr-agent/docs/architecture.md",
         "docs/agent/pitfalls-textract.md"
       ]
+    },
+    {
+      "id": "E-019",
+      "claim": "Amazon Bedrock offers no image-output model in ap-northeast-1, and of the 14 Regions checked, text-to-image models (Stability AI Stable Image Core and Ultra, SD3.5 Large) are offered only in us-west-2, on demand, with no cross-Region inference profile.",
+      "subject": "AWS",
+      "tier": "verified",
+      "premise": true,
+      "sources": [
+        {
+          "url": "https://docs.aws.amazon.com/bedrock/latest/userguide/model-card-amazon-nova-canvas.html",
+          "read": "full",
+          "retrieved": "2026-11-14",
+          "says": "Amazon Nova Canvas shows Legacy (EOL: 2026-09-30) for us-east-1, eu-west-1 and ap-northeast-1, with no Geo or Global inference."
+        }
+      ],
+      "observation": "2026-11-14: `aws bedrock list-foundation-models --by-output-modality IMAGE` returned 0 models in ap-northeast-1. In us-west-2 it returned stability.stable-image-core-v1:1, stability.stable-image-ultra-v1:1 and stability.sd3-5-large-v1:0 with inferenceTypesSupported ON_DEMAND, and no us.* inference profile for them (the us.stability.* profiles exist only for the editing models such as upscale and inpaint). us-east-1 listed only the editing models. us-east-2, eu-west-1, eu-central-1, eu-west-3, ap-southeast-1, ap-southeast-2, ap-northeast-2, ap-northeast-3, ap-south-1, ca-central-1 and sa-east-1 listed none of the three. An InvokeModel call to stability.stable-image-core-v1:1 in us-west-2 returned an image (finish_reasons [null]).",
+      "support_inquiry": {
+        "status": "not-needed",
+        "topic": "The model list is an API answer, re-runnable by anyone; the design follows it and the image Region is a setting."
+      },
+      "feature_request": {
+        "status": "not-applicable"
+      },
+      "appears_in": [
+        "CHANGELOG.md",
+        "solutions/amplify-portal/docs/file-tools.md",
+        "solutions/amplify-portal/docs/file-tools.en.md"
+      ]
     }
   ]
 }

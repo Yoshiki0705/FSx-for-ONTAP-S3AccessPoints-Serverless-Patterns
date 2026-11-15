@@ -41,6 +41,7 @@ Voir aussi : [Guide de sélection d'UI du portail de fichiers (Amplify / Nextclo
 | **Multi-Agent Teams** | Assistant d'équipe avec attribution de rôles (Supervisor/Collaborator/Reviewer) |
 | **KB Smart Routing** | Filtrage de portée de recherche KB basé sur les groupes pour le contrôle d'accès multi-tenant |
 | **Admin Feature Gates** | Fonctionnalités AI désactivées par défaut, basculées par fonctionnalité depuis le panneau admin |
+| **Outils** | Traduction, relecture et diagramme (Mermaid) du fichier sélectionné, extraction web, génération d'image enregistrée dans le dossier (désactivée par défaut ; traitée dans us-west-2), modèles de prompt enregistrés |
 
 ## Architecture
 
@@ -128,7 +129,7 @@ sequenceDiagram
 
 ---
 
-## Interface du portail — Disposition de la barre latérale (18 sections)
+## Interface du portail — Disposition de la barre latérale (19 sections)
 
 ![Sidebar Layout](docs/screenshots/portal-sidebar-layout.png)
 *Barre latérale gauche : navigation groupée. Centre : contenu de la section active. Droite : assistant AI (lors de la sélection de fichier).*
@@ -146,6 +147,7 @@ sequenceDiagram
 | | Job History | Exécutions passées (DynamoDB, portée propriétaire) |
 | | Analytics | SQL Athena sur Glue Data Catalog |
 | | Agent Directory | Exécuter, modifier ou partager une définition d'agent enregistrée |
+| | Outils | Traduire, relire et mettre en diagramme un fichier, extraire une page web, générer une image dans un dossier (désactivé par défaut), cas d'usage enregistrés |
 | **Data Protection** | Snapshots | Liste des snapshots ONTAP + restauration FlexClone |
 | | Lock | SnapLock (WORM) + statut S3 Object Lock |
 | | ARP/AI | Statut Autonomous Ransomware Protection |

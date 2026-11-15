@@ -41,6 +41,7 @@ AWS는 빌딩 블록(S3 API, Cognito, AppSync)을 제공하지만, FSx for ONTAP
 | **Multi-Agent Teams** | 역할 할당 (Supervisor/Collaborator/Reviewer) 팀 마법사 |
 | **KB Smart Routing** | 멀티테넌트 접근 제어를 위한 그룹 기반 KB 검색 스코프 필터링 |
 | **Admin Feature Gates** | AI 기능은 기본 비활성화, 관리 패널에서 기능별 토글 |
+| **도구** | 선택한 파일의 번역·교정·다이어그램(Mermaid), 웹 추출, 폴더에 저장하는 이미지 생성(기본 비활성, us-west-2에서 처리), 저장한 프롬프트 템플릿 |
 
 ## 아키텍처
 
@@ -128,7 +129,7 @@ sequenceDiagram
 
 ---
 
-## 포털 UI — 사이드바 레이아웃 (18개 섹션)
+## 포털 UI — 사이드바 레이아웃 (19개 섹션)
 
 ![Sidebar Layout](docs/screenshots/portal-sidebar-layout.png)
 *왼쪽 사이드바: 그룹화된 네비게이션. 중앙: 활성 섹션 콘텐츠. 오른쪽: AI 어시스턴트 (파일 선택 시).*
@@ -146,6 +147,7 @@ sequenceDiagram
 | | Job History | 과거 실행 이력 (DynamoDB, 소유자 스코프) |
 | | Analytics | Glue Data Catalog 기반 Athena SQL |
 | | Agent Directory | 저장된 에이전트 정의 실행, 편집, 공유 |
+| | 도구 | 선택한 파일의 번역·교정·다이어그램, 웹 추출, 폴더로의 이미지 생성(기본 비활성), 저장한 유스케이스 |
 | **Data Protection** | Snapshots | ONTAP 스냅샷 목록 + FlexClone 복원 |
 | | Lock | SnapLock (WORM) + S3 Object Lock 상태 |
 | | ARP/AI | Autonomous Ransomware Protection 상태 |
