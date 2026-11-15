@@ -24,13 +24,18 @@ import os
 import re
 import socket
 import ssl
+import threading
+import time
 import uuid
+from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import TimeoutError as FutureTimeout
 from datetime import datetime, timezone
 from html.parser import HTMLParser
 from typing import Any
 from urllib.parse import urljoin, urlsplit
 
 import boto3
+from botocore.config import Config
 
 from shared.exceptions import S3ApHelperError
 from shared.portal_external_policy import ai_denial_reason
@@ -52,6 +57,7 @@ WEB_EXTRACT_ENABLED = os.environ.get("WEB_EXTRACT_ENABLED", "true") != "false"
 IMAGE_ENABLED = os.environ.get("IMAGE_GENERATION_ENABLED", "") == "true"
 IMAGE_REGION = os.environ.get("IMAGE_GENERATION_REGION", "us-west-2")
 IMAGE_MODEL_ID = os.environ.get("IMAGE_GENERATION_MODEL_ID", "stability.stable-image-core-v1:1")
+CODE_ENABLED = os.environ.get("CODE_INTERPRETER_ENABLED", "") == "true"
 CLASSIFICATION_TABLE = os.environ.get("CLASSIFICATION_TABLE_NAME", "")
 AI_BLOCKED_LEVELS = {
     level.strip().upper()
@@ -69,6 +75,20 @@ MAX_REDIRECTS = 3
 bedrock = boto3.client("bedrock-runtime", region_name=REGION)
 _image_clients: dict[str, Any] = {}
 _dynamodb = None
+
+# Code execution. AppSync waits 30 s for a resolver, so the whole action has 25 s: the model
+# writes the program (5-15 s measured), the sandbox runs it, the model writes the answer
+# (about 3 s, reserved as 5 s).
+CODE_TOTAL_SECONDS = 25.0
+CODE_RUN_SECONDS = 12.0
+CODE_MAX_RUNS = 2
+CODE_ANSWER_RESERVE_SECONDS = 5.0
+CODE_MIN_RUN_SECONDS = 3.0
+CODE_INTERPRETER_ID = "aws.codeinterpreter.v1"
+CODE_SESSION_SECONDS = 120
+MAX_ERROR_CHARS = 3000
+MAX_OUTPUT_CHARS = 6000
+MAX_TASK_CHARS = 2000
 
 
 class ToolError(Exception):
@@ -317,6 +337,241 @@ def tool_input(event: dict[str, Any], groups: list[str]) -> tuple[str, str | Non
     if key:
         return read_file_text(groups, key), key
     return str(event.get("text") or ""), None
+
+
+# --------------------------------------------------------------------------- code execution
+class SandboxError(Exception):
+    """The code interpreter itself failed (not the program that ran in it)."""
+
+
+def now() -> float:
+    return time.monotonic()
+
+
+def agentcore_client() -> Any:
+    return boto3.client(
+        "bedrock-agentcore",
+        region_name=REGION,
+        config=Config(connect_timeout=3, read_timeout=int(CODE_RUN_SECONDS) + 3, retries={"max_attempts": 1}),
+    )
+
+
+def read_stream(response: dict[str, Any]) -> dict[str, Any]:
+    """stdout, stderr and the error flag of one invoke_code_interpreter response."""
+    out = {"stdout": "", "stderr": "", "isError": False}
+    for event in response.get("stream") or []:
+        result = event.get("result") or {}
+        structured = result.get("structuredContent") or {}
+        out["stdout"] += str(structured.get("stdout") or "")
+        out["stderr"] += str(structured.get("stderr") or "")
+        if not structured:
+            out["stdout"] += "".join(str(c.get("text", "")) for c in result.get("content") or [] if isinstance(c, dict))
+        if result.get("isError"):
+            out["isError"] = True
+    return out
+
+
+class _Session:
+    """One interpreter session, stopped once whichever thread gets there first."""
+
+    def __init__(self, client: Any) -> None:
+        self.client = client
+        self.session_id: str | None = None
+        self.abandoned = False
+        self.stopped = False
+        self.lock = threading.Lock()
+
+    def start(self) -> str:
+        session_id = self.client.start_code_interpreter_session(
+            codeInterpreterIdentifier=CODE_INTERPRETER_ID, sessionTimeoutSeconds=CODE_SESSION_SECONDS
+        )["sessionId"]
+        with self.lock:
+            self.session_id = session_id
+            late = self.abandoned
+        if late:
+            self.stop()
+            raise SandboxError("abandoned")
+        return session_id
+
+    def stop(self) -> None:
+        with self.lock:
+            self.abandoned = True
+            if self.session_id is None or self.stopped:
+                return
+            self.stopped = True
+            session_id = self.session_id
+        try:
+            self.client.stop_code_interpreter_session(
+                codeInterpreterIdentifier=CODE_INTERPRETER_ID, sessionId=session_id
+            )
+        except Exception:  # noqa: BLE001 - the session also ends by its own 120 s timeout
+            logger.warning("Stopping the code interpreter session failed", exc_info=True)
+
+
+def run_in_sandbox(files: dict[str, str], code: str, timeout: float) -> dict[str, Any]:
+    """Run `code` once in a fresh sandbox with `files` written beside it.
+
+    The only place that calls the code interpreter. Returns `ok`, `timedOut`, `stdout`,
+    `stderr` and `seconds`; raises SandboxError when the interpreter itself fails. The
+    session is stopped on every path, including a time-out.
+    """
+    started = now()
+    session = _Session(agentcore_client())
+
+    def work() -> dict[str, Any]:
+        try:
+            session_id = session.start()
+            if files:
+                written = read_stream(
+                    session.client.invoke_code_interpreter(
+                        codeInterpreterIdentifier=CODE_INTERPRETER_ID,
+                        sessionId=session_id,
+                        name="writeFiles",
+                        arguments={"content": [{"path": n, "text": t} for n, t in files.items()]},
+                    )
+                )
+                if written["isError"]:
+                    raise SandboxError("writing the input files failed")
+            ran = read_stream(
+                session.client.invoke_code_interpreter(
+                    codeInterpreterIdentifier=CODE_INTERPRETER_ID,
+                    sessionId=session_id,
+                    name="executeCode",
+                    arguments={"language": "python", "code": code},
+                )
+            )
+            return {"ok": not ran["isError"], "stdout": ran["stdout"], "stderr": ran["stderr"]}
+        finally:
+            session.stop()
+
+    pool = ThreadPoolExecutor(max_workers=1)
+    try:
+        future = pool.submit(work)
+        try:
+            outcome = future.result(timeout=max(timeout, 0.0))
+        except FutureTimeout:
+            session.stop()
+            return {"ok": False, "timedOut": True, "stdout": "", "stderr": "", "seconds": round(now() - started, 1)}
+        except SandboxError:
+            raise
+        except Exception as e:
+            logger.exception("Code interpreter call failed")
+            raise SandboxError("the code interpreter call failed") from e
+    finally:
+        pool.shutdown(wait=False)
+    return {**outcome, "timedOut": False, "seconds": round(now() - started, 1)}
+
+
+def sandbox_name(key: str | None) -> tuple[str, str]:
+    """The fixed name the file gets in the sandbox, and its extension for the prompt."""
+    if not key:
+        return "input.txt", "txt"
+    ext = key.rsplit(".", 1)[-1].lower() if "." in key.rsplit("/", 1)[-1] else ""
+    return "doc1.txt", ext if re.fullmatch(r"[a-z0-9]{1,8}", ext) else "txt"
+
+
+def code_prompt(file_name: str, file_format: str) -> str:
+    return (
+        "You write one Python 3.12 program that carries out the user's task.\n"
+        "It runs in a sandbox with pandas and numpy, no network, and no other files than the ones listed.\n"
+        f"The input is the file {file_name} in the current directory (its original format is {file_format}). "
+        "You cannot see its content: write code that reads it defensively and prints what it finds.\n"
+        "Print the answer to stdout in at most a few dozen lines.\n"
+        "Reply with the program only, in one ```python block.\n" + DATA_RULE
+    )
+
+
+def fix_prompt(file_name: str, file_format: str) -> str:
+    return (
+        code_prompt(file_name, file_format) + "\nThe previous program failed. Fix it and reply with the whole program."
+    )
+
+
+def extract_code(text: str) -> str:
+    match = re.search(r"```(?:python|py)?\s*\n(.*?)```", text, flags=re.DOTALL | re.IGNORECASE)
+    code = (match.group(1) if match else "").strip()
+    if not code:
+        raise ToolError("the model did not return a program")
+    return code
+
+
+def answer_prompt() -> str:
+    return (
+        "Answer the user's task from the output of the program that ran. "
+        "Say plainly what the numbers or lines mean; do not describe the program. Answer in the language of the task.\n"
+        + DATA_RULE
+    )
+
+
+def code_execution(event: dict[str, Any], groups: list[str]) -> dict[str, Any]:
+    """Model writes a program, the sandbox runs it, the model answers from the output."""
+    if not CODE_ENABLED:
+        raise ToolError("code execution is not enabled")
+    task = str(event.get("task") or "").strip()
+    if not task:
+        raise ToolError("task is required")
+    if len(task) > MAX_TASK_CHARS:
+        raise ToolError(f"task is longer than {MAX_TASK_CHARS} characters")
+    started = now()
+    deadline = started + CODE_TOTAL_SECONDS
+    # The boundary first: a file the caller may not read, or AI may not use, stops here, before
+    # the model or the sandbox is touched.
+    text, key = tool_input(event, groups)
+    if not text.strip():
+        raise ToolError("the input is empty")
+    file_name, file_format = sandbox_name(key)
+    files = {file_name: text}
+    user = "Task:\n" + wrap_input(task)
+    code = extract_code(generate_text(code_prompt(file_name, file_format), user, max_tokens=2048, temperature=0))
+    runs: list[dict[str, Any]] = []
+    while True:
+        limit = min(CODE_RUN_SECONDS, deadline - now() - CODE_ANSWER_RESERVE_SECONDS)
+        if limit < CODE_MIN_RUN_SECONDS:
+            break
+        try:
+            run = run_in_sandbox(files, code, limit)
+        except SandboxError as e:
+            logger.error("Sandbox failure: %s", e)
+            raise ToolError("the code interpreter is not available") from e
+        run["code"] = code
+        runs.append(run)
+        if run["ok"] or len(runs) >= CODE_MAX_RUNS:
+            break
+        reason = "it ran over its time limit" if run["timedOut"] else run["stderr"][:MAX_ERROR_CHARS]
+        fixed = generate_text(
+            fix_prompt(file_name, file_format),
+            "Task:\n"
+            + wrap_input(task)
+            + "\n\nPrevious program:\n"
+            + wrap_input(code)
+            + "\n\nError:\n"
+            + wrap_input(reason),
+            max_tokens=2048,
+            temperature=0,
+        )
+        code = extract_code(fixed)
+    summary = [
+        {
+            "ok": r["ok"],
+            "timedOut": r["timedOut"],
+            "seconds": r["seconds"],
+            "stdout": r["stdout"][:MAX_OUTPUT_CHARS],
+            "stderr": r["stderr"][:MAX_ERROR_CHARS],
+        }
+        for r in runs
+    ]
+    base = {"key": key, "code": code, "runs": summary, "model": MODEL_ID}
+    last = runs[-1] if runs else None
+    if last is None or not last["ok"]:
+        reason = "no_time" if last is None else "timeout" if last["timedOut"] else "failed"
+        return {**base, "completed": False, "reason": reason, "result": ""}
+    answer = generate_text(
+        answer_prompt(),
+        "Task:\n" + wrap_input(task) + "\n\nProgram output:\n" + wrap_input(last["stdout"][:MAX_OUTPUT_CHARS]),
+        max_tokens=1024,
+        temperature=0.2,
+    )
+    return {**base, "completed": True, "reason": "", "result": answer}
 
 
 SAFE_NAME = re.compile(r"[^\w.\-()\s]+", flags=re.UNICODE)
@@ -640,7 +895,15 @@ def handle(event: dict[str, Any]) -> dict[str, Any]:
                 "webExtract": WEB_EXTRACT_ENABLED,
                 "image": IMAGE_ENABLED,
                 "useCases": bool(USE_CASES_TABLE),
+                "code": CODE_ENABLED,
             },
+            "code": {
+                "maxRuns": CODE_MAX_RUNS,
+                "runSeconds": int(CODE_RUN_SECONDS),
+                "totalSeconds": int(CODE_TOTAL_SECONDS),
+            }
+            if CODE_ENABLED
+            else None,
             "image": {"region": IMAGE_REGION, "modelId": IMAGE_MODEL_ID, "crossRegion": IMAGE_REGION != REGION}
             if IMAGE_ENABLED
             else None,
@@ -699,6 +962,8 @@ def handle(event: dict[str, Any]) -> dict[str, Any]:
             "truncated": len(text) > limit,
             "model": MODEL_ID,
         }
+    if action == "code":
+        return code_execution(event, groups)
     if action == "runUseCase":
         item = (
             use_cases_table()

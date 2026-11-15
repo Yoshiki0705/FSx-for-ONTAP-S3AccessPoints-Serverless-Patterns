@@ -13,10 +13,11 @@ vi.mock("aws-amplify/data", () => ({
 import { FileTools } from "../../src/components/FileTools";
 import { I18nProvider } from "../../src/i18n";
 
-const config = (image: boolean) => ({
+const config = (image: boolean, code = false) => ({
   data: JSON.stringify({
     success: true,
-    tools: { webExtract: true, image, useCases: true },
+    tools: { webExtract: true, image, useCases: true, code },
+    code: code ? { maxRuns: 2, runSeconds: 12, totalSeconds: 25 } : null,
     image: image ? { region: "us-west-2", modelId: "stability.stable-image-core-v1:1", crossRegion: true } : null,
   }),
 });
@@ -97,5 +98,41 @@ describe("FileTools", () => {
     renderTools({ canWrite: false, canSaveUseCases: false, initialTab: "useCases" });
     expect(await screen.findByText(/needs a portal role/)).toBeTruthy();
     expect(screen.queryByRole("button", { name: /New use case/ })).toBeNull();
+  });
+
+  it("hides code execution unless the server enables it", async () => {
+    toolsQuery.mockResolvedValue(config(false));
+    renderTools();
+    await waitFor(() => expect(toolsQuery).toHaveBeenCalled());
+    expect(screen.queryByRole("tab", { name: /Run code/ })).toBeNull();
+  });
+  it("states the limits, and sends only the file key and the task through the query", async () => {
+    toolsQuery.mockImplementation(async ({ action }: { action: string }) =>
+      action === "config"
+        ? config(false, true)
+        : { data: JSON.stringify({ success: true, completed: true, reason: "", result: "March is highest", code: "print(1)", runs: [{ ok: true, timedOut: false, seconds: 1.2, stdout: "3\n", stderr: "" }] }) },
+    );
+    renderTools({ initialTab: "code" });
+    const note = await screen.findByRole("note");
+    expect(note.textContent).toContain("Up to 2 runs per request, 12 seconds each");
+    expect(note.textContent).toContain("no network");
+    fireEvent.change(screen.getByLabelText("Task"), { target: { value: "find the top month" } });
+    fireEvent.click(screen.getByRole("button", { name: /^Run$/ }));
+    await screen.findByText("March is highest");
+    const sent = toolsQuery.mock.calls.find((c) => c[0].action === "code")![0];
+    expect(JSON.parse(sent.params)).toEqual({ key: "team-a/policy.md", task: "find the top month" });
+    expect(toolsMutation).not.toHaveBeenCalled();
+  });
+  it("says so when the program could not be fixed in time", async () => {
+    toolsQuery.mockImplementation(async ({ action }: { action: string }) =>
+      action === "config"
+        ? config(false, true)
+        : { data: JSON.stringify({ success: true, completed: false, reason: "timeout", result: "", code: "while True: pass", runs: [{ ok: false, timedOut: true, seconds: 12, stdout: "", stderr: "" }] }) },
+    );
+    renderTools({ initialTab: "code" });
+    await screen.findByRole("note");
+    fireEvent.change(screen.getByLabelText("Task"), { target: { value: "x" } });
+    fireEvent.click(screen.getByRole("button", { name: /^Run$/ }));
+    expect((await screen.findByRole("alert")).textContent).toContain("did not finish within its time limit");
   });
 });

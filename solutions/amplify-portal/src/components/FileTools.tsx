@@ -1,6 +1,6 @@
 /**
  * Tools section: translate, proofread and diagram a file (or typed text), extract a web
- * page, generate an image into a folder, and saved use cases.
+ * page, generate an image into a folder, run code on a file in a sandbox, and saved use cases.
  *
  * The file is the one selected in All Files. The server reads it within the caller's
  * access (functions/file-tools), so this component never sends file content itself, only
@@ -16,11 +16,19 @@ import { Icon, type IconName } from "./Icon";
 
 const client = generateClient<Schema>();
 
-export type ToolTab = "translate" | "proofread" | "diagram" | "webExtract" | "image" | "useCases";
+export type ToolTab = "translate" | "proofread" | "diagram" | "webExtract" | "image" | "code" | "useCases";
 
 interface ToolsConfig {
-  tools: { webExtract: boolean; image: boolean; useCases: boolean };
+  tools: { webExtract: boolean; image: boolean; useCases: boolean; code?: boolean };
   image: { region: string; modelId: string; crossRegion: boolean } | null;
+  code?: { maxRuns: number; runSeconds: number; totalSeconds: number } | null;
+}
+interface CodeRun {
+  ok: boolean;
+  timedOut: boolean;
+  seconds: number;
+  stdout: string;
+  stderr: string;
 }
 
 interface UseCase {
@@ -134,6 +142,8 @@ export function FileTools({ selectedFileKey, selectedFolder, canWrite, canSaveUs
   const [negative, setNegative] = useState("");
   const [aspect, setAspect] = useState("1:1");
   const [fileName, setFileName] = useState("generated-image");
+  // Code execution
+  const [codeTask, setCodeTask] = useState("");
   // Use cases
   const [useCases, setUseCases] = useState<UseCase[]>([]);
   const [editing, setEditing] = useState<Partial<UseCase> | null>(null);
@@ -188,6 +198,7 @@ export function FileTools({ selectedFileKey, selectedFolder, canWrite, canSaveUs
     { id: "diagram", icon: "git-branch", label: "ftTabsDiagram", show: true },
     { id: "webExtract", icon: "link", label: "ftTabsWebextract", show: config?.tools.webExtract ?? true },
     { id: "image", icon: "image", label: "ftTabsImage", show: config?.tools.image ?? false },
+    { id: "code", icon: "wrench", label: "ftTabsCode", show: config?.tools.code ?? false },
     { id: "useCases", icon: "sparkles", label: "ftTabsUsecases", show: config?.tools.useCases ?? true },
   ];
   const current = tabs.some((x) => x.id === tab && x.show) ? tab : "translate";
@@ -430,6 +441,60 @@ export function FileTools({ selectedFileKey, selectedFolder, canWrite, canSaveUs
         </section>
       )}
 
+      {current === "code" && config?.code && (
+        <section role="tabpanel">
+          <div className="ft-notice" role="note">
+            {t("ftCodeEnv")}
+            <small>
+              {t("ftCodeLimits")
+                .replace("{runs}", String(config.code.maxRuns))
+                .replace("{seconds}", String(config.code.runSeconds))
+                .replace("{total}", String(config.code.totalSeconds))}
+            </small>
+          </div>
+          {inputBlock}
+          <div className="form-group">
+            <label htmlFor="ft-code-task">{t("ftCodeTask")}</label>
+            <textarea id="ft-code-task" rows={3} value={codeTask} onChange={(e) => setCodeTask(e.target.value)} placeholder={t("ftCodeTaskplaceholder")} />
+          </div>
+          <button type="button" className="btn-primary" disabled={busy || !hasInput || !codeTask.trim()} onClick={() => run(async () => setResult(await callTool("code", { ...input(), task: codeTask })))}>
+            <Icon name="wrench" className="icon-lead" />{busy ? t("ftRunning") : t("ftCodeRun")}
+          </button>
+          {result && Array.isArray(result.runs) && (
+            <div className="ft-result">
+              {result.completed === true && typeof result.result === "string" ? (
+                <>
+                  <h3>{t("ftCodeAnswer")}</h3>
+                  {folderBlock}
+                  {textResult(result.result, `${baseName}.analysis.md`)}
+                </>
+              ) : (
+                <div className="error-message" role="alert">
+                  {t(result.reason === "timeout" ? "ftCodeTimeout" : result.reason === "no_time" ? "ftCodeNotime" : "ftCodeFailed")}
+                </div>
+              )}
+              {typeof result.code === "string" && result.code && (
+                <details><summary>{t("ftCodeProgram")}</summary><pre className="ft-pre">{result.code}</pre></details>
+              )}
+              {(result.runs as CodeRun[]).length > 0 && (
+                <details>
+                  <summary>{t("ftCodeRuns")}</summary>
+                  <ul>
+                    {(result.runs as CodeRun[]).map((r, n) => (
+                      <li key={n}>
+                        <strong>{t("ftCodeRunN").replace("{n}", String(n + 1))}</strong>{" "}
+                        {r.timedOut ? t("ftCodeRunTimeout") : r.ok ? t("ftCodeRunOk") : t("ftCodeRunFailed")} ({r.seconds}s)
+                        {r.stdout && (<><small>{t("ftCodeStdout")}</small><pre className="ft-pre">{r.stdout}</pre></>)}
+                        {r.stderr && (<><small>{t("ftCodeStderr")}</small><pre className="ft-pre">{r.stderr}</pre></>)}
+                      </li>
+                    ))}
+                  </ul>
+                </details>
+              )}
+            </div>
+          )}
+        </section>
+      )}
       {current === "useCases" && (
         <section role="tabpanel">
           <p className="rm-hint">{t("ftUsecasesIntro")}</p>

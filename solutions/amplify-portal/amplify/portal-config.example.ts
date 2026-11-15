@@ -82,6 +82,7 @@ export interface PortalConfig {
   tools?: {
     webExtract?: boolean;
     imageGeneration?: { enabled: boolean; region?: string; modelId?: string };
+    codeExecution?: boolean;
   };
   bedrockKbId: string;
 
@@ -486,6 +487,10 @@ export const config: PortalConfig = {
       region: process.env.AMPLIFY_PORTAL_IMAGE_GENERATION_REGION || "us-west-2",
       modelId: process.env.AMPLIFY_PORTAL_IMAGE_GENERATION_MODEL_ID || "stability.stable-image-core-v1:1",
     },
+    // Code execution: the model writes a Python program and the AgentCore built-in Code
+    // Interpreter runs it with no network, on the selected file or typed text only. Off
+    // unless enabled. Up to 2 runs of 12 s each within 25 s per request.
+    codeExecution: process.env.AMPLIFY_PORTAL_CODE_EXECUTION_ENABLED === "true",
   },
 
   /**
