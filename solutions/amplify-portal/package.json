@@ -64,6 +64,22 @@
     "lodash": "^4.18.1",
     "@ardatan/relay-compiler@12.0.0": {
       "immutable": "^3.8.4"
+    },
+    "@aws-amplify/appsync-modelgen-plugin": {
+      "@graphql-tools/utils": "^12.0.1"
+    },
+    "@graphql-codegen/plugin-helpers": {
+      "@graphql-tools/utils": "^12.0.1"
+    },
+    "@graphql-tools/relay-operation-optimizer": {
+      "@graphql-tools/utils": "^12.0.1"
+    },
+    "@aws-amplify/graphql-generator": {
+      "@graphql-tools/schema": "^10.1.5",
+      "@graphql-tools/utils": "^12.0.1",
+      "@graphql-codegen/core": {
+        "@graphql-tools/utils": "^12.0.1"
+      }
     }
   }
 }
