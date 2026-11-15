@@ -20,12 +20,12 @@
     "labels": [
       "security"
     ],
-    "automerge": true
+    "automerge": false
   },
   "osvVulnerabilityAlerts": true,
   "lockFileMaintenance": {
     "enabled": true,
-    "automerge": true,
+    "automerge": false,
     "schedule": [
       "before 6am on monday"
     ]
@@ -38,10 +38,10 @@
       ],
       "groupName": "github-actions",
       "pinDigests": true,
-      "automerge": true
+      "automerge": false
     },
     {
-      "description": "Group boto3/botocore (AWS SDK for Python) minor/patch and automerge. No matchManagers filter on purpose: boto3 is pinned in both requirements.txt and pyproject.toml, and scripts/check_runtime_pins_agree.py fails if the two disagree, so a PR that raises one file alone can never be green. That happened -- 2026-08-16 produced #328 for requirements.txt under this group and #329 for pyproject.toml ungrouped, and both were red on the pins check. Naming the managers is what let them split, so the match is by package name only.",
+      "description": "Group boto3/botocore (AWS SDK for Python) minor/patch. No matchManagers filter on purpose: boto3 is pinned in both requirements.txt and pyproject.toml, and scripts/check_runtime_pins_agree.py fails if the two disagree, so a PR that raises one file alone can never be green. That happened -- 2026-08-16 produced #328 for requirements.txt under this group and #329 for pyproject.toml ungrouped, and both were red on the pins check. Naming the managers is what let them split, so the match is by package name only.",
       "matchPackageNames": [
         "/^boto/"
       ],
@@ -50,7 +50,7 @@
         "patch"
       ],
       "groupName": "aws-sdk-python",
-      "automerge": true
+      "automerge": false
     },
     {
       "description": "AWS SDK major bumps require Dashboard approval",
@@ -64,7 +64,7 @@
       "dependencyDashboardApproval": true
     },
     {
-      "description": "Group Python dev dependencies (pytest, hypothesis, moto, ruff, etc.) and automerge minor/patch",
+      "description": "Group Python dev dependencies (pytest, hypothesis, moto, ruff, etc.) minor/patch",
       "matchManagers": [
         "pip_requirements",
         "pep621"
@@ -80,7 +80,7 @@
         "patch"
       ],
       "groupName": "python-dev-dependencies",
-      "automerge": true
+      "automerge": false
     },
     {
       "description": "Group Python runtime dependencies (non-boto) minor/patch",
@@ -99,7 +99,7 @@
         "patch"
       ],
       "groupName": "python-runtime-dependencies",
-      "automerge": true
+      "automerge": false
     },
     {
       "description": "Group base image updates for FPolicy server Dockerfiles",
@@ -109,7 +109,7 @@
       "groupName": "docker-base-images"
     },
     {
-      "description": "Amplify portal npm dependencies — minor/patch automerge",
+      "description": "Amplify portal npm dependencies — minor/patch",
       "matchManagers": [
         "npm"
       ],
@@ -118,7 +118,7 @@
         "patch"
       ],
       "groupName": "amplify-portal-npm",
-      "automerge": true
+      "automerge": false
     },
     {
       "description": "Require manual approval for major version bumps (non-boto)",
