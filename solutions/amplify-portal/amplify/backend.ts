@@ -2269,8 +2269,10 @@ api.addLambdaDataSource("AskAboutFileLambdaDataSource", askAboutFileFunction);
 // AMPLIFY_PORTAL_* variables, so an existing portal-config.ts keeps working unchanged.
 // Read through a cast: a portal-config.ts copied before `tools` existed has its own
 // PortalConfig without the field, and must keep compiling.
-const configTools = (config as { tools?: { webExtract?: boolean; imageGeneration?: { enabled?: boolean; region?: string; modelId?: string }; codeExecution?: boolean } }).tools;
+const configTools = (config as { tools?: { webExtract?: boolean; imageGeneration?: { enabled?: boolean; region?: string; modelId?: string }; codeExecution?: boolean; minutes?: boolean } }).tools;
 const toolsSettings = {
+  // Minutes: Amazon Transcribe on a recording, then the text model. Off unless enabled.
+  minutes: configTools?.minutes ?? process.env.AMPLIFY_PORTAL_MINUTES_ENABLED === "true",
   // Code execution in the AgentCore built-in Code Interpreter. Off unless enabled.
   codeExecution:
     configTools?.codeExecution ?? process.env.AMPLIFY_PORTAL_CODE_EXECUTION_ENABLED === "true",
@@ -2310,6 +2312,21 @@ const imageModelArns = toolsSettings.imageModelId.match(/^(us|eu|apac|jp|global)
       `arn:aws:bedrock:*::foundation-model/${toolsSettings.imageModelId.replace(/^[a-z]+\./, "")}`,
     ]
   : [`arn:aws:bedrock:${toolsSettings.imageRegion}::foundation-model/${toolsSettings.imageModelId}`];
+// Transcribe writes its result here (an S3 Access Point is not used as the output: whether it
+// can take Transcribe's write is not established). Private, encrypted, gone after a day; the
+// object key carries the owner's hash and the function reads only that user's folder.
+const minutesBucket = toolsSettings.minutes
+  ? new s3.Bucket(dataStack, "MinutesTranscriptBucket", {
+      blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
+      encryption: s3.BucketEncryption.S3_MANAGED,
+      enforceSSL: true,
+      removalPolicy: RemovalPolicy.DESTROY,
+      autoDeleteObjects: true,
+      lifecycleRules: [
+        { id: "expire-transcripts", enabled: true, expiration: Duration.days(1), abortIncompleteMultipartUploadAfter: Duration.days(1) },
+      ],
+    })
+  : undefined;
 const fileToolsRole = new iam.Role(dataStack, "FileToolsLambdaRole", {
   assumedBy: new iam.ServicePrincipal("lambda.amazonaws.com"),
   managedPolicies: [iam.ManagedPolicy.fromAwsManagedPolicyName("service-role/AWSLambdaBasicExecutionRole")],
@@ -2350,6 +2367,21 @@ const fileToolsRole = new iam.Role(dataStack, "FileToolsLambdaRole", {
               }),
             ]
           : []),
+        // Minutes: create and read this tool's own jobs, and read and write the transcript
+        // folder. Transcribe uses these credentials to read the recording from the access point
+        // (s3ApArns above) and to write its output.
+        ...(minutesBucket
+          ? [
+              new iam.PolicyStatement({
+                actions: ["transcribe:StartTranscriptionJob", "transcribe:GetTranscriptionJob"],
+                resources: [`arn:aws:transcribe:${Aws.REGION}:${Aws.ACCOUNT_ID}:transcription-job/portal-minutes-*`],
+              }),
+              new iam.PolicyStatement({
+                actions: ["s3:PutObject", "s3:GetObject"],
+                resources: [`${minutesBucket.bucketArn}/transcripts/*`],
+              }),
+            ]
+          : []),
       ],
     }),
   },
@@ -2372,6 +2404,8 @@ const fileToolsFunction = new lambda.Function(dataStack, "FileToolsFunction", {
     IMAGE_GENERATION_REGION: toolsSettings.imageRegion,
     IMAGE_GENERATION_MODEL_ID: toolsSettings.imageModelId,
     CODE_INTERPRETER_ENABLED: String(toolsSettings.codeExecution),
+    MINUTES_ENABLED: String(!!minutesBucket),
+    MINUTES_BUCKET: minutesBucket?.bucketName ?? "",
     CLASSIFICATION_TABLE_NAME: process.env.CLASSIFICATION_TABLE_NAME || "",
     AI_BLOCKED_LEVELS: process.env.AI_BLOCKED_LEVELS || "CONFIDENTIAL,CUI,HIGHLY_RESTRICTED,RESTRICTED",
   },

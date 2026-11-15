@@ -13,10 +13,12 @@ vi.mock("aws-amplify/data", () => ({
 import { FileTools } from "../../src/components/FileTools";
 import { I18nProvider } from "../../src/i18n";
 
-const config = (image: boolean, code = false) => ({
+const minutesConfig = { languages: ["ja-JP", "en-US"], extensions: ["mp3", "mp4"], maxMegabytes: 200, minSpeakers: 2, maxSpeakers: 10 };
+const config = (image: boolean, code = false, minutes = false) => ({
   data: JSON.stringify({
     success: true,
-    tools: { webExtract: true, image, useCases: true, code },
+    tools: { webExtract: true, image, useCases: true, code, minutes },
+    minutes: minutes ? minutesConfig : null,
     code: code ? { maxRuns: 2, runSeconds: 12, totalSeconds: 25 } : null,
     image: image ? { region: "us-west-2", modelId: "stability.stable-image-core-v1:1", crossRegion: true } : null,
   }),
@@ -134,5 +136,57 @@ describe("FileTools", () => {
     fireEvent.change(screen.getByLabelText("Task"), { target: { value: "x" } });
     fireEvent.click(screen.getByRole("button", { name: /^Run$/ }));
     expect((await screen.findByRole("alert")).textContent).toContain("did not finish within its time limit");
+  });
+
+  it("hides minutes unless the server enables them", async () => {
+    toolsQuery.mockResolvedValue(config(false));
+    renderTools();
+    await waitFor(() => expect(toolsQuery).toHaveBeenCalled());
+    expect(screen.queryByRole("tab", { name: /Minutes/ })).toBeNull();
+  });
+  it("starts a minutes job with only the file key, then polls until the minutes arrive", async () => {
+    let polls = 0;
+    toolsQuery.mockImplementation(async ({ action }: { action: string }) => {
+      if (action === "config") return config(false, false, true);
+      if (action === "minutes-start") return { data: JSON.stringify({ success: true, jobName: "portal-minutes-x", status: "IN_PROGRESS" }) };
+      polls += 1;
+      return { data: JSON.stringify(polls < 2 ? { success: true, status: "IN_PROGRESS" } : { success: true, status: "COMPLETED", result: "## Decisions", truncated: false }) };
+    });
+    renderTools({ initialTab: "minutes", selectedFileKey: "team-a/meeting.mp3" });
+    await screen.findByRole("note");
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      fireEvent.click(screen.getByRole("button", { name: /Make minutes/ }));
+      await screen.findByRole("status");
+      await vi.advanceTimersByTimeAsync(5000);
+      expect(screen.queryByText("## Decisions")).toBeNull();
+      await vi.advanceTimersByTimeAsync(5000);
+    } finally {
+      vi.useRealTimers();
+    }
+    await screen.findByText("## Decisions");
+    const start = toolsQuery.mock.calls.find((c) => c[0].action === "minutes-start")![0];
+    expect(JSON.parse(start.params)).toEqual({ key: "team-a/meeting.mp3", language: "ja-JP", speakers: 2 });
+    const status = toolsQuery.mock.calls.find((c) => c[0].action === "minutes-status")![0];
+    expect(JSON.parse(status.params)).toEqual({ jobName: "portal-minutes-x" });
+    expect(toolsMutation).not.toHaveBeenCalled();
+  });
+  it("shows the reason when the transcription fails", async () => {
+    toolsQuery.mockImplementation(async ({ action }: { action: string }) => {
+      if (action === "config") return config(false, false, true);
+      if (action === "minutes-start") return { data: JSON.stringify({ success: true, jobName: "portal-minutes-x" }) };
+      return { data: JSON.stringify({ success: true, status: "FAILED", reason: "bad audio" }) };
+    });
+    renderTools({ initialTab: "minutes", selectedFileKey: "team-a/meeting.mp3" });
+    await screen.findByRole("note");
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      fireEvent.click(screen.getByRole("button", { name: /Make minutes/ }));
+      await screen.findByRole("status");
+      await vi.advanceTimersByTimeAsync(5000);
+    } finally {
+      vi.useRealTimers();
+    }
+    expect((await screen.findByRole("alert")).textContent).toContain("bad audio");
   });
 });

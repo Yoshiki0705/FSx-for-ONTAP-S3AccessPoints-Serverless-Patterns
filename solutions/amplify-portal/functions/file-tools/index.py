@@ -16,6 +16,7 @@ point the caller's groups map to, after the same key check as reads.
 from __future__ import annotations
 
 import base64
+import hashlib
 import http.client
 import ipaddress
 import json
@@ -58,6 +59,8 @@ IMAGE_ENABLED = os.environ.get("IMAGE_GENERATION_ENABLED", "") == "true"
 IMAGE_REGION = os.environ.get("IMAGE_GENERATION_REGION", "us-west-2")
 IMAGE_MODEL_ID = os.environ.get("IMAGE_GENERATION_MODEL_ID", "stability.stable-image-core-v1:1")
 CODE_ENABLED = os.environ.get("CODE_INTERPRETER_ENABLED", "") == "true"
+MINUTES_ENABLED = os.environ.get("MINUTES_ENABLED", "") == "true"
+MINUTES_BUCKET = os.environ.get("MINUTES_BUCKET", "")
 CLASSIFICATION_TABLE = os.environ.get("CLASSIFICATION_TABLE_NAME", "")
 AI_BLOCKED_LEVELS = {
     level.strip().upper()
@@ -89,6 +92,15 @@ CODE_SESSION_SECONDS = 120
 MAX_ERROR_CHARS = 3000
 MAX_OUTPUT_CHARS = 6000
 MAX_TASK_CHARS = 2000
+
+# Minutes (Transcribe, then the text model). Transcribe takes minutes, so the work is two calls:
+# `minutes-start` creates the job, `minutes-status` is polled by the screen until it completes.
+MINUTES_LANGUAGES = ("ja-JP", "en-US", "ko-KR", "zh-CN", "fr-FR", "de-DE", "es-ES")
+MINUTES_AUDIO_EXTENSIONS = ("mp3", "m4a", "wav", "flac", "ogg", "mp4", "webm")
+MINUTES_JOB_PREFIX = "portal-minutes-"
+MIN_SPEAKERS = 2
+MAX_SPEAKERS = 10
+MAX_MEDIA_BYTES = 200 * 1024 * 1024
 
 
 class ToolError(Exception):
@@ -307,8 +319,12 @@ def ai_allowed(groups: list[str]) -> None:
         raise ToolError(denied)
 
 
-def read_file_text(groups: list[str], key: str) -> str:
-    """The file's text for a model, after every check that ask-about-file makes."""
+def authorize_key(groups: list[str], key: str) -> str:
+    """The access point alias for `key`, after every check that ask-about-file makes.
+
+    Order: path boundary, regulated paths, classification. Raises ToolError before anything
+    about the file is read or looked up.
+    """
     alias, refused = scope_for_caller(
         groups,
         group_ap_mapping=GROUP_AP_MAPPING,
@@ -324,6 +340,12 @@ def read_file_text(groups: list[str], key: str) -> str:
     allowed, label = check_classification(key)
     if not allowed:
         raise ToolError(f"AI processing blocked: file classified as {label}")
+    return alias
+
+
+def read_file_text(groups: list[str], key: str) -> str:
+    """The file's text for a model, after every check that ask-about-file makes."""
+    alias = authorize_key(groups, key)
     helper = S3ApHelper(alias)
     size = helper.head_object(key).get("ContentLength", 0)
     text = helper.get_object_bytes(key, max_bytes=MAX_FILE_BYTES).decode("utf-8", errors="replace")
@@ -572,6 +594,131 @@ def code_execution(event: dict[str, Any], groups: list[str]) -> dict[str, Any]:
         temperature=0.2,
     )
     return {**base, "completed": True, "reason": "", "result": answer}
+
+
+# --------------------------------------------------------------------------- minutes
+def transcribe_client() -> Any:
+    return boto3.client("transcribe", region_name=REGION)
+
+
+def s3_client() -> Any:
+    return boto3.client("s3", region_name=REGION)
+
+
+def user_hash(user_id: str) -> str:
+    """24 hex characters of the signed-in user's ID: in job names and output keys."""
+    return hashlib.sha256(user_id.encode("utf-8")).hexdigest()[:24]
+
+
+def media_extension(key: str, allowed: tuple[str, ...]) -> str:
+    name = key.rsplit("/", 1)[-1]
+    ext = name.rsplit(".", 1)[-1].lower() if "." in name else ""
+    if ext not in allowed:
+        raise ToolError(f"unsupported file type; use one of: {', '.join(allowed)}")
+    return ext
+
+
+def minutes_prompt() -> str:
+    return (
+        "You write minutes of a meeting from a transcript. Lines look like `spk_0: text`; the speaker "
+        "labels are anonymous.\n"
+        "Write, in this order: a summary, decisions, action items, and the main points of the discussion.\n"
+        "Never invent an owner or a due date: if the transcript does not say who or when, write that it was not stated.\n"
+        "Write the headings and the minutes in the language of the recording.\n" + DATA_RULE
+    )
+
+
+def transcript_lines(doc: dict[str, Any]) -> str:
+    """`spk_0: text` lines from a Transcribe result; one line per run of the same speaker."""
+    results = doc.get("results") or {}
+    lines: list[tuple[str, str]] = []
+    for seg in results.get("audio_segments") or []:
+        text = str(seg.get("transcript") or "").strip()
+        if not text:
+            continue
+        speaker = str(seg.get("speaker_label") or "spk_0")
+        if lines and lines[-1][0] == speaker:
+            lines[-1] = (speaker, lines[-1][1] + " " + text)
+        else:
+            lines.append((speaker, text))
+    if not lines:
+        whole = " ".join(str(t.get("transcript") or "") for t in results.get("transcripts") or []).strip()
+        if whole:
+            lines.append(("spk_0", whole))
+    return "\n".join(f"{speaker}: {text}" for speaker, text in lines)
+
+
+def minutes_start(event: dict[str, Any], groups: list[str], user_id: str) -> dict[str, Any]:
+    if not MINUTES_ENABLED or not MINUTES_BUCKET:
+        raise ToolError("minutes are not enabled")
+    key = str(event.get("key") or "")
+    if not key:
+        raise ToolError("key is required")
+    language = str(event.get("language") or "ja-JP")
+    if language not in MINUTES_LANGUAGES:
+        raise ToolError(f"language must be one of: {', '.join(MINUTES_LANGUAGES)}")
+    try:
+        speakers = int(event.get("speakers") or MIN_SPEAKERS)
+    except (TypeError, ValueError) as e:
+        raise ToolError("speakers must be a number") from e
+    if not MIN_SPEAKERS <= speakers <= MAX_SPEAKERS:
+        raise ToolError(f"speakers must be between {MIN_SPEAKERS} and {MAX_SPEAKERS}")
+    # The boundary first, then the type and size: nothing is created for a file the caller may not use.
+    alias = authorize_key(groups, key)
+    ext = media_extension(key, MINUTES_AUDIO_EXTENSIONS)
+    size = S3ApHelper(alias).head_object(key).get("ContentLength", 0)
+    if size > MAX_MEDIA_BYTES:
+        raise ToolError(f"the file is larger than {MAX_MEDIA_BYTES // (1024 * 1024)} MB")
+    owner = user_hash(user_id)
+    name = f"{MINUTES_JOB_PREFIX}{owner}-{uuid.uuid4().hex}"
+    transcribe_client().start_transcription_job(
+        TranscriptionJobName=name,
+        LanguageCode=language,
+        MediaFormat=ext,
+        Media={"MediaFileUri": f"s3://{alias}/{key}"},
+        OutputBucketName=MINUTES_BUCKET,
+        OutputKey=f"transcripts/{owner}/{name}.json",
+        Settings={"ShowSpeakerLabels": True, "MaxSpeakerLabels": speakers},
+    )
+    return {"jobName": name, "status": "IN_PROGRESS", "key": key}
+
+
+def minutes_status(event: dict[str, Any], user_id: str) -> dict[str, Any]:
+    if not MINUTES_ENABLED or not MINUTES_BUCKET:
+        raise ToolError("minutes are not enabled")
+    owner = user_hash(user_id)
+    name = str(event.get("jobName") or "")
+    # The name is the client's, so it only counts if it carries this user's hash. A job of someone
+    # else, or one this tool did not create, is reported as not found.
+    if not re.fullmatch(re.escape(MINUTES_JOB_PREFIX) + re.escape(owner) + r"-[0-9a-f]{32}", name):
+        raise ToolError("job not found")
+    try:
+        job = transcribe_client().get_transcription_job(TranscriptionJobName=name)["TranscriptionJob"]
+    except Exception as e:  # noqa: BLE001 - not found and denied look the same to the caller
+        logger.warning("GetTranscriptionJob failed for %s", name, exc_info=True)
+        raise ToolError("job not found") from e
+    state = str(job.get("TranscriptionJobStatus") or "")
+    if state in ("QUEUED", "IN_PROGRESS"):
+        return {"jobName": name, "status": "IN_PROGRESS"}
+    if state != "COMPLETED":
+        return {"jobName": name, "status": "FAILED", "reason": str(job.get("FailureReason") or "")[:300]}
+    # The service's own record of where the output went must be this user's folder.
+    output_key = f"transcripts/{owner}/{name}.json"
+    uri = str((job.get("Transcript") or {}).get("TranscriptFileUri") or "")
+    if f"/{MINUTES_BUCKET}/{output_key}" not in uri:
+        raise ToolError("job not found")
+    body = s3_client().get_object(Bucket=MINUTES_BUCKET, Key=output_key)["Body"].read()
+    transcript = transcript_lines(json.loads(body))
+    if not transcript:
+        raise ToolError("no speech was found in the recording")
+    limit = MAX_INPUT_CHARS - 100
+    return {
+        "jobName": name,
+        "status": "COMPLETED",
+        "result": generate_text(minutes_prompt(), wrap_input(transcript[:limit]), max_tokens=4096),
+        "truncated": len(transcript) > limit,
+        "model": MODEL_ID,
+    }
 
 
 SAFE_NAME = re.compile(r"[^\w.\-()\s]+", flags=re.UNICODE)
@@ -896,7 +1043,17 @@ def handle(event: dict[str, Any]) -> dict[str, Any]:
                 "image": IMAGE_ENABLED,
                 "useCases": bool(USE_CASES_TABLE),
                 "code": CODE_ENABLED,
+                "minutes": MINUTES_ENABLED and bool(MINUTES_BUCKET),
             },
+            "minutes": {
+                "languages": list(MINUTES_LANGUAGES),
+                "extensions": list(MINUTES_AUDIO_EXTENSIONS),
+                "maxMegabytes": MAX_MEDIA_BYTES // (1024 * 1024),
+                "minSpeakers": MIN_SPEAKERS,
+                "maxSpeakers": MAX_SPEAKERS,
+            }
+            if MINUTES_ENABLED and MINUTES_BUCKET
+            else None,
             "code": {
                 "maxRuns": CODE_MAX_RUNS,
                 "runSeconds": int(CODE_RUN_SECONDS),
@@ -964,6 +1121,10 @@ def handle(event: dict[str, Any]) -> dict[str, Any]:
         }
     if action == "code":
         return code_execution(event, groups)
+    if action == "minutes-start":
+        return minutes_start(event, groups, user_id)
+    if action == "minutes-status":
+        return minutes_status(event, user_id)
     if action == "runUseCase":
         item = (
             use_cases_table()
