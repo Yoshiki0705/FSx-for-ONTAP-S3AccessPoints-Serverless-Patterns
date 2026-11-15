@@ -61,6 +61,7 @@ AwsSolutions-IAM5[Resource::arn:aws:s3:::*athena-results*/*]	data/AthenaQueryLam
 AwsSolutions-IAM5[Resource::arn:aws:s3:::*athena-results*]	data/AthenaQueryLambdaRole/Resource
 AwsSolutions-IAM5[Resource::arn:aws:s3:<AWS::Region>:<AWS::AccountId>:accesspoint/*/object/*]	data/AskAboutFileLambdaRole/Resource
 AwsSolutions-IAM5[Resource::arn:aws:s3:<AWS::Region>:<AWS::AccountId>:accesspoint/*/object/*]	data/AthenaQueryLambdaRole/Resource
+AwsSolutions-IAM5[Resource::arn:aws:s3:<AWS::Region>:<AWS::AccountId>:accesspoint/*/object/*]	data/FileToolsLambdaRole/Resource
 AwsSolutions-IAM5[Resource::arn:aws:s3:<AWS::Region>:<AWS::AccountId>:accesspoint/*/object/*]	data/FolderDownloadLambdaRole/Resource
 AwsSolutions-IAM5[Resource::arn:aws:s3:<AWS::Region>:<AWS::AccountId>:accesspoint/*/object/*]	data/GenerateQrCodeLambdaRole/Resource
 AwsSolutions-IAM5[Resource::arn:aws:s3:<AWS::Region>:<AWS::AccountId>:accesspoint/*/object/*]	data/GetPresignedUrlLambdaRole/Resource
@@ -68,6 +69,7 @@ AwsSolutions-IAM5[Resource::arn:aws:s3:<AWS::Region>:<AWS::AccountId>:accesspoin
 AwsSolutions-IAM5[Resource::arn:aws:s3:<AWS::Region>:<AWS::AccountId>:accesspoint/*/object/*]	data/ThumbnailsLambdaRole/Resource
 AwsSolutions-IAM5[Resource::arn:aws:s3:<AWS::Region>:<AWS::AccountId>:accesspoint/*]	data/AskAboutFileLambdaRole/Resource
 AwsSolutions-IAM5[Resource::arn:aws:s3:<AWS::Region>:<AWS::AccountId>:accesspoint/*]	data/AthenaQueryLambdaRole/Resource
+AwsSolutions-IAM5[Resource::arn:aws:s3:<AWS::Region>:<AWS::AccountId>:accesspoint/*]	data/FileToolsLambdaRole/Resource
 AwsSolutions-IAM5[Resource::arn:aws:s3:<AWS::Region>:<AWS::AccountId>:accesspoint/*]	data/FolderDownloadLambdaRole/Resource
 AwsSolutions-IAM5[Resource::arn:aws:s3:<AWS::Region>:<AWS::AccountId>:accesspoint/*]	data/GenerateQrCodeLambdaRole/Resource
 AwsSolutions-IAM5[Resource::arn:aws:s3:<AWS::Region>:<AWS::AccountId>:accesspoint/*]	data/GetPresignedUrlLambdaRole/Resource
@@ -87,6 +89,7 @@ AwsSolutions-IAM4[Policy::arn:<AWS::Partition>:iam::aws:policy/service-role/AWSL
 AwsSolutions-IAM4[Policy::arn:<AWS::Partition>:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole]	data/AthenaQueryLambdaRole/Resource
 AwsSolutions-IAM4[Policy::arn:<AWS::Partition>:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole]	data/ComprehendLambdaRole/Resource
 AwsSolutions-IAM4[Policy::arn:<AWS::Partition>:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole]	data/DetectLabelsLambdaRole/Resource
+AwsSolutions-IAM4[Policy::arn:<AWS::Partition>:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole]	data/FileToolsLambdaRole/Resource
 AwsSolutions-IAM4[Policy::arn:<AWS::Partition>:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole]	data/FolderDownloadLambdaRole/Resource
 AwsSolutions-IAM4[Policy::arn:<AWS::Partition>:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole]	data/GenerateQrCodeLambdaRole/Resource
 AwsSolutions-IAM4[Policy::arn:<AWS::Partition>:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole]	data/GetFileMetadataLambdaRole/Resource
@@ -117,6 +120,7 @@ AwsSolutions-IAM5[Resource::<AskAboutFileFunctionE5EDF940.Arn>:*]	data/amplifyDa
 AwsSolutions-IAM5[Resource::<AthenaQueryFunction379DFB4D.Arn>:*]	data/amplifyData/L2GraphqlApi/AthenaQueryLambdaDataSource/ServiceRole/DefaultPolicy/Resource
 AwsSolutions-IAM5[Resource::<ComprehendFunction4F6F4F39.Arn>:*]	data/amplifyData/L2GraphqlApi/ComprehendLambdaDataSource/ServiceRole/DefaultPolicy/Resource
 AwsSolutions-IAM5[Resource::<DetectLabelsFunctionA5766F08.Arn>:*]	data/amplifyData/L2GraphqlApi/DetectLabelsLambdaDataSource/ServiceRole/DefaultPolicy/Resource
+AwsSolutions-IAM5[Resource::<FileToolsFunctionF1FC6FDA.Arn>:*]	data/amplifyData/L2GraphqlApi/FileToolsLambdaDataSource/ServiceRole/DefaultPolicy/Resource
 AwsSolutions-IAM5[Resource::<FolderDownloadFunction856FA985.Arn>:*]	data/amplifyData/L2GraphqlApi/FolderDownloadLambdaDataSource/ServiceRole/DefaultPolicy/Resource
 AwsSolutions-IAM5[Resource::<GenerateQrCodeFunction012A027D.Arn>:*]	data/amplifyData/L2GraphqlApi/GenerateQrCodeLambdaDataSource/ServiceRole/DefaultPolicy/Resource
 AwsSolutions-IAM5[Resource::<GetFileMetadataFunctionCF35B8FD.Arn>:*]	data/amplifyData/L2GraphqlApi/GetFileMetadataLambdaDataSource/ServiceRole/DefaultPolicy/Resource
