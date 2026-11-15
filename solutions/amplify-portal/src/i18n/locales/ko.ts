@@ -2154,6 +2154,7 @@ arpResponseSweepNote: "차단은 지정한 기한이 지나면 자동으로 해�
   ftImageSavedTo: "이미지는 저장할 폴더에 저장됩니다(같은 이름의 파일은 덮어쓰지 않음)",
   ftFileName: "파일 이름",
   ftNoWrite: "폴더에 저장하려면 쓰기 권한이 필요합니다.",
+  ftUsecasesNoRole: "사용 사례를 저장하려면 포털 역할이 필요합니다. 관리자에게 그룹 추가를 요청하세요.",
   ftOpenTranslate: "번역",
   ftOpenProofread: "교정",
   ftOpenDiagram: "다이어그램",

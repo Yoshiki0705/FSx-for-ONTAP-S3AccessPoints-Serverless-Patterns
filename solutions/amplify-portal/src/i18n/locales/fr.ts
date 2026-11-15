@@ -2162,6 +2162,7 @@ arpResponseSweepNote: "Les blocages se lèvent d'eux-mêmes à l'échéance. Pou
   ftImageSavedTo: "L’image est enregistrée dans le dossier (un fichier existant du même nom n’est pas écrasé)",
   ftFileName: "Nom du fichier",
   ftNoWrite: "L’enregistrement dans un dossier nécessite le droit d’écriture.",
+  ftUsecasesNoRole: "L'enregistrement des cas d'usage nécessite un rôle du portail. Demandez à un administrateur de vous ajouter à un groupe.",
   ftOpenTranslate: "Traduire",
   ftOpenProofread: "Relire",
   ftOpenDiagram: "Diagramme",

@@ -1,9 +1,13 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 
-const { toolsQuery, toolsMutation } = vi.hoisted(() => ({ toolsQuery: vi.fn(), toolsMutation: vi.fn() }));
+const { toolsQuery, toolsMutation, toolsUseCaseMutation } = vi.hoisted(() => ({
+  toolsQuery: vi.fn(),
+  toolsMutation: vi.fn(),
+  toolsUseCaseMutation: vi.fn(),
+}));
 vi.mock("aws-amplify/data", () => ({
-  generateClient: () => ({ queries: { toolsQuery }, mutations: { toolsMutation } }),
+  generateClient: () => ({ queries: { toolsQuery }, mutations: { toolsMutation, toolsUseCaseMutation } }),
 }));
 
 import { FileTools } from "../../src/components/FileTools";
@@ -20,7 +24,7 @@ const config = (image: boolean) => ({
 function renderTools(props: Partial<Parameters<typeof FileTools>[0]> = {}) {
   return render(
     <I18nProvider>
-      <FileTools selectedFileKey="team-a/policy.md" selectedFolder="team-a/" canWrite={false} {...props} />
+      <FileTools selectedFileKey="team-a/policy.md" selectedFolder="team-a/" canWrite={false} canSaveUseCases={false} {...props} />
     </I18nProvider>,
   );
 }
@@ -28,6 +32,7 @@ function renderTools(props: Partial<Parameters<typeof FileTools>[0]> = {}) {
 beforeEach(() => {
   toolsQuery.mockReset();
   toolsMutation.mockReset();
+  toolsUseCaseMutation.mockReset();
   localStorage.setItem("portal-locale", "en");
 });
 
@@ -69,5 +74,28 @@ describe("FileTools", () => {
     fireEvent.click(await screen.findByRole("button", { name: /^Translate$/ }));
     await screen.findByText("translated text");
     expect(screen.queryByRole("button", { name: /Save to the folder/ })).toBeNull();
+  });
+
+  it("lets a viewer save a use case, through the use-case mutation only", async () => {
+    toolsQuery.mockImplementation(async ({ action }: { action: string }) =>
+      action === "config" ? config(false) : { data: JSON.stringify({ success: true, useCases: [] }) },
+    );
+    toolsUseCaseMutation.mockResolvedValue({ data: JSON.stringify({ success: true, useCase: {} }) });
+    renderTools({ canWrite: false, canSaveUseCases: true, initialTab: "useCases" });
+    fireEvent.click(await screen.findByRole("button", { name: /New use case/ }));
+    fireEvent.change(screen.getByLabelText("Name"), { target: { value: "Brief" } });
+    fireEvent.click(screen.getByRole("button", { name: /^Save$/ }));
+    await waitFor(() => expect(toolsUseCaseMutation).toHaveBeenCalled());
+    expect(toolsUseCaseMutation.mock.calls[0][0].action).toBe("saveUseCase");
+    expect(toolsMutation).not.toHaveBeenCalled();
+  });
+
+  it("says a portal role is needed when the account cannot save use cases", async () => {
+    toolsQuery.mockImplementation(async ({ action }: { action: string }) =>
+      action === "config" ? config(false) : { data: JSON.stringify({ success: true, useCases: [] }) },
+    );
+    renderTools({ canWrite: false, canSaveUseCases: false, initialTab: "useCases" });
+    expect(await screen.findByText(/needs a portal role/)).toBeTruthy();
+    expect(screen.queryByRole("button", { name: /New use case/ })).toBeNull();
   });
 });

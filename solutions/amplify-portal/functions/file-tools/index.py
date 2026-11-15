@@ -617,7 +617,11 @@ def save_use_case(user_id: str, event: dict[str, Any]) -> dict[str, Any]:
 
 
 # --------------------------------------------------------------------------- handler
-WRITE_ACTIONS = {"saveUseCase", "deleteUseCase", "generateImage", "saveResult"}
+# Folder writes: toolsMutation only (write roles). Use-case writes: toolsUseCaseMutation
+# only (every portal role). Each resolver sets its own flag after the client's params,
+# so the flag says which endpoint AppSync authorized the call through.
+WRITE_ACTIONS = {"generateImage", "saveResult"}
+USE_CASE_ACTIONS = {"saveUseCase", "deleteUseCase"}
 
 
 def handle(event: dict[str, Any]) -> dict[str, Any]:
@@ -646,6 +650,8 @@ def handle(event: dict[str, Any]) -> dict[str, Any]:
         return {"useCases": list_use_cases(user_id)}
     if action in WRITE_ACTIONS and event.get("writeOperation") is not True:
         raise ToolError(f"{action} needs the write operation (toolsMutation)")
+    if action in USE_CASE_ACTIONS and event.get("useCaseOperation") is not True:
+        raise ToolError(f"{action} needs the use-case operation (toolsUseCaseMutation)")
     if action == "saveUseCase":
         return {"useCase": save_use_case(user_id, event)}
     if action == "deleteUseCase":

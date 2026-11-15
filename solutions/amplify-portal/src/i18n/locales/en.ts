@@ -2193,6 +2193,7 @@ arpResponseSweepNote: "Blocks lift themselves once their expiry passes. To lift 
   ftImageSavedTo: "The image is saved into the folder (an existing file with the same name is not overwritten)",
   ftFileName: "File name",
   ftNoWrite: "Saving to a folder needs write permission.",
+  ftUsecasesNoRole: "Saving use cases needs a portal role. Ask an administrator to add you to a group.",
   ftOpenTranslate: "Translate",
   ftOpenProofread: "Proofread",
   ftOpenDiagram: "Diagram",

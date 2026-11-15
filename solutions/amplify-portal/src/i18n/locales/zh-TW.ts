@@ -2151,6 +2151,7 @@ arpResponseSweepNote: "封鎖會在設定的期限過後自動解除。如需提
   ftImageSavedTo: "圖片會儲存到該資料夾（不會覆寫同名檔案）",
   ftFileName: "檔案名稱",
   ftNoWrite: "儲存到資料夾需要寫入權限。",
+  ftUsecasesNoRole: "儲存使用案例需要入口網站角色。請聯絡管理員將您加入群組。",
   ftOpenTranslate: "翻譯",
   ftOpenProofread: "校對",
   ftOpenDiagram: "產生圖表",
