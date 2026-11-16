@@ -68,7 +68,7 @@ When enabled, a Video analysis tab appears. Select a video (mp4, mov, webm, mkv)
 
 AppSync waits at most 30 s, so **one call (`video`) has to finish within 25 s, and only files too large for that are refused.** The model call has a 20 s read timeout and the whole action is cut at 25 s; both answer that the analysis did not finish in time. The size limit is `VIDEO_ANALYSIS_MAX_MB` (default 50). A larger video is refused before the model is called with `file too large for synchronous analysis (limit N MB)`. The basis for the limit is the measurement in "Results for Video Analysis" below. An asynchronous route for videos that do not fit is left for a separate change, if this limit proves too small in practice.
 
-The screen shows the limit and a note that text on screen can lose its last character from one run to the next, so the original video should be checked when accuracy matters. The Lambda role gains only `bedrock:InvokeModel` on the Nova 2 Lite inference profile and the Tokyo and Osaka foundation models. Reading the video uses the existing access point permission. The viewer role can use it. Nothing is written to a user's folder.
+**The audio is not analyzed.** Nova 2 Lite's video understanding uses the frames only (one per second for videos of 16 minutes or less) and does not process the audio track ([Amazon Nova 2 multimodal understanding](https://docs.aws.amazon.com/nova/latest/nova2-userguide/using-multimodal-models.html), "No audio support"). Use Minutes when what was said matters. The screen shows the limit, that the audio is not analyzed, and that text on screen can lose its last character from one run to the next, so the original video should be checked when accuracy matters. The Lambda role gains only `bedrock:InvokeModel` on the Nova 2 Lite inference profile and the Tokyo and Osaka foundation models. Reading the video uses the existing access point permission. The viewer role can use it. Nothing is written to a user's folder.
 ## Settings
 
 Set through `tools` in `amplify/portal-config.ts` or environment variables. An existing `portal-config.ts` without `tools` falls back to the environment variables.
@@ -209,7 +209,18 @@ Set through `tools` in `amplify/portal-config.ts` or environment variables. An e
 | The same user sends `video-start` and `video-status` | `unknown action` |
 | The `auditor` user sends a video under `video/` | `key is outside the prefixes your groups may access` |
 
-**Not checked**: the quality of the analysis on real footage. On the synthetic videos the model sometimes answered that it could not respond (8 of the 26 answers in this measurement: 8 of 15 on the size axis, which is video-only noise, and 0 of 11 on the length axis). Whether the same happens with real footage is not known.
+**Checked on real footage (2026-11-16, ap-northeast-1)**: two clips cut from a NASA news conference video ([PACE Prelaunch News Conference](https://images.nasa.gov/details/PACE%20Prelaunch%20News%20Conference), 1280×720), with the handler called from a workstation against real Bedrock and the access point: the first 165 s (46.7 MB; one speaker, then six people at a table) and 180 s of Q&A (47.0 MB; six people at a table). The first 180 s (51.0 MB) was refused by the limit. One run per request, 8.6 to 15.6 s each.
+
+| Request | Result |
+|---|---|
+| Write out all text on screen | Opening clip: `NASA / PACE / NASA / JIM FREE / NASA ASSOCIATE ADMINISTRATOR` (matching what is shown, including the caption's name and title). Q&A clip: only `PACE` (the `NASA` logo was not written out) |
+| Number and positions of the people | Q&A clip: 6 people with their clothes, left to right, matching the footage. Opening clip: once "7 people" followed by a list of 6, another time 6 |
+| Summary | The setting (news conference, satellite image behind, flags, logos) matched the footage. What was said was invented ("speaker 1 explains ...") |
+| Three main points of what is said (twice before and twice after the system-prompt note) | **Invented all four times**, unrelated to the talk (PACE is an Earth-observing satellite; the answers spoke of "searching for water on other worlds") |
+
+**Dealing with invented speech**: the model gets no audio, so it invents an answer when asked what was said. Writing "the audio is not given to you; do not describe speech" in the system prompt did not stop that (4 of 4 runs). Adding the same note to the user message made it answer "the audio is not analyzed" for speech, but it then **refused to write out the on-screen text as well** (4 of 4 runs across two wordings). Reading text on screen is worth more in this tool, so the user-message note is not used; the system prompt and the screen's "the audio is not analyzed; use Minutes for what was said" carry it. **Answers about what was said have no basis, as the screen states.**
+
+**Not checked**: other kinds of footage (work recordings, surveillance cameras, screen recordings); a way to make the model itself reliably stop inventing speech.
 
 ## Related Documents
 

@@ -2100,6 +2100,7 @@ arpResponseSweepNote: "Les blocages se lèvent d'eux-mêmes à l'échéance. Pou
   ftMinutesTimeout: "La transcription n’était pas terminée après 30 minutes. Réessayez plus tard.",
   ftTabsVideo: "Analyse vidéo",
   ftVideoNoteSync: "Le modèle regarde la vidéo sélectionnée que vous pouvez lire et répond à votre demande. Jusqu’à {mb} Mo, et seulement ce qui se termine en {seconds} secondes. Formats pris en charge :",
+  ftVideoNoaudio: "L’audio n’est pas analysé : le modèle ne voit que les images, environ une par seconde. Pour obtenir ce qui a été dit, utilisez Compte rendu.",
   ftVideoCaveat: "Le texte affiché à l’écran peut perdre son dernier caractère d’une exécution à l’autre. Si la précision compte, vérifiez avec la vidéo d’origine.",
   ftVideoNofile: "Sélectionnez une vidéo dans la liste des fichiers.",
   ftVideoTask: "Demande (un résumé si elle est vide)",

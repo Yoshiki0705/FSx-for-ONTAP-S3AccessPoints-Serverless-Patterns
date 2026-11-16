@@ -212,6 +212,7 @@ describe("FileTools", () => {
     expect(note.textContent).toContain("Up to 20 MB");
     expect(note.textContent).toContain("25 seconds");
     expect(note.textContent).toContain("last character");
+    expect(note.textContent).toContain("audio is not analyzed");
     fireEvent.click(screen.getByRole("button", { name: /Analyze the video/ }));
     await screen.findByText("A test pattern.");
     const sent = toolsQuery.mock.calls.find((c) => c[0].action === "video")![0];

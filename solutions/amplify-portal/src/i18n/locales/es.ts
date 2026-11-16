@@ -2099,6 +2099,7 @@ arpResponseSweepNote: "Los bloqueos se levantan por sí solos al vencer el plazo
   ftMinutesTimeout: "La transcripción no había terminado tras 30 minutos. Inténtelo de nuevo más tarde.",
   ftTabsVideo: "Análisis de vídeo",
   ftVideoNoteSync: "El modelo ve el vídeo seleccionado que usted puede leer y responde a su solicitud. Hasta {mb} MB, y solo lo que termine en {seconds} segundos. Formatos admitidos:",
+  ftVideoNoaudio: "El audio no se analiza: el modelo solo ve los fotogramas, aproximadamente uno por segundo. Para obtener lo que se dijo, use Acta.",
   ftVideoCaveat: "El texto que aparece en pantalla puede perder su último carácter de una ejecución a otra. Si la precisión importa, compárelo con el vídeo original.",
   ftVideoNofile: "Seleccione un vídeo en la lista de archivos.",
   ftVideoTask: "Solicitud (un resumen si se deja vacía)",

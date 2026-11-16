@@ -2089,6 +2089,7 @@ arpResponseSweepNote: "封鎖會在設定的期限過後自動解除。如需提
   ftMinutesTimeout: "等待 30 分鐘後轉寫仍未完成。請稍後重試。",
   ftTabsVideo: "影片分析",
   ftVideoNoteSync: "模型會觀看您有權讀取的所選影片並回答您的請求。大小不超過 {mb} MB，只處理能在 {seconds} 秒內完成的部分。支援的格式：",
+  ftVideoNoaudio: "不分析音訊。模型只看畫面（約每秒 1 格）。如需了解談話內容，請使用「會議紀錄」。",
   ftVideoCaveat: "畫面中的文字在不同次執行中，最後一個字元可能遺失。需要精確時，請與原始影片核對。",
   ftVideoNofile: "請在檔案清單中選擇影片。",
   ftVideoTask: "請求（留空則產生摘要）",

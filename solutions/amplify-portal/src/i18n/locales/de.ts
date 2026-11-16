@@ -2104,6 +2104,7 @@ arpResponseSweepNote: "Sperren heben sich nach Ablauf der Frist selbst auf. Für
   ftMinutesTimeout: "Die Transkription war nach 30 Minuten nicht fertig. Versuchen Sie es später erneut.",
   ftTabsVideo: "Videoanalyse",
   ftVideoNoteSync: "Das Modell sieht sich das ausgewählte Video an, das Sie lesen dürfen, und beantwortet Ihre Anfrage. Bis {mb} MB, und nur, was innerhalb von {seconds} Sekunden fertig wird. Unterstützte Formate:",
+  ftVideoNoaudio: "Der Ton wird nicht analysiert: Das Modell sieht nur die Bilder, etwa eines pro Sekunde. Für das Gesagte verwenden Sie Protokoll.",
   ftVideoCaveat: "Auf dem Bildschirm gezeigter Text kann von Lauf zu Lauf das letzte Zeichen verlieren. Wenn es auf Genauigkeit ankommt, gleichen Sie mit dem Originalvideo ab.",
   ftVideoNofile: "Wählen Sie in der Dateiliste ein Video aus.",
   ftVideoTask: "Anfrage (ohne Eingabe eine Zusammenfassung)",

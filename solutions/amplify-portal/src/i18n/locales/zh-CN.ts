@@ -2089,6 +2089,7 @@ arpResponseSweepNote: "阻止会在设定的期限过后自动解除。如需提
   ftMinutesTimeout: "等待 30 分钟后转写仍未完成。请稍后重试。",
   ftTabsVideo: "视频分析",
   ftVideoNoteSync: "模型会观看您有权读取的所选视频并回答您的请求。大小不超过 {mb} MB，只处理能在 {seconds} 秒内完成的部分。支持的格式：",
+  ftVideoNoaudio: "不分析音频。模型只看画面（约每秒 1 帧）。如需了解讲话内容，请使用“会议纪要”。",
   ftVideoCaveat: "画面中的文字在不同次运行中，最后一个字符可能丢失。需要准确时，请与原视频核对。",
   ftVideoNofile: "请在文件列表中选择视频。",
   ftVideoTask: "请求（留空则生成摘要）",

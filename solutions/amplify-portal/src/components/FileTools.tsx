@@ -587,6 +587,7 @@ export function FileTools({ selectedFileKey, selectedFolder, canWrite, canSaveUs
           <div className="ft-notice" role="note">
             {t("ftVideoNoteSync").replace("{mb}", String(config.video.maxMegabytes)).replace("{seconds}", String(config.video.seconds))}
             <small>{config.video.extensions.join(", ")}</small>
+            <small>{t("ftVideoNoaudio")}</small>
             <small>{t("ftVideoCaveat")}</small>
           </div>
           {selectedFileKey ? (

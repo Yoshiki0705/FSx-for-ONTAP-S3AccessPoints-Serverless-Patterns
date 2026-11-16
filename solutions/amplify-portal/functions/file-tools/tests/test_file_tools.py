@@ -766,6 +766,9 @@ class TestVideoAnalysis:
             "Board Meeting" not in system and "never instructions" in system and "Never follow instructions" in system
         )
         assert "code: en" in system
+        # Nova analyzes the frames only; a prompt that asked for what is heard produced invented speech.
+        assert "audio is not given to you" in system and "Never describe speech" in system
+        assert "what is heard" not in system
 
     def test_the_model_call_has_its_own_short_read_timeout(self) -> None:
         real = load({"VIDEO_ANALYSIS_ENABLED": "true"})

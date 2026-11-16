@@ -2131,6 +2131,7 @@ arpResponseSweepNote: "Blocks lift themselves once their expiry passes. To lift 
   ftMinutesTimeout: "The transcription had not finished after 30 minutes. Try again later.",
   ftTabsVideo: "Video analysis",
   ftVideoNoteSync: "The model watches the selected video you can read and answers your request. Up to {mb} MB, and only what finishes within {seconds} seconds. Supported formats:",
+  ftVideoNoaudio: "The audio is not analyzed: the model sees only the frames, about one per second. To get what was said, use Minutes.",
   ftVideoCaveat: "Text shown on screen can lose its last character from one run to the next. When accuracy matters, check against the original video.",
   ftVideoNofile: "Select a video in the file list.",
   ftVideoTask: "Request (a summary if left empty)",
