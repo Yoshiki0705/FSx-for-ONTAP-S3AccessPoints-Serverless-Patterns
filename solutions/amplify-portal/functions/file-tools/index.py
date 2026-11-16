@@ -37,7 +37,7 @@ from urllib.parse import urljoin, urlsplit
 
 import boto3
 from botocore.config import Config
-from botocore.exceptions import ReadTimeoutError
+from botocore.exceptions import ClientError, ReadTimeoutError
 
 from shared.exceptions import S3ApHelperError
 from shared.portal_external_policy import ai_denial_reason
@@ -65,6 +65,10 @@ MINUTES_BUCKET = os.environ.get("MINUTES_BUCKET", "")
 VIDEO_ENABLED = os.environ.get("VIDEO_ANALYSIS_ENABLED", "") == "true"
 VIDEO_MODEL_ID = os.environ.get("VIDEO_MODEL_ID", "jp.amazon.nova-2-lite-v1:0")
 VIDEO_MAX_MB = int(os.environ.get("VIDEO_ANALYSIS_MAX_MB", "50"))
+VIDEO_GEN_ENABLED = os.environ.get("VIDEO_GENERATION_ENABLED", "") == "true"
+VIDEO_GEN_BUCKET = os.environ.get("VIDEO_GENERATION_BUCKET", "")
+VIDEO_GEN_REGION = os.environ.get("VIDEO_GENERATION_REGION", "us-west-2")
+VIDEO_GEN_MODEL_ID = os.environ.get("VIDEO_GENERATION_MODEL_ID", "luma.ray-v2:0")
 CLASSIFICATION_TABLE = os.environ.get("CLASSIFICATION_TABLE_NAME", "")
 AI_BLOCKED_LEVELS = {
     level.strip().upper()
@@ -112,6 +116,14 @@ MAX_MEDIA_BYTES = 200 * 1024 * 1024
 VIDEO_EXTENSIONS = ("mp4", "mov", "webm", "mkv")
 VIDEO_SECONDS = 25.0
 VIDEO_READ_TIMEOUT = 20
+
+# Video generation (Luma Ray v2 through Bedrock's asynchronous invoke, in another Region). Only
+# values that were run are allowed; the prompt cap is ours.
+VIDEO_GEN_ASPECTS = ("16:9", "9:16")
+VIDEO_GEN_RESOLUTIONS = ("540p", "720p")
+VIDEO_GEN_DURATION = "5s"
+VIDEO_GEN_MAX_PROMPT_CHARS = 2000
+VIDEO_GEN_URL_SECONDS = 600
 
 
 class ToolError(Exception):
@@ -813,6 +825,88 @@ def video_sync(event: dict[str, Any], groups: list[str]) -> dict[str, Any]:
     return {"result": answer, "key": key, "seconds": round(time.monotonic() - started, 1), "model": VIDEO_MODEL_ID}
 
 
+# --------------------------------------------------------------------------- video generation
+def video_gen_runtime() -> Any:
+    return boto3.client("bedrock-runtime", region_name=VIDEO_GEN_REGION)
+
+
+def video_gen_s3() -> Any:
+    # The Region's own endpoint is named: a link signed for one Region but addressed to the global
+    # endpoint is redirected, and the redirected request fails with SignatureDoesNotMatch (seen live).
+    return boto3.client(
+        "s3",
+        region_name=VIDEO_GEN_REGION,
+        endpoint_url=f"https://s3.{VIDEO_GEN_REGION}.amazonaws.com",
+        config=Config(signature_version="s3v4", s3={"addressing_style": "virtual"}),
+    )
+
+
+def video_generate_start(event: dict[str, Any], user_id: str) -> dict[str, Any]:
+    if not VIDEO_GEN_ENABLED or not VIDEO_GEN_BUCKET:
+        raise ToolError("video generation is not enabled")
+    prompt = str(event.get("prompt") or "").strip()
+    if not prompt:
+        raise ToolError("prompt is required")
+    if len(prompt) > VIDEO_GEN_MAX_PROMPT_CHARS:
+        raise ToolError(f"prompt is longer than {VIDEO_GEN_MAX_PROMPT_CHARS} characters")
+    aspect = str(event.get("aspectRatio") or "16:9")
+    resolution = str(event.get("resolution") or "540p")
+    if aspect not in VIDEO_GEN_ASPECTS:
+        raise ToolError(f"aspectRatio must be one of: {', '.join(VIDEO_GEN_ASPECTS)}")
+    if resolution not in VIDEO_GEN_RESOLUTIONS:
+        raise ToolError(f"resolution must be one of: {', '.join(VIDEO_GEN_RESOLUTIONS)}")
+    # The output folder carries the caller's hash; status accepts only an invocation that wrote there.
+    folder = f"videos/{user_hash(user_id)}/{uuid.uuid4().hex}/"
+    try:
+        started = video_gen_runtime().start_async_invoke(
+            modelId=VIDEO_GEN_MODEL_ID,
+            modelInput={
+                "prompt": prompt,
+                "aspect_ratio": aspect,
+                "resolution": resolution,
+                "duration": VIDEO_GEN_DURATION,
+            },
+            outputDataConfig={"s3OutputDataConfig": {"s3Uri": f"s3://{VIDEO_GEN_BUCKET}/{folder}"}},
+        )
+    except ClientError as e:
+        code = e.response.get("Error", {}).get("Code")
+        logger.warning("StartAsyncInvoke failed: %s", code, exc_info=True)
+        if code == "ThrottlingException":
+            raise ToolError("the video model is busy; try again in a minute") from e
+        raise ToolError("the video job could not be started") from e
+    return {"invocationArn": started["invocationArn"], "status": "IN_PROGRESS", "region": VIDEO_GEN_REGION}
+
+
+def video_generate_status(event: dict[str, Any], user_id: str) -> dict[str, Any]:
+    if not VIDEO_GEN_ENABLED or not VIDEO_GEN_BUCKET:
+        raise ToolError("video generation is not enabled")
+    arn = str(event.get("invocationArn") or "")
+    if not re.fullmatch(rf"arn:aws:bedrock:{re.escape(VIDEO_GEN_REGION)}:\d{{12}}:async-invoke/[A-Za-z0-9]+", arn):
+        raise ToolError("job not found")
+    try:
+        job = video_gen_runtime().get_async_invoke(invocationArn=arn)
+    except ClientError as e:
+        logger.warning("GetAsyncInvoke failed", exc_info=True)
+        raise ToolError("job not found") from e
+    # The ARN is the client's. The service's own record of where the video goes must be this user's folder.
+    prefix = f"s3://{VIDEO_GEN_BUCKET}/videos/{user_hash(user_id)}/"
+    uri = str(((job.get("outputDataConfig") or {}).get("s3OutputDataConfig") or {}).get("s3Uri") or "")
+    # The service appends the invocation ID to the folder it was given, with no trailing slash.
+    if not uri.startswith(prefix) or ".." in uri:
+        raise ToolError("job not found")
+    state = str(job.get("status") or "")
+    if state == "InProgress":
+        return {"status": "IN_PROGRESS"}
+    if state != "Completed":
+        return {"status": "FAILED", "reason": str(job.get("failureMessage") or "")[:300]}
+    url = video_gen_s3().generate_presigned_url(
+        "get_object",
+        Params={"Bucket": VIDEO_GEN_BUCKET, "Key": uri[len(f"s3://{VIDEO_GEN_BUCKET}/") :].rstrip("/") + "/output.mp4"},
+        ExpiresIn=VIDEO_GEN_URL_SECONDS,
+    )
+    return {"status": "COMPLETED", "url": url, "expiresInSeconds": VIDEO_GEN_URL_SECONDS}
+
+
 SAFE_NAME = re.compile(r"[^\w.\-()\s]+", flags=re.UNICODE)
 
 
@@ -1137,7 +1231,18 @@ def handle(event: dict[str, Any]) -> dict[str, Any]:
                 "code": CODE_ENABLED,
                 "minutes": MINUTES_ENABLED and bool(MINUTES_BUCKET),
                 "video": VIDEO_ENABLED,
+                "videoGeneration": VIDEO_GEN_ENABLED and bool(VIDEO_GEN_BUCKET),
             },
+            "videoGeneration": {
+                "region": VIDEO_GEN_REGION,
+                "modelId": VIDEO_GEN_MODEL_ID,
+                "crossRegion": VIDEO_GEN_REGION != REGION,
+                "aspectRatios": list(VIDEO_GEN_ASPECTS),
+                "resolutions": list(VIDEO_GEN_RESOLUTIONS),
+                "maxPromptChars": VIDEO_GEN_MAX_PROMPT_CHARS,
+            }
+            if VIDEO_GEN_ENABLED and VIDEO_GEN_BUCKET
+            else None,
             "video": {"extensions": list(VIDEO_EXTENSIONS), "maxMegabytes": VIDEO_MAX_MB, "seconds": int(VIDEO_SECONDS)}
             if VIDEO_ENABLED
             else None,
@@ -1217,6 +1322,10 @@ def handle(event: dict[str, Any]) -> dict[str, Any]:
         }
     if action == "code":
         return code_execution(event, groups)
+    if action == "video-generate-start":
+        return video_generate_start(event, user_id)
+    if action == "video-generate-status":
+        return video_generate_status(event, user_id)
     if action == "video":
         return video_sync(event, groups)
     if action == "minutes-start":

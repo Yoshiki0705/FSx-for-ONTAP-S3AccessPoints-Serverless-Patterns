@@ -2269,8 +2269,17 @@ api.addLambdaDataSource("AskAboutFileLambdaDataSource", askAboutFileFunction);
 // AMPLIFY_PORTAL_* variables, so an existing portal-config.ts keeps working unchanged.
 // Read through a cast: a portal-config.ts copied before `tools` existed has its own
 // PortalConfig without the field, and must keep compiling.
-const configTools = (config as { tools?: { webExtract?: boolean; imageGeneration?: { enabled?: boolean; region?: string; modelId?: string }; codeExecution?: boolean; minutes?: boolean; videoAnalysis?: { enabled?: boolean; maxMegabytes?: number } } }).tools;
+const configTools = (config as { tools?: { webExtract?: boolean; imageGeneration?: { enabled?: boolean; region?: string; modelId?: string }; codeExecution?: boolean; minutes?: boolean; videoAnalysis?: { enabled?: boolean; maxMegabytes?: number }; videoGeneration?: { enabled?: boolean; outputBucket?: string; region?: string } } }).tools;
 const toolsSettings = {
+  // Video generation (Luma Ray v2). The model and its output bucket sit in another Region
+  // (us-west-2), which this stack cannot create, so the bucket is an existing one that
+  // infrastructure/video-output-bucket.yaml makes.
+  videoGenEnabled:
+    configTools?.videoGeneration?.enabled ?? process.env.AMPLIFY_PORTAL_VIDEO_GENERATION_ENABLED === "true",
+  videoGenBucket:
+    configTools?.videoGeneration?.outputBucket || process.env.AMPLIFY_PORTAL_VIDEO_GENERATION_BUCKET || "",
+  videoGenRegion:
+    configTools?.videoGeneration?.region || process.env.AMPLIFY_PORTAL_VIDEO_GENERATION_REGION || "us-west-2",
   // Video analysis: Nova 2 Lite reads the video from the access point in one call. The size limit is
   // the largest file that answered inside AppSync's 30 s when it was measured (docs/file-tools.md).
   videoAnalysis:
@@ -2300,6 +2309,20 @@ const toolsSettings = {
 if (!/^[a-z]{2}(-gov)?-[a-z]+-\d$/.test(toolsSettings.imageRegion)) {
   throw new Error(`tools.imageGeneration.region is not a Region name: ${toolsSettings.imageRegion}`);
 }
+if (toolsSettings.videoGenEnabled) {
+  if (!toolsSettings.videoGenBucket) {
+    throw new Error(
+      "tools.videoGeneration.outputBucket is required when video generation is enabled. " +
+        "Deploy solutions/amplify-portal/infrastructure/video-output-bucket.yaml in the model's Region and use its BucketName."
+    );
+  }
+  if (!/^[a-z0-9][a-z0-9.-]{1,61}[a-z0-9]$/.test(toolsSettings.videoGenBucket)) {
+    throw new Error(`tools.videoGeneration.outputBucket is not a bucket name: ${toolsSettings.videoGenBucket}`);
+  }
+  if (!/^[a-z]{2}(-gov)?-[a-z]+-\d$/.test(toolsSettings.videoGenRegion)) {
+    throw new Error(`tools.videoGeneration.region is not a Region name: ${toolsSettings.videoGenRegion}`);
+  }
+}
 if (!Number.isInteger(toolsSettings.videoAnalysisMaxMb) || toolsSettings.videoAnalysisMaxMb < 1 || toolsSettings.videoAnalysisMaxMb > 200) {
   throw new Error(`tools.videoAnalysis.maxMegabytes must be a whole number from 1 to 200: ${toolsSettings.videoAnalysisMaxMb}`);
 }
@@ -2308,6 +2331,7 @@ if (!/^[a-z0-9.:-]+$/.test(toolsSettings.imageModelId)) {
 }
 const TOOLS_MODEL_ID = "jp.anthropic.claude-haiku-4-5-20251001-v1:0";
 const VIDEO_MODEL_ID = "jp.amazon.nova-2-lite-v1:0";
+const VIDEO_GEN_MODEL_ID = "luma.ray-v2:0";
 const videoEnabled = toolsSettings.videoAnalysis;
 // Saved use cases: PK the Cognito username, so a user reads and runs only their own.
 const userUseCasesTable = new dynamodb.Table(dataStack, "UserUseCasesTable", {
@@ -2393,6 +2417,28 @@ const fileToolsRole = new iam.Role(dataStack, "FileToolsLambdaRole", {
               }),
             ]
           : []),
+        // Video generation: start and read asynchronous invocations of the model in its own Region,
+        // write the video into the output bucket (the caller's credentials do the write) and sign
+        // a link to read it back.
+        ...(toolsSettings.videoGenEnabled
+          ? [
+              new iam.PolicyStatement({
+                actions: ["bedrock:InvokeModel", "bedrock:StartAsyncInvoke"],
+                resources: [`arn:aws:bedrock:${toolsSettings.videoGenRegion}::foundation-model/${VIDEO_GEN_MODEL_ID}`],
+              }),
+              new iam.PolicyStatement({
+                // StartAsyncInvoke is also authorized as InvokeModel on the invocation, which does not
+                // exist before the call, so the account's async-invoke/* is the narrowest resource
+                // (seen live, 2026-11-16: AccessDenied without it).
+                actions: ["bedrock:InvokeModel", "bedrock:GetAsyncInvoke"],
+                resources: [`arn:aws:bedrock:${toolsSettings.videoGenRegion}:${Aws.ACCOUNT_ID}:async-invoke/*`],
+              }),
+              new iam.PolicyStatement({
+                actions: ["s3:PutObject", "s3:GetObject"],
+                resources: [`arn:aws:s3:::${toolsSettings.videoGenBucket}/videos/*`],
+              }),
+            ]
+          : []),
         // Minutes: create and read this tool's own jobs, and read and write the transcript
         // folder. Transcribe uses these credentials to read the recording from the access point
         // (s3ApArns above) and to write its output.
@@ -2430,6 +2476,10 @@ const fileToolsFunction = new lambda.Function(dataStack, "FileToolsFunction", {
     IMAGE_GENERATION_REGION: toolsSettings.imageRegion,
     IMAGE_GENERATION_MODEL_ID: toolsSettings.imageModelId,
     CODE_INTERPRETER_ENABLED: String(toolsSettings.codeExecution),
+    VIDEO_GENERATION_ENABLED: String(toolsSettings.videoGenEnabled),
+    VIDEO_GENERATION_BUCKET: toolsSettings.videoGenEnabled ? toolsSettings.videoGenBucket : "",
+    VIDEO_GENERATION_REGION: toolsSettings.videoGenRegion,
+    VIDEO_GENERATION_MODEL_ID: VIDEO_GEN_MODEL_ID,
     VIDEO_ANALYSIS_ENABLED: String(videoEnabled),
     VIDEO_ANALYSIS_MAX_MB: String(toolsSettings.videoAnalysisMaxMb),
     VIDEO_MODEL_ID,

@@ -1,0 +1,67 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >
+  Output bucket for the File Portal's video generation tool. Deploy this stack in the Region
+  where the video model runs (us-west-2 for Luma Ray v2), then put the BucketName output into
+  portal-config.ts as tools.videoGeneration.outputBucket. The portal's own stack cannot create
+  it: Amplify deploys one Region, and the bucket must sit beside the model.
+  Videos and prompts stored here are outside Japan if this stack is not in Tokyo.
+Parameters:
+  RetentionDays:
+    Type: Number
+    Default: 1
+    MinValue: 1
+    Description: Days before a generated video is deleted
+Resources:
+  VideoOutputBucket:
+    Type: AWS::S3::Bucket
+    DeletionPolicy: Delete
+    UpdateReplacePolicy: Delete
+    Properties:
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      OwnershipControls:
+        Rules:
+          - ObjectOwnership: BucketOwnerEnforced
+      LifecycleConfiguration:
+        Rules:
+          - Id: expire-generated-videos
+            Status: Enabled
+            ExpirationInDays: !Ref RetentionDays
+            AbortIncompleteMultipartUpload:
+              DaysAfterInitiation: 1
+      Tags:
+        - Key: UseCase
+          Value: portal-video-generation
+        - Key: Phase
+          Value: portal
+  VideoOutputBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref VideoOutputBucket
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: DenyInsecureTransport
+            Effect: Deny
+            Principal: "*"
+            Action: "s3:*"
+            Resource:
+              - !GetAtt VideoOutputBucket.Arn
+              - !Sub "${VideoOutputBucket.Arn}/*"
+            Condition:
+              Bool:
+                "aws:SecureTransport": "false"
+Outputs:
+  BucketName:
+    Description: Put this in portal-config.ts as tools.videoGeneration.outputBucket
+    Value: !Ref VideoOutputBucket
+  Region:
+    Description: Put this in portal-config.ts as tools.videoGeneration.region
+    Value: !Ref AWS::Region

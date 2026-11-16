@@ -16,12 +16,13 @@ import { Icon, type IconName } from "./Icon";
 
 const client = generateClient<Schema>();
 
-export type ToolTab = "translate" | "proofread" | "diagram" | "webExtract" | "image" | "code" | "minutes" | "video" | "useCases";
+export type ToolTab = "translate" | "proofread" | "diagram" | "webExtract" | "image" | "code" | "minutes" | "video" | "videoGen" | "useCases";
 
 interface ToolsConfig {
-  tools: { webExtract: boolean; image: boolean; useCases: boolean; code?: boolean; minutes?: boolean; video?: boolean };
+  tools: { webExtract: boolean; image: boolean; useCases: boolean; code?: boolean; minutes?: boolean; video?: boolean; videoGeneration?: boolean };
   image: { region: string; modelId: string; crossRegion: boolean } | null;
   code?: { maxRuns: number; runSeconds: number; totalSeconds: number } | null;
+  videoGeneration?: { region: string; modelId: string; crossRegion: boolean; aspectRatios: string[]; resolutions: string[]; maxPromptChars: number } | null;
   video?: { extensions: string[]; maxMegabytes: number; seconds: number } | null;
   minutes?: { languages: string[]; extensions: string[]; maxMegabytes: number; minSpeakers: number; maxSpeakers: number } | null;
 }
@@ -155,6 +156,10 @@ export function FileTools({ selectedFileKey, selectedFolder, canWrite, canSaveUs
   const [minSpeakers, setMinSpeakers] = useState(2);
   // A job running in the background: which status action to ask, and what to say if it fails.
   const [poll, setPoll] = useState<{ action: string; params: Record<string, unknown>; failed: TranslationKeys } | null>(null);
+  // Video generation
+  const [genPrompt, setGenPrompt] = useState("");
+  const [genAspect, setGenAspect] = useState("16:9");
+  const [genResolution, setGenResolution] = useState("540p");
   // Video analysis
   const [videoTask, setVideoTask] = useState("");
   // Use cases
@@ -246,6 +251,7 @@ export function FileTools({ selectedFileKey, selectedFolder, canWrite, canSaveUs
     { id: "code", icon: "wrench", label: "ftTabsCode", show: config?.tools.code ?? false },
     { id: "minutes", icon: "users", label: "ftTabsMinutes", show: config?.tools.minutes ?? false },
     { id: "video", icon: "eye", label: "ftTabsVideo", show: config?.tools.video ?? false },
+    { id: "videoGen", icon: "image", label: "ftTabsVideogen", show: config?.tools.videoGeneration ?? false },
     { id: "useCases", icon: "sparkles", label: "ftTabsUsecases", show: config?.tools.useCases ?? true },
   ];
   const current = tabs.some((x) => x.id === tab && x.show) ? tab : "translate";
@@ -606,6 +612,52 @@ export function FileTools({ selectedFileKey, selectedFolder, canWrite, canSaveUs
             <Icon name="eye" className="icon-lead" />{busy ? t("ftRunning") : t("ftVideoRun")}
           </button>
           {result && typeof result.result === "string" && (<>{folderBlock}{textResult(result.result, `${baseName}.video.md`)}</>)}
+        </section>
+      )}
+      {current === "videoGen" && config?.videoGeneration && (
+        <section role="tabpanel">
+          <div className="ft-notice" role="note">
+            {(config.videoGeneration.crossRegion ? t("ftVideoGenRegionnotice") : t("ftVideoGenInregion")).replace("{region}", config.videoGeneration.region)}
+            <small>{t("ftVideoGenLimits")}</small>
+            <small>{t("ftImageModel").replace("{model}", config.videoGeneration.modelId)}</small>
+          </div>
+          <div className="form-group">
+            <label htmlFor="ft-gen-prompt">{t("ftVideoGenPrompt")}</label>
+            <textarea id="ft-gen-prompt" rows={4} maxLength={config.videoGeneration.maxPromptChars} value={genPrompt} onChange={(e) => setGenPrompt(e.target.value)} placeholder={t("ftVideoGenPromptplaceholder")} />
+          </div>
+          <div className="ft-row">
+            <div className="form-group">
+              <label htmlFor="ft-gen-aspect">{t("ftImageAspect")}</label>
+              <select id="ft-gen-aspect" value={genAspect} onChange={(e) => setGenAspect(e.target.value)}>
+                {config.videoGeneration.aspectRatios.map((a) => <option key={a} value={a}>{a}</option>)}
+              </select>
+            </div>
+            <div className="form-group">
+              <label htmlFor="ft-gen-resolution">{t("ftVideoGenResolution")}</label>
+              <select id="ft-gen-resolution" value={genResolution} onChange={(e) => setGenResolution(e.target.value)}>
+                {config.videoGeneration.resolutions.map((r) => <option key={r} value={r}>{r}</option>)}
+              </select>
+            </div>
+          </div>
+          <button type="button" className="btn-primary" disabled={busy || !!poll || !genPrompt.trim()} onClick={() => run(async () => {
+            setResult(null);
+            const out = await callTool("video-generate-start", { prompt: genPrompt, aspectRatio: genAspect, resolution: genResolution });
+            setPoll({ action: "video-generate-status", params: { invocationArn: String(out.invocationArn) }, failed: "ftVideoGenFailed" });
+          })}>
+            <Icon name="image" className="icon-lead" />{busy || poll ? t("ftRunning") : t("ftVideoGenRun")}
+          </button>
+          {poll?.action === "video-generate-status" && <p className="rm-hint" role="status">{t("ftVideoGenWorking")}</p>}
+          {result && typeof result.url === "string" && (
+            <div className="ft-result">
+              <video className="ft-image" controls src={result.url} aria-label={genPrompt} />
+              <div className="ft-actions">
+                <a className="btn-secondary btn-sm" href={result.url} download="generated-video.mp4">
+                  <Icon name="download" className="icon-lead" />{t("ftDownload")}
+                </a>
+              </div>
+              <small>{t("ftVideoGenExpires")}</small>
+            </div>
+          )}
         </section>
       )}
       {current === "useCases" && (

@@ -15,6 +15,7 @@
 | 画像の生成 | プロンプト | 画像を作り、保存先フォルダに PNG で保存する。既定で無効 |
 | コードの実行 | 選択中のファイル、またはテキストと、課題 | モデルが Python のプログラムを書き、ネットワークのないサンドボックスで実行して、出力から答える。回答、プログラム、各回の成否と出力を表示する。既定で無効 |
 | 動画の分析 | 選択中の動画（mp4、mov、webm、mkv）と課題 | Nova 2 Lite が動画を見て課題に答える（省略すると要約）。1 回の呼び出しで答えるので、50 MB を超える動画は拒否する。既定で無効 |
+| 動画の生成 | プロンプト | Luma Ray v2 が 5 秒の動画を作り、10 分間有効なリンクで再生・ダウンロードする。モデルは us-west-2 だけにあり、プロンプトと動画は日本の外で処理・保管される。既定で無効 |
 | 議事録 | 選択中の録音ファイル | Amazon Transcribe で話者ごとに文字起こしし、テキストモデルが要約・決定事項・アクション項目・議論の要点にまとめる。既定で無効 |
 | マイユースケース | 選択中のファイル、またはテキスト | 保存したテンプレートの `{{input}}` に入力を入れて実行する |
 
@@ -52,6 +53,7 @@
 | 実行回数 | 最大 2 回 | 2 回目は、1 回目の失敗が早く返ったときだけ時間に収まる。収まらない課題は「時間内に終わらなかった」と返す |
 
 サンドボックスにはネットワークがなく、入るのはあなたが読める選択中のファイル（100 KB まで）または入力した文字だけです。閲覧ロールでも使えます。読み取りだけで、フォルダには書き込まないため、`toolsQuery` と同じ権限です（結果の保存は他のツールと同じく書き込みロールだけ）。Lambda のロールに足す権限は、`bedrock-agentcore:StartCodeInterpreterSession`、`InvokeCodeInterpreter`、`StopCodeInterpreterSession` の 3 つで、リソースは `arn:aws:bedrock-agentcore:<リージョン>:aws:code-interpreter/aws.codeinterpreter.v1` に限ります（アカウント部分は文字どおり `aws`）。
+
 ## 議事録
 有効にすると「議事録」のタブが出ます。ファイルの一覧で録音ファイル（mp3、m4a、wav、flac、ogg、mp4、webm。200 MB まで）を選び、録音の言語（ja-JP、en-US、ko-KR、zh-CN、fr-FR、de-DE、es-ES）と話者の最大数（2〜10）を指定します。
 
@@ -63,12 +65,26 @@ Transcribe は数分かかり、AppSync のリゾルバーは 30 秒までしか
 議事録のプロンプトは、書かれていない担当者と期限を作らせず、見出しを録音の言語にします。文字起こしは `<input>` で包み、中の指示に従わないよう system に書いています。30,000 文字を超える文字起こしは前半だけを使い、画面に表示します。
 
 Transcribe の出力先は、アクセスポイントではなく専用の通常の S3 バケット（`MinutesTranscriptBucket`。非公開、暗号化、1 日で削除）です。Lambda のロールに足す権限は、`transcribe:StartTranscriptionJob` と `GetTranscriptionJob`（`transcription-job/portal-minutes-*` に限る）と、そのバケットの `transcripts/*` への `s3:PutObject`、`s3:GetObject` です。Transcribe は呼び出し側の権限で入力を読み、出力を書くので、アクセスポイントの読み取りは既存の権限を使います。閲覧ロールでも使えます。利用者のフォルダには書き込まないため、`toolsQuery` と同じ権限です。
+
 ## 動画の分析
 有効にすると「動画の分析」のタブが出ます。動画（mp4、mov、webm、mkv）を選び、課題を入力します（省略すると要約します）。モデルは `jp.amazon.nova-2-lite-v1:0` で、動画は Bedrock Converse の `video` ブロックに `s3://<アクセスポイントのエイリアス>/<キー>` で直接渡します。アップロードもステージング用のバケットもありません。ファイルの検査（境界、規制対象のフォルダ、分類、外部の利用者）、拡張子、サイズは議事録と同じ順で、モデルを呼ぶ前に行います。動画の中の文字や音声は「報告する内容」で、モデルへの指示ではないと system に書いています。
 
 AppSync は 30 秒までしか待たないので、**1 回の呼び出し（`video`）を 25 秒以内に収め、収まらない大きさのファイルだけを拒否します。** モデルの呼び出しには読み取りの待ち時間 20 秒を付け、全体は 25 秒で打ち切ります。どちらも「時間内に終わらなかった」と返します。サイズの上限は `VIDEO_ANALYSIS_MAX_MB`（既定 50）で、超えた動画は、モデルを呼ぶ前に `file too large for synchronous analysis (limit N MB)` で拒否します。上限の根拠は、下の「動画の分析の確認結果」の測定です。収まらない動画のための非同期の経路は、実用に足りないと分かったときに別の変更で足します。
 
 **音声は分析しません。** Nova 2 Lite の動画の理解は映像のフレーム（16 分以下の動画では 1 秒に 1 コマ）だけを使い、音声トラックは処理しません（[Amazon Nova 2 のマルチモーダルの理解](https://docs.aws.amazon.com/nova/latest/nova2-userguide/using-multimodal-models.html)の「No audio support」）。話の内容が要るときは「議事録」を使います。画面は、上限と、音声を分析しないこと、「画面に映る文字は、回によって最後の 1 文字が欠けることがある。正確さが要るときは元の動画と突き合わせる」を表示します。Lambda のロールに足す権限は、Nova 2 Lite の推論プロファイルと東京・大阪の基盤モデルへの `bedrock:InvokeModel` だけです。動画の読み取りは既存のアクセスポイントの権限を使います。閲覧ロールでも使えます。利用者のフォルダには書き込みません。
+
+## 動画の生成
+有効にすると「動画の生成」のタブが出ます。プロンプトを入力し、縦横比（16:9、9:16）と解像度（540p、720p）を選ぶと、`luma.ray-v2:0` が 5 秒の動画を作ります。**このモデルは us-west-2 だけにあり（2026-11-16 に `list-foundation-models` で確かめた 12 リージョンのうち us-west-2 だけ）、プロンプトと生成した動画は日本の外で処理・保管されます。** 画面は、何かを送る前にこれを表示します（画像の生成と同じ型）。許可する値は、実際に動かした値だけです。プロンプトの上限 2,000 文字は、このツール側の上限です。
+
+生成には 36〜74 秒かかり、AppSync の 30 秒に収まらないので、`video-generate-start` と `video-generate-status` に分けています。
+
+1. `video-generate-start`: Bedrock Runtime（us-west-2）の `StartAsyncInvoke` を呼びます。出力先は `s3://<出力バケット>/videos/<利用者 ID のハッシュ>/<uuid>/` です。同時に複数を始めて `ThrottlingException` になったときは、「混み合っています」を返します。
+2. `video-generate-status`: 画面が 5 秒おきに呼びます。クライアントが送る `invocationArn` は、形（リージョンとアカウントの 12 桁）を確かめたうえで `GetAsyncInvoke` に渡し、サービスが返した出力先が呼び出した利用者のフォルダ（`videos/<ハッシュ>/`）でなければ「見つかりません」を返します。完了していれば、`output.mp4` への署名付き URL（10 分）を返します。
+
+出力バケットは、**既存のバケットを指定します**。Amplify のスタックは 1 つのリージョンにしか作れず、バケットはモデルと同じリージョンに要るため、ポータルの CDK では作りません。`infrastructure/video-output-bucket.yaml` を us-west-2 にデプロイし、出力の `BucketName` を `tools.videoGeneration.outputBucket`（または `AMPLIFY_PORTAL_VIDEO_GENERATION_BUCKET`）に入れます。非公開、暗号化、TLS 必須、1 日で削除のバケットです。有効にして `outputBucket` を空にすると、デプロイが「`tools.videoGeneration.outputBucket` が必要」というメッセージで止まります。
+
+Lambda のロールに足す権限は、モデルへの `bedrock:InvokeModel` と `StartAsyncInvoke`、アカウントの `async-invoke/*` への `bedrock:InvokeModel` と `GetAsyncInvoke`、出力バケットの `videos/*` への `s3:PutObject` と `s3:GetObject` です。署名付き URL は、出力バケットのあるリージョンのエンドポイントで署名します。閲覧ロールでも使えます。利用者のフォルダには書き込みません。
+
 ## 設定
 
 `amplify/portal-config.ts` の `tools`、または環境変数で決めます。既存の `portal-config.ts` に `tools` が無くても、環境変数が使われます。
@@ -79,6 +95,9 @@ AppSync は 30 秒までしか待たないので、**1 回の呼び出し（`vid
 | `AMPLIFY_PORTAL_IMAGE_GENERATION_REGION` | `us-west-2` | 画像のモデルを呼ぶリージョン |
 | `AMPLIFY_PORTAL_IMAGE_GENERATION_MODEL_ID` | `stability.stable-image-core-v1:1` | 画像のモデル。推論プロファイル（`us.` など）も指定でき、IAM はそれに合わせて作られる |
 | `AMPLIFY_PORTAL_WEB_EXTRACT_ENABLED` | `true` | Web 抽出 |
+| `AMPLIFY_PORTAL_VIDEO_GENERATION_ENABLED` | `false` | 動画の生成。`portal-config.ts` では `tools.videoGeneration.enabled` |
+| `AMPLIFY_PORTAL_VIDEO_GENERATION_BUCKET` | なし | 動画の出力先の既存バケット（モデルと同じリージョン）。有効にするときは必須 |
+| `AMPLIFY_PORTAL_VIDEO_GENERATION_REGION` | `us-west-2` | 動画のモデルを呼ぶリージョン |
 | `AMPLIFY_PORTAL_VIDEO_ANALYSIS_ENABLED` | `false` | 動画の分析。`portal-config.ts` では `tools.videoAnalysis.enabled` |
 | `AMPLIFY_PORTAL_VIDEO_ANALYSIS_MAX_MB` | `50` | 動画の分析で受け付ける最大のサイズ（1〜200）。測定した値が既定。`tools.videoAnalysis.maxMegabytes` |
 | `AMPLIFY_PORTAL_MINUTES_ENABLED` | `false` | 議事録。`portal-config.ts` では `tools.minutes`。`true` のときだけ、文字起こしの出力バケット、Transcribe の権限、画面のタブが入る |
@@ -221,6 +240,47 @@ AppSync は 30 秒までしか待たないので、**1 回の呼び出し（`vid
 **話の内容を作る問題への対処**: モデルは音声を受け取らないので、話の内容を聞かれると作って答えます。system に「音声は渡されないので、話の内容を書かない」と書いても、話の内容を作る答えは止まりませんでした（4 回中 4 回）。同じ注意を利用者のメッセージにも入れると、話の内容は「音声は分析していません」と答えるようになりましたが、**画面の文字の書き出しまで「できません」と断る**ようになりました（2 種類の文言で、書き出しの 4 回中 4 回）。画面の文字を読めることのほうが、この機能の価値として大きいため、利用者のメッセージへの注意は入れず、system の注意と、画面の「音声は分析しません。話の内容は議事録を使う」の表示で対処しています。**話の内容についての答えは、画面の表示どおり根拠がありません。**
 
 **確認していないこと**: 他の種類の映像（作業の記録、監視カメラ、画面の録画など）。話の内容を作る答えを、モデルの側で確実に止める方法。 <!-- allow:not-a-claim: our own observation of one model's replies, cited against the vendor's documented limitation -->
+
+## 動画の生成の確認結果
+**確認したこと（自動テスト）**: `functions/file-tools/tests/test_file_tools.py` と `tests/components/FileTools.test.tsx`、`tests/infrastructure/backend-assertions.test.ts`。
+
+- 設定が `false` なら動かず、モデルを呼ばない。外部の利用者は拒否される
+- 許可していない縦横比、解像度、空のプロンプト、長すぎるプロンプトは、モデルを呼ぶ前に拒否する。出力先に利用者の ID そのものは入らず、ハッシュが入る
+- 別の利用者の動画、利用者のフォルダの名前で始まるだけのフォルダ、`..` を含む出力先、他のリージョンの ARN は「見つかりません」になり、署名しない
+- 署名付き URL は、モデルのリージョンのエンドポイント向けで、有効期間は 10 分
+- 画面は、有効なときだけタブを出し、送る前に日本の外で処理されることを表示し、5 秒おきに状態を確かめ、完了で動画を表示する
+- 出力バケットなしで有効にするとデプロイが止まる。権限は `videos/*` に限られる
+
+**実機での確認（2026-11-16、us-west-2 / ap-northeast-1）**: 使い捨ての Lambda（このリポジトリの `index.py` と `shared/`、CDK と同じ内容を手で書いた最小権限のロール）に、AppSync が送る形のイベントを直接送りました。出力バケットは `infrastructure/video-output-bucket.yaml` を us-west-2 にデプロイして作りました。AppSync と Cognito は通していません。1 回ずつの観測値で、動画は 2 本です。
+
+| 確認したこと | 結果 |
+|---|---|
+| 540p、16:9 | 開始 1.5 秒。モデルの開始から終了まで 36.0 秒。出力は 960×544、5.17 秒、H.264、約 1.2 MB |
+| 720p、9:16 | 開始 0.9 秒。モデルの開始から終了まで 74.0 秒（画面側の 6 秒おきの確認で完了を知るまで 97 秒）。出力は 720×1280、約 1.6 MB |
+| 署名付き URL でのダウンロード | HTTP 200 |
+| 別の利用者が同じ ARN を `video-generate-status` に渡す | 完了の前後とも `job not found` |
+| 他のリージョンの ARN | `job not found`。モデルには問い合わせない |
+| `infrastructure/video-output-bucket.yaml` の `cfn-lint` と us-west-2 へのデプロイ | 通った |
+
+**この確認で見つかって直した不具合 3 件**:
+1. `StartAsyncInvoke` が `AccessDeniedException` で失敗しました。呼び出しはアカウントの `async-invoke/*` への `bedrock:InvokeModel` としても認可されるので、ロールに足しました。
+2. サービスが返す出力先は、渡したフォルダの後ろに呼び出し ID が付き、末尾の `/` がありません（`.../<uuid>/<呼び出し ID>`）。末尾が `/` であることを求めていたため、完了した動画も「見つかりません」になりました。`output.mp4` はその下にあります。
+3. 署名付き URL が、us-west-2 のバケットに対してグローバルなエンドポイント（`<バケット>.s3.amazonaws.com`）向けになり、リダイレクトされて `SignatureDoesNotMatch` になりました。リージョンのエンドポイントを明示して直しました。
+
+**AppSync、Cognito、画面、CDK を通した確認（2026-11-16、ap-northeast-1）**: この変更を含むブランチを、既存の Amplify sandbox に `AMPLIFY_PORTAL_VIDEO_GENERATION_ENABLED=true`（出力バケットは上の使い捨てのバケット）でデプロイし、使い捨ての Cognito 利用者でサインインして確認しました（議事録、動画の分析と同じ環境）。
+
+| 確認したこと | 結果 |
+|---|---|
+| CDK でのデプロイ | 成功（約 160 秒）。Lambda のロールの権限は CDK が作ったもので、`StartAsyncInvoke`、`GetAsyncInvoke`、署名付き URL がそのまま動いた |
+| 「動画の生成」のタブを開く | 何も送る前に、`us-west-2` のモデルで処理され、プロンプトと動画が日本の外で処理・保管されることと、1 本が 5 秒で 1〜2 分かかることが表示された |
+| 540p、16:9 でプロンプトを入れて「動画を生成する」 | 69 秒（ボタンを押してから動画が出るまで）。ブラウザの `<video>` が読み込み、960×544、5.17 秒。リンクはモデルのリージョンのエンドポイント（`<バケット>.s3.us-west-2.amazonaws.com`）向け |
+| 作り物の ARN を AppSync に送る | `job not found` |
+
+**同時に 2 件を始めたとき（2026-11-16、us-west-2）**: 2 つのスレッドから同時に `video-generate-start` を呼ぶと、1 件は始まり（1.5 秒、その後完了）、もう 1 件は boto3 の既定の再試行を使い切ったあと `ThrottlingException` になり、10.0 秒で「the video model is busy; try again in a minute」が返りました。1 回の観測です。
+
+**料金（2026-11-16 に Price List API で確認、us-west-2）**: Luma Ray2 は AWS Marketplace の利用料として、生成した動画の秒数で課金されます。`videoMediumFpsStandardRes` が 1 秒 0.75 USD、`videoMediumFpsHdRes` が 1 秒 1.50 USD です。540p を Standard、720p を HD と読むと、5 秒の動画 1 本は 540p で 3.75 USD、720p で 7.50 USD です（解像度との対応は API の名前からの推測で、請求書では確かめていません）。Bedrock の他のモデルよりも 1 回の単価が高いので、既定で無効にしています。
+
+**確認していないこと**: 動画の質は見ていません。動画は実機で合計 4 本作りました（540p が 3 本、720p が 1 本）。 <!-- allow:not-a-claim: describes our own observations and a looked-up price, not a vendor limit -->
 
 ## 関連ドキュメント
 
