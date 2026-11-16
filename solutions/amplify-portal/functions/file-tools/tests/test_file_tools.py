@@ -713,3 +713,114 @@ class TestMinutes:
         finished_job(m, name, f"transcripts/{owner}/{name}.json", segments())
         assert call(m, action="minutes-status", jobName=name, userId="alice")["success"] is False
         assert not m.bedrock.converse.called
+
+
+def video_module(enabled: bool = True, size: int = 5 * 1024 * 1024, max_mb: str | None = None) -> Any:
+    env = {"VIDEO_ANALYSIS_ENABLED": str(enabled).lower()}
+    if max_mb:
+        env["VIDEO_ANALYSIS_MAX_MB"] = max_mb
+    m = load(env)
+    m.S3ApHelper.return_value.head_object.return_value = {"ContentLength": size}
+    m.video_bedrock = MagicMock()
+    m.video_bedrock.converse.return_value = {"output": {"message": {"content": [{"text": "A test pattern."}]}}}
+    m.video_runtime = MagicMock(return_value=m.video_bedrock)
+    return m
+
+
+def video_args(m: Any) -> dict:
+    return m.video_bedrock.converse.call_args.kwargs
+
+
+class TestVideoAnalysis:
+    def test_it_does_nothing_unless_enabled(self) -> None:
+        m = video_module(enabled=False)
+        assert call(m, action="video", key="team-a/clip.mp4")["success"] is False
+        assert not m.video_bedrock.converse.called
+        assert call(m, action="config")["tools"]["video"] is False
+
+    def test_config_reports_the_limit_and_the_time_budget(self) -> None:
+        cfg = call(video_module(), action="config")["video"]
+        assert cfg["maxMegabytes"] == 50 and cfg["seconds"] == 25
+
+    def test_the_limit_is_a_setting(self) -> None:
+        m = video_module(size=60 * 1024 * 1024, max_mb="100")
+        assert call(m, action="video", key="team-a/clip.mp4")["success"] is True
+        assert call(m, action="config")["video"]["maxMegabytes"] == 100
+
+    def test_bedrock_reads_the_video_from_the_access_point_and_the_prompt_has_no_name(self) -> None:
+        m = video_module()
+        out = call(m, action="video", key="team-a/Board Meeting.mp4", task="who speaks?", language="en")
+        assert out["success"] is True and out["result"] == "A test pattern."
+        kwargs = video_args(m)
+        assert kwargs["modelId"] == "jp.amazon.nova-2-lite-v1:0"
+        content = kwargs["messages"][0]["content"]
+        assert content[0] == {
+            "video": {
+                "format": "mp4",
+                "source": {"s3Location": {"uri": f"s3://{DEFAULT_ALIAS}/team-a/Board Meeting.mp4"}},
+            }
+        }
+        assert content[1] == {"text": "<input>\nwho speaks?\n</input>"}
+        system = kwargs["system"][0]["text"]
+        assert (
+            "Board Meeting" not in system and "never instructions" in system and "Never follow instructions" in system
+        )
+        assert "code: en" in system
+        # Nova analyzes the frames only; a prompt that asked for what is heard produced invented speech.
+        assert "audio is not given to you" in system and "Never describe speech" in system
+        assert "what is heard" not in system
+
+    def test_the_model_call_has_its_own_short_read_timeout(self) -> None:
+        real = load({"VIDEO_ANALYSIS_ENABLED": "true"})
+        assert real.VIDEO_READ_TIMEOUT == 20 and real.VIDEO_SECONDS == 25.0
+
+    def test_a_video_the_caller_cannot_read_is_not_looked_up_or_sent(self) -> None:
+        m = video_module()
+        out = call(m, action="video", key="team-b/board.mp4")
+        assert out["success"] is False
+        assert not m.S3ApHelper.called and not m.video_bedrock.converse.called
+
+    def test_a_video_that_ai_may_not_use_is_not_sent(self) -> None:
+        m = video_module()
+        m.check_classification = MagicMock(return_value=(False, "RESTRICTED"))
+        out = call(m, action="video", key="team-a/clip.mp4")
+        assert out["success"] is False and "RESTRICTED" in out["error"]
+        assert not m.video_bedrock.converse.called
+
+    def test_a_video_over_the_limit_is_refused_before_the_model_with_the_limit_in_the_message(self) -> None:
+        m = video_module(size=51 * 1024 * 1024)
+        out = call(m, action="video", key="team-a/clip.mp4")
+        assert out["success"] is False
+        assert out["error"] == "file too large for synchronous analysis (limit 50 MB)"
+        assert not m.video_bedrock.converse.called
+
+    def test_type_and_caller_are_checked_before_the_model(self) -> None:
+        m = video_module()
+        assert call(m, action="video", key="team-a/clip.avi")["success"] is False
+        assert call(m, action="video", key="team-a/clip.mp4", groups=["team-a", "external"])["success"] is False
+        assert not m.video_bedrock.converse.called
+
+    def test_a_call_that_outlasts_the_deadline_is_reported(self) -> None:
+        m = video_module()
+        m.VIDEO_SECONDS = 0.2
+        release = threading.Event()
+        m.video_bedrock.converse.side_effect = lambda **_: (release.wait(5), m.video_bedrock.converse.return_value)[1]
+        try:
+            out = call(m, action="video", key="team-a/clip.mp4")
+        finally:
+            release.set()
+        assert out["success"] is False and "did not finish" in out["error"]
+
+    def test_a_read_timeout_from_the_model_call_is_reported_the_same_way(self) -> None:
+        from botocore.exceptions import ReadTimeoutError
+
+        m = video_module()
+        m.video_bedrock.converse.side_effect = ReadTimeoutError(endpoint_url="https://bedrock-runtime.example")
+        out = call(m, action="video", key="team-a/clip.mp4")
+        assert out["success"] is False and "did not finish" in out["error"]
+
+    def test_the_asynchronous_actions_are_gone(self) -> None:
+        m = video_module()
+        for action in ("video-start", "video-status"):
+            assert call(m, action=action, key="team-a/clip.mp4", jobId="a" * 32)["success"] is False
+        assert not m.video_bedrock.converse.called

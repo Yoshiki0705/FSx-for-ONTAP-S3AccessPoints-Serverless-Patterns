@@ -14,6 +14,13 @@ import { FileTools } from "../../src/components/FileTools";
 import { I18nProvider } from "../../src/i18n";
 
 const minutesConfig = { languages: ["ja-JP", "en-US"], extensions: ["mp3", "mp4"], maxMegabytes: 200, minSpeakers: 2, maxSpeakers: 10 };
+const videoConfig = {
+  data: JSON.stringify({
+    success: true,
+    tools: { webExtract: true, image: false, useCases: true, video: true },
+    video: { extensions: ["mp4", "mov"], maxMegabytes: 20, seconds: 25 },
+  }),
+};
 const config = (image: boolean, code = false, minutes = false) => ({
   data: JSON.stringify({
     success: true,
@@ -188,5 +195,39 @@ describe("FileTools", () => {
       vi.useRealTimers();
     }
     expect((await screen.findByRole("alert")).textContent).toContain("bad audio");
+  });
+
+  it("hides video analysis unless the server enables it", async () => {
+    toolsQuery.mockResolvedValue(config(false));
+    renderTools();
+    await waitFor(() => expect(toolsQuery).toHaveBeenCalled());
+    expect(screen.queryByRole("tab", { name: /Video analysis/ })).toBeNull();
+  });
+  it("states the size and time limits and the on-screen text caveat, and sends one call", async () => {
+    toolsQuery.mockImplementation(async ({ action }: { action: string }) =>
+      action === "config" ? videoConfig : { data: JSON.stringify({ success: true, result: "A test pattern." }) },
+    );
+    renderTools({ initialTab: "video", selectedFileKey: "team-a/clip.mp4" });
+    const note = await screen.findByRole("note");
+    expect(note.textContent).toContain("Up to 20 MB");
+    expect(note.textContent).toContain("25 seconds");
+    expect(note.textContent).toContain("last character");
+    expect(note.textContent).toContain("audio is not analyzed");
+    fireEvent.click(screen.getByRole("button", { name: /Analyze the video/ }));
+    await screen.findByText("A test pattern.");
+    const sent = toolsQuery.mock.calls.find((c) => c[0].action === "video")![0];
+    expect(JSON.parse(sent.params).key).toBe("team-a/clip.mp4");
+    expect(toolsQuery.mock.calls.some((c) => /video-(start|status)/.test(c[0].action))).toBe(false);
+  });
+  it("shows the refusal when the video is over the limit", async () => {
+    toolsQuery.mockImplementation(async ({ action }: { action: string }) =>
+      action === "config"
+        ? videoConfig
+        : { data: JSON.stringify({ success: false, error: "file too large for synchronous analysis (limit 20 MB)" }) },
+    );
+    renderTools({ initialTab: "video", selectedFileKey: "team-a/big.mp4" });
+    await screen.findByRole("note");
+    fireEvent.click(screen.getByRole("button", { name: /Analyze the video/ }));
+    expect((await screen.findByRole("alert")).textContent).toContain("limit 20 MB");
   });
 });
