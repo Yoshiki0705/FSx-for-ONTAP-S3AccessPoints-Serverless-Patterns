@@ -185,7 +185,15 @@ Set through `tools` in `amplify/portal-config.ts` or environment variables. An e
 | The same user sends `minutes-status` with the `viewer` user's job name | `job not found` |
 | The same user sends `minutes-start` for the allowed `other/board.mp3` | The job started |
 
-**Not checked**: speaker separation: the two synthetic voices came back as one speaker (`spk_0`), so the minutes also named `spk_0` as the owner. Accuracy on a real meeting recording was not measured. Long recordings (tens of minutes).
+**Checked on a real recording (2026-11-16, ap-northeast-1)**: 10 minutes of Q&A from a NASA news conference ([PACE Prelaunch News Conference](https://images.nasa.gov/details/PACE%20Prelaunch%20News%20Conference)) were made into an English mp3 (64 kbps, 4.6 MB), and the handler was called from a workstation against real Transcribe, the access point and Bedrock. One run with `en-US` and at most 6 speakers.
+
+| What was checked | Result |
+|---|---|
+| Time | `minutes-start` 1.8 s. About 79 s from the start to the minutes (state checked every 10 s) |
+| Speaker separation | Three speakers (`spk_0` 26 segments, `spk_1` 15, `spk_2` 4; 45 in all). Reading the transcript, `spk_0` is the scientist answering, `spk_1` the host reading out the questions, and `spk_2` a reporter asking by phone; the turns matched |
+| The minutes | The summary and main points (phytoplankton, aerosols, a 3-year design life with 10 years of fuel, and so on) matched the transcript. Decisions and action items were written as not recorded, with no invented owners or due dates |
+
+**Not checked**: a real Japanese meeting recording (with synthetic speech, two different voices came back as one speaker). Speaker-separation accuracy against a reference transcript (the above is what reading it showed). Recordings longer than a few tens of minutes.
 
 ## Results for Video Analysis
 **Checked (automated tests)**: `functions/file-tools/tests/test_file_tools.py` and `tests/components/FileTools.test.tsx`, with the model and S3 stubbed.
