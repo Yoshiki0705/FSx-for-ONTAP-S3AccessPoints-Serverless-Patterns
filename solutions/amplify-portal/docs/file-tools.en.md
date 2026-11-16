@@ -193,7 +193,25 @@ Set through `tools` in `amplify/portal-config.ts` or environment variables. An e
 | Speaker separation | Three speakers (`spk_0` 26 segments, `spk_1` 15, `spk_2` 4; 45 in all). Reading the transcript, `spk_0` is the scientist answering, `spk_1` the host reading out the questions, and `spk_2` a reporter asking by phone; the turns matched |
 | The minutes | The summary and main points (phytoplankton, aerosols, a 3-year design life with 10 years of fuel, and so on) matched the transcript. Decisions and action items were written as not recorded, with no invented owners or due dates |
 
-**Not checked**: a real Japanese meeting recording (with synthetic speech, two different voices came back as one speaker). Speaker-separation accuracy against a reference transcript (the above is what reading it showed). Recordings longer than a few tens of minutes.
+**Checked on a real Japanese recording (2026-11-17, ap-northeast-1)**: the audio of a [Chief Cabinet Secretary press conference (13 November 2026, morning)](https://www.kantei.go.jp/jp/tyoukanpress/202611/13_a.html) published by the Prime Minister's Office, 11 min 27 s (mp3, 64 kbps, 5.2 MB), one run with `ja-JP` and at most 6 speakers. It has an opening statement and Q&A with about four reporters.
+
+| What was checked | Result |
+|---|---|
+| Time | About 181 s from the start to the minutes |
+| Transcript accuracy | For the opening statement (about 4 min 30 s), the character error rate against the official transcript on the same page (1,344 characters) was about 7.8%. Notation differences (the same word written in kanji or in kana) count as errors, so this is an upper bound. Names were misheard: the Prime Minister's surname (Takaichi) came out as another surname, the Chilean president's name (Kast) as an unrelated word, and NVIDIA as "NPDI" |
+| Speaker separation | Five speakers. The statement and every answer went to one speaker (40 of 49 segments). Each reporter, who gives their outlet's name, became a separate speaker, but the moderator's "go ahead" was merged with a reporter's speaker or segment in places |
+| The minutes | The amounts (651.9, 521.9 and 130 billion yen) and the dates (16 to 19, 19 to 21 and 19 to 20 November) matched the official transcript. The transcript's "NPDI" was corrected to NVIDIA in the minutes. Owners and due dates were written as unknown, not invented |
+
+**Against reference speaker labels (2026-11-17)**: the mixed audio of meeting ES2004a from the [AMI Meeting Corpus](https://groups.inf.ed.ac.uk/ami/corpus/) (CC BY 4.0; English, 4 people, 17 min 29 s), scored with [pyannote's AMI speaker labels](https://github.com/pyannote/AMI-diarization-setup). In 10 ms steps, over the stretches where exactly one person speaks (663 s), the share whose speaker matched the best-corresponding Transcribe speaker was counted.
+
+| Maximum speakers | Speakers found | Matched | Given no speaker by Transcribe | Time |
+|---|---|---|---|---|
+| 4 | 4 | 86.9% | 10.9% | about 212 s |
+| 10 | 4 | 86.9% | 10.9% | about 200 s |
+
+The remaining 2% or so went to the wrong person. Stretches where two or more people speak at once (124 s) are not counted. Setting the maximum to 4 or to 10 gave the same result.
+
+**Not checked**: a real Japanese meeting with a few people taking short, overlapping turns (the press conference above is one person speaking at length); scoring a Japanese recording with reference speaker labels; recordings over an hour.
 
 ## Results for Video Analysis
 **Checked (automated tests)**: `functions/file-tools/tests/test_file_tools.py` and `tests/components/FileTools.test.tsx`, with the model and S3 stubbed.
@@ -247,7 +265,22 @@ Set through `tools` in `amplify/portal-config.ts` or environment variables. An e
 
 **Dealing with invented speech**: the model gets no audio, so it invents an answer when asked what was said. Writing "the audio is not given to you; do not describe speech" in the system prompt did not stop that (4 of 4 runs). Adding the same note to the user message made it answer "the audio is not analyzed" for speech, but it then **refused to write out the on-screen text as well** (4 of 4 runs across two wordings). Reading text on screen is worth more in this tool, so the user-message note is not used; the system prompt and the screen's "the audio is not analyzed; use Minutes for what was said" carry it. **Answers about what was said have no basis, as the screen states.**
 
-**Not checked**: other kinds of footage (work recordings, surveillance cameras, screen recordings); a way to make the model itself reliably stop inventing speech.
+**Checked on other kinds of footage (2026-11-17, ap-northeast-1)**: one run per request, 3.6 to 11.4 s each.
+
+| Footage | Request | Result |
+|---|---|---|
+| A Japanese press conference (the first 120 s of the Chief Cabinet Secretary press conference above, 1920×1080, 34.5 MB) | On-screen text | The date, the title of the conference and the copyright line of the Cabinet Public Relations Office, with the era name (Reiwa) misread as another word |
+| | Summary | Correctly said that a sign-language interpreter stands beside the speaker. Wrote the year as "2023" (the footage shows only the Japanese era year, Reiwa 8, which is 2026) and described a flag and reporters that are not in the frame |
+| | Number of people | 2 (the interpreter and the speaker), matching the footage |
+| A work recording (NASA's [Mars 2020 assembly time-lapse](https://images.nasa.gov/details/JPL-20190712-M2020f-0001-PIT_CREW_FOR_MARS), fixed camera, 77 s, 20 MB) | On-screen text | Wrote out the six lines of English captions exactly |
+| | Summary | "Engineers install the suspension and test wheels", matching NASA's description |
+| | Number of people | "About 20", with generic descriptions of each person's work |
+| A screen recording (on GitHub: the repository, Issues, closed pull requests and `file-tools.en.md`, opened in that order and scrolled; 42 s at one frame per second) | Order of the steps | The first four (repository, Issues, pull requests, the file) were right (the file name came out as `file-tools.emd`, and a "Files" tab that does not exist was listed). It then invented a step (clicking a "transfer contract" row, written in Japanese) and repeated the same line until the output limit |
+| | Heading and table columns | The heading `Tools in the File Portal` was right. The column names `Tool`, `Input` and `Result` had a sentence from a table cell mixed in |
+
+**Reading it**: English captions were read exactly, and the overall description of a scene was right. Japanese text was misread; AWS's documentation also says the understanding of multilingual images and video frames is limited. On every kind of footage the model sometimes added things that are not in the frame. On the screen recording it invented a step and repeated a line. The screen's "check against the original video when accuracy matters" is there for results like these.
+
+**Not checked**: surveillance-camera footage (at night, low resolution, long); a way to make the model itself reliably stop inventing speech.
 
 ## Results for Video Generation
 **Checked (automated tests)**: `functions/file-tools/tests/test_file_tools.py`, `tests/components/FileTools.test.tsx` and `tests/infrastructure/backend-assertions.test.ts`.
