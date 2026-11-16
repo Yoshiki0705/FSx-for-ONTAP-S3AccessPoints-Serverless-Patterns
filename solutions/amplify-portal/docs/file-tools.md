@@ -14,6 +14,7 @@
 | Web 抽出 | URL | 要約、本文の抽出、質問への回答 |
 | 画像の生成 | プロンプト | 画像を作り、保存先フォルダに PNG で保存する。既定で無効 |
 | コードの実行 | 選択中のファイル、またはテキストと、課題 | モデルが Python のプログラムを書き、ネットワークのないサンドボックスで実行して、出力から答える。回答、プログラム、各回の成否と出力を表示する。既定で無効 |
+| 議事録 | 選択中の録音ファイル | Amazon Transcribe で話者ごとに文字起こしし、テキストモデルが要約・決定事項・アクション項目・議論の要点にまとめる。既定で無効 |
 | マイユースケース | 選択中のファイル、またはテキスト | 保存したテンプレートの `{{input}}` に入力を入れて実行する |
 
 ![AI パネルのツールへの近道](screenshots/tools/tools-aipanel-ja.png)
@@ -50,6 +51,17 @@
 | 実行回数 | 最大 2 回 | 2 回目は、1 回目の失敗が早く返ったときだけ時間に収まる。収まらない課題は「時間内に終わらなかった」と返す |
 
 サンドボックスにはネットワークがなく、入るのはあなたが読める選択中のファイル（100 KB まで）または入力した文字だけです。閲覧ロールでも使えます。読み取りだけで、フォルダには書き込まないため、`toolsQuery` と同じ権限です（結果の保存は他のツールと同じく書き込みロールだけ）。Lambda のロールに足す権限は、`bedrock-agentcore:StartCodeInterpreterSession`、`InvokeCodeInterpreter`、`StopCodeInterpreterSession` の 3 つで、リソースは `arn:aws:bedrock-agentcore:<リージョン>:aws:code-interpreter/aws.codeinterpreter.v1` に限ります（アカウント部分は文字どおり `aws`）。
+## 議事録
+有効にすると「議事録」のタブが出ます。ファイルの一覧で録音ファイル（mp3、m4a、wav、flac、ogg、mp4、webm。200 MB まで）を選び、録音の言語（ja-JP、en-US、ko-KR、zh-CN、fr-FR、de-DE、es-ES）と話者の最大数（2〜10）を指定します。
+
+Transcribe は数分かかり、AppSync のリゾルバーは 30 秒までしか待たないので、`functions/file-tools` の action を 2 つに分けています。
+
+1. `minutes-start`: ファイルの境界を確かめ（`read_file_text` と同じ検査。読めない、分類で AI が使えない、規制対象のフォルダのファイルはここで止まる）、拡張子とサイズを確かめてから、Transcribe のジョブを作ります。入力は `s3://<アクセスポイントのエイリアス>/<キー>` で直接渡すので、ブラウザからのアップロードもステージング用のバケットもありません。ジョブ名は `portal-minutes-<利用者 ID のハッシュ 24 桁>-<uuid>` です。
+2. `minutes-status`: 画面が 5 秒おきに呼びます（最長 30 分）。ジョブ名が呼び出した利用者のハッシュを含まないものは「見つかりません」を返し、Transcribe にも問い合わせません。完了したら、Transcribe が返した出力先がその利用者のフォルダであることを確かめてから読み、`spk_0: …` の行（同じ話者の連続は 1 行）にして、テキストモデルに渡します。状態は Transcribe のジョブが持つので、DynamoDB のテーブルはありません。
+
+議事録のプロンプトは、書かれていない担当者と期限を作らせず、見出しを録音の言語にします。文字起こしは `<input>` で包み、中の指示に従わないよう system に書いています。30,000 文字を超える文字起こしは前半だけを使い、画面に表示します。
+
+Transcribe の出力先は、アクセスポイントではなく専用の通常の S3 バケット（`MinutesTranscriptBucket`。非公開、暗号化、1 日で削除）です。Lambda のロールに足す権限は、`transcribe:StartTranscriptionJob` と `GetTranscriptionJob`（`transcription-job/portal-minutes-*` に限る）と、そのバケットの `transcripts/*` への `s3:PutObject`、`s3:GetObject` です。Transcribe は呼び出し側の権限で入力を読み、出力を書くので、アクセスポイントの読み取りは既存の権限を使います。閲覧ロールでも使えます。利用者のフォルダには書き込まないため、`toolsQuery` と同じ権限です。
 ## 設定
 
 `amplify/portal-config.ts` の `tools`、または環境変数で決めます。既存の `portal-config.ts` に `tools` が無くても、環境変数が使われます。
@@ -60,6 +72,7 @@
 | `AMPLIFY_PORTAL_IMAGE_GENERATION_REGION` | `us-west-2` | 画像のモデルを呼ぶリージョン |
 | `AMPLIFY_PORTAL_IMAGE_GENERATION_MODEL_ID` | `stability.stable-image-core-v1:1` | 画像のモデル。推論プロファイル（`us.` など）も指定でき、IAM はそれに合わせて作られる |
 | `AMPLIFY_PORTAL_WEB_EXTRACT_ENABLED` | `true` | Web 抽出 |
+| `AMPLIFY_PORTAL_MINUTES_ENABLED` | `false` | 議事録。`portal-config.ts` では `tools.minutes`。`true` のときだけ、文字起こしの出力バケット、Transcribe の権限、画面のタブが入る |
 | `AMPLIFY_PORTAL_CODE_EXECUTION_ENABLED` | `false` | コードの実行。`portal-config.ts` では `tools.codeExecution`。`true` のときだけ、Lambda の `CODE_INTERPRETER_ENABLED` と IAM、画面のタブが入る |
 
 **[verified 2026-11-14 / ap-northeast-1、us-west-2 ほか 12 リージョン]** 東京リージョンには画像を出力するモデルがありません。 [E-019]テキストから画像を作るモデル（Stable Image Core / Ultra、SD3.5 Large）は、確かめた 14 リージョンのうち us-west-2 だけにあり、推論プロファイルはありません。このため既定は us-west-2 で、プロンプトと画像は日本の外で処理されます。画面にもそう表示します。テキストのツールは `jp.anthropic.claude-haiku-4-5-20251001-v1:0`（東京と大阪で処理）を使います。
@@ -106,6 +119,45 @@
 **確認していないこと**: 25 秒に近い最悪の場合（モデルがプログラムを書くのに長くかかったうえで、1 回目が時間切れになるなど）。上の 18.0 秒は 1 つの観測で、上限ではありません。回答まで写したスクリーンショットも未取得です（実行前の入力画面だけを撮っていて、このドキュメントには載せていません）。サンドボックスが aarch64 であることと、最小権限のロールで開始・実行・停止できることは、別のプロジェクト（RAG アプリ、ap-northeast-1、2026-11-15）の確認で、このポータルのテストと実機の確認では直接見ていません。
 
 **確認で分かったこと**: sandbox の `S3AP_ALIAS` が指していたアクセスポイントが、すでに存在しませんでした。今回は使い捨てのボリュームとアクセスポイントを作って差し替えて確認し、確認後に元の値へ戻しました。実機のデプロイは、git で管理しない設定ファイルの 6 つの値（アクセスポイント、ONTAP の接続、VPC など）が空だと止まります。これは意図した保護です。sandbox を引き継ぐときは、設定値のアクセスポイントが実在するかを先に確かめてください。 <!-- allow:not-a-claim: describes this portal's deploy guard and a deleted access point in our own sandbox, not a vendor limit -->
+
+## 議事録の確認結果
+**確認したこと（自動テスト）**: `functions/file-tools/tests/test_file_tools.py` と `tests/components/FileTools.test.tsx`。Transcribe、S3、モデルはスタブです。
+
+- 設定が `true` でなければ動かず、Transcribe を呼ばない
+- 読めないファイル、分類で AI が使えないファイル、外部の利用者は、ジョブを作らない（読めないファイルは `head_object` もしない）
+- 許可リスト外の拡張子、200 MB を超えるファイル、許可外の言語、範囲外の話者数を拒否する
+- ジョブ名に利用者 ID のハッシュが入り（ID そのものは入らない）、入力はエイリアスの `s3://` URI、出力は `transcripts/<ハッシュ>/` になる
+- 他の利用者のジョブ名と、このツールが作っていない名前は「見つかりません」になり、Transcribe を呼ばない
+- Transcribe が返した出力先が利用者のフォルダでなければ、読まない
+- 文字起こしは `<input>` で包まれ、同じ話者の連続は 1 行にまとまる。長い文字起こしは前半だけになり、`truncated` を返す
+- 画面は、有効なときだけタブを出し、ファイルのキーだけを送り、5 秒おきに状態を確かめ、完了で議事録を表示し、失敗の理由を表示する
+
+**実機での確認（2026-11-16、ap-northeast-1）**: 使い捨てのボリューム、アクセスポイント、出力バケットを作り、`functions/file-tools/index.py` のハンドラーを、実際の Transcribe、S3 アクセスポイント、Bedrock に対して手元から直接呼びました。AppSync と Cognito は通していません。録音は、Polly の日本語の声 2 つで作った約 17 秒（141 KB）の mp3 です。所要時間は 1 回ずつの観測値です。
+
+| 確認したこと | 結果 |
+|---|---|
+| エイリアスの `s3://` URI を Transcribe が読む | 読めた。ジョブは約 11 秒で完了し、出力はバケットの `transcripts/<ハッシュ>/` に入った |
+| キーに空白と日本語を含む（`minutes/会議 録音.mp3`） | 同じく完了した |
+| `minutes-start` の所要時間（`head_object` とジョブの作成を含む） | 1.9 秒 |
+| `minutes-status` の所要時間（出力の読み取りとモデル 1 回を含む） | 2.0 秒 |
+| 議事録 | 概要、決定事項（12 月 5 日のリリース）、アクション項目、議論の要点が出た。実施時期は「明記されていない」と書かれた |
+| グループ `team-b` の利用者が `minutes/` のキーを指定 / `team-a` の利用者が許可外の `other/` のキーを指定 | どちらも `key is outside the prefixes your groups may access` で拒否（0.0 秒）。ジョブは作られない |
+| 許可リスト外の拡張子（`.pdf`） | 拒否された |
+| 別の利用者が、他人のジョブ名を `minutes-status` に渡す | `job not found`。Transcribe には問い合わせない |
+| `audio_segments` の形 | `speaker_label` と `transcript` を持つ。想定どおり |
+| 使い捨ての Lambda（このリポジトリの `index.py` と `shared/`、CDK と同じ最小権限のロール）に、AppSync が送る形のイベントを直接送る | `minutes-start` 1.6 秒、開始から完了まで約 15 秒、議事録が返った。他の利用者は `job not found`。ロールの Transcribe と S3 の権限は足りていた |
+
+**AppSync、Cognito、画面、CDK を通した確認（2026-11-16、ap-northeast-1）**: この変更を含むブランチを、既存の Amplify sandbox に `AMPLIFY_PORTAL_MINUTES_ENABLED=true` でデプロイし（CDK、約 160 秒）、使い捨ての Cognito 利用者 2 人（`viewer` と `auditor`。どちらも `internal`）でサインインしました。アクセスポイントは使い捨てのボリューム上のもので、許可するプレフィックスは `viewer` が `minutes/` と `video/`、`auditor` が `other/` です。画面は `npm run dev` で開き、AppSync への直接の呼び出しはサインインしたブラウザのトークンで行いました。
+
+| 確認したこと | 結果 |
+|---|---|
+| `viewer` の利用者がファイルの一覧を開く | `minutes` と `video` だけが見え、`other` は見えない |
+| 同じ利用者が `minutes/meeting.mp3` を選び、「議事録」のタブで「議事録を作る」 | 21 秒で議事録が画面に出た。閲覧ロール（書き込みなし）で使えた。CDK が作った出力バケットと IAM のロールで動いた |
+| `auditor` の利用者が `minutes/meeting.mp3` で `minutes-start` を AppSync に送る | `key is outside the prefixes your groups may access` |
+| 同じ利用者が、`viewer` の利用者のジョブ名で `minutes-status` を送る | `job not found` |
+| 同じ利用者が、許可内の `other/board.mp3` で `minutes-start` を送る | ジョブが始まった |
+
+**確認していないこと**: 話者の分離: 声の違う 2 人の合成音声が 1 人（`spk_0`）にまとまり、そのため議事録の担当者も `spk_0` になりました。分離の精度は、実際の会議の録音では測っていません。長い録音（数十分）。
 
 ## 関連ドキュメント
 

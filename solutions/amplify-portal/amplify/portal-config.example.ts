@@ -83,6 +83,7 @@ export interface PortalConfig {
     webExtract?: boolean;
     imageGeneration?: { enabled: boolean; region?: string; modelId?: string };
     codeExecution?: boolean;
+    minutes?: boolean;
   };
   bedrockKbId: string;
 
@@ -491,6 +492,10 @@ export const config: PortalConfig = {
     // Interpreter runs it with no network, on the selected file or typed text only. Off
     // unless enabled. Up to 2 runs of 12 s each within 25 s per request.
     codeExecution: process.env.AMPLIFY_PORTAL_CODE_EXECUTION_ENABLED === "true",
+    // Minutes: Amazon Transcribe turns a recording on the access point into text with speaker
+    // labels, then the text model writes minutes. Adds a private transcript bucket (objects
+    // expire after 1 day) and the Transcribe permissions. Off unless enabled.
+    minutes: process.env.AMPLIFY_PORTAL_MINUTES_ENABLED === "true",
   },
 
   /**

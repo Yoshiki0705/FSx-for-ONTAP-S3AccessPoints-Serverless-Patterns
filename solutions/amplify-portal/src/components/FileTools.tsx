@@ -16,12 +16,13 @@ import { Icon, type IconName } from "./Icon";
 
 const client = generateClient<Schema>();
 
-export type ToolTab = "translate" | "proofread" | "diagram" | "webExtract" | "image" | "code" | "useCases";
+export type ToolTab = "translate" | "proofread" | "diagram" | "webExtract" | "image" | "code" | "minutes" | "useCases";
 
 interface ToolsConfig {
-  tools: { webExtract: boolean; image: boolean; useCases: boolean; code?: boolean };
+  tools: { webExtract: boolean; image: boolean; useCases: boolean; code?: boolean; minutes?: boolean };
   image: { region: string; modelId: string; crossRegion: boolean } | null;
   code?: { maxRuns: number; runSeconds: number; totalSeconds: number } | null;
+  minutes?: { languages: string[]; extensions: string[]; maxMegabytes: number; minSpeakers: number; maxSpeakers: number } | null;
 }
 interface CodeRun {
   ok: boolean;
@@ -40,6 +41,10 @@ interface UseCase {
 
 const LANGUAGES = ["ja", "en", "ko", "zh-CN", "zh-TW", "fr", "de", "es", "pt", "it", "id", "th", "vi"] as const;
 const DIAGRAMS = ["auto", "flowchart", "sequence", "class", "state", "er", "gantt", "mindmap", "timeline", "pie"] as const;
+/** Transcribe language codes to the language names the translation tool already has. */
+const MINUTES_LANGUAGE_NAMES: Record<string, string> = { "ja-JP": "ja", "en-US": "en", "ko-KR": "ko", "zh-CN": "zh-CN", "fr-FR": "fr", "de-DE": "de", "es-ES": "es" };
+const POLL_MS = 5000;
+const POLL_LIMIT = 360;
 const ASPECTS = ["1:1", "16:9", "9:16", "3:2", "2:3", "4:5", "5:4"] as const;
 
 function langKey(code: string): TranslationKeys {
@@ -144,6 +149,10 @@ export function FileTools({ selectedFileKey, selectedFolder, canWrite, canSaveUs
   const [fileName, setFileName] = useState("generated-image");
   // Code execution
   const [codeTask, setCodeTask] = useState("");
+  // Minutes
+  const [minLanguage, setMinLanguage] = useState("ja-JP");
+  const [minSpeakers, setMinSpeakers] = useState(2);
+  const [minJob, setMinJob] = useState<string | null>(null);
   // Use cases
   const [useCases, setUseCases] = useState<UseCase[]>([]);
   const [editing, setEditing] = useState<Partial<UseCase> | null>(null);
@@ -170,6 +179,38 @@ export function FileTools({ selectedFileKey, selectedFolder, canWrite, canSaveUs
     if (tab === "useCases") loadUseCases();
   }, [tab, loadUseCases]);
 
+  // While a minutes job runs, ask for its state every 5 s. The job lives in Amazon Transcribe,
+  // so a reload loses only the screen's handle on it.
+  useEffect(() => {
+    if (!minJob) return;
+    let polls = 0;
+    let stopped = false;
+    const timer = setInterval(async () => {
+      polls += 1;
+      try {
+        const out = await callTool("minutes-status", { jobName: minJob });
+        if (stopped) return;
+        if (out.status === "COMPLETED") {
+          setResult(out);
+          setMinJob(null);
+        } else if (out.status === "FAILED") {
+          setError(t("ftMinutesFailed").replace("{reason}", String(out.reason || "")));
+          setMinJob(null);
+        } else if (polls >= POLL_LIMIT) {
+          setError(t("ftMinutesTimeout"));
+          setMinJob(null);
+        }
+      } catch (e) {
+        if (stopped) return;
+        setError(e instanceof Error ? e.message : String(e));
+        setMinJob(null);
+      }
+    }, POLL_MS);
+    return () => {
+      stopped = true;
+      clearInterval(timer);
+    };
+  }, [minJob, t]);
   const run = async (fn: () => Promise<void>) => {
     setBusy(true);
     setError("");
@@ -199,6 +240,7 @@ export function FileTools({ selectedFileKey, selectedFolder, canWrite, canSaveUs
     { id: "webExtract", icon: "link", label: "ftTabsWebextract", show: config?.tools.webExtract ?? true },
     { id: "image", icon: "image", label: "ftTabsImage", show: config?.tools.image ?? false },
     { id: "code", icon: "wrench", label: "ftTabsCode", show: config?.tools.code ?? false },
+    { id: "minutes", icon: "users", label: "ftTabsMinutes", show: config?.tools.minutes ?? false },
     { id: "useCases", icon: "sparkles", label: "ftTabsUsecases", show: config?.tools.useCases ?? true },
   ];
   const current = tabs.some((x) => x.id === tab && x.show) ? tab : "translate";
@@ -492,6 +534,46 @@ export function FileTools({ selectedFileKey, selectedFolder, canWrite, canSaveUs
                 </details>
               )}
             </div>
+          )}
+        </section>
+      )}
+      {current === "minutes" && config?.minutes && (
+        <section role="tabpanel">
+          <div className="ft-notice" role="note">
+            {t("ftMinutesNote").replace("{mb}", String(config.minutes.maxMegabytes))}
+            <small>{config.minutes.extensions.join(", ")}</small>
+          </div>
+          {selectedFileKey ? (
+            <div className="ft-file"><Icon name="file-text" className="icon-lead" />{selectedFileKey}</div>
+          ) : (
+            <small>{t("ftMinutesNofile")}</small>
+          )}
+          <div className="ft-row">
+            <div className="form-group">
+              <label htmlFor="ft-min-language">{t("ftMinutesLanguage")}</label>
+              <select id="ft-min-language" value={minLanguage} onChange={(e) => setMinLanguage(e.target.value)}>
+                {config.minutes.languages.map((l) => <option key={l} value={l}>{t(langKey(MINUTES_LANGUAGE_NAMES[l] || "en"))}</option>)}
+              </select>
+            </div>
+            <div className="form-group">
+              <label htmlFor="ft-min-speakers">{t("ftMinutesSpeakers")}</label>
+              <input id="ft-min-speakers" type="number" min={config.minutes.minSpeakers} max={config.minutes.maxSpeakers} value={minSpeakers} onChange={(e) => setMinSpeakers(Number(e.target.value))} />
+            </div>
+          </div>
+          <button type="button" className="btn-primary" disabled={busy || !!minJob || !selectedFileKey} onClick={() => run(async () => {
+            setResult(null);
+            const out = await callTool("minutes-start", { key: selectedFileKey, language: minLanguage, speakers: minSpeakers });
+            setMinJob(String(out.jobName));
+          })}>
+            <Icon name="users" className="icon-lead" />{busy || minJob ? t("ftRunning") : t("ftMinutesRun")}
+          </button>
+          {minJob && <p className="rm-hint" role="status">{t("ftMinutesWorking")}</p>}
+          {result && typeof result.result === "string" && (
+            <>
+              {result.truncated === true && <p className="rm-hint">{t("ftMinutesTruncated")}</p>}
+              {folderBlock}
+              {textResult(result.result, `${baseName}.minutes.md`)}
+            </>
           )}
         </section>
       )}
