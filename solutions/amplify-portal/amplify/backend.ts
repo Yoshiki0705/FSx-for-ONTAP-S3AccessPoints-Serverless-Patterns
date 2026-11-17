@@ -2380,6 +2380,10 @@ const imageModelArns = toolsSettings.imageModelId.match(/^(us|eu|apac|jp|global)
       `arn:aws:bedrock:*::foundation-model/${toolsSettings.imageModelId.replace(/^[a-z]+\./, "")}`,
     ]
   : [`arn:aws:bedrock:${toolsSettings.imageRegion}::foundation-model/${toolsSettings.imageModelId}`];
+// Image to image: Stable Image Core takes text only, so a selected image goes to SD3.5 Large in the
+// same Region (on-demand, no inference profile). The ID matches functions/file-tools.
+const IMAGE_TO_IMAGE_MODEL_ID = "stability.sd3-5-large-v1:0";
+imageModelArns.push(`arn:aws:bedrock:${toolsSettings.imageRegion}::foundation-model/${IMAGE_TO_IMAGE_MODEL_ID}`);
 // Transcribe writes its result here (an S3 Access Point is not used as the output: whether it
 // can take Transcribe's write is not established). Private, encrypted, gone after a day; the
 // object key carries the owner's hash and the function reads only that user's folder.
@@ -2511,6 +2515,7 @@ const fileToolsFunction = new lambda.Function(dataStack, "FileToolsFunction", {
     IMAGE_GENERATION_ENABLED: String(toolsSettings.imageEnabled),
     IMAGE_GENERATION_REGION: toolsSettings.imageRegion,
     IMAGE_GENERATION_MODEL_ID: toolsSettings.imageModelId,
+    IMAGE_TO_IMAGE_MODEL_ID: IMAGE_TO_IMAGE_MODEL_ID,
     CODE_INTERPRETER_ENABLED: String(toolsSettings.codeExecution),
     VIDEO_GENERATION_ENABLED: String(toolsSettings.videoGenEnabled),
     VIDEO_GENERATION_BUCKET: toolsSettings.videoGenEnabled ? toolsSettings.videoGenBucket : "",
