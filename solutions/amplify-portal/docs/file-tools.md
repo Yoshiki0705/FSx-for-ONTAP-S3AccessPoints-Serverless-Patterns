@@ -29,6 +29,16 @@
 
 ![保存したユースケースを選択中のファイルで実行](screenshots/tools/tools-usecases-ja.png)
 
+次の 4 枚は、2026-11-17 に同じ sandbox で、使い捨てのアクセスポイントに置いたサンプルデータを入力にして撮りました。CSV は 12 行の架空の売上、録音は Amazon Polly の日本語の声 2 つで作った架空の会議（約 41 秒）、動画は NASA の記者会見（[PACE Prelaunch News Conference](https://images.nasa.gov/details/PACE%20Prelaunch%20News%20Conference)）の冒頭 90 秒です。結果はどれも 1 回分で、手を加えていません。
+
+![コードの実行。CSV の月ごとの合計をプログラムで求めた。合計は元のデータと一致した](screenshots/tools/tools-code-ja.png)
+
+![議事録。Transcribe が「アクセス権」を「アクセス券」と書き起こし、議事録にもそのまま残った](screenshots/tools/tools-minutes-ja.png)
+
+![動画の分析。場面の構成を答えた。4 つ目の場面は記者会見だが、モデルは「表彰式」と書いた](screenshots/tools/tools-video-analysis-ja.png)
+
+![動画の生成。プロンプトから 5 秒の動画を作り、画面で再生した](screenshots/tools/tools-video-generation-ja.png)
+
 ## ファイルの読み書きと権限
 
 - **ファイルを読むとき**: `functions/file-tools` は、ファイルの質問（`ask-about-file`）と同じ順で確かめます。外部の利用者の AI 利用、パスの境界（`scope_for_caller`）、規制対象のフォルダ（`/dicom/`、`/phi/`、`/pii/`）、データの機密区分の順です。境界の外のファイルは、何かを読む前に拒否します。読むのは先頭の 100 KB までです
