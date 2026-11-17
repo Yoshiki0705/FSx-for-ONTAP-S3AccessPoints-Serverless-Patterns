@@ -24,7 +24,7 @@ interface ToolsConfig {
   code?: { maxRuns: number; runSeconds: number; totalSeconds: number } | null;
   videoGeneration?: { region: string; modelId: string; crossRegion: boolean; aspectRatios: string[]; resolutions: string[]; maxPromptChars: number } | null;
   video?: { extensions: string[]; maxMegabytes: number; seconds: number } | null;
-  minutes?: { languages: string[]; extensions: string[]; maxMegabytes: number; minSpeakers: number; maxSpeakers: number } | null;
+  minutes?: { languages: string[]; extensions: string[]; maxMegabytes: number; minSpeakers: number; maxSpeakers: number; styles?: string[] } | null;
 }
 interface CodeRun {
   ok: boolean;
@@ -45,6 +45,12 @@ const LANGUAGES = ["ja", "en", "ko", "zh-CN", "zh-TW", "fr", "de", "es", "pt", "
 const DIAGRAMS = ["auto", "flowchart", "sequence", "class", "state", "er", "gantt", "mindmap", "timeline", "pie"] as const;
 /** Transcribe language codes to the language names the translation tool already has. */
 const MINUTES_LANGUAGE_NAMES: Record<string, string> = { "ja-JP": "ja", "en-US": "en", "ko-KR": "ko", "zh-CN": "zh-CN", "fr-FR": "fr", "de-DE": "de", "es-ES": "es" };
+const MINUTES_STYLE_KEYS: Record<string, TranslationKeys> = {
+  minutes: "ftMinutesStyleMinutes",
+  transcript: "ftMinutesStyleTranscript",
+  article: "ftMinutesStyleArticle",
+  faq: "ftMinutesStyleFaq",
+};
 const POLL_MS = 5000;
 const POLL_LIMIT = 360;
 const ASPECTS = ["1:1", "16:9", "9:16", "3:2", "2:3", "4:5", "5:4"] as const;
@@ -154,6 +160,9 @@ export function FileTools({ selectedFileKey, selectedFolder, canWrite, canSaveUs
   // Minutes
   const [minLanguage, setMinLanguage] = useState("ja-JP");
   const [minSpeakers, setMinSpeakers] = useState(2);
+  const [minStyle, setMinStyle] = useState("minutes");
+  // The last finished job: its transcript stays for a day, so another style needs no new transcription.
+  const [minJob, setMinJob] = useState<string | null>(null);
   // A job running in the background: which status action to ask, and what to say if it fails.
   const [poll, setPoll] = useState<{ action: string; params: Record<string, unknown>; failed: TranslationKeys } | null>(null);
   // Video generation
@@ -173,7 +182,10 @@ export function FileTools({ selectedFileKey, selectedFolder, canWrite, canSaveUs
   if (seen.initialTab !== initialTab || seen.selectedFileKey !== selectedFileKey || seen.selectedFolder !== selectedFolder) {
     setSeen({ initialTab, selectedFileKey, selectedFolder });
     if (seen.initialTab !== initialTab) setTab(initialTab || "translate");
-    if (seen.selectedFileKey !== selectedFileKey) setUseFile(!!selectedFileKey);
+    if (seen.selectedFileKey !== selectedFileKey) {
+      setUseFile(!!selectedFileKey);
+      setMinJob(null);
+    }
     if (seen.selectedFolder !== selectedFolder) setFolder(selectedFolder);
   }
 
@@ -570,20 +582,35 @@ export function FileTools({ selectedFileKey, selectedFolder, canWrite, canSaveUs
               <label htmlFor="ft-min-speakers">{t("ftMinutesSpeakers")}</label>
               <input id="ft-min-speakers" type="number" min={config.minutes.minSpeakers} max={config.minutes.maxSpeakers} value={minSpeakers} onChange={(e) => setMinSpeakers(Number(e.target.value))} />
             </div>
+            <div className="form-group">
+              <label htmlFor="ft-min-style">{t("ftMinutesStyle")}</label>
+              <select id="ft-min-style" value={minStyle} onChange={(e) => setMinStyle(e.target.value)}>
+                {(config.minutes.styles || ["minutes"]).map((s) => <option key={s} value={s}>{t(MINUTES_STYLE_KEYS[s] || "ftMinutesStyleMinutes")}</option>)}
+              </select>
+            </div>
           </div>
           <button type="button" className="btn-primary" disabled={busy || !!poll || !selectedFileKey} onClick={() => run(async () => {
             setResult(null);
             const out = await callTool("minutes-start", { key: selectedFileKey, language: minLanguage, speakers: minSpeakers });
-            setPoll({ action: "minutes-status", params: { jobName: String(out.jobName) }, failed: "ftMinutesFailed" });
+            setMinJob(String(out.jobName));
+            setPoll({ action: "minutes-status", params: { jobName: String(out.jobName), style: minStyle }, failed: "ftMinutesFailed" });
           })}>
             <Icon name="users" className="icon-lead" />{busy || poll ? t("ftRunning") : t("ftMinutesRun")}
           </button>
+          {minJob && result && typeof result.result === "string" && result.style !== minStyle && (
+            <button type="button" className="btn-secondary" disabled={busy || !!poll} onClick={() => run(async () => {
+              setResult(null);
+              setPoll({ action: "minutes-status", params: { jobName: minJob, style: minStyle }, failed: "ftMinutesFailed" });
+            })}>
+              <Icon name="refresh" className="icon-lead" />{t("ftMinutesRestyle")}
+            </button>
+          )}
           {poll?.action === "minutes-status" && <p className="rm-hint" role="status">{t("ftMinutesWorking")}</p>}
           {result && typeof result.result === "string" && (
             <>
               {result.truncated === true && <p className="rm-hint">{t("ftMinutesTruncated")}</p>}
               {folderBlock}
-              {textResult(result.result, `${baseName}.minutes.md`)}
+              {textResult(result.result, `${baseName}.${typeof result.style === "string" ? result.style : "minutes"}.md`)}
             </>
           )}
         </section>
