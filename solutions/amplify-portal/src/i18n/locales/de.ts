@@ -2203,6 +2203,7 @@ arpResponseSweepNote: "Sperren heben sich nach Ablauf der Frist selbst auf. Für
   ftImageSourceNofile: "Wählen Sie in der Dateiliste ein Bild ({exts}, bis {mb} MB), um davon auszugehen.",
   ftImageStrength: "Wie weit vom Original abweichen: {value}",
   ftImageStrengthhelp: "Niedriger bleibt näher am Original; höher zeichnet stärker nach dem Prompt neu.",
+  ftImageSourcePeople: "Bei einem Foto einer Person kann ein höherer Wert das Gesicht durch ein anderes ersetzen, auch durch eines, das einer realen Person ähnelt.",
   ftImageSourceRegionnotice: "Auch das Ausgangsbild wird außerhalb Japans verarbeitet.",
   ftUsecasesIntro: "Speichern Sie häufig verwendete Anweisungen als Vorlagen. Solange Sie sie nicht teilen, sehen und nutzen nur Sie Ihre Anwendungsfälle.",
   ftUsecasesNew: "Neuer Anwendungsfall",

@@ -107,7 +107,7 @@ Lambda のロールに足す権限は、モデルへの `bedrock:InvokeModel` �
 
 Lambda のロールに足す権限は、us-west-2 の `stability.sd3-5-large-v1:0` への `bedrock:InvokeModel` です（画像の生成を有効にしたときだけ）。
 
-**前提: SD3.5 Large をアカウントで有効にしておく。** Stability のモデルは、AWS Marketplace のサブスクリプションでアカウントごとに有効になります。Lambda のロールには Marketplace の権限（`aws-marketplace:Subscribe` など）を付けていないので、有効になっていないアカウントでは、Bedrock が `AccessDeniedException`（Marketplace の操作の権限が無い）を返します。画面には「このアカウントで有効になっていない。管理者が一度有効にする必要がある」と表示します。管理者が Bedrock のコンソールでモデルを一度呼ぶなどして有効にしてください。`aws bedrock get-foundation-model-availability --region us-west-2 --model-id stability.sd3-5-large-v1:0` の `agreementAvailability` が `AVAILABLE` になれば有効です（2026-11-17 のこのアカウントでは、Stable Image Core が `AVAILABLE`、SD3.5 Large が `NOT_AVAILABLE` でした）。
+**前提: SD3.5 Large をアカウントで有効にしておく。** Stability のモデルは、AWS Marketplace のサブスクリプションでアカウントごとに有効になります。Lambda のロールには Marketplace の権限（`aws-marketplace:Subscribe` など）を付けていないので、有効になっていないアカウントでは、Bedrock が `AccessDeniedException`（Marketplace の操作の権限が無い）を返します。画面には「このアカウントで有効になっていない。管理者が一度有効にする必要がある」と表示します。管理者が Bedrock のコンソールのプレイグラウンドでモデルを一度呼んで有効にしてください。`aws bedrock get-foundation-model-availability --region us-west-2 --model-id stability.sd3-5-large-v1:0` の `agreementAvailability` が `AVAILABLE` になれば有効です（2026-11-17 のこのアカウントでは、Stable Image Core が `AVAILABLE`、SD3.5 Large が `NOT_AVAILABLE` でした）。
 
 **実機での確認（2026-11-17、us-west-2 のモデル、ap-northeast-1 の sandbox）**: NASA の記者会見の静止画（400 × 225 の JPEG、14 KB）を使い捨てのアクセスポイントに置き、画面から確かめました。1 回ずつの観測です。
 
@@ -116,6 +116,16 @@ Lambda のロールに足す権限は、us-west-2 の `stability.sd3-5-large-v1:
 | 「水彩画風で、やわらかい色合いにしたい」からプロンプトを考えてもらう | 1.5 秒で、英語のプロンプトと入れたくない要素が入り、選んだ理由が日本語で 1 文出た |
 | 選択中の画像を元に、変え具合 0.35 で作る | 11.0 秒で保存された。出力は 1365 × 768。元の写真がほぼそのまま残り、水彩画の見た目にはならなかった。縦横比の欄は出なかった |
 | 続けて、変え具合 0.7 で作る | `AccessDeniedException`（Marketplace の操作の権限が無い）で失敗した。上の前提を満たしていなかった。1 回目がなぜ通ったかは確かめていない |
+
+**有効にしたあとの確認（2026-11-17〜18、us-west-2）**: AdministratorAccess の利用者で、CLI から `invoke-model` を呼んでも同じ `AccessDeniedException` で拒否され、有効になりませんでした。Bedrock のコンソールのプレイグラウンドで 1 回呼ぶと、`agreementAvailability` が `AVAILABLE` になり、CLI からも呼べるようになりました。そのあと、同じ静止画と同じプロンプト（水彩画風）で、変え具合だけを変えて CLI から 1 回ずつ呼びました。
+
+| 変え具合 | 結果 |
+|---|---|
+| 0.35 | 元の写真にほぼ近いまま。水彩画の見た目にはならなかった |
+| 0.6 | 背景がぼやけ、人物の顔が別人に変わり始めた。水彩画の見た目にはならなかった |
+| 0.8 | 人物が、実在の人物に似た別人の顔と服装に置き換わった。水彩画の見た目にはならなかった |
+
+人物の写真を元にすると、変え具合を上げるほど別人の顔に置き換わり、実在の人物に似た顔になることがありました。画面には、このことを表示します。既定の変え具合は 0.35 のままにしています。画風を変える目的には、この 3 回では効果を確かめられていません。生成した画像は公開していません。
 
 ## 設定
 

@@ -2188,6 +2188,7 @@ arpResponseSweepNote: "阻止会在设定的期限过后自动解除。如需提
   ftImageSourceNofile: "在文件列表中选择图像（{exts}，最大 {mb} MB）即可以它为基础。",
   ftImageStrength: "与原图的差异程度：{value}",
   ftImageStrengthhelp: "越小越接近原图，越大越按提示词重绘。",
+  ftImageSourcePeople: "以人物照片为基础时，数值越高，脸越可能被替换成他人的脸，也出现过与真实人物相似的脸。",
   ftImageSourceRegionnotice: "作为基础的图像也会在日本境外处理。",
   ftUsecasesIntro: "可以将常用的指令保存为模板。除非共享，保存的用例只有您可以查看和使用。",
   ftUsecasesNew: "新建用例",

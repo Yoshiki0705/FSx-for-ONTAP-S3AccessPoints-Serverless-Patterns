@@ -525,6 +525,7 @@ export function FileTools({ selectedFileKey, selectedFolder, canWrite, canSaveUs
                   <label htmlFor="ft-strength">{t("ftImageStrength").replace("{value}", strength.toFixed(2))}</label>
                   <input id="ft-strength" type="range" min={0.1} max={0.9} step={0.05} value={strength} onChange={(e) => setStrength(Number(e.target.value))} />
                   <small>{t("ftImageStrengthhelp")}</small>
+                  <small>{t("ftImageSourcePeople")}</small>
                 </div>
               )}
             </div>

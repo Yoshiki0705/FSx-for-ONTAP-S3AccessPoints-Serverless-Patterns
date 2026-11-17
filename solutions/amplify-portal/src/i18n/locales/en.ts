@@ -2230,6 +2230,7 @@ arpResponseSweepNote: "Blocks lift themselves once their expiry passes. To lift 
   ftImageSourceNofile: "Select an image in the file list ({exts}, up to {mb} MB) to start from it.",
   ftImageStrength: "How far to move from the original: {value}",
   ftImageStrengthhelp: "Lower stays closer to the original; higher redraws more by the prompt.",
+  ftImageSourcePeople: "Starting from a photo of a person, a higher value can replace the face with someone else's, including one that resembles a real person.",
   ftImageSourceRegionnotice: "The image you start from is also processed outside Japan.",
   ftUsecasesIntro: "Save frequently used instructions as templates. Unless you share them, only you can see and use your use cases.",
   ftUsecasesNew: "New use case",

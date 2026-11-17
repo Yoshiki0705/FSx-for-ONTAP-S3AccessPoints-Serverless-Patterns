@@ -2188,6 +2188,7 @@ arpResponseSweepNote: "封鎖會在設定的期限過後自動解除。如需提
   ftImageSourceNofile: "在檔案清單中選擇圖像（{exts}，最大 {mb} MB）即可以它為基礎。",
   ftImageStrength: "與原圖的差異程度：{value}",
   ftImageStrengthhelp: "越小越接近原圖，越大越依提示詞重繪。",
+  ftImageSourcePeople: "以人物照片為基礎時，數值越高，臉越可能被替換成他人的臉，也出現過與真實人物相似的臉。",
   ftImageSourceRegionnotice: "作為基礎的圖像也會在日本境外處理。",
   ftUsecasesIntro: "可以將常用的指示儲存為範本。除非共享，儲存的使用案例只有您可以檢視和使用。",
   ftUsecasesNew: "新增使用案例",

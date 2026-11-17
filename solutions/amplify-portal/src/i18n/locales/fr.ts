@@ -2199,6 +2199,7 @@ arpResponseSweepNote: "Les blocages se lèvent d'eux-mêmes à l'échéance. Pou
   ftImageSourceNofile: "Sélectionnez une image dans la liste des fichiers ({exts}, jusqu’à {mb} Mo) pour partir d’elle.",
   ftImageStrength: "Écart par rapport à l’original : {value}",
   ftImageStrengthhelp: "Plus bas reste proche de l’original ; plus haut redessine davantage selon le prompt.",
+  ftImageSourcePeople: "En partant de la photo d’une personne, une valeur plus élevée peut remplacer son visage par celui de quelqu’un d’autre, y compris un visage ressemblant à une personne réelle.",
   ftImageSourceRegionnotice: "L’image de départ est aussi traitée hors du Japon.",
   ftUsecasesIntro: "Enregistrez les instructions fréquentes comme modèles. Tant que vous ne les partagez pas, vous seul pouvez voir et utiliser vos cas d’usage.",
   ftUsecasesNew: "Nouveau cas d’usage",
