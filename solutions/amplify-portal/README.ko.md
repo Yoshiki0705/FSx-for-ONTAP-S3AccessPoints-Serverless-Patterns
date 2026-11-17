@@ -484,6 +484,16 @@ amplify-fsxns3apamplifyportal-dev2-sandbox-9876543210   ← 개발자 2
 
 동일한 AWS 계정을 공유하지만 간섭하지 않습니다. `npx ampx sandbox --identifier custom-name`으로 명시적 이름을 지정할 수 있습니다.
 
+### 12. 설정한 액세스 포인트가 실제로 있는지 확인
+기존 샌드박스를 인계받으면 `s3ApAlias`(또는 `AMPLIFY_PORTAL_S3AP_ALIAS`)가 가리키는 S3 Access Point가 볼륨과 함께 이미 삭제되었을 수 있습니다. 배포도 `make portal-preflight`도 이를 알아차리지 못합니다. preflight는 설정과 배포된 스택을 비교할 뿐, 실제로 있는 액세스 포인트와 비교하지 않기 때문입니다. 삭제된 액세스 포인트에 대한 S3 호출은 `AccessDenied`("Could not access through this access point")로 실패하므로 권한 문제처럼 보입니다. 권한을 조사하기 전에 별칭이 실제로 있는지 확인하세요:
+```bash
+# 액세스 포인트의 이름과 상태를 표시합니다. 아무것도 표시되지 않으면 액세스 포인트가 없습니다
+aws fsx describe-s3-access-point-attachments \
+  --query "S3AccessPointAttachments[?S3AccessPoint.Alias=='<s3ApAlias>'].[Name,Lifecycle]" \
+  --output text
+```
+일회용 액세스 포인트로 확인할 때는 `portal-config.ts`를 고치지 말고, 그 한 번의 배포(`./scripts/sandbox.sh --once`)에만 `AMPLIFY_PORTAL_S3AP_ALIAS`를 지정합니다. 확인 후에는 지정하지 않고 다시 배포하여 샌드박스를 원래대로 되돌립니다. git으로 관리하지 않는 값(액세스 포인트, ONTAP 연결, VPC 등)이 비게 되는 배포는 중단됩니다. 이는 의도한 보호입니다.
+
 ---
 
 ## 프로젝트 구조

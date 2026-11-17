@@ -488,6 +488,16 @@ amplify-fsxns3apamplifyportal-dev2-sandbox-9876543210   ← 開発者 2
 
 同じ AWS アカウントを共有しますが、相互に干渉しません。`npx ampx sandbox --identifier custom-name` で明示的な命名も可能です。
 
+### 12. 設定したアクセスポイントが実在するかの確認
+既存の sandbox を引き継ぐと、`s3ApAlias`（または `AMPLIFY_PORTAL_S3AP_ALIAS`）が指す S3 Access Point が、ボリュームごと削除済みのことがあります。デプロイも `make portal-preflight` も、これに気付きません。preflight が比べるのは設定とデプロイ済みのスタックで、実在するアクセスポイントではないためです。削除済みのアクセスポイントへの S3 の呼び出しは `AccessDenied`（"Could not access through this access point"）で失敗し、権限の問題に見えます。権限を調べる前に、エイリアスが実在するかを確かめてください:
+```bash
+# アクセスポイントの名前と状態を表示する。何も表示されなければ、アクセスポイントは存在しない
+aws fsx describe-s3-access-point-attachments \
+  --query "S3AccessPointAttachments[?S3AccessPoint.Alias=='<s3ApAlias>'].[Name,Lifecycle]" \
+  --output text
+```
+使い捨てのアクセスポイントで確かめるときは、`portal-config.ts` を書き換えず、その 1 回のデプロイ（`./scripts/sandbox.sh --once`）にだけ `AMPLIFY_PORTAL_S3AP_ALIAS` を付けます。確認後は付けずにもう一度デプロイし、sandbox を元に戻します。git で管理しない値（アクセスポイント、ONTAP の接続、VPC など）が空になるデプロイは止まります。これは意図した保護です。
+
 ---
 
 ## プロジェクト構成

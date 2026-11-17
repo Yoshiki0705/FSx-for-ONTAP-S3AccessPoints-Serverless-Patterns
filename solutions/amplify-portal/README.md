@@ -510,6 +510,16 @@ amplify-fsxns3apamplifyportal-dev2-sandbox-9876543210   ← developer 2
 
 They share the same AWS account but don't interfere. Use `npx ampx sandbox --identifier custom-name` for explicit naming.
 
+### 12. Check That the Configured Access Point Still Exists
+When you take over an existing sandbox, the S3 Access Point that `s3ApAlias` (or `AMPLIFY_PORTAL_S3AP_ALIAS`) names may already have been deleted together with its volume. Neither the deploy nor `make portal-preflight` notices: preflight compares the config with the deployed stack, not with the access points that exist. S3 calls against a deleted access point fail with `AccessDenied` ("Could not access through this access point"), which reads like a permission problem. Check that the alias still exists before debugging permissions:
+```bash
+# Prints the access point's name and state. Nothing printed = the access point no longer exists.
+aws fsx describe-s3-access-point-attachments \
+  --query "S3AccessPointAttachments[?S3AccessPoint.Alias=='<s3ApAlias>'].[Name,Lifecycle]" \
+  --output text
+```
+To check against a throwaway access point, set `AMPLIFY_PORTAL_S3AP_ALIAS` for that one deploy (`./scripts/sandbox.sh --once`) instead of editing `portal-config.ts`, and run the deploy again without it afterwards to restore the sandbox. The deploy stops when values that git does not track (access point, ONTAP connection, VPC and others) would become empty; that guard is intended.
+
 ---
 
 ## Project Structure
