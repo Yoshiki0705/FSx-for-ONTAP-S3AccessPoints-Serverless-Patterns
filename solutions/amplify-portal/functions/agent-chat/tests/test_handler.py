@@ -275,3 +275,144 @@ def test_the_built_in_modes_still_have_a_prompt_and_tools(mode):
     """The override is opt-in, so the presets must remain complete."""
     assert handler.SYSTEM_PROMPTS[mode]
     assert handler.TOOLS_BY_MODE[mode]
+
+
+class TestFeedback:
+    """Ratings: the RAG app's record shape, the resolver's user ID, and nothing saved when off."""
+
+    def _submit(self, params, groups=None, user="owner@example.com"):
+        return handler.handler(
+            {"action": "submitFeedback", "userId": user, "userGroups": groups or [], "params": params}, None
+        )
+
+    def test_without_a_table_nothing_is_pretended(self):
+        with patch.object(handler, "FEEDBACK_TABLE", ""):
+            out = self._submit({"responseId": "r-1", "rating": "positive"})
+            assert out["saved"] is False and "not enabled" in out["error"]
+            assert handler.handler({"action": "feedbackConfig", "params": {}}, None)["enabled"] is False
+
+    @pytest.mark.parametrize(
+        "params",
+        [
+            {"responseId": "r 1", "rating": "positive"},
+            {"responseId": "x" * 65, "rating": "positive"},
+            {"responseId": "r-1", "rating": "meh"},
+            {"responseId": "r-1", "rating": "negative", "comment": "c" * 1001},
+            {"responseId": "r-1", "rating": "negative", "query": "q" * 501},
+            {"responseId": "r-1", "rating": "negative", "modelId": "a b"},
+            {"responseId": "r-1", "rating": "negative", "sourceDocIds": ["team-a/secret.docx"]},
+            {"responseId": "r-1", "rating": "negative", "sourceDocIds": ["0" * 32] * 21},
+        ],
+    )
+    def test_malformed_ratings_are_refused_before_anything_is_written(self, params):
+        table = MagicMock()
+        with (
+            patch.object(handler, "FEEDBACK_TABLE", "fb"),
+            patch.object(handler, "_feedback_table", return_value=table),
+        ):
+            assert self._submit(params)["saved"] is False
+        table.put_item.assert_not_called()
+
+    def test_a_rating_is_one_item_and_the_question_another_with_a_shorter_life(self):
+        table = MagicMock()
+        params = {
+            "responseId": "r-abc",
+            "rating": "negative",
+            "comment": " wrong year ",
+            "query": "When did it launch?",
+            "modelId": "amazon.nova-lite-v1:0",
+            "sourceDocIds": ["a" * 32],
+            "userId": "spoofed@example.com",
+        }
+        with (
+            patch.object(handler, "FEEDBACK_TABLE", "fb"),
+            patch.object(handler, "FEEDBACK_RETENTION_DAYS", 365),
+            patch.object(handler, "FEEDBACK_QUERY_RETENTION_DAYS", 90),
+            patch.object(handler, "_feedback_table", return_value=table),
+            patch.object(handler.time, "time", return_value=1_700_000_000),
+        ):
+            out = self._submit(params)
+        assert out["saved"] is True
+        rating, query = (c.kwargs["Item"] for c in table.put_item.call_args_list)
+        assert rating["userId"] == "owner@example.com"
+        assert rating["kind"] == "rating" and rating["rating"] == "negative" and rating["comment"] == "wrong year"
+        assert rating["date"] == "2023-11-14" and rating["ttlEpoch"] == 1_700_000_000 + 365 * 86400
+        assert "query" not in rating
+        assert query == {
+            "feedbackId": rating["feedbackId"],
+            "kind": "query",
+            "query": "When did it launch?",
+            "ttlEpoch": 1_700_000_000 + 90 * 86400,
+        }
+
+    def test_an_external_caller_who_cannot_chat_cannot_rate(self):
+        table = MagicMock()
+        with (
+            patch.object(handler, "FEEDBACK_TABLE", "fb"),
+            patch.object(handler, "EXTERNAL_AI_ENABLED", False),
+            patch.object(handler, "_feedback_table", return_value=table),
+        ):
+            out = self._submit({"responseId": "r-1", "rating": "positive"}, groups=["external"])
+        assert out["saved"] is False
+        table.put_item.assert_not_called()
+
+    def test_only_reviewers_list_ratings_and_user_ids_stay_out(self):
+        table = MagicMock()
+        table.query.return_value = {
+            "Items": [
+                {
+                    "feedbackId": "f1",
+                    "timestamp": "2026-11-17T01:00:00Z",
+                    "rating": "negative",
+                    "userId": "u",
+                    "sourceDocIds": ["a" * 32],
+                }
+            ]
+        }
+        table.get_item.return_value = {"Item": {"query": "q?"}}
+        with (
+            patch.object(handler, "FEEDBACK_TABLE", "fb"),
+            patch.object(handler, "_feedback_table", return_value=table),
+        ):
+            denied = handler.handler({"action": "listFeedback", "userGroups": ["viewer"], "params": {}}, None)
+            assert denied["items"] == [] and "storage-admin" in denied["error"]
+            out = handler.handler(
+                {"action": "listFeedback", "userGroups": ["auditor"], "params": {"date": "2026-11-17"}}, None
+            )
+        assert table.query.call_args.kwargs["IndexName"] == "ByDate"
+        assert out["items"] == [
+            {
+                "timestamp": "2026-11-17T01:00:00Z",
+                "rating": "negative",
+                "comment": "",
+                "query": "q?",
+                "modelId": "",
+                "responseId": "",
+                "sourceCount": 1,
+            }
+        ]
+
+
+class TestCitations:
+    """The answer carries opaque IDs of the files it drew on, only those the caller could reach."""
+
+    def test_kb_hits_and_allowed_reads_are_cited_as_hashes(self):
+        with patch.object(handler, "_get_allowed_prefixes", return_value=["team-a/"]):
+            handler._request_context["user_groups"] = ["team-a"]
+            handler._request_context["cited"] = []
+            handler._note_citations("kb_search", {}, {"results": [{"fileKey": "team-a/x.md"}]})
+            handler._note_citations("read_file", {"key": "team-a/y.md"}, {"content": "..."})
+            handler._note_citations("read_file", {"key": "team-b/z.md"}, {"content": "..."})
+            handler._note_citations("read_file", {"key": "team-a/err.md"}, {"error": "nope"})
+        assert handler._request_context["cited"] == ["team-a/x.md", "team-a/y.md"]
+        assert handler.doc_id("team-a/x.md") == handler.doc_id("team-a/x.md") and len(handler.doc_id("k")) == 32
+
+    def test_a_chat_answer_has_a_response_id_and_doc_ids(self):
+        def loop(*_a, **_k):
+            handler._request_context["cited"] = ["team-a/x.md", "team-a/x.md"]
+            return {"answer": "ok", "toolCalls": []}
+
+        with patch.object(handler, "run_agent_loop", side_effect=loop):
+            out = handler.handler({"action": "chat", "userId": "u@example.com", "params": {"message": "hi"}}, None)
+        assert handler.RESPONSE_ID.fullmatch(out["responseId"])
+        assert out["sourceDocIds"] == [handler.doc_id("team-a/x.md")]

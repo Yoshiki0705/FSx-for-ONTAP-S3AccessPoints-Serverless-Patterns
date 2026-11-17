@@ -5216,6 +5216,53 @@ button[type="submit"]:disabled {
   margin-top: 0.3rem;
 }
 
+.agent-feedback-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  margin-top: 0.35rem;
+  font-size: 0.8rem;
+}
+.agent-feedback-form small {
+  color: var(--color-text-secondary);
+}
+.agent-feedback-actions {
+  display: flex;
+  gap: 0.4rem;
+}
+.agent-feedback-review {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  margin: 0.5rem 0;
+  padding: 0.75rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-surface);
+  max-height: 40vh;
+  overflow: auto;
+}
+.agent-feedback-review-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+}
+.agent-feedback-review small {
+  color: var(--color-text-secondary);
+}
+.agent-feedback-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.8rem;
+}
+.agent-feedback-table th,
+.agent-feedback-table td {
+  padding: 0.3rem 0.4rem;
+  border-top: 1px solid var(--color-border);
+  text-align: left;
+  vertical-align: top;
+}
 /* P4: Trace Timeline */
 .agent-trace-timeline {
   margin: 0.4rem 0;

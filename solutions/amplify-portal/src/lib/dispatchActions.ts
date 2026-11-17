@@ -1051,11 +1051,16 @@ export interface AgentChatActionParams {
   deleteTeam: {
     teamId: string;
   };
+  /** No parameters. */
+  feedbackConfig: Record<string, never>;
   getAgent: {
     agentId: string;
   };
   /** No parameters. */
   listAgents: Record<string, never>;
+  listFeedback: {
+    date?: string;
+  };
   listSessions: {
     limit?: number;
   };
@@ -1069,6 +1074,14 @@ export interface AgentChatActionParams {
     messages?: Array<{ role: string; content: string; timestamp: number }>;
     sessionId?: string;
     title?: string;
+  };
+  submitFeedback: {
+    comment?: string;
+    modelId?: string;
+    query?: string;
+    rating?: "positive" | "negative";
+    responseId?: string;
+    sourceDocIds?: string[];
   };
   updateAgent: {
     agentId: string;

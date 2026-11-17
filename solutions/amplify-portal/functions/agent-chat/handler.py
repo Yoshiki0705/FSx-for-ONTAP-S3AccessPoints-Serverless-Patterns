@@ -18,6 +18,7 @@ Supports DemoMode: when S3_AP_ALIAS is empty, tools return mock data.
 
 from __future__ import annotations
 
+import hashlib
 import json
 import logging
 import os
@@ -50,6 +51,16 @@ BEDROCK_KB_ID = os.environ.get("BEDROCK_KB_ID", "")
 CHAT_HISTORY_TABLE = os.environ.get("CHAT_HISTORY_TABLE", "")
 AGENT_DIRECTORY_TABLE = os.environ.get("AGENT_DIRECTORY_TABLE", "")
 AGENT_TEAMS_TABLE = os.environ.get("AGENT_TEAMS_TABLE", "")
+# Ratings of answers, in the record shape the RAG app uses (append-only, one rating one item).
+# Empty means the table is not deployed: the screen hides the buttons and submitFeedback says
+# so instead of pretending to save.
+FEEDBACK_TABLE = os.environ.get("FEEDBACK_TABLE", "")
+FEEDBACK_RETENTION_DAYS = int(os.environ.get("FEEDBACK_RETENTION_DAYS", "365"))
+# The question is what the user typed, so it is kept for less time, in an item of its own.
+FEEDBACK_QUERY_RETENTION_DAYS = int(os.environ.get("FEEDBACK_QUERY_RETENTION_DAYS", "90"))
+FEEDBACK_DATE_INDEX = "ByDate"
+FEEDBACK_REVIEW_ROLES = {"storage-admin", "auditor"}
+MAX_SOURCE_DOC_IDS = 20
 # Smart Routing: JSON mapping of Cognito group → allowed path prefixes
 # Example: {"engineering": ["engineering/", "shared/"], "finance": ["finance/", "shared/"]}
 GROUP_PATH_PREFIXES = json.loads(os.environ.get("GROUP_PATH_PREFIXES", "{}"))
@@ -578,7 +589,28 @@ def _mock_volume_summary() -> str:
 # --- Tool Execution Router ---
 
 # Per-request context (set by run_agent_loop, read by tool handlers)
-_request_context: dict[str, Any] = {"user_groups": []}
+_request_context: dict[str, Any] = {"user_groups": [], "cited": []}
+
+
+def doc_id(key: str) -> str:
+    """An opaque ID for a cited file: the screen and the ratings never hold its name."""
+    return hashlib.sha256(key.encode("utf-8")).hexdigest()[:32]
+
+
+def _note_citations(tool_name: str, tool_input: dict[str, Any], result_data: dict[str, Any]) -> None:
+    """Remember the files an answer drew on, only when the tool returned them to this caller."""
+    if result_data.get("error"):
+        return
+    cited: list[str] = _request_context.setdefault("cited", [])
+    if tool_name == "kb_search":
+        # Already filtered by the caller's path prefixes inside the tool.
+        cited.extend(str(r.get("fileKey") or "") for r in result_data.get("results") or [] if r.get("fileKey"))
+    elif tool_name == "read_file":
+        key = str(tool_input.get("key") or "")
+        prefixes = _get_allowed_prefixes(_request_context.get("user_groups"))
+        if key and (not prefixes or any(key.startswith(p) for p in prefixes)):
+            cited.append(key)
+
 
 TOOL_HANDLERS = {
     "list_files": _tool_list_files,
@@ -745,6 +777,7 @@ def run_agent_loop(
 
     # Store user_groups for smart routing in kb_search
     _request_context["user_groups"] = user_groups or []
+    _request_context["cited"] = []
 
     # Build messages from history + new message
     messages = []
@@ -851,6 +884,8 @@ def run_agent_loop(
                     result_data = json.loads(result)
                 except (json.JSONDecodeError, TypeError):
                     result_data = {}
+                if isinstance(result_data, dict):
+                    _note_citations(tool_name, tool_input, result_data)
 
                 if result_data.get("approval_required"):
                     # Stop the loop and return approval request to frontend
@@ -998,6 +1033,11 @@ def handler(event, context):
             system_prompt=target["systemPrompt"] if target else None,
             allowed_tools=target["tools"] if target else None,
         )
+        # An ID the rating refers to, and the files the answer drew on as opaque IDs.
+        result["responseId"] = f"r-{uuid.uuid4().hex}"
+        result["sourceDocIds"] = list(dict.fromkeys(doc_id(k) for k in _request_context.get("cited", [])))[
+            :MAX_SOURCE_DOC_IDS
+        ]
         if target:
             # Named in the response so the transcript records which definition ran,
             # not merely that the agent screen was used.
@@ -1005,6 +1045,17 @@ def handler(event, context):
             if target.get("unavailable"):
                 result["unavailableMembers"] = target["unavailable"]
         return result
+
+    # --- Ratings of answers ---
+    if action == "feedbackConfig":
+        return {
+            "enabled": bool(FEEDBACK_TABLE),
+            "canReview": bool(set(event.get("userGroups") or []) & FEEDBACK_REVIEW_ROLES),
+        }
+    if action == "submitFeedback":
+        return _submit_feedback(user_id, event.get("userGroups") or [], params)
+    if action == "listFeedback":
+        return _list_feedback(event.get("userGroups") or [], params)
 
     # --- Chat History Actions ---
     if action == "saveSession":
@@ -1037,6 +1088,114 @@ def handler(event, context):
         return _delete_team(user_id, params)
 
     return {"error": f"Unknown action: {action}"}
+
+
+# ─── Ratings of answers (DynamoDB) ────────────────────────────────────────────
+
+RESPONSE_ID = re.compile(r"[A-Za-z0-9_-]{1,64}")
+MODEL_ID_SHAPE = re.compile(r"[A-Za-z0-9._:/-]{1,128}")
+DOC_ID_SHAPE = re.compile(r"[0-9a-f]{32}")
+DATE_SHAPE = re.compile(r"\d{4}-\d{2}-\d{2}")
+
+
+def _feedback_table() -> Any:
+    return boto3.resource("dynamodb").Table(FEEDBACK_TABLE)
+
+
+def _submit_feedback(user_id: str, user_groups: list[str], params: dict[str, Any]) -> dict[str, Any]:
+    """Store one rating of one answer. The user ID is the resolver's, never the browser's."""
+    if not FEEDBACK_TABLE:
+        return {"error": "ratings are not enabled", "saved": False}
+    if not user_id or user_id == "anonymous":
+        return {"error": "the caller is not identified", "saved": False}
+    if ai_denial_reason(user_groups, ai_enabled=EXTERNAL_AI_ENABLED):
+        return {"error": "a caller who cannot use the chat cannot rate it", "saved": False}
+    response_id = str(params.get("responseId") or "")
+    rating = params.get("rating")
+    if not RESPONSE_ID.fullmatch(response_id):
+        return {"error": "responseId is not valid", "saved": False}
+    if rating not in ("positive", "negative"):
+        return {"error": "rating must be positive or negative", "saved": False}
+    comment = params.get("comment") or ""
+    query = params.get("query") or ""
+    if not isinstance(comment, str) or len(comment) > 1000:
+        return {"error": "comment is up to 1000 characters", "saved": False}
+    if not isinstance(query, str) or len(query) > 500:
+        return {"error": "query is up to 500 characters", "saved": False}
+    model_id = str(params.get("modelId") or "")
+    if model_id and not MODEL_ID_SHAPE.fullmatch(model_id):
+        return {"error": "modelId is not valid", "saved": False}
+    docs = params.get("sourceDocIds") or []
+    if (
+        not isinstance(docs, list)
+        or len(docs) > MAX_SOURCE_DOC_IDS
+        or not all(isinstance(d, str) and DOC_ID_SHAPE.fullmatch(d) for d in docs)
+    ):
+        return {"error": "sourceDocIds are not valid", "saved": False}
+
+    now = time.time()
+    stamp = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(now))
+    feedback_id = str(uuid.uuid4())
+    item: dict[str, Any] = {
+        "feedbackId": feedback_id,
+        "kind": "rating",
+        "timestamp": stamp,
+        "date": stamp[:10],
+        "userId": user_id,
+        "responseId": response_id,
+        "rating": rating,
+        "sourceDocIds": docs,
+        "ttlEpoch": int(now) + FEEDBACK_RETENTION_DAYS * 86400,
+    }
+    if comment.strip():
+        item["comment"] = comment.strip()
+    if model_id:
+        item["modelId"] = model_id
+    table = _feedback_table()
+    table.put_item(Item=item)
+    if query.strip():
+        # Its own item, so it expires on its own schedule; it carries no date and stays out of
+        # the review index.
+        table.put_item(
+            Item={
+                "feedbackId": feedback_id,
+                "kind": "query",
+                "query": query.strip(),
+                "ttlEpoch": int(now) + FEEDBACK_QUERY_RETENTION_DAYS * 86400,
+            }
+        )
+    return {"saved": True, "feedbackId": feedback_id}
+
+
+def _list_feedback(user_groups: list[str], params: dict[str, Any]) -> dict[str, Any]:
+    """Ratings of one UTC day, for the weekly review. Reviewers only; user IDs are not returned."""
+    from boto3.dynamodb.conditions import Key
+
+    if not FEEDBACK_TABLE:
+        return {"error": "ratings are not enabled", "items": []}
+    if not set(user_groups) & FEEDBACK_REVIEW_ROLES:
+        return {"error": "reviewing ratings needs the storage-admin or auditor role", "items": []}
+    date = str(params.get("date") or time.strftime("%Y-%m-%d", time.gmtime()))
+    if not DATE_SHAPE.fullmatch(date):
+        return {"error": "date must be YYYY-MM-DD", "items": []}
+    table = _feedback_table()
+    page = table.query(IndexName=FEEDBACK_DATE_INDEX, KeyConditionExpression=Key("date").eq(date), Limit=200)
+    items = []
+    for i in page.get("Items", []):
+        q = table.get_item(Key={"feedbackId": i["feedbackId"], "kind": "query"}).get("Item") or {}
+        items.append(
+            {
+                "timestamp": i.get("timestamp", ""),
+                "rating": i.get("rating", ""),
+                "comment": i.get("comment", ""),
+                "query": q.get("query", ""),
+                "modelId": i.get("modelId", ""),
+                "responseId": i.get("responseId", ""),
+                "sourceCount": len(i.get("sourceDocIds") or []),
+            }
+        )
+    items.sort(key=lambda x: x["timestamp"], reverse=True)
+    return {"items": items, "date": date, "more": "LastEvaluatedKey" in page}
 
 
 # ─── Chat History Persistence (DynamoDB) ──────────────────────────────────────
