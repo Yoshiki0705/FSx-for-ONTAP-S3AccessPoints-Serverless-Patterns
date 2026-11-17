@@ -40,7 +40,7 @@ from botocore.config import Config
 from botocore.exceptions import ClientError, ReadTimeoutError
 
 from shared.exceptions import S3ApHelperError
-from shared.portal_external_policy import ai_denial_reason
+from shared.portal_external_policy import ai_denial_reason, is_external
 from shared.portal_path_scope import scope_for_caller
 from shared.portal_regulated_path import regulated_path_denial_reason
 from shared.s3ap_helper import S3ApHelper
@@ -79,6 +79,12 @@ AI_BLOCKED_LEVELS = {
 MAX_FILE_BYTES = 100 * 1024
 MAX_INPUT_CHARS = 30_000
 MAX_USE_CASES = 50
+# Use cases shared with everyone in the organisation. A sparse index: only a shared item carries
+# SHARED_KEY, so the index holds exactly the shared ones and an unshared item drops out of it.
+SHARED_INDEX = "SharedUseCases"
+SHARED_KEY = "sharedKey"
+SHARED_VALUE = "shared"
+MAX_SHARED_USE_CASES = 200
 MAX_PAGE_BYTES = 2 * 1024 * 1024
 FETCH_TIMEOUT = 10
 MAX_REDIRECTS = 3
@@ -1236,6 +1242,53 @@ def _field(event: dict[str, Any], name: str, limit: int, required: bool = False,
     return value
 
 
+def public_use_case(item: dict[str, Any], mine: bool) -> dict[str, Any]:
+    """What the screen sees of a use case. The owner's user ID never leaves the function."""
+    return {
+        "useCaseId": item.get("useCaseId", ""),
+        "title": item.get("title", ""),
+        "description": item.get("description", ""),
+        "template": item.get("template", ""),
+        "createdAt": item.get("createdAt", ""),
+        "updatedAt": item.get("updatedAt", ""),
+        "shared": item.get(SHARED_KEY) == SHARED_VALUE,
+        "mine": mine,
+    }
+
+
+def list_shared_use_cases(user_id: str) -> list[dict[str, Any]]:
+    from boto3.dynamodb.conditions import Key
+
+    table = use_cases_table()
+    items: list[dict[str, Any]] = []
+    kwargs: dict[str, Any] = {
+        "IndexName": SHARED_INDEX,
+        "KeyConditionExpression": Key(SHARED_KEY).eq(SHARED_VALUE),
+    }
+    while len(items) < MAX_SHARED_USE_CASES:
+        page = table.query(**kwargs)
+        items.extend(i for i in page.get("Items", []) if i.get("userId") != user_id)
+        if "LastEvaluatedKey" not in page:
+            break
+        kwargs["ExclusiveStartKey"] = page["LastEvaluatedKey"]
+    items.sort(key=lambda i: i.get("updatedAt", ""), reverse=True)
+    return [public_use_case(i, mine=False) for i in items[:MAX_SHARED_USE_CASES]]
+
+
+def shared_use_case(use_case_id: str) -> dict[str, Any] | None:
+    from boto3.dynamodb.conditions import Key
+
+    if not use_case_id:
+        return None
+    page = use_cases_table().query(
+        IndexName=SHARED_INDEX,
+        KeyConditionExpression=Key(SHARED_KEY).eq(SHARED_VALUE) & Key("useCaseId").eq(use_case_id),
+        Limit=1,
+    )
+    items = page.get("Items", [])
+    return items[0] if items else None
+
+
 def list_use_cases(user_id: str) -> list[dict[str, Any]]:
     from boto3.dynamodb.conditions import Key
 
@@ -1245,7 +1298,7 @@ def list_use_cases(user_id: str) -> list[dict[str, Any]]:
     return sorted(items, key=lambda i: i.get("updatedAt", ""), reverse=True)
 
 
-def save_use_case(user_id: str, event: dict[str, Any]) -> dict[str, Any]:
+def save_use_case(user_id: str, event: dict[str, Any], groups: list[str] | None = None) -> dict[str, Any]:
     table = use_cases_table()
     existing = None
     use_case_id = event.get("useCaseId") or ""
@@ -1266,8 +1319,16 @@ def save_use_case(user_id: str, event: dict[str, Any]) -> dict[str, Any]:
         "createdAt": existing.get("createdAt", now),
         "updatedAt": now,
     }
+    shared = event.get("shared")
+    if not isinstance(shared, bool):
+        shared = existing.get(SHARED_KEY) == SHARED_VALUE
+    # Someone outside the organisation does not publish prompts to it.
+    if shared and is_external(groups):
+        raise ToolError("a caller outside the organisation cannot share a use case")
+    if shared:
+        item[SHARED_KEY] = SHARED_VALUE
     table.put_item(Item=item)
-    return item
+    return public_use_case(item, mine=True)
 
 
 # --------------------------------------------------------------------------- handler
@@ -1335,13 +1396,24 @@ def handle(event: dict[str, Any]) -> dict[str, Any]:
             "maxInputChars": MAX_INPUT_CHARS,
         }
     if action == "listUseCases":
-        return {"useCases": list_use_cases(user_id)}
+        own = [public_use_case(i, mine=True) for i in list_use_cases(user_id)]
+        # A caller outside the organisation sees only their own.
+        if is_external(groups):
+            return {"useCases": own, "sharedUseCases": []}
+        # The shared index can be unreadable while DynamoDB backfills it, which it does after the
+        # index is added to an existing table. That must not hide the caller's own use cases.
+        try:
+            shared = list_shared_use_cases(user_id)
+        except ClientError:
+            logger.warning("The shared use-case index could not be read", exc_info=True)
+            return {"useCases": own, "sharedUseCases": [], "sharedUnavailable": True}
+        return {"useCases": own, "sharedUseCases": shared}
     if action in WRITE_ACTIONS and event.get("writeOperation") is not True:
         raise ToolError(f"{action} needs the write operation (toolsMutation)")
     if action in USE_CASE_ACTIONS and event.get("useCaseOperation") is not True:
         raise ToolError(f"{action} needs the use-case operation (toolsUseCaseMutation)")
     if action == "saveUseCase":
-        return {"useCase": save_use_case(user_id, event)}
+        return {"useCase": save_use_case(user_id, event, groups)}
     if action == "deleteUseCase":
         use_cases_table().delete_item(Key={"userId": user_id, "useCaseId": str(event.get("useCaseId") or "")})
         return {"deleted": True}
@@ -1400,11 +1472,11 @@ def handle(event: dict[str, Any]) -> dict[str, Any]:
     if action == "minutes-status":
         return minutes_status(event, user_id)
     if action == "runUseCase":
-        item = (
-            use_cases_table()
-            .get_item(Key={"userId": user_id, "useCaseId": str(event.get("useCaseId") or "")})
-            .get("Item")
-        )
+        use_case_id = str(event.get("useCaseId") or "")
+        item = use_cases_table().get_item(Key={"userId": user_id, "useCaseId": use_case_id}).get("Item")
+        # Someone else's use case runs only while it is shared, and never for an external caller.
+        if not item and not is_external(groups):
+            item = shared_use_case(use_case_id)
         if not item:
             raise ToolError("use case not found")
         text, key = tool_input(event, groups)

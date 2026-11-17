@@ -2366,6 +2366,13 @@ const userUseCasesTable = new dynamodb.Table(dataStack, "UserUseCasesTable", {
   // Templates somebody wrote; nothing regenerates them.
   pointInTimeRecoverySpecification: { pointInTimeRecoveryEnabled: true },
 });
+// Use cases shared with the whole organisation. Sparse: only a shared item carries sharedKey,
+// so the index holds the shared ones and nothing else. Names match functions/file-tools.
+userUseCasesTable.addGlobalSecondaryIndex({
+  indexName: "SharedUseCases",
+  partitionKey: { name: "sharedKey", type: dynamodb.AttributeType.STRING },
+  sortKey: { name: "useCaseId", type: dynamodb.AttributeType.STRING },
+});
 const imageModelArns = toolsSettings.imageModelId.match(/^(us|eu|apac|jp|global)\./)
   ? [
       // A cross-Region inference profile, and the model in the Regions it routes to.
@@ -2411,6 +2418,10 @@ const fileToolsRole = new iam.Role(dataStack, "FileToolsLambdaRole", {
         new iam.PolicyStatement({
           actions: ["dynamodb:GetItem", "dynamodb:PutItem", "dynamodb:DeleteItem", "dynamodb:Query"],
           resources: [userUseCasesTable.tableArn],
+        }),
+        new iam.PolicyStatement({
+          actions: ["dynamodb:Query"],
+          resources: [`${userUseCasesTable.tableArn}/index/SharedUseCases`],
         }),
         // Classification rules, as ask-about-file reads them.
         new iam.PolicyStatement({ actions: ["dynamodb:GetItem"], resources: [portalSettingsTable.tableArn] }),
