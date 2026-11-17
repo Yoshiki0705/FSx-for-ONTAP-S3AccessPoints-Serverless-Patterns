@@ -134,6 +134,20 @@ Set through `tools` in `amplify/portal-config.ts` or environment variables. An e
 
 **Defect found and fixed in this check**: saving into a folder failed with 403. Without `s3:ListBucket` on the Lambda role, S3 answers 403 instead of 404 to HeadObject on a missing key [E-020], so "the name is free" could not be told from "denied". Adding `s3:ListBucket` to the role fixed it. Treating 403 as "free" was not done, because it would hide a real refusal.
 
+## Results for Sharing and JSON
+**Checked on a live sandbox (2026-11-17, ap-northeast-1)**: on the same sandbox, with three throwaway users (`storage-admin` and `internal`, `viewer` and `internal`, `viewer` and `external`), checked once each from the screen.
+
+| What was checked | Result |
+|---|---|
+| An administrator saves a shared use case | It shows "Shared" in their own list, and their own shared one is not under "Shared use cases" |
+| A viewer looks | It is under "Shared use cases", with only run, copy and edit, and export; no edit or delete |
+| The viewer runs it on the selected file | The link to open the template appears, and the run produced a table |
+| Export | Saved in GenU's shape (`{{input}}` as `{{text}}` in `promptTemplate`, empty `fixedModelId`, `fileUpload` false) |
+| Import a GenU file with two fields | Said only a template with one input field can be imported, and listed `{{text:A}}, {{text:B}}` |
+| Import a GenU file with one `{{text:…}}` and a `fixedModelId` | Filled the editor with `{{input}}` and said `fixedModelId` is not used. Not saved |
+| An external user | The Tools tab itself was not shown |
+| Right after the index was added | The whole list failed with "Cannot read from backfilling global secondary index". The shared list now fails on its own instead (the fixed version is checked by unit tests) |
+
 ## Results for Run Code
 **Checked (automated tests)**: `functions/file-tools/tests/test_file_tools.py` and `tests/components/FileTools.test.tsx`, with the sandbox and the model stubbed.
 
