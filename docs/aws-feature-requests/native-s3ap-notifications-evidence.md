@@ -12,7 +12,7 @@
 
 ### Press Release（想定）
 
-> 「Amazon FSx for ONTAP の S3 Access Points が Amazon EventBridge へのネイティブイベント通知をサポートしました。これにより、お客様は FPolicy サーバーの運用なしに、ファイル変更をリアルタイムで検知し、サーバーレスワークフローを起動できます。」
+> 「Amazon FSx for ONTAP の S3 Access Points が Amazon EventBridge へのネイティブイベント通知をサポートしました。これにより、利用者は FPolicy サーバーの運用なしに、ファイル変更をリアルタイムで検知し、サーバーレスワークフローを起動できます。」
 
 ### Customer Problem Statement
 
