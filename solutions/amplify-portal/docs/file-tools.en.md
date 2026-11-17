@@ -12,7 +12,7 @@ The Tools section in the sidebar translates, proofreads and diagrams files on FS
 | Proofread | Same as above | Issues (original, suggestion, reason) and the corrected text |
 | Diagram | Same as above | One of 9 diagram types drawn in Mermaid. Download as SVG, or save the `.mmd` into the folder |
 | Web extraction | URL | Summary, body extraction, or an answer to a question |
-| Image generation | Prompt | Generates an image and saves it as PNG into the target folder. Off by default |
+| Image generation | Prompt, or the selected image and a prompt | Generates an image and saves it as PNG into the target folder. The text model can suggest the prompt. Off by default |
 | Run code | The selected file or text, and a task | The model writes a Python program, runs it in a sandbox with no network, and answers from the output. Shows the answer, the program, and the outcome and output of each run. Off by default |
 | Video analysis | The selected video (mp4, mov, webm, mkv) and a request | Nova 2 Lite watches the video and answers the request (a summary if left empty). It answers in one call, so a video over 50 MB is refused. Off by default |
 | Video generation | A prompt | Luma Ray v2 makes a 5-second video, played and downloaded through a link valid for 10 minutes. The model exists only in us-west-2, so the prompt and the video are processed and stored outside Japan. Off by default |
@@ -94,6 +94,16 @@ Generation takes 36 to 74 s, which does not fit AppSync's 30 s, so the work is s
 The output bucket is an **existing bucket you name**. An Amplify stack deploys to one Region and the bucket must sit beside the model, so the portal's CDK does not create it. Deploy `infrastructure/video-output-bucket.yaml` in us-west-2 and put its `BucketName` output into `tools.videoGeneration.outputBucket` (or `AMPLIFY_PORTAL_VIDEO_GENERATION_BUCKET`). The bucket is private, encrypted, TLS-only, and expires objects after 1 day. Enabling the tool with an empty `outputBucket` stops the deploy with a message that names `tools.videoGeneration.outputBucket`.
 
 The Lambda role gains `bedrock:InvokeModel` and `StartAsyncInvoke` on the model, `bedrock:InvokeModel` and `GetAsyncInvoke` on the account's `async-invoke/*`, and `s3:PutObject` and `s3:GetObject` on `videos/*` of the output bucket. The presigned URL is signed for the Region endpoint of the output bucket. The viewer role can use it. Nothing is written to a user's folder.
+
+## Image Generation
+When enabled, an Image generation tab appears. From a description of the image (the prompt), `stability.stable-image-core-v1:1` makes an image and saves it as PNG into the target folder. Saving needs a write role.
+
+- **Suggest a prompt**: write what you want to draw, in Japanese or any language, and press "Suggest a prompt". The text model (`TOOLS_MODEL_ID`, processed in Tokyo and Osaka) writes an English prompt and a negative prompt into the fields, with one or two sentences on what it chose. The action is `assistImagePrompt`; it calls no image model and writes nothing to a folder. The input is wrapped in `<input>`, and the system prompt says not to follow instructions inside it
+- **Start from the selected image**: select an image in the file list (png, jpg, jpeg, webp; up to 5 MB) and choose "Start from the selected image" to make a new image from it and the prompt. Stable Image Core takes text only, so only in this case `stability.sd3-5-large-v1:0` is called with `mode: image-to-image` (on 2026-11-17, `list-foundation-models` found it only in us-west-2 among the 4 Regions checked). The strength (`strength`, 0.1 to 0.9, 0.35 by default) stays closer to the original when lower. The aspect ratio follows the original image, so the screen does not offer it
+- **Checks on the source image**: before the image is read, `authorize_key` makes the same checks as the other tools (path boundary, regulated folders, data classification, external users). Then the extension and size (5 MB) are checked, and the format and pixel size are read from the start of the file. An image with a side under 64 pixels, more than 9,437,184 pixels, or that is not PNG, JPEG or WebP is refused before the model is called. 64 pixels and 9,437,184 pixels are the values in Stability's image services documentation; whether SD3.5 Large has the same limits has not been checked <!-- allow:not-a-claim: describes what this app refuses, not a vendor limit -->
+- **Processing outside Japan**: the image models are in us-west-2, so the prompt and the generated image are processed outside Japan. When a source image is used, the screen says that image is processed outside Japan too
+
+The Lambda role gains `bedrock:InvokeModel` on `stability.sd3-5-large-v1:0` in us-west-2 (only when image generation is enabled).
 
 ## Settings
 

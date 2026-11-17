@@ -59,6 +59,14 @@ WEB_EXTRACT_ENABLED = os.environ.get("WEB_EXTRACT_ENABLED", "true") != "false"
 IMAGE_ENABLED = os.environ.get("IMAGE_GENERATION_ENABLED", "") == "true"
 IMAGE_REGION = os.environ.get("IMAGE_GENERATION_REGION", "us-west-2")
 IMAGE_MODEL_ID = os.environ.get("IMAGE_GENERATION_MODEL_ID", "stability.stable-image-core-v1:1")
+# Image to image. Stable Image Core takes text only, so a selected image goes to a model that
+# accepts one (SD3.5 Large: `mode: image-to-image`, `image`, `strength`), in the same Region.
+IMAGE_I2I_MODEL_ID = os.environ.get("IMAGE_TO_IMAGE_MODEL_ID", "stability.sd3-5-large-v1:0")
+IMAGE_SOURCE_EXTENSIONS = ("png", "jpg", "jpeg", "webp")
+IMAGE_SOURCE_MAX_BYTES = 5 * 1024 * 1024
+IMAGE_SOURCE_MIN_SIDE = 64
+IMAGE_SOURCE_MAX_PIXELS = 9_437_184
+IMAGE_STRENGTH_DEFAULT = 0.35
 CODE_ENABLED = os.environ.get("CODE_INTERPRETER_ENABLED", "") == "true"
 MINUTES_ENABLED = os.environ.get("MINUTES_ENABLED", "") == "true"
 MINUTES_BUCKET = os.environ.get("MINUTES_BUCKET", "")
@@ -1161,20 +1169,124 @@ def image_body(event: dict[str, Any]) -> dict[str, Any]:
     return body
 
 
+def image_dimensions(data: bytes) -> tuple[str, int, int]:
+    """The format, width and height from the file's own header. No decoder is needed."""
+    if data[:8] == b"\x89PNG\r\n\x1a\n" and data[12:16] == b"IHDR":
+        return "png", int.from_bytes(data[16:20], "big"), int.from_bytes(data[20:24], "big")
+    if data[:3] == b"\xff\xd8\xff":
+        i = 2
+        while i + 9 < len(data):
+            if data[i] != 0xFF:
+                i += 1
+                continue
+            marker = data[i + 1]
+            if marker in (0xD8, 0x01) or 0xD0 <= marker <= 0xD7:
+                i += 2
+                continue
+            length = int.from_bytes(data[i + 2 : i + 4], "big")
+            # Start-of-frame markers carry the size; C4, C8 and CC are tables, not frames.
+            if 0xC0 <= marker <= 0xCF and marker not in (0xC4, 0xC8, 0xCC):
+                return "jpeg", int.from_bytes(data[i + 7 : i + 9], "big"), int.from_bytes(data[i + 5 : i + 7], "big")
+            i += 2 + length
+        raise ToolError("the JPEG file has no frame header")
+    if data[:4] == b"RIFF" and data[8:12] == b"WEBP":
+        chunk = data[12:16]
+        if chunk == b"VP8X":
+            return "webp", 1 + int.from_bytes(data[24:27], "little"), 1 + int.from_bytes(data[27:30], "little")
+        if chunk == b"VP8L":
+            bits = int.from_bytes(data[21:25], "little")
+            return "webp", 1 + (bits & 0x3FFF), 1 + ((bits >> 14) & 0x3FFF)
+        if chunk == b"VP8 ":
+            return (
+                "webp",
+                int.from_bytes(data[26:28], "little") & 0x3FFF,
+                int.from_bytes(data[28:30], "little") & 0x3FFF,
+            )
+    raise ToolError("the file is not a PNG, JPEG or WebP image")
+
+
+def source_image(event: dict[str, Any], groups: list[str]) -> bytes | None:
+    """The selected image to start from, after the same checks as any file sent to a model."""
+    key = str(event.get("sourceKey") or "")
+    if not key:
+        return None
+    # The boundary first, then the type and size: nothing is read for a file the caller may not use.
+    alias = authorize_key(groups, key)
+    media_extension(key, IMAGE_SOURCE_EXTENSIONS)
+    helper = S3ApHelper(alias)
+    size = helper.head_object(key).get("ContentLength", 0)
+    if size > IMAGE_SOURCE_MAX_BYTES:
+        raise ToolError(f"the image is larger than {IMAGE_SOURCE_MAX_BYTES // (1024 * 1024)} MB")
+    data = helper.get_object_bytes(key, max_bytes=IMAGE_SOURCE_MAX_BYTES)
+    _, width, height = image_dimensions(data)
+    if min(width, height) < IMAGE_SOURCE_MIN_SIDE:
+        raise ToolError(f"each side of the image must be at least {IMAGE_SOURCE_MIN_SIDE} pixels")
+    if width * height > IMAGE_SOURCE_MAX_PIXELS:
+        raise ToolError(f"the image has more than {IMAGE_SOURCE_MAX_PIXELS:,} pixels")
+    return data
+
+
+def image_to_image_body(event: dict[str, Any], source: bytes) -> dict[str, Any]:
+    body = image_body(event)
+    del body["aspect_ratio"]  # the output follows the input image
+    try:
+        strength = float(event.get("strength", IMAGE_STRENGTH_DEFAULT))
+    except (TypeError, ValueError) as e:
+        raise ToolError("strength must be a number") from e
+    if not 0.0 <= strength <= 1.0:
+        raise ToolError("strength must be between 0 and 1")
+    body.update({"mode": "image-to-image", "image": base64.b64encode(source).decode("ascii"), "strength": strength})
+    return body
+
+
+IMAGE_PROMPT_SYSTEM = (
+    "You write prompts for an image generation model from what the user wants to draw.\n"
+    "Write the prompt in English as comma-separated phrases: subject, setting, style, composition, "
+    "lighting and quality. Write a negative prompt with what should not appear.\n"
+    'Answer with JSON only: {"prompt": "...", "negativePrompt": "...", "comment": "..."}. '
+    "The comment is one or two sentences, in the language the user wrote in, on what you chose.\n" + DATA_RULE
+)
+
+
+def assist_image_prompt(event: dict[str, Any]) -> dict[str, Any]:
+    if not IMAGE_ENABLED:
+        raise ToolError("image generation is not enabled")
+    idea = str(event.get("idea") or "").strip()
+    if not idea:
+        raise ToolError("idea is required")
+    if len(idea) > 2000:
+        raise ToolError("idea is longer than 2000 characters")
+    raw = generate_text(IMAGE_PROMPT_SYSTEM, wrap_input(idea), max_tokens=1024)
+    match = re.search(r"\{.*\}", raw, re.S)
+    try:
+        data = json.loads(match.group(0)) if match else {}
+    except json.JSONDecodeError:
+        data = {}
+    prompt = str(data.get("prompt") or "").strip()[:2000]
+    if not prompt:
+        raise ToolError("the model did not return a prompt")
+    return {
+        "prompt": prompt,
+        "negativePrompt": str(data.get("negativePrompt") or "").strip()[:2000],
+        "comment": str(data.get("comment") or "").strip()[:500],
+        "model": MODEL_ID,
+    }
+
+
 def image_client() -> Any:
     if IMAGE_REGION not in _image_clients:
         _image_clients[IMAGE_REGION] = boto3.client("bedrock-runtime", region_name=IMAGE_REGION)
     return _image_clients[IMAGE_REGION]
 
 
-def generate_image(event: dict[str, Any]) -> bytes:
+def generate_image(event: dict[str, Any], source: bytes | None = None) -> bytes:
     if not IMAGE_ENABLED:
         raise ToolError("image generation is not enabled")
     response = image_client().invoke_model(
-        modelId=IMAGE_MODEL_ID,
+        modelId=IMAGE_I2I_MODEL_ID if source else IMAGE_MODEL_ID,
         contentType="application/json",
         accept="application/json",
-        body=json.dumps(image_body(event)),
+        body=json.dumps(image_to_image_body(event, source) if source else image_body(event)),
     )
     parsed = json.loads(response["body"].read())
     reasons = parsed.get("finish_reasons") or [None]
@@ -1298,7 +1410,17 @@ def handle(event: dict[str, Any]) -> dict[str, Any]:
             }
             if CODE_ENABLED
             else None,
-            "image": {"region": IMAGE_REGION, "modelId": IMAGE_MODEL_ID, "crossRegion": IMAGE_REGION != REGION}
+            "image": {
+                "region": IMAGE_REGION,
+                "modelId": IMAGE_MODEL_ID,
+                "crossRegion": IMAGE_REGION != REGION,
+                "imageToImage": {
+                    "modelId": IMAGE_I2I_MODEL_ID,
+                    "extensions": list(IMAGE_SOURCE_EXTENSIONS),
+                    "maxMegabytes": IMAGE_SOURCE_MAX_BYTES // (1024 * 1024),
+                    "strength": IMAGE_STRENGTH_DEFAULT,
+                },
+            }
             if IMAGE_ENABLED
             else None,
             "maxInputChars": MAX_INPUT_CHARS,
@@ -1396,14 +1518,17 @@ def handle(event: dict[str, Any]) -> dict[str, Any]:
         )
         if refused or event.get("writeOperation") is not True:
             raise ToolError((refused or {}).get("error") or "saving to a folder needs the write operation")
-        png = generate_image(event)
+        source = source_image(event, groups)
+        png = generate_image(event, source)
         saved = write_to_folder(event, groups, key, png, "image/png")
         return {
             "key": saved,
             "imageBase64": base64.b64encode(png).decode("ascii"),
             "region": IMAGE_REGION,
-            "model": IMAGE_MODEL_ID,
+            "model": IMAGE_I2I_MODEL_ID if source else IMAGE_MODEL_ID,
         }
+    if action == "assistImagePrompt":
+        return assist_image_prompt(event)
     if action == "saveResult":
         content = str(event.get("content") or "")
         if not content:

@@ -70,6 +70,27 @@ describe("FileTools", () => {
     expect(screen.getByRole("note").textContent).toContain("outside Japan");
   });
 
+  it("fills the prompt from the suggestion, and starts from the selected image with a strength", async () => {
+    const i2i = { modelId: "stability.sd3-5-large-v1:0", extensions: ["png", "jpg"], maxMegabytes: 5, strength: 0.35 };
+    toolsQuery.mockImplementation(async ({ action }: { action: string }) => {
+      if (action === "config") {
+        return { data: JSON.stringify({ success: true, tools: { webExtract: true, image: true, useCases: true }, image: { region: "us-west-2", modelId: "stability.stable-image-core-v1:1", crossRegion: true, imageToImage: i2i } }) };
+      }
+      return { data: JSON.stringify({ success: true, prompt: "server racks, blue light", negativePrompt: "text", comment: "dark" }) };
+    });
+    toolsMutation.mockResolvedValue({ data: JSON.stringify({ success: true, key: "team-a/x.png", imageBase64: "" }) });
+    renderTools({ canWrite: true, initialTab: "image", selectedFileKey: "team-a/photo.png" });
+    fireEvent.change(await screen.findByLabelText(/What you want to draw/), { target: { value: "night data center" } });
+    fireEvent.click(screen.getByRole("button", { name: /Suggest a prompt/ }));
+    await waitFor(() => expect((screen.getByLabelText("Describe the image") as HTMLTextAreaElement).value).toBe("server racks, blue light"));
+    fireEvent.click(screen.getByLabelText("Start from the selected image"));
+    expect(screen.queryByLabelText(/Aspect ratio/)).toBeNull();
+    expect(screen.getByRole("note").textContent).toContain("sd3-5-large");
+    fireEvent.click(screen.getByRole("button", { name: /Generate image/ }));
+    await waitFor(() => expect(toolsMutation).toHaveBeenCalled());
+    expect(JSON.parse(toolsMutation.mock.calls[0][0].params)).toMatchObject({ sourceKey: "team-a/photo.png", strength: 0.35, prompt: "server racks, blue light" });
+  });
+
   it("sends only the file key, through the query, when translating the selected file", async () => {
     toolsQuery.mockImplementation(async ({ action }: { action: string }) =>
       action === "config" ? config(false) : { data: JSON.stringify({ success: true, result: "translated text" }) },

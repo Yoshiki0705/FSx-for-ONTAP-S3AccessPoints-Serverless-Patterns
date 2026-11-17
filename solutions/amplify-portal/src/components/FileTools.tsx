@@ -20,7 +20,12 @@ export type ToolTab = "translate" | "proofread" | "diagram" | "webExtract" | "im
 
 interface ToolsConfig {
   tools: { webExtract: boolean; image: boolean; useCases: boolean; code?: boolean; minutes?: boolean; video?: boolean; videoGeneration?: boolean };
-  image: { region: string; modelId: string; crossRegion: boolean } | null;
+  image: {
+    region: string;
+    modelId: string;
+    crossRegion: boolean;
+    imageToImage?: { modelId: string; extensions: string[]; maxMegabytes: number; strength: number };
+  } | null;
   code?: { maxRuns: number; runSeconds: number; totalSeconds: number } | null;
   videoGeneration?: { region: string; modelId: string; crossRegion: boolean; aspectRatios: string[]; resolutions: string[]; maxPromptChars: number } | null;
   video?: { extensions: string[]; maxMegabytes: number; seconds: number } | null;
@@ -154,6 +159,10 @@ export function FileTools({ selectedFileKey, selectedFolder, canWrite, canSaveUs
   // Minutes
   const [minLanguage, setMinLanguage] = useState("ja-JP");
   const [minSpeakers, setMinSpeakers] = useState(2);
+  const [idea, setIdea] = useState("");
+  const [ideaComment, setIdeaComment] = useState("");
+  const [useSource, setUseSource] = useState(false);
+  const [strength, setStrength] = useState(0.35);
   // A job running in the background: which status action to ask, and what to say if it fails.
   const [poll, setPoll] = useState<{ action: string; params: Record<string, unknown>; failed: TranslationKeys } | null>(null);
   // Video generation
@@ -290,6 +299,8 @@ export function FileTools({ selectedFileKey, selectedFolder, canWrite, canSaveUs
     <small>{t("ftNoWrite")}</small>
   );
 
+  const i2i = config?.image?.imageToImage;
+  const sourceIsImage = !!(i2i && selectedFileKey && i2i.extensions.includes((selectedFileKey.split(".").pop() || "").toLowerCase()));
   const textResult = (content: string, name: string, format: "markdown" | "mermaid" = "markdown") => (
     <div className="ft-result">
       <div className="ft-actions">
@@ -448,8 +459,42 @@ export function FileTools({ selectedFileKey, selectedFolder, canWrite, canSaveUs
         <section role="tabpanel">
           <div className="ft-notice" role="note">
             {(config.image.crossRegion ? t("ftImageRegionnotice") : t("ftImageInregion")).replace("{region}", config.image.region)}
-            <small>{t("ftImageModel").replace("{model}", config.image.modelId)}</small>
+            <small>{t("ftImageModel").replace("{model}", useSource && i2i ? i2i.modelId : config.image.modelId)}</small>
+            {useSource && i2i && config.image.crossRegion && <small>{t("ftImageSourceRegionnotice")}</small>}
           </div>
+          <div className="ft-editor">
+            <label htmlFor="ft-idea">{t("ftImageIdea")}</label>
+            <textarea id="ft-idea" rows={2} value={idea} onChange={(e) => setIdea(e.target.value)} placeholder={t("ftImagePromptplaceholder")} />
+            <button type="button" className="btn-secondary" disabled={busy || !idea.trim()} onClick={() => run(async () => {
+              const out = await callTool("assistImagePrompt", { idea });
+              setPrompt(String(out.prompt || ""));
+              setNegative(String(out.negativePrompt || ""));
+              setIdeaComment(String(out.comment || ""));
+            })}>
+              <Icon name="sparkles" className="icon-lead" />{t("ftImageAssist")}
+            </button>
+            {ideaComment && <small>{ideaComment}</small>}
+          </div>
+          {i2i && (
+            <div className="ft-editor">
+              <label className="ft-check">
+                <input type="checkbox" checked={useSource} disabled={!sourceIsImage} onChange={(e) => setUseSource(e.target.checked)} />
+                {t("ftImageUseSource")}
+              </label>
+              {sourceIsImage ? (
+                <div className="ft-file"><Icon name="image" className="icon-lead" />{selectedFileKey}</div>
+              ) : (
+                <small>{t("ftImageSourceNofile").replace("{exts}", i2i.extensions.join(", ")).replace("{mb}", String(i2i.maxMegabytes))}</small>
+              )}
+              {useSource && (
+                <div className="form-group">
+                  <label htmlFor="ft-strength">{t("ftImageStrength").replace("{value}", strength.toFixed(2))}</label>
+                  <input id="ft-strength" type="range" min={0.1} max={0.9} step={0.05} value={strength} onChange={(e) => setStrength(Number(e.target.value))} />
+                  <small>{t("ftImageStrengthhelp")}</small>
+                </div>
+              )}
+            </div>
+          )}
           <div className="form-group">
             <label htmlFor="ft-prompt">{t("ftImagePrompt")}</label>
             <textarea id="ft-prompt" rows={4} value={prompt} onChange={(e) => setPrompt(e.target.value)} placeholder={t("ftImagePromptplaceholder")} />
@@ -459,12 +504,14 @@ export function FileTools({ selectedFileKey, selectedFolder, canWrite, canSaveUs
               <label htmlFor="ft-negative">{t("ftImageNegative")}</label>
               <input id="ft-negative" value={negative} onChange={(e) => setNegative(e.target.value)} />
             </div>
+            {!(useSource && i2i) && (
             <div className="form-group">
               <label htmlFor="ft-aspect">{t("ftImageAspect")}</label>
               <select id="ft-aspect" value={aspect} onChange={(e) => setAspect(e.target.value)}>
                 {ASPECTS.map((a) => <option key={a} value={a}>{a}</option>)}
               </select>
             </div>
+            )}
           </div>
           {canWrite ? (
             <>
@@ -480,7 +527,8 @@ export function FileTools({ selectedFileKey, selectedFolder, canWrite, canSaveUs
               </div>
               <small>{t("ftImageSavedTo")}</small>
               <button type="button" className="btn-primary" disabled={busy || !prompt.trim()} onClick={() => run(async () => {
-                const out = await callTool("generateImage", { prompt, negativePrompt: negative, aspectRatio: aspect, folder, fileName }, "write");
+                const source = useSource && i2i && sourceIsImage ? { sourceKey: selectedFileKey, strength } : {};
+                const out = await callTool("generateImage", { prompt, negativePrompt: negative, aspectRatio: aspect, folder, fileName, ...source }, "write");
                 setResult(out);
                 setNotice(t("ftSaved").replace("{key}", String(out.key)));
               })}>
