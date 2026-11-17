@@ -16,7 +16,7 @@ The Tools section in the sidebar translates, proofreads and diagrams files on FS
 | Run code | The selected file or text, and a task | The model writes a Python program, runs it in a sandbox with no network, and answers from the output. Shows the answer, the program, and the outcome and output of each run. Off by default |
 | Video analysis | The selected video (mp4, mov, webm, mkv) and a request | Nova 2 Lite watches the video and answers the request (a summary if left empty). It answers in one call, so a video over 50 MB is refused. Off by default |
 | Video generation | A prompt | Luma Ray v2 makes a 5-second video, played and downloaded through a link valid for 10 minutes. The model exists only in us-west-2, so the prompt and the video are processed and stored outside Japan. Off by default |
-| Minutes | The selected recording | Amazon Transcribe transcribes it with speakers separated, and the text model writes a summary, decisions, action items and the main points. Off by default |
+| Minutes | The selected recording | Amazon Transcribe transcribes it with speakers separated, and the text model writes it up in the chosen style (minutes, a transcript close to what was said, an article, or an FAQ). Off by default |
 | My use cases | The selected file, or text | Runs a saved template with the input in place of `{{input}}`. Use cases can be shared with everyone in the organisation, and exported and imported as JSON in GenU's format |
 
 ![Shortcuts to the tools in the AI panel](screenshots/tools/tools-aipanel-ja.png)
@@ -67,14 +67,14 @@ When enabled, a Run code tab appears. Given a task (for example: total the sales
 The sandbox has no network. Only the selected file you can read (up to 100 KB) or the text you type goes in. The viewer role can use it: it only reads and writes nothing to a folder, so it has the same permission as `toolsQuery` (saving the result still needs a write role, as for the other tools). The Lambda role gains three actions, `bedrock-agentcore:StartCodeInterpreterSession`, `InvokeCodeInterpreter` and `StopCodeInterpreterSession`, on `arn:aws:bedrock-agentcore:<region>:aws:code-interpreter/aws.codeinterpreter.v1` only (the account part is literally `aws`).
 
 ## Minutes
-When enabled, a Minutes tab appears. Select a recording in the file list (mp3, m4a, wav, flac, ogg, mp4, webm; up to 200 MB), then choose the recording's language (ja-JP, en-US, ko-KR, zh-CN, fr-FR, de-DE, es-ES) and the maximum number of speakers (2 to 10).
+When enabled, a Minutes tab appears. Select a recording in the file list (mp3, m4a, wav, flac, ogg, mp4, webm; up to 200 MB), then choose the recording's language (ja-JP, en-US, ko-KR, zh-CN, fr-FR, de-DE, es-ES), the maximum number of speakers (2 to 10), and the output style.
 
 Transcribe takes minutes and AppSync waits at most 30 s for a resolver, so `functions/file-tools` splits the work into two actions.
 
 1. `minutes-start`: checks the file boundary (the same checks as `read_file_text`; a file the caller cannot read, that classification bars from AI, or in a regulated folder stops here), checks the extension and size, then creates the Transcribe job. The input is passed as `s3://<access point alias>/<key>`, so there is no browser upload and no staging bucket. The job name is `portal-minutes-<24 hex characters of the user ID hash>-<uuid>`.
 2. `minutes-status`: called by the screen every 5 s (for up to 30 minutes). A job name that does not carry the calling user's hash is answered "job not found" without asking Transcribe. When the job completes, the function checks that the output location Transcribe reports is that user's folder, reads it, builds `spk_0: …` lines (a run of the same speaker is one line) and gives them to the text model. The state lives in the Transcribe job, so there is no DynamoDB table.
 
-The minutes prompt forbids inventing an owner or a due date and writes the headings in the language of the recording. The transcript is wrapped in `<input>`, and the system prompt says not to follow instructions inside it. A transcript over 30,000 characters is cut to its first part, and the screen says so.
+There are four output styles: `minutes` (the default: summary, decisions, action items, main points), `transcript` (close to what was said: every speaker turn in order, with only fillers and repeats removed), `article` (a headline, a lead and a body), and `faq` (the questions raised in the meeting and those someone who missed it would ask, answered only from the transcript). The style is passed as `style` to `minutes-status`. The transcript stays in the output bucket for a day, so redoing a finished job in another style calls only `minutes-status`, not Transcribe ("Redo in this style" on the screen). In every style the prompt forbids inventing an owner, a due date, a name or a number, and writes the headings in the language of the recording. The transcript is wrapped in `<input>`, and the system prompt says not to follow instructions inside it. A transcript over 30,000 characters is cut to its first part, and the screen says so.
 
 Transcribe's output goes to a dedicated ordinary S3 bucket (`MinutesTranscriptBucket`: private, encrypted, expires after 1 day), not to the access point. The Lambda role gains `transcribe:StartTranscriptionJob` and `GetTranscriptionJob` (only on `transcription-job/portal-minutes-*`), and `s3:PutObject` and `s3:GetObject` on `transcripts/*` of that bucket. Transcribe reads the input and writes the output with the caller's permissions, so reading the access point uses the existing permission. The viewer role can use it: nothing is written to a user's folder, so it has the same permission as `toolsQuery`.
 
@@ -247,6 +247,15 @@ The remaining 2% or so went to the wrong person. Stretches where two or more peo
 Per speaker: the chair 99.2%, the Prime Minister 100%, the two party leaders 99.8% and 99.9%. The minutes followed the record on the agenda and the points (relocating Futenma, the Nuclear Security Summit, political funding), and wrote decisions and action items as "none recorded". The names of the two party leaders were misheard, and the errors carried into the minutes.
 
 **Limits of the reading**: this is a format where the chair calls on one person at a time, with almost no simultaneous speech. Recordings where several people talk at once, like an internal working meeting, remain unchecked, as with the overlapped stretches left out of the AMI scoring above. No open data that fits has been found yet, so this is left as future work ([#552](https://github.com/Yoshiki0705/FSx-for-ONTAP-S3AccessPoints-Serverless-Patterns/issues/552)).
+
+**Output styles (2026-11-17, ap-northeast-1)**: a tree with the three changes (output styles, sharing use cases, ratings of answers) was deployed to the existing Amplify sandbox with `AMPLIFY_PORTAL_MINUTES_ENABLED=true`, and checked once each from the screen with the fictional Polly meeting (about 41 seconds, two Japanese voices) on a throwaway access point.
+
+| What was checked | Result |
+|---|---|
+| Make it as `faq` | Answered the 4 questions raised in the meeting. 19.6 s from start to result |
+| Redo the same job as `article`, `transcript`, `minutes` | 8.5 s, 7.9 s and 8.8 s. Still only the first Transcribe job (checked with `list-transcription-jobs`) |
+| Does `transcript` keep the words | It kept even a misrecognized word as transcribed. Speaker turns follow Transcribe's labels; the first two people's lines came out as one `spk_0` line |
+| Owners in `minutes` | An owner the transcript does not name was written as unknown |
 
 ## Results for Video Analysis
 **Checked (automated tests)**: `functions/file-tools/tests/test_file_tools.py` and `tests/components/FileTools.test.tsx`, with the model and S3 stubbed.
