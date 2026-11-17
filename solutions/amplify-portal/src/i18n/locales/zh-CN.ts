@@ -2180,6 +2180,7 @@ arpResponseSweepNote: "阻止会在设定的期限过后自动解除。如需提
   ftUsecasesShared: "已共享",
   ftUsecasesSharedHeading: "共享的用例",
   ftUsecasesSharedTemplate: "查看模板（他人编写的指令）",
+  ftUsecasesSharedUnavailable: "现在无法加载共享的用例。请稍后重新打开此标签页。",
   ftUsecasesCopy: "复制并编辑",
   ftUsecasesExport: "导出为 JSON",
   ftUsecasesImport: "从 JSON 导入",

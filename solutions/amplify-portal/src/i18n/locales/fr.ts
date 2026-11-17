@@ -2191,6 +2191,7 @@ arpResponseSweepNote: "Les blocages se lèvent d'eux-mêmes à l'échéance. Pou
   ftUsecasesShared: "Partagé",
   ftUsecasesSharedHeading: "Cas d’usage partagés",
   ftUsecasesSharedTemplate: "Voir le modèle (instructions écrites par quelqu’un d’autre)",
+  ftUsecasesSharedUnavailable: "Les cas d’usage partagés ne peuvent pas être chargés pour le moment. Rouvrez cet onglet un peu plus tard.",
   ftUsecasesCopy: "Copier et modifier",
   ftUsecasesExport: "Exporter en JSON",
   ftUsecasesImport: "Importer depuis un JSON",

@@ -2195,6 +2195,7 @@ arpResponseSweepNote: "Sperren heben sich nach Ablauf der Frist selbst auf. Für
   ftUsecasesShared: "Geteilt",
   ftUsecasesSharedHeading: "Geteilte Anwendungsfälle",
   ftUsecasesSharedTemplate: "Vorlage anzeigen (Anweisungen einer anderen Person)",
+  ftUsecasesSharedUnavailable: "Geteilte Anwendungsfälle können gerade nicht geladen werden. Öffnen Sie diesen Tab etwas später erneut.",
   ftUsecasesCopy: "Kopieren und bearbeiten",
   ftUsecasesExport: "Als JSON exportieren",
   ftUsecasesImport: "Aus JSON importieren",

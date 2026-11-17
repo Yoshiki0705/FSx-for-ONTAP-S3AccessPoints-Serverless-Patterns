@@ -2183,6 +2183,7 @@ arpResponseSweepNote: "차단은 지정한 기한이 지나면 자동으로 해�
   ftUsecasesShared: "공유 중",
   ftUsecasesSharedHeading: "공유된 유스케이스",
   ftUsecasesSharedTemplate: "템플릿 보기(다른 사람이 작성한 지시)",
+  ftUsecasesSharedUnavailable: "지금은 공유된 유스케이스를 불러올 수 없습니다. 잠시 후 다시 열어 주세요.",
   ftUsecasesCopy: "복제하여 편집",
   ftUsecasesExport: "JSON으로 내보내기",
   ftUsecasesImport: "JSON에서 가져오기",

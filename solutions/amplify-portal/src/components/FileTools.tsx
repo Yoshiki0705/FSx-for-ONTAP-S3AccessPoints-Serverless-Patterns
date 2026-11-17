@@ -181,6 +181,7 @@ export function FileTools({ selectedFileKey, selectedFolder, canWrite, canSaveUs
   // Use cases
   const [useCases, setUseCases] = useState<UseCase[]>([]);
   const [sharedUseCases, setSharedUseCases] = useState<UseCase[]>([]);
+  const [sharedUnavailable, setSharedUnavailable] = useState(false);
   const [editing, setEditing] = useState<Partial<UseCase> | null>(null);
   const [active, setActive] = useState<UseCase | null>(null);
 
@@ -202,6 +203,7 @@ export function FileTools({ selectedFileKey, selectedFolder, canWrite, canSaveUs
     callTool("listUseCases", {}).then((d) => {
       setUseCases((d.useCases as UseCase[]) || []);
       setSharedUseCases((d.sharedUseCases as UseCase[]) || []);
+      setSharedUnavailable(d.sharedUnavailable === true);
     }).catch(() => {});
   }, []);
   useEffect(() => {
@@ -758,6 +760,7 @@ export function FileTools({ selectedFileKey, selectedFolder, canWrite, canSaveUs
               ))}
             </ul>
           )}
+          {sharedUnavailable && <p className="rm-hint">{t("ftUsecasesSharedUnavailable")}</p>}
           {sharedUseCases.length > 0 && (
             <>
               <h3>{t("ftUsecasesSharedHeading")}</h3>

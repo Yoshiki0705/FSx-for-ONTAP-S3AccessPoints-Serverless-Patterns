@@ -2222,6 +2222,7 @@ arpResponseSweepNote: "Blocks lift themselves once their expiry passes. To lift 
   ftUsecasesShared: "Shared",
   ftUsecasesSharedHeading: "Shared use cases",
   ftUsecasesSharedTemplate: "Show the template (instructions someone else wrote)",
+  ftUsecasesSharedUnavailable: "Shared use cases cannot be loaded right now. Open this tab again in a little while.",
   ftUsecasesCopy: "Copy and edit",
   ftUsecasesExport: "Export as JSON",
   ftUsecasesImport: "Import from JSON",

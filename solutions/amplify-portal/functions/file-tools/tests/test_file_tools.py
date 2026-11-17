@@ -371,6 +371,33 @@ class TestUseCases:
         assert [u["useCaseId"] for u in out["sharedUseCases"]] == ["uc-c", "uc-b"]
         assert all(u["mine"] is False and "userId" not in u for u in out["sharedUseCases"])
 
+    def test_an_unreadable_shared_index_still_lists_the_callers_own(self) -> None:
+        from botocore.exceptions import ClientError
+
+        m = load()
+        table = MagicMock()
+        own = {"userId": "alice", "useCaseId": "uc-a", "title": "Mine", "template": "x"}
+        backfilling = ClientError(
+            {
+                "Error": {
+                    "Code": "ValidationException",
+                    "Message": "Cannot read from backfilling global secondary index",
+                }
+            },
+            "Query",
+        )
+
+        def query(**kwargs: Any) -> dict:
+            if kwargs.get("IndexName"):
+                raise backfilling
+            return {"Items": [own]}
+
+        table.query.side_effect = query
+        m.use_cases_table = lambda: table
+        out = call(m, action="listUseCases")
+        assert out["success"] is True and [u["useCaseId"] for u in out["useCases"]] == ["uc-a"]
+        assert out["sharedUseCases"] == [] and out["sharedUnavailable"] is True
+
     def test_a_shared_use_case_of_another_user_runs_and_an_unshared_one_does_not(self) -> None:
         m = load()
         table = MagicMock()

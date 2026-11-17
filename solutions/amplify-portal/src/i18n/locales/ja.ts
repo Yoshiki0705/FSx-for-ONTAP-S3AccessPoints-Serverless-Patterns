@@ -2237,6 +2237,7 @@ arpResponseSweepNote: "ブロックは指定した期限が過ぎると自動で
   ftUsecasesShared: "共有中",
   ftUsecasesSharedHeading: "共有されたユースケース",
   ftUsecasesSharedTemplate: "テンプレートを見る（他の人が書いた指示です）",
+  ftUsecasesSharedUnavailable: "共有されたユースケースを、いまは読み込めません。少し時間をおいて開き直してください。",
   ftUsecasesCopy: "複製して編集",
   ftUsecasesExport: "JSON でエクスポート",
   ftUsecasesImport: "JSON から取り込む",

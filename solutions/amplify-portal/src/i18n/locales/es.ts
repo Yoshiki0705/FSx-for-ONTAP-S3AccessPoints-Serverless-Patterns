@@ -2190,6 +2190,7 @@ arpResponseSweepNote: "Los bloqueos se levantan por sí solos al vencer el plazo
   ftUsecasesShared: "Compartido",
   ftUsecasesSharedHeading: "Casos de uso compartidos",
   ftUsecasesSharedTemplate: "Ver la plantilla (instrucciones que escribió otra persona)",
+  ftUsecasesSharedUnavailable: "Ahora no se pueden cargar los casos de uso compartidos. Vuelva a abrir esta pestaña dentro de un rato.",
   ftUsecasesCopy: "Copiar y editar",
   ftUsecasesExport: "Exportar como JSON",
   ftUsecasesImport: "Importar desde JSON",

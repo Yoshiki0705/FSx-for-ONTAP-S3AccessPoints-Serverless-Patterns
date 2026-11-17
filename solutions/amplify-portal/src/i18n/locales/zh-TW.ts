@@ -2180,6 +2180,7 @@ arpResponseSweepNote: "封鎖會在設定的期限過後自動解除。如需提
   ftUsecasesShared: "已共享",
   ftUsecasesSharedHeading: "共享的使用案例",
   ftUsecasesSharedTemplate: "檢視範本（他人撰寫的指示）",
+  ftUsecasesSharedUnavailable: "目前無法載入共享的使用案例。請稍後重新開啟此分頁。",
   ftUsecasesCopy: "複製並編輯",
   ftUsecasesExport: "匯出為 JSON",
   ftUsecasesImport: "從 JSON 匯入",

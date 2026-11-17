@@ -1367,7 +1367,16 @@ def handle(event: dict[str, Any]) -> dict[str, Any]:
     if action == "listUseCases":
         own = [public_use_case(i, mine=True) for i in list_use_cases(user_id)]
         # A caller outside the organisation sees only their own.
-        return {"useCases": own, "sharedUseCases": [] if is_external(groups) else list_shared_use_cases(user_id)}
+        if is_external(groups):
+            return {"useCases": own, "sharedUseCases": []}
+        # The shared index can be unreadable while DynamoDB backfills it, which it does after the
+        # index is added to an existing table. That must not hide the caller's own use cases.
+        try:
+            shared = list_shared_use_cases(user_id)
+        except ClientError:
+            logger.warning("The shared use-case index could not be read", exc_info=True)
+            return {"useCases": own, "sharedUseCases": [], "sharedUnavailable": True}
+        return {"useCases": own, "sharedUseCases": shared}
     if action in WRITE_ACTIONS and event.get("writeOperation") is not True:
         raise ToolError(f"{action} needs the write operation (toolsMutation)")
     if action in USE_CASE_ACTIONS and event.get("useCaseOperation") is not True:
