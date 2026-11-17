@@ -203,8 +203,38 @@ describe("FileTools", () => {
     const start = toolsQuery.mock.calls.find((c) => c[0].action === "minutes-start")![0];
     expect(JSON.parse(start.params)).toEqual({ key: "team-a/meeting.mp3", language: "ja-JP", speakers: 2 });
     const status = toolsQuery.mock.calls.find((c) => c[0].action === "minutes-status")![0];
-    expect(JSON.parse(status.params)).toEqual({ jobName: "portal-minutes-x" });
+    expect(JSON.parse(status.params)).toEqual({ jobName: "portal-minutes-x", style: "minutes" });
     expect(toolsMutation).not.toHaveBeenCalled();
+  });
+  it("sends the chosen style, and redoes a finished job in another style without a new transcription", async () => {
+    const styled = { ...minutesConfig, styles: ["minutes", "transcript", "article", "faq"] };
+    toolsQuery.mockImplementation(async ({ action, params }: { action: string; params: string }) => {
+      if (action === "config") return { data: JSON.stringify({ success: true, tools: { webExtract: true, image: false, useCases: true, minutes: true }, minutes: styled }) };
+      if (action === "minutes-start") return { data: JSON.stringify({ success: true, jobName: "portal-minutes-x", status: "IN_PROGRESS" }) };
+      const style = JSON.parse(params).style;
+      return { data: JSON.stringify({ success: true, status: "COMPLETED", result: `result in ${style}`, style, truncated: false }) };
+    });
+    renderTools({ initialTab: "minutes", selectedFileKey: "team-a/meeting.mp3" });
+    await screen.findByRole("note");
+    fireEvent.change(await screen.findByLabelText("Output style"), { target: { value: "faq" } });
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      fireEvent.click(screen.getByRole("button", { name: /Make minutes/ }));
+      await screen.findByRole("status");
+      await vi.advanceTimersByTimeAsync(5000);
+      await screen.findByText("result in faq");
+      expect(screen.queryByRole("button", { name: /Redo in this style/ })).toBeNull();
+      fireEvent.change(screen.getByLabelText("Output style"), { target: { value: "article" } });
+      fireEvent.click(screen.getByRole("button", { name: /Redo in this style/ }));
+      await vi.advanceTimersByTimeAsync(5000);
+    } finally {
+      vi.useRealTimers();
+    }
+    await screen.findByText("result in article");
+    const starts = toolsQuery.mock.calls.filter((c) => c[0].action === "minutes-start");
+    expect(starts).toHaveLength(1);
+    const statuses = toolsQuery.mock.calls.filter((c) => c[0].action === "minutes-status").map((c) => JSON.parse(c[0].params));
+    expect(statuses).toEqual([{ jobName: "portal-minutes-x", style: "faq" }, { jobName: "portal-minutes-x", style: "article" }]);
   });
   it("shows the reason when the transcription fails", async () => {
     toolsQuery.mockImplementation(async ({ action }: { action: string }) => {

@@ -112,6 +112,9 @@ MAX_TASK_CHARS = 2000
 # Minutes (Transcribe, then the text model). Transcribe takes minutes, so the work is two calls:
 # `minutes-start` creates the job, `minutes-status` is polled by the screen until it completes.
 MINUTES_LANGUAGES = ("ja-JP", "en-US", "ko-KR", "zh-CN", "fr-FR", "de-DE", "es-ES")
+# How the transcript is written up. The transcript stays in the output bucket for a day, so the
+# same job can be written up again in another style without transcribing it again.
+MINUTES_STYLES = ("minutes", "transcript", "article", "faq")
 MINUTES_AUDIO_EXTENSIONS = ("mp3", "m4a", "wav", "flac", "ogg", "mp4", "webm")
 MINUTES_JOB_PREFIX = "portal-minutes-"
 MIN_SPEAKERS = 2
@@ -649,13 +652,36 @@ def media_extension(key: str, allowed: tuple[str, ...]) -> str:
     return ext
 
 
-def minutes_prompt() -> str:
-    return (
-        "You write minutes of a meeting from a transcript. Lines look like `spk_0: text`; the speaker "
-        "labels are anonymous.\n"
+MINUTES_STYLE_RULES = {
+    "minutes": (
+        "You write minutes of a meeting from a transcript.\n"
         "Write, in this order: a summary, decisions, action items, and the main points of the discussion.\n"
         "Never invent an owner or a due date: if the transcript does not say who or when, write that it was not stated.\n"
-        "Write the headings and the minutes in the language of the recording.\n" + DATA_RULE
+    ),
+    "transcript": (
+        "You tidy a transcript so that it reads close to what was said.\n"
+        "Keep every speaker turn, in order, as `spk_0: text`. Remove fillers, repeated words and false starts. "
+        "Do not summarize, reorder, merge turns or add anything, and do not replace a word with another one.\n"
+    ),
+    "article": (
+        "You write the meeting up as a short news article: a headline, a lead paragraph with the main outcome, "
+        "and a body in order of importance.\n"
+        "Use only what the transcript says. Never invent a name, number, date or quotation; refer to people by "
+        "their speaker labels.\n"
+    ),
+    "faq": (
+        "You write the meeting up as questions and answers: the questions raised in the meeting, and the questions "
+        "someone who missed it would ask.\n"
+        "Answer each only from the transcript. When the meeting did not answer it, write that it was not answered.\n"
+    ),
+}
+
+
+def minutes_prompt(style: str = "minutes") -> str:
+    return (
+        MINUTES_STYLE_RULES[style]
+        + "Lines of the transcript look like `spk_0: text`; the speaker labels are anonymous.\n"
+        "Write the headings and the text in the language of the recording.\n" + DATA_RULE
     )
 
 
@@ -717,6 +743,9 @@ def minutes_start(event: dict[str, Any], groups: list[str], user_id: str) -> dic
 def minutes_status(event: dict[str, Any], user_id: str) -> dict[str, Any]:
     if not MINUTES_ENABLED or not MINUTES_BUCKET:
         raise ToolError("minutes are not enabled")
+    style = str(event.get("style") or "minutes")
+    if style not in MINUTES_STYLES:
+        raise ToolError(f"style must be one of: {', '.join(MINUTES_STYLES)}")
     owner = user_hash(user_id)
     name = str(event.get("jobName") or "")
     # The name is the client's, so it only counts if it carries this user's hash. A job of someone
@@ -746,7 +775,8 @@ def minutes_status(event: dict[str, Any], user_id: str) -> dict[str, Any]:
     return {
         "jobName": name,
         "status": "COMPLETED",
-        "result": generate_text(minutes_prompt(), wrap_input(transcript[:limit]), max_tokens=4096),
+        "result": generate_text(minutes_prompt(style), wrap_input(transcript[:limit]), max_tokens=4096),
+        "style": style,
         "truncated": len(transcript) > limit,
         "model": MODEL_ID,
     }
@@ -1412,6 +1442,7 @@ def handle(event: dict[str, Any]) -> dict[str, Any]:
                 "maxMegabytes": MAX_MEDIA_BYTES // (1024 * 1024),
                 "minSpeakers": MIN_SPEAKERS,
                 "maxSpeakers": MAX_SPEAKERS,
+                "styles": list(MINUTES_STYLES),
             }
             if MINUTES_ENABLED and MINUTES_BUCKET
             else None,

@@ -406,6 +406,21 @@ const chatHistoryTable = new dynamodb.Table(dataStack, "ChatHistoryTable", {
   timeToLiveAttribute: "ttl",
 });
 
+// --- DynamoDB Table for ratings of chat answers ---
+// Append-only, one rating one item (the RAG app's record shape). PK feedbackId, SK kind:
+// "rating" carries the date for the review index; "query" holds the question on a shorter TTL.
+const chatFeedbackTable = new dynamodb.Table(dataStack, "ChatFeedbackTable", {
+  partitionKey: { name: "feedbackId", type: dynamodb.AttributeType.STRING },
+  sortKey: { name: "kind", type: dynamodb.AttributeType.STRING },
+  billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
+  timeToLiveAttribute: "ttlEpoch",
+  pointInTimeRecoverySpecification: { pointInTimeRecoveryEnabled: true },
+});
+chatFeedbackTable.addGlobalSecondaryIndex({
+  indexName: "ByDate",
+  partitionKey: { name: "date", type: dynamodb.AttributeType.STRING },
+  sortKey: { name: "timestamp", type: dynamodb.AttributeType.STRING },
+});
 // --- DynamoDB Table for Agent Directory (custom agent registry) ---
 // PK: agentId (UUID). Stores: name, description, systemPrompt, tools, icon, category, isShared
 const agentDirectoryTable = new dynamodb.Table(dataStack, "AgentDirectoryTable", {
@@ -1970,6 +1985,15 @@ const agentChatRole = new iam.Role(dataStack, "AgentChatLambdaRole", {
           actions: ["dynamodb:GetItem", "dynamodb:PutItem", "dynamodb:Query", "dynamodb:DeleteItem"],
           resources: [chatHistoryTable.tableArn],
         }),
+        // Ratings are appended and read back for the review; nothing updates or deletes them.
+        new iam.PolicyStatement({
+          actions: ["dynamodb:PutItem", "dynamodb:GetItem"],
+          resources: [chatFeedbackTable.tableArn],
+        }),
+        new iam.PolicyStatement({
+          actions: ["dynamodb:Query"],
+          resources: [`${chatFeedbackTable.tableArn}/index/ByDate`],
+        }),
         new iam.PolicyStatement({
           actions: ["dynamodb:GetItem", "dynamodb:PutItem", "dynamodb:Scan", "dynamodb:DeleteItem", "dynamodb:UpdateItem"],
           resources: [agentDirectoryTable.tableArn, agentTeamsTable.tableArn],
@@ -1997,6 +2021,7 @@ const agentChatFunction = new lambda.Function(
       BEDROCK_KB_ID: config.bedrockKbId || "",
       PORTAL_SETTINGS_TABLE: portalSettingsTable.tableName,
       CHAT_HISTORY_TABLE: chatHistoryTable.tableName,
+      FEEDBACK_TABLE: chatFeedbackTable.tableName,
       AGENT_DIRECTORY_TABLE: agentDirectoryTable.tableName,
       AGENT_TEAMS_TABLE: agentTeamsTable.tableName,
       GROUP_PATH_PREFIXES: JSON.stringify(groupPathPrefixes),

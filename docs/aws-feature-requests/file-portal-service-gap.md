@@ -305,7 +305,7 @@ export const storage = defineStorage({
 
 **解決（2026-09）**: 互換性テーブルは `Presign — Supported` に訂正されました（[Access point compatibility](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/access-points-for-fsxn-object-api-support.html)、2026-09-17 取得）。以下は訂正前の記録です。当時のテーブルは "Not supported" と記載していました。
 
-**しかし、実際には動作する**。当プロジェクトおよびお客様環境で検証済み（[互換性ノート](../s3ap-compatibility-notes.md#presigned-url-support)）。**動く理由は署名の仕組みから説明できます。**
+**しかし、実際には動作する**。当プロジェクトおよび利用者の環境で検証済み（[互換性ノート](../s3ap-compatibility-notes.md#presigned-url-support)）。**動く理由は署名の仕組みから説明できます。**
 
 1. **Presigning はクライアントサイド操作** — [`aws s3 presign`](https://docs.aws.amazon.com/cli/latest/reference/s3/presign.html) は SigV4 署名をローカルで計算するだけで、ネットワークリクエストは発生しません。
 2. **生成された URL は標準の GetObject** — [Presigned URL の仕様](https://docs.aws.amazon.com/AmazonS3/latest/userguide/ShareObjectPreSignedURL.html)どおり、署名が Authorization ヘッダーではなくクエリパラメータに入るだけの違いです。
