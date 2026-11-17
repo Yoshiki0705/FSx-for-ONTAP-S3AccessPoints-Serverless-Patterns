@@ -2025,6 +2025,8 @@ const agentChatFunction = new lambda.Function(
       AGENT_DIRECTORY_TABLE: agentDirectoryTable.tableName,
       AGENT_TEAMS_TABLE: agentTeamsTable.tableName,
       GROUP_PATH_PREFIXES: JSON.stringify(groupPathPrefixes),
+      // The file tools read through the caller's access point, as the file endpoints do.
+      GROUP_AP_MAPPING: JSON.stringify(config.groupApMapping || {}),
         EXTERNAL_AI_ENABLED: String(config.externalDefaults.aiEnabled),
     },
     // `handler.py` imports `shared.portal_path_scope` for the path-prefix boundary.

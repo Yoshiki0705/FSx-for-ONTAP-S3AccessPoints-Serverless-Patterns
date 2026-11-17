@@ -416,3 +416,81 @@ class TestCitations:
             out = handler.handler({"action": "chat", "userId": "u@example.com", "params": {"message": "hi"}}, None)
         assert handler.RESPONSE_ID.fullmatch(out["responseId"])
         assert out["sourceDocIds"] == [handler.doc_id("team-a/x.md")]
+
+
+class TestFileToolBoundary:
+    """The chat's file tools apply the caller's path prefixes and access point, like the file endpoints."""
+
+    PREFIXES = {"team-a": ["team-a/"], "team-b": ["team-b/"]}
+
+    def _with(self, groups, s3, mapping=None):
+        handler._request_context["user_groups"] = groups
+        return (
+            patch.object(handler, "GROUP_PATH_PREFIXES", self.PREFIXES),
+            patch.object(handler, "GROUP_AP_MAPPING", mapping or {}),
+            patch.object(handler, "s3", s3),
+        )
+
+    def test_reading_another_teams_file_is_refused_before_anything_is_read(self):
+        s3 = MagicMock()
+        a, b, c = self._with(["team-a"], s3)
+        with a, b, c:
+            out = json.loads(handler._tool_read_file({"key": "team-b/secret.md"}))
+        assert out.get("blocked") is True
+        s3.get_object.assert_not_called()
+
+    def test_a_file_inside_the_boundary_is_read_through_the_callers_access_point(self):
+        s3 = MagicMock()
+        s3.get_object.return_value = {"ContentLength": 2, "Body": MagicMock(read=lambda n: b"ok")}
+        a, b, c = self._with(["team-a"], s3, mapping={"team-a": "team-a-ap"})
+        with a, b, c:
+            out = json.loads(handler._tool_read_file({"key": "team-a/plan.md"}))
+        assert out["content"] == "ok"
+        assert s3.get_object.call_args.kwargs["Bucket"] == "team-a-ap"
+
+    def test_a_listing_hides_what_is_outside_and_refuses_another_teams_prefix(self):
+        s3 = MagicMock()
+        s3.list_objects_v2.return_value = {
+            "CommonPrefixes": [{"Prefix": "team-a/"}, {"Prefix": "team-b/"}],
+            "Contents": [{"Key": "readme.md", "Size": 1}],
+        }
+        a, b, c = self._with(["team-a"], s3)
+        with a, b, c:
+            out = json.loads(handler._tool_list_files({"prefix": ""}))
+            denied = json.loads(handler._tool_list_files({"prefix": "team-b/"}))
+        assert out["folders"] == ["team-a/"] and out["files"] == []
+        assert denied.get("blocked") is True
+        assert s3.list_objects_v2.call_count == 1
+
+    def test_a_search_from_the_root_lists_only_the_callers_prefixes(self):
+        s3 = MagicMock()
+        paginator = MagicMock()
+        paginator.paginate.return_value = [{"Contents": [{"Key": "team-a/budget.xlsx", "Size": 1}]}]
+        s3.get_paginator.return_value = paginator
+        a, b, c = self._with(["team-a"], s3)
+        with a, b, c:
+            out = json.loads(handler._tool_search_files({"pattern": "budget", "prefix": ""}))
+        assert [m["key"] for m in out["matches"]] == ["team-a/budget.xlsx"]
+        assert [call.kwargs["Prefix"] for call in paginator.paginate.call_args_list] == ["team-a/"]
+
+    def test_the_volume_summary_shows_only_reachable_folders(self):
+        s3 = MagicMock()
+        s3.list_objects_v2.return_value = {
+            "CommonPrefixes": [{"Prefix": "team-a/"}, {"Prefix": "team-b/"}],
+            "Contents": [{"Key": "root.txt"}],
+        }
+        a, b, c = self._with(["team-a"], s3)
+        with a, b, c:
+            out = json.loads(handler._tool_get_volume_summary({}))
+        assert out["top_level_folders"] == ["team-a/"] and out["root_file_count"] == 0
+
+    def test_an_unconfined_administrator_still_sees_everything(self):
+        s3 = MagicMock()
+        s3.list_objects_v2.return_value = {
+            "CommonPrefixes": [{"Prefix": "team-a/"}, {"Prefix": "team-b/"}],
+            "Contents": [],
+        }
+        a, b, c = self._with(["storage-admin", "team-a"], s3)
+        with a, b, c:
+            out = json.loads(handler._tool_list_files({"prefix": ""}))
+        assert out["folders"] == ["team-a/", "team-b/"]

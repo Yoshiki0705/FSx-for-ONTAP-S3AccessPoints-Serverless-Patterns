@@ -209,6 +209,7 @@ guarded, is in the [UI contributor guide](CONTRIBUTING-UI.md).
 | 2026-07-28 | AD/OIDC auth config | Environment-driven OIDC/SAML in auth/resource.ts. authMode in portal-settings. socialProviders in Authenticator | auth/resource.ts, portal-settings.ts, main.tsx |
 | 2026-07-28 | Folder sharing design doc | ZIP generation architecture + AD/OIDC integration plan | docs/folder-sharing-and-auth-design.md |
 | 2026-08-12 | ファイル一覧のサムネイル | バックエンド生成 + ETag キャッシュ。1 ページ 1 回のバッチ呼び出し（行ごとの presigned URL を避ける）。Pillow レイヤー | functions/thumbnails/, useThumbnails.ts, FilePreview.tsx |
+| 2026-11-18 | AI チャットのファイルツールの範囲 | list_files・read_file・search_files・get_volume_summary が、呼び出した人のパスの範囲（GROUP_PATH_PREFIXES）とアクセスポイント（GROUP_AP_MAPPING）を使う。範囲の外のキーは読む前に拒否し、一覧からは外す。それまでは PHI のパスの拒否だけで、範囲の外のファイルも読めた | functions/agent-chat/handler.py, backend.ts |
 
 ## AI Agent Architecture (Phase 1 + Phase 2)
 

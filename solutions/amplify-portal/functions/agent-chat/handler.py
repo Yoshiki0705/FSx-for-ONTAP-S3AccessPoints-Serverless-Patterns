@@ -33,6 +33,7 @@ from botocore.config import Config
 
 from shared.portal_external_policy import ai_denial_reason
 from shared.portal_path_scope import allowed_prefixes as _shared_allowed_prefixes
+from shared.portal_path_scope import key_is_visible, prefix_is_reachable, reject_key, resolve_ap_alias
 from shared.portal_regulated_path import is_regulated_path
 
 logger = logging.getLogger()
@@ -64,6 +65,9 @@ MAX_SOURCE_DOC_IDS = 20
 # Smart Routing: JSON mapping of Cognito group → allowed path prefixes
 # Example: {"engineering": ["engineering/", "shared/"], "finance": ["finance/", "shared/"]}
 GROUP_PATH_PREFIXES = json.loads(os.environ.get("GROUP_PATH_PREFIXES", "{}"))
+# Which access point a caller reads through, as the other file endpoints decide it. The
+# alias decides the ONTAP identity the read runs as.
+GROUP_AP_MAPPING = json.loads(os.environ.get("GROUP_AP_MAPPING", "{}"))
 # Whether callers from outside the organisation may run the agent. Off unless set:
 # the conversation reaches a model, and the agent's tools read file content.
 EXTERNAL_AI_ENABLED = os.environ.get("EXTERNAL_AI_ENABLED", "") == "true"
@@ -263,18 +267,20 @@ def _tool_list_files(params: dict[str, Any]) -> str:
     """List files via S3 AP ListObjectsV2."""
     prefix = params.get("prefix", "")
     max_keys = min(params.get("max_keys", 20), 50)
-
-    if not S3_AP_ALIAS:
+    allowed = _caller_prefixes()
+    if not prefix_is_reachable(prefix, allowed):
+        return json.dumps({"error": f"Prefix '{prefix}' is outside your access", "blocked": True})
+    alias = _caller_alias()
+    if not alias:
         return _mock_list_files(prefix, max_keys)
-
     try:
         resp = s3.list_objects_v2(
-            Bucket=S3_AP_ALIAS,
+            Bucket=alias,
             Prefix=prefix,
             Delimiter="/",
             MaxKeys=max_keys,
         )
-        folders = [cp["Prefix"] for cp in resp.get("CommonPrefixes", [])]
+        folders = [cp["Prefix"] for cp in resp.get("CommonPrefixes", []) if prefix_is_reachable(cp["Prefix"], allowed)]
         files = [
             {
                 "key": obj["Key"],
@@ -282,7 +288,7 @@ def _tool_list_files(params: dict[str, Any]) -> str:
                 "modified": obj["LastModified"].isoformat() if obj.get("LastModified") else None,
             }
             for obj in resp.get("Contents", [])
-            if not obj["Key"].endswith("/")
+            if not obj["Key"].endswith("/") and key_is_visible(obj["Key"], allowed)
         ]
         return json.dumps(
             {
@@ -301,7 +307,10 @@ def _tool_read_file(params: dict[str, Any]) -> str:
     key = params.get("key", "")
     if not key:
         return json.dumps({"error": "File key is required"})
-
+    # The caller's boundary first: a key outside it is refused before anything is read.
+    refused = reject_key(key, _caller_prefixes(), field="key")
+    if refused:
+        return json.dumps({"error": refused.get("error") or "This file is outside your access", "blocked": True})
     # PHI guardrail
     if is_phi_path(key):
         return json.dumps(
@@ -312,11 +321,11 @@ def _tool_read_file(params: dict[str, Any]) -> str:
             }
         )
 
-    if not S3_AP_ALIAS:
+    alias = _caller_alias()
+    if not alias:
         return _mock_read_file(key)
-
     try:
-        obj = s3.get_object(Bucket=S3_AP_ALIAS, Key=key)
+        obj = s3.get_object(Bucket=alias, Key=key)
         content_length = obj.get("ContentLength", 0)
         body = obj["Body"].read(MAX_FILE_READ_BYTES).decode("utf-8", errors="replace")
         if content_length > MAX_FILE_READ_BYTES:
@@ -333,21 +342,30 @@ def _tool_search_files(params: dict[str, Any]) -> str:
 
     if not pattern:
         return json.dumps({"error": "Search pattern is required"})
-
-    if not S3_AP_ALIAS:
+    allowed = _caller_prefixes()
+    if not prefix_is_reachable(prefix, allowed):
+        return json.dumps({"error": f"Prefix '{prefix}' is outside your access", "blocked": True})
+    alias = _caller_alias()
+    if not alias:
         return _mock_search_files(pattern, prefix)
-
+    # Above the caller's prefixes, list each allowed prefix under it rather than the whole
+    # volume, so the item budget is spent inside the boundary.
+    scans = (
+        [prefix]
+        if not allowed or any(prefix.startswith(a) for a in allowed)
+        else [a for a in allowed if a.startswith(prefix)]
+    )
     try:
         matches = []
         paginator = s3.get_paginator("list_objects_v2")
-        pages = paginator.paginate(
-            Bucket=S3_AP_ALIAS,
-            Prefix=prefix,
-            PaginationConfig={"MaxItems": 200},
+        pages = (
+            page
+            for scan in scans
+            for page in paginator.paginate(Bucket=alias, Prefix=scan, PaginationConfig={"MaxItems": 200})
         )
         for page in pages:
             for obj in page.get("Contents", []):
-                if pattern in obj["Key"].lower():
+                if pattern in obj["Key"].lower() and key_is_visible(obj["Key"], allowed):
                     matches.append(
                         {
                             "key": obj["Key"],
@@ -367,18 +385,19 @@ def _tool_search_files(params: dict[str, Any]) -> str:
 
 def _tool_get_volume_summary(params: dict[str, Any]) -> str:
     """Get volume summary: top-level folders and file count."""
-    if not S3_AP_ALIAS:
+    alias = _caller_alias()
+    if not alias:
         return _mock_volume_summary()
-
+    allowed = _caller_prefixes()
     try:
         resp = s3.list_objects_v2(
-            Bucket=S3_AP_ALIAS,
+            Bucket=alias,
             Prefix="",
             Delimiter="/",
             MaxKeys=100,
         )
-        folders = [cp["Prefix"] for cp in resp.get("CommonPrefixes", [])]
-        root_files = len(resp.get("Contents", []))
+        folders = [cp["Prefix"] for cp in resp.get("CommonPrefixes", []) if prefix_is_reachable(cp["Prefix"], allowed)]
+        root_files = len([o for o in resp.get("Contents", []) if key_is_visible(o["Key"], allowed)])
         return json.dumps(
             {
                 "top_level_folders": folders,
@@ -476,6 +495,16 @@ def _tool_kb_search(params: dict[str, Any], user_groups: list[str] | None = None
     except Exception as e:
         logger.error(f"KB search error: {e}")
         return json.dumps({"error": str(e), "results": []})
+
+
+def _caller_prefixes() -> list[str]:
+    """The path prefixes of the caller of this request; empty means unrestricted."""
+    return _get_allowed_prefixes(_request_context.get("user_groups"))
+
+
+def _caller_alias() -> str:
+    """The access point this request's caller reads through; empty only in DemoMode."""
+    return resolve_ap_alias(_request_context.get("user_groups") or [], GROUP_AP_MAPPING, S3_AP_ALIAS)
 
 
 def _get_allowed_prefixes(user_groups: list[str] | None) -> list[str]:
