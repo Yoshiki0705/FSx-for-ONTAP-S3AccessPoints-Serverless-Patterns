@@ -232,6 +232,15 @@ Lambda のロールに足す権限は、モデルへの `bedrock:InvokeModel` �
 
 **読み取りの限界**: これは会長が指名して 1 人ずつ話す形式で、同時に話す区間はほとんどありません。複数人が同時に話す社内の打ち合わせのような録音では、AMI（上）で 2 人以上が同時に話す区間を数えなかったのと同じく、確かめていません。条件に合う公開データが見つかっていないため、今後の課題にしています（[#552](https://github.com/Yoshiki0705/FSx-for-ONTAP-S3AccessPoints-Serverless-Patterns/issues/552)）。 <!-- allow:not-a-claim: our own measurement on open data -->
 
+**出力の形式の確認（2026-11-17、ap-northeast-1）**: 3 つの変更（出力の形式、ユースケースの共有、回答の評価）をまとめたツリーを、既存の Amplify sandbox に `AMPLIFY_PORTAL_MINUTES_ENABLED=true` でデプロイし、使い捨てのアクセスポイントに置いた Polly の架空の会議（約 41 秒、日本語の声 2 つ）で、画面から 1 回ずつ確かめました。
+
+| 確かめたこと | 結果 |
+|---|---|
+| `faq` で作る | 会議で出た問い 4 つに答えた。開始から結果まで 19.6 秒 |
+| 同じジョブを `article`、`transcript`、`minutes` で作り直す | それぞれ 8.5 秒、7.9 秒、8.8 秒。Transcribe のジョブは最初の 1 つのまま増えなかった（`list-transcription-jobs` で確認） |
+| `transcript` が言葉を変えないか | 「移行」の誤認識「以降」も、そのまま残した。話者の区切りは Transcribe の判定どおりで、最初の 2 人分の発言が `spk_0` の 1 行にまとまった |
+| `minutes` の担当者 | 文字起こしに無い担当者は「不明」と書いた |
+
 ## 動画の分析の確認結果
 **確認したこと（自動テスト）**: `functions/file-tools/tests/test_file_tools.py` と `tests/components/FileTools.test.tsx`。モデルと S3 はスタブです。
 

@@ -232,6 +232,15 @@ Per speaker: the chair 99.2%, the Prime Minister 100%, the two party leaders 99.
 
 **Limits of the reading**: this is a format where the chair calls on one person at a time, with almost no simultaneous speech. Recordings where several people talk at once, like an internal working meeting, remain unchecked, as with the overlapped stretches left out of the AMI scoring above. No open data that fits has been found yet, so this is left as future work ([#552](https://github.com/Yoshiki0705/FSx-for-ONTAP-S3AccessPoints-Serverless-Patterns/issues/552)).
 
+**Output styles (2026-11-17, ap-northeast-1)**: a tree with the three changes (output styles, sharing use cases, ratings of answers) was deployed to the existing Amplify sandbox with `AMPLIFY_PORTAL_MINUTES_ENABLED=true`, and checked once each from the screen with the fictional Polly meeting (about 41 seconds, two Japanese voices) on a throwaway access point.
+
+| What was checked | Result |
+|---|---|
+| Make it as `faq` | Answered the 4 questions raised in the meeting. 19.6 s from start to result |
+| Redo the same job as `article`, `transcript`, `minutes` | 8.5 s, 7.9 s and 8.8 s. Still only the first Transcribe job (checked with `list-transcription-jobs`) |
+| Does `transcript` keep the words | It kept even a misrecognized word as transcribed. Speaker turns follow Transcribe's labels; the first two people's lines came out as one `spk_0` line |
+| Owners in `minutes` | An owner the transcript does not name was written as unknown |
+
 ## Results for Video Analysis
 **Checked (automated tests)**: `functions/file-tools/tests/test_file_tools.py` and `tests/components/FileTools.test.tsx`, with the model and S3 stubbed.
 
