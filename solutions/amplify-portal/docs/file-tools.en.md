@@ -220,7 +220,7 @@ The remaining 2% or so went to the wrong person. Stretches where two or more peo
 
 Per speaker: the chair 99.2%, the Prime Minister 100%, the two party leaders 99.8% and 99.9%. The minutes followed the record on the agenda and the points (relocating Futenma, the Nuclear Security Summit, political funding), and wrote decisions and action items as "none recorded". The names of the two party leaders were misheard, and the errors carried into the minutes.
 
-**Limits of the reading**: this is a format where the chair calls on one person at a time, with almost no simultaneous speech. Recordings where several people talk at once, like an internal working meeting, remain unchecked, as with the overlapped stretches left out of the AMI scoring above.
+**Limits of the reading**: this is a format where the chair calls on one person at a time, with almost no simultaneous speech. Recordings where several people talk at once, like an internal working meeting, remain unchecked, as with the overlapped stretches left out of the AMI scoring above. No open data that fits has been found yet, so this is left as future work ([#552](https://github.com/Yoshiki0705/FSx-for-ONTAP-S3AccessPoints-Serverless-Patterns/issues/552)).
 
 ## Results for Video Analysis
 **Checked (automated tests)**: `functions/file-tools/tests/test_file_tools.py` and `tests/components/FileTools.test.tsx`, with the model and S3 stubbed.
@@ -281,6 +281,7 @@ Per speaker: the chair 99.2%, the Prime Minister 100%, the two party leaders 99.
 | A summary of the same clip (2 runs) | Began by saying the audio cannot be analyzed (in one run that sentence came in English), then summarized from the picture. No specific speech was invented (a vague guess such as "they discuss science and space exploration" remained) |
 | On-screen text of the same clip (2 runs) | `PACE` and `PACE / NASA`. No note was added, and reading was unchanged |
 | Time for the judgement | One text-model call. The whole analysis took 9.5 to 14.2 s, inside the 25 s budget |
+| Through AppSync, Cognito, the screen and CDK (2026-11-17): `main` with this change deployed to the sandbox, three requests on the same clip from the screen as a throwaway viewer | On-screen text: `PACE` (no note, 13.6 s). What is said: began "the audio is not analyzed" and wrote only what is seen (a panel of six, the backdrop, gestures) (12.1 s). The summary began the same way and was based on the picture (12.1 s). The Lambda log had no failed check (`The audio check failed`) and no denied permission, so the check runs on the existing role |
 
 With the note, on the surveillance footage below (MEVA) the model answered the summary and speech requests with "I can't respond, for privacy" (4 of 4). That fails on the safe side compared with invented speech, but gives no answer.
 
@@ -309,7 +310,7 @@ With the note, on the surveillance footage below (MEVA) the model answered the s
 | The same ten clips scaled down to 320×180 | The labelled activity was named for 1 clip (sitting down). 2.0 to 2.9 s |
 | Five minutes of a bus waiting area (converted to 1280×720, 34.7 MB; labelled activities: reading a document, texting, purchasing, handing over an object), asked "what is each person doing" (2 runs) | The first timed out at the 25 s budget. The second (17.1 s) named reading and looking at phones, missed purchasing and the hand-over, and kept repeating the same item with more and more people |
 
-**Reading it**: the scene descriptions were broadly right, but short events (a package left behind, a theft, a hand-over) were rarely caught; the tool does not suit finding events in security footage. Five minutes is at the edge of the 25 s budget, and the answer can turn into a repeated line. Night-time footage was not tried, for want of usable open data.
+**Reading it**: the scene descriptions were broadly right, but short events (a package left behind, a theft, a hand-over) were rarely caught; the tool does not suit finding events in security footage. Five minutes is at the edge of the 25 s budget, and the answer can turn into a repeated line. Night-time footage was not tried, for want of usable open data (future work, [#553](https://github.com/Yoshiki0705/FSx-for-ONTAP-S3AccessPoints-Serverless-Patterns/issues/553)).
 
 ## Results for Video Generation
 **Checked (automated tests)**: `functions/file-tools/tests/test_file_tools.py`, `tests/components/FileTools.test.tsx` and `tests/infrastructure/backend-assertions.test.ts`.
