@@ -209,6 +209,7 @@ guarded, is in the [UI contributor guide](CONTRIBUTING-UI.en.md).
 | 2026-07-28 | AD/OIDC auth config | Environment-driven OIDC/SAML in auth/resource.ts. authMode in portal-settings. socialProviders in Authenticator | auth/resource.ts, portal-settings.ts, main.tsx |
 | 2026-07-28 | Folder sharing design doc | ZIP generation architecture + AD/OIDC integration plan | docs/folder-sharing-and-auth-design.md |
 | 2026-08-12 | File-list thumbnails | Backend generation with an ETag-keyed cache. One batched call per page rather than a presigned URL per row. Pillow layer | functions/thumbnails/, useThumbnails.ts, FilePreview.tsx |
+| 2026-11-18 | Scope of the AI chat's file tools | list_files, read_file, search_files and get_volume_summary use the caller's path prefixes (GROUP_PATH_PREFIXES) and access point (GROUP_AP_MAPPING). A key outside the scope is refused before it is read and left out of listings. Before this only the PHI paths were refused, and files outside the scope could be read | functions/agent-chat/handler.py, backend.ts |
 
 ## AI Agent Architecture (Phase 1 + Phase 2)
 
