@@ -125,7 +125,8 @@ describe("FileTools", () => {
     expect(JSON.parse(toolsUseCaseMutation.mock.calls[0][0].params)).toMatchObject({ title: "Brief", shared: true });
     fireEvent.click(screen.getAllByRole("button", { name: "Run" })[0]);
     expect(await screen.findByText("Show the template (instructions someone else wrote)")).toBeTruthy();
-    fireEvent.click(screen.getAllByRole("button", { name: /Run/ }).at(-1)!);
+    const runButtons = screen.getAllByRole("button", { name: /Run/ });
+    fireEvent.click(runButtons[runButtons.length - 1]);
     await waitFor(() => expect(toolsQuery.mock.calls.some((c) => c[0].action === "runUseCase")).toBe(true));
     const runCall = toolsQuery.mock.calls.find((c) => c[0].action === "runUseCase")![0];
     expect(JSON.parse(runCall.params).useCaseId).toBe("uc-b");
