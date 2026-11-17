@@ -107,6 +107,30 @@ describe("FileTools", () => {
     expect(toolsMutation).not.toHaveBeenCalled();
   });
 
+  it("saves the share flag, lists shared use cases, and runs one by its ID", async () => {
+    const shared = { useCaseId: "uc-b", title: "Weekly report", template: "Report: {{input}}", shared: true, mine: false };
+    toolsQuery.mockImplementation(async ({ action }: { action: string }) => {
+      if (action === "config") return config(false);
+      if (action === "listUseCases") return { data: JSON.stringify({ success: true, useCases: [], sharedUseCases: [shared] }) };
+      return { data: JSON.stringify({ success: true, result: "done" }) };
+    });
+    toolsUseCaseMutation.mockResolvedValue({ data: JSON.stringify({ success: true, useCase: {} }) });
+    renderTools({ canWrite: false, canSaveUseCases: true, initialTab: "useCases" });
+    expect(await screen.findByText("Shared use cases")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: /New use case/ }));
+    fireEvent.change(screen.getByLabelText("Name"), { target: { value: "Brief" } });
+    fireEvent.click(screen.getByLabelText("Share with everyone in the organisation"));
+    fireEvent.click(screen.getByRole("button", { name: /^Save$/ }));
+    await waitFor(() => expect(toolsUseCaseMutation).toHaveBeenCalled());
+    expect(JSON.parse(toolsUseCaseMutation.mock.calls[0][0].params)).toMatchObject({ title: "Brief", shared: true });
+    fireEvent.click(screen.getAllByRole("button", { name: "Run" })[0]);
+    expect(await screen.findByText("Show the template (instructions someone else wrote)")).toBeTruthy();
+    fireEvent.click(screen.getAllByRole("button", { name: /Run/ }).at(-1)!);
+    await waitFor(() => expect(toolsQuery.mock.calls.some((c) => c[0].action === "runUseCase")).toBe(true));
+    const runCall = toolsQuery.mock.calls.find((c) => c[0].action === "runUseCase")![0];
+    expect(JSON.parse(runCall.params).useCaseId).toBe("uc-b");
+  });
+
   it("says a portal role is needed when the account cannot save use cases", async () => {
     toolsQuery.mockImplementation(async ({ action }: { action: string }) =>
       action === "config" ? config(false) : { data: JSON.stringify({ success: true, useCases: [] }) },

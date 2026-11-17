@@ -291,6 +291,112 @@ class TestUseCases:
         assert not table.put_item.called and not table.delete_item.called
         assert not m.S3ApHelper.return_value.put_object.called
 
+    def test_sharing_marks_the_item_for_the_sparse_index_and_unsharing_removes_it(self) -> None:
+        m = load()
+        table = MagicMock()
+        table.query.return_value = {"Items": []}
+        m.use_cases_table = lambda: table
+        out = call(m, action="saveUseCase", title="T", template="{{input}}", shared=True, useCaseOperation=True)
+        assert table.put_item.call_args.kwargs["Item"]["sharedKey"] == "shared"
+        assert out["useCase"]["shared"] is True and "userId" not in out["useCase"]
+        uc_id = out["useCase"]["useCaseId"]
+        table.get_item.return_value = {"Item": table.put_item.call_args.kwargs["Item"]}
+        call(m, action="saveUseCase", useCaseId=uc_id, title="T", template="{{input}}", useCaseOperation=True)
+        assert table.put_item.call_args.kwargs["Item"]["sharedKey"] == "shared"  # kept when not given
+        call(m, action="saveUseCase", useCaseId=uc_id, title="T", template="x", shared=False, useCaseOperation=True)
+        assert "sharedKey" not in table.put_item.call_args.kwargs["Item"]
+
+    def test_an_external_caller_cannot_share_and_sees_only_their_own(self) -> None:
+        m = load()
+        table = MagicMock()
+        table.query.return_value = {"Items": []}
+        m.use_cases_table = lambda: table
+        out = call(
+            m, action="saveUseCase", title="T", template="x", shared=True, groups=["external"], useCaseOperation=True
+        )
+        assert out["success"] is False and "outside the organisation" in out["error"]
+        assert not table.put_item.called
+        listed = call(m, action="listUseCases", groups=["external"])
+        assert listed["sharedUseCases"] == []
+        assert all("IndexName" not in c.kwargs for c in table.query.call_args_list)
+
+    def test_listing_shows_others_shared_use_cases_without_their_user_id(self) -> None:
+        m = load()
+        table = MagicMock()
+        own = {"userId": "alice", "useCaseId": "uc-a", "title": "Mine", "template": "x", "updatedAt": "2"}
+        shared_pages = [
+            {
+                "Items": [
+                    {
+                        "userId": "bob",
+                        "useCaseId": "uc-b",
+                        "title": "Bob's",
+                        "template": "y",
+                        "sharedKey": "shared",
+                        "updatedAt": "1",
+                    },
+                    {
+                        "userId": "alice",
+                        "useCaseId": "uc-a2",
+                        "title": "Mine shared",
+                        "template": "z",
+                        "sharedKey": "shared",
+                    },
+                ],
+                "LastEvaluatedKey": {"k": 1},
+            },
+            {
+                "Items": [
+                    {
+                        "userId": "carol",
+                        "useCaseId": "uc-c",
+                        "title": "Carol's",
+                        "template": "w",
+                        "sharedKey": "shared",
+                        "updatedAt": "3",
+                    }
+                ]
+            },
+        ]
+
+        def query(**kwargs: Any) -> dict:
+            if kwargs.get("IndexName") == "SharedUseCases":
+                return shared_pages[1] if "ExclusiveStartKey" in kwargs else shared_pages[0]
+            return {"Items": [own]}
+
+        table.query.side_effect = query
+        m.use_cases_table = lambda: table
+        out = call(m, action="listUseCases")
+        assert [u["useCaseId"] for u in out["useCases"]] == ["uc-a"] and out["useCases"][0]["mine"] is True
+        assert [u["useCaseId"] for u in out["sharedUseCases"]] == ["uc-c", "uc-b"]
+        assert all(u["mine"] is False and "userId" not in u for u in out["sharedUseCases"])
+
+    def test_a_shared_use_case_of_another_user_runs_and_an_unshared_one_does_not(self) -> None:
+        m = load()
+        table = MagicMock()
+        table.get_item.return_value = {}
+        table.query.return_value = {"Items": [{"userId": "bob", "useCaseId": "uc-b", "template": "Shared: {{input}}"}]}
+        m.use_cases_table = lambda: table
+        out = call(m, action="runUseCase", useCaseId="uc-b", text="hello")
+        assert out["success"] is True
+        q = table.query.call_args.kwargs
+        assert q["IndexName"] == "SharedUseCases"
+        assert "Shared: <input>" in model_input(m)
+        table.query.return_value = {"Items": []}
+        m.bedrock.converse.reset_mock()
+        assert call(m, action="runUseCase", useCaseId="uc-x", text="hello")["success"] is False
+        assert not m.bedrock.converse.called
+
+    def test_an_external_caller_cannot_run_a_shared_use_case(self) -> None:
+        m = load(env={"EXTERNAL_AI_ENABLED": "true"})
+        table = MagicMock()
+        table.get_item.return_value = {}
+        table.query.return_value = {"Items": [{"userId": "bob", "useCaseId": "uc-b", "template": "{{input}}"}]}
+        m.use_cases_table = lambda: table
+        out = call(m, action="runUseCase", useCaseId="uc-b", text="hello", groups=["external"])
+        assert out["success"] is False
+        assert not table.query.called and not m.bedrock.converse.called
+
     def test_deleting_a_use_case_is_keyed_by_the_caller(self) -> None:
         m = load()
         table = MagicMock()
@@ -303,6 +409,7 @@ class TestUseCases:
         m = load()
         table = MagicMock()
         table.get_item.return_value = {}
+        table.query.return_value = {"Items": []}  # not shared either
         m.use_cases_table = lambda: table
         out = call(m, action="runUseCase", useCaseId="uc-of-bob", text="x", userId="alice")
         assert out == {"success": False, "error": "use case not found"}
