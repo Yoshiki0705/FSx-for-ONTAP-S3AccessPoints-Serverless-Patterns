@@ -1282,12 +1282,24 @@ def image_client() -> Any:
 def generate_image(event: dict[str, Any], source: bytes | None = None) -> bytes:
     if not IMAGE_ENABLED:
         raise ToolError("image generation is not enabled")
-    response = image_client().invoke_model(
-        modelId=IMAGE_I2I_MODEL_ID if source else IMAGE_MODEL_ID,
-        contentType="application/json",
-        accept="application/json",
-        body=json.dumps(image_to_image_body(event, source) if source else image_body(event)),
-    )
+    model_id = IMAGE_I2I_MODEL_ID if source else IMAGE_MODEL_ID
+    try:
+        response = image_client().invoke_model(
+            modelId=model_id,
+            contentType="application/json",
+            accept="application/json",
+            body=json.dumps(image_to_image_body(event, source) if source else image_body(event)),
+        )
+    except ClientError as e:
+        # A third-party model is enabled per account through an AWS Marketplace subscription. The
+        # Lambda role deliberately has no Marketplace permissions, so until an administrator enables
+        # the model, Bedrock refuses with a message about aws-marketplace:Subscribe.
+        if e.response.get("Error", {}).get("Code") == "AccessDeniedException" and "aws-marketplace" in str(e):
+            raise ToolError(
+                f"{model_id} is not enabled in this AWS account; an administrator needs to enable it once "
+                "(AWS Marketplace subscription)"
+            ) from e
+        raise
     parsed = json.loads(response["body"].read())
     reasons = parsed.get("finish_reasons") or [None]
     if reasons[0]:

@@ -105,6 +105,16 @@ Lambda のロールに足す権限は、モデルへの `bedrock:InvokeModel` �
 
 Lambda のロールに足す権限は、us-west-2 の `stability.sd3-5-large-v1:0` への `bedrock:InvokeModel` です（画像の生成を有効にしたときだけ）。
 
+**前提: SD3.5 Large をアカウントで有効にしておく。** Stability のモデルは、AWS Marketplace のサブスクリプションでアカウントごとに有効になります。Lambda のロールには Marketplace の権限（`aws-marketplace:Subscribe` など）を付けていないので、有効になっていないアカウントでは、Bedrock が `AccessDeniedException`（Marketplace の操作の権限が無い）を返します。画面には「このアカウントで有効になっていない。管理者が一度有効にする必要がある」と表示します。管理者が Bedrock のコンソールでモデルを一度呼ぶなどして有効にしてください。`aws bedrock get-foundation-model-availability --region us-west-2 --model-id stability.sd3-5-large-v1:0` の `agreementAvailability` が `AVAILABLE` になれば有効です（2026-11-17 のこのアカウントでは、Stable Image Core が `AVAILABLE`、SD3.5 Large が `NOT_AVAILABLE` でした）。
+
+**実機での確認（2026-11-17、us-west-2 のモデル、ap-northeast-1 の sandbox）**: NASA の記者会見の静止画（400 × 225 の JPEG、14 KB）を使い捨てのアクセスポイントに置き、画面から確かめました。1 回ずつの観測です。
+
+| 確かめたこと | 結果 |
+|---|---|
+| 「水彩画風で、やわらかい色合いにしたい」からプロンプトを考えてもらう | 1.5 秒で、英語のプロンプトと入れたくない要素が入り、選んだ理由が日本語で 1 文出た |
+| 選択中の画像を元に、変え具合 0.35 で作る | 11.0 秒で保存された。出力は 1365 × 768。元の写真がほぼそのまま残り、水彩画の見た目にはならなかった。縦横比の欄は出なかった |
+| 続けて、変え具合 0.7 で作る | `AccessDeniedException`（Marketplace の操作の権限が無い）で失敗した。上の前提を満たしていなかった。1 回目がなぜ通ったかは確かめていない |
+
 ## 設定
 
 `amplify/portal-config.ts` の `tools`、または環境変数で決めます。既存の `portal-config.ts` に `tools` が無くても、環境変数が使われます。

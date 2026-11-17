@@ -1145,6 +1145,27 @@ class TestImageToImage:
         assert not client.invoke_model.called
 
 
+class TestImageModelNotEnabled:
+    def test_a_marketplace_refusal_says_the_model_needs_enabling(self) -> None:
+        from botocore.exceptions import ClientError
+
+        m, client = image_module(png_bytes(512, 512))
+        client.invoke_model.side_effect = ClientError(
+            {
+                "Error": {
+                    "Code": "AccessDeniedException",
+                    "Message": "not authorized to perform the required AWS Marketplace actions (aws-marketplace:ViewSubscriptions, aws-marketplace:Subscribe)",
+                }
+            },
+            "InvokeModel",
+        )
+        out = call(
+            m, action="generateImage", folder="team-a", prompt="x", sourceKey="team-a/p.png", writeOperation=True
+        )
+        assert out["success"] is False and "not enabled in this AWS account" in out["error"]
+        assert "sd3-5-large" in out["error"]
+
+
 class TestImagePromptAssist:
     def test_the_model_answer_becomes_a_prompt_and_a_negative_prompt(self) -> None:
         m = load()
