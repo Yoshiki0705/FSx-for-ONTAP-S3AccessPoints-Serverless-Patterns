@@ -484,6 +484,16 @@ amplify-fsxns3apamplifyportal-dev2-sandbox-9876543210   ← 开发者 2
 
 它们共享同一 AWS 账户但互不干扰。使用 `npx ampx sandbox --identifier custom-name` 指定明确名称。
 
+### 12. 确认所配置的接入点仍然存在
+接手现有的沙盒时，`s3ApAlias`（或 `AMPLIFY_PORTAL_S3AP_ALIAS`）指向的 S3 Access Point 可能已经连同卷一起被删除。部署和 `make portal-preflight` 都不会发现这一点：preflight 比较的是配置与已部署的堆栈，而不是实际存在的接入点。对已删除接入点的 S3 调用会以 `AccessDenied`（"Could not access through this access point"）失败，看起来像权限问题。在排查权限之前，请先确认该别名是否存在：
+```bash
+# 显示接入点的名称和状态。若没有任何输出，说明接入点已不存在
+aws fsx describe-s3-access-point-attachments \
+  --query "S3AccessPointAttachments[?S3AccessPoint.Alias=='<s3ApAlias>'].[Name,Lifecycle]" \
+  --output text
+```
+要用临时接入点进行确认时，不要修改 `portal-config.ts`，只在那一次部署（`./scripts/sandbox.sh --once`）中设置 `AMPLIFY_PORTAL_S3AP_ALIAS`。确认后不带该变量再部署一次，使沙盒恢复原状。如果部署会使 git 不管理的值（接入点、ONTAP 连接、VPC 等）变为空，部署会被停止。这是有意设计的保护。
+
 ---
 
 ## 项目结构
