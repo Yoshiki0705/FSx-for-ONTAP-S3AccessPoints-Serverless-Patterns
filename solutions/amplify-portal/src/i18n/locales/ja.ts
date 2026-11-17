@@ -2245,6 +2245,7 @@ arpResponseSweepNote: "ブロックは指定した期限が過ぎると自動で
   ftImageSourceNofile: "ファイルの一覧で画像（{exts}、{mb} MB まで）を選ぶと、それを元にできます。",
   ftImageStrength: "元の画像からの変え具合: {value}",
   ftImageStrengthhelp: "小さいほど元の画像に近く、大きいほどプロンプトに沿って描き直します。",
+  ftImageSourcePeople: "人物の写真を元にすると、変え具合を上げるほど別人の顔に置き換わることがあります。実在の人物に似た顔になった例もあります。",
   ftImageSourceRegionnotice: "元にする画像も、日本の外で処理されます。",
   ftUsecasesIntro: "よく使う指示をテンプレートとして保存できます。共有しない限り、保存したユースケースはあなただけが見て使えます。",
   ftUsecasesNew: "新しいユースケース",

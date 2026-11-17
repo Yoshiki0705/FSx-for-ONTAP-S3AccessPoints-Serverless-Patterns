@@ -2191,6 +2191,7 @@ arpResponseSweepNote: "차단은 지정한 기한이 지나면 자동으로 해�
   ftImageSourceNofile: "파일 목록에서 이미지({exts}, {mb} MB까지)를 선택하면 그것을 바탕으로 할 수 있습니다.",
   ftImageStrength: "원본에서 바꾸는 정도: {value}",
   ftImageStrengthhelp: "작을수록 원본에 가깝고, 클수록 프롬프트에 따라 다시 그립니다.",
+  ftImageSourcePeople: "인물 사진을 바탕으로 하면 값을 높일수록 다른 사람의 얼굴로 바뀔 수 있으며, 실존 인물과 닮은 얼굴이 된 예도 있습니다.",
   ftImageSourceRegionnotice: "바탕이 되는 이미지도 일본 밖에서 처리됩니다.",
   ftUsecasesIntro: "자주 쓰는 지시를 템플릿으로 저장할 수 있습니다. 공유하지 않는 한, 저장한 유스케이스는 본인만 보고 사용할 수 있습니다.",
   ftUsecasesNew: "새 유스케이스",

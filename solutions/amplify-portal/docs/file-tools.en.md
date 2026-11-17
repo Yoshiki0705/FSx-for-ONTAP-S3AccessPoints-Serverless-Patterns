@@ -107,7 +107,7 @@ When enabled, an Image generation tab appears. From a description of the image (
 
 The Lambda role gains `bedrock:InvokeModel` on `stability.sd3-5-large-v1:0` in us-west-2 (only when image generation is enabled).
 
-**Prerequisite: enable SD3.5 Large in the account.** Stability models are enabled per account through an AWS Marketplace subscription. The Lambda role has no Marketplace permissions (`aws-marketplace:Subscribe` and the like), so in an account where the model is not enabled, Bedrock returns `AccessDeniedException` (no permission for the Marketplace actions). The screen then says the model is not enabled in this account and an administrator needs to enable it once. Have an administrator enable it, for example by calling the model once from the Bedrock console. It is enabled when `agreementAvailability` from `aws bedrock get-foundation-model-availability --region us-west-2 --model-id stability.sd3-5-large-v1:0` is `AVAILABLE` (in this account on 2026-11-17, Stable Image Core was `AVAILABLE` and SD3.5 Large `NOT_AVAILABLE`).
+**Prerequisite: enable SD3.5 Large in the account.** Stability models are enabled per account through an AWS Marketplace subscription. The Lambda role has no Marketplace permissions (`aws-marketplace:Subscribe` and the like), so in an account where the model is not enabled, Bedrock returns `AccessDeniedException` (no permission for the Marketplace actions). The screen then says the model is not enabled in this account and an administrator needs to enable it once. Have an administrator enable it by calling the model once from the Bedrock console's playground. It is enabled when `agreementAvailability` from `aws bedrock get-foundation-model-availability --region us-west-2 --model-id stability.sd3-5-large-v1:0` is `AVAILABLE` (in this account on 2026-11-17, Stable Image Core was `AVAILABLE` and SD3.5 Large `NOT_AVAILABLE`).
 
 **Checked on a live sandbox (2026-11-17, models in us-west-2, sandbox in ap-northeast-1)**: with a still from a NASA press conference (a 400 × 225 JPEG, 14 KB) on a throwaway access point, checked from the screen. Each is one observation.
 
@@ -116,6 +116,16 @@ The Lambda role gains `bedrock:InvokeModel` on `stability.sd3-5-large-v1:0` in u
 | Ask for a prompt from "watercolor style, soft colors" (written in Japanese) | In 1.5 s an English prompt and negative prompt were filled in, with one sentence in Japanese on what it chose |
 | Start from the selected image with strength 0.35 | Saved in 11.0 s. The output is 1365 × 768. The original photo stayed almost as it was and did not look like a watercolor. The aspect ratio field was not shown |
 | Then with strength 0.7 | Failed with `AccessDeniedException` (no permission for the Marketplace actions): the prerequisite above was not met. Why the first call went through was not checked |
+
+**After enabling it (2026-11-17 to 18, us-west-2)**: calling `invoke-model` from the CLI as a user with AdministratorAccess was refused with the same `AccessDeniedException` and did not enable it. One call from the Bedrock console's playground set `agreementAvailability` to `AVAILABLE`, and the CLI could call it after that. Then, with the same still and the same prompt (watercolor style), it was called once from the CLI at each strength.
+
+| Strength | Result |
+|---|---|
+| 0.35 | Stayed close to the original photo. Did not look like a watercolor |
+| 0.6 | The background blurred and the person's face began to change into someone else's. Did not look like a watercolor |
+| 0.8 | The person was replaced by a different face and clothing resembling a real person. Did not look like a watercolor |
+
+Starting from a photo of a person, the higher the strength, the more the face was replaced by someone else's, up to a face resembling a real person. The screen says so. The default strength stays 0.35. Whether it changes the style was not established by these three calls. The generated images are not published.
 
 ## Settings
 

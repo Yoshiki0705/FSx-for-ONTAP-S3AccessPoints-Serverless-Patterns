@@ -2198,6 +2198,7 @@ arpResponseSweepNote: "Los bloqueos se levantan por sí solos al vencer el plazo
   ftImageSourceNofile: "Seleccione una imagen en la lista de archivos ({exts}, hasta {mb} MB) para partir de ella.",
   ftImageStrength: "Cuánto alejarse del original: {value}",
   ftImageStrengthhelp: "Más bajo se mantiene cerca del original; más alto redibuja más según el prompt.",
+  ftImageSourcePeople: "Si parte de la foto de una persona, un valor más alto puede sustituir su cara por la de otra, incluso por una parecida a una persona real.",
   ftImageSourceRegionnotice: "La imagen de partida también se procesa fuera de Japón.",
   ftUsecasesIntro: "Guarde las instrucciones que usa a menudo como plantillas. Mientras no las comparta, solo usted puede ver y usar sus casos de uso.",
   ftUsecasesNew: "Nuevo caso de uso",
