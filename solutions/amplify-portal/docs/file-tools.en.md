@@ -29,6 +29,16 @@ The Tools section in the sidebar translates, proofreads and diagrams files on FS
 
 ![A saved use case run on the selected file](screenshots/tools/tools-usecases-ja.png)
 
+The next four were taken on 2026-11-17 on the same sandbox, with sample data placed on a throwaway access point as the input. The CSV is 12 rows of made-up sales, the recording is a fictional meeting made with two Japanese Amazon Polly voices (about 41 seconds), and the video is the first 90 seconds of a NASA press conference ([PACE Prelaunch News Conference](https://images.nasa.gov/details/PACE%20Prelaunch%20News%20Conference)). Each result is from one run and was not edited.
+
+![Run Code. A program computed the monthly totals of the CSV; the totals match the data](screenshots/tools/tools-code-ja.png)
+
+![Minutes. Transcribe wrote the Japanese word for "access rights" with a wrong character that means "ticket", and the minutes kept it](screenshots/tools/tools-minutes-ja.png)
+
+![Video Analysis. The model described the structure of the scenes. The fourth scene is a press conference, which the model called an award ceremony](screenshots/tools/tools-video-analysis-ja.png)
+
+![Video Generation. A 5-second video made from the prompt, played on the screen](screenshots/tools/tools-video-generation-ja.png)
+
 ## File Reads, Writes and Permissions
 
 - **Reading a file**: `functions/file-tools` checks in the same order as file questions (`ask-about-file`): AI use by external callers, the path boundary (`scope_for_caller`), regulated folders (`/dicom/`, `/phi/`, `/pii/`), then data classification. A file outside the boundary is refused before anything is read. Only the first 100 KB is read
