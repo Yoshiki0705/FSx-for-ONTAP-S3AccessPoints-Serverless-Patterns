@@ -13,6 +13,7 @@ import type { Schema } from "../../amplify/data/resource";
 import { useTranslation } from "../i18n";
 import type { TranslationKeys } from "../i18n";
 import { Icon, type IconName } from "./Icon";
+import { exportUseCase, importUseCase, UseCaseImportError } from "../lib/useCaseJson";
 
 const client = generateClient<Schema>();
 
@@ -44,6 +45,10 @@ interface UseCase {
   title: string;
   description?: string;
   template: string;
+  /** Shared with everyone in the organisation. */
+  shared?: boolean;
+  /** The caller's own; a shared one of someone else can be run, copied and exported. */
+  mine?: boolean;
 }
 
 const LANGUAGES = ["ja", "en", "ko", "zh-CN", "zh-TW", "fr", "de", "es", "pt", "it", "id", "th", "vi"] as const;
@@ -85,6 +90,17 @@ async function callTool(action: string, params: Record<string, unknown>, endpoin
   return data;
 }
 
+const IMPORT_ERROR_KEYS: Record<UseCaseImportError["reason"], TranslationKeys> = {
+  notObject: "ftUsecasesImportNotObject",
+  noTitle: "ftUsecasesImportNoTitle",
+  noTemplate: "ftUsecasesImportNoTemplate",
+  tooLong: "ftUsecasesImportTooLong",
+  placeholders: "ftUsecasesImportPlaceholders",
+};
+/** A use case as a GenU-shaped JSON file. */
+function downloadJson(u: { title: string; description?: string; template: string }) {
+  download(`${u.title || "usecase"}.json`, exportUseCase(u), "application/json");
+}
 function download(name: string, content: string, type: string) {
   const url = URL.createObjectURL(new Blob([content], { type }));
   const a = document.createElement("a");
@@ -182,6 +198,8 @@ export function FileTools({ selectedFileKey, selectedFolder, canWrite, canSaveUs
   const [videoTask, setVideoTask] = useState("");
   // Use cases
   const [useCases, setUseCases] = useState<UseCase[]>([]);
+  const [sharedUseCases, setSharedUseCases] = useState<UseCase[]>([]);
+  const [sharedUnavailable, setSharedUnavailable] = useState(false);
   const [editing, setEditing] = useState<Partial<UseCase> | null>(null);
   const [active, setActive] = useState<UseCase | null>(null);
 
@@ -203,7 +221,11 @@ export function FileTools({ selectedFileKey, selectedFolder, canWrite, canSaveUs
   }, []);
 
   const loadUseCases = useCallback(() => {
-    callTool("listUseCases", {}).then((d) => setUseCases((d.useCases as UseCase[]) || [])).catch(() => {});
+    callTool("listUseCases", {}).then((d) => {
+      setUseCases((d.useCases as UseCase[]) || []);
+      setSharedUseCases((d.sharedUseCases as UseCase[]) || []);
+      setSharedUnavailable(d.sharedUnavailable === true);
+    }).catch(() => {});
   }, []);
   useEffect(() => {
     if (tab === "useCases") loadUseCases();
@@ -739,9 +761,29 @@ export function FileTools({ selectedFileKey, selectedFolder, canWrite, canSaveUs
         <section role="tabpanel">
           <p className="rm-hint">{t("ftUsecasesIntro")}</p>
           {canSaveUseCases ? (
-            <button type="button" className="btn-primary" onClick={() => setEditing({ title: "", description: "", template: t("ftUsecasesTemplateexample") })}>{/* i18n-placeholder-checked: {{input}} is the template syntax the user types, shown as is */}
-              <Icon name="plus" className="icon-lead" />{t("ftUsecasesNew")}
-            </button>
+            <div className="ft-actions">
+              <button type="button" className="btn-primary" onClick={() => setEditing({ title: "", description: "", template: t("ftUsecasesTemplateexample") })}>{/* i18n-placeholder-checked: {{input}} is the template syntax the user types, shown as is */}
+                <Icon name="plus" className="icon-lead" />{t("ftUsecasesNew")}
+              </button>
+              <label className="btn-secondary">
+                <Icon name="upload" className="icon-lead" />{t("ftUsecasesImport")}
+                <input type="file" accept=".json,application/json" className="ft-file-input" onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  e.target.value = "";
+                  if (!file) return;
+                  file.text().then((json) => {
+                    const { useCase, ignored } = importUseCase(json);
+                    setError("");
+                    setNotice(ignored.length ? t("ftUsecasesImportIgnored").replace("{fields}", ignored.join(", ")) : "");
+                    setEditing({ ...useCase, shared: false });
+                  }).catch((err) => {
+                    setError(err instanceof UseCaseImportError
+                      ? t(IMPORT_ERROR_KEYS[err.reason]).replace("{placeholders}", err.detail)
+                      : String(err));
+                  });
+                }} />
+              </label>
+            </div>
           ) : <small>{t("ftUsecasesNoRole")}</small>}
           {editing && (
             <div className="ft-editor">
@@ -758,8 +800,18 @@ export function FileTools({ selectedFileKey, selectedFolder, canWrite, canSaveUs
                 <textarea id="ft-uc-template" rows={6} value={editing.template || ""} onChange={(e) => setEditing({ ...editing, template: e.target.value })} />
                 <small>{t("ftUsecasesTemplatehelp")}</small>{/* i18n-placeholder-checked: {{input}} is the template syntax, shown as is */}
               </div>
+              <label className="ft-check">
+                <input type="checkbox" checked={!!editing.shared} onChange={(e) => setEditing({ ...editing, shared: e.target.checked })} />
+                {t("ftUsecasesShare")}
+              </label>
+              <small>{t("ftUsecasesSharehelp")}</small>
               <div className="ft-actions">
-                <button type="button" className="btn-primary" disabled={busy} onClick={() => run(async () => { await callTool("saveUseCase", editing, "useCase"); setEditing(null); loadUseCases(); })}>{t("ftUsecasesSave")}</button>
+                <button type="button" className="btn-primary" disabled={busy} onClick={() => run(async () => {
+                  const { useCaseId, title, description, template, shared } = editing;
+                  await callTool("saveUseCase", { useCaseId, title, description, template, shared: !!shared }, "useCase");
+                  setEditing(null);
+                  loadUseCases();
+                })}>{t("ftUsecasesSave")}</button>
                 <button type="button" className="btn-secondary" onClick={() => setEditing(null)}>{t("ftUsecasesCancel")}</button>
               </div>
             </div>
@@ -770,20 +822,49 @@ export function FileTools({ selectedFileKey, selectedFolder, canWrite, canSaveUs
                 <li key={u.useCaseId}>
                   <div>
                     <strong>{u.title}</strong>
+                    {u.shared && <span className="ft-badge">{t("ftUsecasesShared")}</span>}
                     {u.description && <small>{u.description}</small>}
                   </div>
                   <div className="ft-actions">
                     <button type="button" className="btn-secondary btn-sm" aria-label={t("ftUsecasesRun")} onClick={() => { setActive(u); setResult(null); }}><Icon name="zap" /></button>
                     {canSaveUseCases && <button type="button" className="btn-secondary btn-sm" aria-label={t("ftUsecasesEdit")} onClick={() => setEditing(u)}><Icon name="pencil" /></button>}
                     {canSaveUseCases && <button type="button" className="btn-secondary btn-sm" aria-label={t("ftUsecasesDelete")} onClick={() => run(async () => { await callTool("deleteUseCase", { useCaseId: u.useCaseId }, "useCase"); if (active?.useCaseId === u.useCaseId) setActive(null); loadUseCases(); })}><Icon name="trash" /></button>}
+                    <button type="button" className="btn-secondary btn-sm" aria-label={t("ftUsecasesExport")} onClick={() => downloadJson(u)}><Icon name="download" /></button>
                   </div>
                 </li>
               ))}
             </ul>
           )}
+          {sharedUnavailable && <p className="rm-hint">{t("ftUsecasesSharedUnavailable")}</p>}
+          {sharedUseCases.length > 0 && (
+            <>
+              <h3>{t("ftUsecasesSharedHeading")}</h3>
+              <ul className="ft-usecases">
+                {sharedUseCases.map((u) => (
+                  <li key={u.useCaseId}>
+                    <div>
+                      <strong>{u.title}</strong>
+                      {u.description && <small>{u.description}</small>}
+                    </div>
+                    <div className="ft-actions">
+                      <button type="button" className="btn-secondary btn-sm" aria-label={t("ftUsecasesRun")} onClick={() => { setActive(u); setResult(null); }}><Icon name="zap" /></button>
+                      {canSaveUseCases && <button type="button" className="btn-secondary btn-sm" aria-label={t("ftUsecasesCopy")} onClick={() => setEditing({ title: u.title, description: u.description, template: u.template, shared: false })}><Icon name="copy" /></button>}
+                      <button type="button" className="btn-secondary btn-sm" aria-label={t("ftUsecasesExport")} onClick={() => downloadJson(u)}><Icon name="download" /></button>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </>
+          )}
           {active && (
             <div className="ft-editor">
               <h3>{active.title}</h3>
+              {active.mine === false && (
+                <details>
+                  <summary>{t("ftUsecasesSharedTemplate")}</summary>
+                  <pre className="ft-pre">{active.template}</pre>
+                </details>
+              )}
               {inputBlock}
               <button type="button" className="btn-primary" disabled={busy} onClick={() => run(async () => setResult(await callTool("runUseCase", { useCaseId: active.useCaseId, ...input() })))}>
                 <Icon name="sparkles" className="icon-lead" />{busy ? t("ftRunning") : t("ftUsecasesRun")}
