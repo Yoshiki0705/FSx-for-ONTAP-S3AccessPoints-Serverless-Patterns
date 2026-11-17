@@ -45,5 +45,15 @@ aws dynamodb query --table-name <ChatFeedbackTable の名前> --index-name ByDat
   --expression-attribute-values '{":d":{"S":"2026-11-17"}}'
 ```
 
+## 確認結果
+**実機での確認（2026-11-17、ap-northeast-1）**: この変更を含むツリーを既存の Amplify sandbox にデプロイし、使い捨ての利用者（`storage-admin`、`viewer`）で、画面から 1 回ずつ確かめました。AI エージェントは AI 設定で一時的に有効にし、確認のあとに無効へ戻しました。
+
+| 確かめたこと | 結果 |
+|---|---|
+| チャットで `docs/release-plan.md` を読ませて答えさせ、良くない回答にコメントを付けて送る | 「評価を保存しました」と出た |
+| テーブルの項目 | 評価の項目（`kind` が `rating`、保持 365.0 日、`sourceDocIds` は `docs/release-plan.md` のキーの SHA-256 の先頭 32 桁と一致）と、質問の項目（`kind` が `query`、保持 90.0 日）の 2 つ。利用者 ID はリゾルバーの値 |
+| 管理者の一覧 | 時刻、評価、質問、コメント、モデル、根拠の件数 1 が出た。利用者 ID は出ない |
+| 閲覧ロールの利用者 | 評価のボタンは出て、一覧のボタンは出なかった |
+
 ## 権限
 AgentChat の Lambda のロールに足す権限は、`ChatFeedbackTable` への `dynamodb:PutItem` と `GetItem`、`ByDate` インデックスへの `dynamodb:Query` です。更新と削除の権限は付けません。

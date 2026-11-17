@@ -45,5 +45,15 @@ aws dynamodb query --table-name <name of ChatFeedbackTable> --index-name ByDate 
   --expression-attribute-values '{":d":{"S":"2026-11-17"}}'
 ```
 
+## Results
+**Checked on a live sandbox (2026-11-17, ap-northeast-1)**: a tree with this change was deployed to the existing Amplify sandbox and checked once each from the screen with throwaway users (`storage-admin`, `viewer`). The AI agent was turned on in the AI settings for the check and turned off again afterwards.
+
+| What was checked | Result |
+|---|---|
+| Ask the chat to read `docs/release-plan.md` and answer, then send a bad rating with a comment | "Rating saved" appeared |
+| Items in the table | A rating item (`kind` `rating`, kept 365.0 days, `sourceDocIds` equal to the first 32 hex characters of the SHA-256 of `docs/release-plan.md`) and a question item (`kind` `query`, kept 90.0 days). The user ID is the resolver's |
+| The administrator's list | Time, rating, question, comment, model and 1 source. No user ID |
+| A viewer | Sees the rating buttons, not the list button |
+
 ## Permissions
 The AgentChat Lambda role gains `dynamodb:PutItem` and `GetItem` on `ChatFeedbackTable` and `dynamodb:Query` on the `ByDate` index. No update or delete permission is given.
