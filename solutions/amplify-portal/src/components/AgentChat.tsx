@@ -45,8 +45,22 @@ interface AgentMessage {
   guardrailApplied?: boolean;
   feedback?: "positive" | "negative";
   responseTimeMs?: number;
+  /** The ID a rating refers to, and opaque IDs of the files the answer drew on. */
+  responseId?: string;
+  sourceDocIds?: string[];
+  /** The question this answer replied to, kept with a rating for a shorter time. */
+  query?: string;
 }
 
+interface FeedbackRow {
+  timestamp: string;
+  rating: string;
+  comment: string;
+  query: string;
+  modelId: string;
+  responseId: string;
+  sourceCount: number;
+}
 interface AgentResponse {
   answer: string;
   toolCalls?: ToolCall[];
@@ -54,6 +68,8 @@ interface AgentResponse {
   error?: string;
   blocked?: boolean;
   guardrailApplied?: boolean;
+  responseId?: string;
+  sourceDocIds?: string[];
   approvalRequired?: {
     actionType: string;
     target: string;
@@ -299,6 +315,13 @@ export function AgentChat({
   const [attachedImage, setAttachedImage] = useState<{ data: string; mediaType: string; preview: string } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [agentMode, setAgentMode] = useState<"multi" | "kb" | "agent">("multi");
+  // Ratings are saved only when the table is deployed; otherwise the buttons do not appear.
+  const [feedbackEnabled, setFeedbackEnabled] = useState(false);
+  const [canReviewFeedback, setCanReviewFeedback] = useState(false);
+  const [ratingDraft, setRatingDraft] = useState<{ msgId: string; rating: "positive" | "negative"; comment: string } | null>(null);
+  const [showReview, setShowReview] = useState(false);
+  const [reviewDate, setReviewDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [reviewItems, setReviewItems] = useState<FeedbackRow[] | null>(null);
 
   // Extract referenced files from tool traces
   const referencedFiles = messages
@@ -449,12 +472,58 @@ export function AgentChat({
 
   const generateId = () => `msg-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 
-  // P3: Feedback handler
-  const handleFeedback = (msgId: string, rating: "positive" | "negative") => {
-    setMessages((prev) =>
-      prev.map((m) => (m.id === msgId ? { ...m, feedback: rating } : m))
-    );
-  };
+  useEffect(() => {
+    dispatch("agentQuery", { action: "feedbackConfig", params: {} })
+      .then((r) => {
+        const d = parseResponse<{ enabled?: boolean; canReview?: boolean }>(r);
+        setFeedbackEnabled(!!d?.enabled);
+        setCanReviewFeedback(!!d?.canReview);
+      })
+      .catch(() => setFeedbackEnabled(false));
+  }, []);
+
+  // A rating is saved first and shown as done only once the server says it was saved.
+  async function submitRating() {
+    if (!ratingDraft) return;
+    const msg = messages.find((m) => m.id === ratingDraft.msgId);
+    if (!msg?.responseId) return;
+    try {
+      const r = await dispatch("agentQuery", {
+        action: "submitFeedback",
+        params: {
+          responseId: msg.responseId,
+          rating: ratingDraft.rating,
+          comment: ratingDraft.comment.slice(0, 1000),
+          query: (msg.query || "").slice(0, 500),
+          modelId: msg.model || "",
+          sourceDocIds: msg.sourceDocIds || [],
+        },
+      });
+      const d = parseResponse<{ saved?: boolean; error?: string }>(r);
+      if (!d?.saved) {
+        setError(d?.error || t("acFeedbackFailed"));
+        return;
+      }
+      const rating = ratingDraft.rating;
+      setMessages((prev) => prev.map((m) => (m.id === msg.id ? { ...m, feedback: rating } : m)));
+      setRatingDraft(null);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    }
+  }
+
+  async function loadReview(date: string) {
+    setReviewItems(null);
+    try {
+      const r = await dispatch("agentQuery", { action: "listFeedback", params: { date } });
+      const d = parseResponse<{ items?: FeedbackRow[]; error?: string }>(r);
+      if (d?.error) setError(d.error);
+      setReviewItems(d?.items || []);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+      setReviewItems([]);
+    }
+  }
 
   const sendMessage = useCallback(async (text?: string) => {
     const messageText = (text || input).trim();
@@ -524,6 +593,7 @@ export function AgentChat({
             content: data.answer || "", timestamp: Date.now(),
             toolCalls: data.toolCalls, model: data.model,
             guardrailApplied: data.guardrailApplied, responseTimeMs,
+            responseId: data.responseId, sourceDocIds: data.sourceDocIds, query: messageText,
           }]);
         }
       }
@@ -568,8 +638,41 @@ export function AgentChat({
           {messages.length > 0 && (
             <button className="btn-sm" onClick={clearHistory} title={t("agentClear")}><Icon name="trash" /></button>
           )}
+          {feedbackEnabled && canReviewFeedback && (
+            <button className="btn-sm" aria-label={t("acFeedbackReview")} title={t("acFeedbackReview")} onClick={() => { const next = !showReview; setShowReview(next); if (next) loadReview(reviewDate); }}><Icon name="thumbs-up" /></button>
+          )}
         </div>
       </div>
+
+      {showReview && (
+        <div className="agent-feedback-review">
+          <div className="agent-feedback-review-head">
+            <strong>{t("acFeedbackReview")}</strong>
+            <label>
+              {t("acFeedbackDate")}
+              <input type="date" value={reviewDate} onChange={(e) => { setReviewDate(e.target.value); loadReview(e.target.value); }} />
+            </label>
+          </div>
+          <small>{t("acFeedbackReviewNote")}</small>
+          {reviewItems === null ? <p>{t("loading")}</p> : reviewItems.length === 0 ? <p>{t("acFeedbackNone")}</p> : (
+            <table className="agent-feedback-table">
+              <thead><tr><th>{t("acFeedbackTime")}</th><th>{t("acFeedbackRating")}</th><th>{t("acFeedbackQuestion")}</th><th>{t("acFeedbackComment")}</th><th>{t("acFeedbackModel")}</th><th>{t("acFeedbackSources")}</th></tr></thead>
+              <tbody>
+                {reviewItems.map((r) => (
+                  <tr key={`${r.timestamp}-${r.responseId}`}>
+                    <td>{r.timestamp.slice(11, 16)}</td>
+                    <td><Icon name={r.rating === "positive" ? "thumbs-up" : "thumbs-down"} className="icon-lead" />{t(r.rating === "positive" ? "acGoodResponse" : "acBadResponse")}</td>
+                    <td>{r.query}</td>
+                    <td>{r.comment}</td>
+                    <td>{r.modelId}</td>
+                    <td>{r.sourceCount}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+      )}
 
       {/* Which stored definition is running, and the way back to the modes. Shown
           instead of the mode selector rather than beside it: a stored agent supplies
@@ -766,15 +869,29 @@ export function AgentChat({
             )}
 
             {/* P3: Feedback Buttons */}
-            {msg.role === "assistant" && !msg.feedback && (
+            {feedbackEnabled && msg.role === "assistant" && msg.responseId && !msg.feedback && ratingDraft?.msgId !== msg.id && (
               <div className="agent-feedback">
-                <button className="feedback-btn" onClick={() => handleFeedback(msg.id, "positive")} title={t("acGoodResponse")}><Icon name="thumbs-up" /></button>
-                <button className="feedback-btn" onClick={() => handleFeedback(msg.id, "negative")} title={t("acBadResponse")}><Icon name="thumbs-down" /></button>
+                <button className="feedback-btn" onClick={() => setRatingDraft({ msgId: msg.id, rating: "positive", comment: "" })} title={t("acGoodResponse")} aria-label={t("acGoodResponse")}><Icon name="thumbs-up" /></button>
+                <button className="feedback-btn" onClick={() => setRatingDraft({ msgId: msg.id, rating: "negative", comment: "" })} title={t("acBadResponse")} aria-label={t("acBadResponse")}><Icon name="thumbs-down" /></button>
+              </div>
+            )}
+            {ratingDraft?.msgId === msg.id && (
+              <div className="agent-feedback-form">
+                <label htmlFor={`fb-${msg.id}`}>
+                  <Icon name={ratingDraft.rating === "positive" ? "thumbs-up" : "thumbs-down"} className="icon-lead" />
+                  {t("acFeedbackCommentLabel")}
+                </label>
+                <textarea id={`fb-${msg.id}`} rows={2} maxLength={1000} value={ratingDraft.comment} onChange={(e) => setRatingDraft({ ...ratingDraft, comment: e.target.value })} />
+                <small>{t("acFeedbackPrivacy")}</small>
+                <div className="agent-feedback-actions">
+                  <button className="btn-primary btn-sm" onClick={submitRating}>{t("acFeedbackSend")}</button>
+                  <button className="btn-secondary btn-sm" onClick={() => setRatingDraft(null)}>{t("cancel")}</button>
+                </div>
               </div>
             )}
             {msg.feedback && (
               <div className="agent-feedback-done">
-                <Icon name={msg.feedback === "positive" ? "thumbs-up" : "thumbs-down"} className="icon-lead" />Thanks!
+                <Icon name={msg.feedback === "positive" ? "thumbs-up" : "thumbs-down"} className="icon-lead" />{t("acFeedbackSaved")}
               </div>
             )}
           </div>

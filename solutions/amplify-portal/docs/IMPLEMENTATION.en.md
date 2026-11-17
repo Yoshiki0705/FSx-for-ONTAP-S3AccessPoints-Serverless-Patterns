@@ -381,4 +381,5 @@ Lambda to a live ONTAP cluster is not covered.
 | [User Guide](../../../docs/en/portal-user-guide.md) | End-user documentation (8 languages) |
 | [Compliance Guide](../../../docs/en/portal-compliance-guide.md) | Auditor-facing verification procedures |
 | [AI Agent Demo Guide](./ai-agent-demo-guide.en.md) | E2E agent chat demonstration |
+| [Ratings of AI Chat Answers](./chat-feedback.en.md) | Fields stored, retention, how to review |
 | [Admin Demo Guide](../../../docs/en/admin-resource-management-demo.md) | Admin operations walkthrough |

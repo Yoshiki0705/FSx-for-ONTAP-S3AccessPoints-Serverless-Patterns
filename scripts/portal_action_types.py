@@ -215,6 +215,8 @@ LISTS: dict[str, str] = {
     "aggregates": "string[]",
     # A page of object keys, rendered in one call rather than one call per row.
     "keys": "string[]",
+    # Opaque IDs of the files a chat answer drew on, carried back with its rating.
+    "sourceDocIds": "string[]",
     "roRule": "string[]",
     "rwRule": "string[]",
     "superuser": "string[]",
