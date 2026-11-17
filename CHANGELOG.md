@@ -20,6 +20,7 @@ and this project adheres to [Conventional Commits](https://www.conventionalcommi
 - **File portal: wrong pattern names.** `UC3_HEALTHCARE_IMAGING`, `UC10_MEDIA_PRODUCTION` and `UC15_MANUFACTURING_QC` named industries that do not match the pattern carrying that number (UC3 is manufacturing analytics, UC10 construction BIM, UC15 defense satellite). They are removed from the `ProcessingPattern` enum; job history rows keep the old string. Before this change the selected pattern was used only in the execution name, so every choice started the same state machine
 
 ### Changed
+- **File portal: video analysis checks whether a request needs the audio.** Nova's video understanding sees frames only, so a request about what was said got an invented answer. The text model now judges each request first; only a request that needs the audio gets a note in front of it, and the model then says the audio is not analyzed and answers from the picture. The note is not added to requests the picture answers, because the note in every request made the model refuse to read on-screen text. 19 of 20 sample requests were judged as intended (`solutions/amplify-portal/docs/file-tools.md`)
 - **Directory restructuring**: All 42 pattern directories moved into `solutions/` category hierarchy
   - `solutions/industry/` (28 UC patterns)
   - `solutions/sap/erp-adjacent/`

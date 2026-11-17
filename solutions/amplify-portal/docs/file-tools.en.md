@@ -71,7 +71,7 @@ When enabled, a Video analysis tab appears. Select a video (mp4, mov, webm, mkv)
 
 AppSync waits at most 30 s, so **one call (`video`) has to finish within 25 s, and only files too large for that are refused.** The model call has a 20 s read timeout and the whole action is cut at 25 s; both answer that the analysis did not finish in time. The size limit is `VIDEO_ANALYSIS_MAX_MB` (default 50). A larger video is refused before the model is called with `file too large for synchronous analysis (limit N MB)`. The basis for the limit is the measurement in "Results for Video Analysis" below. An asynchronous route for videos that do not fit is left for a separate change, if this limit proves too small in practice.
 
-**The audio is not analyzed.** Nova 2 Lite's video understanding uses the frames only (one per second for videos of 16 minutes or less) and does not process the audio track ([Amazon Nova 2 multimodal understanding](https://docs.aws.amazon.com/nova/latest/nova2-userguide/using-multimodal-models.html), "No audio support"). Use Minutes when what was said matters. The screen shows the limit, that the audio is not analyzed, and that text on screen can lose its last character from one run to the next, so the original video should be checked when accuracy matters. The Lambda role gains only `bedrock:InvokeModel` on the Nova 2 Lite inference profile and the Tokyo and Osaka foundation models. Reading the video uses the existing access point permission. The viewer role can use it. Nothing is written to a user's folder.
+**The audio is not analyzed.** Nova 2 Lite's video understanding uses the frames only (one per second for videos of 16 minutes or less) and does not process the audio track ([Amazon Nova 2 multimodal understanding](https://docs.aws.amazon.com/nova/latest/nova2-userguide/using-multimodal-models.html), "No audio support"). Use Minutes when what was said matters. To keep the model from inventing speech, the text model (`TOOLS_MODEL_ID`) first judges whether the request needs the audio; only when it does, a note goes in front of the request: the audio is not given to you, say first that it is not analyzed, and answer only from what is seen. Requests the picture answers (on-screen text, counts, actions) get no note, because the note in every request made the model refuse to read on-screen text as well. A failed check adds the note. The screen shows the limit, that the audio is not analyzed, and that text on screen can lose its last character from one run to the next, so the original video should be checked when accuracy matters. The Lambda role gains only `bedrock:InvokeModel` on the Nova 2 Lite inference profile and the Tokyo and Osaka foundation models. Reading the video uses the existing access point permission. The viewer role can use it. Nothing is written to a user's folder.
 
 ## Video Generation
 When enabled, a Video generation tab appears. Type a prompt and choose an aspect ratio (16:9, 9:16) and a resolution (540p, 720p), and `luma.ray-v2:0` makes a 5-second video. **This model exists only in us-west-2 (of 12 Regions checked with `list-foundation-models` on 2026-11-16), so the prompt and the generated video are processed and stored outside Japan.** The screen says so before anything is sent (the same pattern as image generation). Only values that were actually run are allowed. The 2,000-character prompt cap is this tool's own.
@@ -211,7 +211,16 @@ Set through `tools` in `amplify/portal-config.ts` or environment variables. An e
 
 The remaining 2% or so went to the wrong person. Stretches where two or more people speak at once (124 s) are not counted. Setting the maximum to 4 or to 10 gave the same result.
 
-**Not checked**: a real Japanese meeting with a few people taking short, overlapping turns (the press conference above is one person speaking at length); scoring a Japanese recording with reference speaker labels; recordings over an hour.
+**Checked on a Japanese recording with short alternating turns (2026-11-17)**: the audio of the [party leaders' debate of 21 April 2010 (joint review of the Committee on Fundamental National Policies)](https://commons.wikimedia.org/wiki/File:%E7%B7%8F%E7%90%86%E3%81%AE%E5%8B%95%E3%81%8D-%E5%9B%BD%E5%AE%B6%E5%9F%BA%E6%9C%AC%E6%94%BF%E7%AD%96%E5%A7%94%E5%93%A1%E4%BC%9A%E5%90%88%E5%90%8C%E5%AF%A9%E6%9F%BB%E4%BC%9A%EF%BC%88%E5%85%9A%E9%A6%96%E8%A8%8E%E8%AB%96%EF%BC%89-%E5%B9%B3%E6%88%9022%E5%B9%B44%E6%9C%8821%E6%97%A5.webm) published by the Prime Minister's Office (Wikimedia Commons, CC BY 3.0, 51 min 27 s), run with `ja-JP`. It has four speakers (the chair, the Prime Minister and two party leaders) over 51 turns, including short interruptions by the chair. The reference is the Diet record of the same meeting, with speakers, from the [Diet record search API](https://kokkai.ndl.go.jp/api.html). The record has no times, so its text was aligned with the transcript (fillers and punctuation removed), and the share of aligned characters whose speaker matched was counted.
+
+| Maximum speakers | Speakers found | Record characters aligned | Aligned characters with the right speaker | Time |
+|---|---|---|---|---|
+| 4 | 4 | 95.0% (13,064 of 13,756) | 99.9% | about 312 s |
+| 10 | 4 | 95.0% | 99.9% | about 296 s |
+
+Per speaker: the chair 99.2%, the Prime Minister 100%, the two party leaders 99.8% and 99.9%. The minutes followed the record on the agenda and the points (relocating Futenma, the Nuclear Security Summit, political funding), and wrote decisions and action items as "none recorded". The names of the two party leaders were misheard, and the errors carried into the minutes.
+
+**Limits of the reading**: this is a format where the chair calls on one person at a time, with almost no simultaneous speech. Recordings where several people talk at once, like an internal working meeting, remain unchecked, as with the overlapped stretches left out of the AMI scoring above.
 
 ## Results for Video Analysis
 **Checked (automated tests)**: `functions/file-tools/tests/test_file_tools.py` and `tests/components/FileTools.test.tsx`, with the model and S3 stubbed.
@@ -263,7 +272,19 @@ The remaining 2% or so went to the wrong person. Stretches where two or more peo
 | Summary | The setting (news conference, satellite image behind, flags, logos) matched the footage. What was said was invented ("speaker 1 explains ...") |
 | Three main points of what is said (twice before and twice after the system-prompt note) | **Invented all four times**, unrelated to the talk (PACE is an Earth-observing satellite; the answers spoke of "searching for water on other worlds") |
 
-**Dealing with invented speech**: the model gets no audio, so it invents an answer when asked what was said. Writing "the audio is not given to you; do not describe speech" in the system prompt did not stop that (4 of 4 runs). Adding the same note to the user message made it answer "the audio is not analyzed" for speech, but it then **refused to write out the on-screen text as well** (4 of 4 runs across two wordings). Reading text on screen is worth more in this tool, so the user-message note is not used; the system prompt and the screen's "the audio is not analyzed; use Minutes for what was said" carry it. **Answers about what was said have no basis, as the screen states.**
+**Dealing with invented speech (changed 2026-11-17)**: the model gets no audio, so it invents an answer when asked what was said. A note in the system prompt did not stop that (4 of 4). The same note in every user message did, but the model then **refused to write out on-screen text as well** (4 of 4, two wordings). So the text model now judges first whether the request needs the audio, and the note goes in only when it does.
+
+| What was checked | Result |
+|---|---|
+| The judgement, on 20 requests in Japanese and English | 19 as intended. Only "transcribe the captions" was judged to need the audio (an error on the side of adding the note) |
+| "Three main points of what is said" on the NASA Q&A clip above (2 runs) | Both said the audio is not available instead of inventing speech, and described what is seen (a panel of six, the backdrop) |
+| A summary of the same clip (2 runs) | Began by saying the audio cannot be analyzed (in one run that sentence came in English), then summarized from the picture. No specific speech was invented (a vague guess such as "they discuss science and space exploration" remained) |
+| On-screen text of the same clip (2 runs) | `PACE` and `PACE / NASA`. No note was added, and reading was unchanged |
+| Time for the judgement | One text-model call. The whole analysis took 9.5 to 14.2 s, inside the 25 s budget |
+
+With the note, on the surveillance footage below (MEVA) the model answered the summary and speech requests with "I can't respond, for privacy" (4 of 4). That fails on the safe side compared with invented speech, but gives no answer.
+
+**Answers about what was said do not come from the audio.** As the screen says, use Minutes for what was said.
 
 **Checked on other kinds of footage (2026-11-17, ap-northeast-1)**: one run per request, 3.6 to 11.4 s each.
 
@@ -280,7 +301,15 @@ The remaining 2% or so went to the wrong person. Stretches where two or more peo
 
 **Reading it**: English captions were read exactly, and the overall description of a scene was right. Japanese text was misread; AWS's documentation also says the understanding of multilingual images and video frames is limited. On every kind of footage the model sometimes added things that are not in the frame. On the screen recording it invented a step and repeated a line. The screen's "check against the original video when accuracy matters" is there for results like these.
 
-**Not checked**: surveillance-camera footage (at night, low resolution, long); a way to make the model itself reliably stop inventing speech.
+**Checked on surveillance footage (2026-11-17)**: [MEVA](https://mevadata.org/) (CC BY 4.0; an IARPA dataset of security-camera video with labelled activities).
+
+| Footage | Result |
+|---|---|
+| One example clip per activity, ten in all (abandoning a package, theft, closing a trunk, an embrace, carrying something heavy, loading a vehicle, handing over an object, people talking, a U-turn, sitting down; 1920×1080, 6 to 30 s), asked "in one sentence, what are the people and vehicles doing" | The labelled activity was named for 2 clips (the embrace, sitting down). The rest got a scene description ("people waiting on benches", "cars parked") with no mention of the package left behind or the theft. 2.8 to 4.6 s |
+| The same ten clips scaled down to 320×180 | The labelled activity was named for 1 clip (sitting down). 2.0 to 2.9 s |
+| Five minutes of a bus waiting area (converted to 1280×720, 34.7 MB; labelled activities: reading a document, texting, purchasing, handing over an object), asked "what is each person doing" (2 runs) | The first timed out at the 25 s budget. The second (17.1 s) named reading and looking at phones, missed purchasing and the hand-over, and kept repeating the same item with more and more people |
+
+**Reading it**: the scene descriptions were broadly right, but short events (a package left behind, a theft, a hand-over) were rarely caught; the tool does not suit finding events in security footage. Five minutes is at the edge of the 25 s budget, and the answer can turn into a repeated line. Night-time footage was not tried, for want of usable open data.
 
 ## Results for Video Generation
 **Checked (automated tests)**: `functions/file-tools/tests/test_file_tools.py`, `tests/components/FileTools.test.tsx` and `tests/infrastructure/backend-assertions.test.ts`.

@@ -766,6 +766,42 @@ def video_prompt(language: str) -> str:
     )
 
 
+AUDIO_CHECK_PROMPT = (
+    "You decide one thing about a request that a user makes about a video. The model that answers it sees "
+    "the video's frames only and cannot hear the audio.\n"
+    "Reply YES if a good answer needs to know what is said or heard in the video (speech, dialogue, what "
+    "someone explains, a summary of a talk or meeting, sounds). Reply NO if it can be answered from the "
+    "picture alone (text on screen, captions, people, objects, actions, layout).\n"
+    "Reply with YES or NO only.\n" + DATA_RULE
+)
+AUDIO_NOTE = (
+    "(Note: the audio of this video is not available to you. Begin your answer with one sentence saying "
+    "that the audio is not analyzed. Then answer from what is seen in the frames: the setting, the people, "
+    "their actions and any text on screen. Do not guess what anyone says.)\n"
+)
+
+
+def audio_note(language: str) -> str:
+    return AUDIO_NOTE + f"(Answer in the language with this code: {language}.)\n"
+
+
+def needs_audio(task: str) -> bool:
+    """Whether answering `task` needs the audio, judged by the text model before the video call.
+
+    Nova's video understanding uses the frames only, so a request about speech gets an invented answer.
+    A note against that in the system prompt did not stop it; the same note in the user turn did, but it
+    also made the model refuse to read on-screen text. So the note goes into the user turn only for the
+    requests that need the audio. A failed check counts as "needs the audio": the cost of a wrong note is
+    a more cautious answer, the cost of a missing one is an invented one.
+    """
+    try:
+        verdict = generate_text(AUDIO_CHECK_PROMPT, wrap_input(task), max_tokens=5, temperature=0)
+    except Exception:  # noqa: BLE001 - see above: fail towards the note
+        logger.warning("The audio check failed; adding the note", exc_info=True)
+        return True
+    return not verdict.strip().upper().startswith("NO")
+
+
 def video_request(event: dict[str, Any]) -> tuple[str, str]:
     task = str(event.get("task") or "Summarize this video.").strip()
     if len(task) > MAX_TASK_CHARS:
@@ -793,7 +829,7 @@ def analyze_video(groups: list[str], key: str, task: str, language: str, max_byt
                 "role": "user",
                 "content": [
                     {"video": {"format": video_format, "source": {"s3Location": {"uri": f"s3://{alias}/{key}"}}}},
-                    {"text": wrap_input(task)},
+                    {"text": (audio_note(language) if needs_audio(task) else "") + wrap_input(task)},
                 ],
             }
         ],
