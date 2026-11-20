@@ -552,7 +552,7 @@ aws ec2 describe-route-tables \
 | `docs/screenshots/volumes-panel.png` | ONTAP の実データを表示する Volume Manager（ボリュームタイプ、実データ / Snapshot / 予約超過に分けた使用率、FlexGroup 行のリバランス操作） |
 | `docs/screenshots/volume-rebalance-panel.png` | FlexGroup の容量リバランス（状態、ボリューム全体と最も偏ったコンスティチュエントの偏り、コンスティチュエント別使用量、下限 30 分の最大実行時間） |
 | `docs/screenshots/storage-efficiency-panel.png` | Storage Efficiency ダッシュボード |
-| `docs/screenshots/08-arp-admin-panel-en.png` | 9 ボリュームの ARP/AI 管理 |
+| `docs/screenshots/08-arp-admin-panel-en.png` | 13 ボリュームの ARP/AI 管理（有効 2、無効 11。うち 1 つは ARP を有効にした検証用ボリューム） |
 | `docs/screenshots/snapshots-version-history.png` | hourly/weekly/daily の Snapshot 履歴（SVM → ボリュームのスコープバー、容量との関係の補足付き） |
 | `docs/screenshots/snapshot-lock-confirm.png` | Snapshot ロックの確認ダイアログ（保持期間の指定と不可逆である旨の明示） |
 | `docs/screenshots/quota-manager.png` | ボリュームセレクターとルール表付きの Quota Manager |

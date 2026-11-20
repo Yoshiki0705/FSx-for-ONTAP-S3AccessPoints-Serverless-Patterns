@@ -53,19 +53,25 @@ ONTAP REST API（管理 LIF、TCP/443）
    - 脅威評価: 色分けされたバナー（緑 = なし、赤 = 高）
 
 ### Step 2: 検知を誘発する
-
-ARP を有効にした実環境がある場合は、テスト用の操作を実行します。
+ARP を有効にした実環境がある場合は、テスト用の操作を実行します。ARP が反応する条件は、高エントロピーのデータ書き込みと、そのボリュームで初めて見る拡張子の出現です。ONTAP 9.19.1P4 の既定では、48 時間以内に初めて見る拡張子が 5 個以上になると通知対象になりました。1 種類の拡張子へ大量にリネームするだけでは条件を満たしません。
 
 ```bash
-# 同じボリュームをマウントしている NFS クライアントで実行:
-# ランサムウェア様の拡張子で大量にリネームする
-for i in $(seq 1 50); do
-  touch /mnt/fsxn/test_file_$i.docx
-  mv /mnt/fsxn/test_file_$i.docx /mnt/fsxn/test_file_$i.docx.encrypted
+# 検証専用の新しいボリュームを NFS でマウントしたクライアントで実行する（既存データのあるボリュームでは実行しない）
+mkdir -p /mnt/arp/test_dataset && cd /mnt/arp/test_dataset
+for i in $(seq 1 120); do seq 1 400 | sed "s/^/doc $i line /" > file_$i.txt; done   # 通常のテキスト
+sync; sleep 20
+n=0; for f in file_*.txt; do                                                           # 中身を乱数にして、25 種類の新しい拡張子へ変える
+  n=$((n+1)); head -c 65536 /dev/urandom > "$f"; mv "$f" "${f%.txt}.enc$((n % 25))"
 done
 ```
 
-数分後、ARP がパターンを検知し、脅威レベルが `moderate` または `high` に変わります。
+- `[verified 2026-11-20 / ap-northeast-1, ONTAP 9.19.1P4, NFS v4.1]` 上のコマンドで、ボリュームの `anti_ransomware.attack_probability` が `none` から `moderate` に変わりました。ポータルの ARP/AI 画面は、脅威評価「中 — 確認推奨」と、インシデント対応アクションの赤い警告帯を表示しました。書き込みから最初の確認までは約 15 分以内でした。分単位の測定はしていません。
+- 検知時に ONTAP が `Anti_ransomware_attack_backup.<日時>` スナップショットを自動で作成しました。有効化の直後には `Anti_ransomware_periodic_backup.<日時>` も作られます。どちらも所有者が `anti_ransomware_backup` で、保持期限は作成の約 20 日後でした。ボリュームのスナップショットロックは無効のままです。
+- 同じ検証で、ARP の疑いをクリアしてからボリュームを削除でき、これらのスナップショットが残っていても削除は妨げられませんでした。
+
+![ポータルの ARP/AI 画面。対象ボリュームは検証用の arpdemo01。状態は「有効 — AI 駆動の保護が有効」、脅威評価は「中 — 確認推奨」で、インシデント対応アクションの上に「脅威が検知されています」の警告が出ている](../../solutions/amplify-portal/docs/screenshots/portal-arp-status-detected.png)
+
+NetApp は、DII Workload Security のエージェントに同梱する攻撃シミュレーション用スクリプト（`create_dataset` / `simulate_attack`）を [Simulating File Tampering](https://docs.netapp.com/us-en/data-infrastructure-insights/concept_cs_attack_simulator.html) で案内しています。このガイドでは、エージェントを使わず上のコマンドで検証しました。
 
 > **実際の ARP がない場合**: Step 3 に進んでかまいません。封じ込めアクションは脅威レベルに関係なく実行できます。状態表示の下に出ています。
 

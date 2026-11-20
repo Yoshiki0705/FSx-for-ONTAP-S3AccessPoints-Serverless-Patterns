@@ -53,19 +53,25 @@ ONTAP REST API (management LIF, TCP/443)
    - Threat Assessment: color-coded banner (green = none, red = high)
 
 ### Step 2: Simulate a Threat Detection
-
-If you have a live environment with ARP enabled, trigger test activity:
+If you have a live environment with ARP enabled, trigger test activity. ARP reacts to high-entropy writes and to file extensions it has not seen on that volume before. With the ONTAP 9.19.1P4 defaults, five or more never-seen extensions within 48 hours were enough to be flagged. Renaming many files to a single extension does not meet the condition.
 
 ```bash
-# On an NFS client connected to the same volume:
-# Rapidly rename many files with ransomware-like extensions
-for i in $(seq 1 50); do
-  touch /mnt/fsxn/test_file_$i.docx
-  mv /mnt/fsxn/test_file_$i.docx /mnt/fsxn/test_file_$i.docx.encrypted
+# On an NFS client that mounts a NEW, test-only volume (do not run this on a volume that holds real data):
+mkdir -p /mnt/arp/test_dataset && cd /mnt/arp/test_dataset
+for i in $(seq 1 120); do seq 1 400 | sed "s/^/doc $i line /" > file_$i.txt; done   # ordinary text
+sync; sleep 20
+n=0; for f in file_*.txt; do                                                           # replace content with random bytes, move to 25 new extensions
+  n=$((n+1)); head -c 65536 /dev/urandom > "$f"; mv "$f" "${f%.txt}.enc$((n % 25))"
 done
 ```
 
-After a few minutes, ARP should detect the pattern and the threat level will change to `moderate` or `high`.
+- `[verified 2026-11-20 / ap-northeast-1, ONTAP 9.19.1P4, NFS v4.1]` After the commands above, the volume's `anti_ransomware.attack_probability` changed from `none` to `moderate`. The portal's ARP/AI screen showed the threat assessment "Medium — review recommended" and a red banner above the incident response actions. The first check came within about 15 minutes of the writes; I did not measure the delay more finely.
+- On detection, ONTAP created an `Anti_ransomware_attack_backup.<timestamp>` snapshot by itself. Enabling ARP also created `Anti_ransomware_periodic_backup.<timestamp>`. Both are owned by `anti_ransomware_backup` and expired about 20 days after creation. Snapshot locking on the volume stayed disabled.
+- In the same run, the volume could be deleted after clearing the suspects, and those snapshots did not block the deletion.
+
+![The portal's ARP/AI screen. The target volume is the test volume arpdemo01. The status is "Enabled - AI-driven protection active", the threat assessment is "Medium - review recommended", and a "Threat detected" warning appears above the incident response actions](../../solutions/amplify-portal/docs/screenshots/portal-arp-status-detected.png)
+
+NetApp documents an attack-simulation script bundled with the DII Workload Security agent (`create_dataset` / `simulate_attack`) in [Simulating File Tampering](https://docs.netapp.com/us-en/data-infrastructure-insights/concept_cs_attack_simulator.html). This guide verified the commands above instead, without the agent.
 
 > **Without live ARP**: Skip to Step 3 — the containment actions work regardless of threat level. The UI shows them below the status section.
 

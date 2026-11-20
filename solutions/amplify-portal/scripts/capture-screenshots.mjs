@@ -38,6 +38,7 @@ import { dirname, join, resolve } from "node:path";
 
 const DESKTOP = { width: 1512, height: 805 };
 const MOBILE = { width: 390, height: 844 };
+const TALL = { width: 1512, height: 1250 };
 const WELCOME_KEY = "portal-welcome-dismissed";
 const LOADING = /(読み込み中|Loading\.\.\.|로딩 중|加载中|載入中|Chargement\.\.\.|Laden\.\.\.|Cargando\.\.\.)/;
 /** Documentation address ranges (RFC 5737) and the loopback address are not leaks. */
@@ -158,6 +159,71 @@ REPLACE.push(
   [`${DEMO}/portal-lock-connected.png`, { hash: "lock" }],
   [`${DEMO}/portal-arp-status-connected.png`, { hash: "arp" }],
 );
+// Lock section tabs. The tab buttons carry the English product names in every language.
+const lockTab = (name) => async (page) => {
+  await page.getByRole("tab", { name }).first().click();
+  await page.waitForTimeout(800);
+};
+// Pick a volume in the SVM/volume selector of the lock and ARP sections.
+const pickVolume = (svm, volume) => async (page) => {
+  const selects = page.locator("select");
+  await selects.nth(0).selectOption({ label: svm });
+  await page.waitForTimeout(2500);
+  const value = await selects.nth(1).evaluate(
+    (el, v) => [...el.options].find((o) => o.text.startsWith(`${v} `) || o.text === v)?.value,
+    volume,
+  );
+  if (value === undefined) throw new Error(`volume ${volume} not in the selector`);
+  await selects.nth(1).selectOption(value);
+  await page.waitForTimeout(4000);
+};
+// Open the containment confirmation without running it: the confirm row is shown, "実行する" is never clicked.
+const containConfirm = async (page) => {
+  await pickVolume("fsxsvm01", "arpdemo01")(page);
+  await page.getByLabel("ドメイン", { exact: true }).fill("CORP");
+  await page.getByLabel("ユーザー名", { exact: true }).fill("testuser");
+  await page.getByLabel("クライアント IP", { exact: true }).fill("203.0.113.99");
+  await page.getByLabel("理由", { exact: true }).fill("ARP/AI が高確率のランサムウェアを検知");
+  await page.getByRole("button", { name: /脅威封じ込め/ }).click();
+  await page.waitForTimeout(500);
+  await page.getByText("どういうときに使うか").first().evaluate((el) => {
+    el.style.scrollMarginTop = "80px";
+    el.scrollIntoView({ block: "start" });
+  });
+  await page.waitForTimeout(300);
+};
+// Open the snapshot lock dialog on the first snapshot and stop there (nothing is confirmed).
+const snapshotLockDialog = async (page) => {
+  await page.locator("table button", { hasText: /^\s*ロック\s*$/ }).first().click();
+  await page.waitForTimeout(600);
+};
+REPLACE.push(
+  [`docs/screenshots/arp-containment-confirm.png`, { hash: "arp", viewport: "tall", act: containConfirm }],
+  [`docs/screenshots/08-arp-admin-panel-en.png`, { hash: "resources", lang: "en", act: clickCard("ARP/AI Protection") }],
+  [`docs/screenshots/snapshot-lock-confirm.png`, { hash: "snapshots", act: snapshotLockDialog }],
+  [`${SHOTS}/lock-dialog-open.png`, { hash: "snapshots", act: snapshotLockDialog }],
+  [`${SHOTS}/snapshots-lock-column-dash.png`, { hash: "snapshots" }],
+  [`${SHOTS}/snapshots-lock-column.png`, { hash: "snapshots", act: pickVolume("fsxsvm01", "arpdemo01") }],
+  [`${SHOTS}/portal-arp-status-detected.png`, { hash: "arp", act: pickVolume("fsxsvm01", "arpdemo01") }],
+  [`${SHOTS}/lock-panel-snaplock.png`, { hash: "lock" }],
+  [`${SHOTS}/lock-panel-tamperproof.png`, { hash: "lock", act: lockTab(/Tamperproof Snapshot/) }],
+  [`${SHOTS}/portal-lock-tamperproof.png`, { hash: "lock", act: lockTab(/Tamperproof Snapshot/) }],
+  [`${SHOTS}/lock-panel-s3objectlock.png`, { hash: "lock", act: lockTab(/S3 Object Lock/) }],
+  [`${SHOTS}/portal-lock-s3-objectlock.png`, { hash: "lock", act: lockTab(/S3 Object Lock/) }],
+  [
+    `${SHOTS}/lock-panel-s3objectlock-config.png`,
+    {
+      hash: "lock",
+      act: async (page) => {
+        await lockTab(/S3 Object Lock/)(page);
+        await page.getByRole("button", { name: /保持設定を変更/ }).click();
+        await page.waitForTimeout(800);
+      },
+    },
+  ],
+  [`${DEMO}/portal-lock-tamperproof.png`, { hash: "lock", act: lockTab(/Tamperproof Snapshot/) }],
+  [`${DEMO}/portal-lock-s3-objectlock.png`, { hash: "lock", act: lockTab(/S3 Object Lock/) }],
+);
 
 // --- Arguments ------------------------------------------------------------------
 const argv = process.argv.slice(2);
@@ -267,10 +333,10 @@ try {
   let page = null;
   let key = "";
   for (const [name, o] of ordered) {
-    const viewport = o.viewport === "mobile" ? MOBILE : DESKTOP;
+    const viewport = o.viewport === "mobile" ? MOBILE : o.viewport === "tall" ? TALL : DESKTOP;
     const lang = o.lang ?? "ja";
     const theme = o.theme ?? "light";
-    const k = `${viewport.width}/${lang}/${theme}`;
+    const k = `${viewport.width}x${viewport.height}/${lang}/${theme}`;
     if (k !== key) {
       if (ctx) await ctx.close();
       ctx = await browser.newContext({ viewport, storageState: state, isMobile: o.viewport === "mobile", hasTouch: o.viewport === "mobile" });

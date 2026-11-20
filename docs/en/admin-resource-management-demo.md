@@ -552,7 +552,7 @@ aws ec2 describe-route-tables \
 | `docs/screenshots/volumes-panel.png` | Volume Manager with live ONTAP data: volume style (FlexVol / FlexGroup), the capacity split into live data, snapshots and spill past the reserve, and the rebalance action on FlexGroup rows |
 | `docs/screenshots/volume-rebalance-panel.png` | FlexGroup capacity rebalance: state, imbalance for the volume and for the worst constituent, per-constituent usage, and the runtime bounded at 30 minutes |
 | `docs/screenshots/storage-efficiency-panel.png` | Storage Efficiency dashboard |
-| `docs/screenshots/08-arp-admin-panel-en.png` | ARP/AI Administration with 9 volumes |
+| `docs/screenshots/08-arp-admin-panel-en.png` | ARP/AI Administration with 13 volumes (2 enabled, 11 disabled; one of the enabled ones is the test volume ARP was turned on for) |
 | `docs/screenshots/snapshots-version-history.png` | Snapshot Version History with hourly/weekly/daily, the SVM-to-volume scope bar, and the note on how snapshots hold capacity |
 | `docs/screenshots/snapshot-lock-confirm.png` | Snapshot lock confirmation dialog (retention input, and that the action cannot be undone) |
 | `docs/screenshots/quota-manager.png` | Quota Manager with volume selector and rule table |
