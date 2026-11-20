@@ -236,7 +236,7 @@ SnapLock、Snapshot ロック、S3 Object Lock COMPLIANCE、容量リバラン�
 「よろしいですか？」では、押す人が影響範囲を知りません。既存のダイアログは日付と範囲を
 文章で述べます。
 
-![Snapshot ロックの確認ダイアログ。いつまで削除できなくなるかが日付で示され、取り消せないことが明記されている](../../../docs/screenshots/snapshot-lock-confirm.png)
+![Snapshot ロックの確認ダイアログ。保持期間（日）の入力欄があり、ロックすると保持期間が満了するまで削除できず取り消せないことが明記されている](../../../docs/screenshots/snapshot-lock-confirm.png)
 
 `SnaplockConfirmDialog` と `src/utils/snaplockConsequences.ts` を使い、ハンドラ側でも
 `acknowledgeIrreversible` を必須にしてください（UI を通らない呼び出しにも同じ関門が必要です）。

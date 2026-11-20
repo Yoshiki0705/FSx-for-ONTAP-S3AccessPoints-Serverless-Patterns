@@ -242,7 +242,7 @@ SnapLock, snapshot locking, S3 Object Lock COMPLIANCE and starting a capacity re
 be undone**. "Are you sure?" leaves the person pressing it without the blast radius. The
 existing dialog states the date and the range in words.
 
-![The snapshot lock confirmation, giving the date until which deletion is impossible and stating that it cannot be undone](../../../docs/screenshots/snapshot-lock-confirm.png)
+![The snapshot lock confirmation, with a retention-days field, stating that a locked snapshot cannot be deleted until the retention period ends and that the action cannot be undone](../../../docs/screenshots/snapshot-lock-confirm.png)
 
 Use `SnaplockConfirmDialog` with `src/utils/snaplockConsequences.ts`, and require
 `acknowledgeIrreversible` in the handler as well, so a call that bypasses the UI meets the same
