@@ -204,7 +204,7 @@ export function QosPolicyManager() {
         <h3>{t("rmQosPolicies")}</h3>
         <div className="panel-actions">
           <button onClick={() => setShowCreate(!showCreate)} className="btn-primary">+ {t("rmCreateQos")}</button>
-          <button onClick={loadPolicies} className="refresh-btn">↻</button>
+          <button onClick={loadPolicies} className="refresh-btn" aria-label={t("refresh")} title={t("refresh")}><Icon name="refresh" /></button>
         </div>
       </div>
 

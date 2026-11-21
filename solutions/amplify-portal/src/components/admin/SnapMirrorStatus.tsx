@@ -349,7 +349,7 @@ export function SnapMirrorStatus() {
                   {eligiblePeers.map((p, i) => (
                     <option key={p.uuid} value={i}>
                       {p.peerSvm}
-                      {p.peerCluster ? ` (${p.peerCluster})` : ""} → {p.localSvm}
+                      {p.peerCluster ? ` (${p.peerCluster})` : ""} <Icon name="arrow-right" /> {p.localSvm}
                     </option>
                   ))}
                 </select>
@@ -402,7 +402,7 @@ export function SnapMirrorStatus() {
               <p className="rm-hint">
                 {peer && (
                   <>
-                    {t("smWillCreate")}: <code>{peer.peerSvm}:{sourceVolume || "…"}</code> →{" "}
+                    {t("smWillCreate")}: <code>{peer.peerSvm}:{sourceVolume || "…"}</code> <Icon name="arrow-right" />{" "}
                     <code>{peer.localSvm}:{destinationVolume || "…"}</code>
                     <br />
                   </>
@@ -434,7 +434,7 @@ export function SnapMirrorStatus() {
             <div key={r.uuid} className="lu-group-card">
               <div className="lu-group-header">
                 <div className="lu-group-info">
-                  <span className="lu-group-name">{r.sourcePath} → {r.destinationPath}</span>
+                  <span className="lu-group-name">{r.sourcePath} <Icon name="arrow-right" /> {r.destinationPath}</span>
                   <span className="lu-group-desc">
                     {t("smPolicy")}: {r.policy} | Lag: {r.lagTime || "—"}
                   </span>
@@ -445,7 +445,7 @@ export function SnapMirrorStatus() {
                   </span>
                   <span className="lu-badge">{r.state}</span>
                   <button className="rm-btn-sm" onClick={() => toggleTransfers(r.uuid)}>
-                    {expandedUuid === r.uuid ? "▼" : "▶"} {t("smTransfers")}
+                    <Icon name={expandedUuid === r.uuid ? "chevron-down" : "chevron-right"} className="icon-lead" /> {t("smTransfers")}
                   </button>
                 </div>
               </div>
@@ -468,7 +468,7 @@ export function SnapMirrorStatus() {
                       runAction({ action: "resumeSnapmirror", params: { relationshipUuid: r.uuid } })
                     }
                   >
-                    ▶ {t("smResume")}
+                    <Icon name="play" className="icon-lead" /> {t("smResume")}
                   </button>
                 ) : (
                   <button

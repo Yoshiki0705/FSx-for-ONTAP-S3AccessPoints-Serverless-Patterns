@@ -320,6 +320,7 @@ body {
 /* Line icons (components/Icon.tsx). They follow the text colour, so both themes work. */
 .icon { display: inline-block; flex-shrink: 0; vertical-align: -0.125em; }
 .icon-lead { margin-inline-end: 0.4em; }
+.icon-trail { margin-inline-start: 0.4em; }
 /* A state dot beside a text label (components/Icon.tsx StatusDot). */
 .state-dot { display: inline-block; width: 0.6em; height: 0.6em; border-radius: 50%; margin-inline-end: 0.4em; vertical-align: 0.05em; background: var(--color-border-strong); }
 .state-dot-ok { background: var(--color-success); }

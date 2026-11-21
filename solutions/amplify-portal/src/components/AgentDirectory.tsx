@@ -162,7 +162,7 @@ export function AgentDirectory({ onCreateAgent, onRunAgent }: AgentDirectoryProp
     return (
       <div className="agent-directory">
         <div className="agent-dir-detail">
-          <button className="btn-sm" onClick={() => setSelectedAgent(null)}>← {t("agentDirBack")}</button>
+          <button className="btn-sm" onClick={() => setSelectedAgent(null)}><Icon name="arrow-left" className="icon-lead" />{t("agentDirBack")}</button>
           <div className="agent-dir-detail-header">
             <span className="agent-dir-detail-icon"><AgentIcon value={selectedAgent.icon} /></span>
             <div>

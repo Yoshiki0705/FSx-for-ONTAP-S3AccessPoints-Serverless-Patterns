@@ -850,7 +850,7 @@ function SortHeader({
 }) {
   const { t } = useTranslation();
   const active = sort.key === column;
-  const indicator = active ? (sort.dir === "asc" ? "▲" : "▼") : "";
+  const indicator = active ? <Icon name={sort.dir === "asc" ? "chevron-up" : "chevron-down"} /> : null;
   return (
     <button
       className={`file-sort-btn ${column} ${active ? "active" : ""}`}

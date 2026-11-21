@@ -418,7 +418,7 @@ export function FlexCacheManager() {
                         <Icon name="package" className="icon-lead" />{cache.origins[0].volumeName}@{cache.origins[0].svmName}
                       </span>
                     )}
-                    <span style={{ color: "var(--color-primary-text)" }}>→</span>
+                    <span style={{ color: "var(--color-primary-text)" }}><Icon name="arrow-right" /></span>
                     <span style={{ background: "var(--color-surface-subtle)", padding: "2px 8px", borderRadius: "4px", fontSize: "0.8rem" }}>
                       <Icon name="zap" className="icon-lead" />{cache.name}@{cache.svmName}
                     </span>
@@ -463,7 +463,7 @@ export function FlexCacheManager() {
                         : t("fcacheWritebackEnableAction")}
                   </button>
                   <button className="rm-btn-sm" onClick={() => setExpandedUuid(expandedUuid === cache.uuid ? null : cache.uuid)}>
-                    {expandedUuid === cache.uuid ? "▼" : "▶"} Origins
+                    <Icon name={expandedUuid === cache.uuid ? "chevron-down" : "chevron-right"} className="icon-lead" /> Origins
                   </button>
                   {confirmDelete === cache.uuid ? (
                     <span style={{ display: "inline-flex", gap: "0.25rem", alignItems: "center" }}>

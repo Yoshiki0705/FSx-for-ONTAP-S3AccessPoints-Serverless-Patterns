@@ -192,7 +192,7 @@ export function QtreeManager() {
             disabled={!filterVolume}>
             + {t("rmCreateQtree")}
           </button>
-          <button onClick={loadQtrees} className="refresh-btn">↻</button>
+          <button onClick={loadQtrees} className="refresh-btn" aria-label={t("refresh")} title={t("refresh")}><Icon name="refresh" /></button>
         </div>
       </div>
 

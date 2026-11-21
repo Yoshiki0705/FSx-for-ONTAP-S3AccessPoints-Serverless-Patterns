@@ -360,7 +360,7 @@ export function SnaplockStatus() {
             which of the two it is: the selection, or the deployment's default. */}
         <VolumeScopeBadge volumeName={volumeName} isDefault={!volumeInScope} />
 
-        <button onClick={refreshAll} className="refresh-btn">↻</button>
+        <button onClick={refreshAll} className="refresh-btn" aria-label={t("refresh")} title={t("refresh")}><Icon name="refresh" /></button>
       </div>
 
       {/* The scope, on a row of its own: file system (fixed by the connection) then SVM

@@ -55,7 +55,7 @@ export function WelcomeModal() {
         <div className="welcome-actions">
           {step < steps.length - 1 ? (
             <button className="btn-primary" onClick={() => setStep(step + 1)}>
-              {t("welcomeNext")} →
+              {t("welcomeNext")} <Icon name="arrow-right" className="icon-trail" />
             </button>
           ) : (
             <button className="btn-primary" onClick={handleDismiss}>

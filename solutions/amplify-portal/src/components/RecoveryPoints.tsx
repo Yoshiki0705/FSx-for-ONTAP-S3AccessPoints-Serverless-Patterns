@@ -388,7 +388,7 @@ export function RecoveryPoints() {
       <div className="protection-header">
         <h2><Icon name="cloud" className="icon-lead" />{t("rpTitle")}</h2>
         <button onClick={refresh} className="refresh-btn" aria-label={t("refresh")}>
-          ↻
+          <Icon name="refresh" />
         </button>
       </div>
       <p className="status-subtitle" style={{ display: "block", marginBottom: "1rem" }}>

@@ -525,7 +525,7 @@ export function LocalUserManager() {
                         className="rm-btn-sm"
                         onClick={() => toggleGroupExpand(group)}
                       >
-                        {expandedGroup === group.sid ? "▼" : "▶"} {t("luMembers")}
+                        <Icon name={expandedGroup === group.sid ? "chevron-down" : "chevron-right"} className="icon-lead" /> {t("luMembers")}
                       </button>
                       <button
                         className="rm-btn-danger-sm"

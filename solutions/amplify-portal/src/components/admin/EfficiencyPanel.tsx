@@ -1,3 +1,4 @@
+import { Icon } from "../Icon";
 import { useQuery } from "@tanstack/react-query";
 import { useTranslation } from "../../i18n";
 import { dispatch } from "../../lib/dispatch";
@@ -72,7 +73,7 @@ export function EfficiencyPanel() {
       <div className="panel-header">
         <h3>{t("rmEfficiency")}</h3>
         <div className="panel-actions">
-          <button onClick={() => void refetch()} className="refresh-btn">↻</button>
+          <button onClick={() => void refetch()} className="refresh-btn" aria-label={t("refresh")} title={t("refresh")}><Icon name="refresh" /></button>
         </div>
       </div>
 

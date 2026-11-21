@@ -333,7 +333,7 @@ export function QuotaManager() {
           <button onClick={() => setActiveTab("report")}
             className={activeTab === "report" ? "btn-primary" : "btn-secondary"}>{t("rmQuotaReport")}</button>
           <button onClick={() => setShowCreateForm(!showCreateForm)} className="btn-primary">+ {t("rmCreateQuota")}</button>
-          <button onClick={activeTab === "rules" ? loadRules : loadReport} className="refresh-btn">↻</button>
+          <button onClick={activeTab === "rules" ? loadRules : loadReport} className="refresh-btn" aria-label={t("refresh")} title={t("refresh")}><Icon name="refresh" /></button>
         </div>
       </div>
 
@@ -379,7 +379,7 @@ export function QuotaManager() {
             disabled={quotaStateQuery.isFetching}
             onClick={() => void quotaStateQuery.refetch()}
           >
-            ↻
+            <Icon name="refresh" />
           </button>
           <span className="rm-hint">
             {current.busy
