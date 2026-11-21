@@ -16,6 +16,8 @@
  * Sets:  blog     the Before/After pairs (output file is NN-name.png under --out)
  *        replace  the existing documentation screenshots, written to their repo paths
  *                 (--out is the repository root; default ../..)
+ *        not-configured  two screens that show the connection steps when ONTAP is not
+ *                 configured; run against a deployment with an empty ontapMgmtIp
  *        industry the industry use cases: processing patterns, a started job, the job
  *                 history and the agent creator's industry templates, in Japanese and
  *                 English (written to their repo paths, like `replace`). The "started"
@@ -197,7 +199,87 @@ const snapshotLockDialog = async (page) => {
   await page.locator("table button", { hasText: /^\s*ロック\s*$/ }).first().click();
   await page.waitForTimeout(600);
 };
+// Confirm the lock on a volume whose snapshot locking is off. ONTAP refuses, so nothing is locked;
+// check the volume's Tamperproof tab shows "未有効化" before running this.
+const snapshotLockRefused = async (page) => {
+  await snapshotLockDialog(page);
+  await page.getByRole("button", { name: /^スナップショットをロック$/ }).click();
+  await page.getByText("上記の内容を確認しました").click();
+  await page.getByRole("button", { name: /^適用する$/ }).click();
+  await page.waitForSelector("text=/Snapshot locking is not enabled/", { timeout: 20000 });
+  await page.waitForTimeout(400);
+};
+const tamperproofAdmin = async (page) => {
+  await page.locator(".rm-card", { hasText: "スナップショット管理" }).first().click();
+  await page.waitForTimeout(800);
+  await page.getByRole("button", { name: /^Tamperproof$/ }).click();
+  await page.waitForTimeout(600);
+};
+// ONTAP not configured: deploy with an empty ontapMgmtIp, then these two screens show the
+// connection steps instead of data. Run them only against such a deployment.
+const NOT_CONFIGURED = [
+  [`${SHOTS}/portal-snaplock-status-fallback.png`, { hash: "lock" }],
+  [`${SHOTS}/portal-arp-status-fallback.png`, { hash: "arp" }],
+  [`${DEMO}/portal-snaplock-status-fallback.png`, { hash: "lock" }],
+  [`${DEMO}/portal-arp-status-fallback.png`, { hash: "arp" }],
+];
+// The AI agent screens need the portal's AI agent setting switched on (resource management > AI settings).
+// The chat input takes focus on load and scrolls the layout; return to the top before the shot.
+const scrollTop = async (page) => {
+  await page.evaluate(() => {
+    window.scrollTo(0, 0);
+    for (const el of document.querySelectorAll("*")) if (el.scrollTop) el.scrollTop = 0;
+  });
+  await page.waitForTimeout(300);
+};
+// Ask the first suggested prompt and wait for the answer. Needs files behind the portal's access point.
+const askAgent = async (page) => {
+  await page.getByText("フォルダを探索").first().click();
+  await page.waitForSelector("summary", { timeout: 60000 });
+  await page.waitForSelector("text=/amazon\\.nova|anthropic|us\\.|jp\\./", { timeout: 60000 }).catch(() => {});
+  await page.waitForTimeout(1500);
+  await scrollTop(page);
+};
+const askAgentWithTrace = async (page) => {
+  await askAgent(page);
+  const summary = page.locator("details summary", { hasText: /ツール実行/ }).first();
+  await summary.click();
+  await page.waitForTimeout(600);
+  if ((await page.locator("details[open] summary", { hasText: /ツール実行/ }).count()) === 0) {
+    await summary.click();
+    await page.waitForTimeout(600);
+  }
+  await scrollTop(page);
+};
+// Select the last file (its icon is the click target), ask the AI assistant a question, wait for the answer.
+const askAboutFile = async (page) => {
+  await page.locator(".file-preview-trigger button").last().click();
+  await page.waitForSelector("textarea[placeholder*='質問']", { timeout: 15000 });
+  await page.waitForTimeout(2500);
+  const box = page.locator("textarea[placeholder*='質問']");
+  await box.click();
+  await box.pressSequentially("この文書の要点を 2 行で教えてください");
+  await page.locator("button", { hasText: /^質問$/ }).click({ timeout: 8000 }).catch(() => box.press("Enter"));
+  await page.waitForTimeout(25000);
+};
+const openAgentCreator = async (page) => {
+  await page.getByRole("button", { name: /新規作成/ }).first().click();
+  await page.waitForTimeout(800);
+};
 REPLACE.push(
+  [`${SHOTS}/agent-chat-conversation.png`, { hash: "agent", act: askAgent }],
+  [`${SHOTS}/agent-chat-tool-trace.png`, { hash: "agent", act: askAgentWithTrace }],
+  [`${DEMO}/05-files-ai-panel.png`, { hash: "files", act: askAboutFile }],
+  [`${SHOTS}/agent-chat-welcome.png`, { hash: "agent", act: scrollTop }],
+  [`${SHOTS}/portal-agent-dark.png`, { hash: "agent", theme: "dark", act: scrollTop }],
+  [`docs/screenshots/agent-card-grid-welcome.png`, { hash: "agent", act: scrollTop }],
+  [`docs/screenshots/portal-agent-chat-card-grid.png`, { hash: "agent", act: scrollTop }],
+  [`docs/screenshots/portal-agent-creator-form.png`, { hash: "agentDir", act: openAgentCreator }],
+);
+REPLACE.push(
+  [`${SHOTS}/lock-dialog-error-enable.png`, { hash: "snapshots", act: snapshotLockRefused }],
+  [`${SHOTS}/lock-dialog-error-enable-tamperproof.png`, { hash: "snapshots", act: snapshotLockRefused }],
+  [`${SHOTS}/tamperproof-tab-3layer.png`, { hash: "resources", act: tamperproofAdmin }],
   [`docs/screenshots/arp-containment-confirm.png`, { hash: "arp", viewport: "tall", act: containConfirm }],
   [`docs/screenshots/08-arp-admin-panel-en.png`, { hash: "resources", lang: "en", act: clickCard("ARP/AI Protection") }],
   [`docs/screenshots/snapshot-lock-confirm.png`, { hash: "snapshots", act: snapshotLockDialog }],
@@ -299,7 +381,7 @@ async function maskAndScan(page) {
 // --- Run -------------------------------------------------------------------------
 const ALLOW_START = argv.includes("--allow-start");
 const wanted = (
-  SET === "blog" ? BLOG : SET === "replace" ? REPLACE : SET === "industry" ? INDUSTRY.filter(([, o]) => ALLOW_START || !o.starts) : [...BLOG, ...REPLACE]
+  SET === "blog" ? BLOG : SET === "replace" ? REPLACE : SET === "not-configured" ? NOT_CONFIGURED : SET === "industry" ? INDUSTRY.filter(([, o]) => ALLOW_START || !o.starts) : [...BLOG, ...REPLACE]
 ).filter(
   ([name]) => ONLY.length === 0 || ONLY.some((o) => name.includes(o)),
 );
