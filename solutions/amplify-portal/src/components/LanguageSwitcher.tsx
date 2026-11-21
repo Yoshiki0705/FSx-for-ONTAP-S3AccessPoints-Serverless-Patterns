@@ -60,7 +60,7 @@ export function LanguageSwitcher() {
       >
         <span className="lang-globe"><Icon name="globe" /></span>
         <span className="lang-current">{currentLabel}</span>
-        <span className="lang-chevron">{open ? "▴" : "▾"}</span>
+        <span className="lang-chevron"><Icon name={open ? "chevron-up" : "chevron-down"} /></span>
       </button>
 
       {open && (

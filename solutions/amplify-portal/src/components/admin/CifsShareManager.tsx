@@ -106,7 +106,7 @@ export function CifsShareManager() {
           <button onClick={() => setShowCreateForm(!showCreateForm)} className="btn-primary">
             + {t("rmCreateShare")}
           </button>
-          <button onClick={loadShares} className="refresh-btn">↻</button>
+          <button onClick={loadShares} className="refresh-btn" aria-label={t("refresh")} title={t("refresh")}><Icon name="refresh" /></button>
         </div>
       </div>
 

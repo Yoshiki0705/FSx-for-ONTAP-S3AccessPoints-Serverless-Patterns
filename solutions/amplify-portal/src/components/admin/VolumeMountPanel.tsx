@@ -198,7 +198,7 @@ export function VolumeMountPanel({
         </h4>
         <div className="panel-actions">
           <button onClick={() => void refetch()} className="refresh-btn" title={t("refresh")}>
-            ↻
+            <Icon name="refresh" />
           </button>
           <button onClick={onClose} className="btn-secondary">
             {t("close")}
@@ -300,7 +300,7 @@ export function VolumeMountPanel({
                 {info.shares.map((share) => (
                   <div key={share.name} className="mount-share">
                     <p className="rm-hint">
-                      {share.name} → <code>{share.path}</code>
+                      {share.name} <Icon name="arrow-right" /> <code>{share.path}</code>
                       {share.encryption && <span className="badge-lock" title={t("vmSmbEncrypted")}><Icon name="lock" /></span>}
                     </p>
                     <div className="vs-code-block">

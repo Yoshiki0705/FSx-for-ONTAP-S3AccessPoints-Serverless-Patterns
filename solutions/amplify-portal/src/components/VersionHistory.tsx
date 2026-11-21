@@ -430,7 +430,7 @@ export function VersionHistory({ mode = "browse" }: { mode?: "browse" | "diff" }
         </>
       )}
 
-      {lockResult && (
+      {lockResult && !lockDialog && (
         <div className={lockResult.startsWith("Error") ? "error-message" : "success-message"}>
           {lockResult}
         </div>
@@ -454,6 +454,9 @@ export function VersionHistory({ mode = "browse" }: { mode?: "browse" | "diff" }
               />
               <small>{t("snapshotsLockDaysHint")}</small>
             </div>
+            {lockResult?.startsWith("Error") && (
+              <div className="error-message" role="alert">{lockResult}</div>
+            )}
             <div className="dialog-actions">
               <button
                 className="action-btn lock-confirm-btn"

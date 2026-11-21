@@ -209,6 +209,7 @@ export function VolumeSelector({ onSelect, label, showUuid = false, autoSelectFi
         <input
           type="text"
           className="volume-selector-search"
+          aria-label={t("rmVolumeSearchPlaceholder")}
           value={searchTerm}
           onChange={(e) => handleSearchChange(e.target.value)}
           placeholder={t("rmVolumeSearchPlaceholder")}
@@ -217,7 +218,7 @@ export function VolumeSelector({ onSelect, label, showUuid = false, autoSelectFi
       )}
 
       {loading ? (
-        <select disabled>
+        <select disabled aria-label={label || t("rmSelectVolume")}>
           <option>{t("loading")}</option>
         </select>
       ) : (
@@ -225,6 +226,7 @@ export function VolumeSelector({ onSelect, label, showUuid = false, autoSelectFi
           value={effectiveUuid}
           onChange={(e) => handleChange(e.target.value)}
           className="volume-selector-dropdown"
+          aria-label={label || t("rmSelectVolume")}
         >
           <option value="">{t("rmSelectVolumePlaceholder")}</option>
           {volumes.map((vol) => (
