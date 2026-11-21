@@ -307,7 +307,7 @@ export function VolumeManager() {
           <button onClick={() => setShowCreateForm(!showCreateForm)} className="btn-primary">
             + {t("rmCreateVolume")}
           </button>
-          <button onClick={loadVolumes} className="refresh-btn">↻</button>
+          <button onClick={loadVolumes} className="refresh-btn" aria-label={t("refresh")} title={t("refresh")}><Icon name="refresh" /></button>
         </div>
       </div>
 

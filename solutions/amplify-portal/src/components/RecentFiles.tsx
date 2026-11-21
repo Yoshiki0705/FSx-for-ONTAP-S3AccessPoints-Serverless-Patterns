@@ -121,7 +121,7 @@ export function RecentFiles({ onFileSelect }: RecentFilesProps) {
       <div className="recent-header">
         <h2><Icon name="clock" className="icon-lead" />{t("recentTitle")}</h2>
         <button onClick={() => void refetch()} className="refresh-btn" title={t("refresh")}>
-          ↻
+          <Icon name="refresh" />
         </button>
       </div>
 

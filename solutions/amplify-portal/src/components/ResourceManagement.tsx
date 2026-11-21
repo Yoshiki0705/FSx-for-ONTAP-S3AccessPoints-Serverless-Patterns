@@ -149,7 +149,7 @@ export function ResourceManagement({ aiSettings, onAiSettingsChange }: ResourceM
       <div className="resource-management">
         <div className="rm-detail-header">
           <button onClick={() => setActivePanel(null)} className="rm-back-btn">
-            ← {t("rmBackToOverview")}
+            <Icon name="arrow-left" className="icon-lead" />{t("rmBackToOverview")}
           </button>
           <h2>{current && <Icon name={current.icon} className="icon-lead" />}{current?.label}</h2>
           <PlatformSelector />

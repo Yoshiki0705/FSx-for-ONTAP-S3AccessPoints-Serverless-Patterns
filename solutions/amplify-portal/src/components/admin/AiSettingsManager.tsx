@@ -154,6 +154,7 @@ export function AiSettingsManager({ initialSettings, onSettingsChange }: AiSetti
             <input
               type="checkbox"
               checked={settings.aiAgentEnabled}
+              aria-label={t("aiSettingsAgentTitle")}
               onChange={() => toggleSetting("aiAgentEnabled")}
               disabled={saving !== null}
             />
@@ -182,6 +183,7 @@ export function AiSettingsManager({ initialSettings, onSettingsChange }: AiSetti
             <input
               type="checkbox"
               checked={settings.aiSearchEnabled}
+              aria-label={t("aiSettingsSearchTitle")}
               onChange={() => toggleSetting("aiSearchEnabled")}
               disabled={saving !== null}
             />
@@ -255,6 +257,7 @@ export function AiSettingsManager({ initialSettings, onSettingsChange }: AiSetti
             <input
               type="checkbox"
               checked={settings.aiMultimodalEnabled}
+              aria-label={t("aiSettingsMultimodalTitle")}
               onChange={() => toggleSetting("aiMultimodalEnabled")}
               disabled={saving !== null || !settings.aiAgentEnabled}
             />
@@ -282,6 +285,7 @@ export function AiSettingsManager({ initialSettings, onSettingsChange }: AiSetti
             <input
               type="checkbox"
               checked={settings.chatHistoryEnabled}
+              aria-label={t("aiSettingsChatHistoryTitle")}
               onChange={() => toggleSetting("chatHistoryEnabled")}
               disabled={saving !== null || !settings.aiAgentEnabled}
             />
@@ -315,6 +319,7 @@ export function AiSettingsManager({ initialSettings, onSettingsChange }: AiSetti
             <input
               type="checkbox"
               checked={settings.folderWatchEnabled}
+              aria-label={t("aiSettingsFolderWatchTitle")}
               onChange={() => toggleSetting("folderWatchEnabled")}
               disabled={saving !== null}
             />

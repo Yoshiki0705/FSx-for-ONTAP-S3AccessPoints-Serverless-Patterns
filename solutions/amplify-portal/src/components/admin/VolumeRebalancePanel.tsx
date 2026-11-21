@@ -216,7 +216,7 @@ export function VolumeRebalancePanel({ volumeUuid, volumeName, onClose }: Props)
         </h4>
         <div className="panel-actions">
           <button onClick={() => void refetch()} className="refresh-btn" title={t("refresh")}>
-            ↻
+            <Icon name="refresh" />
           </button>
           <button onClick={onClose} className="btn-secondary">
             {t("close")}

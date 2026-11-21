@@ -134,7 +134,7 @@ export function VscanManager() {
               <td>
                 <a href="https://www.trellix.com/products/endpoint-security/"
                   target="_blank" rel="noopener noreferrer">
-                  Trellix.com →
+                  Trellix.com <Icon name="arrow-right" />
                 </a>
               </td>
               <td>{t("vsNoteTrellix")}</td>
@@ -145,7 +145,7 @@ export function VscanManager() {
               <td>
                 <a href="https://www.trendmicro.com/en_us/business/products/user-protection/sps/storage.html"
                   target="_blank" rel="noopener noreferrer">
-                  TrendMicro.com →
+                  TrendMicro.com <Icon name="arrow-right" />
                 </a>
               </td>
               <td>{t("vsNoteTrend")}</td>
@@ -156,7 +156,7 @@ export function VscanManager() {
               <td>
                 <a href="https://www.deepinstinct.com/partners/netapp"
                   target="_blank" rel="noopener noreferrer">
-                  DeepInstinct.com →
+                  DeepInstinct.com <Icon name="arrow-right" />
                 </a>
               </td>
               <td>{t("vsNoteDeep")}</td>
@@ -167,7 +167,7 @@ export function VscanManager() {
               <td>
                 <a href="https://www.sentinelone.com/partners/netapp/"
                   target="_blank" rel="noopener noreferrer">
-                  SentinelOne.com →
+                  SentinelOne.com <Icon name="arrow-right" />
                 </a>
               </td>
               <td>{t("vsNoteSentinel")}</td>
@@ -178,7 +178,7 @@ export function VscanManager() {
               <td>
                 <a href="https://www.broadcom.com/products/cybersecurity/endpoint"
                   target="_blank" rel="noopener noreferrer">
-                  Broadcom.com →
+                  Broadcom.com <Icon name="arrow-right" />
                 </a>
               </td>
               <td>{t("vsNoteSymantec")}</td>
@@ -189,7 +189,7 @@ export function VscanManager() {
               <td>
                 <a href="https://www.opswat.com/products/metadefender/secure-storage"
                   target="_blank" rel="noopener noreferrer">
-                  OPSWAT.com →
+                  OPSWAT.com <Icon name="arrow-right" />
                 </a>
               </td>
               <td>{t("vsNoteOpswat")}</td>

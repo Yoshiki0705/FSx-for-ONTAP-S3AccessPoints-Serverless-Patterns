@@ -221,7 +221,7 @@ export function ArpAdminManager() {
           <button onClick={() => setShowBulkEnable(!showBulkEnable)} className="btn-primary">
             {t("rmArpBulkEnable")}
           </button>
-          <button onClick={loadVolumes} className="refresh-btn">↻</button>
+          <button onClick={loadVolumes} className="refresh-btn" aria-label={t("refresh")} title={t("refresh")}><Icon name="refresh" /></button>
         </div>
       </div>
 
@@ -340,7 +340,7 @@ export function ArpAdminManager() {
                   <button onClick={() => handleStateChange(vol, "paused")} className="btn-sm" title={t("arpPause")}>⏸</button>
                 )}
                 {vol.state === "paused" && (
-                  <button onClick={() => handleStateChange(vol, "enabled")} className="btn-sm" title={t("arpResume")}>▶</button>
+                  <button onClick={() => handleStateChange(vol, "enabled")} className="btn-sm" title={t("arpResume")} aria-label={t("arpResume")}><Icon name="play" /></button>
                 )}
                 {vol.state !== "disabled" && (
                   <button onClick={() => handleStateChange(vol, "disabled")} className="btn-sm btn-danger" title={t("arpDisable")}><Icon name="close" /></button>

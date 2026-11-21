@@ -151,7 +151,7 @@ export function ArpStatus() {
         <VolumeScopeBadge volumeName={volumeName} isDefault={!volumeInScope} />
 
         <button onClick={() => void refetch()} className="refresh-btn" title={t("refresh")}>
-          ↻
+          <Icon name="refresh" />
         </button>
       </div>
 

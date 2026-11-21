@@ -159,10 +159,10 @@ export function ExportPolicyManager() {
         <h3>{selectedPolicy ? `${t("rmExportPolicies")}: ${selectedPolicy.name}` : t("rmExportPolicies")}</h3>
         {selectedPolicy && (
           <button onClick={() => { setSelectedPolicy(null); setRules([]); }} className="btn-secondary">
-            ← {t("rmBackToList")}
+            <Icon name="arrow-left" className="icon-lead" />{t("rmBackToList")}
           </button>
         )}
-        <button onClick={selectedPolicy ? () => loadRules(String(selectedPolicy.id)) : loadPolicies} className="refresh-btn">↻</button>
+        <button onClick={selectedPolicy ? () => loadRules(String(selectedPolicy.id)) : loadPolicies} className="refresh-btn" aria-label={t("refresh")} title={t("refresh")}><Icon name="refresh" /></button>
       </div>
 
       {error && <div className="error-message">{error}</div>}

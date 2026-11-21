@@ -354,7 +354,7 @@ export function SnapshotAdminManager() {
             <button onClick={() => setShowCreatePolicy(!showCreatePolicy)} className="btn-primary">
               + {t("rmSnapCreatePolicy")}
             </button>
-            <button onClick={loadPolicies} className="refresh-btn">↻</button>
+            <button onClick={loadPolicies} className="refresh-btn" aria-label={t("refresh")} title={t("refresh")}><Icon name="refresh" /></button>
           </div>
 
           {showCreatePolicy && (

@@ -745,7 +745,7 @@ export function ArpResponseActions({ threatLevel, volumeName }: ArpResponseActio
               </div>
 
               <button onClick={loadActiveBlocks} className="refresh-btn" disabled={blocksLoading}>
-                ↻ {t("refresh")}
+                <Icon name="refresh" className="icon-lead" /> {t("refresh")}
               </button>
             </>
           )}
