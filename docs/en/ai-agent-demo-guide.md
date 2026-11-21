@@ -19,7 +19,7 @@ Step-by-step demo of the AI Agent Chat, Semantic Search, Bedrock Guardrails, Mul
 
 ## Feature 1: AI Agent Chat
 
-The AI Agent is accessible from the sidebar under **AI & Processing → 🤖 AI エージェント**.
+The AI Agent is accessible from the sidebar under **AI & Processing → AI エージェント**.
 
 ### What you see
 
@@ -31,7 +31,7 @@ The AI Agent is accessible from the sidebar under **AI & Processing → 🤖 AI 
 
 ### Try it
 
-1. Click **🤖 AI エージェント** in the sidebar
+1. Click **AI エージェント** in the sidebar
 2. Click any of the 4 suggested prompts, or type your own question:
    - "ルートフォルダの一覧を見せて" (Show root folders)
    - "先週のログファイルを検索して" (Search for last week's log files)
@@ -49,13 +49,13 @@ The trace shows:
 - Input parameters
 - Truncated output
 
-Click the **🔧 ツール実行** details to expand/collapse the trace.
+Click the **ツール実行** details to expand/collapse the trace.
 
 ---
 
 ## Feature 2: Semantic Search
 
-Accessible from **AI & Processing → 🔍 ファイル検索**.
+Accessible from **AI & Processing → ファイル検索**.
 
 ### Keyword Mode
 
