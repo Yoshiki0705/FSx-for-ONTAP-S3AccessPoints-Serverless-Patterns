@@ -143,3 +143,5 @@ The following were observed by means other than these scripts. Each carries a da
 ## Limits of the mechanical enforcement
 
 What `test_verification_record.py` checks is the form of the record rows, the closed set, the absence of placeholders, and a match with the current code digest. **It does not check that a row came from a real run.** A person produces a row from a run's output, so the strength of the evidence still depends in part on the honesty of whoever pastes the record. To reduce that, each script prints `digest=<12 hex> run=<ISO 8601 UTC>` on exit and records the same line in `lab-run.local.jsonl`. `record-row` copies the date, digest, item and result counts from that record, but `lab-run.local.jsonl` is itself a local file of whoever ran it and is not impossible to forge.
+
+- The Cyber Resilience Patterns repository's [recovery measurement results](https://github.com/Yoshiki0705/FSx-for-ONTAP-Cyber-Resilience-Patterns/blob/main/docs/en/recovery-measurement-results.md#relation-to-earlier-records) cite this record among the earlier records that each recovery measurement builds on. Its values are not copied there.

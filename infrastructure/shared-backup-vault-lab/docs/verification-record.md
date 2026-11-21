@@ -143,3 +143,5 @@ MPA（マルチパーティー承認）は実行していません（この環�
 ## 機械的な強制の限界
 
 `test_verification_record.py` が検査するのは、記録の行の形式、閉じた集合、プレースホルダーの不在、現行のコードの digest との一致です。**行が実機の実行に由来することは検査しません。** 行は人が実行の出力から作ります。したがって根拠の強さは、記録を貼る人の誠実さに依存する部分が残ります。これを減らすため、スクリプトは終了時に `digest=<12 桁> run=<ISO 8601 UTC>` を出力し、同じ内容を `lab-run.local.jsonl` に記録します。`record-row` はその記録から日付・digest・項目・結果の件数を写しますが、`lab-run.local.jsonl` 自体も実行した人のローカルファイルであり、偽造できないわけではありません。
+
+- cyber リポジトリの[復旧の測定結果](https://github.com/Yoshiki0705/FSx-for-ONTAP-Cyber-Resilience-Patterns/blob/main/docs/ja/recovery-measurement-results.md#先行記録との関係)は、この記録を、測定の土台にする先行記録として挙げています。値はそちらに写されていません。

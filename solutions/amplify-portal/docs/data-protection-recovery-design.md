@@ -128,3 +128,4 @@ AWS の仕様はこれらが持ちます。本ガイドは再導出せず、設�
 
 - [AWS Backup Logically Air-Gapped Vault for Amazon FSx for NetApp ONTAP](https://github.com/Yoshiki0705/FSx-for-ONTAP-Cyber-Resilience-Patterns/blob/main/docs/data-protection/aws-backup-logically-air-gapped-vault.md) — ボールトの前提条件（カスタマーマネージドキー必須、AWS マネージドキーのファイルシステムはコピーされず「Completed with issues」、RW ボリュームのみ）、構成の選択肢、復元と復元テスト、隔離方式の選び方。
 - [Ransomware Recovery Runbook — Option D](https://github.com/Yoshiki0705/FSx-for-ONTAP-Cyber-Resilience-Patterns/blob/main/docs/runbooks/ransomware-recovery.md) の「Option D: 論理エアギャップボールトからの復旧」 — 共有先の復旧アカウントでの復元（`list-recovery-points-by-backup-vault` に `--backup-vault-account-id`、`start-restore-job` で新しいボリュームへ復元）。
+- cyber リポジトリの[復旧時間と復旧点の目標のガイド](https://github.com/Yoshiki0705/FSx-for-ONTAP-Cyber-Resilience-Patterns/blob/main/docs/ja/recovery-objectives-guide.md#復旧の層ごとの特徴と実測の所在)は、この文書を、復旧の層ごとの実測の所在として挙げています。値はそちらに写されていません。

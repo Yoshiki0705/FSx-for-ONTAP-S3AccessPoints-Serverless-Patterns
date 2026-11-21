@@ -10,9 +10,10 @@ AWS Backup の論理エアギャップ（LAG）ボールトを 2 つのアカウ
 
 ## 冒頭の注意
 
-- **実機での通しは未実施です。** この時点で実機で動いたものはありません。スクリプトの先頭と文書の冒頭に状態の行があり、状態の唯一の出所は [`docs/verification-record.md`](docs/verification-record.md) です。
+- **実機での通し（2026-10-12 実施）は一部の項目だけ記録済みで、記録があるのは V1・V2・V4、記録がないのは V3・V5・V6・V7・E13 です（1 行目の状態行と [`docs/verification-record.md`](docs/verification-record.md) の状態の節を参照）。** スクリプトの先頭と文書の冒頭に状態の行があり、状態の唯一の出所は [`docs/verification-record.md`](docs/verification-record.md) です。
 - **LAG ボールトの作成は不可逆です。** 保持日数は作成時に固定され、下限は 7 日です（AWS が定める LAG ボールトの最小値 [E-012]。[CreateLogicallyAirGappedBackupVault の `MinRetentionDays` / `MaxRetentionDays`](https://docs.aws.amazon.com/aws-backup/latest/devguide/API_CreateLogicallyAirGappedBackupVault.html)）。上限の具体値は AWS のドキュメントを参照してください。復旧ポイントが入っている間はボールトを削除できません。空のボールトは削除できました（1 回観測）。詳細は [`docs/procedure.md`](docs/procedure.md) の冒頭にあります。
 - **費用が発生します。** FS の稼働、バックアップとコピーの保管、KMS キーに課金されます。後片付けは [`10_teardown.sh`](scripts/10_teardown.sh) が行い、残るものを一覧します。リソースの拘束と費用の切り分けは [コストとリソース拘束](#コストとリソース拘束) にあります。
+- cyber リポジトリの[復旧の測定結果](https://github.com/Yoshiki0705/FSx-for-ONTAP-Cyber-Resilience-Patterns/blob/main/docs/ja/recovery-measurement-results.md#先行記録との関係)は、この記録を、測定の土台にする先行記録として挙げています。値はそちらに写されていません。
 
 ## コストとリソース拘束
 

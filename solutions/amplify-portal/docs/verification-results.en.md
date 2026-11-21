@@ -499,3 +499,5 @@ covers whether operations succeed; this one covers dimensions.
 | [AppSync Authorization Troubleshooting](TROUBLESHOOTING-APPSYNC-AUTH.en.md) | When group authorization fails |
 | [Write Verification Plan](write-verification-plan.en.md) | Prerequisites, procedure, impact and rollback for the writes not yet run |
 | [Deploying the scaffolded output, verifying it, and taking it down](../../../docs/en/scaffolding-deploy-verification.md) | Nx Plugin for AWS and AWS Blocks verified live under **the same categories as this table**. This file owns the definitions |
+
+- The Cyber Resilience Patterns repository's [recovery measurement results](https://github.com/Yoshiki0705/FSx-for-ONTAP-Cyber-Resilience-Patterns/blob/main/docs/en/recovery-measurement-results.md#relation-to-earlier-records) cite this record among the earlier records that each recovery measurement builds on. Its values are not copied there.
