@@ -483,3 +483,5 @@ iPhone (Safari) をトンネル経由で接続して確認しました。**閲�
 | [AppSync 認可のトラブルシューティング](TROUBLESHOOTING-APPSYNC-AUTH.md) | グループ認可が失敗する場合 |
 | [書き込み操作の検証計画](write-verification-plan.md) | 未実行の書き込み操作の前提・手順・影響・戻し方 |
 | [構築ツールの生成物のデプロイ検証と後片付けの手順](../../../docs/ja/scaffolding-deploy-verification.md) | Nx Plugin for AWS / AWS Blocks を**この表と同じ検証区分**で実機確認した記録。区分の定義はこのファイルが持つ |
+
+- cyber リポジトリの[復旧の測定結果](https://github.com/Yoshiki0705/FSx-for-ONTAP-Cyber-Resilience-Patterns/blob/main/docs/ja/recovery-measurement-results.md#先行記録との関係)は、この記録を、測定の土台にする先行記録として挙げています。値はそちらに写されていません。

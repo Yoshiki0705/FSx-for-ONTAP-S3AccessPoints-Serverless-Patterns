@@ -10,9 +10,10 @@ A lab that reproduces, from code and parameters alone, the path where an AWS Bac
 
 ## Opening notice
 
-- **The real-environment run is not yet done.** Nothing here has run against a real account yet. Each script and document carries a status line at the top, and the single source of truth for the state is [`docs/verification-record.md`](docs/verification-record.en.md).
+- **The real-environment run (2026-10-12) is recorded for only some items: V1, V2 and V4 are recorded, and V3, V5, V6, V7 and E13 are not (see the status line at the top and the status section of [`docs/verification-record.en.md`](docs/verification-record.en.md)).** Each script and document carries a status line at the top, and the single source of truth for the state is [`docs/verification-record.md`](docs/verification-record.en.md).
 - **Creating a LAG vault is irreversible.** The retention is fixed at creation; the minimum is 7 days (the AWS-fixed lower bound for a LAG vault [E-012]; [`MinRetentionDays` / `MaxRetentionDays` of CreateLogicallyAirGappedBackupVault](https://docs.aws.amazon.com/aws-backup/latest/devguide/API_CreateLogicallyAirGappedBackupVault.html)). For the upper bound, see the AWS documentation. The vault cannot be deleted while it holds a recovery point. An empty vault could be deleted (observed once). The detail is at the top of [`docs/procedure.en.md`](docs/procedure.en.md).
 - **It costs money.** The running file system, the stored backups and copies, and the KMS key are billed. [`10_teardown.sh`](scripts/10_teardown.sh) does the cleanup and lists what remains. The split between resource hold and cost is in [Cost and resource hold](#cost-and-resource-hold).
+- The Cyber Resilience Patterns repository's [recovery measurement results](https://github.com/Yoshiki0705/FSx-for-ONTAP-Cyber-Resilience-Patterns/blob/main/docs/en/recovery-measurement-results.md#relation-to-earlier-records) cite this record among the earlier records that each recovery measurement builds on. Its values are not copied there.
 
 ## Cost and resource hold
 
