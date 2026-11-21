@@ -276,6 +276,16 @@ REPLACE.push(
   [`docs/screenshots/portal-agent-chat-card-grid.png`, { hash: "agent", act: scrollTop }],
   [`docs/screenshots/portal-agent-creator-form.png`, { hash: "agentDir", act: openAgentCreator }],
 );
+// The agent directory and the team list need agents and teams to exist (they are stored records
+// the portal creates) and the AI agent setting switched on.
+const openTeamsTab = async (page) => {
+  await page.locator(".agent-dir-tab").nth(1).click();
+  await page.waitForTimeout(800);
+};
+REPLACE.push(
+  ["docs/screenshots/portal-agent-directory.png", { hash: "agentDir" }],
+  ["docs/screenshots/portal-agent-teams.png", { hash: "agentDir", act: openTeamsTab }],
+);
 REPLACE.push(
   [`${SHOTS}/lock-dialog-error-enable.png`, { hash: "snapshots", act: snapshotLockRefused }],
   [`${SHOTS}/lock-dialog-error-enable-tamperproof.png`, { hash: "snapshots", act: snapshotLockRefused }],
