@@ -45,7 +45,7 @@ Data access via S3 Access Points for FSx for ONTAP depends on the FSx file syste
 | Gen2 Single-AZ | 6,144 MBps (per HA pair, up to 12 pairs) | 1,024 MBps |
 | Gen2 Multi-AZ | 6,144 MBps | 2,048 MBps |
 | Gen3 Single-AZ | 18,432 MBps (per HA pair, up to 12 pairs) | 4,500 MBps (per HA pair) |
-| Gen3 Multi-AZ | 18,432 MBps | Not confirmed in the documentation |
+| Gen3 Multi-AZ | 18,432 MBps | 4,500 MBps |
 
 > **Note**: Throughput via S3 AP cannot exceed these limits. All access via S3 AP, NFS, and SMB shares the same throughput capacity.
 >
