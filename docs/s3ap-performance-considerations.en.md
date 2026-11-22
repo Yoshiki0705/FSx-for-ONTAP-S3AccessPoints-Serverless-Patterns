@@ -49,7 +49,7 @@ Data access via S3 Access Points for FSx for ONTAP depends on the FSx file syste
 
 > **Note**: Throughput via S3 AP cannot exceed these limits. All access via S3 AP, NFS, and SMB shares the same throughput capacity.
 >
-> The Gen3 values come from the AWS user guide (checked on 2026-11-22, [performance page](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/performance.html)). This repository has not measured Gen3. The regions that accepted a Gen3 create request and the places where the sources disagree on limits are in the [Hub note](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/blob/main/docs/ja/domains/performance/notes/third-generation-file-systems-and-where-the-sources-disagree.md) (Japanese).
+> The Gen3 values come from the AWS user guide (checked on 2026-11-22, [performance page](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/performance.html)). This repository has not measured Gen3. The Regions where Gen3 could be deployed and the places where the sources disagree on limits are in the [Hub note](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/blob/main/docs/ja/domains/performance/notes/third-generation-file-systems-and-where-the-sources-disagree.md) (Japanese).
 
 ## Object Size Profile
 
