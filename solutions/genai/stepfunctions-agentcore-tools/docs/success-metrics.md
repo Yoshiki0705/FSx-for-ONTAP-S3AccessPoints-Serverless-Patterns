@@ -1,6 +1,6 @@
 # Success Metrics — Step Functions × AgentCore Gateway
 
-Partner/SI の顧客会話で PoC の成否を判断するための指標。数値はデプロイ環境・
+Partner/SI が利用者と行う会話で PoC の成否を判断するための指標。数値はデプロイ環境・
 ファイル構成・モデルで変わるため、各環境で測り直す。
 
 ## Business Outcome

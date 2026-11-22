@@ -529,7 +529,7 @@ npm 11.17.0。
 `MfaConfiguration=ON`、`DeletionProtection=ACTIVE`。**MFA が必須なので、最初のサインインが
 TOTP の登録を要求する。** Blocks（production preset）の DynamoDB 4 本はすべて削除保護が有効で、
 `todos` と `live-connections` だけ PITR 有効。**暗号化は AWS 管理キー**（`KeyManager=AWS`）で、
-顧客管理 CMK は alarm topic 用の 1 本だけだった。
+カスタマー管理 CMK は alarm topic 用の 1 本だけだった。
 
 ## 出典一覧
 
