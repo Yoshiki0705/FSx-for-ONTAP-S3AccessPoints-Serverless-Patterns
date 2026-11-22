@@ -110,6 +110,7 @@ sam deploy \
 - Lambda VPC placement requirements depend on NetworkOrigin setting (see steering docs)
 - FlexClone split converts to an independent volume (loses space efficiency)
 - **FSx API propagation delay (SM-VAL-009)**: FlexClones are created via ONTAP REST API and take ~30 minutes to propagate to FSx API (`describe-volumes`). S3 AP attachment (`create-and-attach-s3-access-point`) is only possible after the volume appears in FSx API. For automation, implement polling logic that waits for `fsvol-*` ID to appear in `describe-volumes`
+- **Creating the clone on the AWS side**: When a clone is created from the volume creation screen of the Amazon FSx console, the volume appeared in `describe-volumes` about 7 seconds after the click, and the S3 Access Points reached `AVAILABLE` after about 93 seconds (Tokyo, first generation, one observation; [Hub note](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/blob/main/docs/ja/domains/data-utilization/notes/a-console-clone-attaches-s3-access-points-in-minutes.md), in Japanese). As of 2026-11-22, the clone specification of the `CreateVolume` call that this path makes is not in the public SDK models, so do not build automation on it. Automation that creates clones through the ONTAP REST API still needs the polling above
 
 ---
 

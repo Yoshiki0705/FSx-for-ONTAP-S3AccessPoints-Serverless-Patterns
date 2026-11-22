@@ -44,8 +44,12 @@ S3 Access Points for FSx for ONTAP 経由のデータアクセスは、FSx フ�
 | 第1世代 Multi-AZ (主要リージョン) | 4,096 MBps | 1,800 MBps |
 | 第2世代 Single-AZ | 6,144 MBps (per HA pair, 最大12 pairs) | 1,024 MBps |
 | 第2世代 Multi-AZ | 6,144 MBps | 2,048 MBps |
+| 第3世代 Single-AZ | 18,432 MBps (per HA pair, 最大12 pairs) | 4,500 MBps (per HA pair) |
+| 第3世代 Multi-AZ | 18,432 MBps | 記載を確認していない |
 
 > **注意**: S3 AP 経由のスループットはこれらの上限を超えることはできません。S3 AP、NFS、SMB のすべてのアクセスが同じスループット容量を共有します。
+>
+> 第3世代の値は AWS のユーザーガイドの記載（2026-11-22 に確認、[性能のページ](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/performance.html)）で、このリポジトリでは第3世代を測っていません。第3世代の作成を受け付けたリージョンと上限の食い違いは [Hub のノート](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/blob/main/docs/ja/domains/performance/notes/third-generation-file-systems-and-where-the-sources-disagree.md)にあります。
 
 ## Object Size Profile
 
