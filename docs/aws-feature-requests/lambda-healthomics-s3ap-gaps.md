@@ -6,7 +6,7 @@
 **日付**: 2026-08-02
 **プロジェクト**: [FSx-for-ONTAP-S3AccessPoints-Serverless-Patterns](https://github.com/Yoshiki0705/FSx-for-ONTAP-S3AccessPoints-Serverless-Patterns)
 **コンテキスト**: 2026-07 の 2 リリース（Lambda セルフマネージドコードストレージ / AWS HealthOmics 東京リージョン対応）を本プロジェクトのワークフローへ組み込む可否評価
-**ステータス**: **✅ 2026-08-02 に AWS Support へ提出済み**（サービス単位で 2 ケース: Lambda（FR-5 + FR-7）/ HealthOmics（FR-6））。**2026-09-09 追記**: HealthOmics 側に **FR-8**（実行タスクへの顧客所有ファイルシステムのマウント）を追加し、**同日 AWS Support へ新規ケースとして提出済み**（HealthOmics キュー / 一般的なガイダンス）。現状確認の質問と、実現したいこと（第 1〜第 3 希望）を同一ケースに含めています。根拠と tier は evidence ledger の `E-014` にあります。**2026-09-15 に回答を受領**し、要望はサービスチームへ連携されました。回答はベンダーサポートからのもので公開の根拠には使えないため、tier は `open` のままです。ケース番号は本リポジトリには記載しません（`.private/` で追跡）。
+**ステータス**: **✅ 2026-08-02 に AWS Support へ提出済み**（サービス単位で 2 ケース: Lambda（FR-5 + FR-7）/ HealthOmics（FR-6））。**2026-09-09 追記**: HealthOmics 側に **FR-8**（実行タスクへの利用者所有ファイルシステムのマウント）を追加し、**同日 AWS Support へ新規ケースとして提出済み**（HealthOmics キュー / 一般的なガイダンス）。現状確認の質問と、実現したいこと（第 1〜第 3 希望）を同一ケースに含めています。根拠と tier は evidence ledger の `E-014` にあります。**2026-09-15 に回答を受領**し、要望はサービスチームへ連携されました。回答はベンダーサポートからのもので公開の根拠には使えないため、tier は `open` のままです。ケース番号は本リポジトリには記載しません（`.private/` で追跡）。
 **関連**: [FR-1〜FR-4（既提出）](./fsxn-s3ap-improvements.md) / [オブジェクトサイズ上限の実測検証](../s3ap-object-size-limits-verification.md)（別ケースとして提出済み）
 
 ---
@@ -24,7 +24,7 @@
 
 > **補足**: HealthOmics の東京リージョン対応自体は本プロジェクトにとって前進です。既存の UC7（genomics-pipeline）は README で「リアルタイムのバリアントコーリングパイプライン（BWA/GATK 等）の実行が必要」なケースを *適さないケース* として明示していました。HealthOmics がプライマリリージョン（ap-northeast-1）で使えるようになったことで、この空白を埋める新パターンが成立します。
 
-> **2026-09-09 追記（FR-8 の追加）**: 上表の判定は **S3 Access Points 経由**の経路についてのものです。HealthOmics にはもう 1 つの経路が考えられます —— 実行タスクが顧客所有のファイルシステムを NFS でマウントする形です。AWS Batch（EC2/ECS のジョブ定義で `volumes` と `mountPoints` を宣言、EKS なら CSI）や AWS Deadline Cloud のカスタマー管理フリート（ワーカーホストが利用者のものなので、storage profile の `SHARED` ロケーションとしてマウント済みの共有をモデル化できる）では、この経路で FSx for ONTAP を直接使えます。HealthOmics は実行環境がサービス管理であるため、**この経路自体が露出していません**。S3 AP 経路（FR-6）とは要求先の仕組みが違うので、**FR-8** として分けて整理します [E-014]。
+> **2026-09-09 追記（FR-8 の追加）**: 上表の判定は **S3 Access Points 経由**の経路についてのものです。HealthOmics にはもう 1 つの経路が考えられます —— 実行タスクが利用者所有のファイルシステムを NFS でマウントする形です。AWS Batch（EC2/ECS のジョブ定義で `volumes` と `mountPoints` を宣言、EKS なら CSI）や AWS Deadline Cloud のカスタマー管理フリート（ワーカーホストが利用者のものなので、storage profile の `SHARED` ロケーションとしてマウント済みの共有をモデル化できる）では、この経路で FSx for ONTAP を直接使えます。HealthOmics は実行環境がサービス管理であるため、**この経路自体が露出していません**。S3 AP 経路（FR-6）とは要求先の仕組みが違うので、**FR-8** として分けて整理します [E-014]。
 
 ---
 
@@ -71,7 +71,7 @@
 | 判定軸 | Lambda セルフマネージドコードストレージ | AWS HealthOmics |
 |--------|:---:|:---:|
 | FSx for ONTAP S3 AP を直接ソースに指定 | ❌ 不可 | ❌ 不可 |
-| 実行タスクへ顧客所有ファイルシステムを NFS マウント | — | ❌ 手段なし（FR-8） |
+| 実行タスクへ利用者所有ファイルシステムを NFS マウント | — | ❌ 手段なし（FR-8） |
 | 標準 S3 バケット経由での組み込み | ✅ 可能 | ✅ 可能 |
 | CloudFormation（`AWS::Lambda::Function`）対応 | ✅ `Code.S3ObjectStorageMode` あり | — |
 | AWS SAM（`AWS::Serverless::Function`）対応 | ⚠️ **未確認** — SAM リソースリファレンスに該当プロパティの記載を確認できず | — |
@@ -176,8 +176,8 @@ HealthOmics のワークフロー実行は、入力・出力の双方で Amazon 
 2026-08-02 の提出時点には無かった機能が増えています。以下は 2026-09-09 に該当ページを全文で読んで確認した内容です。
 
 - `StartRun` の `networkingMode` は `RESTRICTED | VPC` で、既定は `RESTRICTED`。`RESTRICTED` では同一リージョンの Amazon S3 と Amazon ECR にしか到達せず、他の AWS サービス・他リージョン・インターネットには到達しません。
-- `VPC` モードでは、HealthOmics が顧客 VPC のサブネットに ENI（`Service=HealthOmics` / `eniType=CUSTOMER` のタグ付き）を作成し、実行トラフィックをそこへ通します。想定用途として「VPC 内の AWS リソースへの接続」「プライベートネットワーク上のオンプレミスリソースへのアクセス」が挙げられています。サブネットは 1 AZ あたり 1 つ、最大 16、セキュリティグループは最大 5。Configuration リソースが `ACTIVE` になるまで最大 15 分。
-- 同じページが、**ワークフロー実行は HealthOmics が所有・管理する VPC の内部で動き、その VPC は顧客に見えない**こと、顧客 VPC への接続設定はその管理 VPC に影響しないことを明記しています。
+- `VPC` モードでは、HealthOmics が利用者の VPC のサブネットに ENI（`Service=HealthOmics` / `eniType=CUSTOMER` のタグ付き）を作成し、実行トラフィックをそこへ通します。想定用途として「VPC 内の AWS リソースへの接続」「プライベートネットワーク上のオンプレミスリソースへのアクセス」が挙げられています。サブネットは 1 AZ あたり 1 つ、最大 16、セキュリティグループは最大 5。Configuration リソースが `ACTIVE` になるまで最大 15 分。
+- 同じページが、**ワークフロー実行は HealthOmics が所有・管理する VPC の内部で動き、その VPC は利用者に見えない**こと、利用者の VPC への接続設定はその管理 VPC に影響しないことを明記しています。
 
 **FR-6 の判定は変わりません。** `StartRun` API リファレンス（2026-09-09 全文確認）の `outputUri` は "An output S3 URI for the run. The S3 bucket must be in the same region as the workflow." と記載され、バケットを前提とする契約のままです。入力側も Amazon S3 URI の解釈（単一オブジェクトキー / 末尾スラッシュのプレフィックス / Nextflow の glob）として文書化されています。
 
@@ -320,7 +320,7 @@ AWS サポートの内部チケットは非公開で、代理起票もできな�
 
 ---
 
-## FR-8: HealthOmics 実行タスクへの顧客所有ファイルシステムのマウント対応
+## FR-8: HealthOmics 実行タスクへの利用者所有ファイルシステムのマウント対応
 
 **追加日**: 2026-09-09。FR-6（S3 AP 経路）とは要求先の仕組みが違うため別番号にしています。
 
@@ -328,9 +328,9 @@ AWS サポートの内部チケットは非公開で、代理起票もできな�
 
 HealthOmics の実行ストレージは、サービスがワークフロー実行ごとに用意する一時ファイルシステムです（[Run storage types](https://docs.aws.amazon.com/omics/latest/dev/workflows-run-types.html)、2026-09-09 全文確認）。`DYNAMIC` は NFS プロトコル、`STATIC` は Lustre プロトコルで、`STATIC` の容量は 1,200 GiB または 2,400 GiB の倍数、スループットはプロビジョニング容量 1 TiB あたりベースライン 200 MB/s・バースト最大 1300 MB/s と記載されています。加えて各タスクには `/tmp` の一時領域（`scratchStorageMode`）が付きます。
 
-[`StartRun` API リファレンス](https://docs.aws.amazon.com/omics/latest/api/API_StartRun.html)（2026-09-09 全リクエストフィールドを確認）には、**顧客所有のファイルシステムやマウント先を指定するフィールドがありません**。ストレージ関連のフィールドは `storageType` / `storageCapacity` / `scratchStorageMode` の 3 つで、いずれもサービス提供ストレージの選択とサイズ指定です。
+[`StartRun` API リファレンス](https://docs.aws.amazon.com/omics/latest/api/API_StartRun.html)（2026-09-09 全リクエストフィールドを確認）には、**利用者所有のファイルシステムやマウント先を指定するフィールドがありません**。ストレージ関連のフィールドは `storageType` / `storageCapacity` / `scratchStorageMode` の 3 つで、いずれもサービス提供ストレージの選択とサイズ指定です。
 
-[Connecting HealthOmics workflows to a VPC](https://docs.aws.amazon.com/omics/latest/dev/workflows-vpc-networking.html)（同日、全文確認）は、実行が HealthOmics 所有の管理 VPC 内で動き、その VPC は顧客に見えないと明記しています。`networkingMode: VPC` で顧客 VPC に ENI が張られるのは**到達性のため**で、ファイルシステムをタスクに接続する仕組みとしては説明されていません。
+[Connecting HealthOmics workflows to a VPC](https://docs.aws.amazon.com/omics/latest/dev/workflows-vpc-networking.html)（同日、全文確認）は、実行が HealthOmics 所有の管理 VPC 内で動き、その VPC は利用者に見えないと明記しています。`networkingMode: VPC` で利用者の VPC に ENI が張られるのは**到達性のため**で、ファイルシステムをタスクに接続する仕組みとしては説明されていません。
 
 *上記は AWS 公式ドキュメントの内容をライセンス上の制約に配慮して要約したものです。*
 
@@ -360,9 +360,9 @@ FR-6 の回避策（Stage / Writeback の 2 ステップ）は、マウント経
 
 優先順位は **FR-6（出力）> FR-6（入力）> FR-8** と考えています。FR-8 は実現時の効果が最も大きい一方、サービス側の設計変更としては最も重いと理解しているためです。
 
-- **第 1 希望**: 実行ストレージとして顧客所有のファイルシステム（FSx for ONTAP のボリューム）を指定できるようにする。`networkingMode: VPC` の Configuration リソースにファイルシステムとマウントパスを追加する形が、既存の仕組みへの追加として自然だと考えています。
+- **第 1 希望**: 実行ストレージとして利用者所有のファイルシステム（FSx for ONTAP のボリューム）を指定できるようにする。`networkingMode: VPC` の Configuration リソースにファイルシステムとマウントパスを追加する形が、既存の仕組みへの追加として自然だと考えています。
 - **第 2 希望**: 読み取り専用の入力ロケーションとしてのみマウントを認める。入力は既に読み取り専用としてステージングされる設計なので、意味論の差が小さいはずです。
-- **第 3 希望（現状の明文化）**: 上記がいずれも対象外である場合、**ドキュメントに「実行ストレージはサービス管理であり、顧客所有ファイルシステムのマウントには対応しない」と明記**してください。現在は「記載が無い」状態なので、利用者側が VPC networking モードの説明を読んで到達性とマウントを混同し得ます。当方も一度そう読みかけました。
+- **第 3 希望（現状の明文化）**: 上記がいずれも対象外である場合、**ドキュメントに「実行ストレージはサービス管理であり、利用者所有ファイルシステムのマウントには対応しない」と明記**してください。現在は「記載が無い」状態なので、利用者側が VPC networking モードの説明を読んで到達性とマウントを混同し得ます。当方も一度そう読みかけました。
 
 ### 本プロジェクトでの回避策
 

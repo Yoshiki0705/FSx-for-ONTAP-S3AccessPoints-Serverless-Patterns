@@ -187,7 +187,8 @@ containment actions in a browser, behind Cognito groups, with confirmation and
 an audit trail. If you need something watching around the clock and moving those
 hands for you, detection and response belong in a pipeline. Conversely, if you
 already detect in a SIEM and only lack a way to stop it at the storage layer, an
-SNS-triggered response Lambda fits that shape better than a portal button.
+SNS-triggered response Lambda matches that shape, because it runs without
+anyone at a browser, while a portal button needs a person to press it.
 
 ## Parameter Reference
 

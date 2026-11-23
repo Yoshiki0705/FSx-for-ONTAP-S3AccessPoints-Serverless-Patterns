@@ -109,7 +109,7 @@ DataSync cannot handle these. They expose per-user collaboration APIs and no sto
 
 > **Audit note**: impersonation blurs who performed an action. Egnyte states explicitly that impersonated calls are recorded as impersonated. Confirm the audit format for the other services before migrating, and keep your own operation log in the migration worker. A migration generates a large volume of reads, which may cross the thresholds of normal-time audit alerting.
 
-> **Security note**: an application registration holding tenant-wide read permission is itself a high-value target. Enable it for the migration window only and revoke it afterwards. Microsoft Graph offers [narrower `Sites.Selected`-style scopes](https://learn.microsoft.com/en-us/graph/permissions-selected-overview), which suit a phased migration better than a tenant-wide grant.
+> **Security note**: an application registration holding tenant-wide read permission is itself a high-value target. Enable it for the migration window only and revoke it afterwards. Microsoft Graph offers [narrower `Sites.Selected`-style scopes](https://learn.microsoft.com/en-us/graph/permissions-selected-overview), which limit access to the sites being migrated and so suit a phased migration, whereas a tenant-wide grant covers every site.
 
 **Amazon AppFlow is not a candidate.** It is record-oriented (field mapping for Salesforce, ServiceNow and similar), has no FSx for ONTAP destination, and no file-oriented connectors for these services were found in what was checked.
 
