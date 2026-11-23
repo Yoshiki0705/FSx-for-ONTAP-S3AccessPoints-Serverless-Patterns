@@ -44,8 +44,12 @@ Data access via S3 Access Points for FSx for ONTAP depends on the FSx file syste
 | Gen1 Multi-AZ (major regions) | 4,096 MBps | 1,800 MBps |
 | Gen2 Single-AZ | 6,144 MBps (per HA pair, up to 12 pairs) | 1,024 MBps |
 | Gen2 Multi-AZ | 6,144 MBps | 2,048 MBps |
+| Gen3 Single-AZ | 18,432 MBps (per HA pair, up to 12 pairs) | 4,500 MBps (per HA pair) |
+| Gen3 Multi-AZ | 18,432 MBps | 4,500 MBps |
 
 > **Note**: Throughput via S3 AP cannot exceed these limits. All access via S3 AP, NFS, and SMB shares the same throughput capacity.
+>
+> The Gen3 values come from the AWS user guide (checked on 2026-11-22, [performance page](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/performance.html)). This repository has not measured Gen3. The Regions where Gen3 could be deployed and the places where the sources disagree on limits are in the [Hub note](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/blob/main/docs/ja/domains/performance/notes/third-generation-file-systems-and-where-the-sources-disagree.md) (Japanese).
 
 ## Object Size Profile
 

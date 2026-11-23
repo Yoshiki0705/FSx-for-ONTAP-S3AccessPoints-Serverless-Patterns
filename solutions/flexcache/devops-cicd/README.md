@@ -110,6 +110,7 @@ sam deploy \
 - NetworkOrigin 設定により Lambda の VPC 配置要件が変わる（詳細は steering 参照）
 - FlexClone split を実行すると独立ボリュームになる（スペース効率を失う）
 - **FSx API 反映遅延（SM-VAL-009）**: FlexClone は ONTAP REST API で作成されるため、FSx API（`describe-volumes`）に反映されるまで ~30 分かかる。S3 AP アタッチ（`create-and-attach-s3-access-point`）は FSx API にボリュームが表示された後にのみ可能。自動化する場合は `describe-volumes` で `fsvol-*` が返されるまでポーリングするロジックを実装すること
+- **AWS 側でクローンを作る経路**: Amazon FSx コンソールのボリューム作成画面でクローンを作ると、ボリュームはクリックの約 7 秒後に `describe-volumes` に現れ、S3 Access Points は約 93 秒で `AVAILABLE` になった（東京、第 1 世代、1 回の観測。[Hub のノート](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/blob/main/docs/ja/domains/data-utilization/notes/a-console-clone-attaches-s3-access-points-in-minutes.md)）。この経路が呼ぶ `CreateVolume` のクローンの指定は、2026-11-22 時点で公開 SDK のモデルにないため、自動化の前提にしない。ONTAP REST API でクローンを作る自動化では、上のポーリングが引き続き必要
 
 ---
 
