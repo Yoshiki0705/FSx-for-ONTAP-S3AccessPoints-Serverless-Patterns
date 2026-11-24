@@ -121,8 +121,10 @@ The following work by configuration alone on an S3 bucket, but are unavailable o
 | EventBridge notifications | ✅ | ❌ |
 | S3 Event Notifications (SQS/SNS/Lambda) | ✅ | ❌ |
 | S3 Inventory | ✅ | ❌ |
-| S3 Batch Operations | ✅ | ❌ |
+| S3 Batch Operations | ✅ | ⚠️ Copy jobs (`S3PutObjectCopy`) succeeded (see note) |
 | Object Lifecycle | ✅ | ❌ |
+
+Note: An S3 Batch Operations copy job succeeded when the destination was an S3 Access Points alias, and when the bucket-name column of the manifest held an S3 Access Points alias (one run each, content SHA-256 matched; `ap-northeast-1`, first-generation `SINGLE_AZ_1`, ONTAP 9.19.1P4; confirmed 2026-11-24; [measurement record](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/blob/main/docs/ja/domains/data-utilization/notes/s3-access-points-server-side-copy-use-cases.md), in Japanese). A job copies objects of up to 5 GB each ([AWS documentation](https://docs.aws.amazon.com/AmazonS3/latest/userguide/batch-ops-copy-object.html)). Batch Operations actions other than copy, S3 Inventory, and jobs for objects over 5 GB have not been tested. The status of the other rows is unchanged.
 
 ## Quantified Impact
 

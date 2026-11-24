@@ -120,8 +120,10 @@ S3 バケットでは以下が「設定するだけ」で動作しますが、S3
 | EventBridge 通知 | ✅ | ❌ |
 | S3 Event Notifications (SQS/SNS/Lambda) | ✅ | ❌ |
 | S3 Inventory | ✅ | ❌ |
-| S3 Batch Operations | ✅ | ❌ |
+| S3 Batch Operations | ✅ | ⚠️ コピーのジョブ（`S3PutObjectCopy`）は成功（注） |
 | Object Lifecycle | ✅ | ❌ |
+
+注: S3 Batch Operations のコピーのジョブは、コピー先に S3 Access Points のエイリアスを指定しても、マニフェストのバケット名の列に S3 Access Points のエイリアスを書いても成功しました（各 1 回、中身の SHA-256 が一致、`ap-northeast-1`、第 1 世代 `SINGLE_AZ_1`、ONTAP 9.19.1P4、確認日 2026-11-24。[実測の記録](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/blob/main/docs/ja/domains/data-utilization/notes/s3-access-points-server-side-copy-use-cases.md)）。ジョブで写せるのは 1 件 5 GB までです（[AWS ドキュメント](https://docs.aws.amazon.com/AmazonS3/latest/userguide/batch-ops-copy-object.html)）。コピー以外の Batch Operations の操作と、S3 Inventory、5 GB を超えるオブジェクトのジョブは確かめていません。この行以外の要望の状況は変わっていません。
 
 ## 定量的インパクト
 
