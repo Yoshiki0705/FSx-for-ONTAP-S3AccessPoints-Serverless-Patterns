@@ -426,6 +426,41 @@ Step Functions Map state for parallel FlexClone creation:
 }
 ```
 
+### Recording Reproducibility
+
+An experiment that gives research data to an agent has to be reconstructible later: you need to know which version of the data it ran on. The input above already carries `volume_uuid` and `snapshot_name`. When you use this pattern on an Amazon FSx for NetApp ONTAP volume, add the following identifiers to each experiment's record.
+
+| Identifier | How to get it | What it is for |
+|---|---|---|
+| UUID of the source volume (the volume the clone comes from) | Record `volume_uuid` from the input as is | Identifying which volume the experiment branched from |
+| Snapshot UUID | ONTAP REST `GET /api/storage/volumes/{volume.uuid}/snapshots?name=<snapshot-name>&fields=uuid`, called before the clone is created | Matching the same version even if the Snapshot name is reassigned |
+| Clone name | `clone_name` from the input | Linking the experiment to its clone |
+| Access point ARN | Output of `aws fsx describe-s3-access-point-attachments` | Identifying the entry point the agent read through |
+| IAM principal | ARN of the role assigned to the agent | Identifying who read the data |
+| CloudTrail event ID | `eventID` of the data event | Matching the read against its log record |
+
+To reproduce an experiment, create a new clone from the Snapshot that the recorded Snapshot UUID points to, which gives you the same input. A Snapshot name can be reassigned, so match on the UUID and not on the name.
+
+Reading older versions needs care. On S3 Access Points attached to an FSx for ONTAP volume, the contents of a Snapshot were readable with `GetObject` on a key of the form `.snapshot/<snapshot-name>/<path>`. `ListObjectsV2` did not list that key. This was measured on 2026-11-24 in ap-northeast-1, on a first-generation SINGLE_AZ_1 file system running ONTAP 9.19.1P4, on a UNIX-style volume, with the file system user set to root. It was not measured on a clone's access point. The record is in FSx for ONTAP Cyber Resilience Patterns, [deletion requests and retained copies](https://github.com/Yoshiki0705/FSx-for-ONTAP-Cyber-Resilience-Patterns/blob/main/docs/data-protection/deletion-requests-and-retained-copies.md). If the agent's role must not read other versions, deny `s3:GetObject` on `<access-point-arn>/object/.snapshot/*` in the access point policy.
+
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Deny",
+      "Principal": {"AWS": "<agent-role-arn>"},
+      "Action": "s3:GetObject",
+      "Resource": "<access-point-arn>/object/.snapshot/*"
+    }
+  ]
+}
+```
+
+As of the [What's New](https://aws.amazon.com/about-aws/whats-new/2026/11/amazon-fsx-for-netapp-ontap-additional-resources/) of 2026-11-23, clones can also be created from the Amazon FSx API and AWS CloudFormation, through `CloneConfiguration` in the `OntapConfiguration` of `CreateVolume`.
+
+The full set of decisions, including how to build versions, how many experiments to run in parallel, and where HealthOmics fits, is in the Hub note [reproducible research datasets for agents](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/blob/main/docs/en/domains/data-utilization/notes/reproducible-research-datasets-for-agents.md).
+
 ## Pattern 5: Financial Services — Audit Point-in-Time Copies
 
 ### Use Case

@@ -425,6 +425,41 @@ Step Functions の Map ステートで並列 FlexClone 作成:
 }
 ```
 
+### 再現性の記録
+
+エージェントに研究データを渡す実験では、どの版のデータで実験したかを後から作り直せる必要がある。上の入力には `volume_uuid` と `snapshot_name` が既にある。Amazon FSx for NetApp ONTAP のボリュームでこのパターンを使うときは、次の識別子を実験ごとの記録に足す。
+
+| 識別子 | 取り方 | 使い道 |
+|---|---|---|
+| 元のボリューム（クローンの元のボリューム）の UUID | 入力の `volume_uuid` をそのまま記録する | どのボリュームから分岐したかの特定 |
+| Snapshot の UUID | ONTAP REST の `GET /api/storage/volumes/{volume.uuid}/snapshots?name=<snapshot-name>&fields=uuid` で、クローンを作る前に引く | Snapshot の名前が付け直されても同じ版を指す照合 |
+| クローンの名前 | 入力の `clone_name` | 実験とクローンの対応づけ |
+| アクセスポイントの ARN | `aws fsx describe-s3-access-point-attachments` の出力 | エージェントが読んだ入口の特定 |
+| IAM のプリンシパル | エージェントに割り当てたロールの ARN | 読み取った主体の特定 |
+| CloudTrail のイベント ID | データイベントの `eventID` | 読み取りの記録との照合 |
+
+再現するときは、記録した Snapshot の UUID が指す Snapshot から新しいクローンを作り直し、同じ入力を得る。Snapshot の名前は付け直せるので、名前ではなく UUID で照合する。
+
+古い版の読み取りには注意がいる。FSx for ONTAP のボリュームに付けた S3 Access Points では、Snapshot の中身が `.snapshot/<Snapshot 名>/<パス>` のキーに対する `GetObject` で読めた。`ListObjectsV2` にはそのキーが出なかった。これは 2026-11-24 に ap-northeast-1 の第 1 世代 SINGLE_AZ_1、ONTAP 9.19.1P4、UNIX スタイルのボリュームで、ファイルシステムのユーザーを root にして測った記録で、クローンのアクセスポイントでは測っていない。記録は FSx for ONTAP Cyber Resilience Patterns の[削除の依頼と削除後も残るコピー](https://github.com/Yoshiki0705/FSx-for-ONTAP-Cyber-Resilience-Patterns/blob/main/docs/data-protection/deletion-requests-and-retained-copies.md)にある。エージェントのロールに別の版を読ませない場合は、アクセスポイントポリシーで `<アクセスポイント ARN>/object/.snapshot/*` への `s3:GetObject` を拒否する。
+
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Deny",
+      "Principal": {"AWS": "<agent-role-arn>"},
+      "Action": "s3:GetObject",
+      "Resource": "<access-point-arn>/object/.snapshot/*"
+    }
+  ]
+}
+```
+
+クローンの作成は、2026-11-23 の [What's New](https://aws.amazon.com/about-aws/whats-new/2026/11/amazon-fsx-for-netapp-ontap-additional-resources/) で、`CreateVolume` の `OntapConfiguration` にある `CloneConfiguration` により、Amazon FSx API と AWS CloudFormation からも行えるようになった。
+
+版の作り方、並列の実験の数、HealthOmics との境界を含む判断の全体は、Hub のノート[研究データセットをエージェントに渡すときの再現性](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/blob/main/docs/ja/domains/data-utilization/notes/reproducible-research-datasets-for-agents.md)にある。
+
 ## Pattern 5: Financial Services — 監査用ポイントインタイムコピー
 
 ### ユースケース
