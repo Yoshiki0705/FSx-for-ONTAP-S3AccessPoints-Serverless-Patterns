@@ -217,7 +217,7 @@ FSx for ONTAP S3 AP は「S3 互換」だが「Amazon S3 と同一」ではな�
 | ListObjectsV2 | ✅ | — | Prefix / Delimiter / MaxKeys 対応 |
 | HeadObject | ✅ | — | |
 | DeleteObject | ✅ | — | |
-| CopyObject | ✅ | — | 同一 AP 内のみ |
+| CopyObject | ✅ | — | バケットと AP、AP 同士（別のファイルシステムの AP を含む）でサーバー側コピー可。実測は 8 MiB のオブジェクトで、それより大きいオブジェクトとアカウント間は対象外。同一リージョンのみ。コピー先が FSx のボリュームなら `SSE-FSX` と `FSX_ONTAP` に限る（[What's New](https://aws.amazon.com/about-aws/whats-new/2026/11/s3-access-points-server-side-copy-fsx/)、2026-11-24 確認） |
 | Versioning | ❌ | ONTAP Snapshot（ボリューム単位） | バージョン管理は Snapshot + FlexClone で代替 |
 | 条件付き書き込み (If-None-Match) | ❌ | アプリケーションレベルのロック | 501 Not Implemented が返る |
 | S3 Event Notification | ❌ | EventBridge Scheduler ポーリング | **FPolicy は代替にならない**: AP 経由の操作は通知されず、`mandatory` 指定でも遮断されない（実測 2026-08-26 / ONTAP 9.18.1P3D1）。FPolicy で取れるのは NFS / SMB 経由の操作のみ |
@@ -226,7 +226,7 @@ FSx for ONTAP S3 AP は「S3 互換」だが「Amazon S3 と同一」ではな�
 | S3 Select | ❌ | Athena + Glue Data Catalog | 外部分析エンジンで処理 |
 | Server-Side Encryption (SSE-S3/KMS) | ❌ | NAE / NVE (ONTAP ボリューム暗号化) | at-rest は ONTAP 層で暗号化。in-transit は TLS |
 | Presigned URL | ✅ | — | 2026-09 の訂正で `Supported`。有効期限を短く設定する |
-| Cross-AP Copy | ❌ | DataSync / rsync | 異なる AP 間のコピーは不可 |
+| Cross-AP Copy | ✅ | — | `CopyObject` / `UploadPartCopy` で AP 間のサーバー側コピーが可能（上の `CopyObject` の行を参照） |
 
 **参考**: [Accessing data via S3 Access Points (AWS Docs)](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/accessing-data-via-s3-access-points.html)
 

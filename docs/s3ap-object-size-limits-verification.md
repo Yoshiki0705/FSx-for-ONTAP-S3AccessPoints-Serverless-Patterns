@@ -18,7 +18,7 @@
 | 単一 `PutObject` の上限 | **5,368,709,120** | 5 GiB | ✅ 実測確定 |
 | `UploadPart`（1 パート）の上限 | **5,368,709,120** | 5 GiB | ✅ 実測確定 |
 | オブジェクト全体の上限（アップロード） | **53,687,091,200** | 50 GiB | ✅ 実測確定 |
-| `UploadPartCopy` | ドキュメントでは Supported だが `NoSuchKey` で失敗 | — | ✅ 実測確定 |
+| `UploadPartCopy` | 2026-08-02 の実測では `NoSuchKey` で失敗。2026-11-24 の再確認では再現せず（[検証 3](#検証-3-2026-08-02-時点の-uploadpartcopy-の失敗)） | — | ✅ 実測確定（2026-08-02 時点） |
 
 境界は 1 バイト単位で確定しています。
 
@@ -112,9 +112,11 @@ RESULT=CLIENT_ERROR elapsed=2.7s
 
 ---
 
-## 検証 3: ドキュメント上 Supported な `UploadPartCopy` の失敗
+## 検証 3: 2026-08-02 時点の `UploadPartCopy` の失敗
 
-[Access point compatibility](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/access-points-for-fsxn-object-api-support.html) は `UploadPartCopy`（same-Region、同一アクセスポイント内）を Supported と記載していますが、実測では**すべての `CopySource` 表記で `NoSuchKey`** となりました。同一キーに対する `HeadObject` は成功し、`CopyObject` も成功するため、キーの存在やアクセス権の問題ではありません。
+> **再確認（2026-11-24）**: 2026-11-22 の [What's New](https://aws.amazon.com/about-aws/whats-new/2026/11/s3-access-points-server-side-copy-fsx/) で、`CopyObject` と `UploadPartCopy` によるバケットと Access Point の間、Access Point 同士のサーバー側コピーが告知されました。Adoption Playbook は 2026-11-24 に `ap-northeast-1`（ONTAP 9.19.1P4）で再確認し、`/` を含むキーをコピー元にした 2 パートの `UploadPartCopy` が 8 MiB のオブジェクトで成功し、SHA-256 が一致しました。以下の `NoSuchKey` は再現していません（[Playbook の記録](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/blob/main/docs/ja/domains/data-utilization/notes/s3-access-point-constraints.md)）。8 MiB より大きいオブジェクトは確かめていません。以下は 2026-08-02 の記録として残します。
+
+[Access point compatibility](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/access-points-for-fsxn-object-api-support.html) は `UploadPartCopy`（same-Region、同一アクセスポイント内）を Supported と記載していましたが、2026-08-02 の実測では**すべての `CopySource` 表記で `NoSuchKey`** となりました。同一キーに対する `HeadObject` は成功し、`CopyObject` も成功したため、キーの存在やアクセス権の問題ではありませんでした。
 
 | API | `CopySource` 形式 | 結果 |
 |-----|------------------|------|
@@ -126,7 +128,7 @@ RESULT=CLIENT_ERROR elapsed=2.7s
 | `CopyObject` | `"<alias>/k"` | ✅ 成功 |
 | `HeadObject`（同一キー） | — | ✅ 成功 |
 
-> **実務上の影響**: サーバーサイドで大きなオブジェクトを組み立てる（小さなオブジェクトを複製してパートとして連結する）手法が使えません。5 GiB を超えるオブジェクトを作るには、クライアントから実データを転送する必要があります。大容量データの検証コストに直接影響するため、AWS Support への確認事項に含める価値があります。
+> **当時の実務上の影響（2026-08-02）**: サーバーサイドで大きなオブジェクトを組み立てる（小さなオブジェクトを複製してパートとして連結する）手法が使えず、5 GiB を超えるオブジェクトを作るにはクライアントから実データを転送する必要がありました。上の再確認のとおり現在は再現していませんが、8 MiB より大きいオブジェクトでの動作は未確認です。
 
 ---
 
@@ -256,14 +258,14 @@ s3.put_object(Bucket="<ap-alias>", Key="probe.bin", Body=ZeroStream(size), Conte
 | `UploadPart` 1 パート | **5 GiB**（5,368,709,120） | Content-Length（即時） | 400 `EntityTooLarge` + `MaxSizeAllowed` |
 | オブジェクト全体（アップロード） | **50 GiB**（53,687,091,200） | `CompleteMultipartUpload`（全転送後） | 400 `EntityTooLarge`（`MaxSizeAllowed` なし） |
 | ダウンロード | 上限なし（AWS ドキュメント記載） | — | — |
-| `UploadPartCopy` | 実測では利用不可 | — | 404 `NoSuchKey` |
+| `UploadPartCopy` | 2026-08-02 の実測では利用不可。2026-11-24 の再確認（8 MiB）では成功 | — | 2026-08-02 は 404 `NoSuchKey` |
 
 ### アプリケーション実装者への推奨
 
 - **アップロード前にサイズを検証する**。50 GiB 超は転送完了後に失敗するため、クライアント側チェックが唯一の早期検出手段です。
 - 5 GiB 超は Multipart Upload が必須。パートサイズ上限も 5 GiB です。
 - `CompleteMultipartUpload` は 50 GiB で 9 分強かかる場合がありますが、組み立て中は空白文字が送られるため既定の読み取りタイムアウトで足ります（[リファレンス](https://docs.aws.amazon.com/AmazonS3/latest/API/API_CompleteMultipartUpload.html)）。**代わりに、200 OK の本文にエラーが埋め込まれうる点に対応してください。** SDK を使えば SDK が処理します。
-- サーバーサイドでの大容量オブジェクト組み立て（`UploadPartCopy`）には依存しないでください。
+- 5 GiB を超えるオブジェクトを `UploadPartCopy` で組み立てる経路は、8 MiB を超える実測がないため、実測するまで前提にしないでください。2026-11-24 の再確認では 8 MiB のオブジェクトで成功しています。
 
 ---
 
@@ -276,7 +278,7 @@ s3.put_object(Bucket="<ap-alias>", Key="probe.bin", Body=ZeroStream(size), Conte
 | # | 内容 |
 |---|------|
 | Q1 | オブジェクト上限が正確に 50 GiB（53,687,091,200）であること、およびドキュメントの「5 GB」「50 GB」が二進表記であることの確認 |
-| Q2 | `UploadPartCopy` が Supported と記載されているのに `NoSuchKey` になるのは不具合か、それとも FSx アタッチ AP 固有の `CopySource` 形式が必要なのか |
+| Q2 | `UploadPartCopy` が Supported と記載されているのに `NoSuchKey` になるのは不具合か、それとも FSx アタッチ AP 固有の `CopySource` 形式が必要なのか（2026-11-24 の再確認では `NoSuchKey` は再現せず。検証 3 を参照） |
 | Q3 | 50 GiB の `CompleteMultipartUpload` に約 557 秒かかるのは想定内か。所要時間はオブジェクトサイズかパート数のどちらに比例するか。推奨タイムアウト値の指針 |
 | Q4 | AWS Transfer Family のドキュメントが依然 5 GB と記載している件は、Transfer Family 固有の制約か、更新漏れか |
 | Q5 | 5 GB → 50 GB の変更はどこかで告知されたか。What's New が見つからず、`doc-history` もリダイレクトされ変更履歴を辿れない |

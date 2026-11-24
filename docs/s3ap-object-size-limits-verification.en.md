@@ -18,7 +18,7 @@
 | Single `PutObject` limit | **5,368,709,120** | 5 GiB | ✅ Measured |
 | `UploadPart` (one part) limit | **5,368,709,120** | 5 GiB | ✅ Measured |
 | Whole-object limit (upload) | **53,687,091,200** | 50 GiB | ✅ Measured |
-| `UploadPartCopy` | Documented as Supported but fails with `NoSuchKey` | — | ✅ Measured |
+| `UploadPartCopy` | 2026-08-02: failed with `NoSuchKey`. 2026-11-24 re-check: did not reproduce ([Test 3](#test-3-uploadpartcopy-failure-as-of-2026-08-02)) | — | ✅ Measured (as of 2026-08-02) |
 
 The boundaries are pinned to the byte:
 
@@ -112,9 +112,11 @@ The part size limit is also 5 GiB, matching standard Amazon S3 multipart specifi
 
 ---
 
-## Test 3: `UploadPartCopy` is documented as Supported but fails in practice
+## Test 3: `UploadPartCopy` failure as of 2026-08-02
 
-[Access point compatibility](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/access-points-for-fsxn-object-api-support.html) lists `UploadPartCopy` (same-Region, within the same access point) as Supported. In testing, **every `CopySource` form returned `NoSuchKey`**. `HeadObject` on the same key succeeds and `CopyObject` also succeeds, so this is not a missing-key or permissions problem.
+> **Re-check (2026-11-24)**: The 2026-11-22 [What's New](https://aws.amazon.com/about-aws/whats-new/2026/11/s3-access-points-server-side-copy-fsx/) announced server-side copy with `CopyObject` and `UploadPartCopy` between buckets and access points, and between access points. The Adoption Playbook re-checked on 2026-11-24 in `ap-northeast-1` (ONTAP 9.19.1P4): a 2-part `UploadPartCopy` with a `/` in the source key succeeded on an 8 MiB object and the SHA-256 matched. The `NoSuchKey` below did not reproduce ([Playbook record](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/blob/main/docs/ja/domains/data-utilization/notes/s3-access-point-constraints.md)). Objects larger than 8 MiB were not tried. What follows is kept as the 2026-08-02 record.
+
+[Access point compatibility](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/access-points-for-fsxn-object-api-support.html) listed `UploadPartCopy` (same-Region, within the same access point) as Supported. In the 2026-08-02 testing, **every `CopySource` form returned `NoSuchKey`**. `HeadObject` on the same key succeeded and `CopyObject` also succeeded, so it was not a missing-key or permissions problem.
 
 | API | `CopySource` form | Result |
 |-----|-------------------|--------|
@@ -126,7 +128,7 @@ The part size limit is also 5 GiB, matching standard Amazon S3 multipart specifi
 | `CopyObject` | `"<alias>/k"` | ✅ Success |
 | `HeadObject` (same key) | — | ✅ Success |
 
-> **Practical impact**: You cannot assemble a large object server-side (replicating a small object into parts and concatenating them). Creating objects above 5 GiB requires transferring real data from a client. This directly affects the cost of validating large-object behaviour, and is worth raising with AWS Support.
+> **Practical impact at the time (2026-08-02)**: You could not assemble a large object server-side (replicating a small object into parts and concatenating them), and creating objects above 5 GiB required transferring real data from a client. As the re-check above shows, this no longer reproduces, but behaviour on objects larger than 8 MiB is unconfirmed.
 
 ---
 
@@ -256,14 +258,14 @@ s3.put_object(Bucket="<ap-alias>", Key="probe.bin", Body=ZeroStream(size), Conte
 | `UploadPart` per part | **5 GiB** (5,368,709,120) | On Content-Length (immediate) | 400 `EntityTooLarge` + `MaxSizeAllowed` |
 | Whole object (upload) | **50 GiB** (53,687,091,200) | At `CompleteMultipartUpload` (after full transfer) | 400 `EntityTooLarge` (no `MaxSizeAllowed`) |
 | Download | No limit (per AWS documentation) | — | — |
-| `UploadPartCopy` | Unusable in practice | — | 404 `NoSuchKey` |
+| `UploadPartCopy` | Unusable in the 2026-08-02 measurement. The 2026-11-24 re-check (8 MiB) succeeded | — | 404 `NoSuchKey` on 2026-08-02 |
 
 ### Recommendations for application developers
 
 - **Validate size before uploading.** Anything above 50 GiB fails only after the transfer completes, so a client-side check is the only early detection.
 - Multipart Upload is required above 5 GiB; the per-part limit is also 5 GiB.
 - `CompleteMultipartUpload` can take over 9 minutes for a 50 GiB object, but white space characters are sent during assembly, so a default read timeout is enough ([reference](https://docs.aws.amazon.com/AmazonS3/latest/API/API_CompleteMultipartUpload.html)). **Handle the embedded error in a 200 OK body instead.** An SDK handles it for you.
-- Do not rely on server-side assembly of large objects (`UploadPartCopy`).
+- Do not assume `UploadPartCopy` can assemble an object above 5 GiB until it has been measured at that size. The 2026-11-24 re-check succeeded on an 8 MiB object.
 
 ---
 
@@ -279,7 +281,7 @@ Category: Feature Request). Case numbers are not recorded in this repository
 | # | Question |
 |---|----------|
 | Q1 | Confirm the object limit is exactly 50 GiB (53,687,091,200) and that "5 GB"/"50 GB" in the docs are binary units |
-| Q2 | Is `UploadPartCopy` returning `NoSuchKey` a defect, or is a specific `CopySource` form required for FSx-attached access points? |
+| Q2 | Is `UploadPartCopy` returning `NoSuchKey` a defect, or is a specific `CopySource` form required for FSx-attached access points? (The 2026-11-24 re-check did not reproduce `NoSuchKey`; see Test 3) |
 | Q3 | Is ~557 s for `CompleteMultipartUpload` on a 50 GiB object expected? Does it scale with object size or part count? Recommended client timeout guidance? |
 | Q4 | Is the 5 GB figure still in the AWS Transfer Family docs a Transfer Family-specific limit, or a stale value? |
 | Q5 | Was the 5 GB → 50 GB change announced anywhere? No What's New entry found, and `doc-history` now redirects |

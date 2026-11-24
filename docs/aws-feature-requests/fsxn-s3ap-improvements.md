@@ -248,7 +248,11 @@ While preparing these FRs, we also noted the following which are *documented but
 2. **SSE-FSX as the only encryption mode** — expected given FSx-managed encryption.
 3. **`FSX_ONTAP` as the only storage class** — expected.
 4. **`GetObjectAcl` / `PutObjectAcl` limited to `bucket-owner-full-control`** — acceptable; ONTAP file-level NTFS ACLs provide the granular access control via the dual-authorization model described in [the AWS Storage Blog](https://aws.amazon.com/blogs/storage/enabling-ai-powered-analytics-on-enterprise-file-data-configuring-s3-access-points-for-amazon-fsx-for-netapp-ontap-with-active-directory/).
-5. **`CopyObject` / `UploadPartCopy` limited to same-region and same-access-point** — understood, cross-AP copy forces a download-upload cycle.
+5. **`CopyObject` / `UploadPartCopy` limited to same-region and same-access-point** — understood at the time of writing; cross-AP copy forced a download-upload cycle.
+
+   > **Resolved (2026-11-22 announcement, confirmed 2026-11-24)**: AWS announced server-side copy with `CopyObject` and `UploadPartCopy` between Amazon S3 buckets and access points on FSx for ONTAP and FSx for OpenZFS volumes, including access point to access point ([What's New](https://aws.amazon.com/about-aws/whats-new/2026/11/s3-access-points-server-side-copy-fsx/)). The FSx for ONTAP User Guide lists it in its document history under 2026-10-08. The announcement keeps the copy within one Region. For an FSx volume as the destination, it names `SSE-FSX` as the encryption and `FSX_ONTAP` as the storage class.
+   >
+   > A measurement on 2026-11-24 (8 MiB objects, `ap-northeast-1`, ONTAP 9.19.1P4) succeeded for bucket to access point, access point to bucket, within one access point, and between access points on different file systems ([record](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/blob/main/docs/ja/domains/data-utilization/notes/s3-access-point-constraints.md)). Objects larger than 8 MiB, copies across accounts, and FlexCache volumes were outside that measurement.
 
 ---
 

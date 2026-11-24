@@ -217,7 +217,7 @@ FSx for ONTAP S3 AP is "S3 compatible" but NOT "identical to Amazon S3." Conside
 | ListObjectsV2 | ✅ | — | Prefix / Delimiter / MaxKeys supported |
 | HeadObject | ✅ | — | |
 | DeleteObject | ✅ | — | |
-| CopyObject | ✅ | — | Same AP only |
+| CopyObject | ✅ | — | Server-side copy between buckets and access points, and between access points (including those on different file systems). Measured on 8 MiB objects; larger objects and cross-account copies were outside the measurement. Same Region only. An FSx volume destination is limited to `SSE-FSX` and `FSX_ONTAP` ([What's New](https://aws.amazon.com/about-aws/whats-new/2026/11/s3-access-points-server-side-copy-fsx/), confirmed 2026-11-24) |
 | Versioning | ❌ | ONTAP Snapshot (volume-level) | Version management via Snapshot + FlexClone |
 | Conditional writes (If-None-Match) | ❌ | Application-level locking | Returns 501 Not Implemented |
 | S3 Event Notification | ❌ | EventBridge Scheduler polling | **FPolicy is not a substitute**: operations through the access point raise no notification and are not blocked even by a `mandatory` policy (measured 2026-08-26, ONTAP 9.18.1P3D1). What FPolicy captures is NFS / SMB operations only |
@@ -226,7 +226,7 @@ FSx for ONTAP S3 AP is "S3 compatible" but NOT "identical to Amazon S3." Conside
 | S3 Select | ❌ | Athena + Glue Data Catalog | Process with external analytics engines |
 | Server-Side Encryption (SSE-S3/KMS) | ❌ | NAE / NVE (ONTAP volume encryption) | At-rest via ONTAP layer. In-transit via TLS |
 | Presigned URL | ✅ | — | `Supported` since the 2026-09 correction. Keep expiry short |
-| Cross-AP Copy | ❌ | DataSync / rsync | Cannot copy between different APs |
+| Cross-AP Copy | ✅ | — | Server-side copy between access points with `CopyObject` / `UploadPartCopy` (see the `CopyObject` row above) |
 
 **Reference**: [Accessing data via S3 Access Points (AWS Docs)](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/accessing-data-via-s3-access-points.html)
 
