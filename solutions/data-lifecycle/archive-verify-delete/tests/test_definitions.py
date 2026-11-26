@@ -309,3 +309,24 @@ def test_template_passes_the_tls_verification_choice_to_the_ontap_function():
     assert env["ONTAP_VERIFY_SSL"] == {"Ref": "OntapVerifySsl"}
     param = TEMPLATE["Parameters"]["OntapVerifySsl"]
     assert param["AllowedValues"] == ["true", "false"]
+
+
+def test_restore_request_tells_an_in_progress_restore_from_other_s3_errors():
+    """The Step Functions SDK integration reports RestoreAlreadyInProgress as ``S3.S3Exception``.
+
+    Observed on a live request (HTTP 409, "Object restore is already in progress"). A catch on
+    ``S3.RestoreAlreadyInProgressException`` never matches, so a second restore request for the same
+    object failed the file. The definition must route that cause to the wait loop and send every other
+    S3 error to the failure state.
+    """
+    states = RESTORE["States"]["RestoreFiles"]["ItemProcessor"]["States"]
+    catches = states["RequestRestore"]["Catch"]
+    sdk = next(c for c in catches if "S3.S3Exception" in c["ErrorEquals"])
+    assert sdk["ResultPath"] == "$.error"
+    choice = states[sdk["Next"]]
+    assert choice["Type"] == "Choice"
+    matched = choice["Choices"][0]
+    assert matched["Variable"] == "$.error.Cause"
+    assert matched["StringMatches"] == "*restore is already in progress*"
+    assert matched["Next"] == "WaitRestore"
+    assert choice["Default"] == "ItemFailed"

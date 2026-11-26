@@ -189,6 +189,13 @@
               },
               {
                 "ErrorEquals": [
+                  "S3.S3Exception"
+                ],
+                "ResultPath": "$.error",
+                "Next": "RestoreRequestErrorChoice"
+              },
+              {
+                "ErrorEquals": [
                   "States.ALL"
                 ],
                 "ResultPath": "$.error",
@@ -196,6 +203,17 @@
               }
             ],
             "Next": "WaitRestore"
+          },
+          "RestoreRequestErrorChoice": {
+            "Type": "Choice",
+            "Choices": [
+              {
+                "Variable": "$.error.Cause",
+                "StringMatches": "*restore is already in progress*",
+                "Next": "WaitRestore"
+              }
+            ],
+            "Default": "ItemFailed"
           },
           "WaitRestore": {
             "Type": "Wait",
