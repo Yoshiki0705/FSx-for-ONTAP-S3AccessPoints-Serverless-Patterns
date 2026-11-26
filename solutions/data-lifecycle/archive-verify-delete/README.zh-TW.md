@@ -7,7 +7,7 @@
 1. 在帳本（DynamoDB 資料表）中記錄大小、ETag、SHA-256 和 CRC64NVME
 2. 指定儲存類別，用 `CopyObject` 複製到歸檔用儲存桶（鍵為 `<prefix><runId>/<original key>`）
 3. 把儲存桶返回的校驗和與帳本中的值進行比較
-4. 由人批准一致檔案的清單。批准會以 `APPROVED` 記錄在帳本中；批准者與啟動執行的主體相同時會被拒絕（預設）
+4. 由人批准一致檔案的清單。批准會以 `APPROVED` 記錄在帳本中；批准者與啟動執行的主體相同時會被拒絕（預設；比較的是申報的值，不是主體的證明）
 5. 確認 Access Point 的 ETag 和大小仍與帳本相同後，只刪除帳本中為 `APPROVED` 的檔案
 
 恢復時，先在帳本中查詢檔案，在儲存桶中請求恢復，等待完成後用 `CopyObject` 複製回 Access Point，再把每個恢復的檔案讀回，與帳本的 SHA-256 和 CRC64NVME 比較。
@@ -18,9 +18,9 @@
 |---|---|
 | 各組成部分已在實際環境中各確認 1 次（記錄在上述比較資料中，2026-11-24 和 2026-11-26，ap-northeast-1，第 1 代 `SINGLE_AZ_1`，ONTAP 9.19.1P4D1，UNIX 樣式磁碟區，Access Point 使用者為 UNIX root） | 給 `CopyObject` 指定 `ChecksumAlgorithm=SHA256` 後，儲存桶的 `ChecksumSHA256` 為 `FULL_OBJECT`，與檔案的 SHA-256 一致（最大 8 MiB）。5.5 GiB 的分段上傳中 SHA-256 變為 `COMPOSITE`，CRC64NVME 為 `FULL_OBJECT` 且一致。使用舊 ETag 的 `--copy-source-if-match` 返回 `PreconditionFailed`。Access Point 的 `DeleteObject` 不支援 `If-Match`。在 Step Functions 的 SDK 整合中，可以把 Access Point 別名傳給 `Bucket` |
 | 在本儲存庫中確認 | 使用 moto 的單元測試，以及狀態機和 IAM 結構的測試。未連接 AWS。上述實機端到端執行中發現的 7 個缺陷（ONTAP REST 函數的呼叫權限、TLS 驗證、重複恢復請求的錯誤名稱、狀態機的日誌寫入權限、`HeadObject` 的 403、告警的發佈權限）已透過能夠重現它們的測試修復 |
-| 在實機端到端執行中各確認 1 次（2026-11-26，與上述相同的環境，`selection=ATIME`，`GLACIER`，7 個檔案） | 透過 ONTAP REST API 按 `accessed_time` 選擇，並獲取 uid、gid、mode、mtime、atime（根是磁碟區的根，路徑開頭沒有斜槓；`unix_permissions` 以整數 `640` 返回）。Distributed Map 的 `ItemReader` 和 `ResultWriter`。用 Fargate 進行 5.5 GiB 的分段複制（帶 `CopySourceIfMatch`，CRC64NVME 與帳本一致）。在 Lambda 中對 5.3 GB（約 4.94 GiB）計算雜湊（69.8 秒，設定記憶體 2048 MB，使用 152 MB）。第二份副本。批准後的刪除。等待批准期間在 NFS 上改寫的檔案變為 `CHANGED`，沒有被刪除。拒絕批准後什麼都沒有被刪除。用 `Expedited` 恢復（含 5.5 GiB），恢復的 6 個檔案 SHA-256 一致（7 個檔案中剩下的 1 個已被改寫，既沒有被刪除也沒有被恢復）。用 `reapply.sh` 恢復 uid、gid、mode、mtime |
-| 在第二次端到端執行中各確認 1 次（2026-11-26，相同環境，`GLACIER`，開啟第二份副本。dry run 使用 `selection=ATIME`，正式執行使用 `selection=MTIME` 並從 ONTAP REST 取得屬性。檔案從 64 B 到 1 MiB，另有 1 個 51 GiB 的稀疏檔案） | 第一次執行中沒有的項目的確認。`maxFiles=50` 時，3 個 64 B 的檔案和 1 個 131,071 B 的檔案低於最小大小而被排除，131,073 B 的檔案被保留。`*.vmdk` 和法律保全前綴被排除。51 GiB 的稀疏檔案被記錄為 `SKIPPED_TOO_LARGE`，沒有被複製。重複使用的 `runId`，以及沒有 `requestedBy` 的正式執行輸入，都作為輸入錯誤而停止。與啟動者 ARN 相同的批准以 `APPROVAL_REFUSED` 結束，沒有刪除任何檔案。不經批准直接呼叫 `delete` 函數時返回 `NOT_APPROVED`，沒有刪除任何檔案。由不同的批准者批准後刪除了 3 個檔案，等待期間被改寫的 1 個檔案保留為 `CHANGED`。對為模擬中斷而設為 `DELETING` 的項目，同一個執行的重試記錄為 `DELETED`（`already gone on retry`），其他執行被拒絕，`reconcile` 記錄為 `DELETED`。恢復後 3 個檔案為 `RESTORE_VERIFIED`。告警（修復後）已發佈到經 KMS 加密的主題 |
-| 在第三次執行中各確認 1 次（2026-11-26，相同帳戶和 Access Point，`selection=MTIME`，`GLACIER`，無 Fargate，8 個 256 KiB 的檔案，`MapConcurrency=1`） | 批准之後立即停止執行，留下了 7 個 `APPROVED` 項目。用其他執行的 `claim` 直接呼叫 `delete` 函數，返回 `NOT_APPROVED`（`approval not current`）。修復之前，把已停止執行本身的 ARN 作為 `claim` 的呼叫，使 1 個檔案變為 `DELETED`。加入執行狀態的檢查之後，同樣的呼叫返回 `NOT_APPROVED`（`claiming execution is not running`）。`reconcile` 把 7 個項目恢復為 `VERIFIED`。在執行中的執行裡正常刪除，7 個檔案變為 `DELETED`。批准之後和拒絕之後，任務權杖的參數都已被刪除。權杖使用堆疊的 KMS 金鑰加密 |
+| 在包含 5.5 GiB 的 7 個檔案的執行中各確認 1 次（2026-11-26，與上述相同的環境，`selection=ATIME`，`GLACIER`，7 個檔案） | 透過 ONTAP REST API 按 `accessed_time` 選擇，並獲取 uid、gid、mode、mtime、atime（根是磁碟區的根，路徑開頭沒有斜槓；`unix_permissions` 以整數 `640` 返回）。Distributed Map 的 `ItemReader` 和 `ResultWriter`。用 Fargate 進行 5.5 GiB 的分段複制（帶 `CopySourceIfMatch`，CRC64NVME 與帳本一致）。在 Lambda 中對 5.3 GB（約 4.94 GiB）計算雜湊（69.8 秒，設定記憶體 2048 MB，使用 152 MB）。第二份副本。批准後的刪除。等待批准期間在 NFS 上改寫的檔案變為 `CHANGED`，沒有被刪除。拒絕批准後什麼都沒有被刪除。用 `Expedited` 恢復（含 5.5 GiB），恢復的 6 個檔案 SHA-256 一致（7 個檔案中剩下的 1 個已被改寫，既沒有被刪除也沒有被恢復）。用 `reapply.sh` 恢復 uid、gid、mode、mtime |
+| 在確認排除與批准的執行中各確認 1 次（2026-11-26，相同環境，`GLACIER`，開啟第二份副本。dry run 使用 `selection=ATIME`，正式執行使用 `selection=MTIME` 並從 ONTAP REST 取得屬性。檔案從 64 B 到 1 MiB，另有 1 個 51 GiB 的稀疏檔案） | 7 個檔案的執行中沒有的項目的確認。`maxFiles=50` 時，3 個 64 B 的檔案和 1 個 131,071 B 的檔案低於最小大小而被排除，131,073 B 的檔案被保留。`*.vmdk` 和法律保全前綴被排除。51 GiB 的稀疏檔案被記錄為 `SKIPPED_TOO_LARGE`，沒有被複製。重複使用的 `runId`，以及沒有 `requestedBy` 的正式執行輸入，都作為輸入錯誤而停止。與啟動者 ARN 相同的批准以 `APPROVAL_REFUSED` 結束，沒有刪除任何檔案。不經批准直接呼叫 `delete` 函數時返回 `NOT_APPROVED`，沒有刪除任何檔案。由不同的批准者批准後刪除了 3 個檔案，等待期間被改寫的 1 個檔案保留為 `CHANGED`。對為模擬中斷而設為 `DELETING` 的項目，同一個執行的重試記錄為 `DELETED`（`already gone on retry`），其他執行被拒絕，`reconcile` 記錄為 `DELETED`（該確認使用的是加入執行狀態檢查之前的程式碼；在目前的程式碼上，重試和恢復路徑只有單元測試涵蓋，沒有在實機上執行過）。恢復後 3 個檔案為 `RESTORE_VERIFIED`。告警（修復後）已發佈到經 KMS 加密的主題 |
+| 在確認直接呼叫的檢查中各確認 1 次（2026-11-26，相同帳戶和 Access Point，`selection=MTIME`，`GLACIER`，無 Fargate，8 個 256 KiB 的檔案，`MapConcurrency=1`） | 批准之後立即停止執行，留下了 7 個 `APPROVED` 項目。用其他執行的 `claim` 直接呼叫 `delete` 函數，返回 `NOT_APPROVED`（`approval not current`）。修復之前，把已停止執行本身的 ARN 作為 `claim` 的呼叫，使 1 個檔案變為 `DELETED`。加入執行狀態的檢查之後，同樣的呼叫返回 `NOT_APPROVED`（`claiming execution is not running`）。`reconcile` 把 7 個項目恢復為 `VERIFIED`。在執行中的執行裡正常刪除，7 個檔案變為 `DELETED`。批准之後和拒絕之後，任務權杖的參數都已被刪除。權杖使用堆疊的 KMS 金鑰加密 |
 ### 環境與各步驟的結果
 環境為 ap-northeast-1、FSx for ONTAP 第 1 代 `SINGLE_AZ_1`、ONTAP 9.19.1P4D1、UNIX 安全樣式的磁碟區，Access Point 的檔案系統使用者為 UNIX root。執行日期為 2026-11-26（時間為日本標準時間），每個步驟只執行了 1 次。設定為 `selection=ATIME`、`GLACIER`、有第二份副本，Fargate 為 arm64 的 2 vCPU 和 8 GiB。資料為 6 個小檔案（3 個 64 B、3 個 8 MiB，所有者 1234:5678，模式 640，mtime 和 atime 為 2020-01-02）和 1 個 5,905,580,032 B 的檔案。
 | 步驟 | 結果 | 耗時 |
@@ -44,7 +44,7 @@
 - Lambda 執行時間合計（CloudWatch。含失敗的呼叫，不含 4.94 GiB 的執行）：`select` 13 次 5.9 秒，`ontap_rest` 11 次 13.4 秒（失敗 2 次），`record` 17 次 11.7 秒，`ledger` 34 次 9.1 秒，`approval` 6 次 4.3 秒，`delete` 7 次 5.6 秒，`summarize` 5 次 5.1 秒，`restore` 26 次 9.2 秒
 - Fargate 共 5 個任務，合計約 416 秒（2 vCPU、8 GiB、arm64）。DynamoDB（按需）讀取 68.5 RCU、寫入 74 WCU（全部執行合計）
 - 未測量 S3 請求數（未啟用請求指標）
-第二次執行（2026-11-26，小檔案，開啟第二份副本，`MapConcurrency=2`）的狀態轉換，各執行 1 次；會隨檔案大小和路徑而變化。
+確認排除與批准的執行（2026-11-26，小檔案，開啟第二份副本，`MapConcurrency=2`）的狀態轉換，各執行 1 次；會隨檔案大小和路徑而變化。
 
 | 執行 | 檔案數 | 耗時 | 狀態轉換（父 + 子 Map 執行） | 每個檔案 |
 |---|---|---|---|---|
@@ -58,21 +58,21 @@
 | 1 | `selection=ATIME` 的執行在選擇階段失敗 | 歸檔狀態機的角色沒有對 ONTAP REST 函數的 `lambda:InvokeFunction`。已添加權限 |
 | 2 | ONTAP REST 函數因 `CERTIFICATE_VERIFY_FAILED` 失敗 | 始終驗證 TLS，但 FSx for ONTAP 管理端點的證書不是由公共 CA 簽發。已添加參數 `OntapVerifySsl`（預設 `false`） |
 | 3 | 重複提交恢復請求被當作檔案失敗 | Step Functions 的 SDK 集成把 `RestoreAlreadyInProgress` 以 `S3.S3Exception` 返回，因此與 `S3.RestoreAlreadyInProgressException` 的 `Catch` 不匹配。已改為把進行中的恢復送入等待完成的循環 |
-第二次執行（2026-11-26）又發現並修復了 3 個缺陷。
+確認排除與批准的執行（2026-11-26）又發現並修復了 3 個缺陷。
 
 | # | 現象 | 原因與修復 |
 |---|---|---|
 | 4 | 部署失敗，出現 `The state machine IAM Role is not authorized to access the Log Destination` | 狀態機的角色缺少執行日誌所需的 `logs:CreateLogDelivery` 及相關權限。已添加 |
 | 5 | 刪除重試和 `reconcile` 對已刪除的檔案執行 `HeadObject` 時收到 403 | 對沒有 `s3:ListBucket` 的呼叫者，對不存在的鍵執行 `HeadObject` 返回 403 而不是 404。已在 IAM 和 Access Point 策略中，為 `delete` 和 `restore` 函數添加 `s3:ListBucket` |
 | 6 | CloudWatch 告警通知失敗，出現 `CloudWatch Alarms is not authorized to perform: SNS:Publish` | 金鑰策略允許 CloudWatch，但主題策略只允許 EventBridge。已添加 `cloudwatch.amazonaws.com` 的陳述式 |
-| 7 | 不使用 Fargate（`FargateImageUri` 為空）的部署因 `is not authorized to create managed-rule` 失敗（第三次執行） | 兩個定義都含有 `ecs:runTask.sync` 狀態，建立狀態機時會檢查角色的 `events:PutRule` 等權限。該權限位於 `UseFargate` 條件之內。已去掉該條件 |
+| 7 | 不使用 Fargate（`FargateImageUri` 為空）的部署因 `is not authorized to create managed-rule` 失敗（確認直接呼叫的檢查） | 兩個定義都含有 `ecs:runTask.sync` 狀態，建立狀態機時會檢查角色的 `events:PutRule` 等權限。該權限位於 `UseFargate` 條件之內。已去掉該條件 |
 ### 端到端執行中得知的行為
 這些行為沒有作為缺陷處理。
 - 在 `selection=ATIME` 下，本模式自身的讀取會更新 `accessed_time`。用 `dryRun=true` 執行一次後，計算雜湊的讀取使每個檔案的 atime 變為執行時間，因此用相同輸入執行 `dryRun=false` 不會選中任何檔案（在 dry run 之後接著正式執行時，以 0 個檔案結束）。若要在 dry run 之後立即對相同的候選正式執行，請使用 `selection=MTIME`（`LastModified` 不會因讀取而改變）
 - 關於 ETag，官方的說明和本環境的測量如下。官方頁面（[Access point compatibility](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/access-points-for-fsxn-object-api-support.html)，2026-11-26 閱讀）寫道 "The ETag reflects changes only to the contents of an object, not its metadata"。在本環境的 1 次測量中，大小和 mtime 相同、內容不同的 3 個檔案返回了相同的 ETag。因此本模式認為，刪除前對 ETag 和大小的確認，無法發現大小和 mtime 都不變的內容變更。在等待批准期間，大小相同但 mtime 更新的改寫被檢測到了（第一次執行的步驟 3，以及第二次正式執行） [E-023]
 - 透過 Access Point 刪除目錄中的最後一個檔案時，變空的上級目錄也會一併消失（在 `arc-e2e/large/` 上確認）。恢復時的 `CopyObject` 會重新建立該目錄
 - 恢復後的檔案擁有者為 0:1，模式為 644，修改時間為恢復的時間。在以 NFS 掛載了磁碟區的主機上，以 root 執行生成的 `reapply.sh` 後，恢復為原來的 uid、gid、mode、mtime（1234:5678、640、2020-01-02 03:04:05），內容的 SHA-256 沒有變化
-- 當歸檔儲存桶中有 `CHANGED` 檔案的副本時，恢復狀態機也會選擇該檔案。如果 Access Point 上已有相同的鍵，則保留為 `EXISTS`，不覆蓋（在第二次恢復中確認過 1 次）
+- 當歸檔儲存桶中有 `CHANGED` 檔案的副本時，恢復狀態機也會選擇該檔案。如果 Access Point 上已有相同的鍵，則保留為 `EXISTS`，不覆蓋（在確認排除與批准的執行的恢復中確認過 1 次）
 - 5.5 GiB 檔案的 `Expedited` 恢復請求被接受，並在約 4 分鐘內完成
 ### 未確認的事項
 - 大量檔案時的耗時和費用。其他並行設定下檔案系統的吞吐量和用戶端延遲
@@ -85,6 +85,7 @@
 - 恢復中除了不選擇 `CHANGED` 檔案之外的 `EXISTS` 路徑（NFS 上已有同名檔案的情況）
 - 等到 `ApprovalPendingAlarm` 實際變為 `ALARM`（只確認了指標已發佈）
 - 有 1 次候選為 0 個的情況原因不明。在用 `touch -d` 重設 atime 約 10 秒後的執行中沒有候選。約 17 分鐘後的確認返回了 2020 年的值，其他確認也返回了 6 個檔案。未能確定原因，也沒有再次出現
+- 在實機上執行刪除的重試和恢復路徑（`DELETING`，相同的 `claimedBy`）。上面的重試確認使用的是加入執行狀態檢查之前的程式碼。在目前的程式碼上，該路徑只有單元測試涵蓋
 ### 刪除前確認中殘留的寫入視窗
 刪除前的確認中仍殘留一個寫入視窗。Access Point 的 `DeleteObject` 不支持條件刪除，因此在用 `HeadObject` 確認之後到刪除之前被改寫的情況無法檢測。該視窗相當於一次 API 呼叫往返。
 ## 處理流程
@@ -290,9 +291,9 @@ Step Functions 的執行歷史和日誌（`/aws/vendedlogs/states/<stack>-archiv
 
 | 執行 | 每個檔案的狀態轉換 | 來源 |
 |---|---|---|
-| 歸檔 dry run | 17（119 ÷ 7），18（72 ÷ 4） | 第一次和第二次執行 |
+| 歸檔 dry run | 17（119 ÷ 7），18（72 ÷ 4） | 包含 5.5 GiB 的 7 個檔案的執行、確認排除與批准的執行 |
 | 歸檔正式執行（含刪除） | 18（127 ÷ 7），19.5（78 ÷ 4） | 同上 |
-| 恢復（`Expedited`；第二次含核對） | 18（107 ÷ 6），14（56 ÷ 4） | 同上 |
+| 恢復（`Expedited`；確認排除與批准的執行含核對） | 18（107 ÷ 6），14（56 ÷ 4） | 同上 |
 等待時間長的類別，每次輪詢都會增加狀態轉換。
 每個物件的儲存條件（[Comparing the Amazon S3 storage classes](https://docs.aws.amazon.com/AmazonS3/latest/userguide/storage-class-intro.html#sc-compare)，2026-11-26 閱讀）：
 
@@ -307,7 +308,7 @@ Step Functions 的執行歷史和日誌（`/aws/vendedlogs/states/<stack>-archiv
 - 核對結果和批准是供人做最終判斷的輔助訊號。未使用 AI
 - 本模式不滿足保留期限和不可變性的要求。因為沒有使用 Object Lock 等功能，所以有權限就可以刪除
 - 輸出分類：帳本和清單包含檔案路徑、大小、雜湊、屬性。路徑中可能包含人名或患者、案件的識別碼，因此輸出預設帶有 `data_classification` 的 `RESTRICTED`（`shared/data_classification.py` 中的 "Restricted — Limited access"）。當資料本身的分類更嚴格時，請把 `DataClassification` 參數設為該分類。分類由您決定。檔案內容會進入歸檔用儲存桶，請按與原始資料相同的分類處理
-- Human Review：每次執行都必須批准。沒有基於置信度的自動批准。預設情況下，啟動者和批准者為同一主體時，不會刪除任何檔案
+- Human Review：每次執行都必須批准。沒有基於置信度的自動批准。預設情況下，啟動者和批准者為同一主體時，不會刪除任何檔案。這是對申報值的比較，不是主體的證明；事後的控制手段是 CloudTrail 的 `userIdentity`
 - IAM：在 Access Point 上持有 `s3:DeleteObject` 的只有 `delete` 函數的角色，持有 `s3:PutObject` 的只有恢復狀態機和恢復用的 Fargate 任務角色。歸檔用的 Fargate 任務只負責複製，既不能刪除也不能覆蓋來源檔案。沒有任何主體可以刪除帳本項目
 - 審計：批准和刪除會記錄在帳本（`approvedBy`、`approvedAt`、`requestedBy`、`deletedBy`、`deletedAt`）、`manifests/<runId>-approval.json`，以及 Step Functions 的歷史和日誌中。只有在追蹤啟用了 S3 資料事件時，CloudTrail 才會記錄刪除；本次執行沒有確認這一點
 - 副本數：沒有第二份副本時，刪除之後歸檔儲存桶中的物件就是唯一的副本。批准通知中會說明這一點

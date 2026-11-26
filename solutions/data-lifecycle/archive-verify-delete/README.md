@@ -7,7 +7,7 @@ Amazon FSx for NetApp ONTAP（以下 FSx for ONTAP）のボリュームにある
 1. 台帳（DynamoDB のテーブル）に、大きさ、ETag、SHA-256、CRC64NVME を記録する
 2. アーカイブ用のバケットへ、ストレージクラスを指定して `CopyObject` で写す（キーは `<prefix><runId>/<元のキー>`）
 3. バケットが返すチェックサムを、台帳の値と比べる
-4. 一致したファイルの一覧を人が承認する。承認は台帳に `APPROVED` として記録され、起動した人と承認した人が同じなら拒否する（既定）
+4. 一致したファイルの一覧を人が承認する。承認は台帳に `APPROVED` として記録され、起動した人と承認した人が同じなら拒否する（既定。申告された値の比較で、主体の証明ではない）
 5. 台帳が `APPROVED` のファイルだけ、Access Point の ETag と大きさが台帳と同じことを確かめてから消す
 
 戻すときは、台帳から探し、バケットで復元を要求し、完了を待って Access Point へ `CopyObject` で戻し、戻したファイルを読み直して台帳の SHA-256 と CRC64NVME で照合します。
@@ -18,9 +18,9 @@ Amazon FSx for NetApp ONTAP（以下 FSx for ONTAP）のボリュームにある
 |---|---|
 | 部品を実機で 1 回ずつ確認した（上の比較資料に記録、2026-11-24 と 2026-11-26、ap-northeast-1、第 1 世代 `SINGLE_AZ_1`、ONTAP 9.19.1P4D1、UNIX スタイルのボリューム、Access Point のユーザーは UNIX root） | `CopyObject` に `ChecksumAlgorithm=SHA256` を付けると、バケットの `ChecksumSHA256` が `FULL_OBJECT` でファイルの SHA-256 と一致した（8 MiB まで）。5.5 GiB のマルチパートは SHA-256 が `COMPOSITE` になり、CRC64NVME は `FULL_OBJECT` で一致した。古い ETag の `--copy-source-if-match` は `PreconditionFailed`。Access Point の `DeleteObject` は `If-Match` 非対応。Step Functions の SDK 統合で Access Point のエイリアスを `Bucket` に渡せた |
 | このリポジトリで確認した | moto を使った単体テストと、ステートマシンと IAM の構造のテスト。AWS には接続していません。実機の通しで見つかった不具合 7 件（ONTAP REST 関数の呼び出し権限、TLS 検証、復元要求の重複エラー名、ステートマシンのログ出力の権限、`HeadObject` の 403、アラームの発行の権限）は、再現するテストを加えて直しました |
-| 実機の通しで 1 回ずつ確認した（2026-11-26、上と同じ環境、`selection=ATIME`、`GLACIER`、7 ファイル） | ONTAP REST API による `accessed_time` の選択と uid、gid、mode、mtime、atime の取得（ルートはボリュームのルートで、パスの先頭にスラッシュなし。`unix_permissions` は `640` の整数で返る）。Distributed Map の `ItemReader` と `ResultWriter`。Fargate による 5.5 GiB のマルチパートコピー（`CopySourceIfMatch` 付き、CRC64NVME が台帳と一致）。Lambda での 5.3 GB（約 4.94 GiB）のハッシュ計算（69.8 秒、メモリ 2048 MB、使用 152 MB）。2 つ目の写し。承認後の削除。承認待ちの間に NFS で書き換えたファイルは `CHANGED` になり消えなかった。承認の拒否で何も消えなかった。`Expedited` での戻し（5.5 GiB を含む）と、戻した 6 ファイルの SHA-256 の一致（7 ファイル中の残る 1 ファイルは書き換え済みで、削除も戻しもされていない）。`reapply.sh` による uid、gid、mode、mtime の復元 |
-| 実機の通しで 1 回ずつ確認した（2026-11-26 の 2 回目、上と同じ環境、`GLACIER`、2 つ目の写しあり。dry run は `selection=ATIME`、本番は `selection=MTIME` と ONTAP REST での属性取得。64 B から 1 MiB のファイルと 51 GiB の疎ファイル） | 1 回目の通しにない項目の確認。`maxFiles=50` の選択で、64 B の 3 ファイルと 131,071 B の 1 ファイルが最小サイズで外れ、131,073 B は残った。`*.vmdk` と保全用のプレフィックスの除外。51 GiB の疎ファイルが `SKIPPED_TOO_LARGE` として台帳に載り、写されなかった。使用済みの `runId` と、`requestedBy` のない本番の入力が入力エラーで止まった。起動した主体と同じ ARN での承認が `APPROVAL_REFUSED` になり、何も消えなかった。`delete` 関数を承認なしで直接呼ぶと `NOT_APPROVED` で消えなかった。別の主体の承認では 3 ファイルが消え、承認待ちに書き換えた 1 ファイルが `CHANGED` で残った。中断を模した `DELETING` の項目で、同じ実行の再試行が `DELETED`（`already gone on retry`）、別の実行は拒否、`reconcile` が `DELETED` を記録した。戻しの後の照合で 3 ファイルが `RESTORE_VERIFIED`。アラームが KMS で暗号化したトピックへ発行できた（修正後） |
-| 実機で 1 回ずつ確認した（2026-11-26 の 3 回目、同じアカウントと Access Point、`selection=MTIME`、`GLACIER`、Fargate なし、256 KiB のファイル 8 つ、`MapConcurrency=1`） | 承認の直後に実行を止めると、`APPROVED` の項目 7 つが残った。別の実行の `claim` での `delete` 関数の直接呼び出しは `NOT_APPROVED`（`approval not current`）。修正前の実装では、止めた実行自身の ARN を `claim` にした呼び出しが 1 ファイルを `DELETED` にした。実行状態の確認を加えた後は、同じ呼び出しが `NOT_APPROVED`（`claiming execution is not running`）になった。`reconcile` は 7 項目を `VERIFIED` に戻した。実行中の実行の通常の削除は 7 ファイルが `DELETED`。承認の後と拒否の後に、タスクトークンのパラメーターが消えていた。トークンは、スタックの KMS キーで暗号化されていた |
+| 5.5 GiB を含む 7 ファイルの通しで 1 回ずつ確認した（2026-11-26、上と同じ環境、`selection=ATIME`、`GLACIER`、7 ファイル） | ONTAP REST API による `accessed_time` の選択と uid、gid、mode、mtime、atime の取得（ルートはボリュームのルートで、パスの先頭にスラッシュなし。`unix_permissions` は `640` の整数で返る）。Distributed Map の `ItemReader` と `ResultWriter`。Fargate による 5.5 GiB のマルチパートコピー（`CopySourceIfMatch` 付き、CRC64NVME が台帳と一致）。Lambda での 5.3 GB（約 4.94 GiB）のハッシュ計算（69.8 秒、メモリ 2048 MB、使用 152 MB）。2 つ目の写し。承認後の削除。承認待ちの間に NFS で書き換えたファイルは `CHANGED` になり消えなかった。承認の拒否で何も消えなかった。`Expedited` での戻し（5.5 GiB を含む）と、戻した 6 ファイルの SHA-256 の一致（7 ファイル中の残る 1 ファイルは書き換え済みで、削除も戻しもされていない）。`reapply.sh` による uid、gid、mode、mtime の復元 |
+| 除外と承認を確かめる通しで 1 回ずつ確認した（2026-11-26、上と同じ環境、`GLACIER`、2 つ目の写しあり。dry run は `selection=ATIME`、本番は `selection=MTIME` と ONTAP REST での属性取得。64 B から 1 MiB のファイルと 51 GiB の疎ファイル） | 7 ファイルの通しにない項目の確認。`maxFiles=50` の選択で、64 B の 3 ファイルと 131,071 B の 1 ファイルが最小サイズで外れ、131,073 B は残った。`*.vmdk` と保全用のプレフィックスの除外。51 GiB の疎ファイルが `SKIPPED_TOO_LARGE` として台帳に載り、写されなかった。使用済みの `runId` と、`requestedBy` のない本番の入力が入力エラーで止まった。起動した主体と同じ ARN での承認が `APPROVAL_REFUSED` になり、何も消えなかった。`delete` 関数を承認なしで直接呼ぶと `NOT_APPROVED` で消えなかった。別の主体の承認では 3 ファイルが消え、承認待ちに書き換えた 1 ファイルが `CHANGED` で残った。中断を模した `DELETING` の項目で、同じ実行の再試行が `DELETED`（`already gone on retry`）、別の実行は拒否、`reconcile` が `DELETED` を記録した（この確認は、実行状態の確認を足す前のコードで取った。現行のコードでは、再試行と再開の経路は単体テストだけで、実機では通していない）。戻しの後の照合で 3 ファイルが `RESTORE_VERIFIED`。アラームが KMS で暗号化したトピックへ発行できた（修正後） |
+| 直接呼び出しを確かめる確認で 1 回ずつ確認した（2026-11-26、同じアカウントと Access Point、`selection=MTIME`、`GLACIER`、Fargate なし、256 KiB のファイル 8 つ、`MapConcurrency=1`） | 承認の直後に実行を止めると、`APPROVED` の項目 7 つが残った。別の実行の `claim` での `delete` 関数の直接呼び出しは `NOT_APPROVED`（`approval not current`）。修正前の実装では、止めた実行自身の ARN を `claim` にした呼び出しが 1 ファイルを `DELETED` にした。実行状態の確認を加えた後は、同じ呼び出しが `NOT_APPROVED`（`claiming execution is not running`）になった。`reconcile` は 7 項目を `VERIFIED` に戻した。実行中の実行の通常の削除は 7 ファイルが `DELETED`。承認の後と拒否の後に、タスクトークンのパラメーターが消えていた。トークンは、スタックの KMS キーで暗号化されていた |
 ### 通しの環境と手順ごとの結果
 環境は ap-northeast-1、FSx for ONTAP の第 1 世代 `SINGLE_AZ_1`、ONTAP 9.19.1P4D1、UNIX セキュリティスタイルのボリューム、Access Point のファイルシステムユーザーは UNIX root です。実行日は 2026-11-26（時刻は日本時間）、各手順は 1 回だけ実行しました。構成は `selection=ATIME`、`GLACIER`、2 つ目の写しあり、Fargate は arm64 の 2 vCPU と 8 GiB です。データは小さい 6 ファイル（64 B が 3 つ、8 MiB が 3 つ。所有者 1234:5678、モード 640、mtime と atime は 2020-01-02）と、5,905,580,032 B のファイル 1 つです。
 | 手順 | 結果 | 所要 |
@@ -44,7 +44,7 @@ Amazon FSx for NetApp ONTAP（以下 FSx for ONTAP）のボリュームにある
 - Lambda の実行時間の合計（CloudWatch。失敗した実行を含み、4.94 GiB の実行は含まない）: `select` 13 回で 5.9 秒、`ontap_rest` 11 回で 13.4 秒（失敗 2 回）、`record` 17 回で 11.7 秒、`ledger` 34 回で 9.1 秒、`approval` 6 回で 4.3 秒、`delete` 7 回で 5.6 秒、`summarize` 5 回で 5.1 秒、`restore` 26 回で 9.2 秒
 - Fargate は 5 タスクで合計約 416 秒（2 vCPU、8 GiB、arm64）。DynamoDB（オンデマンド）は読み取り 68.5 RCU、書き込み 74 WCU（全実行の合計）
 - S3 のリクエスト数は測っていません（リクエストメトリクスを有効にしていません）
-2 回目の通し（2026-11-26、小さいファイル、2 つ目の写しあり、`MapConcurrency=2`）の状態遷移は次のとおりです。1 回ずつの値で、ファイルの大きさと経路で変わります。
+除外と承認を確かめる通し（2026-11-26、小さいファイル、2 つ目の写しあり、`MapConcurrency=2`）の状態遷移は次のとおりです。1 回ずつの値で、ファイルの大きさと経路で変わります。
 
 | 実行 | 対象のファイル | 所要 | 状態遷移（親 + 子 Map 実行） | 1 ファイルあたり |
 |---|---|---|---|---|
@@ -58,21 +58,21 @@ Amazon FSx for NetApp ONTAP（以下 FSx for ONTAP）のボリュームにある
 | 1 | `selection=ATIME` の実行が選択の段階で失敗した | アーカイブのステートマシンのロールに ONTAP REST 関数の `lambda:InvokeFunction` がなかった。許可を追加 |
 | 2 | ONTAP REST 関数が `CERTIFICATE_VERIFY_FAILED` で失敗した | 常に TLS を検証していたが、FSx for ONTAP の管理エンドポイントの証明書は公的な CA の署名ではない。パラメーター `OntapVerifySsl`（既定 `false`）を追加 |
 | 3 | 復元要求の二重投入がファイルの失敗になった | Step Functions の SDK 統合は `RestoreAlreadyInProgress` を `S3.S3Exception` で返すため、`S3.RestoreAlreadyInProgressException` の `Catch` に一致しなかった。進行中の復元を完了待ちへ回すよう修正 |
-2 回目の通し（2026-11-26）でも 3 件を見つけて直しました。
+除外と承認を確かめる通し（2026-11-26）でも 3 件を見つけて直しました。
 
 | # | 症状 | 原因と修正 |
 |---|---|---|
 | 4 | デプロイが `The state machine IAM Role is not authorized to access the Log Destination` で失敗した | ステートマシンのログ出力に要る `logs:CreateLogDelivery` などの権限がなかった。ステートマシンのロールに追加 |
 | 5 | 削除の再試行と `reconcile` が、消えたファイルの `HeadObject` で 403 になった | `s3:ListBucket` のない主体には、存在しないキーへの `HeadObject` が 404 ではなく 403 で返る。`delete` と `restore` の関数に、IAM と Access Point のポリシーの両方で `s3:ListBucket` を追加 |
 | 6 | CloudWatch アラームの通知が `CloudWatch Alarms is not authorized to perform: SNS:Publish` で失敗した | キーのポリシーは許可していたが、トピックのポリシーが EventBridge だけを許可していた。`cloudwatch.amazonaws.com` の文を追加 |
-| 7 | Fargate なし（`FargateImageUri` が空）のデプロイが `is not authorized to create managed-rule` で失敗した（3 回目の通し） | 両方の定義に `ecs:runTask.sync` の状態があり、ステートマシンの作成時にロールの `events:PutRule` などが検査される。許可が `UseFargate` の条件の中にあった。条件を外した |
+| 7 | Fargate なし（`FargateImageUri` が空）のデプロイが `is not authorized to create managed-rule` で失敗した（直接呼び出しを確かめる確認） | 両方の定義に `ecs:runTask.sync` の状態があり、ステートマシンの作成時にロールの `events:PutRule` などが検査される。許可が `UseFargate` の条件の中にあった。条件を外した |
 ### 実機の通しで分かった挙動
 不具合として直していない挙動です。
 - `selection=ATIME` では、このパターン自身の読み取りが `accessed_time` を更新します。`dryRun=true` で一度回すと、ハッシュ計算の読み取りでファイルの atime が実行時刻になり、同じ入力で `dryRun=false` を回しても選ばれません（0 件で終了。dry run の直後に本番を回したときに確認）。dry run の直後に同じ候補で本番を回すなら `selection=MTIME` を使ってください（`LastModified` は読み取りで変わりません）
 - ETag について、公式の記述とこの環境の測定は次のとおりです。公式のページ（[Access point compatibility](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/access-points-for-fsxn-object-api-support.html)、2026-11-26 閲覧）は "The ETag reflects changes only to the contents of an object, not its metadata" と書いています。この環境の 1 回の測定では、同じ大きさと同じ mtime を持つ内容の違うファイル 3 つが、同じ ETag を返しました。したがって、消す前の ETag と大きさの確認は、大きさと mtime を変えない内容の変更を検出できない、とこのパターンは扱います。承認待ちの間に大きさが同じまま mtime が更新された書き換えは検出されました（1 回目の手順 3、2 回目の本番） [E-023]
 - Access Point 経由で最後のファイルを消すと、空になった親ディレクトリも消えます（`arc-e2e2/large/` で確認）。戻しの `CopyObject` が親ディレクトリを作り直します
 - 戻したファイルの所有者は 0:1、モードは 644、更新時刻は戻した時刻でした。NFS でボリュームをマウントしたホストで、生成された `reapply.sh` を root として実行すると、元の uid、gid、mode、mtime（1234:5678、640、2020-01-02 03:04:05）に戻り、内容の SHA-256 は変わりませんでした
-- 戻しのステートマシンは、`CHANGED` で残ったファイルにもアーカイブ用バケットの写しがあれば対象に選びます。Access Point に同じキーがあれば `EXISTS` で上書きしません（2 回目の戻しで 1 件を確認）
+- 戻しのステートマシンは、`CHANGED` で残ったファイルにもアーカイブ用バケットの写しがあれば対象に選びます。Access Point に同じキーがあれば `EXISTS` で上書きしません（除外と承認を確かめる通しの戻しで 1 件を確認）
 - 戻しの 5.5 GiB は `Expedited` の要求が受け付けられ、完了も約 4 分以内でした
 ### 確認していないこと
 - 多数のファイルでの所要時間と料金。並列度を変えたときのファイルシステムのスループットと、業務のクライアントのレイテンシ
@@ -85,6 +85,7 @@ Amazon FSx for NetApp ONTAP（以下 FSx for ONTAP）のボリュームにある
 - 戻しで、`CHANGED` のファイルを選ばないこと以外の `EXISTS` の経路（NFS に同名のファイルがある場合）
 - `ApprovalPendingAlarm` が実際に `ALARM` になるまでの待ち（メトリクスが出ることだけを確認）
 - 候補が 0 件になった原因が 1 件あります。`touch -d` で atime を戻した約 10 秒後の実行は、候補が 0 件でした。約 17 分後の確認では 2020 年の値が返り、別の確認でも 6 件が返りました。原因は特定しておらず、再現もしていません
+- 削除の再試行と再開（`DELETING` と同じ `claimedBy`）の実機での通し。上の再試行の確認は、実行状態の確認を足す前のコードで取った。現行のコードでは、この経路は単体テストだけで、実機では通していない
 ### 消す前の確認に残る書き込みの窓
 消す前の確認には、書き込みの窓が 1 つ残ります。Access Point の `DeleteObject` は条件付きの削除に対応していないため、`HeadObject` で確かめてから消すまでの間に書き換えられても検出できません。この窓は API 呼び出し 1 往復分です。
 ## 処理の流れ
@@ -290,9 +291,9 @@ Step Functions の実行履歴とログ（`/aws/vendedlogs/states/<stack>-archiv
 
 | 実行 | 1 ファイルあたりの状態遷移 | 出典 |
 |---|---|---|
-| アーカイブの dry run | 17（119 ÷ 7）、18（72 ÷ 4） | 1 回目、2 回目の通し |
+| アーカイブの dry run | 17（119 ÷ 7）、18（72 ÷ 4） | 5.5 GiB を含む 7 ファイルの通し、除外と承認を確かめる通し |
 | アーカイブの本番（削除を含む） | 18（127 ÷ 7）、19.5（78 ÷ 4） | 同上 |
-| 戻し（`Expedited`。2 回目は戻した後の照合を含む） | 18（107 ÷ 6）、14（56 ÷ 4） | 同上 |
+| 戻し（`Expedited`。除外と承認を確かめる通しは戻した後の照合を含む） | 18（107 ÷ 6）、14（56 ÷ 4） | 同上 |
 待ちの長いクラスでは、ポーリング 1 回ごとに状態遷移が増えます。
 1 オブジェクトあたりの追加の保管（[Amazon S3 のストレージクラスの比較](https://docs.aws.amazon.com/AmazonS3/latest/userguide/storage-class-intro.html#sc-compare)、2026-11-26 閲覧）:
 
@@ -307,7 +308,7 @@ Step Functions の実行履歴とログ（`/aws/vendedlogs/states/<stack>-archiv
 - 照合の結果と承認は、人が最終判断をするための補助信号です。AI は使っていません
 - 保持期間と不変性を満たす必要がある場合、このパターンは対応していません。Object Lock などを使っていないので、権限があれば消せます
 - 出力の分類: 台帳とマニフェストにはファイルのパス、大きさ、ハッシュ、属性が入ります。パスには個人の名前、患者や案件の識別子が入りうるため、出力の `data_classification` は既定で `RESTRICTED`（`shared/data_classification.py` の「限定されたアクセス」）です。元のデータの分類のほうが厳しいときは、パラメーター `DataClassification` でそちらに合わせてください。分類を決めるのは利用者です。ファイルの中身はアーカイブ用バケットに入るので、元のデータと同じ分類で扱ってください
-- Human Review: 承認は全件に必須です。確信度による自動承認はありません。既定では、起動した主体と承認した主体が同じなら削除しません
+- Human Review: 承認は全件に必須です。確信度による自動承認はありません。既定では、起動した主体と承認した主体が同じなら削除しません。この比較は申告された値の比較で、主体の証明ではありません。事後の統制は CloudTrail の `userIdentity` です
 - IAM: Access Point の `s3:DeleteObject` を持つのは `delete` 関数のロールだけ、Access Point への `s3:PutObject` を持つのは戻しのステートマシンと戻し用 Fargate のタスクロールだけです。アーカイブ用の Fargate のタスクは写すだけで、元のファイルを消す権限も上書きする権限も持ちません。台帳の項目を消す権限は誰にも与えていません
 - 監査: 承認と削除は台帳（`approvedBy`、`approvedAt`、`requestedBy`、`deletedBy`、`deletedAt`）、`manifests/<runId>-approval.json`、Step Functions の実行履歴とログに残ります。CloudTrail に削除が残るのは、トレイルで S3 のデータイベントを有効にしたときだけで、この通しでは確認していません
 - 写しの数: 2 つ目の写しを設定しないと、削除の後はアーカイブ用バケットのオブジェクトが唯一の写しです。承認の通知はそのことを書きます

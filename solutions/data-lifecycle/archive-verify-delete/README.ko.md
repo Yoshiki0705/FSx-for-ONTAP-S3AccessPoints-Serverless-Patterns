@@ -7,7 +7,7 @@ Amazon FSx for NetApp ONTAP(이하 FSx for ONTAP) 볼륨에 있는, 거의 읽�
 1. 원장(DynamoDB 테이블)에 크기, ETag, SHA-256, CRC64NVME를 기록한다
 2. 스토리지 클래스를 지정하여 `CopyObject`로 아카이브용 버킷에 복사한다(키는 `<prefix><runId>/<원래 키>`)
 3. 버킷이 반환하는 체크섬을 원장의 값과 비교한다
-4. 일치한 파일의 목록을 사람이 승인한다. 승인은 원장에 `APPROVED`로 기록되며, 승인자가 실행을 시작한 주체와 같으면 거부된다(기본값)
+4. 일치한 파일의 목록을 사람이 승인한다. 승인은 원장에 `APPROVED`로 기록되며, 승인자가 실행을 시작한 주체와 같으면 거부된다(기본값. 신고된 값의 비교이며 주체의 증명이 아님)
 5. 원장에서 `APPROVED`인 파일만, Access Point의 ETag와 크기가 원장과 같은지 확인한 뒤 삭제한다
 
 복원할 때는 원장에서 파일을 찾아 버킷에서 복원을 요청하고, 완료를 기다린 뒤 Access Point로 `CopyObject` 하여 되돌립니다. 그 후 복원된 파일을 다시 읽어 원장의 SHA-256 및 CRC64NVME와 비교합니다.
@@ -18,9 +18,9 @@ Amazon FSx for NetApp ONTAP(이하 FSx for ONTAP) 볼륨에 있는, 거의 읽�
 |---|---|
 | 구성 요소를 실제 환경에서 1회씩 확인함(위 비교 자료에 기록, 2026-11-24 및 2026-11-26, ap-northeast-1, 1세대 `SINGLE_AZ_1`, ONTAP 9.19.1P4D1, UNIX 스타일 볼륨, Access Point 사용자는 UNIX root) | `CopyObject`에 `ChecksumAlgorithm=SHA256`을 지정하면 버킷의 `ChecksumSHA256`이 `FULL_OBJECT`로 파일의 SHA-256과 일치했다(8 MiB까지). 5.5 GiB 멀티파트는 SHA-256이 `COMPOSITE`가 되었고, CRC64NVME는 `FULL_OBJECT`로 일치했다. 오래된 ETag의 `--copy-source-if-match`는 `PreconditionFailed`. Access Point의 `DeleteObject`는 `If-Match`를 지원하지 않는다. Step Functions SDK 통합에서 Access Point 별칭을 `Bucket`에 전달할 수 있었다 |
 | 이 저장소에서 확인한 것 | moto를 사용한 단위 테스트와 스테이트 머신 및 IAM 구조의 테스트. AWS에는 연결하지 않았습니다. 위의 실기 통합 실행에서 발견한 결함 7건(ONTAP REST 함수의 호출 권한, TLS 검증, 복원 요청 중복 시의 오류 이름, 스테이트 머신의 로그 출력 권한, `HeadObject`의 403, 알람의 게시 권한)은 재현하는 테스트를 추가하여 고쳤습니다 |
-| 실기 통합 실행에서 1회씩 확인했다(2026-11-26, 위와 같은 환경, `selection=ATIME`, `GLACIER`, 파일 7개) | ONTAP REST API에 의한 `accessed_time` 선택과 uid, gid, mode, mtime, atime 취득(루트는 볼륨의 루트이며 경로 앞에 슬래시가 없음. `unix_permissions`는 정수 `640`으로 반환됨). Distributed Map의 `ItemReader`와 `ResultWriter`. Fargate에 의한 5.5 GiB 멀티파트 복사(`CopySourceIfMatch` 지정, CRC64NVME가 원장과 일치). Lambda에서의 5.3 GB(약 4.94 GiB) 해시 계산(69.8초, 메모리 2048 MB 설정, 사용 152 MB). 두 번째 복사. 승인 후의 삭제. 승인 대기 중에 NFS에서 덮어쓴 파일은 `CHANGED`가 되어 삭제되지 않았다. 승인을 거부하자 아무것도 삭제되지 않았다. `Expedited`에 의한 복원(5.5 GiB 포함)과 복원한 6개 파일의 SHA-256 일치(7개 중 남은 1개는 덮어쓴 파일로, 삭제도 복원도 되지 않았다). `reapply.sh`에 의한 uid, gid, mode, mtime의 복원 |
-| 두 번째 엔드투엔드 실행에서 1회씩 확인함(2026-11-26, 같은 환경, `GLACIER`, 두 번째 복사 있음. `selection=ATIME`으로 dry run, `selection=MTIME`과 ONTAP REST에서 가져온 속성으로 실제 실행. 64 B에서 1 MiB까지의 파일과 51 GiB 스파스 파일 1개) | 첫 번째 실행에 없던 항목의 확인. `maxFiles=50`일 때 64 B 파일 3개와 131,071 B 파일 1개는 최소 크기 미만이어서 제외되었고, 131,073 B 파일은 남았다. `*.vmdk`와 법적 보존용 prefix는 제외되었다. 51 GiB 스파스 파일은 `SKIPPED_TOO_LARGE`로 기록되고 복사되지 않았다. 이미 사용한 `runId`와 `requestedBy`가 없는 실제 실행 입력은 입력 오류로 멈췄다. 시작한 주체와 같은 ARN의 승인은 `APPROVAL_REFUSED`로 끝났고 아무것도 삭제되지 않았다. 승인 없이 `delete` 함수를 직접 호출하면 `NOT_APPROVED`를 반환하고 아무것도 삭제하지 않았다. 다른 승인자로 파일 3개가 삭제되었고, 승인 대기 중에 덮어쓴 1개는 `CHANGED`로 남았다. 중단을 모의하기 위해 `DELETING`으로 만든 항목은, 같은 실행의 재시도에서 `DELETED`(`already gone on retry`)로 기록되었고, 다른 실행은 거부되었으며, `reconcile`이 `DELETED`로 기록했다. 복원 후 3개 파일이 `RESTORE_VERIFIED`가 되었다. 알람이 KMS로 암호화된 토픽에 게시되었다(수정 후) |
-| 세 번째 실행에서 1회씩 확인함(2026-11-26, 같은 계정과 Access Point, `selection=MTIME`, `GLACIER`, Fargate 없음, 256 KiB 파일 8개, `MapConcurrency=1`) | 승인 직후에 실행을 중지하자 `APPROVED` 항목 7개가 남았다. 다른 실행의 `claim`으로 `delete` 함수를 직접 호출하면 `NOT_APPROVED`(`approval not current`)였다. 수정 전의 구현에서는 중지된 실행 자신의 ARN을 `claim`으로 한 호출이 파일 1개를 `DELETED`로 만들었다. 실행 상태 확인을 추가한 뒤에는 같은 호출이 `NOT_APPROVED`(`claiming execution is not running`)가 되었다. `reconcile`이 7개 항목을 `VERIFIED`로 되돌렸다. 실행 중인 실행에서의 일반 삭제는 파일 7개가 `DELETED`가 되었다. 승인 후와 거부 후에 태스크 토큰 파라미터가 삭제되어 있었다. 토큰은 스택의 KMS 키로 암호화되어 있었다 |
+| 5.5 GiB를 포함한 7개 파일 실행에서 1회씩 확인했다(2026-11-26, 위와 같은 환경, `selection=ATIME`, `GLACIER`, 파일 7개) | ONTAP REST API에 의한 `accessed_time` 선택과 uid, gid, mode, mtime, atime 취득(루트는 볼륨의 루트이며 경로 앞에 슬래시가 없음. `unix_permissions`는 정수 `640`으로 반환됨). Distributed Map의 `ItemReader`와 `ResultWriter`. Fargate에 의한 5.5 GiB 멀티파트 복사(`CopySourceIfMatch` 지정, CRC64NVME가 원장과 일치). Lambda에서의 5.3 GB(약 4.94 GiB) 해시 계산(69.8초, 메모리 2048 MB 설정, 사용 152 MB). 두 번째 복사. 승인 후의 삭제. 승인 대기 중에 NFS에서 덮어쓴 파일은 `CHANGED`가 되어 삭제되지 않았다. 승인을 거부하자 아무것도 삭제되지 않았다. `Expedited`에 의한 복원(5.5 GiB 포함)과 복원한 6개 파일의 SHA-256 일치(7개 중 남은 1개는 덮어쓴 파일로, 삭제도 복원도 되지 않았다). `reapply.sh`에 의한 uid, gid, mode, mtime의 복원 |
+| 제외와 승인을 확인한 실행에서 1회씩 확인함(2026-11-26, 같은 환경, `GLACIER`, 두 번째 복사 있음. `selection=ATIME`으로 dry run, `selection=MTIME`과 ONTAP REST에서 가져온 속성으로 실제 실행. 64 B에서 1 MiB까지의 파일과 51 GiB 스파스 파일 1개) | 7개 파일 실행에 없던 항목의 확인. `maxFiles=50`일 때 64 B 파일 3개와 131,071 B 파일 1개는 최소 크기 미만이어서 제외되었고, 131,073 B 파일은 남았다. `*.vmdk`와 법적 보존용 prefix는 제외되었다. 51 GiB 스파스 파일은 `SKIPPED_TOO_LARGE`로 기록되고 복사되지 않았다. 이미 사용한 `runId`와 `requestedBy`가 없는 실제 실행 입력은 입력 오류로 멈췄다. 시작한 주체와 같은 ARN의 승인은 `APPROVAL_REFUSED`로 끝났고 아무것도 삭제되지 않았다. 승인 없이 `delete` 함수를 직접 호출하면 `NOT_APPROVED`를 반환하고 아무것도 삭제하지 않았다. 다른 승인자로 파일 3개가 삭제되었고, 승인 대기 중에 덮어쓴 1개는 `CHANGED`로 남았다. 중단을 모의하기 위해 `DELETING`으로 만든 항목은, 같은 실행의 재시도에서 `DELETED`(`already gone on retry`)로 기록되었고, 다른 실행은 거부되었으며, `reconcile`이 `DELETED`로 기록했다(이 확인은 실행 상태 확인을 추가하기 전의 코드로 수행했다. 현재 코드에서 재시도와 재개 경로는 단위 테스트로만 확인했고 실기에서는 실행하지 않았다). 복원 후 3개 파일이 `RESTORE_VERIFIED`가 되었다. 알람이 KMS로 암호화된 토픽에 게시되었다(수정 후) |
+| 직접 호출을 확인한 점검에서 1회씩 확인함(2026-11-26, 같은 계정과 Access Point, `selection=MTIME`, `GLACIER`, Fargate 없음, 256 KiB 파일 8개, `MapConcurrency=1`) | 승인 직후에 실행을 중지하자 `APPROVED` 항목 7개가 남았다. 다른 실행의 `claim`으로 `delete` 함수를 직접 호출하면 `NOT_APPROVED`(`approval not current`)였다. 수정 전의 구현에서는 중지된 실행 자신의 ARN을 `claim`으로 한 호출이 파일 1개를 `DELETED`로 만들었다. 실행 상태 확인을 추가한 뒤에는 같은 호출이 `NOT_APPROVED`(`claiming execution is not running`)가 되었다. `reconcile`이 7개 항목을 `VERIFIED`로 되돌렸다. 실행 중인 실행에서의 일반 삭제는 파일 7개가 `DELETED`가 되었다. 승인 후와 거부 후에 태스크 토큰 파라미터가 삭제되어 있었다. 토큰은 스택의 KMS 키로 암호화되어 있었다 |
 ### 환경과 단계별 결과
 환경은 ap-northeast-1, FSx for ONTAP 1세대 `SINGLE_AZ_1`, ONTAP 9.19.1P4D1, UNIX 보안 스타일 볼륨이며, Access Point의 파일 시스템 사용자는 UNIX root입니다. 실행일은 2026-11-26(시각은 일본 표준시)이고 각 단계는 1회만 실행했습니다. 구성은 `selection=ATIME`, `GLACIER`, 두 번째 복사 있음, Fargate는 arm64의 2 vCPU와 8 GiB입니다. 데이터는 작은 파일 6개(64 B 3개, 8 MiB 3개. 소유자 1234:5678, 모드 640, mtime과 atime은 2020-01-02)와 5,905,580,032 B 파일 1개입니다.
 | 단계 | 결과 | 소요 시간 |
@@ -44,7 +44,7 @@ Amazon FSx for NetApp ONTAP(이하 FSx for ONTAP) 볼륨에 있는, 거의 읽�
 - Lambda 실행 시간의 합계(CloudWatch. 실패한 실행을 포함하고 4.94 GiB 실행은 제외): `select` 13회 5.9초, `ontap_rest` 11회 13.4초(실패 2회), `record` 17회 11.7초, `ledger` 34회 9.1초, `approval` 6회 4.3초, `delete` 7회 5.6초, `summarize` 5회 5.1초, `restore` 26회 9.2초
 - Fargate는 5개 태스크, 합계 약 416초(2 vCPU, 8 GiB, arm64). DynamoDB(온디맨드)는 읽기 68.5 RCU, 쓰기 74 WCU(전체 실행 합계)
 - S3 요청 수는 측정하지 않았습니다(요청 메트릭을 활성화하지 않았습니다)
-두 번째 실행(2026-11-26, 작은 파일, 두 번째 복사 있음, `MapConcurrency=2`)의 상태 전이입니다. 각 1회 실행이며 파일 크기와 경로에 따라 달라집니다.
+제외와 승인을 확인한 실행(2026-11-26, 작은 파일, 두 번째 복사 있음, `MapConcurrency=2`)의 상태 전이입니다. 각 1회 실행이며 파일 크기와 경로에 따라 달라집니다.
 
 | 실행 | 파일 수 | 소요 시간 | 상태 전이(부모 + 자식 Map 실행) | 파일당 |
 |---|---|---|---|---|
@@ -58,21 +58,21 @@ Amazon FSx for NetApp ONTAP(이하 FSx for ONTAP) 볼륨에 있는, 거의 읽�
 | 1 | `selection=ATIME` 실행이 선택 단계에서 실패했다 | 아카이브 스테이트 머신의 역할에 ONTAP REST 함수에 대한 `lambda:InvokeFunction`이 없었다. 권한을 추가 |
 | 2 | ONTAP REST 함수가 `CERTIFICATE_VERIFY_FAILED`로 실패했다 | 항상 TLS를 검증했지만, FSx for ONTAP 관리 엔드포인트의 인증서는 공인 CA의 서명이 아니다. 파라미터 `OntapVerifySsl`(기본값 `false`)을 추가 |
 | 3 | 복원 요청의 중복 투입이 파일 실패가 되었다 | Step Functions의 SDK 통합이 `RestoreAlreadyInProgress`를 `S3.S3Exception`으로 반환하므로 `S3.RestoreAlreadyInProgressException`의 `Catch`와 일치하지 않았다. 진행 중인 복원을 완료 대기로 보내도록 수정 |
-두 번째 실행(2026-11-26)에서 3건을 더 발견해 고쳤습니다.
+제외와 승인을 확인한 실행(2026-11-26)에서 3건을 더 발견해 고쳤습니다.
 
 | # | 증상 | 원인과 수정 |
 |---|---|---|
 | 4 | 배포가 `The state machine IAM Role is not authorized to access the Log Destination`로 실패했다 | 스테이트 머신의 역할에 실행 로그에 필요한 `logs:CreateLogDelivery`와 관련 권한이 없었다. 권한을 추가 |
 | 5 | 삭제 재시도와 `reconcile`에서, 삭제된 파일에 대한 `HeadObject`가 403을 받았다 | `s3:ListBucket` 권한이 없는 호출자는 존재하지 않는 키에 대한 `HeadObject`에서 404가 아니라 403을 받는다. `delete`와 `restore` 함수에 `s3:ListBucket`을 IAM과 Access Point 정책 양쪽에 추가 |
 | 6 | CloudWatch 알람의 알림이 `CloudWatch Alarms is not authorized to perform: SNS:Publish`로 실패했다 | 키 정책은 CloudWatch를 허용했지만 토픽 정책은 EventBridge만 허용했다. `cloudwatch.amazonaws.com`의 스테이트먼트를 추가 |
-| 7 | Fargate 없이(`FargateImageUri`가 비어 있음) 배포하면 `is not authorized to create managed-rule`로 실패했다(세 번째 실행) | 두 정의 모두 `ecs:runTask.sync` 상태를 가지며, 스테이트 머신을 만들 때 역할의 `events:PutRule` 등이 검사된다. 권한이 `UseFargate` 조건 안에 있었다. 조건을 제거했다 |
+| 7 | Fargate 없이(`FargateImageUri`가 비어 있음) 배포하면 `is not authorized to create managed-rule`로 실패했다(직접 호출을 확인한 점검) | 두 정의 모두 `ecs:runTask.sync` 상태를 가지며, 스테이트 머신을 만들 때 역할의 `events:PutRule` 등이 검사된다. 권한이 `UseFargate` 조건 안에 있었다. 조건을 제거했다 |
 ### 실기 통합 실행에서 알게 된 동작
 결함으로 고치지 않은 동작입니다.
 - `selection=ATIME`에서는 이 패턴 자신의 읽기가 `accessed_time`을 갱신합니다. `dryRun=true`로 한 번 돌리면 해시 계산을 위한 읽기로 파일의 atime이 실행 시각이 되어, 같은 입력으로 `dryRun=false`를 돌려도 아무것도 선택되지 않습니다(dry run 직후에 실제 실행을 했을 때 0건으로 종료). dry run 직후에 같은 후보로 실제 실행을 하려면 `selection=MTIME`을 사용하세요(`LastModified`는 읽기로 바뀌지 않습니다)
 - ETag에 대해, 공식 기재와 이 환경에서의 측정은 다음과 같습니다. 공식 페이지([Access point compatibility](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/access-points-for-fsxn-object-api-support.html), 2026-11-26 열람)에는 "The ETag reflects changes only to the contents of an object, not its metadata"라고 되어 있습니다. 이 환경에서의 1회 측정에서는 크기와 mtime이 같고 내용이 다른 파일 3개가 같은 ETag를 반환했습니다. 따라서 이 패턴은 삭제 전의 ETag와 크기 확인으로는, 크기와 mtime을 바꾸지 않는 내용 변경을 검출할 수 없는 것으로 취급합니다. 크기는 같지만 mtime이 갱신된 덮어쓰기는 승인 대기 중에 검출되었습니다(첫 번째 실행의 3단계와 두 번째 실제 실행) [E-023]
 - Access Point를 통해 디렉터리의 마지막 파일을 삭제하면 비게 된 상위 디렉터리도 함께 사라집니다(`arc-e2e/large/`에서 확인). 복원의 `CopyObject`가 상위 디렉터리를 다시 만듭니다
 - 복원된 파일의 소유자는 0:1, 모드는 644, 수정 시각은 복원한 시각이었습니다. NFS로 볼륨을 마운트한 호스트에서 생성된 `reapply.sh`를 root로 실행하면 원래의 uid, gid, mode, mtime(1234:5678, 640, 2020-01-02 03:04:05)으로 돌아왔고 내용의 SHA-256은 바뀌지 않았습니다
-- 복원 스테이트 머신은, 아카이브용 버킷에 사본이 있으면 `CHANGED`로 남은 파일도 선택합니다. Access Point에 같은 키가 이미 있으면 `EXISTS`로 남기고 덮어쓰지 않습니다(두 번째 복원에서 1회 확인)
+- 복원 스테이트 머신은, 아카이브용 버킷에 사본이 있으면 `CHANGED`로 남은 파일도 선택합니다. Access Point에 같은 키가 이미 있으면 `EXISTS`로 남기고 덮어쓰지 않습니다(제외와 승인을 확인한 실행의 복원에서 1회 확인)
 - 5.5 GiB 파일의 `Expedited` 복원 요청이 접수되었고 약 4분 이내에 완료되었습니다
 ### 확인하지 않은 것
 - 많은 수의 파일에서의 소요 시간과 요금. 다른 병렬도에서의 파일 시스템 처리량과 클라이언트 지연
@@ -85,6 +85,7 @@ Amazon FSx for NetApp ONTAP(이하 FSx for ONTAP) 볼륨에 있는, 거의 읽�
 - 복원에서 `CHANGED` 파일을 선택하지 않는 것 이외의 `EXISTS` 경로(NFS에 같은 이름의 파일이 있는 경우)
 - `ApprovalPendingAlarm`이 실제로 `ALARM`이 될 때까지의 대기(메트릭이 게시되는 것만 확인)
 - 후보가 0건이 된 원인이 설명되지 않은 실행이 1건 있습니다. `touch -d`로 atime을 되돌린 약 10초 뒤의 실행은 후보가 0건이었습니다. 약 17분 뒤의 확인에서는 2020년 값이 반환되었고, 다른 확인에서도 6건이 반환되었습니다. 원인은 특정하지 못했고 재현도 하지 못했습니다
+- 삭제의 재시도와 재개 경로(`DELETING`과 같은 `claimedBy`)를 실기에서 실행한 것. 위의 재시도 확인은 실행 상태 확인을 추가하기 전의 코드로 수행했다. 현재 코드에서 이 경로는 단위 테스트로만 확인했다
 ### 삭제 전 확인에 남는 쓰기 구간
 삭제 전 확인에는 쓰기 구간이 하나 남습니다. Access Point의 `DeleteObject`는 조건부 삭제를 지원하지 않으므로, `HeadObject`로 확인한 뒤 삭제하기까지 사이에 덮어써도 검출되지 않습니다. 이 구간은 API 호출 1회 왕복 분량입니다.
 ## 처리 흐름
@@ -290,9 +291,9 @@ Step Functions 실행 이력과 로그(`/aws/vendedlogs/states/<stack>-archive`�
 
 | 실행 | 파일당 상태 전이 | 출처 |
 |---|---|---|
-| 아카이브 dry run | 17(119 ÷ 7), 18(72 ÷ 4) | 첫 번째와 두 번째 실행 |
+| 아카이브 dry run | 17(119 ÷ 7), 18(72 ÷ 4) | 5.5 GiB를 포함한 7개 파일 실행, 제외와 승인을 확인한 실행 |
 | 아카이브 실제 실행(삭제 포함) | 18(127 ÷ 7), 19.5(78 ÷ 4) | 같음 |
-| 복원(`Expedited`. 두 번째는 검증 포함) | 18(107 ÷ 6), 14(56 ÷ 4) | 같음 |
+| 복원(`Expedited`. 제외와 승인을 확인한 실행은 검증 포함) | 18(107 ÷ 6), 14(56 ÷ 4) | 같음 |
 대기 시간이 긴 클래스에서는 폴링할 때마다 전이가 더해집니다.
 오브젝트당 보관 조건([Comparing the Amazon S3 storage classes](https://docs.aws.amazon.com/AmazonS3/latest/userguide/storage-class-intro.html#sc-compare), 2026-11-26 열람):
 
@@ -307,7 +308,7 @@ Step Functions 실행 이력과 로그(`/aws/vendedlogs/states/<stack>-archive`�
 - 대조 결과와 승인은 사람이 최종 판단을 하기 위한 보조 신호입니다. AI는 사용하지 않습니다
 - 보존 기간과 불변성을 충족해야 하는 경우 이 패턴은 대응하지 않습니다. Object Lock 등을 사용하지 않으므로 권한이 있으면 누구나 삭제할 수 있습니다
 - 출력 분류: 원장과 매니페스트에는 파일 경로, 크기, 해시, 속성이 들어갑니다. 경로에는 개인 이름이나 환자, 사건의 식별자가 포함될 수 있으므로, 출력에는 기본적으로 `data_classification`으로 `RESTRICTED`(`shared/data_classification.py`의 "Restricted — Limited access")를 붙입니다. 데이터 자체의 분류가 더 엄격하면 `DataClassification` 파라미터에 그 분류를 지정하세요. 분류는 이용자가 판단합니다. 파일 내용은 아카이브용 버킷에 들어가므로 원본 데이터와 같은 분류로 취급하세요
-- Human Review: 승인은 모든 실행에 필수입니다. 신뢰도에 의한 자동 승인은 없습니다. 기본 설정에서는 시작한 주체와 승인자가 같은 주체이면 아무것도 삭제되지 않습니다
+- Human Review: 승인은 모든 실행에 필수입니다. 신뢰도에 의한 자동 승인은 없습니다. 기본 설정에서는 시작한 주체와 승인자가 같은 주체이면 아무것도 삭제되지 않습니다. 이 비교는 신고된 값의 비교이며 주체의 증명이 아닙니다. 사후 통제는 CloudTrail의 `userIdentity`입니다
 - IAM: Access Point에 대한 `s3:DeleteObject`를 가진 것은 `delete` 함수의 역할뿐이며, `s3:PutObject`를 가진 것은 복원 스테이트 머신과 복원용 Fargate 태스크 역할뿐입니다. 아카이브용 Fargate 태스크는 복사만 하며 원본 파일을 삭제하거나 덮어쓸 수 없습니다. 원장 항목을 삭제할 수 있는 주체는 없습니다
 - 감사: 승인과 삭제는 원장(`approvedBy`, `approvedAt`, `requestedBy`, `deletedBy`, `deletedAt`), `manifests/<runId>-approval.json`, Step Functions 실행 이력과 로그에 남습니다. CloudTrail에 삭제가 기록되는 것은 트레일에서 S3 데이터 이벤트를 활성화한 경우뿐이며, 이 실행에서는 확인하지 않았습니다
 - 사본의 수: 두 번째 복사가 없으면 삭제 후에는 아카이브용 버킷의 오브젝트가 유일한 사본입니다. 승인 알림에 그 내용이 기재됩니다
