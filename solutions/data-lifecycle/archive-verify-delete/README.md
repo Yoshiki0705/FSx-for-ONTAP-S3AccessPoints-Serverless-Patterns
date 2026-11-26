@@ -17,8 +17,14 @@ Amazon FSx for NetApp ONTAP（以下 FSx for ONTAP）のボリュームにある
 | 区分 | 内容 |
 |---|---|
 | 部品を実機で 1 回ずつ確認した（上の比較資料に記録、2026-11-24 と 2026-11-26、ap-northeast-1、第 1 世代 `SINGLE_AZ_1`、ONTAP 9.19.1P4D1、UNIX スタイルのボリューム、Access Point のユーザーは UNIX root） | `CopyObject` に `ChecksumAlgorithm=SHA256` を付けると、バケットの `ChecksumSHA256` が `FULL_OBJECT` でファイルの SHA-256 と一致した（8 MiB まで）。5.5 GiB のマルチパートは SHA-256 が `COMPOSITE` になり、CRC64NVME は `FULL_OBJECT` で一致した。古い ETag の `--copy-source-if-match` は `PreconditionFailed`。Access Point の `DeleteObject` は `If-Match` 非対応。Step Functions の SDK 統合で Access Point のエイリアスを `Bucket` に渡せた |
-| このリポジトリで確認した | moto を使った単体テストと、ステートマシンと IAM の構造のテスト。AWS には接続していません |
-| まだ確認していない | このパターン全体の実機での通し。多数のファイルでの所要時間と料金。Lambda での 5 GiB 近いファイルのハッシュ計算時間。Fargate のマルチパートコピーの実機。ONTAP REST API のルートディレクトリの指定方法と `unix_permissions` の表現。Distributed Map の `ItemReader` と `ResultWriter` の実機。復元が要る 2 クラスの戻し。NTFS ボリューム、root 以外のユーザー、第 2 世代、Multi-AZ |
+| このリポジトリで確認した | moto を使った単体テストと、ステートマシンと IAM の構造のテスト。AWS には接続していません。上の実機の通しで見つかった不具合 3 件（ONTAP REST 関数の呼び出し権限、TLS 検証、復元要求の重複エラー名）は、再現するテストを加えて直しました |
+| 実機の通しで 1 回ずつ確認した（2026-11-26、上と同じ環境、`selection=ATIME`、`GLACIER`、7 ファイル） | ONTAP REST API による `accessed_time` の選択と uid、gid、mode、mtime、atime の取得（ルートはボリュームのルートで、パスの先頭にスラッシュなし。`unix_permissions` は `640` の整数で返る）。Distributed Map の `ItemReader` と `ResultWriter`。Fargate による 5.5 GiB のマルチパートコピー（`CopySourceIfMatch` 付き、CRC64NVME が台帳と一致）。Lambda での 5.3 GB（約 4.94 GiB）のハッシュ計算（69.8 秒、メモリ 2048 MB、使用 152 MB）。2 つ目の写し。承認後の削除。承認待ちの間に NFS で書き換えたファイルは `CHANGED` になり消えなかった。承認の拒否で何も消えなかった。`Expedited` での戻し（5.5 GiB を含む）と、戻した 6 ファイルの SHA-256 の一致（7 ファイル中の残る 1 ファイルは書き換え済みで、削除も戻しもされていない）。`reapply.sh` による uid、gid、mode、mtime の復元 |
+| まだ確認していない | 多数のファイルでの所要時間と料金。`Standard` と `Bulk` の戻しの完了待ち（実機では `Expedited` のみ）。`S3.SlowDownException` の再試行（Step Functions の SDK 統合が S3 のエラーをどの名前で返すかは、`RestoreAlreadyInProgress` が `S3.S3Exception` だったことだけ確認）。NTFS ボリューム、root 以外のユーザー、第 2 世代、Multi-AZ。CloudTrail のデータイベントでの削除の記録 |
+実機の通しで分かった挙動は次の 4 点です。
+- `selection=ATIME` では、このパターン自身の読み取りが `accessed_time` を更新します。`dryRun=true` で一度回すと、ハッシュ計算の読み取りでファイルの atime が実行時刻になり、同じ入力で `dryRun=false` を回しても選ばれません（0 件で終了）。dry run の直後に同じ候補で本番を回すなら `selection=MTIME` を使ってください（`LastModified` は読み取りで変わりません）
+- Access Point 経由で最後のファイルを消すと、空になった親ディレクトリも消えます（`arc-e2e/large/` で確認）。戻しの `CopyObject` が親ディレクトリを作り直します
+- 戻したファイルの所有者は 0:1、モードは 644 で、更新時刻は戻した時刻でした。`reapply.sh` の実行後は元の uid、gid、mode、mtime に戻りました
+- この通しでは、Access Point のポリシーに各ロール（`select`、`record`、`delete`、`restore` の各関数のロール、Fargate のタスクロール、2 つのステートマシンのロール）を許可して実行しました。ポリシーなしの動作は確認していません
 消す前の確認には、書き込みの窓が 1 つ残ります。Access Point の `DeleteObject` は条件付きの削除に対応していないため、`HeadObject` で確かめてから消すまでの間に書き換えられても検出できません。この窓は API 呼び出し 1 往復分です。
 ## 処理の流れ
 ### アーカイブ
@@ -65,7 +71,7 @@ MOUNT_ROOT=/mnt/<volume> sh reapply.sh
 ### 前提
 - Access Point のエイリアスと ARN の両方（IAM に両方の形式が要ります。エイリアスだけのポリシーはデプロイできても、実行時に拒否されます）
 - アーカイブ用バケットの名前（スタックが作成します。`DeletionPolicy: Retain`、Block Public Access、SSE-S3 が既定、KMS は任意、EventBridge 通知有効、TLS 必須）
-- `selection=ATIME` と属性の記録を使うときだけ: VPC、サブネット、ONTAP の認証情報のシークレット、管理エンドポイント、ボリュームの UUID。VPC 内の Lambda から Secrets Manager と S3 へ届く経路（VPC エンドポイントか NAT）が要ります
+- `selection=ATIME` と属性の記録を使うときだけ: VPC、サブネット、ONTAP の認証情報のシークレット、管理エンドポイント、ボリュームの UUID、`OntapVerifySsl`。FSx for ONTAP の管理エンドポイントの証明書は公的な CA の署名ではないため、既定は `false`（検証しない）です。この間、ONTAP の認証情報は相手を認証しない接続で送られます（経路は VPC 内）。`true` にすると検証に失敗して選択の段階で止まります（実機で確認）。VPC 内の Lambda から Secrets Manager と S3 へ届く経路（VPC エンドポイントか NAT）が要ります
 - 5 GiB を超えるファイルを扱うときだけ: ECR に置いたイメージ。Access Point がインターネット起点なので、Fargate のサブネットには NAT か公開 IP が要ります
 ### 手順
 ```bash
