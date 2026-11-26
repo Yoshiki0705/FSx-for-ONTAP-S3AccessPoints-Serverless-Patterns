@@ -16,7 +16,7 @@
 
 ### Customer Problem Statement
 
-エンタープライズのお客様は FSx for ONTAP に保存されたファイルデータに対して、変更検知 → 自動処理のパイプラインを構築したいと考えています。現在、S3 Access Points は `GetBucketNotificationConfiguration` をサポートしていないため、以下の 2 つの選択肢しかありません:
+企業の利用者は FSx for ONTAP に保存されたファイルデータに対して、変更検知 → 自動処理のパイプラインを構築したいと考えています。現在、S3 Access Points は `GetBucketNotificationConfiguration` をサポートしていないため、以下の 2 つの選択肢しかありません:
 
 1. **ポーリング**: EventBridge Scheduler + ListObjectsV2 による定期スキャン（検知は次回スキャンまで遅延）
 2. **FPolicy**: ONTAP ネイティブの FPolicy External Server を自前で運用（高い運用複雑性）。**ただし書き込みが S3 Access Point 経由で届く場合、この選択肢は成立しません**（課題 0）

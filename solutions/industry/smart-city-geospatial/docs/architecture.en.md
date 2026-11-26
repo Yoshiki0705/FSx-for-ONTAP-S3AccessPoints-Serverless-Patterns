@@ -111,6 +111,6 @@ UC17 supports the `OutputDestination` parameter as of the 2026-05-11 update.
 
 **Affected Lambda functions**: Preprocessing, LandUseClassification, InfraAssessment, RiskMapping, ReportGeneration (5 functions).  
 **Unaffected Lambda functions**: Discovery (manifest written directly to S3AP), ChangeDetection (DynamoDB only).  
-**Bedrock report advantage**: Written as `text/markdown; charset=utf-8`, directly viewable in text editors on SMB/NFS clients.
+**Bedrock report benefit**: Written as `text/markdown; charset=utf-8`, directly viewable in text editors on SMB/NFS clients.
 
 See [`docs/output-destination-patterns.md`](../../../../docs/output-destination-patterns.md) for details.
