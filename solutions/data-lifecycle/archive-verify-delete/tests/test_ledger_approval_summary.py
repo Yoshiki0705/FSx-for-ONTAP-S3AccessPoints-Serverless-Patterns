@@ -192,7 +192,24 @@ def test_summary_counts_by_status_and_lists_exceptions():
     assert s["filesByStatus"] == {L.DELETED: 1, L.VERIFIED: 1, L.MISMATCH: 1, L.CHANGED: 1, L.FAILED: 1}
     assert (s["bytesVerified"], s["bytesDeleted"]) == (30, 10)
     assert (s["mismatches"], s["changed"], s["failed"]) == (["c"], ["d"], ["e"])
-    assert s["dataClassification"] == "operational-metadata"
+    assert "dataClassification" not in s
+    assert s["stuckDeleting"] == [] and s["notDeleted"] == []
+
+
+def test_a_run_left_with_deleting_or_approved_items_is_not_complete():
+    items = [{"key": "a", "size": 1, "status": L.DELETED}, {"key": "b", "size": 1, "status": L.DELETING}]
+    s = summarize.build_summary("r1", "COMPLETED", items, {})
+    assert s["outcome"] == "COMPLETED_WITH_ERRORS" and s["stuckDeleting"] == ["b"]
+    s = summarize.build_summary("r1", "COMPLETED", [{"key": "c", "size": 1, "status": L.APPROVED}], {})
+    assert s["outcome"] == "COMPLETED_WITH_ERRORS" and s["notDeleted"] == ["c"]
+    assert summarize.build_summary("r1", "DRY_RUN_COMPLETED", items, {})["outcome"] == "DRY_RUN_COMPLETED"
+
+
+def test_summary_is_labelled_with_the_classification_for_data_that_may_name_people(aws, ledger, lambda_context):
+    out = summarize.handler({"runId": "r1", "outcome": "NO_FILES"}, lambda_context)
+    result = json.loads(aws.get_object(Bucket=ARCHIVE, Key=out["resultKey"])["Body"].read())
+    assert result["data_classification"] == "RESTRICTED"
+    assert result["data_classification_label"].startswith("Restricted")
 
 
 def test_summarize_handler_writes_result_and_removes_the_token(aws, ledger, lambda_context, monkeypatch):

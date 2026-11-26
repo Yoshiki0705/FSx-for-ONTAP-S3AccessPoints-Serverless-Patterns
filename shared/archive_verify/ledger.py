@@ -2,12 +2,19 @@
 
 Status values, in the order a file normally passes through them::
 
-    SELECTED -> RECORDED -> COPIED -> VERIFIED -> DELETED -> RESTORED
+    SELECTED -> RECORDED -> COPIED -> VERIFIED -> APPROVED -> DELETING -> DELETED
+    DELETED -> RESTORED -> RESTORE_VERIFIED
+
+``APPROVED`` is written only by the approval step, for the items of one run, after a person
+approved that run. ``DELETING`` is the claim a delete holds while it removes the file; it is
+the state an item is left in when a delete is interrupted.
 
 Side exits: ``CHANGED`` (the source changed after it was recorded), ``MISMATCH``
-(the archived copy did not match), ``FAILED`` (an unexpected error). Only
-``VERIFIED`` items can become ``DELETED``; the transition is a conditional write,
-so two concurrent runs cannot both claim the delete.
+(the archived copy did not match), ``FAILED`` (an unexpected error),
+``SKIPPED_TOO_LARGE`` (above the Access Point upload limit, never copied) and
+``RESTORE_MISMATCH`` (the restored file does not match the ledger digest). Only
+``APPROVED`` items can become ``DELETING``; each transition is a conditional write, so two
+concurrent runs cannot both claim the delete.
 """
 
 from __future__ import annotations
@@ -27,8 +34,13 @@ SELECTED = "SELECTED"
 RECORDED = "RECORDED"
 COPIED = "COPIED"
 VERIFIED = "VERIFIED"
+APPROVED = "APPROVED"
+DELETING = "DELETING"
 DELETED = "DELETED"
 RESTORED = "RESTORED"
+RESTORE_VERIFIED = "RESTORE_VERIFIED"
+RESTORE_MISMATCH = "RESTORE_MISMATCH"
+SKIPPED_TOO_LARGE = "SKIPPED_TOO_LARGE"
 CHANGED = "CHANGED"
 MISMATCH = "MISMATCH"
 FAILED = "FAILED"
@@ -72,9 +84,14 @@ class Ledger:
         status: str,
         *,
         only_if_status: str | tuple[str, ...] | None = None,
+        also_if: dict[str, Any] | None = None,
         **attrs: Any,
     ) -> bool:
-        """Set ``status`` and attributes. Returns False if ``only_if_status`` did not hold."""
+        """Set ``status`` and attributes. Returns False if a condition did not hold.
+
+        ``only_if_status`` is the set of statuses the item may be in; ``also_if`` adds attribute
+        equalities that must hold as well (for example the claim a delete holds).
+        """
         values = {k: v for k, v in {"status": status, "updatedAt": now_iso(), **attrs}.items() if v is not None}
         names = {f"#a{i}": k for i, k in enumerate(values)}
         expr = "SET " + ", ".join(f"#a{i} = :v{i}" for i in range(len(values)))
@@ -92,9 +109,13 @@ class Ledger:
             for i, s in enumerate(allowed):
                 expr_values[f":s{i}"] = s
                 conds.append(f"#cond = :s{i}")
-            kwargs["ConditionExpression"] = " OR ".join(conds)
+            kwargs["ConditionExpression"] = "(" + " OR ".join(conds) + ")"
         else:
             kwargs["ConditionExpression"] = "attribute_exists(runId)"
+        for j, (attr, value) in enumerate((also_if or {}).items()):
+            names[f"#x{j}"] = attr
+            expr_values[f":x{j}"] = value
+            kwargs["ConditionExpression"] += f" AND #x{j} = :x{j}"
         try:
             self._table.update_item(**kwargs)
             return True
@@ -102,6 +123,11 @@ class Ledger:
             if e.response["Error"]["Code"] == "ConditionalCheckFailedException":
                 return False
             raise
+
+    def has_items(self, run_id: str) -> bool:
+        """True when the run already has at least one ledger item."""
+        resp = self._table.query(KeyConditionExpression=Key("runId").eq(run_id), Limit=1, ConsistentRead=True)
+        return bool(resp.get("Items"))
 
     def query_run(self, run_id: str, *, status: str | None = None, key_prefix: str = "") -> list[dict]:
         """All items of a run, optionally filtered by status and key prefix."""

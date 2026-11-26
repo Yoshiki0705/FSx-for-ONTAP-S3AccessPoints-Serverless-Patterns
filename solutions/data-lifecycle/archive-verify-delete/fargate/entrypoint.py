@@ -7,8 +7,11 @@ Reads ``TASK_INPUT`` (JSON, set by the state machine) and runs one of three mode
                     ``ChecksumAlgorithm=CRC64NVME`` (``FULL_OBJECT``, equal to the whole-file CRC)
 * ``second``        copy to the second bucket (the ledger already holds the digests)
 * ``restore``       copy from the archive bucket back to the Access Point
+* ``verify_restore`` read the restored file back through the Access Point, hash it, compare with
+                    the ledger, set ``RESTORE_VERIFIED`` or ``RESTORE_MISMATCH``
 
-Exit codes: 0 done, 2 bad input, 3 the source changed (set aside as ``CHANGED``), 1 any other
+Exit codes: 0 done, 2 bad input, 3 the source changed (set aside as ``CHANGED``), 4 the restored file
+does not match the ledger (``RESTORE_MISMATCH``), 1 any other
 failure. A non-zero exit makes ``ecs:runTask.sync`` fail, and the state machine's Catch handles it.
 """
 
@@ -23,13 +26,14 @@ from shared.archive_verify import ledger as L
 from shared.archive_verify.checksums import CRC64NVME, hash_stream
 from shared.archive_verify.ledger import Ledger
 from shared.archive_verify.plan import etag_equal
+from shared.archive_verify.restore_verify import verify_restored
 from shared.exceptions import S3ApHelperError
 from shared.s3ap_helper import S3ApHelper
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 logger = logging.getLogger("archive-task")
 
-EXIT_OK, EXIT_ERROR, EXIT_BAD_INPUT, EXIT_CHANGED = 0, 1, 2, 3
+EXIT_OK, EXIT_ERROR, EXIT_BAD_INPUT, EXIT_CHANGED, EXIT_MISMATCH = 0, 1, 2, 3, 4
 PART_SIZE = 64 * 1024 * 1024
 HASH_READ_BYTES = 16 * 1024 * 1024
 
@@ -103,6 +107,12 @@ def run_restore(task: dict, helper: S3ApHelper, ledger: Ledger) -> int:
     return EXIT_OK
 
 
+def run_verify_restore(task: dict, helper: S3ApHelper, ledger: Ledger) -> int:
+    result = verify_restored(helper, ledger, task["runId"], task["key"], task["restoreRunId"])
+    logger.info("restore check: %s", result)
+    return EXIT_OK if result["status"] == L.RESTORE_VERIFIED else EXIT_MISMATCH
+
+
 def main() -> int:
     try:
         mode = os.environ["TASK_MODE"]
@@ -113,7 +123,12 @@ def main() -> int:
         logger.error("bad input: %s", e)
         return EXIT_BAD_INPUT
     helper = S3ApHelper(access_point)
-    runners = {"archive": run_archive, "second": run_second, "restore": run_restore}
+    runners = {
+        "archive": run_archive,
+        "second": run_second,
+        "restore": run_restore,
+        "verify_restore": run_verify_restore,
+    }
     if mode not in runners:
         logger.error("unknown TASK_MODE %r", mode)
         return EXIT_BAD_INPUT

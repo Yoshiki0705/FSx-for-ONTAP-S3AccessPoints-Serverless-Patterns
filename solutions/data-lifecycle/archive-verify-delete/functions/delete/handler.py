@@ -1,4 +1,4 @@
-"""Delete one file from the Access Point, only if everything still matches.
+"""Delete one file from the Access Point, only if the approval step approved it and nothing changed.
 
 The Access Point does not support conditional deletes (``If-Match`` on ``DeleteObject``
 returns ``NotImplemented``; ``DeleteObjects`` with an ETag returns ``MalformedXML``).
@@ -8,14 +8,27 @@ the two calls is not detected; the window is the length of one API round trip.
 A file is deleted only when all of these hold:
 
 1. ``dryRun`` is the JSON boolean ``false``
-2. the ledger status is ``VERIFIED`` (and the second copy is ``VERIFIED`` when one was required)
-3. the Access Point's current ETag and size equal the ledger's
-4. an approver is named in the input
+2. the ledger status is ``APPROVED``: the approval step wrote it, for this run, after a person
+   approved the run (and, with RequireSeparateApprover, after checking the approver is not the
+   person who started it). Nothing in this function's input can stand in for that: the former
+   ``approvedBy`` input is gone, because any non-empty string in it was enough to delete
+3. the second copy is ``VERIFIED`` when one was required
+4. the Access Point's current ETag and size equal the ledger's
+
+The delete is idempotent. The function holds a claim (``DELETING`` plus ``claimedBy``, the
+execution that runs it). When a call fails after the file was deleted (a client timeout, a
+failed ledger write), the Step Functions retry finds the claim, sees the file is gone, and
+records ``DELETED`` instead of reporting the file as changed.
+
+``reconcile`` handles what a retry cannot: items left in ``DELETING`` or ``APPROVED`` after the
+execution ended.
 """
 
 from __future__ import annotations
 
 import logging
+
+import boto3
 
 from shared.archive_verify import ledger as L
 from shared.archive_verify.ledger import Ledger
@@ -27,7 +40,7 @@ from shared.s3ap_helper import S3ApHelper
 
 logger = logging.getLogger(__name__)
 
-DELETING = "DELETING"
+NOT_FOUND = ("404", "NoSuchKey", "NotFound")
 
 
 def delete_one(
@@ -35,29 +48,36 @@ def delete_one(
     run_id: str,
     key: str,
     dry_run,
-    approved_by: str | None,
+    claim: str | None,
     helper: S3ApHelper,
     ledger: Ledger,
 ) -> dict:
-    """Return ``{"key", "outcome", ...}`` where outcome is DELETED, DRY_RUN, CHANGED or NOT_VERIFIED."""
+    """Return ``{"key", "outcome", ...}``: DELETED, DRY_RUN, CHANGED, NOT_APPROVED or NOT_VERIFIED."""
     if parse_dry_run(dry_run):
         return {"key": key, "outcome": "DRY_RUN"}
-    if not approved_by or not isinstance(approved_by, str):
-        raise InvalidInput("approvedBy is required to delete")
-
+    if not claim or not isinstance(claim, str):
+        raise InvalidInput("claim (the execution id) is required to delete")
     item = ledger.get(run_id, key)
+    resuming = bool(item) and item.get("status") == L.DELETING and item.get("claimedBy") == claim
     if (
         item is None
-        or item.get("status") != L.VERIFIED
-        or (item.get("secondCopyRequired") and item.get("secondCopy") != L.VERIFIED)
+        or not (item.get("status") == L.APPROVED or resuming)
+        or not item.get("approvedBy")
+        or not item.get("approvedAt")
     ):
-        return {"key": key, "outcome": "NOT_VERIFIED", "status": item.get("status") if item else None}
-
+        return {"key": key, "outcome": "NOT_APPROVED", "status": item.get("status") if item else None}
+    if item.get("secondCopyRequired") and item.get("secondCopy") != L.VERIFIED:
+        return {"key": key, "outcome": "NOT_VERIFIED", "status": "second copy not verified"}
+    before = (L.DELETING,) if resuming else (L.APPROVED,)
     try:
         head = helper.head_object(key)
     except S3ApHelperError as e:
-        if e.error_code in ("404", "NoSuchKey", "NotFound"):
-            ledger.update(run_id, key, L.CHANGED, only_if_status=L.VERIFIED, reason="source no longer present")
+        if e.error_code in NOT_FOUND:
+            if resuming:
+                # The earlier attempt deleted the file and failed afterwards. Finish the record.
+                _mark_deleted(ledger, run_id, key, item, claim)
+                return {"key": key, "outcome": "DELETED", "size": int(item["size"]), "note": "already gone on retry"}
+            ledger.update(run_id, key, L.CHANGED, only_if_status=before, reason="source no longer present")
             return {"key": key, "outcome": "CHANGED", "reason": "source no longer present"}
         raise
     if not etag_equal(head["ETag"], item["etag"]) or int(head["ContentLength"]) != int(item["size"]):
@@ -65,32 +85,115 @@ def delete_one(
             run_id,
             key,
             L.CHANGED,
-            only_if_status=L.VERIFIED,
+            only_if_status=before,
             reason="ETag or size differs from the ledger at delete time",
         )
         return {"key": key, "outcome": "CHANGED", "reason": "ETag or size differs from the ledger"}
-
     # Claim the transition first so two executions cannot both delete.
-    if not ledger.update(run_id, key, DELETING, only_if_status=L.VERIFIED):
-        return {"key": key, "outcome": "NOT_VERIFIED", "status": "claimed elsewhere"}
-    try:
-        helper.delete_object(key)
-    except Exception:
-        ledger.update(run_id, key, L.VERIFIED, only_if_status=DELETING)
-        raise
-    ledger.update(run_id, key, L.DELETED, only_if_status=DELETING, deletedAt=L.now_iso(), deletedBy=approved_by)
+    claimed = ledger.update(
+        run_id,
+        key,
+        L.DELETING,
+        only_if_status=before,
+        also_if={"claimedBy": claim} if resuming else None,
+        claimedBy=claim,
+    )
+    if not claimed:
+        return {"key": key, "outcome": "NOT_APPROVED", "status": "claimed elsewhere"}
+    # No rollback if this raises: whether the file is gone is unknown, so the item stays
+    # DELETING with this claim and the retry decides from what the Access Point says.
+    helper.delete_object(key)
+    _mark_deleted(ledger, run_id, key, item, claim)
     return {"key": key, "outcome": "DELETED", "size": int(item["size"])}
+
+
+def _mark_deleted(ledger: Ledger, run_id: str, key: str, item: dict, claim: str) -> None:
+    ledger.update(
+        run_id,
+        key,
+        L.DELETED,
+        only_if_status=L.DELETING,
+        also_if={"claimedBy": claim},
+        deletedAt=L.now_iso(),
+        deletedBy=item["approvedBy"],
+    )
+
+
+def _execution_running(sfn, arn: str | None) -> bool:
+    if not arn:
+        return False
+    try:
+        return sfn.describe_execution(executionArn=arn)["status"] == "RUNNING"
+    except Exception:  # noqa: BLE001 - when the state is unknown, treat the execution as running
+        logger.warning("could not read execution %s; leaving its items alone", arn)
+        return True
+
+
+def reconcile(*, run_id: str, helper: S3ApHelper, ledger: Ledger, sfn=None) -> dict:
+    """Settle items an ended execution left in ``DELETING`` or ``APPROVED``.
+
+    * ``DELETING`` and the file is gone from the Access Point: ``DELETED`` (the delete happened)
+    * ``DELETING`` or ``APPROVED`` and the file is there, unchanged: back to ``VERIFIED``, so a new
+      approval is needed before it can be deleted. An approval belongs to one execution
+    * the file is there but differs from the ledger: ``CHANGED``
+    * the execution that holds the item is still running: left alone
+    """
+    sfn = sfn or boto3.client("stepfunctions")
+    counts = {"deleted": 0, "reverified": 0, "changed": 0, "running": 0}
+    for item in ledger.query_run(run_id):
+        if item.get("status") not in (L.DELETING, L.APPROVED):
+            continue
+        key = item["key"]
+        if _execution_running(sfn, item.get("claimedBy") or item.get("approvalExecutionArn")):
+            counts["running"] += 1
+            continue
+        try:
+            head = helper.head_object(key)
+        except S3ApHelperError as e:
+            if e.error_code not in NOT_FOUND:
+                raise
+            if item["status"] == L.DELETING:
+                ledger.update(
+                    run_id,
+                    key,
+                    L.DELETED,
+                    only_if_status=L.DELETING,
+                    deletedAt=L.now_iso(),
+                    deletedBy=item.get("approvedBy"),
+                    reconciled=True,
+                )
+                counts["deleted"] += 1
+            else:
+                ledger.update(run_id, key, L.CHANGED, only_if_status=L.APPROVED, reason="source no longer present")
+                counts["changed"] += 1
+            continue
+        if etag_equal(head["ETag"], item["etag"]) and int(head["ContentLength"]) == int(item["size"]):
+            ledger.update(run_id, key, L.VERIFIED, only_if_status=(L.DELETING, L.APPROVED), reconciled=True)
+            counts["reverified"] += 1
+        else:
+            ledger.update(
+                run_id,
+                key,
+                L.CHANGED,
+                only_if_status=(L.DELETING, L.APPROVED),
+                reason="ETag or size differs from the ledger at reconcile time",
+            )
+            counts["changed"] += 1
+    return counts
 
 
 @trace_lambda_handler
 @lambda_error_handler
 def handler(event, context):
     cfg = RuntimeConfig.from_env()
+    helper, ledger = S3ApHelper(cfg.access_point), Ledger(cfg.ledger_table)
+    if event.get("action") == "reconcile":
+        return reconcile(run_id=event["runId"], helper=helper, ledger=ledger)
     return delete_one(
         run_id=event["runId"],
         key=event["key"],
         dry_run=event.get("dryRun"),
-        approved_by=event.get("approvedBy"),
-        helper=S3ApHelper(cfg.access_point),
-        ledger=Ledger(cfg.ledger_table),
+        claim=event.get("claim"),
+        helper=helper,
+        ledger=ledger,
     )

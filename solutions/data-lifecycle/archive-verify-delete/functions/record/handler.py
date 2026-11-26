@@ -31,10 +31,12 @@ from shared.s3ap_helper import S3ApHelper
 logger = logging.getLogger(__name__)
 
 
-def _copy_params(cfg: RuntimeConfig, bucket: str, key: str, etag: str, storage_class: str, metadata: dict) -> dict:
+def _copy_params(
+    cfg: RuntimeConfig, bucket: str, run_id: str, key: str, etag: str, storage_class: str, metadata: dict
+) -> dict:
     return {
         "bucket": bucket,
-        "key": archive_key(cfg.archive_prefix, key),
+        "key": archive_key(cfg.archive_prefix, run_id, key),
         "copySource": copy_source(cfg.access_point, key),
         "ifMatch": etag,
         "storageClass": storage_class,
@@ -74,7 +76,7 @@ def record_file(
             return changed("source changed while it was being read")
         digest_attrs = digest.as_ledger()
 
-    metadata = build_metadata(key, etag, item["lastModified"], attrs)
+    metadata = build_metadata(key, etag, item["lastModified"], attrs, run_id)
     second = bool(cfg.second_copy_bucket)
     ledger.put(
         run_id,
@@ -86,7 +88,7 @@ def record_file(
         isLarge=bool(item["isLarge"]),
         storageClass=storage_class,
         archiveBucket=cfg.archive_bucket,
-        archiveKey=archive_key(cfg.archive_prefix, key),
+        archiveKey=archive_key(cfg.archive_prefix, run_id, key),
         secondCopyRequired=second,
         attrs=attrs or None,
         **digest_attrs,
@@ -97,10 +99,10 @@ def record_file(
         "size": size,
         "etag": etag,
         "isLarge": bool(item["isLarge"]),
-        "copy": _copy_params(cfg, cfg.archive_bucket, key, etag, storage_class, metadata),
+        "copy": _copy_params(cfg, cfg.archive_bucket, run_id, key, etag, storage_class, metadata),
     }
     if second:
-        out["secondCopy"] = _copy_params(cfg, cfg.second_copy_bucket, key, etag, storage_class, metadata)
+        out["secondCopy"] = _copy_params(cfg, cfg.second_copy_bucket, run_id, key, etag, storage_class, metadata)
     return out
 
 

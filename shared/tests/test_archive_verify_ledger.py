@@ -69,3 +69,21 @@ def test_query_run_filters_and_paginates(ledger):
     assert len(ledger.query_run("r")) == 30
     assert len(ledger.query_run("r", status=L.VERIFIED)) == 15
     assert len(ledger.query_run("r", key_prefix="dir/00")) == 10
+
+
+def test_also_if_requires_the_attribute_to_match(ledger):
+    ledger.put("r", "k", L.DELETING, claimedBy="exec-1")
+    assert ledger.update("r", "k", L.DELETED, only_if_status=L.DELETING, also_if={"claimedBy": "exec-2"}) is False
+    assert ledger.get("r", "k")["status"] == L.DELETING
+    assert ledger.update("r", "k", L.DELETED, only_if_status=L.DELETING, also_if={"claimedBy": "exec-1"}) is True
+
+
+def test_has_items(ledger):
+    assert ledger.has_items("r") is False
+    ledger.put("r", "k", L.VERIFIED)
+    assert ledger.has_items("r") is True and ledger.has_items("other") is False
+
+
+def test_status_values_for_the_new_states_are_distinct():
+    names = [L.APPROVED, L.DELETING, L.SKIPPED_TOO_LARGE, L.RESTORE_VERIFIED, L.RESTORE_MISMATCH]
+    assert len(set(names)) == 5

@@ -120,7 +120,7 @@ def test_delete_is_reachable_only_through_approval_and_the_dry_run_check():
 
 def test_dry_run_choice_requires_the_boolean_false():
     choices = ARCHIVE["States"]["DryRunChoice"]["Choices"]
-    assert choices == [{"Variable": "$.plan.dryRun", "BooleanEquals": False, "Next": "DeleteFiles"}]
+    assert choices == [{"Variable": "$.plan.dryRun", "BooleanEquals": False, "Next": "RecordApproval"}]
     assert ARCHIVE["States"]["DryRunChoice"]["Default"] == "SummarizeDryRun"
 
 
@@ -330,3 +330,254 @@ def test_restore_request_tells_an_in_progress_restore_from_other_s3_errors():
     assert matched["StringMatches"] == "*restore is already in progress*"
     assert matched["Next"] == "WaitRestore"
     assert choice["Default"] == "ItemFailed"
+
+
+# ---------------------------------------------------------------- review follow-up: structure
+def _tasks(definition):
+    return [(n, s) for n, s in _states(definition) if s["Type"] == "Task"]
+
+
+@pytest.mark.parametrize("definition", [ARCHIVE, RESTORE], ids=["archive", "restore"])
+def test_every_task_has_a_timeout(definition):
+    """A Task without TimeoutSeconds never raises States.Timeout, so its Retry on that error is dead.
+
+    RequestApproval waits for a person and is bounded by TimeoutSecondsPath. HeartbeatSeconds is not
+    set anywhere: neither ecs:runTask.sync nor the SDK and Lambda integrations send task heartbeats,
+    and a heartbeat that nothing sends would time every task out.
+    """
+    for name, state in _tasks(definition):
+        assert "TimeoutSeconds" in state or "TimeoutSecondsPath" in state, f"{name} has no timeout"
+        assert "HeartbeatSeconds" not in state and "HeartbeatSecondsPath" not in state, name
+
+
+@pytest.mark.parametrize("definition", [ARCHIVE, RESTORE], ids=["archive", "restore"])
+def test_fargate_tasks_are_bounded_by_the_stack_parameter(definition):
+    runs = [(n, s) for n, s in _tasks(definition) if s["Resource"].endswith("ecs:runTask.sync")]
+    assert runs
+    for name, state in runs:
+        assert state["TimeoutSecondsPath"] == "$.plan.config.fargateTimeoutSeconds", name
+        timeouts = [r for r in state["Retry"] if "States.Timeout" in r["ErrorEquals"]]
+        assert timeouts and timeouts[0]["MaxAttempts"] == 1, name
+
+
+@pytest.mark.parametrize("definition", [ARCHIVE, RESTORE], ids=["archive", "restore"])
+def test_every_retry_uses_jitter(definition):
+    for name, state in _states(definition):
+        for r in state.get("Retry", []):
+            assert r.get("JitterStrategy") == "FULL", name
+
+
+def test_lambda_tasks_retry_a_timeout():
+    for name, state in _tasks(ARCHIVE):
+        if state["Resource"].startswith("${") and name != "RequestApproval":
+            assert any("States.Timeout" in r["ErrorEquals"] for r in state["Retry"]), name
+
+
+def test_delete_is_reachable_only_through_the_recorded_approval():
+    edges = _graph(ARCHIVE)
+
+    def reach_without(blocked):
+        seen, todo = set(), [ARCHIVE["StartAt"]]
+        while todo:
+            n = todo.pop()
+            if n in seen or n in blocked:
+                continue
+            seen.add(n)
+            todo.extend(edges[n])
+        return seen
+
+    assert "DeleteFiles" not in reach_without({"RecordApproval"})
+    assert "DeleteFiles" not in reach_without({"ApprovalRecordedChoice"})
+    assert ARCHIVE["States"]["ApprovalRecordedChoice"]["Default"] == "SummarizeApprovalRefused"
+    sel = ARCHIVE["States"]["DeleteFiles"]["ItemSelector"]
+    assert "approvedBy.$" not in sel and sel["claim.$"] == "$$.Execution.Id"
+
+
+def test_resume_goes_through_reconcile_and_a_new_approval_not_around_them():
+    edges = _graph(ARCHIVE)
+    assert ARCHIVE["States"]["ChooseSelection"]["Choices"][0]["Next"] == "ResumeReconcile"
+    assert edges["ResumeDefaults"] == {"PrepareManifest"}
+    assert "DeleteFiles" not in edges["ResumeReconcile"] | edges["ResumeDefaults"] | edges["PrepareManifest"]
+
+
+def test_plan_separates_an_input_error_from_a_service_error():
+    catches = ARCHIVE["States"]["Plan"]["Catch"]
+    assert catches[0]["ErrorEquals"] == ["InvalidInput", "InvalidConfiguration"]
+    assert catches[0]["Next"] == "FailInvalidInput" and catches[-1]["Next"] == "FailPlan"
+
+
+def test_restore_verifies_every_restored_file_before_it_counts_as_restored_ok():
+    states = RESTORE["States"]["RestoreFiles"]["ItemProcessor"]["States"]
+    assert states["Finalize"]["Next"] == "VerifyChoice"
+    assert states["VerifyChoice"]["Default"] == "VerifyRestored"
+    assert states["VerifyRestored"]["Parameters"]["action"] == "verify"
+    env = states["VerifyRestoredLarge"]["Parameters"]["Overrides"]["ContainerOverrides"][0]["Environment"]
+    assert {"Name": "TASK_MODE", "Value": "verify_restore"} in env
+    assert states["VerifyRestoredLarge"]["Parameters"]["TaskDefinition"] == "${RestoreTaskDefinitionArn}"
+
+
+def test_restore_concurrency_is_a_parameter_not_a_literal():
+    m = RESTORE["States"]["RestoreFiles"]
+    assert "MaxConcurrency" not in m and m["MaxConcurrencyPath"] == "$.req.config.mapConcurrency"
+
+
+def test_concurrency_default_is_low_and_justified_in_the_template():
+    p = TEMPLATE["Parameters"]["MapConcurrency"]
+    assert p["Default"] == 2
+    assert "76 MB/s" in p["Description"] and "128 MBps" in p["Description"]
+
+
+def test_minimum_size_default_is_128_kib_and_says_why():
+    p = TEMPLATE["Parameters"]["MinFileSizeBytes"]
+    assert p["Default"] == 131072 and "128 KB" in p["Description"] and "40 KB" in p["Description"]
+
+
+def test_separate_approver_defaults_to_on():
+    assert TEMPLATE["Parameters"]["RequireSeparateApprover"]["Default"] == "true"
+
+
+def test_data_classification_defaults_to_the_stricter_label():
+    assert TEMPLATE["Parameters"]["DataClassification"]["Default"] == "RESTRICTED"
+
+
+# ---------------------------------------------------------------- observability
+def test_both_state_machines_log_without_execution_data():
+    for name in ("ArchiveStateMachine", "RestoreStateMachine"):
+        logging = TEMPLATE["Resources"][name]["Properties"]["Logging"]
+        assert logging["IncludeExecutionData"] is False, "execution data holds file keys"
+        assert logging["Destinations"][0]["CloudWatchLogsLogGroup"]["LogGroupArn"]
+
+
+def test_the_notification_topic_uses_a_customer_managed_key_that_events_and_alarms_can_use():
+    topic = TEMPLATE["Resources"]["NotificationTopic"]["Properties"]
+    assert topic["KmsMasterKeyId"] == {"Ref": "NotificationKey"}, "alias/aws/sns cannot be used by AWS services"
+    stmts = TEMPLATE["Resources"]["NotificationKey"]["Properties"]["KeyPolicy"]["Statement"]
+    by_service = {s["Principal"]["Service"]: s for s in stmts if "Service" in s["Principal"]}
+    for service in ("events.amazonaws.com", "cloudwatch.amazonaws.com"):
+        assert {"kms:GenerateDataKey*", "kms:Decrypt"} <= set(by_service[service]["Action"])
+    assert "Condition" not in by_service["events.amazonaws.com"], "SNS docs: not supported for EventBridge"
+
+
+def test_publishers_to_the_topic_can_use_its_key():
+    for name in ("ApprovalFunction", "SummarizeFunction"):
+        text = json.dumps(TEMPLATE["Resources"][name])
+        assert "NotificationKey" in text, name
+
+
+def test_alarms_cover_failures_approval_wait_stuck_deletes_and_mismatches():
+    alarms = {n: r for n, r in TEMPLATE["Resources"].items() if r["Type"] == "AWS::CloudWatch::Alarm"}
+    assert set(alarms) == {
+        "ArchiveExecutionsFailedAlarm",
+        "RestoreExecutionsFailedAlarm",
+        "ApprovalPendingAlarm",
+        "FilesStuckDeletingAlarm",
+        "FilesMismatchAlarm",
+        "RestoreMismatchAlarm",
+    }
+    for name, a in alarms.items():
+        assert a["Properties"]["AlarmActions"] == [{"Ref": "NotificationTopic"}], name
+    names = {a["Properties"].get("MetricName") for a in alarms.values()}
+    assert {"ApprovalPendingHours", "FilesStuckDeleting", "FilesMismatch", "RestoreMismatch"} <= names
+
+
+def test_alarm_dimensions_match_what_the_functions_emit():
+    """EmfMetrics dimensions: FunctionName=<service>, Environment=<ENVIRONMENT>, plus UseCase."""
+    env = TEMPLATE["Globals"]["Function"]["Environment"]["Variables"]["ENVIRONMENT"]
+    assert env == {"Ref": "AWS::StackName"}
+    dims = TEMPLATE["Resources"]["FilesMismatchAlarm"]["Properties"]["Dimensions"]
+    assert {d["Name"]: d["Value"] for d in dims} == {
+        "FunctionName": "archive-verify-delete",
+        "Environment": {"Ref": "AWS::StackName"},
+        "UseCase": "archive-verify-delete",
+    }
+
+
+# ---------------------------------------------------------------- permissions
+def _role_holds(resource_name, action, resource_text=None):
+    for stmt in _statements(TEMPLATE["Resources"][resource_name]):
+        if isinstance(stmt, dict) and "Fn::If" in stmt:
+            stmt = stmt["Fn::If"][1]
+        if action in _actions(stmt) and (resource_text is None or resource_text in json.dumps(stmt.get("Resource"))):
+            return True
+    return False
+
+
+def test_put_object_on_the_access_point_is_held_only_by_restore_roles():
+    holders = set()
+    for name, res in TEMPLATE["Resources"].items():
+        for stmt in _statements(res):
+            if isinstance(stmt, dict) and "Fn::If" in stmt:
+                stmt = stmt["Fn::If"][1]
+            if "s3:PutObject" in _actions(stmt) and "AccessPoint" in json.dumps(stmt.get("Resource")):
+                holders.add(name)
+    assert holders == {"FargateRestoreTaskRole", "RestoreStateMachine"}, holders
+
+
+def test_the_archive_task_role_cannot_write_to_the_access_point_or_the_ledger_beyond_updates():
+    assert not _role_holds("FargateTaskRole", "s3:PutObject", "AccessPoint")
+    assert _role_holds("FargateTaskRole", "dynamodb:UpdateItem")
+    assert not _role_holds("FargateTaskRole", "dynamodb:PutItem")
+
+
+def test_only_the_approval_function_among_the_workers_can_update_ledger_items_to_approved():
+    """IAM cannot restrict the value written, so the number of principals that may update is the lever.
+
+    Updating is allowed to the functions whose job is a state transition. What this checks is that no
+    function that only reads or only creates items (select, record, restore select helpers aside) gains it.
+    """
+    for name in ("RecordFunction", "OntapRestFunction", "WatchdogFunction"):
+        assert not _role_holds(name, "dynamodb:UpdateItem"), name
+    assert _role_holds("ApprovalFunction", "dynamodb:UpdateItem")
+    assert not _role_holds("SummarizeFunction", "dynamodb:UpdateItem")
+
+
+def test_the_restore_state_machine_passes_only_the_restore_task_role():
+    text = json.dumps(TEMPLATE["Resources"]["RestoreStateMachine"]["Properties"]["Policies"])
+    assert "FargateRestoreTaskRole" in text and "FargateTaskRole" not in text.replace("FargateRestoreTaskRole", "")
+    text = json.dumps(TEMPLATE["Resources"]["ArchiveStateMachine"]["Properties"]["Policies"])
+    assert "FargateRestoreTaskRole" not in text
+
+
+def test_the_outputs_name_every_role_the_access_point_policy_needs():
+    outs = set(TEMPLATE["Outputs"])
+    assert {
+        "SelectRoleArn",
+        "RecordRoleArn",
+        "DeleteRoleArn",
+        "RestoreFunctionRoleArn",
+        "ArchiveStateMachineRoleArn",
+        "RestoreStateMachineRoleArn",
+        "FargateTaskRoleArn",
+        "FargateRestoreTaskRoleArn",
+    } <= outs
+
+
+def test_every_principal_that_reads_a_404_from_the_access_point_holds_list_bucket():
+    """Live finding: HeadObject on a deleted key returned 403 for a role with GetObject but no ListBucket.
+
+    S3 answers a missing key with 404 only when the caller may list the bucket. The delete function
+    (idempotent retry), the restore function (prepare, verify) and the select function (candidates) read
+    404 as "not there", so each needs s3:ListBucket on the Access Point, in IAM and in its policy.
+    """
+    for name in ("DeleteFunction", "RestoreFunction", "SelectFunction"):
+        assert _role_holds(name, "s3:ListBucket", "AccessPointArn"), name
+
+
+def test_the_topic_policy_lets_cloudwatch_alarms_publish_as_well_as_eventbridge():
+    """Live finding: an alarm action failed with "CloudWatch Alarms is not authorized to perform SNS:Publish".
+
+    The key policy allowed cloudwatch.amazonaws.com, but the topic policy (which replaces the default one)
+    had only the EventBridge statement. The alarms are named <stack>-..., so the statement can be scoped.
+    """
+    stmts = TEMPLATE["Resources"]["NotificationTopicPolicy"]["Properties"]["PolicyDocument"]["Statement"]
+    by_service = {s["Principal"]["Service"]: s for s in stmts}
+    assert set(by_service) == {"events.amazonaws.com", "cloudwatch.amazonaws.com"}
+    cw = by_service["cloudwatch.amazonaws.com"]
+    assert cw["Action"] == "sns:Publish" and cw["Condition"]["StringEquals"]["aws:SourceAccount"]
+    assert "alarm:" in json.dumps(cw["Condition"]["ArnLike"]["aws:SourceArn"])
+
+
+def test_the_ledger_has_deletion_protection_which_is_reversible():
+    props = TEMPLATE["Resources"]["LedgerTable"]["Properties"]
+    assert props["DeletionProtectionEnabled"] is True
+    assert TEMPLATE["Resources"]["LedgerTable"]["DeletionPolicy"] == "Retain"

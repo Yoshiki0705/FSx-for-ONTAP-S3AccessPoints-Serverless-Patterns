@@ -8,9 +8,26 @@ from dataclasses import dataclass
 
 import boto3
 
-from shared.archive_verify.plan import DEFAULT_THRESHOLD_BYTES
+from shared.archive_verify.plan import DEFAULT_MIN_FILE_BYTES, DEFAULT_THRESHOLD_BYTES, SelectionFilters
+from shared.data_classification import DataClassification
 
 MANIFEST_PREFIX = "manifests/"
+
+# Ledger, manifests and results carry file paths, and a path can hold a person's name, a
+# patient or case identifier. RESTRICTED is the label shared/data_classification.py defines for
+# data with limited access; the stack parameter DataClassification can raise or lower it.
+DEFAULT_CLASSIFICATION = DataClassification.RESTRICTED.value
+
+
+def _split(value: str) -> tuple[str, ...]:
+    return tuple(x.strip() for x in value.split(",") if x.strip())
+
+
+def _classification(value: str) -> str:
+    try:
+        return DataClassification(value.upper()).value
+    except ValueError:
+        return DEFAULT_CLASSIFICATION
 
 
 @dataclass(frozen=True)
@@ -32,6 +49,12 @@ class RuntimeConfig:
     map_concurrency: int
     restore_poll_minutes: int
     restore_max_wait_hours: int
+    min_file_bytes: int
+    exclude_patterns: tuple[str, ...]
+    exclude_prefixes: tuple[str, ...]
+    require_separate_approver: bool
+    fargate_timeout_seconds: int
+    data_classification: str
 
     @classmethod
     def from_env(cls) -> RuntimeConfig:
@@ -54,6 +77,12 @@ class RuntimeConfig:
             map_concurrency=int(env.get("MAP_CONCURRENCY", "10")),
             restore_poll_minutes=int(env.get("RESTORE_POLL_MINUTES", "30")),
             restore_max_wait_hours=int(env.get("RESTORE_MAX_WAIT_HOURS", "72")),
+            min_file_bytes=int(env.get("MIN_FILE_BYTES", DEFAULT_MIN_FILE_BYTES)),
+            exclude_patterns=_split(env.get("EXCLUDE_PATTERNS", "")),
+            exclude_prefixes=_split(env.get("EXCLUDE_PREFIXES", "")),
+            require_separate_approver=env.get("REQUIRE_SEPARATE_APPROVER", "true") != "false",
+            fargate_timeout_seconds=int(env.get("FARGATE_TIMEOUT_SECONDS", "7200")),
+            data_classification=_classification(env.get("DATA_CLASSIFICATION", "")),
         )
 
     def public(self) -> dict:
@@ -70,7 +99,22 @@ class RuntimeConfig:
             "fargateSecurityGroups": list(self.fargate_security_groups),
             "fargateAssignPublicIp": self.fargate_assign_public_ip,
             "mapConcurrency": self.map_concurrency,
+            "fargateTimeoutSeconds": self.fargate_timeout_seconds,
+            "requireSeparateApprover": self.require_separate_approver,
         }
+
+    def default_filters(self) -> SelectionFilters:
+        """Stack-level selection filters (minimum size and exclusions)."""
+        return SelectionFilters(
+            min_size_bytes=self.min_file_bytes,
+            exclude_patterns=self.exclude_patterns,
+            exclude_prefixes=self.exclude_prefixes,
+        )
+
+    def classification_fields(self) -> dict:
+        """``data_classification`` and its label, as other patterns write them."""
+        c = DataClassification(self.data_classification)
+        return {"data_classification": c.value, "data_classification_label": c.label}
 
 
 def put_json(bucket: str, key: str, body, session: boto3.Session | None = None) -> None:

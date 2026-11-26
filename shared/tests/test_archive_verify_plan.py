@@ -108,3 +108,72 @@ def test_metadata_is_ascii_for_any_key(key):
 def test_content_type_is_always_set():
     assert P.guess_content_type("a.pdf") == "application/pdf"
     assert P.guess_content_type("noext") == "application/octet-stream"
+
+
+# ---- selection filters, run id in the archive key, upload limit ------------------------------------
+
+
+def test_the_upload_limit_is_the_documented_50_gib():
+    assert P.ACCESS_POINT_UPLOAD_LIMIT_BYTES == 53_687_091_200
+
+
+def test_size_rules():
+    f = P.SelectionFilters()
+    assert f.size_exclusion(P.ACCESS_POINT_UPLOAD_LIMIT_BYTES) is None
+    assert f.size_exclusion(P.ACCESS_POINT_UPLOAD_LIMIT_BYTES + 1) == "tooLarge"
+    assert f.size_exclusion(P.DEFAULT_MIN_FILE_BYTES - 1) == "tooSmall"
+    assert f.size_exclusion(P.DEFAULT_MIN_FILE_BYTES) is None
+    assert P.SelectionFilters(allow_oversize=True).size_exclusion(10**13) is None
+
+
+@pytest.mark.parametrize(
+    ("key", "expected"),
+    [
+        ("vm/disk.vmdk", "pattern"),
+        ("tables/db/part-0.parquet", "pattern"),
+        ("legal/hold/a.doc", "prefix"),
+        ("legal/other/a.doc", None),
+        ("a.txt", None),
+    ],
+)
+def test_name_rules(key, expected):
+    f = P.SelectionFilters(exclude_patterns=("*.vmdk", "*.parquet"), exclude_prefixes=("legal/hold/",))
+    assert f.key_exclusion(key) == expected
+
+
+def test_input_patterns_are_added_to_the_stack_defaults_not_substituted():
+    d = P.SelectionFilters(exclude_prefixes=("hold/",), exclude_patterns=("*.vmdk",))
+    plan = P.normalize_archive_input(
+        {"olderThanDays": 1, "excludePrefixes": ["x/"], "excludePatterns": ["*.tmp"]},
+        execution_name="e",
+        ontap_enabled=False,
+        default_filters=d,
+    )
+    assert plan.filters.exclude_prefixes == ("hold/", "x/") and plan.filters.exclude_patterns == ("*.vmdk", "*.tmp")
+
+
+@pytest.mark.parametrize(
+    "bad",
+    [
+        {"excludePatterns": "*.x"},
+        {"excludePrefixes": [1]},
+        {"excludePatterns": [""]},
+        {"minSizeBytes": -1},
+        {"allowOversize": "yes"},
+        {"resume": 1},
+        {"excludePatterns": ["a"] * 51},
+    ],
+)
+def test_filter_inputs_are_validated(bad):
+    with pytest.raises(InvalidInput):
+        _norm({"olderThanDays": 1, **bad})
+
+
+def test_archive_key_has_the_run_id_between_the_prefix_and_the_key():
+    assert P.archive_key("data/", "run-1", "a/b.txt") == "data/run-1/a/b.txt"
+    assert P.archive_key("data/", "run-1", "a") != P.archive_key("data/", "run-2", "a")
+
+
+def test_metadata_records_the_run_id():
+    assert P.build_metadata("k", '"e"', "t", None, "run-1")["source-run-id"] == "run-1"
+    assert "source-run-id" not in P.build_metadata("k", '"e"', "t", None)

@@ -4,6 +4,8 @@
 #   1. Copy this file to samconfig.toml
 #   2. Replace every <PLACEHOLDER>
 #   3. sam build && sam deploy
+#   4. Attach the Access Point policy (README: tools/render_access_point_policy.py, then
+#      aws s3control put-access-point-policy) and confirm the email subscription
 #
 # samconfig.toml is in .gitignore.
 version = 0.1
@@ -27,7 +29,15 @@ parameter_overrides = [
     "LogRetentionInDays=90",
     "ApprovalTimeoutHours=72",
     "LargeFileThresholdBytes=5368709120",
-    "MapConcurrency=10",
+    "MapConcurrency=2",
+    "MinFileSizeBytes=131072",
+    "ExcludePatterns=",
+    "ExcludePrefixes=",
+    "RequireSeparateApprover=true",
+    "FargateTimeoutSeconds=7200",
+    "DataClassification=RESTRICTED",
+    "StateMachineLogLevel=ERROR",
+    "ApprovalAlarmHours=24",
     "RestorePollMinutes=30",
     "RestoreMaxWaitHours=72",
     # Optional. Leave empty to disable.

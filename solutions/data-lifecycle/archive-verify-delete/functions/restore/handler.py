@@ -2,10 +2,14 @@
 
 Actions:
 
-* ``select``    choose DELETED files of an archive run (``keys`` or ``prefix``) and write the item list
+* ``select``    choose the files of an archive run (``keys`` or ``prefix``) that were deleted, or may have
+               been: ``DELETED``, and ``DELETING`` or ``CHANGED`` items whose archive copy exists.
+               Writes the item list
 * ``prepare``   per file: does the Access Point already have it (``EXISTS``), and does it need a restore request
 * ``check``     read the ``Restore`` header from a ``HeadObject`` response: READY, WAITING or TIMEOUT
-* ``finalize``  set the ledger to ``RESTORED``
+* ``finalize``  set the ledger to ``RESTORED`` (the copy call succeeded; nothing is verified yet)
+* ``verify``    read the restored file back, hash it, compare with the ledger digest, set
+               ``RESTORE_VERIFIED`` or ``RESTORE_MISMATCH`` (large files: the Fargate ``verify_restore`` mode)
 * ``reapply``   write ``manifests/<runId>-reapply.sh`` that puts owner, group, mode and mtime back
 
 The Access Point creates restored files as the file system user of the Access Point
@@ -29,9 +33,10 @@ import boto3
 from shared.archive_verify import ledger as L
 from shared.archive_verify.ledger import Ledger
 from shared.archive_verify.plan import RESTORE_TIERS, copy_source, valid_run_id
+from shared.archive_verify.restore_verify import verify_restored
 from shared.archive_verify.runtime import MANIFEST_PREFIX, RuntimeConfig, put_json
 from shared.exceptions import InvalidInput, S3ApHelperError, lambda_error_handler
-from shared.observability import trace_lambda_handler
+from shared.observability import EmfMetrics, trace_lambda_handler
 from shared.s3ap_helper import S3ApHelper
 
 logger = logging.getLogger(__name__)
@@ -39,6 +44,10 @@ logger = logging.getLogger(__name__)
 _MODE = re.compile(r"^[0-7]{3,4}$")
 _ID = re.compile(r"^[0-9]{1,10}$")
 _NEEDS_RESTORE = ("GLACIER", "DEEP_ARCHIVE")
+# Statuses that can hold a file the Access Point no longer has. DELETING and CHANGED are
+# included only when the archive copy is there: a delete that was interrupted leaves DELETING.
+_RESTORABLE = (L.DELETED, L.DELETING, L.CHANGED)
+_NOT_FOUND = ("404", "NoSuchKey", "NotFound")
 
 
 def validate_restore_input(event: dict, execution_name: str) -> dict:
@@ -64,11 +73,26 @@ def validate_restore_input(event: dict, execution_name: str) -> dict:
     }
 
 
-def select_items(ledger: Ledger, req: dict) -> list[dict]:
-    items = ledger.query_run(req["runId"], status=L.DELETED, key_prefix=req["prefix"])
+def _archive_copy_exists(s3, item: dict) -> bool:
+    if not item.get("archiveBucket") or not item.get("archiveKey"):
+        return False
+    try:
+        s3.head_object(Bucket=item["archiveBucket"], Key=item["archiveKey"])
+        return True
+    except Exception as e:  # noqa: BLE001 - botocore ClientError carries the code in .response
+        code = getattr(e, "response", {}).get("Error", {}).get("Code", "")
+        if code in _NOT_FOUND:
+            return False
+        raise
+
+
+def select_items(ledger: Ledger, req: dict, s3=None) -> list[dict]:
+    items = [i for i in ledger.query_run(req["runId"], key_prefix=req["prefix"]) if i.get("status") in _RESTORABLE]
     if req["keys"]:
         wanted = set(req["keys"])
         items = [i for i in items if i["key"] in wanted]
+    s3 = s3 or boto3.client("s3")
+    selected = [i for i in items if i["status"] == L.DELETED or _archive_copy_exists(s3, i)]
     return [
         {
             "key": i["key"],
@@ -78,7 +102,7 @@ def select_items(ledger: Ledger, req: dict) -> list[dict]:
             "archiveBucket": i["archiveBucket"],
             "archiveKey": i["archiveKey"],
         }
-        for i in items
+        for i in selected
     ]
 
 
@@ -191,18 +215,26 @@ def handler(event, context):
             event["runId"],
             event["key"],
             L.RESTORED,
-            only_if_status=L.DELETED,
+            only_if_status=_RESTORABLE,
             restoredAt=L.now_iso(),
             restoreRunId=event["restoreRunId"],
         )
         return {"key": event["key"], "status": L.RESTORED}
 
+    if action == "verify":
+        return verify_restored(
+            S3ApHelper(cfg.access_point), ledger, event["runId"], event["key"], event["restoreRunId"]
+        )
     if action == "reapply":
-        items = [
-            i
-            for i in ledger.query_run(event["runId"], status=L.RESTORED)
-            if i.get("restoreRunId") == event["restoreRunId"]
-        ]
+        this_run = [i for i in ledger.query_run(event["runId"]) if i.get("restoreRunId") == event["restoreRunId"]]
+        items = [i for i in this_run if i.get("status") == L.RESTORE_VERIFIED]
+        mismatches = [i["key"] for i in this_run if i.get("status") == L.RESTORE_MISMATCH]
+        unverified = [i["key"] for i in this_run if i.get("status") == L.RESTORED]
+        metrics = EmfMetrics(namespace="FSxN-S3AP-Patterns", service="archive-verify-delete")
+        metrics.set_dimension("UseCase", "archive-verify-delete")
+        metrics.put_metric("RestoreMismatch", len(mismatches), "Count")
+        metrics.put_metric("RestoreVerified", len(items), "Count")
+        metrics.flush()
         key = f"{MANIFEST_PREFIX}{event['runId']}-reapply.sh"
         boto3.client("s3").put_object(
             Bucket=cfg.archive_bucket,
@@ -210,6 +242,13 @@ def handler(event, context):
             Body=reapply_script(event["runId"], items).encode("utf-8"),
             ContentType="text/x-shellscript",
         )
-        return {"scriptKey": key, "bucket": cfg.archive_bucket, "files": len(items), "outcome": "COMPLETED"}
+        return {
+            "scriptKey": key,
+            "bucket": cfg.archive_bucket,
+            "files": len(items),
+            "restoreMismatch": mismatches,
+            "restoredNotVerified": unverified,
+            "outcome": "COMPLETED" if not mismatches and not unverified else "COMPLETED_WITH_ERRORS",
+        }
 
     raise InvalidInput(f"unknown action {action!r}")

@@ -168,7 +168,7 @@ def test_reapply_action_writes_the_script_for_this_restore_only(aws, ledger, lam
     _deleted(ledger, "a", attrs={"uid": 1, "gid": 2, "mode": "600"})
     _deleted(ledger, "b", attrs={"uid": 1, "gid": 2, "mode": "600"})
     for k, rr in (("a", "rr1"), ("b", "other")):
-        ledger.update("r1", k, L.RESTORED, restoreRunId=rr)
+        ledger.update("r1", k, L.RESTORE_VERIFIED, restoreRunId=rr)
     out = restore.handler({"action": "reapply", "runId": "r1", "restoreRunId": "rr1"}, lambda_context)
     body = aws.get_object(Bucket=ARCHIVE, Key=out["scriptKey"])["Body"].read().decode()
     assert out["files"] == 1 and '"$MOUNT_ROOT"/a' in body and '"$MOUNT_ROOT"/b' not in body

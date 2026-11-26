@@ -68,10 +68,72 @@ Parameters:
       lower value; the time to read a file through the Access Point is not measured here.
   MapConcurrency:
     Type: Number
-    Default: 10
+    Default: 2
     MinValue: 1
     MaxValue: 1000
-    Description: Files processed in parallel
+    Description: >-
+      Files processed in parallel, for the archive and the restore. Every file is read twice from the
+      volume (the hash, then the server-side copy). One read stream of a large file ran at about
+      76 MB/s in one measurement (5.3 GB in 69.8 s, Lambda through the Access Point), which is about
+      60% of a 128 MBps file system, and the same volume serves your users. The default 2 keeps small
+      files moving; set 1 for large files or a busy volume. Raise it only after watching the file
+      system's DataReadBytes and client latency during a run. The Distributed Map accepts up to 1000.
+  MinFileSizeBytes:
+    Type: Number
+    Default: 131072
+    MinValue: 0
+    Description: >-
+      Files smaller than this are left out. 131072 (128 KiB) because S3 Standard-IA, One Zone-IA and
+      Glacier Instant Retrieval bill at least 128 KB per object, and Glacier Flexible Retrieval and Deep
+      Archive add 40 KB of metadata per object (Amazon S3 User Guide, "Comparing the Amazon S3 storage
+      classes"). A start input can lower it with minSizeBytes.
+  ExcludePatterns:
+    Type: CommaDelimitedList
+    Default: ""
+    Description: >-
+      Shell-glob patterns matched against the whole key (for example "*.vmdk,*.parquet,*/.snapshot/*").
+      Always applied; a start input can add patterns but not remove these. Live database files, VM
+      images and files of Iceberg or Hive tables must be excluded: the pattern moves files one by one
+      and knows nothing about the table or the process that holds them open.
+  ExcludePrefixes:
+    Type: CommaDelimitedList
+    Default: ""
+    Description: >-
+      Key prefixes that are never selected (for example a legal-hold folder). Always applied; a start
+      input can add prefixes but not remove these.
+  RequireSeparateApprover:
+    Type: String
+    Default: "true"
+    AllowedValues: ["true", "false"]
+    Description: >-
+      true: a run with dryRun=false needs requestedBy (the principal that starts it) in the start input,
+      and an approval whose approver is the same principal is refused. Both values are declared by the
+      callers; CloudTrail has the real ones. false removes the check.
+  FargateTimeoutSeconds:
+    Type: Number
+    Default: 7200
+    MinValue: 300
+    MaxValue: 86400
+    Description: Longest a Fargate task (hash and copy, or restore and verify, of one large file) may run
+  DataClassification:
+    Type: String
+    Default: RESTRICTED
+    AllowedValues: [INTERNAL, RESTRICTED, HIGHLY_RESTRICTED, CUI, CONFIDENTIAL]
+    Description: >-
+      Label written to manifests, results and the approval record (data_classification, see
+      shared/data_classification.py). The ledger and manifests hold file paths, and a path can contain a
+      person's name or a case identifier, so the default is RESTRICTED. Use the classification of the
+      data itself when it is stricter.
+  StateMachineLogLevel:
+    Type: String
+    Default: ERROR
+    AllowedValues: [ALL, ERROR, FATAL, "OFF"]
+    Description: Step Functions execution logging. Execution data (which holds file keys) is not logged.
+  ApprovalAlarmHours:
+    Type: Number
+    Default: 24
+    MinValue: 1
+    Description: An approval request that has waited longer than this raises an alarm
   RestorePollMinutes:
     Type: Number
     Default: 30
@@ -189,6 +251,13 @@ Globals:
         MAP_CONCURRENCY: !Ref MapConcurrency
         RESTORE_POLL_MINUTES: !Ref RestorePollMinutes
         RESTORE_MAX_WAIT_HOURS: !Ref RestoreMaxWaitHours
+        MIN_FILE_BYTES: !Ref MinFileSizeBytes
+        EXCLUDE_PATTERNS: !Join [",", !Ref ExcludePatterns]
+        EXCLUDE_PREFIXES: !Join [",", !Ref ExcludePrefixes]
+        REQUIRE_SEPARATE_APPROVER: !Ref RequireSeparateApprover
+        FARGATE_TIMEOUT_SECONDS: !Ref FargateTimeoutSeconds
+        DATA_CLASSIFICATION: !Ref DataClassification
+        ENVIRONMENT: !Ref AWS::StackName
     Tags:
       UseCase: archive-verify-delete
       Phase: data-lifecycle
@@ -280,8 +349,57 @@ Resources:
           KeyType: RANGE
       PointInTimeRecoverySpecification:
         PointInTimeRecoveryEnabled: true
+      # Reversible: turn it off with UpdateTable before deleting the table. The ledger is the record of
+      # what was deleted from the volume and where its copy is, so it is protected against an accidental
+      # DeleteTable as well as kept by DeletionPolicy: Retain.
+      DeletionProtectionEnabled: true
       SSESpecification:
         SSEEnabled: true
+      Tags:
+        - Key: UseCase
+          Value: archive-verify-delete
+        - Key: Phase
+          Value: data-lifecycle
+
+  # SNS encryption with a customer managed key. The AWS managed key alias/aws/sns has a key policy
+  # that cannot be edited, so EventBridge and CloudWatch alarms could not publish to a topic that uses
+  # it (Amazon SNS Developer Guide, "Enable compatibility between event sources from AWS services and
+  # encrypted topics": use a customer managed key and allow the service principal
+  # kms:GenerateDataKey* and kms:Decrypt). The docs say aws:SourceAccount and aws:SourceArn are not
+  # supported in the key policy for EventBridge to encrypted topics, so the EventBridge statement has
+  # no condition; the CloudWatch statement carries aws:SourceAccount.
+  NotificationKey:
+    Type: AWS::KMS::Key
+    Properties:
+      Description: !Sub "Encrypts the ${AWS::StackName} notification topic"
+      EnableKeyRotation: true
+      # Deleting the stack schedules the key for deletion; 7 days is the shortest waiting period and the
+      # deletion can be cancelled during it.
+      PendingWindowInDays: 7
+      KeyPolicy:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: AccountAdministration
+            Effect: Allow
+            Principal:
+              AWS: !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:root"
+            Action: "kms:*"
+            Resource: "*"
+          - Sid: AllowEventBridgeToPublish
+            Effect: Allow
+            Principal:
+              Service: events.amazonaws.com
+            Action: ["kms:GenerateDataKey*", "kms:Decrypt"]
+            Resource: "*"
+          - Sid: AllowCloudWatchAlarmsToPublish
+            Effect: Allow
+            Principal:
+              Service: cloudwatch.amazonaws.com
+            Action: ["kms:GenerateDataKey*", "kms:Decrypt"]
+            Resource: "*"
+            Condition:
+              StringEquals:
+                "aws:SourceAccount": !Ref AWS::AccountId
       Tags:
         - Key: UseCase
           Value: archive-verify-delete
@@ -292,7 +410,7 @@ Resources:
     Type: AWS::SNS::Topic
     Properties:
       TopicName: !Sub "${AWS::StackName}-notifications"
-      KmsMasterKeyId: alias/aws/sns
+      KmsMasterKeyId: !Ref NotificationKey
       Subscription:
         - Protocol: email
           Endpoint: !Ref NotificationEmail
@@ -340,6 +458,21 @@ Resources:
     Properties:
       LogGroupName: !Sub "/aws/lambda/${AWS::StackName}-restore"
       RetentionInDays: !Ref LogRetentionInDays
+  WatchdogLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${AWS::StackName}-watchdog"
+      RetentionInDays: !Ref LogRetentionInDays
+  ArchiveStateMachineLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/vendedlogs/states/${AWS::StackName}-archive"
+      RetentionInDays: !Ref LogRetentionInDays
+  RestoreStateMachineLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/vendedlogs/states/${AWS::StackName}-restore"
+      RetentionInDays: !Ref LogRetentionInDays
   OntapRestLogGroup:
     Type: AWS::Logs::LogGroup
     Condition: UseOntap
@@ -379,6 +512,9 @@ Resources:
             - Effect: Allow
               Action: ["s3:GetObject", "s3:PutObject"]
               Resource: !Sub "arn:aws:s3:::${ArchiveBucketName}/manifests/*"
+            - Effect: Allow
+              Action: ["dynamodb:Query", "dynamodb:PutItem"]
+              Resource: !GetAtt LedgerTable.Arn
             - !If
               - UseKms
               - Effect: Allow
@@ -426,17 +562,17 @@ Resources:
     Properties:
       FunctionName: !Sub "${AWS::StackName}-approval"
       CodeUri: functions/approval/
-      Description: Write the approval manifest, store the task token, notify
+      Description: Write the approval manifest, store the task token, notify, record the approval (APPROVED)
       Timeout: 300
       LoggingConfig:
         LogGroup: !Ref ApprovalLogGroup
       Policies:
         - Statement:
             - Effect: Allow
-              Action: ["dynamodb:Query"]
+              Action: ["dynamodb:Query", "dynamodb:UpdateItem"]
               Resource: !GetAtt LedgerTable.Arn
             - Effect: Allow
-              Action: ["s3:PutObject"]
+              Action: ["s3:GetObject", "s3:PutObject"]
               Resource: !Sub "arn:aws:s3:::${ArchiveBucketName}/manifests/*"
             - Effect: Allow
               Action: ["ssm:PutParameter"]
@@ -444,10 +580,13 @@ Resources:
             - Effect: Allow
               Action: ["sns:Publish"]
               Resource: !Ref NotificationTopic
+            - Effect: Allow
+              Action: ["kms:GenerateDataKey", "kms:Decrypt"]
+              Resource: !GetAtt NotificationKey.Arn
             - !If
               - UseKms
               - Effect: Allow
-                Action: ["kms:GenerateDataKey"]
+                Action: ["kms:GenerateDataKey", "kms:Decrypt"]
                 Resource: !Ref ArchiveBucketKmsKeyArn
               - !Ref AWS::NoValue
 
@@ -456,8 +595,8 @@ Resources:
     Properties:
       FunctionName: !Sub "${AWS::StackName}-delete"
       CodeUri: functions/delete/
-      Description: Delete one verified, approved file from the Access Point if it is unchanged
-      Timeout: 120
+      Description: Delete one APPROVED file from the Access Point if it is unchanged; reconcile interrupted items
+      Timeout: 900
       LoggingConfig:
         LogGroup: !Ref DeleteLogGroup
       Policies:
@@ -467,9 +606,19 @@ Resources:
               Resource:
                 - !Sub "${AccessPointArn}/object/*"
                 - !Sub "arn:aws:s3:::${AccessPointAlias}/*"
+            # Without s3:ListBucket, S3 answers HeadObject for a key that does not exist with 403, not 404.
+            # The delete function reads 404 as "the file is gone", so it needs this to tell gone from denied.
             - Effect: Allow
-              Action: ["dynamodb:GetItem", "dynamodb:UpdateItem"]
+              Action: ["s3:ListBucket"]
+              Resource:
+                - !Ref AccessPointArn
+                - !Sub "arn:aws:s3:::${AccessPointAlias}"
+            - Effect: Allow
+              Action: ["dynamodb:GetItem", "dynamodb:UpdateItem", "dynamodb:Query"]
               Resource: !GetAtt LedgerTable.Arn
+            - Effect: Allow
+              Action: ["states:DescribeExecution"]
+              Resource: !Sub "arn:${AWS::Partition}:states:${AWS::Region}:${AWS::AccountId}:execution:${AWS::StackName}-archive:*"
 
   SummarizeFunction:
     Type: AWS::Serverless::Function
@@ -494,6 +643,9 @@ Resources:
             - Effect: Allow
               Action: ["sns:Publish"]
               Resource: !Ref NotificationTopic
+            - Effect: Allow
+              Action: ["kms:GenerateDataKey", "kms:Decrypt"]
+              Resource: !GetAtt NotificationKey.Arn
             - !If
               - UseKms
               - Effect: Allow
@@ -506,29 +658,58 @@ Resources:
     Properties:
       FunctionName: !Sub "${AWS::StackName}-restore"
       CodeUri: functions/restore/
-      Description: Restore helpers - select, prepare, check, finalize, reapply manifest
+      Description: Restore helpers - select, prepare, check, finalize, verify, reapply manifest
       Timeout: 300
       LoggingConfig:
         LogGroup: !Ref RestoreLogGroup
       Policies:
         - Statement:
             - Effect: Allow
-              Action: ["dynamodb:Query", "dynamodb:UpdateItem"]
+              Action: ["dynamodb:Query", "dynamodb:GetItem", "dynamodb:UpdateItem"]
               Resource: !GetAtt LedgerTable.Arn
             - Effect: Allow
               Action: ["s3:GetObject"]
               Resource:
                 - !Sub "${AccessPointArn}/object/*"
                 - !Sub "arn:aws:s3:::${AccessPointAlias}/*"
+            # See DeleteFunction: HeadObject on a missing key needs s3:ListBucket to answer 404.
+            - Effect: Allow
+              Action: ["s3:ListBucket"]
+              Resource:
+                - !Ref AccessPointArn
+                - !Sub "arn:aws:s3:::${AccessPointAlias}"
             - Effect: Allow
               Action: ["s3:PutObject"]
               Resource: !Sub "arn:aws:s3:::${ArchiveBucketName}/manifests/*"
+            - Effect: Allow
+              Action: ["s3:GetObject"]
+              Resource: !Sub "arn:aws:s3:::${ArchiveBucketName}/${ArchivePrefix}*"
             - !If
               - UseKms
               - Effect: Allow
-                Action: ["kms:GenerateDataKey"]
+                Action: ["kms:GenerateDataKey", "kms:Decrypt"]
                 Resource: !Ref ArchiveBucketKmsKeyArn
               - !Ref AWS::NoValue
+
+  WatchdogFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "${AWS::StackName}-watchdog"
+      CodeUri: functions/watchdog/
+      Description: Publish ApprovalPendingHours, the age of the oldest approval request that has no answer
+      Timeout: 60
+      LoggingConfig:
+        LogGroup: !Ref WatchdogLogGroup
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action: ["ssm:GetParametersByPath"]
+              Resource: !Sub "arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/${AWS::StackName}/approvals"
+      Events:
+        Every15Minutes:
+          Type: Schedule
+          Properties:
+            Schedule: rate(15 minutes)
 
   # VPC-internal: the only function that reaches the ONTAP management endpoint.
   OntapRestFunction:
@@ -639,7 +820,8 @@ Resources:
         - Key: Phase
           Value: data-lifecycle
 
-  # The task copies and hashes; it has no s3:DeleteObject.
+  # The archive task reads the Access Point and writes the archive bucket. It has no s3:DeleteObject
+  # and no write access to the Access Point: only the restore task role below can write there.
   FargateTaskRole:
     Type: AWS::IAM::Role
     Condition: UseFargate
@@ -657,7 +839,7 @@ Resources:
             Version: "2012-10-17"
             Statement:
               - Effect: Allow
-                Action: ["s3:GetObject", "s3:PutObject"]
+                Action: ["s3:GetObject"]
                 Resource:
                   - !Sub "${AccessPointArn}/object/*"
                   - !Sub "arn:aws:s3:::${AccessPointAlias}/*"
@@ -676,7 +858,7 @@ Resources:
                   Resource: !Sub "arn:aws:s3:::${SecondCopyBucketName}/*"
                 - !Ref AWS::NoValue
               - Effect: Allow
-                Action: ["dynamodb:GetItem", "dynamodb:UpdateItem"]
+                Action: ["dynamodb:UpdateItem"]
                 Resource: !GetAtt LedgerTable.Arn
               - !If
                 - UseKms
@@ -684,6 +866,88 @@ Resources:
                   Action: ["kms:GenerateDataKey", "kms:Decrypt"]
                   Resource: !Ref ArchiveBucketKmsKeyArn
                 - !Ref AWS::NoValue
+      Tags:
+        - Key: UseCase
+          Value: archive-verify-delete
+        - Key: Phase
+          Value: data-lifecycle
+
+  # The restore task copies from the archive bucket back through the Access Point (PutObject) and reads
+  # the restored file to verify it. Nothing else holds PutObject on the Access Point except the restore
+  # state machine's CopyObject.
+  FargateRestoreTaskRole:
+    Type: AWS::IAM::Role
+    Condition: UseFargate
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ecs-tasks.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: RestoreTask
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: ["s3:GetObject", "s3:PutObject", "s3:AbortMultipartUpload"]
+                Resource:
+                  - !Sub "${AccessPointArn}/object/*"
+                  - !Sub "arn:aws:s3:::${AccessPointAlias}/*"
+              - Effect: Allow
+                Action: ["s3:GetObject"]
+                Resource: !Sub "arn:aws:s3:::${ArchiveBucketName}/${ArchivePrefix}*"
+              - Effect: Allow
+                Action: ["s3:ListBucket"]
+                Resource:
+                  - !Ref AccessPointArn
+                  - !Sub "arn:aws:s3:::${AccessPointAlias}"
+              - Effect: Allow
+                Action: ["dynamodb:GetItem", "dynamodb:UpdateItem"]
+                Resource: !GetAtt LedgerTable.Arn
+              - !If
+                - UseKms
+                - Effect: Allow
+                  Action: ["kms:Decrypt"]
+                  Resource: !Ref ArchiveBucketKmsKeyArn
+                - !Ref AWS::NoValue
+      Tags:
+        - Key: UseCase
+          Value: archive-verify-delete
+        - Key: Phase
+          Value: data-lifecycle
+
+  FargateRestoreTaskDefinition:
+    Type: AWS::ECS::TaskDefinition
+    Condition: UseFargate
+    Properties:
+      Family: !Sub "${AWS::StackName}-restore-task"
+      RequiresCompatibilities: [FARGATE]
+      NetworkMode: awsvpc
+      Cpu: !Ref FargateCpu
+      Memory: !Ref FargateMemory
+      RuntimePlatform:
+        CpuArchitecture: ARM64
+        OperatingSystemFamily: LINUX
+      ExecutionRoleArn: !GetAtt FargateExecutionRole.Arn
+      TaskRoleArn: !GetAtt FargateRestoreTaskRole.Arn
+      ContainerDefinitions:
+        - Name: archive-task
+          Image: !Ref FargateImageUri
+          Essential: true
+          Environment:
+            - Name: ACCESS_POINT
+              Value: !Ref AccessPointAlias
+            - Name: LEDGER_TABLE
+              Value: !Ref LedgerTable
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-group: !Ref FargateLogGroup
+              awslogs-region: !Ref AWS::Region
+              awslogs-stream-prefix: restore-task
       Tags:
         - Key: UseCase
           Value: archive-verify-delete
@@ -745,6 +1009,12 @@ Resources:
         TaskDefinitionArn: !If [UseFargate, !Ref FargateTaskDefinition, !Sub "arn:${AWS::Partition}:ecs:${AWS::Region}:${AWS::AccountId}:task-definition/fargate-not-deployed:1"]
       Tracing:
         Enabled: true
+      Logging:
+        Level: !Ref StateMachineLogLevel
+        IncludeExecutionData: false
+        Destinations:
+          - CloudWatchLogsLogGroup:
+              LogGroupArn: !GetAtt ArchiveStateMachineLogGroup.Arn
       Policies:
         - LambdaInvokePolicy:
             FunctionName: !Ref SelectFunction
@@ -764,6 +1034,20 @@ Resources:
               FunctionName: !Ref OntapRestFunction
           - !Ref AWS::NoValue
         - Statement:
+            # Execution logging. These are the actions Step Functions documents for a state machine that
+            # writes to CloudWatch Logs; they do not accept a resource narrower than "*". They are in the
+            # same policy document as the rest so that they exist when the state machine is created.
+            - Effect: Allow
+              Action:
+                - logs:CreateLogDelivery
+                - logs:GetLogDelivery
+                - logs:UpdateLogDelivery
+                - logs:DeleteLogDelivery
+                - logs:ListLogDeliveries
+                - logs:PutResourcePolicy
+                - logs:DescribeResourcePolicies
+                - logs:DescribeLogGroups
+              Resource: "*"
             # Distributed Map child executions of this state machine.
             - Effect: Allow
               Action: ["states:StartExecution"]
@@ -833,13 +1117,33 @@ Resources:
       DefinitionSubstitutions:
         RestoreFunctionArn: !GetAtt RestoreFunction.Arn
         EcsClusterArn: !If [UseFargate, !GetAtt EcsCluster.Arn, !Sub "arn:${AWS::Partition}:ecs:${AWS::Region}:${AWS::AccountId}:cluster/fargate-not-deployed"]
-        TaskDefinitionArn: !If [UseFargate, !Ref FargateTaskDefinition, !Sub "arn:${AWS::Partition}:ecs:${AWS::Region}:${AWS::AccountId}:task-definition/fargate-not-deployed:1"]
+        RestoreTaskDefinitionArn: !If [UseFargate, !Ref FargateRestoreTaskDefinition, !Sub "arn:${AWS::Partition}:ecs:${AWS::Region}:${AWS::AccountId}:task-definition/fargate-not-deployed:1"]
       Tracing:
         Enabled: true
+      Logging:
+        Level: !Ref StateMachineLogLevel
+        IncludeExecutionData: false
+        Destinations:
+          - CloudWatchLogsLogGroup:
+              LogGroupArn: !GetAtt RestoreStateMachineLogGroup.Arn
       Policies:
         - LambdaInvokePolicy:
             FunctionName: !Ref RestoreFunction
         - Statement:
+            # Execution logging. These are the actions Step Functions documents for a state machine that
+            # writes to CloudWatch Logs; they do not accept a resource narrower than "*". They are in the
+            # same policy document as the rest so that they exist when the state machine is created.
+            - Effect: Allow
+              Action:
+                - logs:CreateLogDelivery
+                - logs:GetLogDelivery
+                - logs:UpdateLogDelivery
+                - logs:DeleteLogDelivery
+                - logs:ListLogDeliveries
+                - logs:PutResourcePolicy
+                - logs:DescribeResourcePolicies
+                - logs:DescribeLogGroups
+              Resource: "*"
             - Effect: Allow
               Action: ["states:StartExecution"]
               Resource: !Sub "arn:${AWS::Partition}:states:${AWS::Region}:${AWS::AccountId}:stateMachine:${AWS::StackName}-restore"
@@ -871,7 +1175,7 @@ Resources:
               - UseFargate
               - Effect: Allow
                 Action: ["ecs:RunTask"]
-                Resource: !Ref FargateTaskDefinition
+                Resource: !Ref FargateRestoreTaskDefinition
               - !Ref AWS::NoValue
             - !If
               - UseFargate
@@ -885,7 +1189,7 @@ Resources:
                 Action: ["iam:PassRole"]
                 Resource:
                   - !GetAtt FargateExecutionRole.Arn
-                  - !GetAtt FargateTaskRole.Arn
+                  - !GetAtt FargateRestoreTaskRole.Arn
               - !Ref AWS::NoValue
             - !If
               - UseFargate
@@ -933,6 +1237,178 @@ Resources:
             Condition:
               ArnEquals:
                 "aws:SourceArn": !GetAtt ExecutionFailureRule.Arn
+          # A key policy that allows CloudWatch is not enough: the topic policy must allow it as well. The
+          # first deployment had only the EventBridge statement, and an alarm's action failed with
+          # "CloudWatch Alarms is not authorized to perform: SNS:Publish".
+          - Sid: AllowCloudWatchAlarmsPublish
+            Effect: Allow
+            Principal:
+              Service: cloudwatch.amazonaws.com
+            Action: sns:Publish
+            Resource: !Ref NotificationTopic
+            Condition:
+              StringEquals:
+                "aws:SourceAccount": !Ref AWS::AccountId
+              ArnLike:
+                "aws:SourceArn": !Sub "arn:${AWS::Partition}:cloudwatch:${AWS::Region}:${AWS::AccountId}:alarm:${AWS::StackName}-*"
+
+  # ---------------------------------------------------------------
+  # Alarms. All of them publish to the notification topic. The metrics a function writes carry the
+  # dimensions FunctionName=archive-verify-delete, Environment=<stack name>, UseCase=archive-verify-delete.
+  # ---------------------------------------------------------------
+  ArchiveExecutionsFailedAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmDescription: An archive execution failed, timed out or was aborted
+      EvaluationPeriods: 1
+      Threshold: 0
+      ComparisonOperator: GreaterThanThreshold
+      TreatMissingData: notBreaching
+      AlarmActions: [!Ref NotificationTopic]
+      Metrics:
+        - Id: failed
+          ReturnData: false
+          MetricStat:
+            Metric:
+              Namespace: AWS/States
+              MetricName: ExecutionsFailed
+              Dimensions: [{Name: StateMachineArn, Value: !Ref ArchiveStateMachine}]
+            Period: 300
+            Stat: Sum
+        - Id: timedout
+          ReturnData: false
+          MetricStat:
+            Metric:
+              Namespace: AWS/States
+              MetricName: ExecutionsTimedOut
+              Dimensions: [{Name: StateMachineArn, Value: !Ref ArchiveStateMachine}]
+            Period: 300
+            Stat: Sum
+        - Id: aborted
+          ReturnData: false
+          MetricStat:
+            Metric:
+              Namespace: AWS/States
+              MetricName: ExecutionsAborted
+              Dimensions: [{Name: StateMachineArn, Value: !Ref ArchiveStateMachine}]
+            Period: 300
+            Stat: Sum
+        - Id: bad
+          Expression: failed + timedout + aborted
+          Label: Archive executions that did not succeed
+
+  RestoreExecutionsFailedAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmDescription: A restore execution failed, timed out or was aborted
+      EvaluationPeriods: 1
+      Threshold: 0
+      ComparisonOperator: GreaterThanThreshold
+      TreatMissingData: notBreaching
+      AlarmActions: [!Ref NotificationTopic]
+      Metrics:
+        - Id: failed
+          ReturnData: false
+          MetricStat:
+            Metric:
+              Namespace: AWS/States
+              MetricName: ExecutionsFailed
+              Dimensions: [{Name: StateMachineArn, Value: !Ref RestoreStateMachine}]
+            Period: 300
+            Stat: Sum
+        - Id: timedout
+          ReturnData: false
+          MetricStat:
+            Metric:
+              Namespace: AWS/States
+              MetricName: ExecutionsTimedOut
+              Dimensions: [{Name: StateMachineArn, Value: !Ref RestoreStateMachine}]
+            Period: 300
+            Stat: Sum
+        - Id: aborted
+          ReturnData: false
+          MetricStat:
+            Metric:
+              Namespace: AWS/States
+              MetricName: ExecutionsAborted
+              Dimensions: [{Name: StateMachineArn, Value: !Ref RestoreStateMachine}]
+            Period: 300
+            Stat: Sum
+        - Id: bad
+          Expression: failed + timedout + aborted
+          Label: Restore executions that did not succeed
+
+  ApprovalPendingAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmDescription: An approval request has waited longer than ApprovalAlarmHours. Check that the notification mail reached the approver
+      Namespace: FSxN-S3AP-Patterns
+      MetricName: ApprovalPendingHours
+      Dimensions:
+        - {Name: FunctionName, Value: archive-verify-delete}
+        - {Name: Environment, Value: !Ref "AWS::StackName"}
+        - {Name: UseCase, Value: archive-verify-delete}
+      Statistic: Maximum
+      Period: 900
+      EvaluationPeriods: 1
+      Threshold: !Sub "${ApprovalAlarmHours}"
+      ComparisonOperator: GreaterThanThreshold
+      TreatMissingData: notBreaching
+      AlarmActions: [!Ref NotificationTopic]
+
+  FilesStuckDeletingAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmDescription: A run ended with files still DELETING or APPROVED. Start the archive state machine with resume=true for that runId
+      Namespace: FSxN-S3AP-Patterns
+      MetricName: FilesStuckDeleting
+      Dimensions:
+        - {Name: FunctionName, Value: archive-verify-delete}
+        - {Name: Environment, Value: !Ref "AWS::StackName"}
+        - {Name: UseCase, Value: archive-verify-delete}
+      Statistic: Maximum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 0
+      ComparisonOperator: GreaterThanThreshold
+      TreatMissingData: notBreaching
+      AlarmActions: [!Ref NotificationTopic]
+
+  FilesMismatchAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmDescription: An archived copy did not match the ledger (MISMATCH). Those files stay on the volume
+      Namespace: FSxN-S3AP-Patterns
+      MetricName: FilesMismatch
+      Dimensions:
+        - {Name: FunctionName, Value: archive-verify-delete}
+        - {Name: Environment, Value: !Ref "AWS::StackName"}
+        - {Name: UseCase, Value: archive-verify-delete}
+      Statistic: Maximum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 0
+      ComparisonOperator: GreaterThanThreshold
+      TreatMissingData: notBreaching
+      AlarmActions: [!Ref NotificationTopic]
+
+  RestoreMismatchAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmDescription: A restored file did not match the ledger digest (RESTORE_MISMATCH)
+      Namespace: FSxN-S3AP-Patterns
+      MetricName: RestoreMismatch
+      Dimensions:
+        - {Name: FunctionName, Value: archive-verify-delete}
+        - {Name: Environment, Value: !Ref "AWS::StackName"}
+        - {Name: UseCase, Value: archive-verify-delete}
+      Statistic: Maximum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 0
+      ComparisonOperator: GreaterThanThreshold
+      TreatMissingData: notBreaching
+      AlarmActions: [!Ref NotificationTopic]
 
 Outputs:
   ArchiveStateMachineArn:
@@ -947,3 +1423,24 @@ Outputs:
     Value: !Ref LedgerTable
   NotificationTopicArn:
     Value: !Ref NotificationTopic
+  # The Access Point policy is not a CloudFormation resource. After the deploy, render it from these
+  # role ARNs with tools/render_access_point_policy.py and attach it with
+  # `aws s3control put-access-point-policy` (see the README).
+  SelectRoleArn:
+    Value: !GetAtt SelectFunctionRole.Arn
+  RecordRoleArn:
+    Value: !GetAtt RecordFunctionRole.Arn
+  DeleteRoleArn:
+    Value: !GetAtt DeleteFunctionRole.Arn
+  RestoreFunctionRoleArn:
+    Value: !GetAtt RestoreFunctionRole.Arn
+  ArchiveStateMachineRoleArn:
+    Value: !GetAtt ArchiveStateMachineRole.Arn
+  RestoreStateMachineRoleArn:
+    Value: !GetAtt RestoreStateMachineRole.Arn
+  FargateTaskRoleArn:
+    Condition: UseFargate
+    Value: !GetAtt FargateTaskRole.Arn
+  FargateRestoreTaskRoleArn:
+    Condition: UseFargate
+    Value: !GetAtt FargateRestoreTaskRole.Arn

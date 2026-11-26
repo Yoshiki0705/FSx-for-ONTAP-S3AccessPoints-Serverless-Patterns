@@ -17,8 +17,16 @@ from shared.observability import EmfMetrics, trace_lambda_handler
 logger = logging.getLogger(__name__)
 
 
+def settle_outcome(outcome: str, by_status: Counter) -> str:
+    """A run whose delete step ended with items still ``DELETING`` or ``APPROVED`` did not complete."""
+    if outcome == "COMPLETED" and (by_status.get(L.DELETING) or by_status.get(L.APPROVED)):
+        return "COMPLETED_WITH_ERRORS"
+    return outcome
+
+
 def build_summary(run_id: str, outcome: str, items: list[dict], extra: dict) -> dict:
     by_status = Counter(i.get("status", "UNKNOWN") for i in items)
+    outcome = settle_outcome(outcome, by_status)
     return {
         "runId": run_id,
         "outcome": outcome,
@@ -29,7 +37,8 @@ def build_summary(run_id: str, outcome: str, items: list[dict], extra: dict) -> 
         "mismatches": [i["key"] for i in items if i.get("status") == L.MISMATCH],
         "changed": [i["key"] for i in items if i.get("status") == L.CHANGED],
         "failed": [i["key"] for i in items if i.get("status") == L.FAILED],
-        "dataClassification": "operational-metadata",
+        "stuckDeleting": [i["key"] for i in items if i.get("status") == L.DELETING],
+        "notDeleted": [i["key"] for i in items if i.get("status") == L.APPROVED],
         **extra,
     }
 
@@ -38,16 +47,18 @@ def build_summary(run_id: str, outcome: str, items: list[dict], extra: dict) -> 
 @lambda_error_handler
 def handler(event, context):
     cfg = RuntimeConfig.from_env()
-    run_id, outcome = event["runId"], event["outcome"]
+    run_id = event["runId"]
     items = Ledger(cfg.ledger_table).query_run(run_id)
     summary = build_summary(
         run_id,
-        outcome,
+        event["outcome"],
         items,
         {
             "storageClass": event.get("storageClass"),
             "dryRun": event.get("dryRun"),
             "skippedLarge": event.get("skippedLarge", 0),
+            "exclusions": event.get("exclusions") or {},
+            **cfg.classification_fields(),
         },
     )
     key = f"{MANIFEST_PREFIX}{run_id}-result.json"
@@ -61,6 +72,7 @@ def handler(event, context):
     metrics.put_metric("FilesMismatch", counts.get(L.MISMATCH, 0), "Count")
     metrics.put_metric("FilesChanged", counts.get(L.CHANGED, 0), "Count")
     metrics.put_metric("FilesFailed", counts.get(L.FAILED, 0), "Count")
+    metrics.put_metric("FilesStuckDeleting", counts.get(L.DELETING, 0) + counts.get(L.APPROVED, 0), "Count")
     metrics.put_metric("BytesVerified", summary["bytesVerified"], "Bytes")
     metrics.put_metric("BytesDeleted", summary["bytesDeleted"], "Bytes")
     metrics.flush()
@@ -69,7 +81,7 @@ def handler(event, context):
     if cfg.sns_topic_arn:
         session.client("sns").publish(
             TopicArn=cfg.sns_topic_arn,
-            Subject=f"Archive run {run_id}: {outcome}"[:100],
+            Subject=f"Archive run {run_id}: {summary['outcome']}"[:100],
             Message=f"Result: s3://{cfg.archive_bucket}/{key}\nFiles by status: {summary['filesByStatus']}",
         )
     try:
@@ -77,4 +89,4 @@ def handler(event, context):
     except ClientError as e:
         if e.response["Error"]["Code"] != "ParameterNotFound":
             raise
-    return {"resultKey": key, "filesByStatus": summary["filesByStatus"], "outcome": outcome}
+    return {"resultKey": key, "filesByStatus": summary["filesByStatus"], "outcome": summary["outcome"]}

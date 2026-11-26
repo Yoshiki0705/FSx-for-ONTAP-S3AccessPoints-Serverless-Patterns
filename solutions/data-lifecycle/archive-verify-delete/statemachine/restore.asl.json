@@ -18,23 +18,34 @@
             "Lambda.AWSLambdaException",
             "Lambda.SdkClientException",
             "Lambda.TooManyRequestsException",
-            "S3ApHelperError"
+            "S3ApHelperError",
+            "States.Timeout"
           ],
           "IntervalSeconds": 5,
           "MaxAttempts": 3,
-          "BackoffRate": 2.0
+          "BackoffRate": 2.0,
+          "JitterStrategy": "FULL"
         }
       ],
       "Catch": [
         {
           "ErrorEquals": [
-            "States.ALL"
+            "InvalidInput",
+            "InvalidConfiguration"
           ],
           "ResultPath": "$.error",
           "Next": "FailInvalidInput"
+        },
+        {
+          "ErrorEquals": [
+            "States.ALL"
+          ],
+          "ResultPath": "$.error",
+          "Next": "FailRestore"
         }
       ],
-      "Next": "CountChoice"
+      "Next": "CountChoice",
+      "TimeoutSeconds": 330
     },
     "CountChoice": {
       "Type": "Choice",
@@ -69,11 +80,11 @@
           "config": {
             "fargateSubnets.$": "$.req.config.fargateSubnets",
             "fargateSecurityGroups.$": "$.req.config.fargateSecurityGroups",
-            "fargateAssignPublicIp.$": "$.req.config.fargateAssignPublicIp"
+            "fargateAssignPublicIp.$": "$.req.config.fargateAssignPublicIp",
+            "fargateTimeoutSeconds.$": "$.req.config.fargateTimeoutSeconds"
           }
         }
       },
-      "MaxConcurrency": 10,
       "ToleratedFailurePercentage": 100,
       "ItemProcessor": {
         "ProcessorConfig": {
@@ -97,11 +108,13 @@
                   "Lambda.AWSLambdaException",
                   "Lambda.SdkClientException",
                   "Lambda.TooManyRequestsException",
-                  "S3ApHelperError"
+                  "S3ApHelperError",
+                  "States.Timeout"
                 ],
                 "IntervalSeconds": 5,
                 "MaxAttempts": 3,
-                "BackoffRate": 2.0
+                "BackoffRate": 2.0,
+                "JitterStrategy": "FULL"
               }
             ],
             "Catch": [
@@ -113,7 +126,8 @@
                 "Next": "ItemFailed"
               }
             ],
-            "Next": "ExistsChoice"
+            "Next": "ExistsChoice",
+            "TimeoutSeconds": 330
           },
           "ExistsChoice": {
             "Type": "Choice",
@@ -176,7 +190,8 @@
                 ],
                 "IntervalSeconds": 5,
                 "MaxAttempts": 3,
-                "BackoffRate": 2.0
+                "BackoffRate": 2.0,
+                "JitterStrategy": "FULL"
               }
             ],
             "Catch": [
@@ -202,7 +217,8 @@
                 "Next": "ItemFailed"
               }
             ],
-            "Next": "WaitRestore"
+            "Next": "WaitRestore",
+            "TimeoutSeconds": 120
           },
           "RestoreRequestErrorChoice": {
             "Type": "Choice",
@@ -237,7 +253,8 @@
                 ],
                 "IntervalSeconds": 5,
                 "MaxAttempts": 3,
-                "BackoffRate": 2.0
+                "BackoffRate": 2.0,
+                "JitterStrategy": "FULL"
               }
             ],
             "Catch": [
@@ -249,7 +266,8 @@
                 "Next": "ItemFailed"
               }
             ],
-            "Next": "CheckRestore"
+            "Next": "CheckRestore",
+            "TimeoutSeconds": 60
           },
           "CheckRestore": {
             "Type": "Task",
@@ -269,11 +287,13 @@
                   "Lambda.AWSLambdaException",
                   "Lambda.SdkClientException",
                   "Lambda.TooManyRequestsException",
-                  "S3ApHelperError"
+                  "S3ApHelperError",
+                  "States.Timeout"
                 ],
                 "IntervalSeconds": 5,
                 "MaxAttempts": 3,
-                "BackoffRate": 2.0
+                "BackoffRate": 2.0,
+                "JitterStrategy": "FULL"
               }
             ],
             "Catch": [
@@ -285,7 +305,8 @@
                 "Next": "ItemFailed"
               }
             ],
-            "Next": "RestoreStateChoice"
+            "Next": "RestoreStateChoice",
+            "TimeoutSeconds": 330
           },
           "RestoreStateChoice": {
             "Type": "Choice",
@@ -340,7 +361,8 @@
                 ],
                 "IntervalSeconds": 5,
                 "MaxAttempts": 3,
-                "BackoffRate": 2.0
+                "BackoffRate": 2.0,
+                "JitterStrategy": "FULL"
               }
             ],
             "Catch": [
@@ -352,7 +374,8 @@
                 "Next": "ItemFailed"
               }
             ],
-            "Next": "Finalize"
+            "Next": "Finalize",
+            "TimeoutSeconds": 1800
           },
           "BuildRestorePayload": {
             "Type": "Pass",
@@ -368,7 +391,7 @@
             "Parameters": {
               "LaunchType": "FARGATE",
               "Cluster": "${EcsClusterArn}",
-              "TaskDefinition": "${TaskDefinitionArn}",
+              "TaskDefinition": "${RestoreTaskDefinitionArn}",
               "NetworkConfiguration": {
                 "AwsvpcConfiguration": {
                   "Subnets.$": "$.plan.config.fargateSubnets",
@@ -401,12 +424,21 @@
             "Retry": [
               {
                 "ErrorEquals": [
-                  "ECS.AmazonECSException",
-                  "States.Timeout"
+                  "ECS.AmazonECSException"
                 ],
                 "IntervalSeconds": 30,
                 "MaxAttempts": 2,
-                "BackoffRate": 2.0
+                "BackoffRate": 2.0,
+                "JitterStrategy": "FULL"
+              },
+              {
+                "ErrorEquals": [
+                  "States.Timeout"
+                ],
+                "IntervalSeconds": 30,
+                "MaxAttempts": 1,
+                "BackoffRate": 2.0,
+                "JitterStrategy": "FULL"
               }
             ],
             "Catch": [
@@ -418,7 +450,8 @@
                 "Next": "ItemFailed"
               }
             ],
-            "Next": "Finalize"
+            "Next": "Finalize",
+            "TimeoutSecondsPath": "$.plan.config.fargateTimeoutSeconds"
           },
           "Finalize": {
             "Type": "Task",
@@ -437,11 +470,13 @@
                   "Lambda.AWSLambdaException",
                   "Lambda.SdkClientException",
                   "Lambda.TooManyRequestsException",
-                  "S3ApHelperError"
+                  "S3ApHelperError",
+                  "States.Timeout"
                 ],
                 "IntervalSeconds": 5,
                 "MaxAttempts": 3,
-                "BackoffRate": 2.0
+                "BackoffRate": 2.0,
+                "JitterStrategy": "FULL"
               }
             ],
             "Catch": [
@@ -453,7 +488,8 @@
                 "Next": "ItemFailed"
               }
             ],
-            "Next": "ItemRestored"
+            "Next": "VerifyChoice",
+            "TimeoutSeconds": 330
           },
           "ItemRestored": {
             "Type": "Pass",
@@ -471,6 +507,133 @@
               "error.$": "States.JsonToString($.error)"
             },
             "End": true
+          },
+          "VerifyChoice": {
+            "Type": "Choice",
+            "Choices": [
+              {
+                "Variable": "$.item.isLarge",
+                "BooleanEquals": true,
+                "Next": "BuildVerifyPayload"
+              }
+            ],
+            "Default": "VerifyRestored"
+          },
+          "VerifyRestored": {
+            "Type": "Task",
+            "Resource": "${RestoreFunctionArn}",
+            "Parameters": {
+              "action": "verify",
+              "runId.$": "$.req.runId",
+              "key.$": "$.item.key",
+              "restoreRunId.$": "$.req.restoreRunId"
+            },
+            "ResultPath": "$.verified",
+            "Retry": [
+              {
+                "ErrorEquals": [
+                  "Lambda.ServiceException",
+                  "Lambda.AWSLambdaException",
+                  "Lambda.SdkClientException",
+                  "Lambda.TooManyRequestsException",
+                  "S3ApHelperError",
+                  "States.Timeout"
+                ],
+                "IntervalSeconds": 5,
+                "MaxAttempts": 3,
+                "BackoffRate": 2.0,
+                "JitterStrategy": "FULL"
+              }
+            ],
+            "Catch": [
+              {
+                "ErrorEquals": [
+                  "States.ALL"
+                ],
+                "ResultPath": "$.error",
+                "Next": "ItemFailed"
+              }
+            ],
+            "Next": "ItemRestored",
+            "TimeoutSeconds": 330
+          },
+          "BuildVerifyPayload": {
+            "Type": "Pass",
+            "Parameters": {
+              "runId.$": "$.req.runId",
+              "key.$": "$.item.key",
+              "restoreRunId.$": "$.req.restoreRunId"
+            },
+            "ResultPath": "$.fargatePayload",
+            "Next": "VerifyRestoredLarge"
+          },
+          "VerifyRestoredLarge": {
+            "Type": "Task",
+            "Resource": "arn:aws:states:::ecs:runTask.sync",
+            "Parameters": {
+              "LaunchType": "FARGATE",
+              "Cluster": "${EcsClusterArn}",
+              "TaskDefinition": "${RestoreTaskDefinitionArn}",
+              "NetworkConfiguration": {
+                "AwsvpcConfiguration": {
+                  "Subnets.$": "$.plan.config.fargateSubnets",
+                  "SecurityGroups.$": "$.plan.config.fargateSecurityGroups",
+                  "AssignPublicIp.$": "$.plan.config.fargateAssignPublicIp"
+                }
+              },
+              "Overrides": {
+                "ContainerOverrides": [
+                  {
+                    "Name": "archive-task",
+                    "Environment": [
+                      {
+                        "Name": "TASK_MODE",
+                        "Value": "verify_restore"
+                      },
+                      {
+                        "Name": "TASK_INPUT",
+                        "Value.$": "States.JsonToString($.fargatePayload)"
+                      }
+                    ]
+                  }
+                ]
+              }
+            },
+            "ResultSelector": {
+              "stopCode.$": "$.StopCode"
+            },
+            "ResultPath": "$.fargate",
+            "Retry": [
+              {
+                "ErrorEquals": [
+                  "ECS.AmazonECSException"
+                ],
+                "IntervalSeconds": 30,
+                "MaxAttempts": 2,
+                "BackoffRate": 2.0,
+                "JitterStrategy": "FULL"
+              },
+              {
+                "ErrorEquals": [
+                  "States.Timeout"
+                ],
+                "IntervalSeconds": 30,
+                "MaxAttempts": 1,
+                "BackoffRate": 2.0,
+                "JitterStrategy": "FULL"
+              }
+            ],
+            "Catch": [
+              {
+                "ErrorEquals": [
+                  "States.ALL"
+                ],
+                "ResultPath": "$.error",
+                "Next": "ItemFailed"
+              }
+            ],
+            "Next": "ItemRestored",
+            "TimeoutSecondsPath": "$.plan.config.fargateTimeoutSeconds"
           }
         }
       },
@@ -489,7 +652,8 @@
           ],
           "IntervalSeconds": 30,
           "MaxAttempts": 1,
-          "BackoffRate": 2.0
+          "BackoffRate": 2.0,
+          "JitterStrategy": "FULL"
         }
       ],
       "Catch": [
@@ -501,7 +665,8 @@
           "Next": "FailRestore"
         }
       ],
-      "Next": "ReapplyManifest"
+      "Next": "ReapplyManifest",
+      "MaxConcurrencyPath": "$.req.config.mapConcurrency"
     },
     "ReapplyManifest": {
       "Type": "Task",
@@ -519,11 +684,13 @@
             "Lambda.AWSLambdaException",
             "Lambda.SdkClientException",
             "Lambda.TooManyRequestsException",
-            "S3ApHelperError"
+            "S3ApHelperError",
+            "States.Timeout"
           ],
           "IntervalSeconds": 5,
           "MaxAttempts": 3,
-          "BackoffRate": 2.0
+          "BackoffRate": 2.0,
+          "JitterStrategy": "FULL"
         }
       ],
       "Catch": [
@@ -535,7 +702,8 @@
           "Next": "FailRestore"
         }
       ],
-      "End": true
+      "End": true,
+      "TimeoutSeconds": 330
     },
     "FailInvalidInput": {
       "Type": "Fail",
