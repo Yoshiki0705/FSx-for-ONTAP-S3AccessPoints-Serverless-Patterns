@@ -1,0 +1,533 @@
+{
+  "Comment": "Restore archived files to the Access Point. Existing files are never overwritten.",
+  "StartAt": "Select",
+  "States": {
+    "Select": {
+      "Type": "Task",
+      "Resource": "${RestoreFunctionArn}",
+      "Parameters": {
+        "action": "select",
+        "input.$": "$",
+        "executionName.$": "$$.Execution.Name"
+      },
+      "ResultPath": "$.req",
+      "Retry": [
+        {
+          "ErrorEquals": [
+            "Lambda.ServiceException",
+            "Lambda.AWSLambdaException",
+            "Lambda.SdkClientException",
+            "Lambda.TooManyRequestsException",
+            "S3ApHelperError"
+          ],
+          "IntervalSeconds": 5,
+          "MaxAttempts": 3,
+          "BackoffRate": 2.0
+        }
+      ],
+      "Catch": [
+        {
+          "ErrorEquals": [
+            "States.ALL"
+          ],
+          "ResultPath": "$.error",
+          "Next": "FailInvalidInput"
+        }
+      ],
+      "Next": "CountChoice"
+    },
+    "CountChoice": {
+      "Type": "Choice",
+      "Choices": [
+        {
+          "Variable": "$.req.count",
+          "NumericGreaterThan": 0,
+          "Next": "RestoreFiles"
+        }
+      ],
+      "Default": "NoItems"
+    },
+    "NoItems": {
+      "Type": "Succeed"
+    },
+    "RestoreFiles": {
+      "Type": "Map",
+      "ItemReader": {
+        "Resource": "arn:aws:states:::s3:getObject",
+        "ReaderConfig": {
+          "InputType": "JSON"
+        },
+        "Parameters": {
+          "Bucket.$": "$.req.bucket",
+          "Key.$": "$.req.itemsKey"
+        }
+      },
+      "ItemSelector": {
+        "item.$": "$$.Map.Item.Value",
+        "req.$": "$.req",
+        "plan": {
+          "config": {
+            "fargateSubnets.$": "$.req.config.fargateSubnets",
+            "fargateSecurityGroups.$": "$.req.config.fargateSecurityGroups",
+            "fargateAssignPublicIp.$": "$.req.config.fargateAssignPublicIp"
+          }
+        }
+      },
+      "MaxConcurrency": 10,
+      "ToleratedFailurePercentage": 100,
+      "ItemProcessor": {
+        "ProcessorConfig": {
+          "Mode": "DISTRIBUTED",
+          "ExecutionType": "STANDARD"
+        },
+        "StartAt": "Prepare",
+        "States": {
+          "Prepare": {
+            "Type": "Task",
+            "Resource": "${RestoreFunctionArn}",
+            "Parameters": {
+              "action": "prepare",
+              "item.$": "$.item"
+            },
+            "ResultPath": "$.prep",
+            "Retry": [
+              {
+                "ErrorEquals": [
+                  "Lambda.ServiceException",
+                  "Lambda.AWSLambdaException",
+                  "Lambda.SdkClientException",
+                  "Lambda.TooManyRequestsException",
+                  "S3ApHelperError"
+                ],
+                "IntervalSeconds": 5,
+                "MaxAttempts": 3,
+                "BackoffRate": 2.0
+              }
+            ],
+            "Catch": [
+              {
+                "ErrorEquals": [
+                  "States.ALL"
+                ],
+                "ResultPath": "$.error",
+                "Next": "ItemFailed"
+              }
+            ],
+            "Next": "ExistsChoice"
+          },
+          "ExistsChoice": {
+            "Type": "Choice",
+            "Choices": [
+              {
+                "Variable": "$.prep.exists",
+                "BooleanEquals": true,
+                "Next": "ItemExists"
+              }
+            ],
+            "Default": "NeedsRestoreChoice"
+          },
+          "ItemExists": {
+            "Type": "Pass",
+            "Parameters": {
+              "key.$": "$.item.key",
+              "outcome": "EXISTS"
+            },
+            "End": true
+          },
+          "NeedsRestoreChoice": {
+            "Type": "Choice",
+            "Choices": [
+              {
+                "Variable": "$.prep.needsRestore",
+                "BooleanEquals": true,
+                "Next": "InitCheck"
+              }
+            ],
+            "Default": "SizeChoiceR"
+          },
+          "InitCheck": {
+            "Type": "Pass",
+            "Result": {
+              "attempt": 0
+            },
+            "ResultPath": "$.check",
+            "Next": "RequestRestore"
+          },
+          "RequestRestore": {
+            "Type": "Task",
+            "Resource": "arn:aws:states:::aws-sdk:s3:restoreObject",
+            "Parameters": {
+              "Bucket.$": "$.item.archiveBucket",
+              "Key.$": "$.item.archiveKey",
+              "RestoreRequest": {
+                "Days.$": "$.req.days",
+                "GlacierJobParameters": {
+                  "Tier.$": "$.req.tier"
+                }
+              }
+            },
+            "ResultPath": "$.restoreRequested",
+            "Retry": [
+              {
+                "ErrorEquals": [
+                  "S3.SdkClientException",
+                  "S3.SlowDownException",
+                  "States.Timeout"
+                ],
+                "IntervalSeconds": 5,
+                "MaxAttempts": 3,
+                "BackoffRate": 2.0
+              }
+            ],
+            "Catch": [
+              {
+                "ErrorEquals": [
+                  "S3.RestoreAlreadyInProgressException"
+                ],
+                "ResultPath": "$.restoreNote",
+                "Next": "WaitRestore"
+              },
+              {
+                "ErrorEquals": [
+                  "States.ALL"
+                ],
+                "ResultPath": "$.error",
+                "Next": "ItemFailed"
+              }
+            ],
+            "Next": "WaitRestore"
+          },
+          "WaitRestore": {
+            "Type": "Wait",
+            "SecondsPath": "$.req.pollSeconds",
+            "Next": "HeadRestore"
+          },
+          "HeadRestore": {
+            "Type": "Task",
+            "Resource": "arn:aws:states:::aws-sdk:s3:headObject",
+            "Parameters": {
+              "Bucket.$": "$.item.archiveBucket",
+              "Key.$": "$.item.archiveKey"
+            },
+            "ResultPath": "$.head",
+            "Retry": [
+              {
+                "ErrorEquals": [
+                  "S3.SdkClientException",
+                  "S3.SlowDownException",
+                  "States.Timeout"
+                ],
+                "IntervalSeconds": 5,
+                "MaxAttempts": 3,
+                "BackoffRate": 2.0
+              }
+            ],
+            "Catch": [
+              {
+                "ErrorEquals": [
+                  "States.ALL"
+                ],
+                "ResultPath": "$.error",
+                "Next": "ItemFailed"
+              }
+            ],
+            "Next": "CheckRestore"
+          },
+          "CheckRestore": {
+            "Type": "Task",
+            "Resource": "${RestoreFunctionArn}",
+            "Parameters": {
+              "action": "check",
+              "head.$": "$.head",
+              "storageClass.$": "$.item.storageClass",
+              "attempt.$": "$.check.attempt",
+              "maxAttempts.$": "$.req.maxAttempts"
+            },
+            "ResultPath": "$.check",
+            "Retry": [
+              {
+                "ErrorEquals": [
+                  "Lambda.ServiceException",
+                  "Lambda.AWSLambdaException",
+                  "Lambda.SdkClientException",
+                  "Lambda.TooManyRequestsException",
+                  "S3ApHelperError"
+                ],
+                "IntervalSeconds": 5,
+                "MaxAttempts": 3,
+                "BackoffRate": 2.0
+              }
+            ],
+            "Catch": [
+              {
+                "ErrorEquals": [
+                  "States.ALL"
+                ],
+                "ResultPath": "$.error",
+                "Next": "ItemFailed"
+              }
+            ],
+            "Next": "RestoreStateChoice"
+          },
+          "RestoreStateChoice": {
+            "Type": "Choice",
+            "Choices": [
+              {
+                "Variable": "$.check.state",
+                "StringEquals": "READY",
+                "Next": "SizeChoiceR"
+              },
+              {
+                "Variable": "$.check.state",
+                "StringEquals": "TIMEOUT",
+                "Next": "ItemTimedOut"
+              }
+            ],
+            "Default": "WaitRestore"
+          },
+          "ItemTimedOut": {
+            "Type": "Pass",
+            "Parameters": {
+              "key.$": "$.item.key",
+              "outcome": "RESTORE_TIMEOUT"
+            },
+            "End": true
+          },
+          "SizeChoiceR": {
+            "Type": "Choice",
+            "Choices": [
+              {
+                "Variable": "$.item.isLarge",
+                "BooleanEquals": true,
+                "Next": "BuildRestorePayload"
+              }
+            ],
+            "Default": "RestoreCopy"
+          },
+          "RestoreCopy": {
+            "Type": "Task",
+            "Resource": "arn:aws:states:::aws-sdk:s3:copyObject",
+            "Parameters": {
+              "Bucket.$": "$.prep.copy.bucket",
+              "Key.$": "$.prep.copy.key",
+              "CopySource.$": "$.prep.copy.copySource"
+            },
+            "ResultPath": "$.restored",
+            "Retry": [
+              {
+                "ErrorEquals": [
+                  "S3.SdkClientException",
+                  "S3.SlowDownException",
+                  "States.Timeout"
+                ],
+                "IntervalSeconds": 5,
+                "MaxAttempts": 3,
+                "BackoffRate": 2.0
+              }
+            ],
+            "Catch": [
+              {
+                "ErrorEquals": [
+                  "States.ALL"
+                ],
+                "ResultPath": "$.error",
+                "Next": "ItemFailed"
+              }
+            ],
+            "Next": "Finalize"
+          },
+          "BuildRestorePayload": {
+            "Type": "Pass",
+            "Parameters": {
+              "copy.$": "$.prep.copy"
+            },
+            "ResultPath": "$.fargatePayload",
+            "Next": "RestoreLarge"
+          },
+          "RestoreLarge": {
+            "Type": "Task",
+            "Resource": "arn:aws:states:::ecs:runTask.sync",
+            "Parameters": {
+              "LaunchType": "FARGATE",
+              "Cluster": "${EcsClusterArn}",
+              "TaskDefinition": "${TaskDefinitionArn}",
+              "NetworkConfiguration": {
+                "AwsvpcConfiguration": {
+                  "Subnets.$": "$.plan.config.fargateSubnets",
+                  "SecurityGroups.$": "$.plan.config.fargateSecurityGroups",
+                  "AssignPublicIp.$": "$.plan.config.fargateAssignPublicIp"
+                }
+              },
+              "Overrides": {
+                "ContainerOverrides": [
+                  {
+                    "Name": "archive-task",
+                    "Environment": [
+                      {
+                        "Name": "TASK_MODE",
+                        "Value": "restore"
+                      },
+                      {
+                        "Name": "TASK_INPUT",
+                        "Value.$": "States.JsonToString($.fargatePayload)"
+                      }
+                    ]
+                  }
+                ]
+              }
+            },
+            "ResultSelector": {
+              "stopCode.$": "$.StopCode"
+            },
+            "ResultPath": "$.fargate",
+            "Retry": [
+              {
+                "ErrorEquals": [
+                  "ECS.AmazonECSException",
+                  "States.Timeout"
+                ],
+                "IntervalSeconds": 30,
+                "MaxAttempts": 2,
+                "BackoffRate": 2.0
+              }
+            ],
+            "Catch": [
+              {
+                "ErrorEquals": [
+                  "States.ALL"
+                ],
+                "ResultPath": "$.error",
+                "Next": "ItemFailed"
+              }
+            ],
+            "Next": "Finalize"
+          },
+          "Finalize": {
+            "Type": "Task",
+            "Resource": "${RestoreFunctionArn}",
+            "Parameters": {
+              "action": "finalize",
+              "runId.$": "$.req.runId",
+              "key.$": "$.item.key",
+              "restoreRunId.$": "$.req.restoreRunId"
+            },
+            "ResultPath": "$.finalized",
+            "Retry": [
+              {
+                "ErrorEquals": [
+                  "Lambda.ServiceException",
+                  "Lambda.AWSLambdaException",
+                  "Lambda.SdkClientException",
+                  "Lambda.TooManyRequestsException",
+                  "S3ApHelperError"
+                ],
+                "IntervalSeconds": 5,
+                "MaxAttempts": 3,
+                "BackoffRate": 2.0
+              }
+            ],
+            "Catch": [
+              {
+                "ErrorEquals": [
+                  "States.ALL"
+                ],
+                "ResultPath": "$.error",
+                "Next": "ItemFailed"
+              }
+            ],
+            "Next": "ItemRestored"
+          },
+          "ItemRestored": {
+            "Type": "Pass",
+            "Parameters": {
+              "key.$": "$.item.key",
+              "outcome": "RESTORED"
+            },
+            "End": true
+          },
+          "ItemFailed": {
+            "Type": "Pass",
+            "Parameters": {
+              "key.$": "$.item.key",
+              "outcome": "FAILED",
+              "error.$": "States.JsonToString($.error)"
+            },
+            "End": true
+          }
+        }
+      },
+      "ResultWriter": {
+        "Resource": "arn:aws:states:::s3:putObject",
+        "Parameters": {
+          "Bucket.$": "$.req.bucket",
+          "Prefix.$": "States.Format('manifests/{}-restore-results-{}', $.req.runId, $.req.restoreRunId)"
+        }
+      },
+      "ResultPath": "$.restored",
+      "Retry": [
+        {
+          "ErrorEquals": [
+            "States.Timeout"
+          ],
+          "IntervalSeconds": 30,
+          "MaxAttempts": 1,
+          "BackoffRate": 2.0
+        }
+      ],
+      "Catch": [
+        {
+          "ErrorEquals": [
+            "States.ALL"
+          ],
+          "ResultPath": "$.error",
+          "Next": "FailRestore"
+        }
+      ],
+      "Next": "ReapplyManifest"
+    },
+    "ReapplyManifest": {
+      "Type": "Task",
+      "Resource": "${RestoreFunctionArn}",
+      "Parameters": {
+        "action": "reapply",
+        "runId.$": "$.req.runId",
+        "restoreRunId.$": "$.req.restoreRunId"
+      },
+      "ResultPath": "$.reapply",
+      "Retry": [
+        {
+          "ErrorEquals": [
+            "Lambda.ServiceException",
+            "Lambda.AWSLambdaException",
+            "Lambda.SdkClientException",
+            "Lambda.TooManyRequestsException",
+            "S3ApHelperError"
+          ],
+          "IntervalSeconds": 5,
+          "MaxAttempts": 3,
+          "BackoffRate": 2.0
+        }
+      ],
+      "Catch": [
+        {
+          "ErrorEquals": [
+            "States.ALL"
+          ],
+          "ResultPath": "$.error",
+          "Next": "FailRestore"
+        }
+      ],
+      "End": true
+    },
+    "FailInvalidInput": {
+      "Type": "Fail",
+      "Error": "InvalidInput",
+      "Cause": "The start input was rejected."
+    },
+    "FailRestore": {
+      "Type": "Fail",
+      "Error": "RestoreFailed",
+      "Cause": "The restore Map state or the reapply manifest failed. The ledger holds each file's state."
+    }
+  }
+}

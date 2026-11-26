@@ -99,6 +99,7 @@ All of these are Lambda pipelines reading through an S3 Access Point, and all ru
 | Expose an existing workflow as AI agent tools | [stepfunctions-agentcore-tools](../solutions/genai/stepfunctions-agentcore-tools/) |
 | OCR Japanese scanned documents with Textract in Tokyo and let AI agents run it | [japanese-document-ocr-agent](../solutions/genai/japanese-document-ocr-agent/) |
 | File workflows adjacent to an ERP | [sap/erp-adjacent](../solutions/sap/erp-adjacent/) |
+| Move rarely read files to S3 Glacier storage classes with S3 API calls only, then delete them after verification and approval | [data-lifecycle/archive-verify-delete](../solutions/data-lifecycle/archive-verify-delete/) |
 
 ---
 

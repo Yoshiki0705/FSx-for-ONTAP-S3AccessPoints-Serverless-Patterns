@@ -1,0 +1,934 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
+Description: >-
+  data-lifecycle: archive-verify-delete. Moves rarely read files from an Amazon FSx for
+  NetApp ONTAP volume to S3 Glacier storage classes using S3 API calls only. Each file is
+  copied, verified against a checksum computed from the source, approved by a person, and
+  only then deleted from the S3 Access Point. A DynamoDB ledger records every step so
+  files can be found and restored. S3 Object Lock, Vault Lock and SnapLock are not used.
+
+# =====================================================================
+# Parameters
+# =====================================================================
+Parameters:
+  AccessPointAlias:
+    Type: String
+    Description: Alias of the FSx for ONTAP S3 Access Point (the volume to archive from)
+    AllowedPattern: "^[a-z0-9-]+-ext-s3alias$"
+  AccessPointArn:
+    Type: String
+    Description: >-
+      ARN of the same S3 Access Point (arn:aws:s3:<region>:<account>:accesspoint/<name>).
+      Both forms are needed in IAM; an alias-only policy passes validation and is denied at runtime.
+    AllowedPattern: "^arn:aws[a-z-]*:s3:[a-z0-9-]+:[0-9]{12}:accesspoint/[a-z0-9-]+$"
+  ArchiveBucketName:
+    Type: String
+    Description: Name of the archive bucket this stack creates (same Region as the Access Point)
+    AllowedPattern: "^[a-z0-9][a-z0-9.-]{1,61}[a-z0-9]$"
+  ArchiveBucketKmsKeyArn:
+    Type: String
+    Default: ""
+    Description: Optional KMS key ARN for the archive bucket. Empty uses SSE-S3.
+  EnableArchiveVersioning:
+    Type: String
+    Default: "false"
+    AllowedValues: ["true", "false"]
+    Description: Versioning on the archive bucket. This is not Object Lock; no retention is set.
+  ArchivePrefix:
+    Type: String
+    Default: "data/"
+    Description: Key prefix under which archived files are stored in the archive bucket
+  SecondCopyBucketName:
+    Type: String
+    Default: ""
+    Description: >-
+      Optional existing bucket in the same Region for a second copy, written from the Access Point
+      and verified the same way. A different Region is not supported by this pattern.
+  NotificationEmail:
+    Type: String
+    Description: Address that receives approval requests and run summaries
+  LogRetentionInDays:
+    Type: Number
+    Default: 90
+    AllowedValues: [1, 3, 5, 7, 14, 30, 60, 90, 120, 150, 180, 365, 400, 545, 731, 1096, 1827, 2192, 2557, 2922, 3288, 3653]
+  ApprovalTimeoutHours:
+    Type: Number
+    Default: 72
+    MinValue: 1
+    MaxValue: 720
+    Description: How long an execution waits for a person to approve or reject
+  LargeFileThresholdBytes:
+    Type: Number
+    Default: 5368709120
+    MinValue: 1048576
+    MaxValue: 5368709120
+    Description: >-
+      Files above this size are hashed and copied by a Fargate task (multipart copy). Lambda hashes
+      the rest. 5 GiB is the single-request CopyObject limit. Lambda's 15 minute limit may require a
+      lower value; the time to read a file through the Access Point is not measured here.
+  MapConcurrency:
+    Type: Number
+    Default: 10
+    MinValue: 1
+    MaxValue: 1000
+    Description: Files processed in parallel
+  RestorePollMinutes:
+    Type: Number
+    Default: 30
+    MinValue: 1
+    MaxValue: 720
+    Description: How often a restore execution checks whether the restore request has completed
+  RestoreMaxWaitHours:
+    Type: Number
+    Default: 72
+    MinValue: 1
+    MaxValue: 168
+    Description: A restore that has not completed after this long is reported as RESTORE_TIMEOUT
+  # --- Optional: ONTAP REST API (selection=ATIME, attribute capture) ---
+  VpcId:
+    Type: String
+    Default: ""
+    Description: >-
+      VPC for the ONTAP REST function and the Fargate task. Empty disables both. The Access Point is
+      Internet-origin, so the Fargate subnets need a NAT gateway or a public IP.
+  SubnetIds:
+    Type: CommaDelimitedList
+    Default: ""
+    Description: Subnets for the ONTAP REST function and the Fargate task
+  OntapSecretArn:
+    Type: String
+    Default: ""
+    Description: Secrets Manager secret (username/password) for the ONTAP REST API
+  OntapManagementIp:
+    Type: String
+    Default: ""
+    Description: ONTAP management endpoint address (placeholder in tracked files)
+  VolumeUuid:
+    Type: String
+    Default: ""
+    Description: UUID of the volume behind the Access Point
+  OntapPathPrefix:
+    Type: String
+    Default: ""
+    Description: Path inside the volume that the Access Point root corresponds to (empty for the volume root)
+  # --- Optional: Fargate for files above the threshold ---
+  FargateImageUri:
+    Type: String
+    Default: ""
+    Description: >-
+      Image built from fargate/Dockerfile and pushed to a repository you own. Empty disables the
+      Fargate path; files above the threshold are then left out of the selection and counted as skipped.
+  FargateAssignPublicIp:
+    Type: String
+    Default: "DISABLED"
+    AllowedValues: ["ENABLED", "DISABLED"]
+  FargateCpu:
+    Type: String
+    Default: "2048"
+    AllowedValues: ["1024", "2048", "4096", "8192", "16384"]
+  FargateMemory:
+    Type: String
+    Default: "8192"
+    Description: MiB. Must be a valid pair with FargateCpu.
+
+# =====================================================================
+# Conditions
+# =====================================================================
+Conditions:
+  HasVpc: !Not [!Equals [!Ref VpcId, ""]]
+  UseOntap: !And
+    - !Condition HasVpc
+    - !Not [!Equals [!Ref OntapSecretArn, ""]]
+    - !Not [!Equals [!Ref OntapManagementIp, ""]]
+    - !Not [!Equals [!Ref VolumeUuid, ""]]
+  UseFargate: !And
+    - !Condition HasVpc
+    - !Not [!Equals [!Ref FargateImageUri, ""]]
+  HasSecondCopy: !Not [!Equals [!Ref SecondCopyBucketName, ""]]
+  UseKms: !Not [!Equals [!Ref ArchiveBucketKmsKeyArn, ""]]
+  VersioningOn: !Equals [!Ref EnableArchiveVersioning, "true"]
+
+# =====================================================================
+# Globals
+# =====================================================================
+Globals:
+  Function:
+    Runtime: python3.13
+    Architectures: [arm64]
+    Handler: handler.handler
+    MemorySize: 1024
+    Timeout: 900
+    Tracing: Active
+    Layers:
+      - !Ref SharedLayer
+    Environment:
+      Variables:
+        ACCESS_POINT: !Ref AccessPointAlias
+        ARCHIVE_BUCKET: !Ref ArchiveBucketName
+        ARCHIVE_PREFIX: !Ref ArchivePrefix
+        SECOND_COPY_BUCKET: !Ref SecondCopyBucketName
+        LEDGER_TABLE: !Ref LedgerTable
+        LARGE_FILE_THRESHOLD_BYTES: !Ref LargeFileThresholdBytes
+        FARGATE_ENABLED: !If [UseFargate, "true", "false"]
+        ONTAP_ENABLED: !If [UseOntap, "true", "false"]
+        APPROVAL_TIMEOUT_HOURS: !Ref ApprovalTimeoutHours
+        SNS_TOPIC_ARN: !Ref NotificationTopic
+        STACK_NAME: !Ref AWS::StackName
+        FARGATE_SUBNETS: !Join [",", !Ref SubnetIds]
+        FARGATE_SECURITY_GROUPS: !If [UseFargate, !Ref FargateSecurityGroup, ""]
+        FARGATE_ASSIGN_PUBLIC_IP: !Ref FargateAssignPublicIp
+        MAP_CONCURRENCY: !Ref MapConcurrency
+        RESTORE_POLL_MINUTES: !Ref RestorePollMinutes
+        RESTORE_MAX_WAIT_HOURS: !Ref RestoreMaxWaitHours
+    Tags:
+      UseCase: archive-verify-delete
+      Phase: data-lifecycle
+
+Resources:
+  SharedLayer:
+    Type: AWS::Serverless::LayerVersion
+    Properties:
+      LayerName: !Sub "${AWS::StackName}-shared"
+      Description: Shared Python modules (s3ap_helper, archive_verify, ontap_client, observability)
+      ContentUri: ../../../
+      CompatibleRuntimes: [python3.13]
+      CompatibleArchitectures: [arm64]
+    Metadata:
+      BuildMethod: makefile
+      BuildArchitecture: arm64
+
+  # ---------------------------------------------------------------
+  # Storage
+  # ---------------------------------------------------------------
+  ArchiveBucket:
+    Type: AWS::S3::Bucket
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      BucketName: !Ref ArchiveBucketName
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - BucketKeyEnabled: !If [UseKms, true, !Ref AWS::NoValue]
+            ServerSideEncryptionByDefault:
+              SSEAlgorithm: !If [UseKms, "aws:kms", "AES256"]
+              KMSMasterKeyID: !If [UseKms, !Ref ArchiveBucketKmsKeyArn, !Ref AWS::NoValue]
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      VersioningConfiguration:
+        Status: !If [VersioningOn, Enabled, Suspended]
+      NotificationConfiguration:
+        EventBridgeConfiguration:
+          EventBridgeEnabled: true
+      LifecycleConfiguration:
+        Rules:
+          - Id: AbortIncompleteMultipartUploads
+            Status: Enabled
+            AbortIncompleteMultipartUpload:
+              DaysAfterInitiation: 7
+      Tags:
+        - Key: UseCase
+          Value: archive-verify-delete
+        - Key: Phase
+          Value: data-lifecycle
+
+  ArchiveBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref ArchiveBucket
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: DenyInsecureTransport
+            Effect: Deny
+            Principal: "*"
+            Action: "s3:*"
+            Resource:
+              - !GetAtt ArchiveBucket.Arn
+              - !Sub "${ArchiveBucket.Arn}/*"
+            Condition:
+              Bool:
+                "aws:SecureTransport": "false"
+
+  LedgerTable:
+    Type: AWS::DynamoDB::Table
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      TableName: !Sub "${AWS::StackName}-ledger"
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: runId
+          AttributeType: S
+        - AttributeName: key
+          AttributeType: S
+      KeySchema:
+        - AttributeName: runId
+          KeyType: HASH
+        - AttributeName: key
+          KeyType: RANGE
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: true
+      SSESpecification:
+        SSEEnabled: true
+      Tags:
+        - Key: UseCase
+          Value: archive-verify-delete
+        - Key: Phase
+          Value: data-lifecycle
+
+  NotificationTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: !Sub "${AWS::StackName}-notifications"
+      KmsMasterKeyId: alias/aws/sns
+      Subscription:
+        - Protocol: email
+          Endpoint: !Ref NotificationEmail
+      Tags:
+        - Key: UseCase
+          Value: archive-verify-delete
+        - Key: Phase
+          Value: data-lifecycle
+
+  # ---------------------------------------------------------------
+  # Log groups
+  # ---------------------------------------------------------------
+  SelectLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${AWS::StackName}-select"
+      RetentionInDays: !Ref LogRetentionInDays
+  RecordLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${AWS::StackName}-record"
+      RetentionInDays: !Ref LogRetentionInDays
+  LedgerLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${AWS::StackName}-ledger"
+      RetentionInDays: !Ref LogRetentionInDays
+  ApprovalLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${AWS::StackName}-approval"
+      RetentionInDays: !Ref LogRetentionInDays
+  DeleteLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${AWS::StackName}-delete"
+      RetentionInDays: !Ref LogRetentionInDays
+  SummarizeLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${AWS::StackName}-summarize"
+      RetentionInDays: !Ref LogRetentionInDays
+  RestoreLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${AWS::StackName}-restore"
+      RetentionInDays: !Ref LogRetentionInDays
+  OntapRestLogGroup:
+    Type: AWS::Logs::LogGroup
+    Condition: UseOntap
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${AWS::StackName}-ontap-rest"
+      RetentionInDays: !Ref LogRetentionInDays
+  FargateLogGroup:
+    Type: AWS::Logs::LogGroup
+    Condition: UseFargate
+    Properties:
+      LogGroupName: !Sub "/ecs/${AWS::StackName}-archive-task"
+      RetentionInDays: !Ref LogRetentionInDays
+
+  # ---------------------------------------------------------------
+  # Lambda functions. Only DeleteFunction holds s3:DeleteObject.
+  # ---------------------------------------------------------------
+  SelectFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "${AWS::StackName}-select"
+      CodeUri: functions/select/
+      Description: Validate the start input and select the files to archive
+      LoggingConfig:
+        LogGroup: !Ref SelectLogGroup
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action: ["s3:ListBucket"]
+              Resource:
+                - !Ref AccessPointArn
+                - !Sub "arn:aws:s3:::${AccessPointAlias}"
+            - Effect: Allow
+              Action: ["s3:GetObject"]
+              Resource:
+                - !Sub "${AccessPointArn}/object/*"
+                - !Sub "arn:aws:s3:::${AccessPointAlias}/*"
+            - Effect: Allow
+              Action: ["s3:GetObject", "s3:PutObject"]
+              Resource: !Sub "arn:aws:s3:::${ArchiveBucketName}/manifests/*"
+            - !If
+              - UseKms
+              - Effect: Allow
+                Action: ["kms:GenerateDataKey", "kms:Decrypt"]
+                Resource: !Ref ArchiveBucketKmsKeyArn
+              - !Ref AWS::NoValue
+
+  RecordFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "${AWS::StackName}-record"
+      CodeUri: functions/record/
+      Description: Hash one file through the Access Point and write it to the ledger
+      MemorySize: 2048
+      LoggingConfig:
+        LogGroup: !Ref RecordLogGroup
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action: ["s3:GetObject"]
+              Resource:
+                - !Sub "${AccessPointArn}/object/*"
+                - !Sub "arn:aws:s3:::${AccessPointAlias}/*"
+            - Effect: Allow
+              Action: ["dynamodb:PutItem"]
+              Resource: !GetAtt LedgerTable.Arn
+
+  LedgerFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "${AWS::StackName}-ledger"
+      CodeUri: functions/ledger/
+      Description: Compare archived checksums with the ledger and record failures
+      Timeout: 60
+      LoggingConfig:
+        LogGroup: !Ref LedgerLogGroup
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action: ["dynamodb:GetItem", "dynamodb:PutItem", "dynamodb:UpdateItem"]
+              Resource: !GetAtt LedgerTable.Arn
+
+  ApprovalFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "${AWS::StackName}-approval"
+      CodeUri: functions/approval/
+      Description: Write the approval manifest, store the task token, notify
+      Timeout: 300
+      LoggingConfig:
+        LogGroup: !Ref ApprovalLogGroup
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action: ["dynamodb:Query"]
+              Resource: !GetAtt LedgerTable.Arn
+            - Effect: Allow
+              Action: ["s3:PutObject"]
+              Resource: !Sub "arn:aws:s3:::${ArchiveBucketName}/manifests/*"
+            - Effect: Allow
+              Action: ["ssm:PutParameter"]
+              Resource: !Sub "arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/${AWS::StackName}/approvals/*"
+            - Effect: Allow
+              Action: ["sns:Publish"]
+              Resource: !Ref NotificationTopic
+            - !If
+              - UseKms
+              - Effect: Allow
+                Action: ["kms:GenerateDataKey"]
+                Resource: !Ref ArchiveBucketKmsKeyArn
+              - !Ref AWS::NoValue
+
+  DeleteFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "${AWS::StackName}-delete"
+      CodeUri: functions/delete/
+      Description: Delete one verified, approved file from the Access Point if it is unchanged
+      Timeout: 120
+      LoggingConfig:
+        LogGroup: !Ref DeleteLogGroup
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action: ["s3:GetObject", "s3:DeleteObject"]
+              Resource:
+                - !Sub "${AccessPointArn}/object/*"
+                - !Sub "arn:aws:s3:::${AccessPointAlias}/*"
+            - Effect: Allow
+              Action: ["dynamodb:GetItem", "dynamodb:UpdateItem"]
+              Resource: !GetAtt LedgerTable.Arn
+
+  SummarizeFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "${AWS::StackName}-summarize"
+      CodeUri: functions/summarize/
+      Description: Write the run summary, emit metrics, notify
+      Timeout: 300
+      LoggingConfig:
+        LogGroup: !Ref SummarizeLogGroup
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action: ["dynamodb:Query"]
+              Resource: !GetAtt LedgerTable.Arn
+            - Effect: Allow
+              Action: ["s3:PutObject"]
+              Resource: !Sub "arn:aws:s3:::${ArchiveBucketName}/manifests/*"
+            - Effect: Allow
+              Action: ["ssm:DeleteParameter"]
+              Resource: !Sub "arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/${AWS::StackName}/approvals/*"
+            - Effect: Allow
+              Action: ["sns:Publish"]
+              Resource: !Ref NotificationTopic
+            - !If
+              - UseKms
+              - Effect: Allow
+                Action: ["kms:GenerateDataKey"]
+                Resource: !Ref ArchiveBucketKmsKeyArn
+              - !Ref AWS::NoValue
+
+  RestoreFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "${AWS::StackName}-restore"
+      CodeUri: functions/restore/
+      Description: Restore helpers - select, prepare, check, finalize, reapply manifest
+      Timeout: 300
+      LoggingConfig:
+        LogGroup: !Ref RestoreLogGroup
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action: ["dynamodb:Query", "dynamodb:UpdateItem"]
+              Resource: !GetAtt LedgerTable.Arn
+            - Effect: Allow
+              Action: ["s3:GetObject"]
+              Resource:
+                - !Sub "${AccessPointArn}/object/*"
+                - !Sub "arn:aws:s3:::${AccessPointAlias}/*"
+            - Effect: Allow
+              Action: ["s3:PutObject"]
+              Resource: !Sub "arn:aws:s3:::${ArchiveBucketName}/manifests/*"
+            - !If
+              - UseKms
+              - Effect: Allow
+                Action: ["kms:GenerateDataKey"]
+                Resource: !Ref ArchiveBucketKmsKeyArn
+              - !Ref AWS::NoValue
+
+  # VPC-internal: the only function that reaches the ONTAP management endpoint.
+  OntapRestFunction:
+    Type: AWS::Serverless::Function
+    Condition: UseOntap
+    Properties:
+      FunctionName: !Sub "${AWS::StackName}-ontap-rest"
+      CodeUri: functions/ontap_rest/
+      Description: ONTAP REST API - accessed_time candidates and file attributes
+      LoggingConfig:
+        LogGroup: !Ref OntapRestLogGroup
+      VpcConfig:
+        SecurityGroupIds:
+          - !Ref OntapRestSecurityGroup
+        SubnetIds: !Ref SubnetIds
+      Environment:
+        Variables:
+          ONTAP_MANAGEMENT_IP: !Ref OntapManagementIp
+          ONTAP_SECRET_ARN: !Ref OntapSecretArn
+          ONTAP_VOLUME_UUID: !Ref VolumeUuid
+          ONTAP_PATH_PREFIX: !Ref OntapPathPrefix
+      Policies:
+        - AWSLambdaVPCAccessExecutionRole
+        - Statement:
+            - Effect: Allow
+              Action: ["secretsmanager:GetSecretValue"]
+              Resource: !Ref OntapSecretArn
+            - Effect: Allow
+              Action: ["s3:PutObject"]
+              Resource: !Sub "arn:aws:s3:::${ArchiveBucketName}/manifests/*"
+            - !If
+              - UseKms
+              - Effect: Allow
+                Action: ["kms:GenerateDataKey"]
+                Resource: !Ref ArchiveBucketKmsKeyArn
+              - !Ref AWS::NoValue
+
+  OntapRestSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Condition: UseOntap
+    Properties:
+      GroupDescription: ONTAP REST function. HTTPS egress to the management endpoint and AWS service endpoints.
+      VpcId: !Ref VpcId
+      SecurityGroupEgress:
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 0.0.0.0/0
+          Description: HTTPS to the ONTAP management endpoint, Secrets Manager and S3 (restrict with VPC endpoints)
+      Tags:
+        - Key: UseCase
+          Value: archive-verify-delete
+        - Key: Phase
+          Value: data-lifecycle
+
+  # ---------------------------------------------------------------
+  # Fargate task (files above LargeFileThresholdBytes)
+  # ---------------------------------------------------------------
+  FargateSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Condition: UseFargate
+    Properties:
+      GroupDescription: Archive task. HTTPS egress only.
+      VpcId: !Ref VpcId
+      SecurityGroupEgress:
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 0.0.0.0/0
+          Description: HTTPS to the Internet-origin Access Point, S3 and DynamoDB
+      Tags:
+        - Key: UseCase
+          Value: archive-verify-delete
+        - Key: Phase
+          Value: data-lifecycle
+
+  EcsCluster:
+    Type: AWS::ECS::Cluster
+    Condition: UseFargate
+    Properties:
+      ClusterName: !Sub "${AWS::StackName}-archive"
+      ClusterSettings:
+        - Name: containerInsights
+          Value: enabled
+      Tags:
+        - Key: UseCase
+          Value: archive-verify-delete
+        - Key: Phase
+          Value: data-lifecycle
+
+  FargateExecutionRole:
+    Type: AWS::IAM::Role
+    Condition: UseFargate
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ecs-tasks.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - !Sub "arn:${AWS::Partition}:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
+      Tags:
+        - Key: UseCase
+          Value: archive-verify-delete
+        - Key: Phase
+          Value: data-lifecycle
+
+  # The task copies and hashes; it has no s3:DeleteObject.
+  FargateTaskRole:
+    Type: AWS::IAM::Role
+    Condition: UseFargate
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ecs-tasks.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: ArchiveTask
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: ["s3:GetObject", "s3:PutObject"]
+                Resource:
+                  - !Sub "${AccessPointArn}/object/*"
+                  - !Sub "arn:aws:s3:::${AccessPointAlias}/*"
+              - Effect: Allow
+                Action: ["s3:GetObject", "s3:PutObject", "s3:AbortMultipartUpload"]
+                Resource: !Sub "arn:aws:s3:::${ArchiveBucketName}/*"
+              - Effect: Allow
+                Action: ["s3:ListBucket"]
+                Resource:
+                  - !Ref AccessPointArn
+                  - !Sub "arn:aws:s3:::${AccessPointAlias}"
+              - !If
+                - HasSecondCopy
+                - Effect: Allow
+                  Action: ["s3:PutObject", "s3:AbortMultipartUpload"]
+                  Resource: !Sub "arn:aws:s3:::${SecondCopyBucketName}/*"
+                - !Ref AWS::NoValue
+              - Effect: Allow
+                Action: ["dynamodb:GetItem", "dynamodb:UpdateItem"]
+                Resource: !GetAtt LedgerTable.Arn
+              - !If
+                - UseKms
+                - Effect: Allow
+                  Action: ["kms:GenerateDataKey", "kms:Decrypt"]
+                  Resource: !Ref ArchiveBucketKmsKeyArn
+                - !Ref AWS::NoValue
+      Tags:
+        - Key: UseCase
+          Value: archive-verify-delete
+        - Key: Phase
+          Value: data-lifecycle
+
+  FargateTaskDefinition:
+    Type: AWS::ECS::TaskDefinition
+    Condition: UseFargate
+    Properties:
+      Family: !Sub "${AWS::StackName}-archive-task"
+      RequiresCompatibilities: [FARGATE]
+      NetworkMode: awsvpc
+      Cpu: !Ref FargateCpu
+      Memory: !Ref FargateMemory
+      RuntimePlatform:
+        CpuArchitecture: ARM64
+        OperatingSystemFamily: LINUX
+      ExecutionRoleArn: !GetAtt FargateExecutionRole.Arn
+      TaskRoleArn: !GetAtt FargateTaskRole.Arn
+      ContainerDefinitions:
+        - Name: archive-task
+          Image: !Ref FargateImageUri
+          Essential: true
+          Environment:
+            - Name: ACCESS_POINT
+              Value: !Ref AccessPointAlias
+            - Name: LEDGER_TABLE
+              Value: !Ref LedgerTable
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-group: !Ref FargateLogGroup
+              awslogs-region: !Ref AWS::Region
+              awslogs-stream-prefix: archive-task
+      Tags:
+        - Key: UseCase
+          Value: archive-verify-delete
+        - Key: Phase
+          Value: data-lifecycle
+
+  # ---------------------------------------------------------------
+  # State machines
+  # ---------------------------------------------------------------
+  ArchiveStateMachine:
+    Type: AWS::Serverless::StateMachine
+    Properties:
+      Name: !Sub "${AWS::StackName}-archive"
+      DefinitionUri: statemachine/archive.asl.json
+      DefinitionSubstitutions:
+        SelectFunctionArn: !GetAtt SelectFunction.Arn
+        OntapFunctionArn: !If [UseOntap, !GetAtt OntapRestFunction.Arn, !Sub "arn:${AWS::Partition}:lambda:${AWS::Region}:${AWS::AccountId}:function:ontap-rest-not-deployed"]
+        RecordFunctionArn: !GetAtt RecordFunction.Arn
+        LedgerFunctionArn: !GetAtt LedgerFunction.Arn
+        ApprovalFunctionArn: !GetAtt ApprovalFunction.Arn
+        DeleteFunctionArn: !GetAtt DeleteFunction.Arn
+        SummarizeFunctionArn: !GetAtt SummarizeFunction.Arn
+        EcsClusterArn: !If [UseFargate, !GetAtt EcsCluster.Arn, !Sub "arn:${AWS::Partition}:ecs:${AWS::Region}:${AWS::AccountId}:cluster/fargate-not-deployed"]
+        TaskDefinitionArn: !If [UseFargate, !Ref FargateTaskDefinition, !Sub "arn:${AWS::Partition}:ecs:${AWS::Region}:${AWS::AccountId}:task-definition/fargate-not-deployed:1"]
+      Tracing:
+        Enabled: true
+      Policies:
+        - LambdaInvokePolicy:
+            FunctionName: !Ref SelectFunction
+        - LambdaInvokePolicy:
+            FunctionName: !Ref RecordFunction
+        - LambdaInvokePolicy:
+            FunctionName: !Ref LedgerFunction
+        - LambdaInvokePolicy:
+            FunctionName: !Ref ApprovalFunction
+        - LambdaInvokePolicy:
+            FunctionName: !Ref DeleteFunction
+        - LambdaInvokePolicy:
+            FunctionName: !Ref SummarizeFunction
+        - Statement:
+            # Distributed Map child executions of this state machine.
+            - Effect: Allow
+              Action: ["states:StartExecution"]
+              Resource: !Sub "arn:${AWS::Partition}:states:${AWS::Region}:${AWS::AccountId}:stateMachine:${AWS::StackName}-archive"
+            - Effect: Allow
+              Action: ["states:DescribeExecution", "states:StopExecution"]
+              Resource: !Sub "arn:${AWS::Partition}:states:${AWS::Region}:${AWS::AccountId}:execution:${AWS::StackName}-archive/*"
+            # CopyObject reads from the Access Point and writes to the archive (and second) bucket.
+            - Effect: Allow
+              Action: ["s3:GetObject"]
+              Resource:
+                - !Sub "${AccessPointArn}/object/*"
+                - !Sub "arn:aws:s3:::${AccessPointAlias}/*"
+            - Effect: Allow
+              Action: ["s3:GetObject", "s3:PutObject"]
+              Resource: !Sub "arn:aws:s3:::${ArchiveBucketName}/*"
+            - Effect: Allow
+              Action: ["s3:ListBucket"]
+              Resource: !Sub "arn:aws:s3:::${ArchiveBucketName}"
+            - !If
+              - HasSecondCopy
+              - Effect: Allow
+                Action: ["s3:GetObject", "s3:PutObject"]
+                Resource: !Sub "arn:aws:s3:::${SecondCopyBucketName}/*"
+              - !Ref AWS::NoValue
+            - !If
+              - UseKms
+              - Effect: Allow
+                Action: ["kms:GenerateDataKey", "kms:Decrypt"]
+                Resource: !Ref ArchiveBucketKmsKeyArn
+              - !Ref AWS::NoValue
+            - !If
+              - UseFargate
+              - Effect: Allow
+                Action: ["ecs:RunTask"]
+                Resource: !Ref FargateTaskDefinition
+              - !Ref AWS::NoValue
+            - !If
+              - UseFargate
+              - Effect: Allow
+                Action: ["ecs:StopTask", "ecs:DescribeTasks"]
+                Resource: !Sub "arn:${AWS::Partition}:ecs:${AWS::Region}:${AWS::AccountId}:task/${AWS::StackName}-archive/*"
+              - !Ref AWS::NoValue
+            - !If
+              - UseFargate
+              - Effect: Allow
+                Action: ["iam:PassRole"]
+                Resource:
+                  - !GetAtt FargateExecutionRole.Arn
+                  - !GetAtt FargateTaskRole.Arn
+              - !Ref AWS::NoValue
+            - !If
+              - UseFargate
+              - Effect: Allow
+                Action: ["events:PutTargets", "events:PutRule", "events:DescribeRule"]
+                Resource: !Sub "arn:${AWS::Partition}:events:${AWS::Region}:${AWS::AccountId}:rule/StepFunctionsGetEventsForECSTaskRule"
+              - !Ref AWS::NoValue
+      Tags:
+        UseCase: archive-verify-delete
+        Phase: data-lifecycle
+
+  RestoreStateMachine:
+    Type: AWS::Serverless::StateMachine
+    Properties:
+      Name: !Sub "${AWS::StackName}-restore"
+      DefinitionUri: statemachine/restore.asl.json
+      DefinitionSubstitutions:
+        RestoreFunctionArn: !GetAtt RestoreFunction.Arn
+        EcsClusterArn: !If [UseFargate, !GetAtt EcsCluster.Arn, !Sub "arn:${AWS::Partition}:ecs:${AWS::Region}:${AWS::AccountId}:cluster/fargate-not-deployed"]
+        TaskDefinitionArn: !If [UseFargate, !Ref FargateTaskDefinition, !Sub "arn:${AWS::Partition}:ecs:${AWS::Region}:${AWS::AccountId}:task-definition/fargate-not-deployed:1"]
+      Tracing:
+        Enabled: true
+      Policies:
+        - LambdaInvokePolicy:
+            FunctionName: !Ref RestoreFunction
+        - Statement:
+            - Effect: Allow
+              Action: ["states:StartExecution"]
+              Resource: !Sub "arn:${AWS::Partition}:states:${AWS::Region}:${AWS::AccountId}:stateMachine:${AWS::StackName}-restore"
+            - Effect: Allow
+              Action: ["states:DescribeExecution", "states:StopExecution"]
+              Resource: !Sub "arn:${AWS::Partition}:states:${AWS::Region}:${AWS::AccountId}:execution:${AWS::StackName}-restore/*"
+            - Effect: Allow
+              Action: ["s3:GetObject", "s3:RestoreObject"]
+              Resource: !Sub "arn:aws:s3:::${ArchiveBucketName}/*"
+            - Effect: Allow
+              Action: ["s3:PutObject"]
+              Resource: !Sub "arn:aws:s3:::${ArchiveBucketName}/manifests/*"
+            - Effect: Allow
+              Action: ["s3:ListBucket"]
+              Resource: !Sub "arn:aws:s3:::${ArchiveBucketName}"
+            # CopyObject writes the restored file back through the Access Point.
+            - Effect: Allow
+              Action: ["s3:PutObject"]
+              Resource:
+                - !Sub "${AccessPointArn}/object/*"
+                - !Sub "arn:aws:s3:::${AccessPointAlias}/*"
+            - !If
+              - UseKms
+              - Effect: Allow
+                Action: ["kms:GenerateDataKey", "kms:Decrypt"]
+                Resource: !Ref ArchiveBucketKmsKeyArn
+              - !Ref AWS::NoValue
+            - !If
+              - UseFargate
+              - Effect: Allow
+                Action: ["ecs:RunTask"]
+                Resource: !Ref FargateTaskDefinition
+              - !Ref AWS::NoValue
+            - !If
+              - UseFargate
+              - Effect: Allow
+                Action: ["ecs:StopTask", "ecs:DescribeTasks"]
+                Resource: !Sub "arn:${AWS::Partition}:ecs:${AWS::Region}:${AWS::AccountId}:task/${AWS::StackName}-archive/*"
+              - !Ref AWS::NoValue
+            - !If
+              - UseFargate
+              - Effect: Allow
+                Action: ["iam:PassRole"]
+                Resource:
+                  - !GetAtt FargateExecutionRole.Arn
+                  - !GetAtt FargateTaskRole.Arn
+              - !Ref AWS::NoValue
+            - !If
+              - UseFargate
+              - Effect: Allow
+                Action: ["events:PutTargets", "events:PutRule", "events:DescribeRule"]
+                Resource: !Sub "arn:${AWS::Partition}:events:${AWS::Region}:${AWS::AccountId}:rule/StepFunctionsGetEventsForECSTaskRule"
+              - !Ref AWS::NoValue
+      Tags:
+        UseCase: archive-verify-delete
+        Phase: data-lifecycle
+
+  # ---------------------------------------------------------------
+  # Failure notification
+  # ---------------------------------------------------------------
+  ExecutionFailureRule:
+    Type: AWS::Events::Rule
+    Properties:
+      Description: Notify when an archive or restore execution fails, times out or is aborted
+      EventPattern:
+        source: ["aws.states"]
+        detail-type: ["Step Functions Execution Status Change"]
+        detail:
+          status: ["FAILED", "TIMED_OUT", "ABORTED"]
+          stateMachineArn:
+            - !Ref ArchiveStateMachine
+            - !Ref RestoreStateMachine
+      Targets:
+        - Arn: !Ref NotificationTopic
+          Id: SnsFailureTarget
+
+  NotificationTopicPolicy:
+    Type: AWS::SNS::TopicPolicy
+    Properties:
+      Topics:
+        - !Ref NotificationTopic
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: AllowEventBridgePublish
+            Effect: Allow
+            Principal:
+              Service: events.amazonaws.com
+            Action: sns:Publish
+            Resource: !Ref NotificationTopic
+            Condition:
+              ArnEquals:
+                "aws:SourceArn": !GetAtt ExecutionFailureRule.Arn
+
+Outputs:
+  ArchiveStateMachineArn:
+    Description: 'Start with {"olderThanDays": N, "prefix": "..."}. dryRun defaults to true.'
+    Value: !Ref ArchiveStateMachine
+  RestoreStateMachineArn:
+    Description: 'Start with {"runId": "...", "keys": [...] or "prefix": "..."}, optional tier and days.'
+    Value: !Ref RestoreStateMachine
+  ArchiveBucketName:
+    Value: !Ref ArchiveBucket
+  LedgerTableName:
+    Value: !Ref LedgerTable
+  NotificationTopicArn:
+    Value: !Ref NotificationTopic

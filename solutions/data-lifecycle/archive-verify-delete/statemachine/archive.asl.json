@@ -1,0 +1,1214 @@
+{
+  "Comment": "Archive: select, record, copy, verify, approve, delete. dryRun defaults to true.",
+  "StartAt": "Plan",
+  "States": {
+    "Plan": {
+      "Type": "Task",
+      "Resource": "${SelectFunctionArn}",
+      "Parameters": {
+        "action": "plan",
+        "input.$": "$",
+        "executionName.$": "$$.Execution.Name"
+      },
+      "ResultPath": "$.plan",
+      "Retry": [
+        {
+          "ErrorEquals": [
+            "Lambda.ServiceException",
+            "Lambda.AWSLambdaException",
+            "Lambda.SdkClientException",
+            "Lambda.TooManyRequestsException",
+            "S3ApHelperError"
+          ],
+          "IntervalSeconds": 5,
+          "MaxAttempts": 3,
+          "BackoffRate": 2.0
+        }
+      ],
+      "Catch": [
+        {
+          "ErrorEquals": [
+            "States.ALL"
+          ],
+          "ResultPath": "$.error",
+          "Next": "FailInvalidInput"
+        }
+      ],
+      "Next": "ChooseSelection"
+    },
+    "ChooseSelection": {
+      "Type": "Choice",
+      "Choices": [
+        {
+          "Variable": "$.plan.selection",
+          "StringEquals": "ATIME",
+          "Next": "AtimeCandidates"
+        }
+      ],
+      "Default": "SelectMtime"
+    },
+    "SelectMtime": {
+      "Type": "Task",
+      "Resource": "${SelectFunctionArn}",
+      "Parameters": {
+        "action": "list",
+        "runId.$": "$.plan.runId",
+        "prefix.$": "$.plan.prefix",
+        "olderThanDays.$": "$.plan.olderThanDays",
+        "maxFiles.$": "$.plan.maxFiles"
+      },
+      "ResultPath": "$.selected",
+      "Retry": [
+        {
+          "ErrorEquals": [
+            "Lambda.ServiceException",
+            "Lambda.AWSLambdaException",
+            "Lambda.SdkClientException",
+            "Lambda.TooManyRequestsException",
+            "S3ApHelperError"
+          ],
+          "IntervalSeconds": 5,
+          "MaxAttempts": 3,
+          "BackoffRate": 2.0
+        }
+      ],
+      "Catch": [
+        {
+          "ErrorEquals": [
+            "States.ALL"
+          ],
+          "ResultPath": "$.error",
+          "Next": "FailSelect"
+        }
+      ],
+      "Next": "CheckCount"
+    },
+    "AtimeCandidates": {
+      "Type": "Task",
+      "Resource": "${OntapFunctionArn}",
+      "Parameters": {
+        "action": "candidates",
+        "runId.$": "$.plan.runId",
+        "prefix.$": "$.plan.prefix",
+        "olderThanDays.$": "$.plan.olderThanDays",
+        "maxFiles.$": "$.plan.maxFiles"
+      },
+      "ResultPath": "$.candidates",
+      "Retry": [
+        {
+          "ErrorEquals": [
+            "Lambda.ServiceException",
+            "Lambda.AWSLambdaException",
+            "Lambda.SdkClientException",
+            "Lambda.TooManyRequestsException",
+            "S3ApHelperError"
+          ],
+          "IntervalSeconds": 5,
+          "MaxAttempts": 3,
+          "BackoffRate": 2.0
+        }
+      ],
+      "Catch": [
+        {
+          "ErrorEquals": [
+            "States.ALL"
+          ],
+          "ResultPath": "$.error",
+          "Next": "FailSelect"
+        }
+      ],
+      "Next": "SelectFromCandidates"
+    },
+    "SelectFromCandidates": {
+      "Type": "Task",
+      "Resource": "${SelectFunctionArn}",
+      "Parameters": {
+        "action": "from_candidates",
+        "runId.$": "$.plan.runId",
+        "maxFiles.$": "$.plan.maxFiles"
+      },
+      "ResultPath": "$.selected",
+      "Retry": [
+        {
+          "ErrorEquals": [
+            "Lambda.ServiceException",
+            "Lambda.AWSLambdaException",
+            "Lambda.SdkClientException",
+            "Lambda.TooManyRequestsException",
+            "S3ApHelperError"
+          ],
+          "IntervalSeconds": 5,
+          "MaxAttempts": 3,
+          "BackoffRate": 2.0
+        }
+      ],
+      "Catch": [
+        {
+          "ErrorEquals": [
+            "States.ALL"
+          ],
+          "ResultPath": "$.error",
+          "Next": "FailSelect"
+        }
+      ],
+      "Next": "CheckCount"
+    },
+    "CheckCount": {
+      "Type": "Choice",
+      "Choices": [
+        {
+          "Variable": "$.selected.count",
+          "NumericGreaterThan": 0,
+          "Next": "ProcessFiles"
+        }
+      ],
+      "Default": "SummarizeNoFiles"
+    },
+    "ProcessFiles": {
+      "Type": "Map",
+      "ItemReader": {
+        "Resource": "arn:aws:states:::s3:getObject",
+        "ReaderConfig": {
+          "InputType": "JSON"
+        },
+        "Parameters": {
+          "Bucket.$": "$.selected.bucket",
+          "Key.$": "$.selected.key"
+        }
+      },
+      "ItemSelector": {
+        "item.$": "$$.Map.Item.Value",
+        "plan.$": "$.plan"
+      },
+      "MaxConcurrencyPath": "$.plan.config.mapConcurrency",
+      "ToleratedFailurePercentage": 100,
+      "ItemProcessor": {
+        "ProcessorConfig": {
+          "Mode": "DISTRIBUTED",
+          "ExecutionType": "STANDARD"
+        },
+        "StartAt": "CaptureChoice",
+        "States": {
+          "CaptureChoice": {
+            "Type": "Choice",
+            "Choices": [
+              {
+                "Variable": "$.item.attrs",
+                "IsPresent": true,
+                "Next": "UseItemAttrs"
+              },
+              {
+                "Variable": "$.plan.captureAttributes",
+                "StringEquals": "ONTAP_REST",
+                "Next": "FetchAttributes"
+              }
+            ],
+            "Default": "NoAttrs"
+          },
+          "UseItemAttrs": {
+            "Type": "Pass",
+            "InputPath": "$.item.attrs",
+            "ResultPath": "$.attrs",
+            "Next": "Record"
+          },
+          "NoAttrs": {
+            "Type": "Pass",
+            "Result": {},
+            "ResultPath": "$.attrs",
+            "Next": "Record"
+          },
+          "FetchAttributes": {
+            "Type": "Task",
+            "Resource": "${OntapFunctionArn}",
+            "Parameters": {
+              "action": "attributes",
+              "key.$": "$.item.key"
+            },
+            "ResultPath": "$.attrs",
+            "Retry": [
+              {
+                "ErrorEquals": [
+                  "Lambda.ServiceException",
+                  "Lambda.AWSLambdaException",
+                  "Lambda.SdkClientException",
+                  "Lambda.TooManyRequestsException",
+                  "S3ApHelperError"
+                ],
+                "IntervalSeconds": 5,
+                "MaxAttempts": 3,
+                "BackoffRate": 2.0
+              }
+            ],
+            "Catch": [
+              {
+                "ErrorEquals": [
+                  "States.ALL"
+                ],
+                "ResultPath": "$.error",
+                "Next": "MarkFailed"
+              }
+            ],
+            "Next": "Record"
+          },
+          "Record": {
+            "Type": "Task",
+            "Resource": "${RecordFunctionArn}",
+            "Parameters": {
+              "runId.$": "$.plan.runId",
+              "item.$": "$.item",
+              "attrs.$": "$.attrs",
+              "storageClass.$": "$.plan.storageClass"
+            },
+            "ResultPath": "$.record",
+            "Retry": [
+              {
+                "ErrorEquals": [
+                  "Lambda.ServiceException",
+                  "Lambda.AWSLambdaException",
+                  "Lambda.SdkClientException",
+                  "Lambda.TooManyRequestsException",
+                  "S3ApHelperError"
+                ],
+                "IntervalSeconds": 5,
+                "MaxAttempts": 3,
+                "BackoffRate": 2.0
+              }
+            ],
+            "Catch": [
+              {
+                "ErrorEquals": [
+                  "States.ALL"
+                ],
+                "ResultPath": "$.error",
+                "Next": "MarkFailed"
+              }
+            ],
+            "Next": "RecordChoice"
+          },
+          "RecordChoice": {
+            "Type": "Choice",
+            "Choices": [
+              {
+                "Variable": "$.record.status",
+                "StringEquals": "RECORDED",
+                "Next": "SizeChoice"
+              }
+            ],
+            "Default": "ItemDone"
+          },
+          "SizeChoice": {
+            "Type": "Choice",
+            "Choices": [
+              {
+                "Variable": "$.record.isLarge",
+                "BooleanEquals": true,
+                "Next": "BuildArchivePayload"
+              }
+            ],
+            "Default": "CopyArchive"
+          },
+          "CopyArchive": {
+            "Type": "Task",
+            "Resource": "arn:aws:states:::aws-sdk:s3:copyObject",
+            "Parameters": {
+              "Bucket.$": "$.record.copy.bucket",
+              "Key.$": "$.record.copy.key",
+              "CopySource.$": "$.record.copy.copySource",
+              "CopySourceIfMatch.$": "$.record.copy.ifMatch",
+              "ChecksumAlgorithm": "SHA256",
+              "StorageClass.$": "$.record.copy.storageClass",
+              "MetadataDirective": "REPLACE",
+              "ContentType.$": "$.record.copy.contentType",
+              "Metadata.$": "$.record.copy.metadata"
+            },
+            "ResultPath": "$.copied",
+            "Retry": [
+              {
+                "ErrorEquals": [
+                  "S3.SdkClientException",
+                  "S3.SlowDownException",
+                  "States.Timeout"
+                ],
+                "IntervalSeconds": 5,
+                "MaxAttempts": 3,
+                "BackoffRate": 2.0
+              }
+            ],
+            "Catch": [
+              {
+                "ErrorEquals": [
+                  "States.ALL"
+                ],
+                "ResultPath": "$.error",
+                "Next": "MarkFailed"
+              }
+            ],
+            "Next": "HeadArchived"
+          },
+          "BuildArchivePayload": {
+            "Type": "Pass",
+            "Parameters": {
+              "runId.$": "$.plan.runId",
+              "item.$": "$.item",
+              "copy.$": "$.record.copy"
+            },
+            "ResultPath": "$.fargatePayload",
+            "Next": "ArchiveLarge"
+          },
+          "ArchiveLarge": {
+            "Type": "Task",
+            "Resource": "arn:aws:states:::ecs:runTask.sync",
+            "Parameters": {
+              "LaunchType": "FARGATE",
+              "Cluster": "${EcsClusterArn}",
+              "TaskDefinition": "${TaskDefinitionArn}",
+              "NetworkConfiguration": {
+                "AwsvpcConfiguration": {
+                  "Subnets.$": "$.plan.config.fargateSubnets",
+                  "SecurityGroups.$": "$.plan.config.fargateSecurityGroups",
+                  "AssignPublicIp.$": "$.plan.config.fargateAssignPublicIp"
+                }
+              },
+              "Overrides": {
+                "ContainerOverrides": [
+                  {
+                    "Name": "archive-task",
+                    "Environment": [
+                      {
+                        "Name": "TASK_MODE",
+                        "Value": "archive"
+                      },
+                      {
+                        "Name": "TASK_INPUT",
+                        "Value.$": "States.JsonToString($.fargatePayload)"
+                      }
+                    ]
+                  }
+                ]
+              }
+            },
+            "ResultSelector": {
+              "stopCode.$": "$.StopCode"
+            },
+            "ResultPath": "$.fargate",
+            "Retry": [
+              {
+                "ErrorEquals": [
+                  "ECS.AmazonECSException",
+                  "States.Timeout"
+                ],
+                "IntervalSeconds": 30,
+                "MaxAttempts": 2,
+                "BackoffRate": 2.0
+              }
+            ],
+            "Catch": [
+              {
+                "ErrorEquals": [
+                  "States.ALL"
+                ],
+                "ResultPath": "$.error",
+                "Next": "MarkFailed"
+              }
+            ],
+            "Next": "HeadArchived"
+          },
+          "HeadArchived": {
+            "Type": "Task",
+            "Resource": "arn:aws:states:::aws-sdk:s3:headObject",
+            "Parameters": {
+              "Bucket.$": "$.record.copy.bucket",
+              "Key.$": "$.record.copy.key",
+              "ChecksumMode": "ENABLED"
+            },
+            "ResultPath": "$.head",
+            "Retry": [
+              {
+                "ErrorEquals": [
+                  "S3.SdkClientException",
+                  "S3.SlowDownException",
+                  "States.Timeout"
+                ],
+                "IntervalSeconds": 5,
+                "MaxAttempts": 3,
+                "BackoffRate": 2.0
+              }
+            ],
+            "Catch": [
+              {
+                "ErrorEquals": [
+                  "States.ALL"
+                ],
+                "ResultPath": "$.error",
+                "Next": "MarkFailed"
+              }
+            ],
+            "Next": "CompareArchive"
+          },
+          "CompareArchive": {
+            "Type": "Task",
+            "Resource": "${LedgerFunctionArn}",
+            "Parameters": {
+              "action": "compare",
+              "runId.$": "$.plan.runId",
+              "key.$": "$.item.key",
+              "head.$": "$.head",
+              "target": "archive"
+            },
+            "ResultPath": "$.compare",
+            "Retry": [
+              {
+                "ErrorEquals": [
+                  "Lambda.ServiceException",
+                  "Lambda.AWSLambdaException",
+                  "Lambda.SdkClientException",
+                  "Lambda.TooManyRequestsException",
+                  "S3ApHelperError"
+                ],
+                "IntervalSeconds": 5,
+                "MaxAttempts": 3,
+                "BackoffRate": 2.0
+              }
+            ],
+            "Catch": [
+              {
+                "ErrorEquals": [
+                  "States.ALL"
+                ],
+                "ResultPath": "$.error",
+                "Next": "MarkFailed"
+              }
+            ],
+            "Next": "VerifiedChoice"
+          },
+          "VerifiedChoice": {
+            "Type": "Choice",
+            "Choices": [
+              {
+                "Variable": "$.compare.verified",
+                "BooleanEquals": true,
+                "Next": "SecondCopyChoice"
+              }
+            ],
+            "Default": "ItemDone"
+          },
+          "SecondCopyChoice": {
+            "Type": "Choice",
+            "Choices": [
+              {
+                "Variable": "$.record.secondCopy",
+                "IsPresent": true,
+                "Next": "SecondSizeChoice"
+              }
+            ],
+            "Default": "ItemDone"
+          },
+          "SecondSizeChoice": {
+            "Type": "Choice",
+            "Choices": [
+              {
+                "Variable": "$.record.isLarge",
+                "BooleanEquals": true,
+                "Next": "BuildSecondPayload"
+              }
+            ],
+            "Default": "CopySecond"
+          },
+          "CopySecond": {
+            "Type": "Task",
+            "Resource": "arn:aws:states:::aws-sdk:s3:copyObject",
+            "Parameters": {
+              "Bucket.$": "$.record.secondCopy.bucket",
+              "Key.$": "$.record.secondCopy.key",
+              "CopySource.$": "$.record.secondCopy.copySource",
+              "CopySourceIfMatch.$": "$.record.secondCopy.ifMatch",
+              "ChecksumAlgorithm": "SHA256",
+              "StorageClass.$": "$.record.secondCopy.storageClass",
+              "MetadataDirective": "REPLACE",
+              "ContentType.$": "$.record.secondCopy.contentType",
+              "Metadata.$": "$.record.secondCopy.metadata"
+            },
+            "ResultPath": "$.copiedSecond",
+            "Retry": [
+              {
+                "ErrorEquals": [
+                  "S3.SdkClientException",
+                  "S3.SlowDownException",
+                  "States.Timeout"
+                ],
+                "IntervalSeconds": 5,
+                "MaxAttempts": 3,
+                "BackoffRate": 2.0
+              }
+            ],
+            "Catch": [
+              {
+                "ErrorEquals": [
+                  "States.ALL"
+                ],
+                "ResultPath": "$.error",
+                "Next": "MarkFailed"
+              }
+            ],
+            "Next": "HeadSecond"
+          },
+          "BuildSecondPayload": {
+            "Type": "Pass",
+            "Parameters": {
+              "runId.$": "$.plan.runId",
+              "item.$": "$.item",
+              "secondCopy.$": "$.record.secondCopy"
+            },
+            "ResultPath": "$.fargatePayload",
+            "Next": "SecondLarge"
+          },
+          "SecondLarge": {
+            "Type": "Task",
+            "Resource": "arn:aws:states:::ecs:runTask.sync",
+            "Parameters": {
+              "LaunchType": "FARGATE",
+              "Cluster": "${EcsClusterArn}",
+              "TaskDefinition": "${TaskDefinitionArn}",
+              "NetworkConfiguration": {
+                "AwsvpcConfiguration": {
+                  "Subnets.$": "$.plan.config.fargateSubnets",
+                  "SecurityGroups.$": "$.plan.config.fargateSecurityGroups",
+                  "AssignPublicIp.$": "$.plan.config.fargateAssignPublicIp"
+                }
+              },
+              "Overrides": {
+                "ContainerOverrides": [
+                  {
+                    "Name": "archive-task",
+                    "Environment": [
+                      {
+                        "Name": "TASK_MODE",
+                        "Value": "second"
+                      },
+                      {
+                        "Name": "TASK_INPUT",
+                        "Value.$": "States.JsonToString($.fargatePayload)"
+                      }
+                    ]
+                  }
+                ]
+              }
+            },
+            "ResultSelector": {
+              "stopCode.$": "$.StopCode"
+            },
+            "ResultPath": "$.fargate",
+            "Retry": [
+              {
+                "ErrorEquals": [
+                  "ECS.AmazonECSException",
+                  "States.Timeout"
+                ],
+                "IntervalSeconds": 30,
+                "MaxAttempts": 2,
+                "BackoffRate": 2.0
+              }
+            ],
+            "Catch": [
+              {
+                "ErrorEquals": [
+                  "States.ALL"
+                ],
+                "ResultPath": "$.error",
+                "Next": "MarkFailed"
+              }
+            ],
+            "Next": "HeadSecond"
+          },
+          "HeadSecond": {
+            "Type": "Task",
+            "Resource": "arn:aws:states:::aws-sdk:s3:headObject",
+            "Parameters": {
+              "Bucket.$": "$.record.secondCopy.bucket",
+              "Key.$": "$.record.secondCopy.key",
+              "ChecksumMode": "ENABLED"
+            },
+            "ResultPath": "$.headSecond",
+            "Retry": [
+              {
+                "ErrorEquals": [
+                  "S3.SdkClientException",
+                  "S3.SlowDownException",
+                  "States.Timeout"
+                ],
+                "IntervalSeconds": 5,
+                "MaxAttempts": 3,
+                "BackoffRate": 2.0
+              }
+            ],
+            "Catch": [
+              {
+                "ErrorEquals": [
+                  "States.ALL"
+                ],
+                "ResultPath": "$.error",
+                "Next": "MarkFailed"
+              }
+            ],
+            "Next": "CompareSecond"
+          },
+          "CompareSecond": {
+            "Type": "Task",
+            "Resource": "${LedgerFunctionArn}",
+            "Parameters": {
+              "action": "compare",
+              "runId.$": "$.plan.runId",
+              "key.$": "$.item.key",
+              "head.$": "$.headSecond",
+              "target": "second"
+            },
+            "ResultPath": "$.compareSecond",
+            "Retry": [
+              {
+                "ErrorEquals": [
+                  "Lambda.ServiceException",
+                  "Lambda.AWSLambdaException",
+                  "Lambda.SdkClientException",
+                  "Lambda.TooManyRequestsException",
+                  "S3ApHelperError"
+                ],
+                "IntervalSeconds": 5,
+                "MaxAttempts": 3,
+                "BackoffRate": 2.0
+              }
+            ],
+            "Catch": [
+              {
+                "ErrorEquals": [
+                  "States.ALL"
+                ],
+                "ResultPath": "$.error",
+                "Next": "MarkFailed"
+              }
+            ],
+            "Next": "ItemDone"
+          },
+          "MarkFailed": {
+            "Type": "Task",
+            "Resource": "${LedgerFunctionArn}",
+            "Parameters": {
+              "action": "mark",
+              "runId.$": "$.plan.runId",
+              "key.$": "$.item.key",
+              "error.$": "States.JsonToString($.error)"
+            },
+            "ResultPath": "$.marked",
+            "Retry": [
+              {
+                "ErrorEquals": [
+                  "Lambda.ServiceException",
+                  "Lambda.AWSLambdaException",
+                  "Lambda.SdkClientException",
+                  "Lambda.TooManyRequestsException",
+                  "S3ApHelperError"
+                ],
+                "IntervalSeconds": 5,
+                "MaxAttempts": 3,
+                "BackoffRate": 2.0
+              }
+            ],
+            "Catch": [
+              {
+                "ErrorEquals": [
+                  "States.ALL"
+                ],
+                "ResultPath": "$.error",
+                "Next": "ItemDone"
+              }
+            ],
+            "Next": "ItemDone"
+          },
+          "ItemDone": {
+            "Type": "Pass",
+            "Parameters": {
+              "key.$": "$.item.key"
+            },
+            "End": true
+          }
+        }
+      },
+      "ResultWriter": {
+        "Resource": "arn:aws:states:::s3:putObject",
+        "Parameters": {
+          "Bucket.$": "$.selected.bucket",
+          "Prefix.$": "States.Format('manifests/{}-map-results', $.plan.runId)"
+        }
+      },
+      "ResultPath": "$.processed",
+      "Retry": [
+        {
+          "ErrorEquals": [
+            "States.Timeout"
+          ],
+          "IntervalSeconds": 30,
+          "MaxAttempts": 1,
+          "BackoffRate": 2.0
+        }
+      ],
+      "Catch": [
+        {
+          "ErrorEquals": [
+            "States.ALL"
+          ],
+          "ResultPath": "$.error",
+          "Next": "SummarizeFailed"
+        }
+      ],
+      "Next": "PrepareManifest"
+    },
+    "PrepareManifest": {
+      "Type": "Task",
+      "Resource": "${ApprovalFunctionArn}",
+      "Parameters": {
+        "action": "prepare",
+        "runId.$": "$.plan.runId",
+        "dryRun.$": "$.plan.dryRun",
+        "storageClass.$": "$.plan.storageClass"
+      },
+      "ResultPath": "$.prepared",
+      "Retry": [
+        {
+          "ErrorEquals": [
+            "Lambda.ServiceException",
+            "Lambda.AWSLambdaException",
+            "Lambda.SdkClientException",
+            "Lambda.TooManyRequestsException",
+            "S3ApHelperError"
+          ],
+          "IntervalSeconds": 5,
+          "MaxAttempts": 3,
+          "BackoffRate": 2.0
+        }
+      ],
+      "Catch": [
+        {
+          "ErrorEquals": [
+            "States.ALL"
+          ],
+          "ResultPath": "$.error",
+          "Next": "SummarizeFailed"
+        }
+      ],
+      "Next": "ManifestChoice"
+    },
+    "ManifestChoice": {
+      "Type": "Choice",
+      "Choices": [
+        {
+          "Variable": "$.prepared.count",
+          "NumericGreaterThan": 0,
+          "Next": "RequestApproval"
+        }
+      ],
+      "Default": "SummarizeNoVerified"
+    },
+    "RequestApproval": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::lambda:invoke.waitForTaskToken",
+      "Parameters": {
+        "FunctionName": "${ApprovalFunctionArn}",
+        "Payload": {
+          "action": "request",
+          "runId.$": "$.plan.runId",
+          "taskToken.$": "$$.Task.Token",
+          "prepared.$": "$.prepared",
+          "dryRun.$": "$.plan.dryRun",
+          "executionArn.$": "$$.Execution.Id"
+        }
+      },
+      "TimeoutSecondsPath": "$.plan.config.approvalTimeoutSeconds",
+      "ResultPath": "$.approval",
+      "Retry": [
+        {
+          "ErrorEquals": [
+            "Lambda.ServiceException",
+            "Lambda.AWSLambdaException",
+            "Lambda.SdkClientException",
+            "Lambda.TooManyRequestsException"
+          ],
+          "IntervalSeconds": 5,
+          "MaxAttempts": 3,
+          "BackoffRate": 2.0
+        }
+      ],
+      "Catch": [
+        {
+          "ErrorEquals": [
+            "States.ALL"
+          ],
+          "ResultPath": "$.error",
+          "Next": "SummarizeRejected"
+        }
+      ],
+      "Next": "ApprovalCheck"
+    },
+    "ApprovalCheck": {
+      "Type": "Choice",
+      "Choices": [
+        {
+          "And": [
+            {
+              "Variable": "$.approval.approved",
+              "IsPresent": true
+            },
+            {
+              "Variable": "$.approval.approved",
+              "BooleanEquals": true
+            },
+            {
+              "Variable": "$.approval.approver",
+              "IsPresent": true
+            },
+            {
+              "Variable": "$.approval.approver",
+              "IsString": true
+            }
+          ],
+          "Next": "DryRunChoice"
+        }
+      ],
+      "Default": "SummarizeRejected"
+    },
+    "DryRunChoice": {
+      "Type": "Choice",
+      "Choices": [
+        {
+          "Variable": "$.plan.dryRun",
+          "BooleanEquals": false,
+          "Next": "DeleteFiles"
+        }
+      ],
+      "Default": "SummarizeDryRun"
+    },
+    "DeleteFiles": {
+      "Type": "Map",
+      "ItemReader": {
+        "Resource": "arn:aws:states:::s3:getObject",
+        "ReaderConfig": {
+          "InputType": "JSON"
+        },
+        "Parameters": {
+          "Bucket.$": "$.prepared.bucket",
+          "Key.$": "$.prepared.itemsKey"
+        }
+      },
+      "ItemSelector": {
+        "key.$": "$$.Map.Item.Value.key",
+        "runId.$": "$.plan.runId",
+        "dryRun.$": "$.plan.dryRun",
+        "approvedBy.$": "$.approval.approver"
+      },
+      "MaxConcurrencyPath": "$.plan.config.mapConcurrency",
+      "ToleratedFailurePercentage": 100,
+      "ItemProcessor": {
+        "ProcessorConfig": {
+          "Mode": "DISTRIBUTED",
+          "ExecutionType": "STANDARD"
+        },
+        "StartAt": "DeleteOne",
+        "States": {
+          "DeleteOne": {
+            "Type": "Task",
+            "Resource": "${DeleteFunctionArn}",
+            "Retry": [
+              {
+                "ErrorEquals": [
+                  "Lambda.ServiceException",
+                  "Lambda.AWSLambdaException",
+                  "Lambda.SdkClientException",
+                  "Lambda.TooManyRequestsException",
+                  "S3ApHelperError"
+                ],
+                "IntervalSeconds": 5,
+                "MaxAttempts": 3,
+                "BackoffRate": 2.0
+              }
+            ],
+            "Catch": [
+              {
+                "ErrorEquals": [
+                  "States.ALL"
+                ],
+                "ResultPath": "$.error",
+                "Next": "DeleteFailed"
+              }
+            ],
+            "End": true
+          },
+          "DeleteFailed": {
+            "Type": "Pass",
+            "Parameters": {
+              "key.$": "$.key",
+              "outcome": "FAILED"
+            },
+            "End": true
+          }
+        }
+      },
+      "ResultWriter": {
+        "Resource": "arn:aws:states:::s3:putObject",
+        "Parameters": {
+          "Bucket.$": "$.prepared.bucket",
+          "Prefix.$": "States.Format('manifests/{}-delete-results', $.plan.runId)"
+        }
+      },
+      "ResultPath": "$.deleted",
+      "Retry": [
+        {
+          "ErrorEquals": [
+            "States.Timeout"
+          ],
+          "IntervalSeconds": 30,
+          "MaxAttempts": 1,
+          "BackoffRate": 2.0
+        }
+      ],
+      "Catch": [
+        {
+          "ErrorEquals": [
+            "States.ALL"
+          ],
+          "ResultPath": "$.error",
+          "Next": "SummarizeFailed"
+        }
+      ],
+      "Next": "SummarizeCompleted"
+    },
+    "SummarizeNoFiles": {
+      "Type": "Task",
+      "Resource": "${SummarizeFunctionArn}",
+      "Parameters": {
+        "runId.$": "$.plan.runId",
+        "outcome": "NO_FILES",
+        "storageClass.$": "$.plan.storageClass",
+        "dryRun.$": "$.plan.dryRun",
+        "skippedLarge.$": "$.selected.skippedLarge"
+      },
+      "ResultPath": "$.summary",
+      "Retry": [
+        {
+          "ErrorEquals": [
+            "Lambda.ServiceException",
+            "Lambda.AWSLambdaException",
+            "Lambda.SdkClientException",
+            "Lambda.TooManyRequestsException",
+            "S3ApHelperError"
+          ],
+          "IntervalSeconds": 5,
+          "MaxAttempts": 3,
+          "BackoffRate": 2.0
+        }
+      ],
+      "Catch": [
+        {
+          "ErrorEquals": [
+            "States.ALL"
+          ],
+          "ResultPath": "$.error",
+          "Next": "FailSummary"
+        }
+      ],
+      "End": true
+    },
+    "SummarizeNoVerified": {
+      "Type": "Task",
+      "Resource": "${SummarizeFunctionArn}",
+      "Parameters": {
+        "runId.$": "$.plan.runId",
+        "outcome": "NO_VERIFIED_FILES",
+        "storageClass.$": "$.plan.storageClass",
+        "dryRun.$": "$.plan.dryRun",
+        "skippedLarge.$": "$.selected.skippedLarge"
+      },
+      "ResultPath": "$.summary",
+      "Retry": [
+        {
+          "ErrorEquals": [
+            "Lambda.ServiceException",
+            "Lambda.AWSLambdaException",
+            "Lambda.SdkClientException",
+            "Lambda.TooManyRequestsException",
+            "S3ApHelperError"
+          ],
+          "IntervalSeconds": 5,
+          "MaxAttempts": 3,
+          "BackoffRate": 2.0
+        }
+      ],
+      "Catch": [
+        {
+          "ErrorEquals": [
+            "States.ALL"
+          ],
+          "ResultPath": "$.error",
+          "Next": "FailSummary"
+        }
+      ],
+      "End": true
+    },
+    "SummarizeRejected": {
+      "Type": "Task",
+      "Resource": "${SummarizeFunctionArn}",
+      "Parameters": {
+        "runId.$": "$.plan.runId",
+        "outcome": "REJECTED_OR_TIMED_OUT",
+        "storageClass.$": "$.plan.storageClass",
+        "dryRun.$": "$.plan.dryRun",
+        "skippedLarge.$": "$.selected.skippedLarge"
+      },
+      "ResultPath": "$.summary",
+      "Retry": [
+        {
+          "ErrorEquals": [
+            "Lambda.ServiceException",
+            "Lambda.AWSLambdaException",
+            "Lambda.SdkClientException",
+            "Lambda.TooManyRequestsException",
+            "S3ApHelperError"
+          ],
+          "IntervalSeconds": 5,
+          "MaxAttempts": 3,
+          "BackoffRate": 2.0
+        }
+      ],
+      "Catch": [
+        {
+          "ErrorEquals": [
+            "States.ALL"
+          ],
+          "ResultPath": "$.error",
+          "Next": "FailSummary"
+        }
+      ],
+      "End": true
+    },
+    "SummarizeDryRun": {
+      "Type": "Task",
+      "Resource": "${SummarizeFunctionArn}",
+      "Parameters": {
+        "runId.$": "$.plan.runId",
+        "outcome": "DRY_RUN_COMPLETED",
+        "storageClass.$": "$.plan.storageClass",
+        "dryRun.$": "$.plan.dryRun",
+        "skippedLarge.$": "$.selected.skippedLarge"
+      },
+      "ResultPath": "$.summary",
+      "Retry": [
+        {
+          "ErrorEquals": [
+            "Lambda.ServiceException",
+            "Lambda.AWSLambdaException",
+            "Lambda.SdkClientException",
+            "Lambda.TooManyRequestsException",
+            "S3ApHelperError"
+          ],
+          "IntervalSeconds": 5,
+          "MaxAttempts": 3,
+          "BackoffRate": 2.0
+        }
+      ],
+      "Catch": [
+        {
+          "ErrorEquals": [
+            "States.ALL"
+          ],
+          "ResultPath": "$.error",
+          "Next": "FailSummary"
+        }
+      ],
+      "End": true
+    },
+    "SummarizeCompleted": {
+      "Type": "Task",
+      "Resource": "${SummarizeFunctionArn}",
+      "Parameters": {
+        "runId.$": "$.plan.runId",
+        "outcome": "COMPLETED",
+        "storageClass.$": "$.plan.storageClass",
+        "dryRun.$": "$.plan.dryRun",
+        "skippedLarge.$": "$.selected.skippedLarge"
+      },
+      "ResultPath": "$.summary",
+      "Retry": [
+        {
+          "ErrorEquals": [
+            "Lambda.ServiceException",
+            "Lambda.AWSLambdaException",
+            "Lambda.SdkClientException",
+            "Lambda.TooManyRequestsException",
+            "S3ApHelperError"
+          ],
+          "IntervalSeconds": 5,
+          "MaxAttempts": 3,
+          "BackoffRate": 2.0
+        }
+      ],
+      "Catch": [
+        {
+          "ErrorEquals": [
+            "States.ALL"
+          ],
+          "ResultPath": "$.error",
+          "Next": "FailSummary"
+        }
+      ],
+      "End": true
+    },
+    "SummarizeFailed": {
+      "Type": "Task",
+      "Resource": "${SummarizeFunctionArn}",
+      "Parameters": {
+        "runId.$": "$.plan.runId",
+        "outcome": "FAILED",
+        "storageClass.$": "$.plan.storageClass",
+        "dryRun.$": "$.plan.dryRun",
+        "skippedLarge.$": "$.selected.skippedLarge"
+      },
+      "ResultPath": "$.summary",
+      "Retry": [
+        {
+          "ErrorEquals": [
+            "Lambda.ServiceException",
+            "Lambda.AWSLambdaException",
+            "Lambda.SdkClientException",
+            "Lambda.TooManyRequestsException",
+            "S3ApHelperError"
+          ],
+          "IntervalSeconds": 5,
+          "MaxAttempts": 3,
+          "BackoffRate": 2.0
+        }
+      ],
+      "Catch": [
+        {
+          "ErrorEquals": [
+            "States.ALL"
+          ],
+          "ResultPath": "$.error",
+          "Next": "FailSummary"
+        }
+      ],
+      "End": true
+    },
+    "FailInvalidInput": {
+      "Type": "Fail",
+      "Error": "InvalidInput",
+      "Cause": "The start input was rejected. See the Plan state's error for the field."
+    },
+    "FailSelect": {
+      "Type": "Fail",
+      "Error": "SelectionFailed",
+      "Cause": "Selecting files failed. See the previous state's error."
+    },
+    "FailSummary": {
+      "Type": "Fail",
+      "Error": "SummaryFailed",
+      "Cause": "Writing the run summary failed. The ledger still holds the state of every file."
+    }
+  }
+}
