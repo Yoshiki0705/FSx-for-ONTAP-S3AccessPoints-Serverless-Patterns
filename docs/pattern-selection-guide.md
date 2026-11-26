@@ -99,6 +99,7 @@
 | 既存のワークフローを AI エージェントのツールにしたい | [stepfunctions-agentcore-tools](../solutions/genai/stepfunctions-agentcore-tools/) |
 | 日本語のスキャン文書を東京の Textract で OCR し、AI エージェントから使いたい | [japanese-document-ocr-agent](../solutions/genai/japanese-document-ocr-agent/) |
 | ERP に隣接するファイルワークフロー | [sap/erp-adjacent](../solutions/sap/erp-adjacent/) |
+| めったに読まれないファイルを S3 API だけで S3 Glacier 系へ移し、照合と承認の後に消したい | [data-lifecycle/archive-verify-delete](../solutions/data-lifecycle/archive-verify-delete/) |
 
 ---
 

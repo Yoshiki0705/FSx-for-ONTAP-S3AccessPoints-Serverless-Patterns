@@ -134,6 +134,7 @@ solutions/industry/transportation-maintenance
 solutions/industry/travel-document-processing
 solutions/industry/utilities-asset-inspection
 solutions/sap/erp-adjacent
+solutions/data-lifecycle/archive-verify-delete
 
 # The portal's Lambda handlers. These sit one level deeper than a pattern
 # (functions/<name>/tests/ rather than <pattern>/tests/), which is the only reason

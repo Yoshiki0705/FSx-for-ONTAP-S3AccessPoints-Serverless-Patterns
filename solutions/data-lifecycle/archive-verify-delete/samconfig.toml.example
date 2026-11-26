@@ -1,0 +1,64 @@
+# samconfig.toml.example — archive-verify-delete (data-lifecycle)
+#
+# Usage:
+#   1. Copy this file to samconfig.toml
+#   2. Replace every <PLACEHOLDER>
+#   3. sam build && sam deploy
+#   4. Attach the Access Point policy (README: tools/render_access_point_policy.py, then
+#      aws s3control put-access-point-policy) and confirm the email subscription
+#
+# samconfig.toml is in .gitignore.
+version = 0.1
+
+[default.deploy.parameters]
+stack_name = "fsxn-s3ap-archive-verify-delete"
+resolve_s3 = true
+s3_prefix = "fsxn-s3ap-archive-verify-delete"
+region = "ap-northeast-1"
+confirm_changeset = true
+capabilities = "CAPABILITY_IAM"
+disable_rollback = false
+parameter_overrides = [
+    # The Access Point is given in both forms. IAM needs the ARN form as well as the alias.
+    "AccessPointAlias=<YOUR_S3AP_ALIAS>-ext-s3alias",
+    "AccessPointArn=arn:aws:s3:ap-northeast-1:123456789012:accesspoint/<YOUR_S3AP_NAME>",
+    "ArchiveBucketName=<YOUR_ARCHIVE_BUCKET_NAME>",
+    "NotificationEmail=<YOUR_EMAIL>",
+    "ArchivePrefix=data/",
+    "EnableArchiveVersioning=false",
+    "LogRetentionInDays=90",
+    "ApprovalTimeoutHours=72",
+    "ApprovalValidityHours=24",
+    "LargeFileThresholdBytes=5368709120",
+    "MapConcurrency=1",
+    "MinFileSizeBytes=131072",
+    # ExcludePatterns is left out on purpose: the template default excludes VM images, database files and
+    # table-format metadata directories. An empty value (ExcludePatterns=) removes that protection.
+    "ExcludePrefixes=",
+    "RequireSeparateApprover=true",
+    "FargateTimeoutSeconds=7200",
+    "DataClassification=RESTRICTED",
+    "StateMachineLogLevel=ERROR",
+    "ApprovalAlarmHours=24",
+    "RestorePollMinutes=30",
+    "RestoreMaxWaitHours=72",
+    # Optional. Leave empty to disable.
+    "ArchiveBucketKmsKeyArn=",
+    "SecondCopyBucketName=",
+    # Optional: selection=ATIME and attribute capture (ONTAP REST API) and the Fargate task.
+    "VpcId=",
+    "SubnetIds=",
+    "OntapSecretArn=",
+    "OntapManagementIp=",
+    "VolumeUuid=",
+    "OntapVerifySsl=false",
+    "OntapPathPrefix=",
+    "FargateImageUri=",
+    "FargateAssignPublicIp=DISABLED",
+    "FargateCpu=2048",
+    "FargateMemory=8192",
+]
+
+[default.build.parameters]
+cached = true
+parallel = true
