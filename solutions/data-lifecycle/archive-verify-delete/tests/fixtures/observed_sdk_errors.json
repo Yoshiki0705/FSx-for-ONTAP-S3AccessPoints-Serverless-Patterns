@@ -1,0 +1,26 @@
+{
+  "about": "Error names that the state machines match in a Retry or Catch. A name from a Step Functions SDK integration is not the name in the AWS API reference: the same RestoreAlreadyInProgress arrived as S3.S3Exception. So every name other than the built-in matchers must be listed here, either as observed in a real run or, with a reason, as not observed. tests/test_asl_error_names.py fails on a name in neither list.",
+  "built_in_matchers": ["States.ALL", "States.Timeout"],
+  "observed": {
+    "S3.S3Exception": {
+      "where": "restore.asl.json RequestRestore",
+      "record": "2026-11-26 first run, raw record s9-restore-error-names: second RestoreObject on the same object, HTTP 409 'Object restore is already in progress', returned by the SDK integration as Error=S3.S3Exception"
+    },
+    "InvalidInput": {
+      "where": "archive.asl.json Plan",
+      "record": "2026-11-26 second run, raw record s3-input-refusals: a reused runId and a production start without requestedBy were returned by the plan Lambda function as errorType=InvalidInput"
+    }
+  },
+  "not_observed": {
+    "Lambda.ServiceException": "Step Functions documents these four as the transient Lambda errors to retry. No run produced one",
+    "Lambda.AWSLambdaException": "same as Lambda.ServiceException",
+    "Lambda.SdkClientException": "same as Lambda.ServiceException",
+    "Lambda.TooManyRequestsException": "same as Lambda.ServiceException",
+    "S3ApHelperError": "raised by shared/s3ap_helper.py for an Access Point error; the retry on it was not exercised by an injected failure in a real run",
+    "InvalidConfiguration": "raised by the plan and select functions for a stack configuration error; no run had one",
+    "S3.SdkClientException": "SDK integration client error on copyObject; none occurred",
+    "S3.SlowDownException": "throttling answer of S3; the SDK integration's name for it was not observed and may differ, as it did for the restore request",
+    "S3.RestoreAlreadyInProgressException": "the modelled name. The real run returned S3.S3Exception, so this entry never matched; it stays in front of the S3.S3Exception catch in case the integration returns the modelled name in another release",
+    "ECS.AmazonECSException": "documented error of ecs:runTask.sync; no Fargate task failed to start in the runs"
+  }
+}

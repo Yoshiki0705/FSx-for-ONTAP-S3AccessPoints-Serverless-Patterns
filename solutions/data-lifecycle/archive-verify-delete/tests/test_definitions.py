@@ -423,8 +423,79 @@ def test_restore_concurrency_is_a_parameter_not_a_literal():
 
 def test_concurrency_default_is_low_and_justified_in_the_template():
     p = TEMPLATE["Parameters"]["MapConcurrency"]
-    assert p["Default"] == 2
+    assert p["Default"] == 1
     assert "76 MB/s" in p["Description"] and "128 MBps" in p["Description"]
+    assert "not measured" in p["Description"]  # parallel reads were not measured
+
+
+def test_two_streams_at_the_measured_rate_would_exceed_the_throughput_capacity():
+    """The arithmetic behind the default: 76 MB/s per stream, 128 MBps of capacity."""
+    per_stream, capacity = 76, 128
+    assert per_stream <= capacity < 2 * per_stream
+    assert TEMPLATE["Parameters"]["MapConcurrency"]["Default"] * per_stream <= capacity
+
+
+def test_exclude_patterns_default_is_not_empty_and_covers_the_files_the_description_names():
+    from shared.archive_verify.plan import SelectionFilters
+
+    default = TEMPLATE["Parameters"]["ExcludePatterns"]["Default"]
+    patterns = tuple(x.strip() for x in default.split(",") if x.strip())
+    assert patterns, "the description says these files must be excluded; the default excludes nothing"
+    f = SelectionFilters(exclude_patterns=patterns)
+    must_be_excluded = [
+        "vm/disk.vmdk", "vm/disk.vhd", "vm/disk.vhdx", "vm/disk.vdi", "vm/disk.qcow2",
+        "sql/data.mdf", "sql/data.ndf", "sql/log.ldf", "mysql/t.ibd", "oracle/users01.dbf",
+        "tbl/_delta_log/00000.json", "_delta_log/00000.json",
+        "tbl/.hoodie/hoodie.properties", ".hoodie/hoodie.properties",
+        "wh/tbl/metadata/v1.metadata.json", "metadata/v1.metadata.json",
+    ]  # fmt: skip
+    for key in must_be_excluded:
+        assert f.key_exclusion(key) == "pattern", key
+    for key in ["docs/report.pdf", "projects/a/data.csv", "photos/2020/img.jpg", "logs/app.log", "x/metadata.txt"]:
+        assert f.key_exclusion(key) is None, key
+
+
+def test_every_default_exclude_pattern_is_in_the_samconfig_example_note_and_description():
+    default = TEMPLATE["Parameters"]["ExcludePatterns"]["Default"]
+    description = TEMPLATE["Parameters"]["ExcludePatterns"]["Description"]
+    assert "starting point, not a complete list" in description
+    for ext in ("vmdk", "vhd", "vhdx", "vdi", "qcow2", "mdf", "ndf", "ldf", "ibd", "dbf"):
+        assert f"*.{ext}" in default and ext in description
+    for marker in ("_delta_log", ".hoodie", "metadata"):
+        assert marker in default and marker in description
+    example = (ROOT / "samconfig.toml.example").read_text()
+    assert '"ExcludePatterns=",' not in example, "an empty override would remove the default"
+
+
+def test_approval_validity_is_a_parameter_and_reaches_the_functions():
+    p = TEMPLATE["Parameters"]["ApprovalValidityHours"]
+    assert p["Default"] == 24 and p["MinValue"] >= 1
+    env = TEMPLATE["Globals"]["Function"]["Environment"]["Variables"]
+    assert env["APPROVAL_VALIDITY_HOURS"] == {"Ref": "ApprovalValidityHours"}
+
+
+def test_the_delete_step_passes_the_execution_id_as_the_claim_the_approval_is_bound_to():
+    """The approval records ``$$.Execution.Id``; the delete compares it with ``claim``. Both must be that value."""
+    map_state = ARCHIVE["States"]["DeleteFiles"]
+    assert map_state["ItemSelector"]["claim.$"] == "$$.Execution.Id"
+    assert ARCHIVE["States"]["RecordApproval"]["Parameters"]["executionArn.$"] == "$$.Execution.Id"
+
+
+def test_the_task_token_is_encrypted_with_a_key_of_the_stack_and_the_approver_needs_it():
+    key = TEMPLATE["Resources"]["ApprovalTokenKey"]
+    assert key["Type"] == "AWS::KMS::Key" and key["Properties"]["EnableKeyRotation"] is True
+    statements = key["Properties"]["KeyPolicy"]["Statement"]
+    assert len(statements) == 1 and "root" in json.dumps(statements[0]["Principal"])  # IAM decides who may use it
+    env = TEMPLATE["Globals"]["Function"]["Environment"]["Variables"]
+    assert env["APPROVAL_TOKEN_KEY_ID"] == {"Fn::GetAtt": ["ApprovalTokenKey.Arn"]} or "ApprovalTokenKey" in json.dumps(
+        env["APPROVAL_TOKEN_KEY_ID"]
+    )
+    assert "ApprovalTokenKeyArn" in TEMPLATE["Outputs"]
+
+
+def test_restore_prepare_receives_the_run_id_so_an_overwrite_can_be_checked_against_the_ledger():
+    prepare = RESTORE["States"]["RestoreFiles"]["ItemProcessor"]["States"]["Prepare"]
+    assert prepare["Parameters"]["runId.$"] == "$.req.runId"
 
 
 def test_minimum_size_default_is_128_kib_and_says_why():

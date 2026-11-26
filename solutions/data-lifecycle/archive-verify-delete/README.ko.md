@@ -12,14 +12,14 @@ Amazon FSx for NetApp ONTAP(이하 FSx for ONTAP) 볼륨에 있는, 거의 읽�
 
 복원할 때는 원장에서 파일을 찾아 버킷에서 복원을 요청하고, 완료를 기다린 뒤 Access Point로 `CopyObject` 하여 되돌립니다. 그 후 복원된 파일을 다시 읽어 원장의 SHA-256 및 CRC64NVME와 비교합니다.
 이 패턴은 S3 Object Lock, S3 Glacier Vault Lock, AWS Backup Vault Lock, SnapLock, 스냅샷 잠금을 사용하지 않습니다. 템플릿에도 기재하지 않았습니다. 보존 기간은 설정하지 않으므로, 아카이브용 버킷의 오브젝트는 권한이 있으면 누구나 삭제할 수 있습니다.
-이 패턴의 전제와 다른 방식과의 비교는 [Comparing 8 kinds of mechanisms for moving files to archive classes](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/blob/main/docs/en/reference/comparison/archive-tiering-library-options.md)(영어)에 있습니다.
+이 패턴의 전제와 다른 방식과의 비교는 [Comparing 9 kinds of mechanisms for moving files to archive classes](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/blob/main/docs/en/reference/comparison/archive-tiering-library-options.md)(영어)에 있습니다.
 ## 측정한 것과 측정하지 않은 것
 | 구분 | 내용 |
 |---|---|
 | 구성 요소를 실제 환경에서 1회씩 확인함(위 비교 자료에 기록, 2026-11-24 및 2026-11-26, ap-northeast-1, 1세대 `SINGLE_AZ_1`, ONTAP 9.19.1P4D1, UNIX 스타일 볼륨, Access Point 사용자는 UNIX root) | `CopyObject`에 `ChecksumAlgorithm=SHA256`을 지정하면 버킷의 `ChecksumSHA256`이 `FULL_OBJECT`로 파일의 SHA-256과 일치했다(8 MiB까지). 5.5 GiB 멀티파트는 SHA-256이 `COMPOSITE`가 되었고, CRC64NVME는 `FULL_OBJECT`로 일치했다. 오래된 ETag의 `--copy-source-if-match`는 `PreconditionFailed`. Access Point의 `DeleteObject`는 `If-Match`를 지원하지 않는다. Step Functions SDK 통합에서 Access Point 별칭을 `Bucket`에 전달할 수 있었다 |
 | 이 저장소에서 확인한 것 | moto를 사용한 단위 테스트와 스테이트 머신 및 IAM 구조의 테스트. AWS에는 연결하지 않았습니다. 위의 실기 통합 실행에서 발견한 결함 6건(ONTAP REST 함수의 호출 권한, TLS 검증, 복원 요청 중복 시의 오류 이름, 스테이트 머신의 로그 출력 권한, `HeadObject`의 403, 알람의 게시 권한)은 재현하는 테스트를 추가하여 고쳤습니다 |
 | 실기 통합 실행에서 1회씩 확인했다(2026-11-26, 위와 같은 환경, `selection=ATIME`, `GLACIER`, 파일 7개) | ONTAP REST API에 의한 `accessed_time` 선택과 uid, gid, mode, mtime, atime 취득(루트는 볼륨의 루트이며 경로 앞에 슬래시가 없음. `unix_permissions`는 정수 `640`으로 반환됨). Distributed Map의 `ItemReader`와 `ResultWriter`. Fargate에 의한 5.5 GiB 멀티파트 복사(`CopySourceIfMatch` 지정, CRC64NVME가 원장과 일치). Lambda에서의 5.3 GB(약 4.94 GiB) 해시 계산(69.8초, 메모리 2048 MB 설정, 사용 152 MB). 두 번째 복사. 승인 후의 삭제. 승인 대기 중에 NFS에서 덮어쓴 파일은 `CHANGED`가 되어 삭제되지 않았다. 승인을 거부하자 아무것도 삭제되지 않았다. `Expedited`에 의한 복원(5.5 GiB 포함)과 복원한 6개 파일의 SHA-256 일치(7개 중 남은 1개는 덮어쓴 파일로, 삭제도 복원도 되지 않았다). `reapply.sh`에 의한 uid, gid, mode, mtime의 복원 |
-| 두 번째 엔드투엔드 실행에서 1회씩 확인함(2026-11-26, 같은 환경, `GLACIER`, 두 번째 복사 있음. `selection=ATIME`으로 dry run, `selection=MTIME`과 ONTAP REST에서 가져온 속성으로 실제 실행. 64 B에서 1 MiB까지의 파일과 51 GiB 스파스 파일 1개) | 검토 후에 동작이 바뀌었다. `maxFiles=50`일 때 64 B 파일 3개와 131,071 B 파일 1개는 최소 크기 미만이어서 제외되었고, 131,073 B 파일은 남았다. `*.vmdk`와 법적 보존용 prefix는 제외되었다. 51 GiB 스파스 파일은 `SKIPPED_TOO_LARGE`로 기록되고 복사되지 않았다. 이미 사용한 `runId`와 `requestedBy`가 없는 실제 실행 입력은 입력 오류로 멈췄다. 시작한 주체와 같은 ARN의 승인은 `APPROVAL_REFUSED`로 끝났고 아무것도 삭제되지 않았다. 승인 없이 `delete` 함수를 직접 호출하면 `NOT_APPROVED`를 반환하고 아무것도 삭제하지 않았다. 다른 승인자로 파일 3개가 삭제되었고, 승인 대기 중에 덮어쓴 1개는 `CHANGED`로 남았다. 중단을 모의하기 위해 `DELETING`으로 만든 항목은, 같은 실행의 재시도에서 `DELETED`(`already gone on retry`)로 기록되었고, 다른 실행은 거부되었으며, `reconcile`이 `DELETED`로 기록했다. 복원 후 3개 파일이 `RESTORE_VERIFIED`가 되었다. 알람이 KMS로 암호화된 토픽에 게시되었다(수정 후) |
+| 두 번째 엔드투엔드 실행에서 1회씩 확인함(2026-11-26, 같은 환경, `GLACIER`, 두 번째 복사 있음. `selection=ATIME`으로 dry run, `selection=MTIME`과 ONTAP REST에서 가져온 속성으로 실제 실행. 64 B에서 1 MiB까지의 파일과 51 GiB 스파스 파일 1개) | 첫 번째 실행에 없던 항목의 확인. `maxFiles=50`일 때 64 B 파일 3개와 131,071 B 파일 1개는 최소 크기 미만이어서 제외되었고, 131,073 B 파일은 남았다. `*.vmdk`와 법적 보존용 prefix는 제외되었다. 51 GiB 스파스 파일은 `SKIPPED_TOO_LARGE`로 기록되고 복사되지 않았다. 이미 사용한 `runId`와 `requestedBy`가 없는 실제 실행 입력은 입력 오류로 멈췄다. 시작한 주체와 같은 ARN의 승인은 `APPROVAL_REFUSED`로 끝났고 아무것도 삭제되지 않았다. 승인 없이 `delete` 함수를 직접 호출하면 `NOT_APPROVED`를 반환하고 아무것도 삭제하지 않았다. 다른 승인자로 파일 3개가 삭제되었고, 승인 대기 중에 덮어쓴 1개는 `CHANGED`로 남았다. 중단을 모의하기 위해 `DELETING`으로 만든 항목은, 같은 실행의 재시도에서 `DELETED`(`already gone on retry`)로 기록되었고, 다른 실행은 거부되었으며, `reconcile`이 `DELETED`로 기록했다. 복원 후 3개 파일이 `RESTORE_VERIFIED`가 되었다. 알람이 KMS로 암호화된 토픽에 게시되었다(수정 후) |
 ### 환경과 단계별 결과
 환경은 ap-northeast-1, FSx for ONTAP 1세대 `SINGLE_AZ_1`, ONTAP 9.19.1P4D1, UNIX 보안 스타일 볼륨이며, Access Point의 파일 시스템 사용자는 UNIX root입니다. 실행일은 2026-11-26(시각은 일본 표준시)이고 각 단계는 1회만 실행했습니다. 구성은 `selection=ATIME`, `GLACIER`, 두 번째 복사 있음, Fargate는 arm64의 2 vCPU와 8 GiB입니다. 데이터는 작은 파일 6개(64 B 3개, 8 MiB 3개. 소유자 1234:5678, 모드 640, mtime과 atime은 2020-01-02)와 5,905,580,032 B 파일 1개입니다.
 | 단계 | 결과 | 소요 시간 |
@@ -110,9 +110,10 @@ Amazon FSx for NetApp ONTAP(이하 FSx for ONTAP) 볼륨에 있는, 거의 읽�
 |---|---|---|
 | 50 GiB 초과 | 제외하고 원장에 `SKIPPED_TOO_LARGE`로 기록한다. `allowOversize: true`로 포함할 수 있다 | 공식 페이지([Access point compatibility](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/access-points-for-fsxn-object-api-support.html), 2026-11-26 열람)에는 "Maximum object size is 50 GiB for uploads, but you can download objects larger than that"라고 되어 있다. 복원은 Access Point를 통해 쓰기 때문에, 이 패턴은 그보다 큰 파일을 Access Point로 복원할 수 없다(버킷에서 직접 다운로드할 수 있다) [E-021] |
 | `MinFileSizeBytes` 미만 | 131,072 바이트(128 KiB). 입력의 `minSizeBytes`로 바꿀 수 있다 | [Comparing the Amazon S3 storage classes](https://docs.aws.amazon.com/AmazonS3/latest/userguide/storage-class-intro.html#sc-compare)(2026-11-26 열람)에 따르면 Standard-IA와 Glacier Instant Retrieval은 오브젝트당 최소 128 KB로 청구되고, Glacier Flexible Retrieval과 Deep Archive는 오브젝트당 40 KB의 메타데이터가 더해진다(32 KB는 해당 클래스의 요율, 8 KB는 Standard의 요율). 작은 파일에서는 데이터 자체보다 커진다 |
-| `ExcludePatterns`(glob), `ExcludePrefixes` | 비어 있음 | 스택의 값은 항상 적용되며, 입력의 `excludePatterns`와 `excludePrefixes`는 추가만 할 수 있다. 법적 보존 대상의 prefix는 여기에 넣는다 |
+| `ExcludePatterns`(glob), `ExcludePrefixes` | `ExcludePatterns`는 아래 목록, `ExcludePrefixes`는 비어 있음 | 스택의 값은 항상 적용되며, 입력의 `excludePatterns`와 `excludePrefixes`는 추가만 할 수 있다. 법적 보존 대상의 prefix는 여기에 넣는다 |
 
 Iceberg, Delta, Hive 테이블의 데이터 파일, 가동 중인 데이터베이스의 파일, VM 디스크 이미지(`*.vmdk`, `*.vhd`, `*.qcow2` 등)는 항상 제외하세요. 이 패턴은 파일을 하나씩 옮기며, 테이블 메타데이터나 파일을 열어 둔 프로세스에 대해서는 아무것도 알지 못합니다. 테이블은 테이블 자체의 기능(파티션 분리, 스냅샷 만료)으로 정리하고, 그 후에 남은 경로만 대상으로 하세요. 법적 보존 대상인지는 법무 담당 부서가 판단할 일이며, 이 패턴은 판단하지 않습니다.
+`ExcludePatterns`의 기본값은 완전한 목록이 아니라 출발점이며, 실제 사고가 나기 쉬운 파일 유형을 나열한 것입니다. VM 디스크 이미지(`*.vmdk`, `*.vhd`, `*.vhdx`, `*.vdi`, `*.qcow2`)는 VM이 열려 있는 동안 계속 기록되므로 파일 단위로 옮기면 손상된 사본이 됩니다. 데이터베이스의 데이터·로그 파일(SQL Server의 `*.mdf`, `*.ndf`, `*.ldf`, MySQL InnoDB의 `*.ibd`, Oracle의 `*.dbf`)은 데이터베이스가 열어 두고 기록합니다. 테이블 형식의 메타데이터 디렉터리(Delta의 `_delta_log/`, Hudi의 `.hoodie/`, Iceberg의 `metadata/`)는 데이터 파일의 목록을 가지므로, 데이터 파일만 옮기면 테이블이 깨집니다. 일치 판정은 대소문자를 구분합니다(`*.VMDK`는 일치하지 않음). Iceberg가 아니더라도 이름이 `metadata/`인 디렉터리는 제외됩니다. `*.parquet` 같은 테이블 데이터 파일은 기본값에 넣지 않았습니다. 환경에 맞는 패턴을 추가하세요. 볼륨에 이런 파일이 전혀 없는 경우에만 비워 두세요.
 ### 복원
 입력은 `runId`와 `keys` 또는 `prefix` 중 정확히 하나입니다. `tier`(기본값 `Bulk`)와 `days`(기본값 7)를 지정할 수 있습니다.
 1. 원장에서 `DELETED`인 파일을 선택한다. 아카이브용 버킷에 사본이 있으면 `DELETING`과 `CHANGED`인 파일도 선택한다(중단된 삭제로 남은 항목을 복원할 수 있도록)
@@ -124,6 +125,7 @@ Iceberg, Delta, Hive 테이블의 데이터 파일, 가동 중인 데이터베�
 7. `RESTORE_VERIFIED`인 파일만을 대상으로, 속성 재설정용 스크립트 `manifests/<runId>-reapply.sh`를 쓴다
 
 복원된 파일의 소유자는 0:1, 모드는 644, 수정 시각은 복원한 시각이었습니다(위 환경에서 확인). 원래 값은 `CopyObject`로는 복원되지 않습니다.
+`RESTORE_MISMATCH` 파일은 기본적으로 복원 대상으로 선택하지 않습니다. Access Point에 있는 사본이 원장과 일치하지 않은 항목이며, 그대로 선택하면 `EXISTS`로 남기 때문입니다. 다시 하려면 복원 입력에 `"retryMismatched": true`(JSON 불리언)를 지정합니다. 이 경우에만 해당 `runId`의 원장이 지금 `RESTORE_MISMATCH`인 항목만 대상이 되며, Access Point에 있는 불일치 사본을 버킷의 사본으로 덮어씁니다. 다른 상태의 항목은 이 지정을 해도 기존 파일을 덮어쓰지 않습니다. 덮어쓴 뒤에는 기존과 같은 다시 읽기로 `RESTORE_VERIFIED` 또는 `RESTORE_MISMATCH`가 됩니다.
 ### 중단된 삭제로부터의 복구
 삭제 도중에 Lambda가 멈추거나 재시도를 다 써 버리면, 원장에 `DELETING` 또는 `APPROVED` 항목이 남을 수 있습니다. 결과에는 `COMPLETED_WITH_ERRORS`, `stuckDeleting`, `notDeleted`로 표시되고 `FilesStuckDeletingAlarm`이 울립니다. 같은 `runId`와 `"resume": true`로 아카이브 스테이트 머신을 시작하면 `reconcile`이 실행되어 아래와 같이 항목을 정리하고, 남은 파일에 대해 새로운 승인을 요청합니다.
 | 원장 | Access Point | 결과 |
@@ -148,7 +150,39 @@ aws stepfunctions send-task-failure --task-token "$TOKEN" --error Rejected --cau
 ```
 승인 후에 `approval` 함수가 `approver`와 시작 입력의 `requestedBy`를 비교합니다(`RequireSeparateApprover=true`, 기본값). 같은 주체이면 아무것도 `APPROVED`로 하지 않고 `APPROVAL_REFUSED`로 실행을 끝냅니다. 역할의 ARN과 그 역할의 세션 ARN은 같은 주체로 취급합니다. 그렇지 않으면 목록의 각 파일이 원장에서 `approvedBy`, `approvedAt`, 실행 ARN과 함께 `APPROVED`가 됩니다. `delete` 함수는 이 기록이 있는 파일만 삭제하며, 직접 호출해도 기록이 없는 파일은 삭제하지 않습니다.
 
-`approver`와 `requestedBy`는 모두 호출자가 신고하는 값입니다. 원장의 `deletedBy`는 `approvedBy`에서 가져옵니다. 실제로 시작하고 승인한 주체는 CloudTrail의 `StartExecution`과 `SendTaskSuccess` 이벤트에 남습니다. 주체 단위로 직무 분리를 보장하려면 IAM에서 시작하는 역할과 승인하는 역할을 분리하세요.
+`approver`와 `requestedBy`는 모두 호출자가 신고하는 값입니다. 원장의 `deletedBy`는 `approvedBy`에서 가져옵니다. 실제로 시작하고 승인한 주체는 CloudTrail의 `StartExecution`과 `SendTaskSuccess` 이벤트에 남습니다. 주체 단위로 직무 분리를 보장하려면 IAM에서 시작하는 역할과 승인하는 역할을 분리하세요. 시작한 주체와 승인자의 비교는 신고된 두 값의 비교입니다. 다른 주체가 승인했음을 강제하는 장치가 아니며, 강제한다고 주장하지 않습니다. 사후 통제는 CloudTrail의 `userIdentity`로, `StartExecution`과 `SendTaskSuccess`를 실행한 주체를 대조해 확인합니다.
+### 승인의 유효 범위와 토큰의 취급
+`delete` 함수가 삭제하는 것은 원장이 `APPROVED`이고, `approvalExecutionArn`이 현재 실행과 같고, `approvedAt`이 `ApprovalValidityHours`(기본값 24시간) 이내인 항목뿐입니다. 승인 후에 실행을 중지하면 `APPROVED` 항목이 남지만 다른 실행의 `claim`과 일치하지 않으므로, `delete` 함수를 직접 호출해도 `NOT_APPROVED`가 됩니다. 기간이 지난 승인도 같습니다. 남은 항목은 `reconcile`이 `VERIFIED`로 되돌립니다.
+
+태스크 토큰은 승인이 성립했을 때(`approval` 함수), 시작한 주체와 같은 주체의 승인을 거부했을 때, 승인의 거부·타임아웃·실행 실패 후(`summarize`)에 삭제합니다. `summarize`에 도달하지 못하고 남은 토큰은 `watchdog`이 승인 타임아웃에 1시간을 더한 시간이 지난 것을 삭제합니다. 토큰은 스택의 고객 관리형 KMS 키(출력 `ApprovalTokenKeyArn`)로 암호화되어 있으므로, 읽으려면 `ssm:GetParameter`에 더해 그 키의 `kms:Decrypt`가 필요합니다.
+
+승인자 역할의 IAM 정책 예시입니다. `states:SendTaskSuccess`와 `states:SendTaskFailure`는 IAM에서 리소스를 지정할 수 없어([Step Functions 인증 레퍼런스](https://docs.aws.amazon.com/service-authorization/latest/reference/list_awsstepfunctions.html), 2026-11-26 열람) 이 스테이트 머신의 실행으로만 좁힐 수 없습니다. 토큰을 가진 사람이 그 실행에 응답할 수 있으므로, 좁힐 수 있는 것은 토큰을 읽는 경로입니다. 이 역할에 `StartExecution`을 부여하지 마세요.
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "ReadApprovalToken",
+      "Effect": "Allow",
+      "Action": "ssm:GetParameter",
+      "Resource": "arn:aws:ssm:<region>:<account>:parameter/<stack>/approvals/*"
+    },
+    {
+      "Sid": "DecryptApprovalToken",
+      "Effect": "Allow",
+      "Action": "kms:Decrypt",
+      "Resource": "<ApprovalTokenKeyArn>",
+      "Condition": {"StringEquals": {"kms:ViaService": "ssm.<region>.amazonaws.com"}}
+    },
+    {
+      "Sid": "ReportApproval",
+      "Effect": "Allow",
+      "Action": ["states:SendTaskSuccess", "states:SendTaskFailure"],
+      "Resource": "*"
+    }
+  ]
+}
+```
 ## 속성 재설정
 복원의 마지막에 `manifests/<runId>-reapply.sh`가 작성됩니다. NFS로 볼륨을 마운트한 호스트에서 root로 실행합니다.
 ```bash
@@ -225,7 +259,7 @@ python3 -m pytest shared/tests/test_archive_verify_*.py shared/tests/test_s3ap_h
 | Cost KPI | 실행당 Lambda, Fargate, DynamoDB, S3 요청, 상태 전이, 아카이브용 클래스의 보관 요금 | `dryRun=true`와 작은 `maxFiles`로 측정한 실행에서 "비용 추정"의 식으로 견적한다 |
 | Go / No-Go | 기술: 실제 환경의 실행에서, 복사한 모든 파일이 `VERIFIED`가 되고, 의도적으로 만든 `CHANGED` 파일이 삭제되지 않으며, 시작한 주체의 자기 승인이 거부되고, 복원한 파일이 `RESTORE_VERIFIED`가 될 것. 업무: 예상 절감액이 운영 비용(승인 작업, 복원 요청 대응)을 웃돌 것. 복원 요청의 접수 창구와 목표 응답 시간(클래스의 복원 시간 포함)이 정해져 있을 것. 이용자에게 안내가 끝나 있을 것 | 모두 충족하기 전에는 운영 볼륨에 `dryRun=false`를 사용하지 않는다. 먼저 각 항목을 누가 판단할지(데이터 소유자, 승인자, 운영 책임자)를 정한다 |
 
-PoC의 계획과 운영 전 확인은 FSx for ONTAP Adoption Playbook의 [pre-production review checklist](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/blob/main/docs/ja/playbooks/04-build/checklists/pre-production-review.md)와 [pre-migration inventory](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/blob/main/docs/ja/playbooks/01-assess/checklists/inventory.md)(모두 일본어)에 있습니다. 이 패턴의 PoC에서는 `maxFiles`를 20, 200, 2,000으로 올리면서 부모 실행의 소요 시간, 상태 전이, Fargate 초를 기록하면 파일당 값을 얻을 수 있습니다.
+PoC의 계획과 운영 전 확인은 FSx for ONTAP Adoption Playbook의 [pre-production review checklist](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/blob/main/docs/ja/playbooks/04-build/checklists/pre-production-review.md)와 [pre-migration inventory](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/blob/main/docs/ja/playbooks/01-assess/checklists/inventory.md)(모두 일본어)에 있습니다. 이 패턴의 PoC에서는 `maxFiles`를 20, 200, 2,000으로 올리면서 부모 실행의 소요 시간, 상태 전이, Fargate 초를 기록하면 파일당 값을 얻을 수 있습니다. PoC 계획표는 Playbook의 [자신의 환경에서 시작하기](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/blob/main/docs/ja/domains/data-utilization/notes/archive-use-cases-and-integrations.md#自環境での始め方)(일본어)에 있습니다.
 ### Measurement Method
 Step Functions 실행 이력과 로그(`/aws/vendedlogs/states/<stack>-archive`와 `-restore`, 실행 데이터는 포함하지 않음), `manifests/<runId>-result.json`, `manifests/<runId>-approval.json`, CloudWatch EMF 메트릭(`FilesVerified`, `FilesDeleted`, `FilesMismatch`, `FilesChanged`, `FilesFailed`, `FilesStuckDeleting`, `BytesVerified`, `BytesDeleted`, `RestoreVerified`, `RestoreMismatch`, `ApprovalPendingHours`), 원장.
 
@@ -242,7 +276,7 @@ Step Functions 실행 이력과 로그(`/aws/vendedlogs/states/<stack>-archive`�
 ## Performance Considerations
 기본 병렬도는 아래의 1회 측정에 근거합니다. 나머지는 설계상의 요인이며 측정하지 않았습니다.
 - 원본 파일은 2회 읽힙니다. 1회째는 해시 계산을 위해 Access Point에서 읽고, 2회째는 `CopyObject`가 서버 측에서 읽습니다. 읽기 요청 요금이 발생하며, 용량 풀에 있는 데이터에는 용량 풀의 읽기 요금도 발생합니다
-- 병렬도는 `MapConcurrency`입니다(기본값 2, 아카이브와 복원 공통). 1회 측정에서 Lambda 함수가 Access Point를 통해 5.3 GB(약 4.94 GiB)를 69.8초에 읽었으며, 스트림 하나에서 약 76 MB/s입니다. 이는 이 환경의 처리량 용량 128 MBps의 약 60%에 해당합니다. 각 파일은 2회 읽히고 같은 볼륨을 이용자도 사용하므로 기본값을 2로 했습니다. 큰 파일이나 부하가 높은 볼륨에서는 1로 하고, 올리기 전에 실행 중의 파일 시스템 `DataReadBytes`와 클라이언트 지연을 확인하세요. 병렬 실행은 측정하지 않았습니다
+- 병렬도는 `MapConcurrency`입니다(기본값 1, 아카이브와 복원 공통). 1회 측정에서 Lambda 함수가 Access Point를 통해 5.3 GB(약 4.94 GiB)를 69.8초에 읽었으며, 스트림 하나에서 약 76 MB/s입니다. 이는 이 환경의 처리량 용량 128 MBps의 약 60%에 해당합니다. 스트림이 2개이면 약 152 MB/s로 용량을 넘습니다. 각 파일은 2회 읽히고 같은 볼륨을 이용자도 사용하므로 기본값을 1로 했습니다. 병렬 읽기는 측정하지 않았습니다. 올리기 전에 실행 중의 파일 시스템 `DataReadBytes`와 클라이언트 지연을 확인하세요
 - `LargeFileThresholdBytes`의 기본값 5 GiB는 `CopyObject`를 1회 요청으로 처리할 수 있는 상한에서 나온 값입니다. 위의 속도라면 Lambda의 15분으로 약 63 GiB를 처리할 수 있지만, 이는 데이터 1점에 근거한 값입니다
 - 목록은 `ListObjectsV2`의 전체 결과를 Lambda 하나의 메모리에 올립니다. 수백만 건을 넘으면 `prefix`로 나누세요
 - `selection=ATIME`은 디렉터리를 깊이 우선으로 탐색합니다. 탐색 상한은 200,000 엔트리(`ONTAP_SCAN_LIMIT`)이며, 넘으면 도중까지의 결과를 반환합니다
@@ -285,7 +319,7 @@ Step Functions 실행 이력과 로그(`/aws/vendedlogs/states/<stack>-archive`�
 ## 관련 문서
 - [Architecture (EN)](docs/architecture.en.md)
 - [S3 Access Points 호환성 메모](../../../docs/s3ap-compatibility-notes.md)
-- [아카이브용 클래스로 옮기는 8가지 방식의 비교](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/blob/main/docs/ja/reference/comparison/archive-tiering-library-options.md)(일본어)
+- [아카이브용 클래스로 옮기는 9가지 방식의 비교](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/blob/main/docs/ja/reference/comparison/archive-tiering-library-options.md)(일본어)
 
 ---
 

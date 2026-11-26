@@ -5,7 +5,9 @@ Actions:
 * ``select``    choose the files of an archive run (``keys`` or ``prefix``) that were deleted, or may have
                been: ``DELETED``, and ``DELETING`` or ``CHANGED`` items whose archive copy exists.
                Writes the item list
-* ``prepare``   per file: does the Access Point already have it (``EXISTS``), and does it need a restore request
+* ``prepare``   per file: does the Access Point already have it (``EXISTS``), and does it need a restore request.
+               The one exception is a file whose ledger status is ``RESTORE_MISMATCH`` in a run started with
+               ``retryMismatched: true``: its existing, wrong copy on the Access Point is overwritten
 * ``check``     read the ``Restore`` header from a ``HeadObject`` response: READY, WAITING or TIMEOUT
 * ``finalize``  set the ledger to ``RESTORED`` (the copy call succeeded; nothing is verified yet)
 * ``verify``    read the restored file back, hash it, compare with the ledger digest, set
@@ -47,6 +49,10 @@ _NEEDS_RESTORE = ("GLACIER", "DEEP_ARCHIVE")
 # Statuses that can hold a file the Access Point no longer has. DELETING and CHANGED are
 # included only when the archive copy is there: a delete that was interrupted leaves DELETING.
 _RESTORABLE = (L.DELETED, L.DELETING, L.CHANGED)
+# A file whose restored copy did not match the ledger is selected only when the start input says
+# ``retryMismatched: true``. Its wrong copy is still on the Access Point, so this is the one case in
+# which a restore overwrites an existing file.
+_FINALIZABLE = _RESTORABLE + (L.RESTORE_MISMATCH,)
 _NOT_FOUND = ("404", "NoSuchKey", "NotFound")
 
 
@@ -63,8 +69,12 @@ def validate_restore_input(event: dict, execution_name: str) -> dict:
         raise InvalidInput("give exactly one of keys or prefix")
     if keys is not None and (not isinstance(keys, list) or not all(isinstance(k, str) for k in keys)):
         raise InvalidInput("keys must be a list of strings")
+    retry = event.get("retryMismatched", False)
+    if not isinstance(retry, bool):
+        raise InvalidInput("retryMismatched must be the JSON boolean true or false")
     return {
         "runId": run_id,
+        "retryMismatched": retry,
         "restoreRunId": valid_run_id(event.get("restoreRunId") or execution_name),
         "tier": tier,
         "days": days,
@@ -87,12 +97,14 @@ def _archive_copy_exists(s3, item: dict) -> bool:
 
 
 def select_items(ledger: Ledger, req: dict, s3=None) -> list[dict]:
-    items = [i for i in ledger.query_run(req["runId"], key_prefix=req["prefix"]) if i.get("status") in _RESTORABLE]
+    statuses = _FINALIZABLE if req.get("retryMismatched") else _RESTORABLE
+    items = [i for i in ledger.query_run(req["runId"], key_prefix=req["prefix"]) if i.get("status") in statuses]
     if req["keys"]:
         wanted = set(req["keys"])
         items = [i for i in items if i["key"] in wanted]
     s3 = s3 or boto3.client("s3")
     selected = [i for i in items if i["status"] == L.DELETED or _archive_copy_exists(s3, i)]
+    # RESTORE_MISMATCH items are marked so that ``prepare`` may overwrite the file already there.
     return [
         {
             "key": i["key"],
@@ -101,9 +113,22 @@ def select_items(ledger: Ledger, req: dict, s3=None) -> list[dict]:
             "storageClass": i.get("storageClass", "DEEP_ARCHIVE"),
             "archiveBucket": i["archiveBucket"],
             "archiveKey": i["archiveKey"],
+            **({"overwrite": True} if i["status"] == L.RESTORE_MISMATCH else {}),
         }
         for i in selected
     ]
+
+
+def _is_mismatch(ledger: Ledger, run_id, key: str) -> bool:
+    """The ledger of ``run_id`` says this file's restored copy failed verification.
+
+    The flag in the item list is not enough: overwriting is allowed only for a ledger item that is
+    in RESTORE_MISMATCH now, in the run named by the request.
+    """
+    if not run_id:
+        return False
+    item = ledger.get(run_id, key)
+    return bool(item) and item.get("status") == L.RESTORE_MISMATCH
 
 
 def restore_state(head: dict, storage_class: str) -> str:
@@ -186,12 +211,15 @@ def handler(event, context):
 
     if action == "prepare":
         item = event["item"]
-        try:
-            S3ApHelper(cfg.access_point).head_object(item["key"])
-            return {"exists": True}
-        except S3ApHelperError as e:
-            if e.error_code not in ("404", "NoSuchKey", "NotFound"):
-                raise
+        if item.get("overwrite") is True and _is_mismatch(ledger, event.get("runId"), item["key"]):
+            pass  # the existing copy is the one that failed verification; the copy below replaces it
+        else:
+            try:
+                S3ApHelper(cfg.access_point).head_object(item["key"])
+                return {"exists": True}
+            except S3ApHelperError as e:
+                if e.error_code not in ("404", "NoSuchKey", "NotFound"):
+                    raise
         return {
             "exists": False,
             "needsRestore": item["storageClass"] in _NEEDS_RESTORE,
@@ -215,7 +243,7 @@ def handler(event, context):
             event["runId"],
             event["key"],
             L.RESTORED,
-            only_if_status=_RESTORABLE,
+            only_if_status=_FINALIZABLE,
             restoredAt=L.now_iso(),
             restoreRunId=event["restoreRunId"],
         )

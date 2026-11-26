@@ -98,6 +98,7 @@
             "Resource": "${RestoreFunctionArn}",
             "Parameters": {
               "action": "prepare",
+              "runId.$": "$.req.runId",
               "item.$": "$.item"
             },
             "ResultPath": "$.prep",

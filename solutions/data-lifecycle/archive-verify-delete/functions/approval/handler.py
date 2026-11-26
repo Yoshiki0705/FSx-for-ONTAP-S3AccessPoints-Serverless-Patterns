@@ -10,6 +10,12 @@ Actions:
                who started the run (RequireSeparateApprover), then marks every listed item
                ``APPROVED`` in the ledger and writes ``manifests/<runId>-approval.json``. The delete
                step deletes only ``APPROVED`` items, so this is the one place approval is recorded.
+               The task token is deleted here: it has been used.
+
+The token is stored with the stack's own KMS key (``APPROVAL_TOKEN_KEY_ID``) when one is set, so reading
+it takes ``ssm:GetParameter`` and ``kms:Decrypt`` on that key. Every other end of an approval
+(rejection, timeout, a failed run) goes through ``summarize``, which deletes it; the watchdog deletes
+one that outlived the approval timeout.
 """
 
 from __future__ import annotations
@@ -31,6 +37,26 @@ logger = logging.getLogger(__name__)
 
 def token_parameter(stack_name: str, run_id: str) -> str:
     return f"/{stack_name}/approvals/{run_id}"
+
+
+def delete_token(stack_name: str, run_id: str, session: boto3.Session | None = None) -> bool:
+    """Delete the stored task token of a run. True when it existed. Never raises for a missing one."""
+    from botocore.exceptions import ClientError
+
+    try:
+        (session or boto3.Session()).client("ssm").delete_parameter(Name=token_parameter(stack_name, run_id))
+        return True
+    except ClientError as e:
+        if e.response["Error"]["Code"] != "ParameterNotFound":
+            raise
+        return False
+
+
+def _forget_token(cfg: RuntimeConfig, run_id: str, session: boto3.Session | None) -> None:
+    try:
+        delete_token(cfg.stack_name, run_id, session)
+    except Exception:  # noqa: BLE001 - best effort: summarize deletes the token again at the end of the run
+        logger.warning("could not delete the task token of %s", run_id)
 
 
 def eligible(item: dict) -> bool:
@@ -101,6 +127,7 @@ def approve(
             return {"approved": False, "reason": "NO_REQUESTER"}
         if same_principal(requested_by, approver):
             logger.warning("refusing approval of %s: the approver is the principal that started the run", run_id)
+            _forget_token(cfg, run_id, session)
             return {"approved": False, "reason": "SELF_APPROVAL"}
     items = get_json(event["bucket"], event["itemsKey"])
     stamp = {
@@ -135,6 +162,7 @@ def approve(
         },
         session,
     )
+    _forget_token(cfg, run_id, session)
     return {"approved": True, "approvedBy": approver, "marked": marked, "notMarked": len(items) - marked}
 
 
@@ -185,12 +213,14 @@ def request(cfg: RuntimeConfig, event: dict, session: boto3.Session | None = Non
     run_id = event["runId"]
     if not event.get("taskToken"):
         raise InvalidInput("taskToken is required")
+    kwargs = {"KeyId": cfg.approval_token_key_id} if cfg.approval_token_key_id else {}
     session.client("ssm").put_parameter(
         Name=token_parameter(cfg.stack_name, run_id),
         Value=event["taskToken"],
         Type="SecureString",
         Overwrite=True,
         Description=f"Task token for archive run {run_id}. Delete after the run.",
+        **kwargs,
     )
     session.client("sns").publish(
         TopicArn=cfg.sns_topic_arn,

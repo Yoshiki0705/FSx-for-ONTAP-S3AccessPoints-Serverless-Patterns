@@ -55,6 +55,8 @@ class RuntimeConfig:
     require_separate_approver: bool
     fargate_timeout_seconds: int
     data_classification: str
+    approval_validity_hours: float
+    approval_token_key_id: str
 
     @classmethod
     def from_env(cls) -> RuntimeConfig:
@@ -74,7 +76,7 @@ class RuntimeConfig:
             fargate_subnets=tuple(x for x in env.get("FARGATE_SUBNETS", "").split(",") if x),
             fargate_security_groups=tuple(x for x in env.get("FARGATE_SECURITY_GROUPS", "").split(",") if x),
             fargate_assign_public_ip=env.get("FARGATE_ASSIGN_PUBLIC_IP", "DISABLED"),
-            map_concurrency=int(env.get("MAP_CONCURRENCY", "10")),
+            map_concurrency=int(env.get("MAP_CONCURRENCY", "1")),
             restore_poll_minutes=int(env.get("RESTORE_POLL_MINUTES", "30")),
             restore_max_wait_hours=int(env.get("RESTORE_MAX_WAIT_HOURS", "72")),
             min_file_bytes=int(env.get("MIN_FILE_BYTES", DEFAULT_MIN_FILE_BYTES)),
@@ -83,6 +85,8 @@ class RuntimeConfig:
             require_separate_approver=env.get("REQUIRE_SEPARATE_APPROVER", "true") != "false",
             fargate_timeout_seconds=int(env.get("FARGATE_TIMEOUT_SECONDS", "7200")),
             data_classification=_classification(env.get("DATA_CLASSIFICATION", "")),
+            approval_validity_hours=float(env.get("APPROVAL_VALIDITY_HOURS", "24")),
+            approval_token_key_id=env.get("APPROVAL_TOKEN_KEY_ID", ""),
         )
 
     def public(self) -> dict:

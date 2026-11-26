@@ -12,14 +12,14 @@
 
 恢复时，本模式先在台账中查找文件，在存储桶中请求恢复，等待完成后用 `CopyObject` 复制回 Access Point，然后把恢复的每个文件读回，与台账中的 SHA-256 和 CRC64NVME 比较。
 本模式不使用 S3 Object Lock、S3 Glacier Vault Lock、AWS Backup Vault Lock、SnapLock 和快照锁定，模板中也没有写入。因为不设置保留期限，所以对归档用存储桶中的对象，只要有权限就可以删除。
-本模式的前提，以及与其他方式的比较，见[转移到归档类别的 8 种机制的比较](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/blob/main/docs/ja/reference/comparison/archive-tiering-library-options.md)（日文）。
+本模式的前提，以及与其他方式的比较，见[转移到归档类别的 9 种机制的比较](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/blob/main/docs/ja/reference/comparison/archive-tiering-library-options.md)（日文）。
 ## 已测量和未测量的内容
 | 类别 | 内容 |
 |---|---|
 | 各组成部分已在实际环境中各确认 1 次（记录在上述比较资料中，2026-11-24 和 2026-11-26，ap-northeast-1，第 1 代 `SINGLE_AZ_1`，ONTAP 9.19.1P4D1，UNIX 样式卷，Access Point 用户为 UNIX root） | 给 `CopyObject` 指定 `ChecksumAlgorithm=SHA256` 后，存储桶的 `ChecksumSHA256` 为 `FULL_OBJECT`，与文件的 SHA-256 一致（最大 8 MiB）。5.5 GiB 的分段上传中 SHA-256 变为 `COMPOSITE`，CRC64NVME 为 `FULL_OBJECT` 且一致。使用旧 ETag 的 `--copy-source-if-match` 返回 `PreconditionFailed`。Access Point 的 `DeleteObject` 不支持 `If-Match`。在 Step Functions 的 SDK 集成中，可以把 Access Point 别名传给 `Bucket` |
 | 在本仓库中确认 | 使用 moto 的单元测试，以及状态机和 IAM 结构的测试。未连接 AWS。实机端到端运行中发现的 6 个缺陷（ONTAP REST 函数的调用权限、TLS 验证、重复恢复请求的错误名称、状态机的日志权限、`HeadObject` 返回的 403、告警的发布权限）已通过能够复现它们的测试修复 |
 | 在实机端到端运行中各确认 1 次（2026-11-26，与上述相同的环境，`selection=ATIME`，`GLACIER`，7 个文件） | 通过 ONTAP REST API 按 `accessed_time` 选择，并获取 uid、gid、mode、mtime、atime（根是卷的根，路径开头没有斜杠；`unix_permissions` 以整数 `640` 返回）。Distributed Map 的 `ItemReader` 和 `ResultWriter`。用 Fargate 进行 5.5 GiB 的分段复制（带 `CopySourceIfMatch`，CRC64NVME 与台账一致）。在 Lambda 中对 5.3 GB（约 4.94 GiB）计算哈希（69.8 秒，配置内存 2048 MB，使用 152 MB）。第二份副本。批准后的删除。等待批准期间在 NFS 上改写的文件变为 `CHANGED`，没有被删除。拒绝批准后什么都没有被删除。用 `Expedited` 恢复（含 5.5 GiB），恢复的 6 个文件 SHA-256 一致（7 个文件中剩下的 1 个已被改写，既没有被删除也没有被恢复）。用 `reapply.sh` 恢复 uid、gid、mode、mtime |
-| 在第二次端到端运行中各确认 1 次（2026-11-26，同一环境，`GLACIER`，开启第二份副本。dry run 使用 `selection=ATIME`，正式运行使用 `selection=MTIME`，属性来自 ONTAP REST。文件为 64 B 至 1 MiB，另有 1 个 51 GiB 的稀疏文件） | 评审后行为发生了变化。在 `maxFiles=50` 下，3 个 64 B 的文件和 1 个 131,071 B 的文件低于最小大小，131,073 B 的文件被保留。`*.vmdk` 和法律保留前缀被排除。51 GiB 的稀疏文件被记录为 `SKIPPED_TOO_LARGE`，没有被复制。重复使用的 `runId`，以及没有 `requestedBy` 的正式运行输入，都作为输入错误而停止。批准者 ARN 与启动者相同的批准以 `APPROVAL_REFUSED` 结束，没有任何删除。在没有批准的情况下直接调用 `delete` 函数，返回 `NOT_APPROVED` 且没有删除。批准者不同时，删除了 3 个文件，等待期间被改写的 1 个文件保留为 `CHANGED`。对为模拟中断而设为 `DELETING` 的条目，同一执行的重试记录为 `DELETED`（`already gone on retry`），另一个执行被拒绝，`reconcile` 记录为 `DELETED`。恢复后，3 个文件为 `RESTORE_VERIFIED`。告警已发布到 KMS 加密的主题（修复之后） |
+| 在第二次端到端运行中各确认 1 次（2026-11-26，同一环境，`GLACIER`，开启第二份副本。dry run 使用 `selection=ATIME`，正式运行使用 `selection=MTIME`，属性来自 ONTAP REST。文件为 64 B 至 1 MiB，另有 1 个 51 GiB 的稀疏文件） | 第一次运行中没有的项目的确认。在 `maxFiles=50` 下，3 个 64 B 的文件和 1 个 131,071 B 的文件低于最小大小，131,073 B 的文件被保留。`*.vmdk` 和法律保留前缀被排除。51 GiB 的稀疏文件被记录为 `SKIPPED_TOO_LARGE`，没有被复制。重复使用的 `runId`，以及没有 `requestedBy` 的正式运行输入，都作为输入错误而停止。批准者 ARN 与启动者相同的批准以 `APPROVAL_REFUSED` 结束，没有任何删除。在没有批准的情况下直接调用 `delete` 函数，返回 `NOT_APPROVED` 且没有删除。批准者不同时，删除了 3 个文件，等待期间被改写的 1 个文件保留为 `CHANGED`。对为模拟中断而设为 `DELETING` 的条目，同一执行的重试记录为 `DELETED`（`already gone on retry`），另一个执行被拒绝，`reconcile` 记录为 `DELETED`。恢复后，3 个文件为 `RESTORE_VERIFIED`。告警已发布到 KMS 加密的主题（修复之后） |
 ### 环境与各步骤的结果
 环境为 ap-northeast-1、FSx for ONTAP 第 1 代 `SINGLE_AZ_1`、ONTAP 9.19.1P4D1、UNIX 安全样式的卷，Access Point 的文件系统用户为 UNIX root。运行日期为 2026-11-26（时间为日本标准时间），每个步骤只运行了 1 次。配置为 `selection=ATIME`、`GLACIER`、有第二份副本，Fargate 为 arm64 的 2 vCPU 和 8 GiB。数据为 6 个小文件（3 个 64 B、3 个 8 MiB，所有者 1234:5678，模式 640，mtime 和 atime 为 2020-01-02）和 1 个 5,905,580,032 B 的文件。
 | 步骤 | 结果 | 耗时 |
@@ -110,9 +110,10 @@
 |---|---|---|
 | 超过 50 GiB | 排除，并在台账中记录为 `SKIPPED_TOO_LARGE`。`allowOversize: true` 会将其包含在内 | 官方页面（[Access point compatibility](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/access-points-for-fsxn-object-api-support.html)，2026-11-26 阅读）写道 "Maximum object size is 50 GiB for uploads, but you can download objects larger than that"。恢复是通过 Access Point 写入的，因此本模式无法把更大的文件恢复到那里（可以直接从存储桶下载） [E-021] |
 | 小于 `MinFileSizeBytes` | 131,072 字节（128 KiB）。可用输入的 `minSizeBytes` 更改 | 根据[Comparing the Amazon S3 storage classes](https://docs.aws.amazon.com/AmazonS3/latest/userguide/storage-class-intro.html#sc-compare)（2026-11-26 阅读），Standard-IA 和 Glacier Instant Retrieval 每个对象至少按 128 KB 计费，Glacier Flexible Retrieval 和 Deep Archive 每个对象另加 40 KB 的元数据（32 KB 按该类别的价格，8 KB 按 Standard 的价格）。对小文件来说，这比数据本身还大 |
-| `ExcludePatterns`（glob）、`ExcludePrefixes` | 空 | 堆栈的值始终适用；输入的 `excludePatterns` 和 `excludePrefixes` 只能追加。请把法律保留的前缀放在这里 |
+| `ExcludePatterns`（glob）、`ExcludePrefixes` | `ExcludePatterns` 为下面的列表，`ExcludePrefixes` 为空 | 堆栈的值始终适用；输入的 `excludePatterns` 和 `excludePrefixes` 只能追加。请把法律保留的前缀放在这里 |
 
 Iceberg、Delta 或 Hive 表的数据文件、运行中的数据库的文件、虚拟机磁盘镜像（`*.vmdk`、`*.vhd`、`*.qcow2` 等）一律排除。本模式逐个文件移动，不了解表的元数据，也不了解持有文件打开状态的进程。请用表自身的功能（分离分区、让快照过期）整理表，只以整理后剩下的路径为对象。是否处于法律保留，由贵方的法务部门判断，本模式不做这个判断。
+`ExcludePatterns` 的默认值是起点而不是完整列表，列出的是容易造成实际事故的文件类型。虚拟机磁盘镜像（`*.vmdk`、`*.vhd`、`*.vhdx`、`*.vdi`、`*.qcow2`）在虚拟机打开期间持续写入，逐个文件复制会得到损坏的副本。数据库的数据和日志文件（SQL Server 的 `*.mdf`、`*.ndf`、`*.ldf`，MySQL InnoDB 的 `*.ibd`，Oracle 的 `*.dbf`）由数据库打开并写入。表格式的元数据目录（Delta 的 `_delta_log/`、Hudi 的 `.hoodie/`、Iceberg 的 `metadata/`）保存数据文件的清单，只移动数据文件会破坏表。匹配区分大小写（`*.VMDK` 不匹配）。名为 `metadata/` 但不是 Iceberg 的目录也会被排除。`*.parquet` 这类表的数据文件不在默认值中，请添加适合您环境的模式。只有卷上完全没有这类文件时，才可以设为空。
 ### 恢复
 输入为 `runId`，以及 `keys` 或 `prefix` 中的一个。可以指定 `tier`（默认 `Bulk`）和 `days`（默认 7）。
 1. 在台账中选择 `DELETED` 的文件。当归档用存储桶中有副本时，`DELETING` 和 `CHANGED` 的文件也会被选择（因此可以恢复中断的删除所留下的条目）
@@ -124,6 +125,7 @@ Iceberg、Delta 或 Hive 表的数据文件、运行中的数据库的文件、�
 7. 仅针对 `RESTORE_VERIFIED` 的文件，写出用于重新设置属性的脚本 `manifests/<runId>-reapply.sh`
 
 恢复后的文件，所有者为 0:1，模式为 644，修改时间为恢复的时刻（上述环境中的确认）。原来的值无法通过 `CopyObject` 恢复。
+`RESTORE_MISMATCH` 的文件默认不会被选为恢复对象：Access Point 上的副本与台账不一致，若直接选中会作为 `EXISTS` 保留。要重做时，在恢复输入中加上 `"retryMismatched": true`（JSON 布尔值）。只有此时，该 `runId` 的台账当前为 `RESTORE_MISMATCH` 的条目才会被选中，并用存储桶中的副本覆盖 Access Point 上不一致的副本。其他状态的条目即使指定了该标志，也不会覆盖已有文件。覆盖之后，同样的回读会得到 `RESTORE_VERIFIED` 或 `RESTORE_MISMATCH`。
 ### 从中断的删除中恢复
 Lambda 在删除中途停止，或重试次数用尽，可能使台账中的条目留在 `DELETING` 或 `APPROVED`。结果中会显示为 `COMPLETED_WITH_ERRORS`、`stuckDeleting` 和 `notDeleted`，并且 `FilesStuckDeletingAlarm` 会触发。用相同的 `runId` 和 `"resume": true` 启动归档状态机，会运行 `reconcile`，按下表处理这些条目，然后对剩下的文件重新请求批准。
 | 台账 | Access Point | 结果 |
@@ -148,7 +150,39 @@ aws stepfunctions send-task-failure --task-token "$TOKEN" --error Rejected --cau
 ```
 批准之后，`approval` 函数会把 `approver` 与启动输入中的 `requestedBy` 比较（`RequireSeparateApprover=true`，默认）。相同的主体会以 `APPROVAL_REFUSED` 结束运行，不会把任何文件标记为 `APPROVED`。角色的 ARN 和该角色的会话 ARN 视为同一主体。否则，清单中的每个文件都会在台账中变为 `APPROVED`，并带有 `approvedBy`、`approvedAt` 和执行 ARN。`delete` 函数只删除带有这条记录的文件；直接调用它，也不会删除没有这条记录的文件。
 
-`approver` 和 `requestedBy` 都是调用方自行申报的值。台账的 `deletedBy` 取自其 `approvedBy`。实际启动和批准的主体，记录在 CloudTrail 的 `StartExecution` 和 `SendTaskSuccess` 事件中。若要按主体保证职责分离，请在 IAM 中把启动和批准的角色分开。
+`approver` 和 `requestedBy` 都是调用方自行申报的值。台账的 `deletedBy` 取自其 `approvedBy`。实际启动和批准的主体，记录在 CloudTrail 的 `StartExecution` 和 `SendTaskSuccess` 事件中。若要按主体保证职责分离，请在 IAM 中把启动和批准的角色分开。 启动者与批准者的比较，是对两个自行申报的值的比较。它不强制由其他主体批准，本文档也不声称它能强制。事后的控制是 CloudTrail 的 `userIdentity`：核对执行 `StartExecution` 和 `SendTaskSuccess` 的主体。
+### 批准的有效范围与令牌的处理
+`delete` 函数只删除这样的条目：台账为 `APPROVED`，`approvalExecutionArn` 与当前执行相同，且 `approvedAt` 在 `ApprovalValidityHours`（默认 24 小时）以内。批准之后停止执行会留下 `APPROVED` 条目，但它们与其他执行的 `claim` 不一致，因此直接调用 `delete` 函数也会得到 `NOT_APPROVED`。超过期限的批准同样被拒绝。留下的条目由 `reconcile` 恢复为 `VERIFIED`。
+
+任务令牌在批准成立时（`approval` 函数）、拒绝与启动者相同主体的批准时，以及批准被拒绝、超时或执行失败之后（`summarize`）删除。没有到达 `summarize` 而残留的令牌，由 `watchdog` 在超过批准超时加 1 小时后删除。令牌使用堆栈的客户管理 KMS 密钥（输出 `ApprovalTokenKeyArn`）加密，因此读取它需要 `ssm:GetParameter`，以及该密钥的 `kms:Decrypt`。
+
+批准者角色的 IAM 策略示例。IAM 无法为 `states:SendTaskSuccess` 和 `states:SendTaskFailure` 指定资源（[Step Functions 授权参考](https://docs.aws.amazon.com/service-authorization/latest/reference/list_awsstepfunctions.html)，2026-11-26 查阅），所以不能把它们限定在此状态机的执行上。持有令牌的人就能回应该执行，因此能收窄的是读取令牌的途径。不要给这个角色授予 `StartExecution`。
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "ReadApprovalToken",
+      "Effect": "Allow",
+      "Action": "ssm:GetParameter",
+      "Resource": "arn:aws:ssm:<region>:<account>:parameter/<stack>/approvals/*"
+    },
+    {
+      "Sid": "DecryptApprovalToken",
+      "Effect": "Allow",
+      "Action": "kms:Decrypt",
+      "Resource": "<ApprovalTokenKeyArn>",
+      "Condition": {"StringEquals": {"kms:ViaService": "ssm.<region>.amazonaws.com"}}
+    },
+    {
+      "Sid": "ReportApproval",
+      "Effect": "Allow",
+      "Action": ["states:SendTaskSuccess", "states:SendTaskFailure"],
+      "Resource": "*"
+    }
+  ]
+}
+```
 ## 重新设置属性
 恢复的最后会写出 `manifests/<runId>-reapply.sh`。在通过 NFS 挂载了该卷的主机上，以 root 身份执行。
 ```bash
@@ -225,7 +259,7 @@ python3 -m pytest shared/tests/test_archive_verify_*.py shared/tests/test_s3ap_h
 | Cost KPI | 每次运行的 Lambda、Fargate、DynamoDB、S3 请求、状态转换和归档类别的存储费用 | 根据用较小的 `maxFiles` 实测的 `dryRun=true` 运行，用“费用估算”中的公式估算 |
 | Go / No-Go | 技术方面：在实际环境的运行中，所有已复制的文件都变为 `VERIFIED`，有意制造的 `CHANGED` 文件不会被删除，启动者的自我批准被拒绝，恢复后的文件为 `RESTORE_VERIFIED`。业务方面：预期的节省额超过运营成本（批准的工作量、处理恢复请求）；已确定恢复请求的入口和目标响应时间（包括该类别的恢复时间）；已通知用户 | 在全部满足之前，不要对生产卷使用 `dryRun=false`。请先确定每一项由谁决定（数据所有者、批准者、运营负责人） |
 
-PoC 的规划和上生产前的确认，见 FSx for ONTAP Adoption Playbook 的[上生产前评审检查清单](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/blob/main/docs/ja/playbooks/04-build/checklists/pre-production-review.md)和[迁移前盘点](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/blob/main/docs/ja/playbooks/01-assess/checklists/inventory.md)（均为日文）。对本模式的 PoC，把 `maxFiles` 依次提高到 20、200、2,000，同时记录父执行的耗时、状态转换和 Fargate 秒数，就能得到每个文件的值。
+PoC 的规划和上生产前的确认，见 FSx for ONTAP Adoption Playbook 的[上生产前评审检查清单](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/blob/main/docs/ja/playbooks/04-build/checklists/pre-production-review.md)和[迁移前盘点](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/blob/main/docs/ja/playbooks/01-assess/checklists/inventory.md)（均为日文）。对本模式的 PoC，把 `maxFiles` 依次提高到 20、200、2,000，同时记录父执行的耗时、状态转换和 Fargate 秒数，就能得到每个文件的值。 PoC 规划表见 Playbook 的[在自己的环境中开始](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/blob/main/docs/ja/domains/data-utilization/notes/archive-use-cases-and-integrations.md#自環境での始め方)（日文）。
 ### Measurement Method
 Step Functions 的执行历史和日志（`/aws/vendedlogs/states/<stack>-archive` 和 `-restore`，不含执行数据）、`manifests/<runId>-result.json`、`manifests/<runId>-approval.json`、CloudWatch 的 EMF 指标（`FilesVerified`、`FilesDeleted`、`FilesMismatch`、`FilesChanged`、`FilesFailed`、`FilesStuckDeleting`、`BytesVerified`、`BytesDeleted`、`RestoreVerified`、`RestoreMismatch`、`ApprovalPendingHours`）、台账。
 
@@ -242,7 +276,7 @@ Step Functions 的执行历史和日志（`/aws/vendedlogs/states/<stack>-archiv
 ## Performance Considerations
 默认并行度依据下面的 1 次测量。其余是设计上的因素，未测量。
 - 源文件会被读取 2 次。第 1 次是为计算哈希而通过 Access Point 读取，第 2 次是 `CopyObject` 在服务器端读取。会产生读取请求费用，位于容量池中的数据还会产生容量池的读取费用
-- 并行度为 `MapConcurrency`（默认 2，归档和恢复相同）。在 1 次测量中，一个 Lambda 函数通过 Access Point 用 69.8 秒读取了 5.3 GB（约 4.94 GiB），单个流约 76 MB/s，约为本环境 128 MBps 吞吐量容量的 60%。每个文件会被读取 2 次，而且同一个卷还要服务用户，所以默认值为 2。大文件或繁忙的卷请用 1；调高之前，请在运行期间观察文件系统的 `DataReadBytes` 和客户端延迟。并行运行未测量
+- 并行度为 `MapConcurrency`（默认 1，归档和恢复相同）。在 1 次测量中，一个 Lambda 函数通过 Access Point 用 69.8 秒读取了 5.3 GB（约 4.94 GiB），单个流约 76 MB/s，约为本环境 128 MBps 吞吐量容量的 60%。2 个流约为 152 MB/s，超过该容量。每个文件会被读取 2 次，而且同一个卷还要服务用户，所以默认值为 1。并行读取未测量。调高之前，请在运行期间观察文件系统的 `DataReadBytes` 和客户端延迟
 - `LargeFileThresholdBytes` 的默认值 5 GiB，来自单个请求 `CopyObject` 的上限。按上述速度，Lambda 的 15 分钟大约可覆盖 63 GiB，但这只是 1 个数据点
 - 清单会把 `ListObjectsV2` 的全部结果载入一个 Lambda 的内存。超过数百万个对象时，请用 `prefix` 分开处理
 - `selection=ATIME` 以深度优先遍历目录。扫描上限为 200,000 个条目（`ONTAP_SCAN_LIMIT`），超出时返回到中途为止的结果
@@ -285,7 +319,7 @@ Step Functions 的执行历史和日志（`/aws/vendedlogs/states/<stack>-archiv
 ## 相关文档
 - [Architecture (EN)](docs/architecture.en.md)
 - [S3 Access Points 兼容性备忘](../../../docs/s3ap-compatibility-notes.md)
-- [转移到归档类别的 8 种机制的比较](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/blob/main/docs/ja/reference/comparison/archive-tiering-library-options.md)（日文）
+- [转移到归档类别的 9 种机制的比较](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/blob/main/docs/ja/reference/comparison/archive-tiering-library-options.md)（日文）
 
 ---
 

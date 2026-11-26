@@ -28,10 +28,12 @@ parameter_overrides = [
     "EnableArchiveVersioning=false",
     "LogRetentionInDays=90",
     "ApprovalTimeoutHours=72",
+    "ApprovalValidityHours=24",
     "LargeFileThresholdBytes=5368709120",
-    "MapConcurrency=2",
+    "MapConcurrency=1",
     "MinFileSizeBytes=131072",
-    "ExcludePatterns=",
+    # ExcludePatterns is left out on purpose: the template default excludes VM images, database files and
+    # table-format metadata directories. An empty value (ExcludePatterns=) removes that protection.
     "ExcludePrefixes=",
     "RequireSeparateApprover=true",
     "FargateTimeoutSeconds=7200",

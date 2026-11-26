@@ -12,14 +12,14 @@ Amazon FSx for NetApp ONTAP（以下 FSx for ONTAP）のボリュームにある
 
 戻すときは、台帳から探し、バケットで復元を要求し、完了を待って Access Point へ `CopyObject` で戻し、戻したファイルを読み直して台帳の SHA-256 と CRC64NVME で照合します。
 このパターンは S3 Object Lock、S3 Glacier Vault Lock、AWS Backup Vault Lock、SnapLock、スナップショットのロックを使いません。テンプレートにも書いていません。保持期間は設定しないので、アーカイブ用のバケットのオブジェクトは、権限があれば消せます。
-このパターンの前提と、他の方法との比較は [アーカイブ用クラスへ移す 8 種類の仕組みの比較](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/blob/main/docs/ja/reference/comparison/archive-tiering-library-options.md) にあります。
+このパターンの前提と、他の方法との比較は [アーカイブ用クラスへ移す 9 種類の仕組みの比較](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/blob/main/docs/ja/reference/comparison/archive-tiering-library-options.md) にあります。
 ## 何を測り、何を測っていないか
 | 区分 | 内容 |
 |---|---|
 | 部品を実機で 1 回ずつ確認した（上の比較資料に記録、2026-11-24 と 2026-11-26、ap-northeast-1、第 1 世代 `SINGLE_AZ_1`、ONTAP 9.19.1P4D1、UNIX スタイルのボリューム、Access Point のユーザーは UNIX root） | `CopyObject` に `ChecksumAlgorithm=SHA256` を付けると、バケットの `ChecksumSHA256` が `FULL_OBJECT` でファイルの SHA-256 と一致した（8 MiB まで）。5.5 GiB のマルチパートは SHA-256 が `COMPOSITE` になり、CRC64NVME は `FULL_OBJECT` で一致した。古い ETag の `--copy-source-if-match` は `PreconditionFailed`。Access Point の `DeleteObject` は `If-Match` 非対応。Step Functions の SDK 統合で Access Point のエイリアスを `Bucket` に渡せた |
 | このリポジトリで確認した | moto を使った単体テストと、ステートマシンと IAM の構造のテスト。AWS には接続していません。実機の通しで見つかった不具合 6 件（ONTAP REST 関数の呼び出し権限、TLS 検証、復元要求の重複エラー名、ステートマシンのログ出力の権限、`HeadObject` の 403、アラームの発行の権限）は、再現するテストを加えて直しました |
 | 実機の通しで 1 回ずつ確認した（2026-11-26、上と同じ環境、`selection=ATIME`、`GLACIER`、7 ファイル） | ONTAP REST API による `accessed_time` の選択と uid、gid、mode、mtime、atime の取得（ルートはボリュームのルートで、パスの先頭にスラッシュなし。`unix_permissions` は `640` の整数で返る）。Distributed Map の `ItemReader` と `ResultWriter`。Fargate による 5.5 GiB のマルチパートコピー（`CopySourceIfMatch` 付き、CRC64NVME が台帳と一致）。Lambda での 5.3 GB（約 4.94 GiB）のハッシュ計算（69.8 秒、メモリ 2048 MB、使用 152 MB）。2 つ目の写し。承認後の削除。承認待ちの間に NFS で書き換えたファイルは `CHANGED` になり消えなかった。承認の拒否で何も消えなかった。`Expedited` での戻し（5.5 GiB を含む）と、戻した 6 ファイルの SHA-256 の一致（7 ファイル中の残る 1 ファイルは書き換え済みで、削除も戻しもされていない）。`reapply.sh` による uid、gid、mode、mtime の復元 |
-| 実機の通しで 1 回ずつ確認した（2026-11-26 の 2 回目、上と同じ環境、`GLACIER`、2 つ目の写しあり。dry run は `selection=ATIME`、本番は `selection=MTIME` と ONTAP REST での属性取得。64 B から 1 MiB のファイルと 51 GiB の疎ファイル） | レビューを受けて変えた動作。`maxFiles=50` の選択で、64 B の 3 ファイルと 131,071 B の 1 ファイルが最小サイズで外れ、131,073 B は残った。`*.vmdk` と保全用のプレフィックスの除外。51 GiB の疎ファイルが `SKIPPED_TOO_LARGE` として台帳に載り、写されなかった。使用済みの `runId` と、`requestedBy` のない本番の入力が入力エラーで止まった。起動した主体と同じ ARN での承認が `APPROVAL_REFUSED` になり、何も消えなかった。`delete` 関数を承認なしで直接呼ぶと `NOT_APPROVED` で消えなかった。別の主体の承認では 3 ファイルが消え、承認待ちに書き換えた 1 ファイルが `CHANGED` で残った。中断を模した `DELETING` の項目で、同じ実行の再試行が `DELETED`（`already gone on retry`）、別の実行は拒否、`reconcile` が `DELETED` を記録した。戻しの後の照合で 3 ファイルが `RESTORE_VERIFIED`。アラームが KMS で暗号化したトピックへ発行できた（修正後） |
+| 実機の通しで 1 回ずつ確認した（2026-11-26 の 2 回目、上と同じ環境、`GLACIER`、2 つ目の写しあり。dry run は `selection=ATIME`、本番は `selection=MTIME` と ONTAP REST での属性取得。64 B から 1 MiB のファイルと 51 GiB の疎ファイル） | 1 回目の通しにない項目の確認。`maxFiles=50` の選択で、64 B の 3 ファイルと 131,071 B の 1 ファイルが最小サイズで外れ、131,073 B は残った。`*.vmdk` と保全用のプレフィックスの除外。51 GiB の疎ファイルが `SKIPPED_TOO_LARGE` として台帳に載り、写されなかった。使用済みの `runId` と、`requestedBy` のない本番の入力が入力エラーで止まった。起動した主体と同じ ARN での承認が `APPROVAL_REFUSED` になり、何も消えなかった。`delete` 関数を承認なしで直接呼ぶと `NOT_APPROVED` で消えなかった。別の主体の承認では 3 ファイルが消え、承認待ちに書き換えた 1 ファイルが `CHANGED` で残った。中断を模した `DELETING` の項目で、同じ実行の再試行が `DELETED`（`already gone on retry`）、別の実行は拒否、`reconcile` が `DELETED` を記録した。戻しの後の照合で 3 ファイルが `RESTORE_VERIFIED`。アラームが KMS で暗号化したトピックへ発行できた（修正後） |
 ### 通しの環境と手順ごとの結果
 環境は ap-northeast-1、FSx for ONTAP の第 1 世代 `SINGLE_AZ_1`、ONTAP 9.19.1P4D1、UNIX セキュリティスタイルのボリューム、Access Point のファイルシステムユーザーは UNIX root です。実行日は 2026-11-26（時刻は日本時間）、各手順は 1 回だけ実行しました。構成は `selection=ATIME`、`GLACIER`、2 つ目の写しあり、Fargate は arm64 の 2 vCPU と 8 GiB です。データは小さい 6 ファイル（64 B が 3 つ、8 MiB が 3 つ。所有者 1234:5678、モード 640、mtime と atime は 2020-01-02）と、5,905,580,032 B のファイル 1 つです。
 | 手順 | 結果 | 所要 |
@@ -110,9 +110,10 @@ Amazon FSx for NetApp ONTAP（以下 FSx for ONTAP）のボリュームにある
 |---|---|---|
 | 50 GiB を超える | 外して台帳に `SKIPPED_TOO_LARGE` を記録する。`allowOversize: true` で含められる | 公式のページ（[Access point compatibility](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/access-points-for-fsxn-object-api-support.html)、2026-11-26 閲覧）が "Maximum object size is 50 GiB for uploads, but you can download objects larger than that" と書いている。戻しは Access Point への書き込みなので、超えたファイルはこのパターンでは戻せない（バケットから直接ダウンロードはできる） [E-021] |
 | `MinFileSizeBytes` 未満 | 131,072 バイト（128 KiB）。入力の `minSizeBytes` で変えられる | [Amazon S3 のストレージクラスの比較](https://docs.aws.amazon.com/AmazonS3/latest/userguide/storage-class-intro.html#sc-compare)（2026-11-26 閲覧）によると、Standard-IA と Glacier Instant Retrieval は 1 オブジェクトあたり最低 128 KB で課金し、Glacier Flexible Retrieval と Deep Archive は 1 オブジェクトにつき 40 KB（32 KB はそのクラスの単価、8 KB は Standard の単価）のメタデータを加える。小さなファイルではこの分が実体より大きくなる |
-| `ExcludePatterns`（glob）、`ExcludePrefixes` | 空 | スタックの値は常に適用し、入力の `excludePatterns`、`excludePrefixes` は追加だけができる。保全（リーガルホールド）の対象のプレフィックスはここに入れる |
+| `ExcludePatterns`（glob）、`ExcludePrefixes` | `ExcludePatterns` は下の一覧、`ExcludePrefixes` は空 | スタックの値は常に適用し、入力の `excludePatterns`、`excludePrefixes` は追加だけができる。保全（リーガルホールド）の対象のプレフィックスはここに入れる |
 
 Iceberg、Delta、Hive 形式の表のデータファイル、使用中のデータベースのファイル、VM のディスクイメージ（`*.vmdk`、`*.vhd`、`*.qcow2` など）は必ず除外してください。このパターンはファイルを 1 つずつ移し、表のメタデータやファイルを開いているプロセスを知りません。表は表の機能（パーティションの切り離し、スナップショットの期限切れ）で整理してから、切り離した後のパスだけを対象にします。保全の対象かどうかの判断は利用者の法務の判断で、このパターンは代わりをしません。
+`ExcludePatterns` の既定値は、実在の事故が起きやすいファイルの型を並べた出発点で、完全な一覧ではありません。VM のディスクイメージ（`*.vmdk`、`*.vhd`、`*.vhdx`、`*.vdi`、`*.qcow2`）は、VM が開いたまま書き続けるので、1 ファイルずつ移すと壊れた写しになります。データベースのデータとログのファイル（SQL Server の `*.mdf`、`*.ndf`、`*.ldf`、MySQL InnoDB の `*.ibd`、Oracle の `*.dbf`）は、データベースが開いて書き込みます。表形式のメタデータのディレクトリ（Delta の `_delta_log/`、Hudi の `.hoodie/`、Iceberg の `metadata/`）は、データファイルの一覧を持つので、データファイルだけを移すと表が壊れます。照合は大文字小文字を区別します（`*.VMDK` は一致しません）。Iceberg でない `metadata/` という名前のディレクトリも除外されます。`*.parquet` のような表のデータファイルは既定に入れていません。自分の環境のパターンを足してください。空にできるのは、この種のファイルがボリュームに一切ない場合だけです。
 ### 戻し
 入力は `runId` と、`keys` または `prefix` のどちらか 1 つです。`tier`（既定 `Bulk`）と `days`（既定 7）を指定できます。
 1. 台帳で `DELETED` のファイルを選ぶ。`DELETING` と `CHANGED` のファイルも、アーカイブ用バケットに写しがあれば選ぶ（削除の中断で残った項目を戻せるように）
@@ -124,6 +125,7 @@ Iceberg、Delta、Hive 形式の表のデータファイル、使用中のデー
 7. 属性の付け直し用スクリプト `manifests/<runId>-reapply.sh` を書く。対象は `RESTORE_VERIFIED` のファイルだけ
 
 戻したファイルの所有者は 0:1、モードは 644、更新時刻は戻した時刻でした（上の環境の確認）。元の値は `CopyObject` では戻りません。
+`RESTORE_MISMATCH` のファイルは、既定では戻しの対象に選びません。Access Point にある写しが台帳と一致しなかった項目で、そのまま選ぶと `EXISTS` として残るためです。やり直すときは、戻しの入力に `"retryMismatched": true`（JSON の真偽値）を付けます。この場合に限り、その `runId` の台帳が今 `RESTORE_MISMATCH` の項目だけが対象になり、Access Point にある不一致の写しを、バケットの写しで上書きします。ほかのステータスの項目は、この指定でも既存のファイルを上書きしません。上書きの後は、これまでと同じ読み直しで `RESTORE_VERIFIED` か `RESTORE_MISMATCH` になります。
 ### 中断した削除の回復
 削除の途中で Lambda が止まる、再試行が尽きるなどして、台帳に `DELETING` か `APPROVED` が残ることがあります。この状態は結果の `COMPLETED_WITH_ERRORS`、`stuckDeleting`、`notDeleted` と、`FilesStuckDeletingAlarm` で分かります。同じ `runId` に `"resume": true` を付けてアーカイブのステートマシンを起動すると、`reconcile` が次のように整理し、残ったファイルについて改めて承認を求めます。
 | 台帳 | Access Point | 整理の結果 |
@@ -148,7 +150,39 @@ aws stepfunctions send-task-failure --task-token "$TOKEN" --error Rejected --cau
 ```
 承認の後、`approval` 関数が `approver` を起動時の `requestedBy` と比べます（`RequireSeparateApprover=true`、既定）。同じ主体なら、何も `APPROVED` にせず `APPROVAL_REFUSED` で終えます。ロールの ARN とそのロールのセッションの ARN は同じ主体として扱います。違えば、一覧の各ファイルを台帳で `APPROVED` にし、`approvedBy`、`approvedAt`、実行の ARN を記録します。`delete` 関数が消すのは、この記録のあるファイルだけです。関数を直接呼び出しても、承認の記録のないファイルは消えません。
 
-`approver` と `requestedBy` はどちらも呼び出す側の申告です。台帳の `deletedBy` は台帳の `approvedBy` から取ります。実際に起動した主体と承認した主体を証明するのは CloudTrail の `StartExecution` と `SendTaskSuccess` のイベントです。職務の分離を主体の単位で保証するには、起動と承認のロールを IAM で分けてください。
+`approver` と `requestedBy` はどちらも呼び出す側の申告です。台帳の `deletedBy` は台帳の `approvedBy` から取ります。実際に起動した主体と承認した主体を証明するのは CloudTrail の `StartExecution` と `SendTaskSuccess` のイベントです。職務の分離を主体の単位で保証するには、起動と承認のロールを IAM で分けてください。 起動者と承認者の比較は、申告された 2 つの値の比較です。別の主体が承認したことを強制する仕組みではなく、強制しているとは主張しません。事後の統制は CloudTrail の `userIdentity` で、`StartExecution` と `SendTaskSuccess` を実行した主体を突き合わせて確かめます。
+### 承認の有効範囲とトークンの扱い
+`delete` 関数が消すのは、台帳が `APPROVED` で、`approvalExecutionArn` が今の実行と同じで、`approvedAt` が `ApprovalValidityHours`（既定 24 時間）以内の項目だけです。承認の後に実行を止めると `APPROVED` の項目が残りますが、別の実行の `claim` とは一致しないため、`delete` 関数を直接呼んでも `NOT_APPROVED` になります。期間を過ぎた承認も同じです。残った項目は `reconcile` が `VERIFIED` に戻します。
+
+タスクトークンは、承認が成立したとき（`approval` 関数）、起動者と同じ主体の承認を拒否したとき、承認の拒否・タイムアウト・実行の失敗の後（`summarize`）に削除します。実行が `summarize` に届かず残ったトークンは、`watchdog` が、承認のタイムアウトに 1 時間を足した時間を過ぎたものを削除します。トークンはスタックのカスタマー管理 KMS キー（出力 `ApprovalTokenKeyArn`）で暗号化されているので、読むには `ssm:GetParameter` に加えて、そのキーの `kms:Decrypt` が要ります。
+
+承認者のロールの IAM ポリシーの例です。`states:SendTaskSuccess` と `states:SendTaskFailure` は、IAM でリソースを指定できず（[Step Functions の認可リファレンス](https://docs.aws.amazon.com/service-authorization/latest/reference/list_awsstepfunctions.html)、2026-11-26 閲覧）、このステートマシンの実行だけに絞れません。トークンを持つ者がその実行を承認できるので、絞れるのはトークンを読む経路です。`StartExecution` はこのロールに付けないでください。
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "ReadApprovalToken",
+      "Effect": "Allow",
+      "Action": "ssm:GetParameter",
+      "Resource": "arn:aws:ssm:<region>:<account>:parameter/<stack>/approvals/*"
+    },
+    {
+      "Sid": "DecryptApprovalToken",
+      "Effect": "Allow",
+      "Action": "kms:Decrypt",
+      "Resource": "<ApprovalTokenKeyArn>",
+      "Condition": {"StringEquals": {"kms:ViaService": "ssm.<region>.amazonaws.com"}}
+    },
+    {
+      "Sid": "ReportApproval",
+      "Effect": "Allow",
+      "Action": ["states:SendTaskSuccess", "states:SendTaskFailure"],
+      "Resource": "*"
+    }
+  ]
+}
+```
 ## 属性の付け直し
 戻しの最後に、`manifests/<runId>-reapply.sh` が書かれます。NFS でボリュームをマウントしたホストで、root として実行します。
 ```bash
@@ -225,7 +259,7 @@ python3 -m pytest shared/tests/test_archive_verify_*.py shared/tests/test_s3ap_h
 | Cost KPI | 実行ごとの Lambda、Fargate、DynamoDB、S3 のリクエスト、状態遷移、アーカイブ用クラスの保管料金 | 下の「費用の見積もり」の式で、`dryRun=true` と小さい `maxFiles` の実測から出す |
 | Go / No-Go | 技術の条件: 実環境の通しで、写した全件が `VERIFIED`、`CHANGED` を意図的に作ると消されない、起動者の自己承認が拒否される、戻して `RESTORE_VERIFIED`。事業の条件: 見込みの削減額が運用の費用（承認の工数、戻しの依頼の対応）を上回る、戻しの依頼の入口と応答の目標時間（クラスの復元時間を含む）が決まっている、利用者への案内が済んでいる | 満たすまでは本番のボリュームに `dryRun=false` を使わない。判定の担当（データの持ち主、承認する人、運用の持ち主）を先に決める |
 
-PoC の計画と、本番前の確認の項目は、FSx for ONTAP Adoption Playbook の [本番前のレビューのチェックリスト](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/blob/main/docs/ja/playbooks/04-build/checklists/pre-production-review.md) と [移行前の棚卸し](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/blob/main/docs/ja/playbooks/01-assess/checklists/inventory.md) にあります。このパターンの PoC では、`maxFiles` を 20、200、2,000 と増やして、親の実行の所要、状態遷移の数、Fargate の秒数を記録すると、1 ファイルあたりの値が出せます。
+PoC の計画と、本番前の確認の項目は、FSx for ONTAP Adoption Playbook の [本番前のレビューのチェックリスト](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/blob/main/docs/ja/playbooks/04-build/checklists/pre-production-review.md) と [移行前の棚卸し](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/blob/main/docs/ja/playbooks/01-assess/checklists/inventory.md) にあります。このパターンの PoC では、`maxFiles` を 20、200、2,000 と増やして、親の実行の所要、状態遷移の数、Fargate の秒数を記録すると、1 ファイルあたりの値が出せます。 PoC の計画表は、Playbook の [自環境での始め方](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/blob/main/docs/ja/domains/data-utilization/notes/archive-use-cases-and-integrations.md#自環境での始め方) にあります。
 ### Measurement Method
 Step Functions の実行履歴とログ（`/aws/vendedlogs/states/<stack>-archive`、`-restore`。実行のデータは含めない）、`manifests/<runId>-result.json`、`manifests/<runId>-approval.json`、CloudWatch の EMF メトリクス（`FilesVerified`、`FilesDeleted`、`FilesMismatch`、`FilesChanged`、`FilesFailed`、`FilesStuckDeleting`、`BytesVerified`、`BytesDeleted`、`RestoreVerified`、`RestoreMismatch`、`ApprovalPendingHours`）、台帳。
 
@@ -242,7 +276,7 @@ Step Functions の実行履歴とログ（`/aws/vendedlogs/states/<stack>-archiv
 ## Performance Considerations
 並列度の既定値は、次の 1 回の測定から決めています。それ以外は設計上の要因で、測っていません。
 - 元のファイルは 2 回読まれます。1 回目はハッシュ計算のために Access Point から読み、2 回目は `CopyObject` がサーバー側で読みます。読み取りのリクエスト料金がかかり、容量プールにあるデータには容量プールの読み取り料金もかかります
-- 並列度は `MapConcurrency`（既定 2、アーカイブと戻しの両方）です。1 回の測定で、Lambda が Access Point から 5.3 GB（約 4.94 GiB）を 69.8 秒で読みました。1 本の読み取りで約 76 MB/s で、この環境のスループット容量 128 MBps の約 6 割です。ファイルは 2 回読まれ、同じボリュームが業務の読み書きも受けるため、既定は 2 にしています。大きなファイルや忙しいボリュームでは 1 にし、上げるときは実行中にファイルシステムの `DataReadBytes` と業務のクライアントのレイテンシを見てください。並列での測定はしていません
+- 並列度は `MapConcurrency`（既定 1、アーカイブと戻しの両方）です。1 回の測定で、Lambda が Access Point から 5.3 GB（約 4.94 GiB）を 69.8 秒で読みました。1 本の読み取りで約 76 MB/s で、この環境のスループット容量 128 MBps の約 6 割です。2 本にすると約 152 MB/s で容量を超える計算になり、ファイルは 2 回読まれ、同じボリュームが業務の読み書きも受けるため、既定は 1 にしています。並列での読み取りは測っていません。上げるときは実行中にファイルシステムの `DataReadBytes` と業務のクライアントのレイテンシを見てください
 - `LargeFileThresholdBytes` の既定の 5 GiB は、1 回の `CopyObject` の上限で決まります。上の速度が一定なら Lambda の 15 分で約 63 GiB を読める計算ですが、1 点の測定です
 - 一覧は `ListObjectsV2` の全件を 1 つの Lambda のメモリに載せます。数百万件を超える場合は、`prefix` で分けてください
 - `selection=ATIME` はディレクトリを深さ優先でたどります。走査の上限は 200,000 エントリ（`ONTAP_SCAN_LIMIT`）で、超えたら途中までの結果を返します
@@ -285,7 +319,7 @@ Step Functions の実行履歴とログ（`/aws/vendedlogs/states/<stack>-archiv
 ## 関連ドキュメント
 - [アーキテクチャ](docs/architecture.md)
 - [S3 Access Points の互換性メモ](../../../docs/s3ap-compatibility-notes.md)
-- [アーカイブ用クラスへ移す 8 種類の仕組みの比較](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/blob/main/docs/ja/reference/comparison/archive-tiering-library-options.md)
+- [アーカイブ用クラスへ移す 9 種類の仕組みの比較](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/blob/main/docs/ja/reference/comparison/archive-tiering-library-options.md)
 
 ---
 

@@ -12,14 +12,14 @@ Each file goes through the steps below. A file whose conditions stop holding at 
 
 To restore, the pattern finds the files in the ledger, requests a restore in the bucket, waits for it, copies the files back to the Access Point with `CopyObject`, then reads each restored file back and compares it with the ledger's SHA-256 and CRC64NVME.
 The pattern does not use S3 Object Lock, S3 Glacier Vault Lock, AWS Backup Vault Lock, SnapLock or snapshot locking, and none of them appears in the template. No retention period is set, so objects in the archive bucket can be deleted by anyone with permission.
-The assumptions behind this pattern and a comparison with other approaches are in [Comparing 8 kinds of mechanisms for moving files to archive classes](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/blob/main/docs/en/reference/comparison/archive-tiering-library-options.md).
+The assumptions behind this pattern and a comparison with other approaches are in [Comparing 9 kinds of mechanisms for moving files to archive classes](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/blob/main/docs/en/reference/comparison/archive-tiering-library-options.md).
 ## What was measured and what was not
 | Category | Content |
 |---|---|
 | Components checked once each on a real system (recorded in the comparison above; 2026-11-24 and 2026-11-26, ap-northeast-1, first-generation `SINGLE_AZ_1`, ONTAP 9.19.1P4D1, UNIX-style volume, Access Point user is UNIX root) | With `ChecksumAlgorithm=SHA256` on `CopyObject`, the bucket's `ChecksumSHA256` was `FULL_OBJECT` and equal to the file's SHA-256 (up to 8 MiB). For a 5.5 GiB multipart copy, SHA-256 became `COMPOSITE` and CRC64NVME was `FULL_OBJECT` and equal. `--copy-source-if-match` with an old ETag returned `PreconditionFailed`. The Access Point's `DeleteObject` returned `NotImplemented` when given `If-Match`. A Step Functions SDK integration accepted the Access Point alias as `Bucket` |
 | Checked in this repository | Unit tests with moto, and tests of the state machine and IAM structure. No connection to AWS. Six defects found in the end-to-end runs (invoke permission for the ONTAP REST function, TLS verification, the error name of a duplicate restore request, the logging permission of the state machines, the 403 from `HeadObject`, the publish permission for alarms) were fixed with tests that reproduce them |
 | Checked once each in an end-to-end run on a real system (2026-11-26, same environment as above, `selection=ATIME`, `GLACIER`, 7 files) | Selection by `accessed_time` and capture of uid, gid, mode, mtime and atime through the ONTAP REST API (the root is the volume root and the path has no leading slash; `unix_permissions` comes back as the integer `640`). The Distributed Map `ItemReader` and `ResultWriter`. A 5.5 GiB Fargate multipart copy (with `CopySourceIfMatch`; CRC64NVME equal to the ledger). Hashing of a 5.3 GB (about 4.94 GiB) file in Lambda (69.8 s, 2048 MB configured, 152 MB used). The second copy. Deletion after approval. A file rewritten over NFS while the run waited for approval became `CHANGED` and was not deleted. A rejected approval deleted nothing. Restore with `Expedited` (including the 5.5 GiB file) and equal SHA-256 for the 6 restored files (the seventh of the 7 files had been rewritten, so it was neither deleted nor restored). Restoring uid, gid, mode and mtime with `reapply.sh` |
-| Checked once each in a second end-to-end run (2026-11-26, same environment, `GLACIER`, second copy on. Dry run with `selection=ATIME`, real run with `selection=MTIME` and attributes from ONTAP REST. Files from 64 B to 1 MiB and one 51 GiB sparse file) | Behavior changed after review. With `maxFiles=50`, three 64 B files and one 131,071 B file fell below the minimum size and a 131,073 B file stayed. `*.vmdk` and a legal-hold prefix were excluded. The 51 GiB sparse file was recorded as `SKIPPED_TOO_LARGE` and not copied. A reused `runId` and a real-run input without `requestedBy` stopped as input errors. An approval with the same ARN as the starter ended `APPROVAL_REFUSED` and nothing was deleted. Invoking the `delete` function directly without approval returned `NOT_APPROVED` and deleted nothing. With a different approver 3 files were deleted and the 1 file rewritten during the wait stayed as `CHANGED`. On items set to `DELETING` to simulate an interruption, a retry by the same execution recorded `DELETED` (`already gone on retry`), another execution was refused, and `reconcile` recorded `DELETED`. After the restore, 3 files were `RESTORE_VERIFIED`. Alarms published to the KMS-encrypted topic (after a fix) |
+| Checked once each in a second end-to-end run (2026-11-26, same environment, `GLACIER`, second copy on. Dry run with `selection=ATIME`, real run with `selection=MTIME` and attributes from ONTAP REST. Files from 64 B to 1 MiB and one 51 GiB sparse file) | Items not covered by the first run. With `maxFiles=50`, three 64 B files and one 131,071 B file fell below the minimum size and a 131,073 B file stayed. `*.vmdk` and a legal-hold prefix were excluded. The 51 GiB sparse file was recorded as `SKIPPED_TOO_LARGE` and not copied. A reused `runId` and a real-run input without `requestedBy` stopped as input errors. An approval with the same ARN as the starter ended `APPROVAL_REFUSED` and nothing was deleted. Invoking the `delete` function directly without approval returned `NOT_APPROVED` and deleted nothing. With a different approver 3 files were deleted and the 1 file rewritten during the wait stayed as `CHANGED`. On items set to `DELETING` to simulate an interruption, a retry by the same execution recorded `DELETED` (`already gone on retry`), another execution was refused, and `reconcile` recorded `DELETED`. After the restore, 3 files were `RESTORE_VERIFIED`. Alarms published to the KMS-encrypted topic (after a fix) |
 ### Environment and results per step
 The environment is ap-northeast-1, first-generation FSx for ONTAP `SINGLE_AZ_1`, ONTAP 9.19.1P4D1, a volume with UNIX security style, and an Access Point whose file system user is UNIX root. The date is 2026-11-26 (times are Japan Standard Time), and each step was run once. The configuration was `selection=ATIME`, `GLACIER`, a second copy, and Fargate on arm64 with 2 vCPU and 8 GiB. The data was 6 small files (three of 64 B and three of 8 MiB, owner 1234:5678, mode 640, mtime and atime 2020-01-02) and one file of 5,905,580,032 B.
 | Step | Result | Duration |
@@ -110,9 +110,10 @@ What the selection leaves out:
 |---|---|---|
 | Above 50 GiB | Left out and recorded as `SKIPPED_TOO_LARGE` in the ledger. `allowOversize: true` includes them | The official page ([Access point compatibility](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/access-points-for-fsxn-object-api-support.html), read 2026-11-26) says "Maximum object size is 50 GiB for uploads, but you can download objects larger than that". A restore writes through the Access Point, so this pattern cannot restore a larger file there (it can be downloaded from the bucket directly) [E-021] |
 | Below `MinFileSizeBytes` | 131,072 bytes (128 KiB). The input's `minSizeBytes` changes it | According to [Comparing the Amazon S3 storage classes](https://docs.aws.amazon.com/AmazonS3/latest/userguide/storage-class-intro.html#sc-compare) (read 2026-11-26), Standard-IA and Glacier Instant Retrieval bill at least 128 KB per object, and Glacier Flexible Retrieval and Deep Archive add 40 KB of metadata per object (32 KB at that class's rate, 8 KB at the Standard rate). For small files that is more than the data itself |
-| `ExcludePatterns` (globs), `ExcludePrefixes` | Empty | The stack's values always apply; the input's `excludePatterns` and `excludePrefixes` can only add. Put legal-hold prefixes here |
+| `ExcludePatterns` (globs), `ExcludePrefixes` | `ExcludePatterns`: the list below; `ExcludePrefixes`: empty | The stack's values always apply; the input's `excludePatterns` and `excludePrefixes` can only add. Put legal-hold prefixes here |
 
 Always exclude data files of Iceberg, Delta or Hive tables, files of a running database, and VM disk images (`*.vmdk`, `*.vhd`, `*.qcow2` and the like). The pattern moves files one at a time and knows nothing about table metadata or the process that holds a file open. Tidy a table with the table's own features (detach partitions, expire snapshots) and target only the paths left after that. Whether something is under legal hold is your legal team's decision; the pattern does not make it.
+The default of `ExcludePatterns` is a starting point, not a complete list; it names file types that commonly cause real damage. VM disk images (`*.vmdk`, `*.vhd`, `*.vhdx`, `*.vdi`, `*.qcow2`) are written continuously while the VM is open, so a file-by-file copy is a broken copy. Database data and log files (SQL Server `*.mdf`, `*.ndf`, `*.ldf`; MySQL InnoDB `*.ibd`; Oracle `*.dbf`) are held open and written by the database. Table-format metadata directories (Delta `_delta_log/`, Hudi `.hoodie/`, Iceberg `metadata/`) list the data files, so moving only the data files breaks the table. Matching is case-sensitive (`*.VMDK` does not match). A directory named `metadata/` that is not an Iceberg table is excluded too. Table data files such as `*.parquet` are not in the default; add the patterns that fit your volume. Set the parameter to empty only if the volume holds none of these.
 ### Restore
 The input is `runId` and exactly one of `keys` or `prefix`. `tier` (default `Bulk`) and `days` (default 7) are optional.
 1. Select `DELETED` files from the ledger. `DELETING` and `CHANGED` files are selected too when the archive bucket holds their copy (so items left by an interrupted delete can be restored)
@@ -124,6 +125,7 @@ The input is `runId` and exactly one of `keys` or `prefix`. `tier` (default `Bul
 7. Write the attribute reapply script `manifests/<runId>-reapply.sh`, for `RESTORE_VERIFIED` files only
 
 Restored files had owner 0:1, mode 644, and the restore time as mtime (checked in the environment above). `CopyObject` does not restore the original values.
+A `RESTORE_MISMATCH` file is not selected for restore by default: its copy on the Access Point did not match the ledger, and selecting it would leave it as `EXISTS`. To redo it, add `"retryMismatched": true` (a JSON boolean) to the restore input. Only then are the items that the ledger of that `runId` currently shows as `RESTORE_MISMATCH` selected, and the mismatched copy on the Access Point is overwritten with the bucket's copy. Items in any other status never overwrite an existing file, with or without the flag. After the overwrite, the same read-back ends in `RESTORE_VERIFIED` or `RESTORE_MISMATCH`.
 ### Recovering from an interrupted delete
 A Lambda that stops mid-delete or exhausted retries can leave items as `DELETING` or `APPROVED` in the ledger. The result shows this as `COMPLETED_WITH_ERRORS`, `stuckDeleting` and `notDeleted`, and `FilesStuckDeletingAlarm` fires. Starting the archive state machine with the same `runId` and `"resume": true` runs `reconcile`, which settles the items as below, then asks for a new approval for the files that remain.
 | Ledger | Access Point | Result |
@@ -148,7 +150,39 @@ aws stepfunctions send-task-failure --task-token "$TOKEN" --error Rejected --cau
 ```
 After approval, the `approval` function compares `approver` with the `requestedBy` of the start input (`RequireSeparateApprover=true`, default). The same principal ends the run as `APPROVAL_REFUSED` without marking anything `APPROVED`. A role ARN and a session ARN of that role count as the same principal. Otherwise each listed file becomes `APPROVED` in the ledger with `approvedBy`, `approvedAt` and the execution ARN. The `delete` function deletes only files with this record; invoking it directly deletes nothing that lacks one.
 
-`approver` and `requestedBy` are both declared by the callers. The ledger's `deletedBy` is taken from its `approvedBy`. The principals that actually started and approved are in CloudTrail's `StartExecution` and `SendTaskSuccess` events. To guarantee separation of duties per principal, separate the starting and approving roles in IAM.
+`approver` and `requestedBy` are both declared by the callers. The ledger's `deletedBy` is taken from its `approvedBy`. The principals that actually started and approved are in CloudTrail's `StartExecution` and `SendTaskSuccess` events. To guarantee separation of duties per principal, separate the starting and approving roles in IAM. The comparison of starter and approver compares two declared values. It does not enforce that a different principal approved, and this document does not claim that it does. The control after the fact is CloudTrail's `userIdentity`: match the principals that ran `StartExecution` and `SendTaskSuccess`.
+### Approval validity and the task token
+The `delete` function deletes only items whose ledger status is `APPROVED`, whose `approvalExecutionArn` equals the current execution, and whose `approvedAt` is within `ApprovalValidityHours` (default 24 hours). If an execution is stopped after the approval, the `APPROVED` items remain, but they do not match another execution's `claim`, so calling the `delete` function directly returns `NOT_APPROVED`. An approval older than the window is refused the same way. `reconcile` returns the remaining items to `VERIFIED`.
+
+The task token is deleted when the approval is accepted (the `approval` function), when an approval by the starter's own principal is refused, and after a rejection, a timeout or a failed execution (`summarize`). A token left behind by an execution that never reached `summarize` is deleted by `watchdog` once it is older than the approval timeout plus one hour. The token is encrypted with the stack's customer-managed KMS key (output `ApprovalTokenKeyArn`), so reading it takes `ssm:GetParameter` and `kms:Decrypt` on that key.
+
+An example IAM policy for the approver role. IAM cannot scope `states:SendTaskSuccess` and `states:SendTaskFailure` to a resource ([Step Functions authorization reference](https://docs.aws.amazon.com/service-authorization/latest/reference/list_awsstepfunctions.html), viewed 2026-11-26), so they cannot be limited to this state machine's executions. Whoever holds the token can answer that execution, so what can be narrowed is the path to the token. Do not give this role `StartExecution`.
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "ReadApprovalToken",
+      "Effect": "Allow",
+      "Action": "ssm:GetParameter",
+      "Resource": "arn:aws:ssm:<region>:<account>:parameter/<stack>/approvals/*"
+    },
+    {
+      "Sid": "DecryptApprovalToken",
+      "Effect": "Allow",
+      "Action": "kms:Decrypt",
+      "Resource": "<ApprovalTokenKeyArn>",
+      "Condition": {"StringEquals": {"kms:ViaService": "ssm.<region>.amazonaws.com"}}
+    },
+    {
+      "Sid": "ReportApproval",
+      "Effect": "Allow",
+      "Action": ["states:SendTaskSuccess", "states:SendTaskFailure"],
+      "Resource": "*"
+    }
+  ]
+}
+```
 ## Reapplying attributes
 At the end of a restore, `manifests/<runId>-reapply.sh` is written. Run it as root on a host that mounts the volume over NFS.
 ```bash
@@ -225,7 +259,7 @@ Target values are yours to set; none are given here.
 | Cost KPI | Lambda, Fargate, DynamoDB, S3 requests, state transitions and archive class storage per run | Estimate with the formula in "Cost estimation" from a measured `dryRun=true` run with a small `maxFiles` |
 | Go / No-Go | Technical: in a run on the real environment, every copied file is `VERIFIED`, a deliberately created `CHANGED` file is not deleted, a self-approval by the starter is refused, restored files are `RESTORE_VERIFIED`. Business: the expected saving exceeds the operating cost (approval effort, handling restore requests); the entry point and target response time for restore requests (including the class's restore time) are decided; users have been told | Do not use `dryRun=false` on a production volume until all are met. Name who decides each (data owner, approver, operations owner) first |
 
-PoC planning and pre-production checks are in the FSx for ONTAP Adoption Playbook's [pre-production review checklist](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/blob/main/docs/ja/playbooks/04-build/checklists/pre-production-review.md) and [pre-migration inventory](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/blob/main/docs/ja/playbooks/01-assess/checklists/inventory.md) (both in Japanese). For this pattern's PoC, raising `maxFiles` through 20, 200 and 2,000 while recording parent duration, state transitions and Fargate seconds gives per-file values.
+PoC planning and pre-production checks are in the FSx for ONTAP Adoption Playbook's [pre-production review checklist](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/blob/main/docs/ja/playbooks/04-build/checklists/pre-production-review.md) and [pre-migration inventory](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/blob/main/docs/ja/playbooks/01-assess/checklists/inventory.md) (both in Japanese). For this pattern's PoC, raising `maxFiles` through 20, 200 and 2,000 while recording parent duration, state transitions and Fargate seconds gives per-file values. A PoC plan table is in the Playbook's [Getting started in your own environment](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/blob/main/docs/ja/domains/data-utilization/notes/archive-use-cases-and-integrations.md#自環境での始め方) (in Japanese).
 ### Measurement Method
 Step Functions execution history and logs (`/aws/vendedlogs/states/<stack>-archive` and `-restore`, without execution data), `manifests/<runId>-result.json`, `manifests/<runId>-approval.json`, CloudWatch EMF metrics (`FilesVerified`, `FilesDeleted`, `FilesMismatch`, `FilesChanged`, `FilesFailed`, `FilesStuckDeleting`, `BytesVerified`, `BytesDeleted`, `RestoreVerified`, `RestoreMismatch`, `ApprovalPendingHours`), and the ledger.
 
@@ -242,7 +276,7 @@ The notification topic is encrypted with a customer managed KMS key. The AWS man
 ## Performance Considerations
 The default concurrency is based on the one measurement below. The rest are design factors and were not measured.
 - Each source file is read twice: once through the Access Point for hashing, and once server-side by `CopyObject`. Read requests are charged, and data in the capacity pool also incurs capacity pool read charges
-- Concurrency is `MapConcurrency` (default 2, for both archive and restore). In one measurement a Lambda function read 5.3 GB (about 4.94 GiB) through the Access Point in 69.8 seconds, about 76 MB/s on one stream, which is about 60% of this environment's 128 MBps throughput capacity. Each file is read twice and the same volume serves your users, so the default is 2. Use 1 for large files or a busy volume, and before raising it watch the file system's `DataReadBytes` and client latency during a run. Parallel runs were not measured
+- Concurrency is `MapConcurrency` (default 1, for both archive and restore). In one measurement a Lambda function read 5.3 GB (about 4.94 GiB) through the Access Point in 69.8 seconds, about 76 MB/s on one stream, which is about 60% of this environment's 128 MBps throughput capacity. Two streams would be about 152 MB/s, above that capacity. Each file is read twice and the same volume serves your users, so the default is 1. Parallel reads were not measured. Before raising it, watch the file system's `DataReadBytes` and client latency during a run
 - The 5 GiB default for `LargeFileThresholdBytes` follows from the single-request `CopyObject` limit. At the speed above Lambda's 15 minutes would cover about 63 GiB, but that is one data point
 - The listing loads every `ListObjectsV2` result into one Lambda's memory. Split with `prefix` beyond a few million objects
 - `selection=ATIME` walks directories depth-first. The scan limit is 200,000 entries (`ONTAP_SCAN_LIMIT`); past it, partial results are returned
@@ -285,7 +319,7 @@ Formula: monthly cost ≈ files × transitions per file × price per transition 
 ## Related documents
 - [Architecture](docs/architecture.en.md)
 - [S3 Access Points compatibility notes](../../../docs/s3ap-compatibility-notes.md)
-- [Comparison of 8 mechanisms for moving files to archive classes](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/blob/main/docs/ja/reference/comparison/archive-tiering-library-options.md) (in Japanese)
+- [Comparison of 9 mechanisms for moving files to archive classes](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/blob/main/docs/ja/reference/comparison/archive-tiering-library-options.md) (in Japanese)
 
 ---
 

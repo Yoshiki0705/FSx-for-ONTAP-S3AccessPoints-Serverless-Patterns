@@ -11,7 +11,11 @@ A file is deleted only when all of these hold:
 2. the ledger status is ``APPROVED``: the approval step wrote it, for this run, after a person
    approved the run (and, with RequireSeparateApprover, after checking the approver is not the
    person who started it). Nothing in this function's input can stand in for that: the former
-   ``approvedBy`` input is gone, because any non-empty string in it was enough to delete
+   ``approvedBy`` input is gone, because any non-empty string in it was enough to delete.
+   The approval is also bound to the execution that recorded it (``approvalExecutionArn`` must
+   equal ``claim``) and to time (``approvedAt`` is at most ``ApprovalValidityHours`` old). An
+   execution stopped after the approval leaves ``APPROVED`` items behind; a direct call with any
+   other ``claim``, or a call made after the window, finds them ``NOT_APPROVED``
 3. the second copy is ``VERIFIED`` when one was required
 4. the Access Point's current ETag and size equal the ledger's
 
@@ -27,6 +31,7 @@ execution ended.
 from __future__ import annotations
 
 import logging
+from datetime import datetime, timedelta, timezone
 
 import boto3
 
@@ -41,6 +46,23 @@ from shared.s3ap_helper import S3ApHelper
 logger = logging.getLogger(__name__)
 
 NOT_FOUND = ("404", "NoSuchKey", "NotFound")
+DEFAULT_APPROVAL_VALIDITY_HOURS = 24
+
+
+def approval_is_current(item: dict, claim: str, validity_hours: float, now: datetime | None = None) -> bool:
+    """True when the approval was recorded by execution ``claim`` and is not older than the window.
+
+    An unreadable or missing ``approvedAt`` counts as expired: the approval cannot be shown to be recent.
+    """
+    if not item.get("approvalExecutionArn") or item["approvalExecutionArn"] != claim:
+        return False
+    try:
+        approved_at = datetime.fromisoformat(str(item.get("approvedAt")))
+    except ValueError:
+        return False
+    if approved_at.tzinfo is None:
+        approved_at = approved_at.replace(tzinfo=timezone.utc)
+    return (now or datetime.now(timezone.utc)) - approved_at <= timedelta(hours=validity_hours)
 
 
 def delete_one(
@@ -51,6 +73,7 @@ def delete_one(
     claim: str | None,
     helper: S3ApHelper,
     ledger: Ledger,
+    approval_validity_hours: float = DEFAULT_APPROVAL_VALIDITY_HOURS,
 ) -> dict:
     """Return ``{"key", "outcome", ...}``: DELETED, DRY_RUN, CHANGED, NOT_APPROVED or NOT_VERIFIED."""
     if parse_dry_run(dry_run):
@@ -66,6 +89,10 @@ def delete_one(
         or not item.get("approvedAt")
     ):
         return {"key": key, "outcome": "NOT_APPROVED", "status": item.get("status") if item else None}
+    if not resuming and not approval_is_current(item, claim, approval_validity_hours):
+        # An APPROVED item from a stopped execution, or one approved longer ago than the window.
+        # reconcile returns it to VERIFIED once its execution is no longer running.
+        return {"key": key, "outcome": "NOT_APPROVED", "status": "approval not current"}
     if item.get("secondCopyRequired") and item.get("secondCopy") != L.VERIFIED:
         return {"key": key, "outcome": "NOT_VERIFIED", "status": "second copy not verified"}
     before = (L.DELETING,) if resuming else (L.APPROVED,)
@@ -196,4 +223,5 @@ def handler(event, context):
         claim=event.get("claim"),
         helper=helper,
         ledger=ledger,
+        approval_validity_hours=cfg.approval_validity_hours,
     )

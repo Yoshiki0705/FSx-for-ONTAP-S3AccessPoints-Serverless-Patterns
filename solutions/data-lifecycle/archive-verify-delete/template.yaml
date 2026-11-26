@@ -57,6 +57,16 @@ Parameters:
     MinValue: 1
     MaxValue: 720
     Description: How long an execution waits for a person to approve or reject
+  ApprovalValidityHours:
+    Type: Number
+    Default: 24
+    MinValue: 1
+    MaxValue: 720
+    Description: >-
+      How long after an approval the delete step still accepts it. The delete step also requires that the
+      approval was recorded by the same execution. A longer window leaves approved files exposed for longer
+      if an execution is stopped after the approval; a window shorter than the delete of the whole list
+      leaves files undeleted (reconcile returns them to VERIFIED).
   LargeFileThresholdBytes:
     Type: Number
     Default: 5368709120
@@ -68,16 +78,17 @@ Parameters:
       lower value; the time to read a file through the Access Point is not measured here.
   MapConcurrency:
     Type: Number
-    Default: 2
+    Default: 1
     MinValue: 1
     MaxValue: 1000
     Description: >-
       Files processed in parallel, for the archive and the restore. Every file is read twice from the
       volume (the hash, then the server-side copy). One read stream of a large file ran at about
       76 MB/s in one measurement (5.3 GB in 69.8 s, Lambda through the Access Point), which is about
-      60% of a 128 MBps file system, and the same volume serves your users. The default 2 keeps small
-      files moving; set 1 for large files or a busy volume. Raise it only after watching the file
-      system's DataReadBytes and client latency during a run. The Distributed Map accepts up to 1000.
+      60% of a 128 MBps file system. Two streams would be 152 MB/s, above that capacity, and the same
+      volume serves your users, so the default is 1. Parallel reads were not measured. Raise it only
+      after watching the file system's DataReadBytes and client latency during a run. The Distributed
+      Map accepts up to 1000.
   MinFileSizeBytes:
     Type: Number
     Default: 131072
@@ -89,12 +100,16 @@ Parameters:
       classes"). A start input can lower it with minSizeBytes.
   ExcludePatterns:
     Type: CommaDelimitedList
-    Default: ""
+    Default: "*.vmdk,*.vhd,*.vhdx,*.vdi,*.qcow2,*.mdf,*.ndf,*.ldf,*.ibd,*.dbf,_delta_log/*,*/_delta_log/*,.hoodie/*,*/.hoodie/*,metadata/*,*/metadata/*"
     Description: >-
-      Shell-glob patterns matched against the whole key (for example "*.vmdk,*.parquet,*/.snapshot/*").
-      Always applied; a start input can add patterns but not remove these. Live database files, VM
-      images and files of Iceberg or Hive tables must be excluded: the pattern moves files one by one
-      and knows nothing about the table or the process that holds them open.
+      Shell-glob patterns matched, case-sensitively, against the whole key. Always applied; a start input can
+      add patterns but not remove these. The default is a starting point, not a complete list: VM disk
+      images (vmdk, vhd, vhdx, vdi, qcow2), database data and log files (SQL Server mdf, ndf, ldf; MySQL
+      InnoDB ibd; Oracle dbf), and the metadata directories of table formats (Delta _delta_log, Hudi .hoodie,
+      Iceberg metadata). The pattern moves files one by one and knows nothing about the VM, the database or
+      the table that holds them open. A directory named metadata that is not an Iceberg table is excluded
+      as well. Add your own, for example "*.parquet" for table data files. Set the parameter to an empty
+      value only if nothing of this kind is on the volume.
   ExcludePrefixes:
     Type: CommaDelimitedList
     Default: ""
@@ -243,6 +258,8 @@ Globals:
         FARGATE_ENABLED: !If [UseFargate, "true", "false"]
         ONTAP_ENABLED: !If [UseOntap, "true", "false"]
         APPROVAL_TIMEOUT_HOURS: !Ref ApprovalTimeoutHours
+        APPROVAL_VALIDITY_HOURS: !Ref ApprovalValidityHours
+        APPROVAL_TOKEN_KEY_ID: !GetAtt ApprovalTokenKey.Arn
         SNS_TOPIC_ARN: !Ref NotificationTopic
         STACK_NAME: !Ref AWS::StackName
         FARGATE_SUBNETS: !Join [",", !Ref SubnetIds]
@@ -368,6 +385,28 @@ Resources:
   # kms:GenerateDataKey* and kms:Decrypt). The docs say aws:SourceAccount and aws:SourceArn are not
   # supported in the key policy for EventBridge to encrypted topics, so the EventBridge statement has
   # no condition; the CloudWatch statement carries aws:SourceAccount.
+  # Encrypts the task tokens in Parameter Store. The key policy delegates to IAM and names no service,
+  # so reading a token takes ssm:GetParameter on the parameter AND kms:Decrypt on this key.
+  ApprovalTokenKey:
+    Type: AWS::KMS::Key
+    Properties:
+      Description: !Sub "Encrypts the ${AWS::StackName} approval task tokens in Parameter Store"
+      EnableKeyRotation: true
+      PendingWindowInDays: 7
+      KeyPolicy:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: AccountAdministration
+            Effect: Allow
+            Principal:
+              AWS: !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:root"
+            Action: "kms:*"
+            Resource: "*"
+      Tags:
+        - Key: UseCase
+          Value: archive-verify-delete
+        - Key: Phase
+          Value: data-lifecycle
   NotificationKey:
     Type: AWS::KMS::Key
     Properties:
@@ -575,8 +614,11 @@ Resources:
               Action: ["s3:GetObject", "s3:PutObject"]
               Resource: !Sub "arn:aws:s3:::${ArchiveBucketName}/manifests/*"
             - Effect: Allow
-              Action: ["ssm:PutParameter"]
+              Action: ["ssm:PutParameter", "ssm:DeleteParameter"]
               Resource: !Sub "arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/${AWS::StackName}/approvals/*"
+            - Effect: Allow
+              Action: ["kms:Encrypt", "kms:GenerateDataKey", "kms:Decrypt"]
+              Resource: !GetAtt ApprovalTokenKey.Arn
             - Effect: Allow
               Action: ["sns:Publish"]
               Resource: !Ref NotificationTopic
@@ -705,6 +747,10 @@ Resources:
             - Effect: Allow
               Action: ["ssm:GetParametersByPath"]
               Resource: !Sub "arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/${AWS::StackName}/approvals"
+            # Deletes a token that outlived the approval timeout (an execution that ended without summarize)
+            - Effect: Allow
+              Action: ["ssm:DeleteParameter"]
+              Resource: !Sub "arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/${AWS::StackName}/approvals/*"
       Events:
         Every15Minutes:
           Type: Schedule
@@ -1423,6 +1469,9 @@ Outputs:
     Value: !Ref LedgerTable
   NotificationTopicArn:
     Value: !Ref NotificationTopic
+  ApprovalTokenKeyArn:
+    Description: Key that encrypts the task tokens. An approver role needs kms:Decrypt on it (see the README).
+    Value: !GetAtt ApprovalTokenKey.Arn
   # This stack takes an existing Access Point and does not manage its policy. After the deploy, render it from these
   # role ARNs with tools/render_access_point_policy.py and attach it with
   # `aws s3control put-access-point-policy` (see the README).

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from datetime import datetime, timedelta, timezone
+
 import pytest
 from avd_support import AP, load_handler
 from hypothesis import HealthCheck, given, settings
@@ -28,14 +30,15 @@ def _seed(aws, ledger, key="docs/a.txt", body=b"hello", **over):
         "archiveKey": f"data/run1/{key}",
         "secondCopyRequired": False,
         "approvedBy": APPROVER,
-        "approvedAt": "2026-01-01T00:00:00+00:00",
+        "approvedAt": L.now_iso(),
+        "approvalExecutionArn": CLAIM,
     }
     item.update(over)
     ledger.put("run1", key, L.APPROVED, **item)
     return put["ETag"]
 
 
-def _delete(ledger, key="docs/a.txt", dry_run=False, claim=CLAIM, helper=None):
+def _delete(ledger, key="docs/a.txt", dry_run=False, claim=CLAIM, helper=None, **extra):
     return delete.delete_one(
         run_id="run1",
         key=key,
@@ -43,6 +46,7 @@ def _delete(ledger, key="docs/a.txt", dry_run=False, claim=CLAIM, helper=None):
         claim=claim,
         helper=helper or S3ApHelper(AP),
         ledger=ledger,
+        **extra,
     )
 
 
@@ -205,3 +209,60 @@ def test_handler_wiring(aws, ledger, lambda_context):
     _seed(aws, ledger)
     out = delete.handler({"runId": "run1", "key": "docs/a.txt", "dryRun": True, "claim": CLAIM}, lambda_context)
     assert out["outcome"] == "DRY_RUN"
+
+
+OTHER = "arn:aws:states:ap-northeast-1:123456789012:execution:avd-archive:stopped-earlier"
+
+
+def test_an_approval_belongs_to_the_execution_that_recorded_it(aws, ledger):
+    """An APPROVED item left by a stopped execution must not be consumed by a call that names another one."""
+    _seed(aws, ledger, approvalExecutionArn=OTHER)
+    result = _delete(ledger)  # claim is CLAIM, the approval was recorded by OTHER
+    assert result["outcome"] == "NOT_APPROVED"
+    assert _exists(aws)
+    assert ledger.get("run1", "docs/a.txt")["status"] == L.APPROVED
+
+
+def test_an_approval_without_an_execution_is_not_consumed(aws, ledger):
+    _seed(aws, ledger, approvalExecutionArn="")
+    assert _delete(ledger)["outcome"] == "NOT_APPROVED"
+    assert _exists(aws)
+
+
+def test_an_approval_older_than_the_validity_window_is_not_consumed(aws, ledger):
+    old = (datetime.now(timezone.utc) - timedelta(hours=25)).isoformat()
+    _seed(aws, ledger, approvedAt=old)
+    result = _delete(ledger)  # default validity is 24 hours
+    assert result["outcome"] == "NOT_APPROVED"
+    assert _exists(aws)
+
+
+def test_an_approval_inside_the_validity_window_is_consumed(aws, ledger):
+    recent = (datetime.now(timezone.utc) - timedelta(hours=23)).isoformat()
+    _seed(aws, ledger, approvedAt=recent)
+    assert _delete(ledger)["outcome"] == "DELETED"
+
+
+def test_the_validity_window_is_a_parameter(aws, ledger):
+    two_hours = (datetime.now(timezone.utc) - timedelta(hours=2)).isoformat()
+    _seed(aws, ledger, approvedAt=two_hours)
+    assert _delete(ledger, approval_validity_hours=1)["outcome"] == "NOT_APPROVED"
+    assert _delete(ledger, approval_validity_hours=3)["outcome"] == "DELETED"
+
+
+@pytest.mark.parametrize("stamp", ["x", "", "2026-13-45", None])
+def test_an_unreadable_approval_time_is_not_consumed(aws, ledger, stamp):
+    _seed(aws, ledger, approvedAt=stamp or "x")
+    if stamp is None:
+        ledger.update("run1", "docs/a.txt", L.APPROVED, only_if_status=L.APPROVED, approvedAt="")
+    assert _delete(ledger)["outcome"] == "NOT_APPROVED"
+    assert _exists(aws)
+
+
+def test_handler_reads_the_validity_from_the_environment(aws, ledger, lambda_context, monkeypatch):
+    monkeypatch.setenv("APPROVAL_VALIDITY_HOURS", "1")
+    old = (datetime.now(timezone.utc) - timedelta(hours=2)).isoformat()
+    _seed(aws, ledger, approvedAt=old)
+    out = delete.handler({"runId": "run1", "key": "docs/a.txt", "dryRun": False, "claim": CLAIM}, lambda_context)
+    assert out["outcome"] == "NOT_APPROVED"
+    assert _exists(aws)
