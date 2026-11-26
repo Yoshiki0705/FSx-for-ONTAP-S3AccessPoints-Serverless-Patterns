@@ -876,6 +876,38 @@
         "solutions/data-lifecycle/archive-verify-delete/README.de.md",
         "solutions/data-lifecycle/archive-verify-delete/README.es.md"
       ]
+    },
+    {
+      "id": "E-024",
+      "claim": "IAM cannot scope states:SendTaskSuccess or states:SendTaskFailure to a resource or a condition key, so an approver role cannot be limited to one state machine's executions.",
+      "subject": "AWS",
+      "tier": "documented",
+      "premise": true,
+      "sources": [
+        {
+          "url": "https://docs.aws.amazon.com/service-authorization/latest/reference/list_awsstepfunctions.html",
+          "read": "full",
+          "retrieved": "2026-11-26",
+          "says": "SendTaskSuccess, SendTaskFailure and SendTaskHeartbeat list no resource types and no condition keys, while StartExecution and StopExecution list statemachine and execution resource types."
+        }
+      ],
+      "support_inquiry": {
+        "status": "not-needed",
+        "topic": "The pattern narrows the path to the task token (a SecureString parameter) instead of the action; nothing relies on a resource-level scope."
+      },
+      "feature_request": {
+        "status": "not-applicable"
+      },
+      "appears_in": [
+        "solutions/data-lifecycle/archive-verify-delete/README.md",
+        "solutions/data-lifecycle/archive-verify-delete/README.en.md",
+        "solutions/data-lifecycle/archive-verify-delete/README.ko.md",
+        "solutions/data-lifecycle/archive-verify-delete/README.zh-CN.md",
+        "solutions/data-lifecycle/archive-verify-delete/README.zh-TW.md",
+        "solutions/data-lifecycle/archive-verify-delete/README.fr.md",
+        "solutions/data-lifecycle/archive-verify-delete/README.de.md",
+        "solutions/data-lifecycle/archive-verify-delete/README.es.md"
+      ]
     }
   ]
 }

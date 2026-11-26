@@ -159,7 +159,7 @@ aws stepfunctions send-task-failure --task-token "$TOKEN" --error Rejected --cau
 
 태스크 토큰은 승인이 성립했을 때(`approval` 함수), 시작한 주체와 같은 주체의 승인을 거부했을 때, 승인의 거부·타임아웃·실행 실패 후(`summarize`)에 삭제합니다. `summarize`에 도달하지 못하고 남은 토큰은 `watchdog`이 승인 타임아웃에 1시간을 더한 시간이 지난 것을 삭제합니다. 토큰은 스택의 고객 관리형 KMS 키(출력 `ApprovalTokenKeyArn`)로 암호화되어 있으므로, 읽으려면 `ssm:GetParameter`에 더해 그 키의 `kms:Decrypt`가 필요합니다.
 
-승인자 역할의 IAM 정책 예시입니다. `states:SendTaskSuccess`와 `states:SendTaskFailure`는 IAM에서 리소스를 지정할 수 없어([Step Functions 인증 레퍼런스](https://docs.aws.amazon.com/service-authorization/latest/reference/list_awsstepfunctions.html), 2026-11-26 열람) 이 스테이트 머신의 실행으로만 좁힐 수 없습니다. 토큰을 가진 사람이 그 실행에 응답할 수 있으므로, 좁힐 수 있는 것은 토큰을 읽는 경로입니다. 이 역할에 `StartExecution`을 부여하지 마세요.
+승인자 역할의 IAM 정책 예시입니다. `states:SendTaskSuccess`와 `states:SendTaskFailure`는 IAM에서 리소스를 지정할 수 없어([Step Functions 인증 레퍼런스](https://docs.aws.amazon.com/service-authorization/latest/reference/list_awsstepfunctions.html), 2026-11-26 열람) [E-024] 이 스테이트 머신의 실행으로만 좁힐 수 없습니다. 토큰을 가진 사람이 그 실행에 응답할 수 있으므로, 좁힐 수 있는 것은 토큰을 읽는 경로입니다. 이 역할에 `StartExecution`을 부여하지 마세요.
 ```json
 {
   "Version": "2012-10-17",

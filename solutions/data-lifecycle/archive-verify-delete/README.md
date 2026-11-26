@@ -159,7 +159,7 @@ aws stepfunctions send-task-failure --task-token "$TOKEN" --error Rejected --cau
 
 タスクトークンは、承認が成立したとき（`approval` 関数）、起動者と同じ主体の承認を拒否したとき、承認の拒否・タイムアウト・実行の失敗の後（`summarize`）に削除します。実行が `summarize` に届かず残ったトークンは、`watchdog` が、承認のタイムアウトに 1 時間を足した時間を過ぎたものを削除します。トークンはスタックのカスタマー管理 KMS キー（出力 `ApprovalTokenKeyArn`）で暗号化されているので、読むには `ssm:GetParameter` に加えて、そのキーの `kms:Decrypt` が要ります。
 
-承認者のロールの IAM ポリシーの例です。`states:SendTaskSuccess` と `states:SendTaskFailure` は、IAM でリソースを指定できず（[Step Functions の認可リファレンス](https://docs.aws.amazon.com/service-authorization/latest/reference/list_awsstepfunctions.html)、2026-11-26 閲覧）、このステートマシンの実行だけに絞れません。トークンを持つ者がその実行を承認できるので、絞れるのはトークンを読む経路です。`StartExecution` はこのロールに付けないでください。
+承認者のロールの IAM ポリシーの例です。`states:SendTaskSuccess` と `states:SendTaskFailure` は、IAM でリソースを指定できず（[Step Functions の認可リファレンス](https://docs.aws.amazon.com/service-authorization/latest/reference/list_awsstepfunctions.html)、2026-11-26 閲覧） [E-024]、このステートマシンの実行だけに絞れません。トークンを持つ者がその実行を承認できるので、絞れるのはトークンを読む経路です。`StartExecution` はこのロールに付けないでください。
 ```json
 {
   "Version": "2012-10-17",

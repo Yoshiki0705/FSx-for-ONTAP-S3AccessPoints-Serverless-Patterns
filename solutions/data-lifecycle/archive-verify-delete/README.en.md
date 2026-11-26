@@ -159,7 +159,7 @@ The `delete` function deletes only items whose ledger status is `APPROVED`, whos
 
 The task token is deleted when the approval is accepted (the `approval` function), when an approval by the starter's own principal is refused, and after a rejection, a timeout or a failed execution (`summarize`). A token left behind by an execution that never reached `summarize` is deleted by `watchdog` once it is older than the approval timeout plus one hour. The token is encrypted with the stack's customer-managed KMS key (output `ApprovalTokenKeyArn`), so reading it takes `ssm:GetParameter` and `kms:Decrypt` on that key.
 
-An example IAM policy for the approver role. IAM cannot scope `states:SendTaskSuccess` and `states:SendTaskFailure` to a resource ([Step Functions authorization reference](https://docs.aws.amazon.com/service-authorization/latest/reference/list_awsstepfunctions.html), viewed 2026-11-26), so they cannot be limited to this state machine's executions. Whoever holds the token can answer that execution, so what can be narrowed is the path to the token. Do not give this role `StartExecution`.
+An example IAM policy for the approver role. IAM cannot scope `states:SendTaskSuccess` and `states:SendTaskFailure` to a resource ([Step Functions authorization reference](https://docs.aws.amazon.com/service-authorization/latest/reference/list_awsstepfunctions.html), viewed 2026-11-26) [E-024], so they cannot be limited to this state machine's executions. Whoever holds the token can answer that execution, so what can be narrowed is the path to the token. Do not give this role `StartExecution`.
 ```json
 {
   "Version": "2012-10-17",

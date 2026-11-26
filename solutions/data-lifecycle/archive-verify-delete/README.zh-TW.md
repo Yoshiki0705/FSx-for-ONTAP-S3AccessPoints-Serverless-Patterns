@@ -159,7 +159,7 @@ aws stepfunctions send-task-failure --task-token "$TOKEN" --error Rejected --cau
 
 任務權杖在批准成立時（`approval` 函數）、拒絕與啟動者相同主體的批准時，以及批准被拒絕、逾時或執行失敗之後（`summarize`）刪除。沒有到達 `summarize` 而殘留的權杖，由 `watchdog` 在超過批准逾時加 1 小時後刪除。權杖使用堆疊的客戶受管 KMS 金鑰（輸出 `ApprovalTokenKeyArn`）加密，因此讀取它需要 `ssm:GetParameter`，以及該金鑰的 `kms:Decrypt`。
 
-批准者角色的 IAM 政策範例。IAM 無法為 `states:SendTaskSuccess` 和 `states:SendTaskFailure` 指定資源（[Step Functions 授權參考](https://docs.aws.amazon.com/service-authorization/latest/reference/list_awsstepfunctions.html)，2026-11-26 查閱），所以不能把它們限定在此狀態機的執行上。持有權杖的人就能回應該執行，因此能縮小的是讀取權杖的途徑。不要給這個角色授予 `StartExecution`。
+批准者角色的 IAM 政策範例。IAM 無法為 `states:SendTaskSuccess` 和 `states:SendTaskFailure` 指定資源（[Step Functions 授權參考](https://docs.aws.amazon.com/service-authorization/latest/reference/list_awsstepfunctions.html)，2026-11-26 查閱） [E-024]，所以不能把它們限定在此狀態機的執行上。持有權杖的人就能回應該執行，因此能縮小的是讀取權杖的途徑。不要給這個角色授予 `StartExecution`。
 ```json
 {
   "Version": "2012-10-17",

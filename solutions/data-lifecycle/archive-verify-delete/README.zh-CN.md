@@ -159,7 +159,7 @@ aws stepfunctions send-task-failure --task-token "$TOKEN" --error Rejected --cau
 
 任务令牌在批准成立时（`approval` 函数）、拒绝与启动者相同主体的批准时，以及批准被拒绝、超时或执行失败之后（`summarize`）删除。没有到达 `summarize` 而残留的令牌，由 `watchdog` 在超过批准超时加 1 小时后删除。令牌使用堆栈的客户管理 KMS 密钥（输出 `ApprovalTokenKeyArn`）加密，因此读取它需要 `ssm:GetParameter`，以及该密钥的 `kms:Decrypt`。
 
-批准者角色的 IAM 策略示例。IAM 无法为 `states:SendTaskSuccess` 和 `states:SendTaskFailure` 指定资源（[Step Functions 授权参考](https://docs.aws.amazon.com/service-authorization/latest/reference/list_awsstepfunctions.html)，2026-11-26 查阅），所以不能把它们限定在此状态机的执行上。持有令牌的人就能回应该执行，因此能收窄的是读取令牌的途径。不要给这个角色授予 `StartExecution`。
+批准者角色的 IAM 策略示例。IAM 无法为 `states:SendTaskSuccess` 和 `states:SendTaskFailure` 指定资源（[Step Functions 授权参考](https://docs.aws.amazon.com/service-authorization/latest/reference/list_awsstepfunctions.html)，2026-11-26 查阅） [E-024]，所以不能把它们限定在此状态机的执行上。持有令牌的人就能回应该执行，因此能收窄的是读取令牌的途径。不要给这个角色授予 `StartExecution`。
 ```json
 {
   "Version": "2012-10-17",
