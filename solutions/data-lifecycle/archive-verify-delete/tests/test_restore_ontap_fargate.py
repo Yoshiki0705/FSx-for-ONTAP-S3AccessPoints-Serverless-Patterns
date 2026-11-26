@@ -306,3 +306,20 @@ def test_entrypoint_uses_crc64nvme_for_multipart():
         )["ChecksumAlgorithm"]
         == CRC64NVME
     )
+
+
+def test_ontap_client_tls_verification_follows_the_deployment_parameter(monkeypatch):
+    """The management endpoint of FSx for ONTAP presents a certificate that public CAs did not sign.
+
+    The first deployed run failed with CERTIFICATE_VERIFY_FAILED because the client always
+    verified. The template passes the choice through ONTAP_VERIFY_SSL; verification stays on
+    when it is "true" and when the variable is absent.
+    """
+    monkeypatch.setenv("ONTAP_MANAGEMENT_IP", "192.0.2.10")
+    monkeypatch.setenv("ONTAP_SECRET_ARN", "arn:aws:secretsmanager:ap-northeast-1:123456789012:secret:x-XXXXXX")
+    monkeypatch.delenv("ONTAP_VERIFY_SSL", raising=False)
+    assert ontap._client()._config.verify_ssl is True
+    monkeypatch.setenv("ONTAP_VERIFY_SSL", "true")
+    assert ontap._client()._config.verify_ssl is True
+    monkeypatch.setenv("ONTAP_VERIFY_SSL", "false")
+    assert ontap._client()._config.verify_ssl is False

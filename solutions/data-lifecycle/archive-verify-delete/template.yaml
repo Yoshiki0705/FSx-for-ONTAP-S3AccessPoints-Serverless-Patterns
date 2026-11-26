@@ -107,6 +107,15 @@ Parameters:
     Type: String
     Default: ""
     Description: UUID of the volume behind the Access Point
+  OntapVerifySsl:
+    Type: String
+    Default: "false"
+    AllowedValues: ["true", "false"]
+    Description: >-
+      Verify the TLS certificate of the ONTAP management endpoint. The certificate that FSx for ONTAP
+      presents is not signed by a public CA, so verification fails unless it is set to "false" (the
+      default here). With "false" the function sends the ONTAP credentials over a connection whose
+      peer is not authenticated; the path is inside the VPC.
   OntapPathPrefix:
     Type: String
     Default: ""
@@ -541,6 +550,7 @@ Resources:
           ONTAP_SECRET_ARN: !Ref OntapSecretArn
           ONTAP_VOLUME_UUID: !Ref VolumeUuid
           ONTAP_PATH_PREFIX: !Ref OntapPathPrefix
+          ONTAP_VERIFY_SSL: !Ref OntapVerifySsl
       Policies:
         - AWSLambdaVPCAccessExecutionRole
         - Statement:

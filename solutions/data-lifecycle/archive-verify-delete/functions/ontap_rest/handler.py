@@ -35,6 +35,7 @@ def _client() -> OntapClient:
         OntapClientConfig(
             management_ip=os.environ["ONTAP_MANAGEMENT_IP"],
             secret_name=os.environ["ONTAP_SECRET_ARN"],
+            verify_ssl=os.environ.get("ONTAP_VERIFY_SSL", "true").lower() != "false",
         )
     )
 

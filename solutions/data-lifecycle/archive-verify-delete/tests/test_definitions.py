@@ -302,3 +302,10 @@ def test_state_machine_role_can_invoke_every_function_its_definition_calls(machi
     granted = set(re.findall(r'"LambdaInvokePolicy".*?"Ref": "(\w+Function)"', json.dumps(props["Policies"])))
     assert called, machine
     assert called <= granted, f"{machine}: no invoke permission for {sorted(called - granted)}"
+
+
+def test_template_passes_the_tls_verification_choice_to_the_ontap_function():
+    env = TEMPLATE["Resources"]["OntapRestFunction"]["Properties"]["Environment"]["Variables"]
+    assert env["ONTAP_VERIFY_SSL"] == {"Ref": "OntapVerifySsl"}
+    param = TEMPLATE["Parameters"]["OntapVerifySsl"]
+    assert param["AllowedValues"] == ["true", "false"]

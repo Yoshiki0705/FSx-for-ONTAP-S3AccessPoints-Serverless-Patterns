@@ -39,6 +39,7 @@ parameter_overrides = [
     "OntapSecretArn=",
     "OntapManagementIp=",
     "VolumeUuid=",
+    "OntapVerifySsl=false",
     "OntapPathPrefix=",
     "FargateImageUri=",
     "FargateAssignPublicIp=DISABLED",
