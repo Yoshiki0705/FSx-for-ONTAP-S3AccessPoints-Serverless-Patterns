@@ -748,6 +748,11 @@ Resources:
             FunctionName: !Ref DeleteFunction
         - LambdaInvokePolicy:
             FunctionName: !Ref SummarizeFunction
+        - !If
+          - UseOntap
+          - LambdaInvokePolicy:
+              FunctionName: !Ref OntapRestFunction
+          - !Ref AWS::NoValue
         - Statement:
             # Distributed Map child executions of this state machine.
             - Effect: Allow

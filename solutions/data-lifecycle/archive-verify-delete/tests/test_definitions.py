@@ -285,3 +285,20 @@ def test_access_point_policies_name_both_arn_forms():
     for name in ("SelectFunction", "RecordFunction", "DeleteFunction"):
         text = json.dumps(TEMPLATE["Resources"][name])
         assert "AccessPointArn" in text and "AccessPointAlias" in text, name
+
+
+@pytest.mark.parametrize("machine", ["ArchiveStateMachine", "RestoreStateMachine"], ids=["archive", "restore"])
+def test_state_machine_role_can_invoke_every_function_its_definition_calls(machine):
+    """A function substituted into the definition needs a LambdaInvokePolicy on the same machine.
+
+    The first deployed run failed with AccessDenied on the ONTAP REST function: it was
+    substituted into the definition but had no invoke permission, and the template tests
+    only compared the substitution names with the placeholders.
+    """
+    props = TEMPLATE["Resources"][machine]["Properties"]
+    called = set()
+    for value in props["DefinitionSubstitutions"].values():
+        called.update(re.findall(r"(\w+Function)\.Arn", json.dumps(value)))
+    granted = set(re.findall(r'"LambdaInvokePolicy".*?"Ref": "(\w+Function)"', json.dumps(props["Policies"])))
+    assert called, machine
+    assert called <= granted, f"{machine}: no invoke permission for {sorted(called - granted)}"
