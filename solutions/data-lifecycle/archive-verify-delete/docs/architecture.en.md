@@ -46,7 +46,7 @@ A `COMPOSITE` checksum, or no checksum, is never treated as a match; the file be
 | `attrs` | `uid`, `gid`, `mode`, `mtime`, `atime` when available |
 | `secondCopyRequired`, `secondCopy` | Whether a second copy is required and its verification result |
 | `deletedBy`, `deletedAt`, `restoredAt`, `restoreRunId` | Deletion and restore records |
-The move to `DELETED` is a conditional write. Only the execution that moves an item from `VERIFIED` to `DELETING` proceeds to delete, so two executions cannot delete the same file. If the delete call fails, the item returns to `VERIFIED` so a Step Functions retry can succeed.
+The move to `DELETED` is a conditional write. Only the execution that moves an item from `VERIFIED` to `DELETING` proceeds to delete, so of two concurrent executions on the same file, only one deletes it. If the delete call fails, the item returns to `VERIFIED` so a Step Functions retry can succeed.
 ## IAM
 | Principal | Main permissions | Permissions it does not have |
 |---|---|---|

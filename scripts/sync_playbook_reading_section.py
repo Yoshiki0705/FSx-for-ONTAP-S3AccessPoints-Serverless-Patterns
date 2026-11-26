@@ -295,6 +295,9 @@ ASSIGNMENT: dict[str, str] = {
     "event-driven/prototype": "observability",
     "ha/lifekeeper-monitoring": "telecom",
     "sap/erp-adjacent": "financial",
+    # Files leave the volume only after a recorded check and a person's approval; the notes that
+    # carry those decisions are in `data-protection` and `security-governance`.
+    "data-lifecycle/archive-verify-delete": "cyber-resilience",
 }
 
 # The operations pillar, which lives outside `solutions/` and is declared ja+en rather than

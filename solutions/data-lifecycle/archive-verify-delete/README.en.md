@@ -1,6 +1,6 @@
 # archive-verify-delete: Archive with S3 API Calls Only: Copy, Verify, Delete After Approval
 🌐 **Language / 言語**: [日本語](README.md) | English | [한국어](README.ko.md) | [简体中文](README.zh-CN.md) | [繁體中文](README.zh-TW.md) | [Français](README.fr.md) | [Deutsch](README.de.md) | [Español](README.es.md)
-📚 **Documentation**: [Architecture](docs/architecture.en.md) | [アーキテクチャ (JA)](docs/architecture.md)
+📚 **Documentation**: [Architecture](docs/architecture.en.md)
 ## Overview
 This pattern moves rarely read files on an Amazon FSx for NetApp ONTAP (FSx for ONTAP) volume to S3 Glacier storage classes. The volume is not mounted. Only S3 API calls through S3 Access Points are used.
 One file moves through the steps below, and a file whose conditions fail along the way is left out of deletion.
@@ -16,15 +16,57 @@ The premises of this pattern and its comparison with other approaches are in [Co
 ## What was measured and what was not
 | Category | Content |
 |---|---|
-| Components checked once each on a real system (recorded in the comparison above; 2026-11-24 and 2026-11-26, ap-northeast-1, first-generation `SINGLE_AZ_1`, ONTAP 9.19.1P4D1, UNIX-style volume, Access Point user is UNIX root) | With `ChecksumAlgorithm=SHA256` on `CopyObject`, the bucket's `ChecksumSHA256` was `FULL_OBJECT` and equal to the file's SHA-256 (up to 8 MiB). For a 5.5 GiB multipart copy, SHA-256 became `COMPOSITE` and CRC64NVME was `FULL_OBJECT` and equal. `--copy-source-if-match` with an old ETag returned `PreconditionFailed`. The Access Point's `DeleteObject` does not support `If-Match`. A Step Functions SDK integration accepted the Access Point alias as `Bucket` |
+| Components checked once each on a real system (recorded in the comparison above; 2026-11-24 and 2026-11-26, ap-northeast-1, first-generation `SINGLE_AZ_1`, ONTAP 9.19.1P4D1, UNIX-style volume, Access Point user is UNIX root) | With `ChecksumAlgorithm=SHA256` on `CopyObject`, the bucket's `ChecksumSHA256` was `FULL_OBJECT` and equal to the file's SHA-256 (up to 8 MiB). For a 5.5 GiB multipart copy, SHA-256 became `COMPOSITE` and CRC64NVME was `FULL_OBJECT` and equal. `--copy-source-if-match` with an old ETag returned `PreconditionFailed`. The Access Point's `DeleteObject` returned `NotImplemented` when given `If-Match`. A Step Functions SDK integration accepted the Access Point alias as `Bucket` |
 | Checked in this repository | Unit tests with moto, and tests of the state machine and IAM structure. No connection to AWS. Three defects found in the end-to-end run above (invoke permission for the ONTAP REST function, TLS verification, the error name of a duplicate restore request) were fixed with tests that reproduce them |
 | Checked once each in an end-to-end run on a real system (2026-11-26, same environment as above, `selection=ATIME`, `GLACIER`, 7 files) | Selection by `accessed_time` and capture of uid, gid, mode, mtime and atime through the ONTAP REST API (the root is the volume root and the path has no leading slash; `unix_permissions` comes back as the integer `640`). The Distributed Map `ItemReader` and `ResultWriter`. A 5.5 GiB Fargate multipart copy (with `CopySourceIfMatch`; CRC64NVME equal to the ledger). Hashing of a 5.3 GB (about 4.94 GiB) file in Lambda (69.8 s, 2048 MB configured, 152 MB used). The second copy. Deletion after approval. A file rewritten over NFS while the run waited for approval became `CHANGED` and was not deleted. A rejected approval deleted nothing. Restore with `Expedited` (including the 5.5 GiB file) and equal SHA-256 for the 6 restored files (the seventh of the 7 files had been rewritten, so it was neither deleted nor restored). Restoring uid, gid, mode and mtime with `reapply.sh` |
-| Not checked yet | Duration and cost with many files. Completion of `Standard` and `Bulk` restores (only `Expedited` was run). Retry on `S3.SlowDownException` (the only error name observed from the Step Functions SDK integration is `S3.S3Exception` for `RestoreAlreadyInProgress`). NTFS volumes, non-root users, second generation, Multi-AZ. CloudTrail data-event records of the deletes |
-The end-to-end run showed four behaviors:
-- With `selection=ATIME`, the pattern's own reads update `accessed_time`. After one run with `dryRun=true`, the hashing reads set the files' atime to the run time, so the same input with `dryRun=false` selects nothing (it ended with 0 files). To run the real pass on the same candidates right after a dry run, use `selection=MTIME` (`LastModified` does not change on read)
+### Environment and results per step
+The environment is ap-northeast-1, first-generation FSx for ONTAP `SINGLE_AZ_1`, ONTAP 9.19.1P4D1, a volume with UNIX security style, and an Access Point whose file system user is UNIX root. The date is 2026-11-26 (times are Japan Standard Time), and each step was run once. The configuration was `selection=ATIME`, `GLACIER`, a second copy, and Fargate on arm64 with 2 vCPU and 8 GiB. The data was 6 small files (three of 64 B and three of 8 MiB, owner 1234:5678, mode 640, mtime and atime 2020-01-02) and one file of 5,905,580,032 B.
+| Step | Result | Duration |
+|---|---|---|
+| 1. Deploy | Succeeded. Two defects found by running it were fixed and redeployed | About 30 minutes from preparation to deployment (16:19 to 16:50) |
+| 2. Dry run (`dryRun=true`) | Succeeded after the fixes. All 7 files `VERIFIED` (SHA-256 equal for 6, CRC64NVME equal for 1), and the second copy also `VERIFIED`. 0 bytes deleted, and all 7 files remained over NFS | 244 s (including about 70 s waiting for approval) |
+| 3. Rewrite while waiting for approval | One file was overwritten over NFS with 4 KiB of the same size (mtime updated). After approval it became `CHANGED` (ETag or size differs) and was not deleted | |
+| 4. Real run (`dryRun=false`) and approval | 6 files `DELETED`, 1 file `CHANGED`. `bytesDeleted` was 5,922,357,440. Over NFS the 6 files were gone and only the rewritten file remained | 310 s (172 s until the approval request, about 6 s from approval to completion) |
+| 5. Restore (`tier=Expedited`, `days=1`) | 6 files `RESTORED` (including the 5.5 GiB file). SHA-256 equal for all 6 to the value recorded over NFS before step 1. The `CHANGED` file was not a target | 287 s (the 5 small files in about 2.5 minutes; the 5.5 GiB Fargate copy took 2 min 38 s) |
+| 6. Approval rejected (`send-task-failure`) | The execution ended as `REJECTED_OR_TIMED_OUT`, 3 files stayed `VERIFIED`, `deletedBy` was empty, and all 3 files remained over NFS | 16 s |
+| Extra: hashing 5.3 GB (about 4.94 GiB) in Lambda | `VERIFIED` (SHA-256 equal to the NFS value), and the second copy also `VERIFIED` | `record` function 69.8 s (2048 MB configured, 152 MB used) |
+| Extra: duplicate restore request | The second request returned HTTP 409 `RestoreAlreadyInProgress`. The Step Functions SDK integration returns it as `S3.S3Exception` | |
+All resources were removed afterwards, and the removal was confirmed by reading them back.
+### Usage (one run each, not a bill)
+| Run | Files | Duration | State transitions (parent + child Map executions) | Fargate tasks |
+|---|---|---|---|---|
+| Dry run | 7 | 244 s | 12 + 107 = 119 | 2 (hash and copy 96 s, second copy 35 s) |
+| Real run | 7 | 310 s | 13 + 114 = 127 | 2 (94 s, 35 s) |
+| Restore | 6 | 287 s | 4 + 103 = 107 | 1 (156 s) |
+| Rejection | 3 | 16 s | 10 + 45 = 55 | 0 |
+- Total Lambda duration (CloudWatch; includes failed invocations, excludes the 4.94 GiB run): `select` 13 invocations 5.9 s, `ontap_rest` 11 invocations 13.4 s (2 failed), `record` 17 invocations 11.7 s, `ledger` 34 invocations 9.1 s, `approval` 6 invocations 4.3 s, `delete` 7 invocations 5.6 s, `summarize` 5 invocations 5.1 s, `restore` 26 invocations 9.2 s
+- Fargate: 5 tasks, about 416 s in total (2 vCPU, 8 GiB, arm64). DynamoDB (on-demand): 68.5 RCU read and 74 WCU written, totalled over all runs
+- S3 request counts were not measured (request metrics were not enabled)
+### Three defects found and fixed in the end-to-end run
+Each was fixed with a test that reproduces it.
+| # | Symptom | Cause and fix |
+|---|---|---|
+| 1 | A `selection=ATIME` run failed at the selection step | The archive state machine's role lacked `lambda:InvokeFunction` on the ONTAP REST function. The permission was added |
+| 2 | The ONTAP REST function failed with `CERTIFICATE_VERIFY_FAILED` | It always verified TLS, but the certificate on the FSx for ONTAP management endpoint is not signed by a public CA. The parameter `OntapVerifySsl` (default `false`) was added |
+| 3 | A duplicate restore request became a file failure | The Step Functions SDK integration returns `RestoreAlreadyInProgress` as `S3.S3Exception`, so the `Catch` for `S3.RestoreAlreadyInProgressException` did not match. An in-progress restore is now routed to the wait loop |
+### Behaviors seen in the end-to-end run
+These were not treated as defects.
+- With `selection=ATIME`, the pattern's own reads update `accessed_time`. After one run with `dryRun=true`, the hashing reads set the files' atime to the run time, so the same input with `dryRun=false` selects nothing (it ended with 0 files; seen when a real run followed a dry run). A dry run therefore makes the files look recently read. To run the real pass on the same candidates right after a dry run, use `selection=MTIME` (`LastModified` does not change on read)
+- The Access Point's ETag follows mtime and size, not content. Three files with different content but the same size and the same mtime returned the same ETag. The ETag-and-size check before deletion therefore does not catch a content change that keeps both size and mtime. A rewrite that kept the size but updated mtime was caught (step 3)
 - Deleting the last file in a directory through the Access Point also removes the now-empty parent directory (seen with `arc-e2e/large/`). The restore `CopyObject` creates the parent again
-- A restored file had owner 0:1, mode 644 and the restore time as its modification time. After running `reapply.sh` the original uid, gid, mode and mtime were back
-- The run used an Access Point policy that allows each role (the roles of the `select`, `record`, `delete` and `restore` functions, the Fargate task role, and the two state machine roles). Behavior without such a policy was not checked
+- A restored file had owner 0:1, mode 644 and the restore time as its modification time. Running the generated `reapply.sh` as root on a host that mounts the volume over NFS restored the original uid, gid, mode and mtime (1234:5678, 640, 2020-01-02 03:04:05), and the SHA-256 of the content did not change
+- The run used an Access Point policy that allows each role (the roles of the `select`, `record`, `delete` and `restore` functions, the Fargate task role, and the two state machine roles)
+- A 5.5 GiB `Expedited` restore request was accepted and completed in about 4 minutes or less
+### Not checked
+- Duration and cost with many files
+- Completion of `Standard` and `Bulk` restores (only `Expedited` was run)
+- Retry on `S3.SlowDownException` (the name the SDK integration returns was not observed, and a mismatch of the same kind as defect 3 is possible)
+- CloudTrail data-event records of the deletes (whether the account's trail covers data events for this Access Point was not checked)
+- NTFS volumes, non-root users, second generation, Multi-AZ
+- Behavior when the Access Point has no policy
+- The `EXISTS` path in restore (a file with the same name already on NFS); the only skip observed was the `CHANGED` file not being selected
+- One run that found 0 candidates is unexplained. A run about 10 seconds after `touch -d` reset the atime found 0 candidates. A check about 17 minutes later returned the 2020 value, and another check right after `touch` returned 6 files. The cause was not identified and it was not reproduced
+### Remaining write window before deletion
 One write window remains in the check before deletion. The Access Point's `DeleteObject` does not support conditional deletes, so a write between the `HeadObject` check and the delete is not detected. The window is one API round trip.
 ## Flow
 ### Archive
@@ -141,10 +183,22 @@ Not measured. The following are design factors.
 - Audit: approval and deletion are recorded in the ledger (`deletedBy`, `deletedAt`), the Step Functions execution history and CloudTrail
 ## Constraints and unverified items
 - A direct copy from the Access Point to a bucket in another Region returned `AccessDenied` (one Access Point, once). The second copy targets a bucket in the same Region only
-- Checked on a UNIX-style volume. Whether an overwrite that restores the modification time, or `chown`, is detected by the ETag has not been checked
+- Checked on a UNIX-style volume. A content change that keeps size and mtime is not detected by the ETag and size check (see "Behaviors seen in the end-to-end run" above). Whether `chown` changes the ETag has not been checked
 - Attributes are read through the directory listing. Reading the whole parent directory for one file is slow for large directories
 - Versioning on the archive bucket is not Object Lock. Versions are kept, but anyone with permission can delete versions too
 ## Related documents
 - [Architecture](docs/architecture.en.md)
 - [S3 Access Points compatibility notes](../../../docs/s3ap-compatibility-notes.md)
 - [Comparison of 8 mechanisms for moving files to archive classes](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/blob/main/docs/ja/reference/comparison/archive-tiering-library-options.md) (in Japanese)
+
+---
+
+<!-- playbook-reading:start -->
+## Read before going to production
+
+How the constraints that surface after deploying translate into design decisions is covered in the [FSx for ONTAP Adoption Playbook](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook). The same content in two places means the copy that stops being updated outlives the one that was corrected.
+
+- [Data Utilization](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/tree/main/docs/en/domains/data-utilization) — constraints of reaching data through an access point (every pattern)
+- [Data Protection](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/tree/main/docs/en/domains/data-protection) — where the decisions concentrate for this pattern
+- [Build](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/tree/main/docs/en/playbooks/04-build) — run through before production (every pattern)
+<!-- playbook-reading:end -->

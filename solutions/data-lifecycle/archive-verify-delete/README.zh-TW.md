@@ -17,9 +17,57 @@
 | 類別 | 內容 |
 |---|---|
 | 各組成部分已在實際環境中各確認 1 次（記錄在上述比較資料中，2026-11-24 和 2026-11-26，ap-northeast-1，第 1 代 `SINGLE_AZ_1`，ONTAP 9.19.1P4D1，UNIX 樣式磁碟區，Access Point 使用者為 UNIX root） | 給 `CopyObject` 指定 `ChecksumAlgorithm=SHA256` 後，儲存桶的 `ChecksumSHA256` 為 `FULL_OBJECT`，與檔案的 SHA-256 一致（最大 8 MiB）。5.5 GiB 的分段上傳中 SHA-256 變為 `COMPOSITE`，CRC64NVME 為 `FULL_OBJECT` 且一致。使用舊 ETag 的 `--copy-source-if-match` 返回 `PreconditionFailed`。Access Point 的 `DeleteObject` 不支援 `If-Match`。在 Step Functions 的 SDK 整合中，可以把 Access Point 別名傳給 `Bucket` |
-| 在本倉庫中已確認 | 使用 moto 的單元測試，以及狀態機和 IAM 結構的測試。未連線 AWS |
-| 尚未確認 | 整個模式在實際環境中的端到端執行。大量檔案時的耗時和費用。Lambda 對接近 5 GiB 的檔案計算雜湊的時間。Fargate 分段複製在實際環境中的表現。ONTAP REST API 中根目錄的指定方式和 `unix_permissions` 的表示。Distributed Map 的 `ItemReader` 和 `ResultWriter` 在實際環境中的表現。需要恢復的 2 個類別的恢復。NTFS 磁碟區、非 root 使用者、第 2 代、Multi-AZ |
-刪除前的確認仍留有一個寫入視窗。Access Point 的 `DeleteObject` 不支援條件刪除，因此在用 `HeadObject` 確認之後到刪除之前這段時間內發生的寫入無法被檢測到。這個視窗相當於一次 API 呼叫的往返。
+| 在本儲存庫中確認 | 使用 moto 的單元測試，以及狀態機和 IAM 結構的測試。未連接 AWS。上述實機端到端執行中發現的 3 個缺陷（ONTAP REST 函數的呼叫權限、TLS 驗證、重複恢復請求的錯誤名稱）已透過能夠重現它們的測試修復 |
+| 在實機端到端執行中各確認 1 次（2026-11-26，與上述相同的環境，`selection=ATIME`，`GLACIER`，7 個檔案） | 透過 ONTAP REST API 按 `accessed_time` 選擇，並獲取 uid、gid、mode、mtime、atime（根是磁碟區的根，路徑開頭沒有斜槓；`unix_permissions` 以整數 `640` 返回）。Distributed Map 的 `ItemReader` 和 `ResultWriter`。用 Fargate 進行 5.5 GiB 的分段複制（帶 `CopySourceIfMatch`，CRC64NVME 與帳本一致）。在 Lambda 中對 5.3 GB（約 4.94 GiB）計算雜湊（69.8 秒，設定記憶體 2048 MB，使用 152 MB）。第二份副本。批准後的刪除。等待批准期間在 NFS 上改寫的檔案變為 `CHANGED`，沒有被刪除。拒絕批准後什麼都沒有被刪除。用 `Expedited` 恢復（含 5.5 GiB），恢復的 6 個檔案 SHA-256 一致（7 個檔案中剩下的 1 個已被改寫，既沒有被刪除也沒有被恢復）。用 `reapply.sh` 恢復 uid、gid、mode、mtime |
+### 環境與各步驟的結果
+環境為 ap-northeast-1、FSx for ONTAP 第 1 代 `SINGLE_AZ_1`、ONTAP 9.19.1P4D1、UNIX 安全樣式的磁碟區，Access Point 的檔案系統使用者為 UNIX root。執行日期為 2026-11-26（時間為日本標準時間），每個步驟只執行了 1 次。設定為 `selection=ATIME`、`GLACIER`、有第二份副本，Fargate 為 arm64 的 2 vCPU 和 8 GiB。資料為 6 個小檔案（3 個 64 B、3 個 8 MiB，所有者 1234:5678，模式 640，mtime 和 atime 為 2020-01-02）和 1 個 5,905,580,032 B 的檔案。
+| 步驟 | 結果 | 耗時 |
+|---|---|---|
+| 1. 部署 | 成功。但執行中發現 2 個缺陷，修復後重新部署 | 從准備到部署約 30 分鐘（16:19 至 16:50） |
+| 2. dry run（`dryRun=true`） | 修復後成功。7 個檔案全部 `VERIFIED`（SHA-256 一致 6 個，CRC64NVME 一致 1 個），第二份副本也是 `VERIFIED`。刪除 0 字節，NFS 上 7 個檔案全部保留 | 244 秒（含等待批准約 70 秒） |
+| 3. 等待批准期間的改寫 | 在 NFS 上把 1 個檔案以相同大小覆寫 4 KiB（mtime 更新）。批准後變為 `CHANGED`（ETag 或大小不一致），沒有被刪除 | |
+| 4. 正式執行（`dryRun=false`）與批准 | 6 個 `DELETED`，1 個 `CHANGED`。`bytesDeleted` 為 5,922,357,440。NFS 上 6 個檔案消失，只剩被改寫的 1 個 | 310 秒（到發出批准請求 172 秒，從批准到完成約 6 秒） |
+| 5. 恢復（`tier=Expedited`，`days=1`） | 6 個 `RESTORED`（含 5.5 GiB）。6 個檔案的 SHA-256 都與步驟 1 之前在 NFS 上記錄的值一致。`CHANGED` 的 1 個不在物件內 | 287 秒（5 個小檔案約 2.5 分鐘，5.5 GiB 的 Fargate 複制用時 2 分 38 秒） |
+| 6. 拒絕批准（`send-task-failure`） | 執行以 `REJECTED_OR_TIMED_OUT` 結束，3 個檔案仍為 `VERIFIED`。`deletedBy` 為空，NFS 上 3 個檔案都保留 | 16 秒 |
+| 追加：在 Lambda 中對 5.3 GB（約 4.94 GiB）計算雜湊 | `VERIFIED`（SHA-256 與 NFS 的值一致），第二份副本也是 `VERIFIED` | `record` 函數 69.8 秒（設定記憶體 2048 MB，使用 152 MB） |
+| 追加：重複提交恢復請求 | 第二次返回 HTTP 409 `RestoreAlreadyInProgress`。Step Functions 的 SDK 集成以 `S3.S3Exception` 返回 | |
+之後已刪除全部資源，並透過讀回確認。
+### 使用量（各執行 1 次，不是帳單）
+| 執行 | 檔案數 | 耗時 | 狀態轉換（父 + 子 Map 執行） | Fargate 任務 |
+|---|---|---|---|---|
+| dry run | 7 | 244 秒 | 12 + 107 = 119 | 2 次（雜湊與複制 96 秒，第二份副本 35 秒） |
+| 正式執行 | 7 | 310 秒 | 13 + 114 = 127 | 2 次（94 秒，35 秒） |
+| 恢復 | 6 | 287 秒 | 4 + 103 = 107 | 1 次（156 秒） |
+| 拒絕 | 3 | 16 秒 | 10 + 45 = 55 | 0 次 |
+- Lambda 執行時間合計（CloudWatch。含失敗的呼叫，不含 4.94 GiB 的執行）：`select` 13 次 5.9 秒，`ontap_rest` 11 次 13.4 秒（失敗 2 次），`record` 17 次 11.7 秒，`ledger` 34 次 9.1 秒，`approval` 6 次 4.3 秒，`delete` 7 次 5.6 秒，`summarize` 5 次 5.1 秒，`restore` 26 次 9.2 秒
+- Fargate 共 5 個任務，合計約 416 秒（2 vCPU、8 GiB、arm64）。DynamoDB（按需）讀取 68.5 RCU、寫入 74 WCU（全部執行合計）
+- 未測量 S3 請求數（未啟用請求指標）
+### 端到端執行中發現並修復的 3 個缺陷
+均已透過能夠重現的測試修復。
+| # | 現象 | 原因與修復 |
+|---|---|---|
+| 1 | `selection=ATIME` 的執行在選擇階段失敗 | 歸檔狀態機的角色沒有對 ONTAP REST 函數的 `lambda:InvokeFunction`。已添加權限 |
+| 2 | ONTAP REST 函數因 `CERTIFICATE_VERIFY_FAILED` 失敗 | 始終驗證 TLS，但 FSx for ONTAP 管理端點的證書不是由公共 CA 簽發。已添加參數 `OntapVerifySsl`（預設 `false`） |
+| 3 | 重複提交恢復請求被當作檔案失敗 | Step Functions 的 SDK 集成把 `RestoreAlreadyInProgress` 以 `S3.S3Exception` 返回，因此與 `S3.RestoreAlreadyInProgressException` 的 `Catch` 不匹配。已改為把進行中的恢復送入等待完成的循環 |
+### 端到端執行中得知的行為
+這些行為沒有作為缺陷修復。
+- 在 `selection=ATIME` 下，本模式自身的讀取會更新 `accessed_time`。用 `dryRun=true` 執行一次後，計算雜湊的讀取使檔案的 atime 變為執行時間，因此用相同輸入執行 `dryRun=false` 也不會被選中（以 0 個檔案結束；在 dry run 之後立即正式執行時確認）。也就是說，執行 dry run 會讓這些檔案看起來像是最近被讀取過。若要在 dry run 之後立即對相同的候選正式執行，請使用 `selection=MTIME`（`LastModified` 不會因讀取而改變）
+- Access Point 的 ETag 隨 mtime 和大小變化，而不是隨內容變化。大小和 mtime 相同、內容不同的 3 個檔案返回了相同的 ETag。因此刪除前對 ETag 和大小的確認，無法發現大小和 mtime 都不變的內容變更。大小相同但 mtime 更新的改寫被檢測到了（步驟 3）
+- 透過 Access Point 刪除最後一個檔案時，變空的上級目錄也會一並消失（在 `arc-e2e/large/` 上確認）。恢復時的 `CopyObject` 會重新創建上級目錄
+- 恢復後的檔案所有者為 0:1，模式為 644，修改時間為恢復的時間。在透過 NFS 掛載了磁碟區的主機上，以 root 執行生成的 `reapply.sh` 後，恢復為原來的 uid、gid、mode、mtime（1234:5678、640、2020-01-02 03:04:05），內容的 SHA-256 沒有變化
+- 本次執行在 Access Point 策略中允許了各個角色（`select`、`record`、`delete`、`restore` 各函數的角色、Fargate 任務角色、兩個狀態機的角色）
+- 5.5 GiB 的 `Expedited` 恢復請求被接受，並在約 4 分鐘內完成
+### 未確認的事項
+- 大量檔案時的耗時和費用
+- `Standard` 和 `Bulk` 恢復的完成等待（實機上只執行了 `Expedited`）
+- `S3.SlowDownException` 的重試（未觀察到 SDK 集成返回的名稱，可能出現與缺陷 3 同類的不匹配）
+- CloudTrail 資料事件中的刪除記錄（未確認帳戶的追蹤是否包含物件 Access Point 的資料事件）
+- NTFS 磁碟區、非 root 使用者、第 2 代、Multi-AZ
+- Access Point 未附加策略時的行為
+- 恢復中除了不選擇 `CHANGED` 檔案之外的 `EXISTS` 路徑（NFS 上已有同名檔案的情況）
+- 有 1 次執行的候選為 0 個，原因不明。在用 `touch -d` 還原 atime 約 10 秒後的執行中候選為 0 個。約 17 分鐘後的確認返回了 2020 年的值，`touch` 之後立即進行的另一次確認也返回了 6 個檔案。未能確定原因，也未能重現
+### 刪除前確認中殘留的寫入視窗
+刪除前的確認中仍殘留一個寫入視窗。Access Point 的 `DeleteObject` 不支持條件刪除，因此在用 `HeadObject` 確認之後到刪除之前被改寫的情況無法檢測。該視窗相當於一次 API 呼叫往返。
 ## 處理流程
 ### 歸檔
 輸入中 `olderThanDays` 為必填，`dryRun` 的預設值為 `true`。
@@ -65,7 +113,7 @@ MOUNT_ROOT=/mnt/<volume> sh reapply.sh
 ### 前提
 - Access Point 的別名和 ARN 兩者都需要（IAM 需要兩種形式。僅有別名的策略可以部署，但執行時會被拒絕）
 - 歸檔用儲存桶的名稱（由堆疊建立。`DeletionPolicy: Retain`、Block Public Access、預設 SSE-S3、KMS 可選、啟用 EventBridge 通知、必須使用 TLS）
-- 僅在使用 `selection=ATIME` 和記錄屬性時需要：VPC、子網、ONTAP 憑據的金鑰、管理端點、磁碟區的 UUID。需要從 VPC 內的 Lambda 到 Secrets Manager 和 S3 的路徑（VPC 端點或 NAT）
+- 僅在使用 `selection=ATIME` 和屬性記錄時需要：VPC、子網、保存 ONTAP 憑據的金鑰、管理端點、磁碟區 UUID、`OntapVerifySsl`。FSx for ONTAP 管理端點的證書不是由公共 CA 簽發，因此預設值為 `false`（不驗證），此時 ONTAP 憑據會透過不對對端進行認證的連接發送（路徑在 VPC 內）。設為 `true` 時，選擇階段因證書錯誤而停止（已觀察到）。需要從 VPC 內的 Lambda 到 Secrets Manager 和 S3 的路徑（VPC 端點或 NAT）
 - 僅在處理超過 5 GiB 的檔案時需要：放在 ECR 中的映象。Access Point 是 Internet-origin，因此 Fargate 的子網需要 NAT 或公網 IP
 ### 步驟
 ```bash
@@ -135,10 +183,22 @@ Step Functions 的執行歷史、`manifests/<runId>-result.json`、CloudWatch �
 - 審計：批准和刪除會記錄在帳本（`deletedBy`、`deletedAt`）、Step Functions 的執行歷史和 CloudTrail 中
 ## 限制與未確認事項
 - 從 Access Point 直接複製到其他區域的儲存桶時返回了 `AccessDenied`（1 個 Access Point，1 次）。第二份副本僅以同一區域的儲存桶為物件
-- 這是在 UNIX 樣式磁碟區上的確認。把修改時間改回原值後再改動內容的操作，以及 `chown`，能否透過 ETag 檢測到，尚未確認
+- 在 UNIX 樣式的磁碟區上確認。大小和 mtime 都不變的內容變更，無法透過 ETag 和大小的確認檢測到（參見上文“端到端執行中得知的行為”）。`chown` 是否會改變 ETag 尚未確認
 - 屬性是透過目錄清單獲取的。為了一個檔案要讀取整個父目錄，因此對大目錄會變慢
 - 歸檔用儲存桶的版本控制不是 Object Lock。版本會保留，但有許可權就可以刪除版本
 ## 相關文件
 - [Architecture (EN)](docs/architecture.en.md)
 - [S3 Access Points 相容性備忘](../../../docs/s3ap-compatibility-notes.md)
 - [轉移到歸檔類別的 8 種機制的比較](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/blob/main/docs/ja/reference/comparison/archive-tiering-library-options.md)（日文）
+
+---
+
+<!-- playbook-reading:start -->
+## 上線前需要閱讀的內容
+
+部署後才會遇到的限制如何轉化為設計決策，記錄在 [FSx for ONTAP Adoption Playbook](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook)。同一內容放在兩處時，停止更新的那份會比已修正的那份留存更久。
+
+- [資料活用](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/tree/main/docs/en/domains/data-utilization) — 透過存取點存取資料的限制（所有模式通用）
+- [資料保護](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/tree/main/docs/en/domains/data-protection) — 該模式的決策集中之處
+- [建置](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/tree/main/docs/en/playbooks/04-build) — 上線前通讀（所有模式通用）
+<!-- playbook-reading:end -->

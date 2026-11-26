@@ -17,9 +17,57 @@ Las premisas de este patrón y su comparación con otros enfoques están en [Com
 | Categoría | Contenido |
 |---|---|
 | Componentes comprobados una vez cada uno en un entorno real (registrados en la comparación anterior; 2026-11-24 y 2026-11-26, ap-northeast-1, primera generación `SINGLE_AZ_1`, ONTAP 9.19.1P4D1, volumen de estilo UNIX, el usuario del Access Point es UNIX root) | Con `ChecksumAlgorithm=SHA256` en `CopyObject`, el `ChecksumSHA256` del bucket fue `FULL_OBJECT` e igual al SHA-256 del archivo (hasta 8 MiB). En una copia multiparte de 5,5 GiB, el SHA-256 pasó a ser `COMPOSITE` y el CRC64NVME fue `FULL_OBJECT` e igual. `--copy-source-if-match` con un ETag antiguo devolvió `PreconditionFailed`. El `DeleteObject` del Access Point no admite `If-Match`. Una integración SDK de Step Functions aceptó el alias del Access Point como `Bucket` |
-| Comprobado en este repositorio | Pruebas unitarias con moto y pruebas de la estructura de la máquina de estados y de IAM. Sin conexión a AWS |
-| Aún no comprobado | Una ejecución de extremo a extremo de todo el patrón en un entorno real. Duración y coste con muchos archivos. Tiempo de cálculo del hash en Lambda para archivos cercanos a 5 GiB. La copia multiparte de Fargate en un entorno real. Cómo indicar el directorio raíz en la API REST de ONTAP y la representación de `unix_permissions`. El `ItemReader` y el `ResultWriter` de Distributed Map en un entorno real. La restauración desde las dos clases que requieren restauración. Volúmenes NTFS, usuarios distintos de root, segunda generación, Multi-AZ |
-Queda una ventana de escritura en la comprobación previa al borrado. El `DeleteObject` del Access Point no admite el borrado condicional, por lo que una escritura entre la comprobación con `HeadObject` y el borrado no se detecta. La ventana equivale a un viaje de ida y vuelta de una llamada a la API.
+| Comprobado en este repositorio | Pruebas unitarias con moto y pruebas de la estructura de la máquina de estados y de IAM. Sin conexión a AWS. Tres defectos encontrados en la ejecución de extremo a extremo anterior (permiso de invocación de la función de la API REST de ONTAP, verificación TLS, nombre del error de una solicitud de restauración duplicada) se corrigieron con pruebas que los reproducen |
+| Comprobado una vez cada uno en una ejecución de extremo a extremo en un entorno real (2026-11-26, mismo entorno que arriba, `selection=ATIME`, `GLACIER`, 7 archivos) | Selección por `accessed_time` y captura de uid, gid, mode, mtime y atime mediante la API REST de ONTAP (la raíz es la raíz del volumen y la ruta no lleva barra inicial; `unix_permissions` vuelve como el entero `640`). El `ItemReader` y el `ResultWriter` de Distributed Map. Una copia multiparte de 5,5 GiB con Fargate (con `CopySourceIfMatch`; CRC64NVME igual al del libro de registro). El cálculo del hash de un archivo de 5,3 GB (unos 4,94 GiB) en Lambda (69,8 s, 2048 MB configurados, 152 MB usados). La segunda copia. El borrado tras la aprobación. Un archivo reescrito por NFS mientras la ejecución esperaba la aprobación pasó a `CHANGED` y no se borró. Una aprobación rechazada no borró nada. La restauración con `Expedited` (incluido el archivo de 5,5 GiB) y un SHA-256 igual en los 6 archivos restaurados (el séptimo de los 7 archivos se había reescrito, así que no se borró ni se restauró). La recuperación de uid, gid, mode y mtime con `reapply.sh` |
+### Entorno y resultado de cada paso
+El entorno es ap-northeast-1, FSx for ONTAP de primera generación `SINGLE_AZ_1`, ONTAP 9.19.1P4D1, un volumen con estilo de seguridad UNIX y un Access Point cuyo usuario del sistema de archivos es UNIX root. La fecha es 2026-11-26 (horas en hora estándar de Japón) y cada paso se ejecutó una sola vez. La configuración fue `selection=ATIME`, `GLACIER`, una segunda copia y Fargate en arm64 con 2 vCPU y 8 GiB. Los datos fueron 6 archivos pequeños (tres de 64 B y tres de 8 MiB, propietario 1234:5678, modo 640, mtime y atime del 2020-01-02) y un archivo de 5.905.580.032 B.
+| Paso | Resultado | Duración |
+|---|---|---|
+| 1. Desplegar | Correcto. Dos defectos descubiertos al ejecutar se corrigieron y se volvió a desplegar | Unos 30 minutos desde la preparación hasta el despliegue (16:19 a 16:50) |
+| 2. Ejecución de prueba (`dryRun=true`) | Correcta tras las correcciones. Los 7 archivos en `VERIFIED` (SHA-256 igual en 6, CRC64NVME igual en 1) y la segunda copia también en `VERIFIED`. 0 bytes borrados y los 7 archivos siguieron presentes por NFS | 244 s (incluidos unos 70 s de espera de la aprobación) |
+| 3. Reescritura durante la espera de la aprobación | Un archivo se sobrescribió por NFS con 4 KiB del mismo tamaño (mtime actualizado). Tras la aprobación pasó a `CHANGED` (el ETag o el tamaño difieren) y no se borró | |
+| 4. Ejecución real (`dryRun=false`) y aprobación | 6 archivos en `DELETED` y 1 en `CHANGED`. `bytesDeleted` fue 5.922.357.440. Por NFS desaparecieron los 6 archivos y solo quedó el reescrito | 310 s (172 s hasta la solicitud de aprobación, unos 6 s de la aprobación al final) |
+| 5. Restauración (`tier=Expedited`, `days=1`) | 6 archivos en `RESTORED` (incluido el de 5,5 GiB). SHA-256 igual en los 6 al valor registrado por NFS antes del paso 1. El archivo `CHANGED` no era destino | 287 s (los 5 archivos pequeños en unos 2,5 minutos; la copia de 5,5 GiB con Fargate tardó 2 min 38 s) |
+| 6. Aprobación rechazada (`send-task-failure`) | La ejecución terminó como `REJECTED_OR_TIMED_OUT`, 3 archivos siguieron en `VERIFIED`, `deletedBy` estaba vacío y los 3 archivos siguieron presentes por NFS | 16 s |
+| Adicional: hash de 5,3 GB (unos 4,94 GiB) en Lambda | `VERIFIED` (SHA-256 igual al valor de NFS) y la segunda copia también `VERIFIED` | Función `record` 69,8 s (2048 MB configurados, 152 MB usados) |
+| Adicional: solicitud de restauración duplicada | La segunda solicitud devolvió HTTP 409 `RestoreAlreadyInProgress`. La integración SDK de Step Functions lo devuelve como `S3.S3Exception` | |
+Después se eliminaron todos los recursos y la eliminación se confirmó leyéndolos de nuevo.
+### Consumo (una ejecución de cada tipo, no es una factura)
+| Ejecución | Archivos | Duración | Transiciones de estado (padre + ejecuciones hijas del Map) | Tareas de Fargate |
+|---|---|---|---|---|
+| De prueba | 7 | 244 s | 12 + 107 = 119 | 2 (hash y copia 96 s, segunda copia 35 s) |
+| Real | 7 | 310 s | 13 + 114 = 127 | 2 (94 s, 35 s) |
+| Restauración | 6 | 287 s | 4 + 103 = 107 | 1 (156 s) |
+| Rechazo | 3 | 16 s | 10 + 45 = 55 | 0 |
+- Duración total de las funciones Lambda (CloudWatch; incluye las invocaciones fallidas y excluye la ejecución de 4,94 GiB): `select` 13 invocaciones 5,9 s, `ontap_rest` 11 invocaciones 13,4 s (2 fallidas), `record` 17 invocaciones 11,7 s, `ledger` 34 invocaciones 9,1 s, `approval` 6 invocaciones 4,3 s, `delete` 7 invocaciones 5,6 s, `summarize` 5 invocaciones 5,1 s, `restore` 26 invocaciones 9,2 s
+- Fargate: 5 tareas, unos 416 s en total (2 vCPU, 8 GiB, arm64). DynamoDB (bajo demanda): 68,5 RCU leídas y 74 WCU escritas, sumadas en todas las ejecuciones
+- No se midió el número de solicitudes a S3 (las métricas de solicitudes no estaban activadas)
+### Tres defectos encontrados y corregidos en la ejecución de extremo a extremo
+Cada uno se corrigió con una prueba que lo reproduce.
+| # | Síntoma | Causa y corrección |
+|---|---|---|
+| 1 | Una ejecución con `selection=ATIME` falló en el paso de selección | Al rol de la máquina de estados de archivo le faltaba `lambda:InvokeFunction` sobre la función de la API REST de ONTAP. Se añadió el permiso |
+| 2 | La función de la API REST de ONTAP falló con `CERTIFICATE_VERIFY_FAILED` | Siempre verificaba TLS, pero el certificado del punto de enlace de administración de FSx for ONTAP no está firmado por una CA pública. Se añadió el parámetro `OntapVerifySsl` (por defecto `false`) |
+| 3 | Una solicitud de restauración duplicada se convirtió en un fallo de archivo | La integración SDK de Step Functions devuelve `RestoreAlreadyInProgress` como `S3.S3Exception`, de modo que el `Catch` de `S3.RestoreAlreadyInProgressException` no coincidía. Ahora una restauración en curso se dirige al bucle de espera |
+### Comportamientos vistos en la ejecución de extremo a extremo
+No se trataron como defectos.
+- Con `selection=ATIME`, las propias lecturas del patrón actualizan `accessed_time`. Tras una ejecución con `dryRun=true`, las lecturas del cálculo del hash dejan el atime de los archivos en la hora de ejecución, así que la misma entrada con `dryRun=false` no selecciona nada (terminó con 0 archivos; visto cuando una ejecución real siguió a una de prueba). Por tanto, una ejecución de prueba hace que los archivos parezcan leídos hace poco. Para ejecutar la pasada real sobre los mismos candidatos justo después de una ejecución de prueba, usa `selection=MTIME` (`LastModified` no cambia al leer)
+- El ETag del Access Point sigue al mtime y al tamaño, no al contenido. Tres archivos con contenido distinto pero igual tamaño e igual mtime devolvieron el mismo ETag. Por eso la comprobación de ETag y tamaño antes de borrar no detecta un cambio de contenido que conserve el tamaño y el mtime. Una reescritura que conservaba el tamaño pero actualizaba el mtime sí se detectó (paso 3)
+- Al borrar por el Access Point el último archivo de un directorio, también desaparece el directorio padre que queda vacío (visto con `arc-e2e/large/`). El `CopyObject` de la restauración vuelve a crear el padre
+- Un archivo restaurado tenía propietario 0:1, modo 644 y, como hora de modificación, la hora de la restauración. Al ejecutar como root el `reapply.sh` generado, en un host que monta el volumen por NFS, se recuperaron los uid, gid, mode y mtime originales (1234:5678, 640, 2020-01-02 03:04:05) y el SHA-256 del contenido no cambió
+- La ejecución usó una política del Access Point que permite cada rol (los roles de las funciones `select`, `record`, `delete` y `restore`, el rol de la tarea de Fargate y los roles de las dos máquinas de estados)
+- Una solicitud de restauración `Expedited` de 5,5 GiB fue aceptada y terminó en unos 4 minutos o menos
+### Puntos no comprobados
+- Duración y coste con muchos archivos
+- Finalización de las restauraciones `Standard` y `Bulk` (solo se ejecutó `Expedited`)
+- Reintento ante `S3.SlowDownException` (no se observó el nombre que devuelve la integración SDK, y es posible una discrepancia del mismo tipo que el defecto 3)
+- Registros de los borrados en los eventos de datos de CloudTrail (no se comprobó si el trail de la cuenta cubre los eventos de datos de este Access Point)
+- Volúmenes NTFS, usuarios distintos de root, segunda generación, Multi-AZ
+- Comportamiento cuando el Access Point no tiene política
+- La ruta `EXISTS` de la restauración (un archivo con el mismo nombre ya presente en NFS); lo único observado como omisión fue que no se seleccionó el archivo `CHANGED`
+- Una ejecución que encontró 0 candidatos sigue sin explicación. Una ejecución unos 10 segundos después de restablecer el atime con `touch -d` encontró 0 candidatos. Una comprobación unos 17 minutos después devolvió el valor de 2020, y otra comprobación justo después de `touch` devolvió 6 archivos. No se identificó la causa y no se reprodujo
+### Ventana de escritura que queda antes del borrado
+En la comprobación previa al borrado queda una ventana de escritura. El `DeleteObject` del Access Point no admite el borrado condicional, por lo que una escritura entre la comprobación con `HeadObject` y el borrado no se detecta. La ventana equivale a una ida y vuelta de llamada a la API.
 ## Flujo
 ### Archivado
 `olderThanDays` es obligatorio en la entrada, y `dryRun` es `true` por defecto.
@@ -65,7 +113,7 @@ El script contiene solo `chown`, `chmod` y `touch -d`. Los valores del libro de 
 ### Requisitos previos
 - El alias y el ARN del Access Point (IAM necesita ambas formas; una política solo con el alias puede desplegarse y, aun así, ser denegada en tiempo de ejecución)
 - Un nombre para el bucket de archivo (la pila lo crea con `DeletionPolicy: Retain`, Block Public Access, SSE-S3 por defecto, KMS opcional, notificaciones de EventBridge habilitadas y TLS obligatorio)
-- Solo para `selection=ATIME` y la captura de atributos: una VPC, subredes, el secreto con las credenciales de ONTAP, el punto de conexión de administración y el UUID del volumen. Se necesita una ruta desde la función Lambda de la VPC hasta Secrets Manager y S3 (puntos de conexión de VPC o NAT)
+- Solo para `selection=ATIME` y la captura de atributos: una VPC, subredes, el secreto con las credenciales de ONTAP, el punto de enlace de administración, el UUID del volumen y `OntapVerifySsl`. El certificado del punto de enlace de administración de FSx for ONTAP no está firmado por una CA pública, por lo que el valor por defecto es `false` (sin verificación) y las credenciales de ONTAP se envían entonces por una conexión cuyo extremo no se autentica (la ruta está dentro de la VPC). Con `true`, la selección se detuvo por un error de certificado (observado). Hace falta una ruta desde la función Lambda de la VPC hasta Secrets Manager y S3 (puntos de enlace de VPC o NAT)
 - Solo para archivos de más de 5 GiB: una imagen en ECR. El Access Point tiene origen en Internet, por lo que las subredes de Fargate necesitan NAT o una IP pública
 ### Pasos
 ```bash
@@ -135,10 +183,22 @@ No medido. Los siguientes son factores de diseño.
 - Auditoría: la aprobación y el borrado quedan registrados en el libro de registro (`deletedBy`, `deletedAt`), en el historial de ejecución de Step Functions y en CloudTrail
 ## Restricciones y puntos sin verificar
 - Una copia directa desde un Access Point a un bucket de otra región devolvió `AccessDenied` (un Access Point, una vez). La segunda copia solo tiene como destino buckets de la misma región
-- Comprobado en un volumen de estilo UNIX. No se ha comprobado si el ETag detecta una sobrescritura que restablece la hora de modificación, ni `chown`
+- Comprobado en un volumen de estilo UNIX. Un cambio de contenido que conserve el tamaño y el mtime no lo detecta la comprobación de ETag y tamaño (véase «Comportamientos vistos en la ejecución de extremo a extremo» más arriba). No se comprobó si `chown` cambia el ETag
 - Los atributos se leen mediante el listado del directorio. Leer todo el directorio padre para un solo archivo es lento en directorios grandes
 - El control de versiones del bucket de archivo no es Object Lock. Las versiones se conservan, pero quien tenga permiso también puede borrar versiones
 ## Documentos relacionados
 - [Architecture (EN)](docs/architecture.en.md)
 - [Notas de compatibilidad de S3 Access Points](../../../docs/s3ap-compatibility-notes.md)
 - [Comparación de 8 mecanismos para mover archivos a clases de archivo](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/blob/main/docs/ja/reference/comparison/archive-tiering-library-options.md) (en japonés)
+
+---
+
+<!-- playbook-reading:start -->
+## Lectura previa al paso a producción
+
+Cómo se traducen en decisiones de diseño las restricciones que aparecen después del despliegue está documentado en el [FSx for ONTAP Adoption Playbook](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook). El mismo contenido en dos lugares hace que la copia que deja de actualizarse sobreviva a la corregida.
+
+- [Aprovechamiento de datos](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/tree/main/docs/en/domains/data-utilization) — restricciones del acceso a través de un access point (todos los patrones)
+- [Protección de datos](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/tree/main/docs/en/domains/data-protection) — donde se concentran las decisiones de este patrón
+- [Construir](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/tree/main/docs/en/playbooks/04-build) — revisar antes de producción (todos los patrones)
+<!-- playbook-reading:end -->

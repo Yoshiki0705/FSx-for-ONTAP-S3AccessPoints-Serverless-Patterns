@@ -17,9 +17,57 @@ Amazon FSx for NetApp ONTAP(이하 FSx for ONTAP) 볼륨에 있는, 거의 읽�
 | 구분 | 내용 |
 |---|---|
 | 구성 요소를 실제 환경에서 1회씩 확인함(위 비교 자료에 기록, 2026-11-24 및 2026-11-26, ap-northeast-1, 1세대 `SINGLE_AZ_1`, ONTAP 9.19.1P4D1, UNIX 스타일 볼륨, Access Point 사용자는 UNIX root) | `CopyObject`에 `ChecksumAlgorithm=SHA256`을 지정하면 버킷의 `ChecksumSHA256`이 `FULL_OBJECT`로 파일의 SHA-256과 일치했다(8 MiB까지). 5.5 GiB 멀티파트는 SHA-256이 `COMPOSITE`가 되었고, CRC64NVME는 `FULL_OBJECT`로 일치했다. 오래된 ETag의 `--copy-source-if-match`는 `PreconditionFailed`. Access Point의 `DeleteObject`는 `If-Match`를 지원하지 않는다. Step Functions SDK 통합에서 Access Point 별칭을 `Bucket`에 전달할 수 있었다 |
-| 이 리포지토리에서 확인함 | moto를 사용한 단위 테스트, 그리고 스테이트 머신과 IAM 구조의 테스트. AWS에는 연결하지 않았습니다 |
-| 아직 확인하지 않음 | 패턴 전체의 실제 환경 엔드투엔드 실행. 다수 파일에서의 소요 시간과 요금. Lambda에서 5 GiB에 가까운 파일의 해시 계산 시간. Fargate 멀티파트 복사의 실제 환경 동작. ONTAP REST API의 루트 디렉터리 지정 방법과 `unix_permissions`의 표현. Distributed Map의 `ItemReader`와 `ResultWriter`의 실제 환경 동작. 복원이 필요한 2개 클래스에서의 복원. NTFS 볼륨, root 이외의 사용자, 2세대, Multi-AZ |
-삭제 전 확인에는 쓰기 창이 하나 남아 있습니다. Access Point의 `DeleteObject`는 조건부 삭제를 지원하지 않으므로, `HeadObject`로 확인한 뒤 삭제하기까지 사이에 쓰기가 일어나도 감지할 수 없습니다. 이 창은 API 호출 1회 왕복 분량입니다.
+| 이 저장소에서 확인한 것 | moto를 사용한 단위 테스트와 스테이트 머신 및 IAM 구조의 테스트. AWS에는 연결하지 않았습니다. 위의 실기 통합 실행에서 발견한 결함 3건(ONTAP REST 함수의 호출 권한, TLS 검증, 복원 요청 중복 시의 오류 이름)은 재현하는 테스트를 추가하여 고쳤습니다 |
+| 실기 통합 실행에서 1회씩 확인했다(2026-11-26, 위와 같은 환경, `selection=ATIME`, `GLACIER`, 파일 7개) | ONTAP REST API에 의한 `accessed_time` 선택과 uid, gid, mode, mtime, atime 취득(루트는 볼륨의 루트이며 경로 앞에 슬래시가 없음. `unix_permissions`는 정수 `640`으로 반환됨). Distributed Map의 `ItemReader`와 `ResultWriter`. Fargate에 의한 5.5 GiB 멀티파트 복사(`CopySourceIfMatch` 지정, CRC64NVME가 원장과 일치). Lambda에서의 5.3 GB(약 4.94 GiB) 해시 계산(69.8초, 메모리 2048 MB 설정, 사용 152 MB). 두 번째 복사. 승인 후의 삭제. 승인 대기 중에 NFS에서 덮어쓴 파일은 `CHANGED`가 되어 삭제되지 않았다. 승인을 거부하자 아무것도 삭제되지 않았다. `Expedited`에 의한 복원(5.5 GiB 포함)과 복원한 6개 파일의 SHA-256 일치(7개 중 남은 1개는 덮어쓴 파일로, 삭제도 복원도 되지 않았다). `reapply.sh`에 의한 uid, gid, mode, mtime의 복원 |
+### 환경과 단계별 결과
+환경은 ap-northeast-1, FSx for ONTAP 1세대 `SINGLE_AZ_1`, ONTAP 9.19.1P4D1, UNIX 보안 스타일 볼륨이며, Access Point의 파일 시스템 사용자는 UNIX root입니다. 실행일은 2026-11-26(시각은 일본 표준시)이고 각 단계는 1회만 실행했습니다. 구성은 `selection=ATIME`, `GLACIER`, 두 번째 복사 있음, Fargate는 arm64의 2 vCPU와 8 GiB입니다. 데이터는 작은 파일 6개(64 B 3개, 8 MiB 3개. 소유자 1234:5678, 모드 640, mtime과 atime은 2020-01-02)와 5,905,580,032 B 파일 1개입니다.
+| 단계 | 결과 | 소요 시간 |
+|---|---|---|
+| 1. 배포 | 성공. 다만 실행하면서 발견한 결함 2건을 고쳐 다시 배포했다 | 준비부터 배포까지 약 30분(16:19~16:50) |
+| 2. dry run(`dryRun=true`) | 수정 후 성공. 7개 파일 모두 `VERIFIED`(SHA-256 일치 6, CRC64NVME 일치 1), 두 번째 복사도 `VERIFIED`. 삭제 0바이트이며 NFS에서는 7개 파일이 모두 남았다 | 244초(승인 대기 약 70초 포함) |
+| 3. 승인 대기 중의 덮어쓰기 | NFS에서 파일 1개를 같은 크기로 4 KiB 덮어씀(mtime은 갱신). 승인 후 `CHANGED`(ETag 또는 크기 불일치)가 되어 삭제되지 않았다 | |
+| 4. 실제 실행(`dryRun=false`)과 승인 | 6개 `DELETED`, 1개 `CHANGED`. `bytesDeleted`는 5,922,357,440. NFS에서는 6개가 사라지고 덮어쓴 1개만 남았다 | 310초(승인 요청까지 172초, 승인부터 완료까지 약 6초) |
+| 5. 복원(`tier=Expedited`, `days=1`) | 6개 `RESTORED`(5.5 GiB 포함). SHA-256은 6개 모두 1단계 전에 NFS에서 기록한 값과 일치. `CHANGED`인 1개는 대상 외 | 287초(작은 파일 5개는 약 2.5분, 5.5 GiB의 Fargate 복사는 2분 38초) |
+| 6. 승인 거부(`send-task-failure`) | 실행은 `REJECTED_OR_TIMED_OUT`으로 끝나고 3개 파일은 `VERIFIED` 그대로. `deletedBy`는 비어 있고 NFS에는 3개 모두 남았다 | 16초 |
+| 추가: Lambda에서 5.3 GB(약 4.94 GiB) 해시 | `VERIFIED`(SHA-256이 NFS 값과 일치), 두 번째 복사도 `VERIFIED` | `record` 함수 69.8초(메모리 2048 MB 설정, 사용 152 MB) |
+| 추가: 복원 요청의 중복 투입 | 두 번째는 HTTP 409 `RestoreAlreadyInProgress`. Step Functions의 SDK 통합은 `S3.S3Exception`으로 반환한다 | |
+정리 시에는 모든 리소스를 삭제하고 다시 읽어 확인했습니다.
+### 사용량(각 1회 실행, 청구액 아님)
+| 실행 | 파일 수 | 소요 시간 | 상태 전이(부모 + 자식 Map 실행) | Fargate 태스크 |
+|---|---|---|---|---|
+| dry run | 7 | 244초 | 12 + 107 = 119 | 2회(해시와 복사 96초, 두 번째 복사 35초) |
+| 실제 실행 | 7 | 310초 | 13 + 114 = 127 | 2회(94초, 35초) |
+| 복원 | 6 | 287초 | 4 + 103 = 107 | 1회(156초) |
+| 거부 | 3 | 16초 | 10 + 45 = 55 | 0회 |
+- Lambda 실행 시간의 합계(CloudWatch. 실패한 실행을 포함하고 4.94 GiB 실행은 제외): `select` 13회 5.9초, `ontap_rest` 11회 13.4초(실패 2회), `record` 17회 11.7초, `ledger` 34회 9.1초, `approval` 6회 4.3초, `delete` 7회 5.6초, `summarize` 5회 5.1초, `restore` 26회 9.2초
+- Fargate는 5개 태스크, 합계 약 416초(2 vCPU, 8 GiB, arm64). DynamoDB(온디맨드)는 읽기 68.5 RCU, 쓰기 74 WCU(전체 실행 합계)
+- S3 요청 수는 측정하지 않았습니다(요청 메트릭을 활성화하지 않았습니다)
+### 실기 통합 실행에서 발견해 고친 결함 3건
+모두 재현하는 테스트를 추가하여 고쳤습니다.
+| # | 증상 | 원인과 수정 |
+|---|---|---|
+| 1 | `selection=ATIME` 실행이 선택 단계에서 실패했다 | 아카이브 스테이트 머신의 역할에 ONTAP REST 함수에 대한 `lambda:InvokeFunction`이 없었다. 권한을 추가 |
+| 2 | ONTAP REST 함수가 `CERTIFICATE_VERIFY_FAILED`로 실패했다 | 항상 TLS를 검증했지만, FSx for ONTAP 관리 엔드포인트의 인증서는 공인 CA의 서명이 아니다. 파라미터 `OntapVerifySsl`(기본값 `false`)을 추가 |
+| 3 | 복원 요청의 중복 투입이 파일 실패가 되었다 | Step Functions의 SDK 통합이 `RestoreAlreadyInProgress`를 `S3.S3Exception`으로 반환하므로 `S3.RestoreAlreadyInProgressException`의 `Catch`와 일치하지 않았다. 진행 중인 복원을 완료 대기로 보내도록 수정 |
+### 실기 통합 실행에서 알게 된 동작
+결함으로 고치지 않은 동작입니다.
+- `selection=ATIME`에서는 이 패턴 자신의 읽기가 `accessed_time`을 갱신합니다. `dryRun=true`로 한 번 돌리면 해시 계산을 위한 읽기로 파일의 atime이 실행 시각이 되어, 같은 입력으로 `dryRun=false`를 돌려도 선택되지 않습니다(0건으로 종료. dry run 직후에 실제 실행을 했을 때 확인). 즉 dry run을 하면 그 파일은 최근에 읽힌 것처럼 보입니다. dry run 직후에 같은 후보로 실제 실행을 하려면 `selection=MTIME`을 사용하세요(`LastModified`는 읽기로 바뀌지 않습니다)
+- Access Point의 ETag는 내용이 아니라 mtime과 크기에 연동됩니다. 크기와 mtime이 같고 내용이 다른 파일 3개가 같은 ETag를 반환했습니다. 따라서 삭제 전의 ETag와 크기 확인으로는, 크기와 mtime을 바꾸지 않는 내용 변경을 검출할 수 없습니다. 크기는 같지만 mtime이 갱신된 덮어쓰기는 검출되었습니다(3단계)
+- Access Point를 통해 마지막 파일을 삭제하면 비게 된 상위 디렉터리도 함께 사라집니다(`arc-e2e/large/`에서 확인). 복원의 `CopyObject`가 상위 디렉터리를 다시 만듭니다
+- 복원된 파일의 소유자는 0:1, 모드는 644, 수정 시각은 복원한 시각이었습니다. NFS로 볼륨을 마운트한 호스트에서 생성된 `reapply.sh`를 root로 실행하면 원래의 uid, gid, mode, mtime(1234:5678, 640, 2020-01-02 03:04:05)으로 돌아왔고 내용의 SHA-256은 바뀌지 않았습니다
+- 이 실행에서는 Access Point 정책에서 각 역할(`select`, `record`, `delete`, `restore` 함수의 역할, Fargate 태스크 역할, 두 스테이트 머신의 역할)을 허용했습니다
+- 5.5 GiB의 `Expedited` 복원 요청이 접수되었고 약 4분 이내에 완료되었습니다
+### 확인하지 않은 것
+- 많은 수의 파일에서의 소요 시간과 요금
+- `Standard`와 `Bulk` 복원의 완료 대기(실기에서는 `Expedited`만)
+- `S3.SlowDownException`의 재시도(SDK 통합이 반환하는 이름을 관측하지 못했습니다. 결함 3과 같은 유형의 불일치가 생길 우려가 있습니다)
+- CloudTrail 데이터 이벤트에서의 삭제 기록(계정의 트레일이 대상 Access Point의 데이터 이벤트를 포함하는지 확인하지 않았습니다)
+- NTFS 볼륨, root 이외의 사용자, 2세대, Multi-AZ
+- Access Point에 정책을 붙이지 않은 경우의 동작
+- 복원에서 `CHANGED` 파일을 선택하지 않는 것 이외의 `EXISTS` 경로(NFS에 같은 이름의 파일이 있는 경우)
+- 후보가 0건이 된 원인이 설명되지 않은 실행이 1건 있습니다. `touch -d`로 atime을 되돌린 약 10초 뒤의 실행은 후보가 0건이었습니다. 약 17분 뒤의 확인에서는 2020년 값이 반환되었고, `touch` 직후의 다른 확인에서도 6건이 반환되었습니다. 원인은 특정하지 못했고 재현도 하지 못했습니다
+### 삭제 전 확인에 남는 쓰기 구간
+삭제 전 확인에는 쓰기 구간이 하나 남습니다. Access Point의 `DeleteObject`는 조건부 삭제를 지원하지 않으므로, `HeadObject`로 확인한 뒤 삭제하기까지 사이에 덮어써도 검출되지 않습니다. 이 구간은 API 호출 1회 왕복 분량입니다.
 ## 처리 흐름
 ### 아카이브
 입력에서 `olderThanDays`는 필수이며, `dryRun`의 기본값은 `true`입니다.
@@ -65,7 +113,7 @@ MOUNT_ROOT=/mnt/<volume> sh reapply.sh
 ### 전제
 - Access Point의 별칭과 ARN 모두(IAM에 두 형식이 모두 필요합니다. 별칭만 있는 정책은 배포할 수 있어도 실행 시 거부됩니다)
 - 아카이브용 버킷의 이름(스택이 생성합니다. `DeletionPolicy: Retain`, Block Public Access, 기본 SSE-S3, KMS는 선택, EventBridge 알림 활성화, TLS 필수)
-- `selection=ATIME`과 속성 기록을 사용할 때만: VPC, 서브넷, ONTAP 자격 증명 시크릿, 관리 엔드포인트, 볼륨 UUID. VPC 내부 Lambda에서 Secrets Manager와 S3로 가는 경로(VPC 엔드포인트 또는 NAT)가 필요합니다
+- `selection=ATIME`과 속성 기록을 사용할 때만: VPC, 서브넷, ONTAP 자격 증명을 담은 시크릿, 관리 엔드포인트, 볼륨 UUID, `OntapVerifySsl`. FSx for ONTAP 관리 엔드포인트의 인증서는 공인 CA의 서명이 아니므로 기본값은 `false`(검증하지 않음)이며, 이 경우 ONTAP 자격 증명은 상대를 인증하지 않는 연결로 전송됩니다(경로는 VPC 내부). `true`로 하면 인증서 오류로 선택 단계에서 멈췄습니다(관측). VPC 내 Lambda에서 Secrets Manager와 S3로 가는 경로(VPC 엔드포인트 또는 NAT)가 필요합니다
 - 5 GiB를 초과하는 파일을 다룰 때만: ECR에 둔 이미지. Access Point가 인터넷 기점이므로 Fargate의 서브넷에는 NAT 또는 공인 IP가 필요합니다
 ### 절차
 ```bash
@@ -135,10 +183,22 @@ Step Functions 실행 이력, `manifests/<runId>-result.json`, CloudWatch EMF �
 - 감사: 승인과 삭제는 원장(`deletedBy`, `deletedAt`), Step Functions 실행 이력, CloudTrail에 남습니다
 ## 제약과 미확인 사항
 - Access Point에서 다른 리전의 버킷으로의 직접 복사는 `AccessDenied`였습니다(Access Point 1개, 1회). 두 번째 복사는 같은 리전의 버킷만 대상으로 합니다
-- UNIX 스타일 볼륨에서의 확인입니다. 수정 시각을 되돌린 뒤 내용을 바꾸는 조작과 `chown`을 ETag로 감지할 수 있는지는 확인하지 않았습니다
+- UNIX 스타일 볼륨에서의 확인입니다. 크기와 mtime을 바꾸지 않는 내용 변경은 ETag와 크기 확인으로 검출되지 않습니다(위의 "실기 통합 실행에서 알게 된 동작"). `chown`이 ETag를 바꾸는지는 확인하지 않았습니다
 - 속성은 디렉터리 목록으로 가져옵니다. 파일 하나를 위해 부모 디렉터리 전체를 읽으므로, 큰 디렉터리에서는 느려집니다
 - 아카이브용 버킷의 버저닝은 Object Lock이 아닙니다. 버전은 남지만 권한이 있으면 버전도 삭제할 수 있습니다
 ## 관련 문서
 - [Architecture (EN)](docs/architecture.en.md)
 - [S3 Access Points 호환성 메모](../../../docs/s3ap-compatibility-notes.md)
 - [아카이브용 클래스로 옮기는 8가지 방식의 비교](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/blob/main/docs/ja/reference/comparison/archive-tiering-library-options.md)(일본어)
+
+---
+
+<!-- playbook-reading:start -->
+## 프로덕션 적용 전에 읽을 것
+
+배포 후에 부딪히는 제약을 설계 판단으로 어떻게 옮기는지는 [FSx for ONTAP Adoption Playbook](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook)에 정리되어 있습니다. 같은 내용을 두 곳에 두면 갱신이 멈춘 쪽이 더 오래 남기 때문입니다.
+
+- [데이터 활용](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/tree/main/docs/en/domains/data-utilization) — 액세스 포인트 경유의 제약 (모든 패턴 공통)
+- [데이터 보호](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/tree/main/docs/en/domains/data-protection) — 이 패턴에서 판단이 집중되는 곳
+- [구축](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/tree/main/docs/en/playbooks/04-build) — 프로덕션 전에 확인 (모든 패턴 공통)
+<!-- playbook-reading:end -->

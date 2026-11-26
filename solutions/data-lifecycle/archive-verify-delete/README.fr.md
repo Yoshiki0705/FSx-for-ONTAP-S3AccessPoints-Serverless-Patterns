@@ -17,8 +17,56 @@ Les hypothèses de ce modèle et sa comparaison avec d'autres approches se trouv
 | Catégorie | Contenu |
 |---|---|
 | Composants vérifiés une fois chacun sur un environnement réel (consignés dans la comparaison ci-dessus ; 2026-11-24 et 2026-11-26, ap-northeast-1, première génération `SINGLE_AZ_1`, ONTAP 9.19.1P4D1, volume de style UNIX, l'utilisateur de l'Access Point est UNIX root) | Avec `ChecksumAlgorithm=SHA256` sur `CopyObject`, le `ChecksumSHA256` du compartiment était `FULL_OBJECT` et égal au SHA-256 du fichier (jusqu'à 8 MiB). Pour une copie multipart de 5,5 GiB, le SHA-256 est devenu `COMPOSITE` et le CRC64NVME était `FULL_OBJECT` et égal. `--copy-source-if-match` avec un ancien ETag a renvoyé `PreconditionFailed`. Le `DeleteObject` de l'Access Point ne prend pas en charge `If-Match`. Une intégration SDK de Step Functions a accepté l'alias de l'Access Point comme `Bucket` |
-| Vérifié dans ce dépôt | Tests unitaires avec moto, et tests de la structure de la machine d'états et d'IAM. Aucune connexion à AWS |
-| Pas encore vérifié | Une exécution de bout en bout de l'ensemble du modèle sur un environnement réel. Durée et coût avec de nombreux fichiers. Temps de calcul du hachage dans Lambda pour des fichiers proches de 5 GiB. La copie multipart de Fargate sur un environnement réel. La façon de désigner le répertoire racine dans l'API REST d'ONTAP et la représentation de `unix_permissions`. Le `ItemReader` et le `ResultWriter` de Distributed Map sur un environnement réel. La restauration depuis les deux classes qui exigent une restauration. Volumes NTFS, utilisateurs autres que root, deuxième génération, Multi-AZ |
+| Vérifié dans ce dépôt | Tests unitaires avec moto, et tests de la structure de la machine d'états et d'IAM. Aucune connexion à AWS. Trois défauts trouvés lors de l'exécution de bout en bout ci-dessus (autorisation d'appel de la fonction API REST d'ONTAP, vérification TLS, nom de l'erreur d'une demande de restauration en double) ont été corrigés avec des tests qui les reproduisent |
+| Vérifié une fois chacun lors d'une exécution de bout en bout sur un environnement réel (2026-11-26, même environnement que ci-dessus, `selection=ATIME`, `GLACIER`, 7 fichiers) | Sélection par `accessed_time` et lecture de uid, gid, mode, mtime et atime par l'API REST d'ONTAP (la racine est la racine du volume et le chemin n'a pas de barre oblique initiale ; `unix_permissions` revient sous la forme de l'entier `640`). Le `ItemReader` et le `ResultWriter` de Distributed Map. Une copie multipart de 5,5 GiB par Fargate (avec `CopySourceIfMatch` ; CRC64NVME égal à celui du registre). Le calcul du hachage d'un fichier de 5,3 Go (environ 4,94 GiB) dans Lambda (69,8 s, 2048 Mo configurés, 152 Mo utilisés). La deuxième copie. La suppression après approbation. Un fichier réécrit par NFS pendant l'attente de l'approbation est passé à `CHANGED` et n'a pas été supprimé. Une approbation refusée n'a rien supprimé. Une restauration en `Expedited` (y compris le fichier de 5,5 GiB) et un SHA-256 identique pour les 6 fichiers restaurés (le septième des 7 fichiers avait été réécrit, il n'a donc été ni supprimé ni restauré). Le rétablissement de uid, gid, mode et mtime par `reapply.sh` |
+### Environnement et résultat de chaque étape
+L'environnement est ap-northeast-1, FSx for ONTAP de première génération `SINGLE_AZ_1`, ONTAP 9.19.1P4D1, un volume de style de sécurité UNIX, et un Access Point dont l'utilisateur du système de fichiers est UNIX root. La date est le 2026-11-26 (heures en heure normale du Japon) et chaque étape a été exécutée une seule fois. La configuration était `selection=ATIME`, `GLACIER`, une deuxième copie, et Fargate en arm64 avec 2 vCPU et 8 GiB. Les données étaient 6 petits fichiers (trois de 64 o et trois de 8 MiB, propriétaire 1234:5678, mode 640, mtime et atime au 2020-01-02) et un fichier de 5 905 580 032 o.
+| Étape | Résultat | Durée |
+|---|---|---|
+| 1. Déploiement | Réussi. Deux défauts découverts à l'exécution ont été corrigés, puis le déploiement refait | Environ 30 minutes de la préparation au déploiement (16:19 à 16:50) |
+| 2. Exécution à blanc (`dryRun=true`) | Réussie après les corrections. Les 7 fichiers en `VERIFIED` (SHA-256 identique pour 6, CRC64NVME identique pour 1), la deuxième copie aussi en `VERIFIED`. 0 octet supprimé, et les 7 fichiers sont restés visibles par NFS | 244 s (dont environ 70 s d'attente de l'approbation) |
+| 3. Réécriture pendant l'attente de l'approbation | Un fichier a été écrasé par NFS avec 4 KiB de même taille (mtime mis à jour). Après l'approbation il est passé à `CHANGED` (ETag ou taille différents) et n'a pas été supprimé | |
+| 4. Exécution réelle (`dryRun=false`) et approbation | 6 fichiers en `DELETED`, 1 en `CHANGED`. `bytesDeleted` valait 5 922 357 440. Par NFS, les 6 fichiers avaient disparu et seul le fichier réécrit restait | 310 s (172 s jusqu'à la demande d'approbation, environ 6 s de l'approbation à la fin) |
+| 5. Restauration (`tier=Expedited`, `days=1`) | 6 fichiers en `RESTORED` (y compris celui de 5,5 GiB). SHA-256 identique pour les 6 à la valeur relevée par NFS avant l'étape 1. Le fichier `CHANGED` n'était pas visé | 287 s (les 5 petits fichiers en environ 2,5 minutes ; la copie Fargate de 5,5 GiB a pris 2 min 38 s) |
+| 6. Approbation refusée (`send-task-failure`) | L'exécution s'est terminée en `REJECTED_OR_TIMED_OUT`, 3 fichiers sont restés `VERIFIED`, `deletedBy` était vide et les 3 fichiers sont restés visibles par NFS | 16 s |
+| En plus : hachage de 5,3 Go (environ 4,94 GiB) dans Lambda | `VERIFIED` (SHA-256 identique à la valeur NFS), la deuxième copie aussi `VERIFIED` | Fonction `record` : 69,8 s (2048 Mo configurés, 152 Mo utilisés) |
+| En plus : demande de restauration en double | La deuxième demande a renvoyé HTTP 409 `RestoreAlreadyInProgress`. L'intégration SDK de Step Functions la renvoie sous la forme `S3.S3Exception` | |
+Toutes les ressources ont ensuite été supprimées, et la suppression a été confirmée par relecture.
+### Consommation (une exécution chacune, pas une facture)
+| Exécution | Fichiers | Durée | Transitions d'état (parent + exécutions enfants du Map) | Tâches Fargate |
+|---|---|---|---|---|
+| À blanc | 7 | 244 s | 12 + 107 = 119 | 2 (hachage et copie 96 s, deuxième copie 35 s) |
+| Réelle | 7 | 310 s | 13 + 114 = 127 | 2 (94 s, 35 s) |
+| Restauration | 6 | 287 s | 4 + 103 = 107 | 1 (156 s) |
+| Refus | 3 | 16 s | 10 + 45 = 55 | 0 |
+- Durée totale des fonctions Lambda (CloudWatch ; inclut les invocations en échec, exclut l'exécution de 4,94 GiB) : `select` 13 invocations 5,9 s, `ontap_rest` 11 invocations 13,4 s (2 échecs), `record` 17 invocations 11,7 s, `ledger` 34 invocations 9,1 s, `approval` 6 invocations 4,3 s, `delete` 7 invocations 5,6 s, `summarize` 5 invocations 5,1 s, `restore` 26 invocations 9,2 s
+- Fargate : 5 tâches, environ 416 s au total (2 vCPU, 8 GiB, arm64). DynamoDB (à la demande) : 68,5 RCU en lecture et 74 WCU en écriture, cumulés sur toutes les exécutions
+- Le nombre de requêtes S3 n'a pas été mesuré (les métriques de requêtes n'étaient pas activées)
+### Trois défauts trouvés et corrigés lors de l'exécution de bout en bout
+Chacun a été corrigé avec un test qui le reproduit.
+| # | Symptôme | Cause et correction |
+|---|---|---|
+| 1 | Une exécution avec `selection=ATIME` a échoué à l'étape de sélection | Le rôle de la machine d'états d'archivage n'avait pas `lambda:InvokeFunction` sur la fonction API REST d'ONTAP. L'autorisation a été ajoutée |
+| 2 | La fonction API REST d'ONTAP a échoué avec `CERTIFICATE_VERIFY_FAILED` | Elle vérifiait toujours TLS, or le certificat du point de terminaison de gestion de FSx for ONTAP n'est pas signé par une autorité publique. Le paramètre `OntapVerifySsl` (par défaut `false`) a été ajouté |
+| 3 | Une demande de restauration en double est devenue un échec de fichier | L'intégration SDK de Step Functions renvoie `RestoreAlreadyInProgress` sous la forme `S3.S3Exception`, de sorte que le `Catch` sur `S3.RestoreAlreadyInProgressException` ne correspondait pas. Une restauration en cours est désormais dirigée vers la boucle d'attente |
+### Comportements observés lors de l'exécution de bout en bout
+Ils n'ont pas été traités comme des défauts.
+- Avec `selection=ATIME`, les lectures du modèle lui-même mettent à jour `accessed_time`. Après une exécution avec `dryRun=true`, les lectures du calcul de hachage placent l'atime des fichiers à l'heure d'exécution, si bien que la même entrée avec `dryRun=false` ne sélectionne rien (elle s'est terminée avec 0 fichier ; constaté quand une exécution réelle a suivi une exécution à blanc). Une exécution à blanc fait donc paraître les fichiers récemment lus. Pour lancer l'exécution réelle sur les mêmes candidats juste après une exécution à blanc, utilisez `selection=MTIME` (`LastModified` ne change pas à la lecture)
+- L'ETag de l'Access Point suit le mtime et la taille, pas le contenu. Trois fichiers de contenus différents mais de même taille et de même mtime ont renvoyé le même ETag. La vérification de l'ETag et de la taille avant suppression ne détecte donc pas une modification du contenu qui conserve la taille et le mtime. Une réécriture qui conservait la taille mais mettait à jour le mtime a été détectée (étape 3)
+- Supprimer le dernier fichier d'un répertoire par l'Access Point supprime aussi le répertoire parent devenu vide (constaté avec `arc-e2e/large/`). Le `CopyObject` de la restauration recrée le parent
+- Un fichier restauré avait pour propriétaire 0:1, pour mode 644 et pour date de modification l'heure de la restauration. L'exécution du `reapply.sh` généré, en root sur un hôte qui monte le volume par NFS, a rétabli les uid, gid, mode et mtime d'origine (1234:5678, 640, 2020-01-02 03:04:05), et le SHA-256 du contenu n'a pas changé
+- L'exécution a utilisé une politique d'Access Point qui autorise chaque rôle (les rôles des fonctions `select`, `record`, `delete` et `restore`, le rôle de la tâche Fargate et les rôles des deux machines d'états)
+- Une demande de restauration `Expedited` de 5,5 GiB a été acceptée et s'est terminée en 4 minutes environ ou moins
+### Points non vérifiés
+- Durée et coût avec de nombreux fichiers
+- Fin des restaurations `Standard` et `Bulk` (seul `Expedited` a été exécuté)
+- Nouvelle tentative sur `S3.SlowDownException` (le nom renvoyé par l'intégration SDK n'a pas été observé, et un écart du même type que le défaut 3 est possible)
+- Enregistrements des suppressions dans les événements de données de CloudTrail (on n'a pas vérifié si le journal de suivi du compte couvre les événements de données de cet Access Point)
+- Volumes NTFS, utilisateurs autres que root, deuxième génération, Multi-AZ
+- Comportement lorsque l'Access Point n'a pas de politique
+- Le chemin `EXISTS` de la restauration (un fichier de même nom déjà présent sur NFS) ; le seul cas ignoré observé est le fichier `CHANGED` non sélectionné
+- Une exécution ayant trouvé 0 candidat reste inexpliquée. Une exécution environ 10 secondes après le rétablissement de l'atime par `touch -d` a trouvé 0 candidat. Une vérification environ 17 minutes plus tard a renvoyé la valeur de 2020, et une autre vérification juste après `touch` a renvoyé 6 fichiers. La cause n'a pas été identifiée et le cas n'a pas été reproduit
+### Fenêtre d'écriture restante avant la suppression
 Une fenêtre d'écriture subsiste dans la vérification avant suppression. Le `DeleteObject` de l'Access Point ne prend pas en charge la suppression conditionnelle : une écriture survenue entre la vérification par `HeadObject` et la suppression n'est donc pas détectée. La fenêtre correspond à un aller-retour d'appel d'API.
 ## Déroulement
 ### Archivage
@@ -65,7 +113,7 @@ Le script ne contient que `chown`, `chmod` et `touch -d`. Les valeurs du registr
 ### Prérequis
 - L'alias et l'ARN de l'Access Point (IAM exige les deux formes ; une politique avec l'alias seul peut se déployer et être refusée à l'exécution)
 - Un nom pour le compartiment d'archive (la pile le crée avec `DeletionPolicy: Retain`, Block Public Access, SSE-S3 par défaut, KMS facultatif, notifications EventBridge activées, TLS obligatoire)
-- Seulement pour `selection=ATIME` et la capture des attributs : un VPC, des sous-réseaux, le secret contenant les identifiants ONTAP, le point de terminaison de gestion et l'UUID du volume. Il faut un chemin de la fonction Lambda du VPC vers Secrets Manager et S3 (points de terminaison de VPC ou NAT)
+- Seulement pour `selection=ATIME` et la capture des attributs : un VPC, des sous-réseaux, le secret contenant les identifiants ONTAP, le point de terminaison de gestion, l'UUID du volume et `OntapVerifySsl`. Le certificat du point de terminaison de gestion de FSx for ONTAP n'est pas signé par une autorité publique ; la valeur par défaut est donc `false` (pas de vérification), et les identifiants ONTAP sont alors envoyés sur une connexion dont l'homologue n'est pas authentifié (le chemin reste dans le VPC). Avec `true`, la sélection s'est arrêtée sur une erreur de certificat (observé). Il faut une route de la fonction Lambda du VPC vers Secrets Manager et S3 (points de terminaison de VPC ou NAT)
 - Seulement pour les fichiers de plus de 5 GiB : une image dans ECR. L'Access Point est d'origine Internet : les sous-réseaux de Fargate ont donc besoin d'un NAT ou d'une adresse IP publique
 ### Étapes
 ```bash
@@ -135,10 +183,22 @@ Non mesuré. Voici les facteurs de conception.
 - Audit : l'approbation et la suppression sont consignées dans le registre (`deletedBy`, `deletedAt`), dans l'historique d'exécution de Step Functions et dans CloudTrail
 ## Contraintes et points non vérifiés
 - Une copie directe d'un Access Point vers un compartiment d'une autre région a renvoyé `AccessDenied` (un Access Point, une fois). La deuxième copie ne vise que des compartiments de la même région
-- Vérifié sur un volume de style UNIX. On n'a pas vérifié si une réécriture qui rétablit la date de modification, ou `chown`, est détectée par l'ETag
+- Vérifié sur un volume de style UNIX. Une modification du contenu qui conserve la taille et le mtime n'est pas détectée par la vérification de l'ETag et de la taille (voir « Comportements observés lors de l'exécution de bout en bout » plus haut). On n'a pas vérifié si `chown` modifie l'ETag
 - Les attributs sont lus via le listage du répertoire. Lire tout le répertoire parent pour un seul fichier est lent pour les grands répertoires
 - Le versionnement du compartiment d'archive n'est pas Object Lock. Les versions sont conservées, mais toute personne autorisée peut aussi supprimer des versions
 ## Documents associés
 - [Architecture (EN)](docs/architecture.en.md)
 - [Notes de compatibilité de S3 Access Points](../../../docs/s3ap-compatibility-notes.md)
 - [Comparaison de 8 mécanismes de déplacement de fichiers vers des classes d'archive](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/blob/main/docs/ja/reference/comparison/archive-tiering-library-options.md) (en japonais)
+
+---
+
+<!-- playbook-reading:start -->
+## À lire avant la mise en production
+
+La façon de traduire en décisions de conception les contraintes qui apparaissent après le déploiement est documentée dans le [FSx for ONTAP Adoption Playbook](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook). Un même contenu présent à deux endroits laisse survivre la copie qui a cessé d'être mise à jour.
+
+- [Exploitation des données](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/tree/main/docs/en/domains/data-utilization) — contraintes de l'accès via un access point (tous les patterns)
+- [Protection des données](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/tree/main/docs/en/domains/data-protection) — là où se concentrent les décisions pour ce pattern
+- [Construire](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/tree/main/docs/en/playbooks/04-build) — à parcourir avant la production (tous les patterns)
+<!-- playbook-reading:end -->
