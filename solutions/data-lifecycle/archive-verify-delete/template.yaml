@@ -1145,12 +1145,12 @@ Resources:
                   - !GetAtt FargateExecutionRole.Arn
                   - !GetAtt FargateTaskRole.Arn
               - !Ref AWS::NoValue
-            - !If
-              - UseFargate
-              - Effect: Allow
-                Action: ["events:PutTargets", "events:PutRule", "events:DescribeRule"]
-                Resource: !Sub "arn:${AWS::Partition}:events:${AWS::Region}:${AWS::AccountId}:rule/StepFunctionsGetEventsForECSTaskRule"
-              - !Ref AWS::NoValue
+            # Not conditional on UseFargate: both definitions contain ecs:runTask.sync states whatever
+            # the parameters, and Step Functions checks the role for this managed rule when it creates
+            # the state machine. Without it a deploy with FargateImageUri empty is refused.
+            - Effect: Allow
+              Action: ["events:PutTargets", "events:PutRule", "events:DescribeRule"]
+              Resource: !Sub "arn:${AWS::Partition}:events:${AWS::Region}:${AWS::AccountId}:rule/StepFunctionsGetEventsForECSTaskRule"
       Tags:
         UseCase: archive-verify-delete
         Phase: data-lifecycle
@@ -1237,12 +1237,12 @@ Resources:
                   - !GetAtt FargateExecutionRole.Arn
                   - !GetAtt FargateRestoreTaskRole.Arn
               - !Ref AWS::NoValue
-            - !If
-              - UseFargate
-              - Effect: Allow
-                Action: ["events:PutTargets", "events:PutRule", "events:DescribeRule"]
-                Resource: !Sub "arn:${AWS::Partition}:events:${AWS::Region}:${AWS::AccountId}:rule/StepFunctionsGetEventsForECSTaskRule"
-              - !Ref AWS::NoValue
+            # Not conditional on UseFargate: both definitions contain ecs:runTask.sync states whatever
+            # the parameters, and Step Functions checks the role for this managed rule when it creates
+            # the state machine. Without it a deploy with FargateImageUri empty is refused.
+            - Effect: Allow
+              Action: ["events:PutTargets", "events:PutRule", "events:DescribeRule"]
+              Resource: !Sub "arn:${AWS::Partition}:events:${AWS::Region}:${AWS::AccountId}:rule/StepFunctionsGetEventsForECSTaskRule"
       Tags:
         UseCase: archive-verify-delete
         Phase: data-lifecycle

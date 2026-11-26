@@ -17,9 +17,10 @@
 | 类别 | 内容 |
 |---|---|
 | 各组成部分已在实际环境中各确认 1 次（记录在上述比较资料中，2026-11-24 和 2026-11-26，ap-northeast-1，第 1 代 `SINGLE_AZ_1`，ONTAP 9.19.1P4D1，UNIX 样式卷，Access Point 用户为 UNIX root） | 给 `CopyObject` 指定 `ChecksumAlgorithm=SHA256` 后，存储桶的 `ChecksumSHA256` 为 `FULL_OBJECT`，与文件的 SHA-256 一致（最大 8 MiB）。5.5 GiB 的分段上传中 SHA-256 变为 `COMPOSITE`，CRC64NVME 为 `FULL_OBJECT` 且一致。使用旧 ETag 的 `--copy-source-if-match` 返回 `PreconditionFailed`。Access Point 的 `DeleteObject` 不支持 `If-Match`。在 Step Functions 的 SDK 集成中，可以把 Access Point 别名传给 `Bucket` |
-| 在本仓库中确认 | 使用 moto 的单元测试，以及状态机和 IAM 结构的测试。未连接 AWS。实机端到端运行中发现的 6 个缺陷（ONTAP REST 函数的调用权限、TLS 验证、重复恢复请求的错误名称、状态机的日志权限、`HeadObject` 返回的 403、告警的发布权限）已通过能够复现它们的测试修复 |
+| 在本仓库中确认 | 使用 moto 的单元测试，以及状态机和 IAM 结构的测试。未连接 AWS。实机端到端运行中发现的 7 个缺陷（ONTAP REST 函数的调用权限、TLS 验证、重复恢复请求的错误名称、状态机的日志权限、`HeadObject` 返回的 403、告警的发布权限）已通过能够复现它们的测试修复 |
 | 在实机端到端运行中各确认 1 次（2026-11-26，与上述相同的环境，`selection=ATIME`，`GLACIER`，7 个文件） | 通过 ONTAP REST API 按 `accessed_time` 选择，并获取 uid、gid、mode、mtime、atime（根是卷的根，路径开头没有斜杠；`unix_permissions` 以整数 `640` 返回）。Distributed Map 的 `ItemReader` 和 `ResultWriter`。用 Fargate 进行 5.5 GiB 的分段复制（带 `CopySourceIfMatch`，CRC64NVME 与台账一致）。在 Lambda 中对 5.3 GB（约 4.94 GiB）计算哈希（69.8 秒，配置内存 2048 MB，使用 152 MB）。第二份副本。批准后的删除。等待批准期间在 NFS 上改写的文件变为 `CHANGED`，没有被删除。拒绝批准后什么都没有被删除。用 `Expedited` 恢复（含 5.5 GiB），恢复的 6 个文件 SHA-256 一致（7 个文件中剩下的 1 个已被改写，既没有被删除也没有被恢复）。用 `reapply.sh` 恢复 uid、gid、mode、mtime |
 | 在第二次端到端运行中各确认 1 次（2026-11-26，同一环境，`GLACIER`，开启第二份副本。dry run 使用 `selection=ATIME`，正式运行使用 `selection=MTIME`，属性来自 ONTAP REST。文件为 64 B 至 1 MiB，另有 1 个 51 GiB 的稀疏文件） | 第一次运行中没有的项目的确认。在 `maxFiles=50` 下，3 个 64 B 的文件和 1 个 131,071 B 的文件低于最小大小，131,073 B 的文件被保留。`*.vmdk` 和法律保留前缀被排除。51 GiB 的稀疏文件被记录为 `SKIPPED_TOO_LARGE`，没有被复制。重复使用的 `runId`，以及没有 `requestedBy` 的正式运行输入，都作为输入错误而停止。批准者 ARN 与启动者相同的批准以 `APPROVAL_REFUSED` 结束，没有任何删除。在没有批准的情况下直接调用 `delete` 函数，返回 `NOT_APPROVED` 且没有删除。批准者不同时，删除了 3 个文件，等待期间被改写的 1 个文件保留为 `CHANGED`。对为模拟中断而设为 `DELETING` 的条目，同一执行的重试记录为 `DELETED`（`already gone on retry`），另一个执行被拒绝，`reconcile` 记录为 `DELETED`。恢复后，3 个文件为 `RESTORE_VERIFIED`。告警已发布到 KMS 加密的主题（修复之后） |
+| 在第三次运行中各确认 1 次（2026-11-26，同一账户和 Access Point，`selection=MTIME`，`GLACIER`，无 Fargate，8 个 256 KiB 的文件，`MapConcurrency=1`） | 批准之后立即停止执行，留下了 7 个 `APPROVED` 条目。用其他执行的 `claim` 直接调用 `delete` 函数，返回 `NOT_APPROVED`（`approval not current`）。修复之前，把已停止执行自身的 ARN 作为 `claim` 的调用，使 1 个文件变为 `DELETED`。加入执行状态的检查之后，同样的调用返回 `NOT_APPROVED`（`claiming execution is not running`）。`reconcile` 把 7 个条目恢复为 `VERIFIED`。在运行中的执行里正常删除，7 个文件变为 `DELETED`。批准之后和拒绝之后，任务令牌的参数都已被删除。令牌使用堆栈的 KMS 密钥加密 |
 ### 环境与各步骤的结果
 环境为 ap-northeast-1、FSx for ONTAP 第 1 代 `SINGLE_AZ_1`、ONTAP 9.19.1P4D1、UNIX 安全样式的卷，Access Point 的文件系统用户为 UNIX root。运行日期为 2026-11-26（时间为日本标准时间），每个步骤只运行了 1 次。配置为 `selection=ATIME`、`GLACIER`、有第二份副本，Fargate 为 arm64 的 2 vCPU 和 8 GiB。数据为 6 个小文件（3 个 64 B、3 个 8 MiB，所有者 1234:5678，模式 640，mtime 和 atime 为 2020-01-02）和 1 个 5,905,580,032 B 的文件。
 | 步骤 | 结果 | 耗时 |
@@ -64,6 +65,7 @@
 | 4 | 部署失败，提示 `The state machine IAM Role is not authorized to access the Log Destination` | 状态机的角色缺少执行日志所需的 `logs:CreateLogDelivery` 及相关权限。已添加 |
 | 5 | 对已删除文件的删除重试和 `reconcile` 在 `HeadObject` 上收到 403 | 对没有 `s3:ListBucket` 的调用方，对不存在的键执行 `HeadObject` 返回 403 而不是 404。已在 IAM 和 Access Point 策略中给 `delete` 和 `restore` 函数添加 `s3:ListBucket` |
 | 6 | CloudWatch 告警通知失败，提示 `CloudWatch Alarms is not authorized to perform: SNS:Publish` | 密钥策略允许了 CloudWatch，但主题策略只允许 EventBridge。已添加 `cloudwatch.amazonaws.com` 的语句 |
+| 7 | 不使用 Fargate（`FargateImageUri` 为空）的部署因 `is not authorized to create managed-rule` 失败（第三次运行） | 两个定义都含有 `ecs:runTask.sync` 状态，创建状态机时会检查角色的 `events:PutRule` 等权限。该权限位于 `UseFargate` 条件之内。已去掉该条件 |
 ### 端到端运行中得知的行为
 这些行为没有作为缺陷处理。
 - 在 `selection=ATIME` 下，本模式自身的读取会更新 `accessed_time`。用 `dryRun=true` 运行一次后，计算哈希的读取使每个文件的 atime 变为运行时间，因此用相同输入运行 `dryRun=false` 不会选中任何文件（在 dry run 之后立即正式运行时，以 0 个文件结束）。若要在 dry run 之后立即对相同的候选正式运行，请使用 `selection=MTIME`（`LastModified` 不会因读取而改变）
@@ -152,7 +154,7 @@ aws stepfunctions send-task-failure --task-token "$TOKEN" --error Rejected --cau
 
 `approver` 和 `requestedBy` 都是调用方自行申报的值。台账的 `deletedBy` 取自其 `approvedBy`。实际启动和批准的主体，记录在 CloudTrail 的 `StartExecution` 和 `SendTaskSuccess` 事件中。若要按主体保证职责分离，请在 IAM 中把启动和批准的角色分开。 启动者与批准者的比较，是对两个自行申报的值的比较。它不强制由其他主体批准，本文档也不声称它能强制。事后的控制是 CloudTrail 的 `userIdentity`：核对执行 `StartExecution` 和 `SendTaskSuccess` 的主体。
 ### 批准的有效范围与令牌的处理
-`delete` 函数只删除这样的条目：台账为 `APPROVED`，`approvalExecutionArn` 与当前执行相同，且 `approvedAt` 在 `ApprovalValidityHours`（默认 24 小时）以内。批准之后停止执行会留下 `APPROVED` 条目，但它们与其他执行的 `claim` 不一致，因此直接调用 `delete` 函数也会得到 `NOT_APPROVED`。超过期限的批准同样被拒绝。留下的条目由 `reconcile` 恢复为 `VERIFIED`。
+`delete` 函数只删除这样的条目：台账为 `APPROVED`，`approvalExecutionArn` 与当前执行相同，且 `approvedAt` 在 `ApprovalValidityHours`（默认 24 小时）以内。批准之后停止执行会留下 `APPROVED` 条目，但它们与其他执行的 `claim` 不一致，因此直接调用 `delete` 函数也会得到 `NOT_APPROVED`。超过期限的批准同样被拒绝。留下的条目由 `reconcile` 恢复为 `VERIFIED`。 即使 `claim` 是已停止的执行自身的 ARN（台账中有记录），只要该执行不是 `RUNNING`，也会被拒绝。无法读取执行状态时同样拒绝。
 
 任务令牌在批准成立时（`approval` 函数）、拒绝与启动者相同主体的批准时，以及批准被拒绝、超时或执行失败之后（`summarize`）删除。没有到达 `summarize` 而残留的令牌，由 `watchdog` 在超过批准超时加 1 小时后删除。令牌使用堆栈的客户管理 KMS 密钥（输出 `ApprovalTokenKeyArn`）加密，因此读取它需要 `ssm:GetParameter`，以及该密钥的 `kms:Decrypt`。
 

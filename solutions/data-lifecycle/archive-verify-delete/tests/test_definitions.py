@@ -652,3 +652,21 @@ def test_the_ledger_has_deletion_protection_which_is_reversible():
     props = TEMPLATE["Resources"]["LedgerTable"]["Properties"]
     assert props["DeletionProtectionEnabled"] is True
     assert TEMPLATE["Resources"]["LedgerTable"]["DeletionPolicy"] == "Retain"
+
+
+def test_state_machine_roles_hold_the_ecs_sync_event_rule_permission_without_fargate():
+    """Live finding (deploy with FargateImageUri empty): Step Functions refused to create the restore state
+    machine, "role is not authorized to create managed-rule". Both definitions contain ecs:runTask.sync
+    states whatever the parameters, and the managed rule is checked when the state machine is created.
+    The statement must not sit behind the UseFargate condition.
+    """
+    for name in ("ArchiveStateMachine", "RestoreStateMachine"):
+        found = [
+            s
+            for s in _statements(TEMPLATE["Resources"][name])
+            if isinstance(s, dict)
+            and "Fn::If" not in s
+            and "events:PutRule" in _actions(s)
+            and "StepFunctionsGetEventsForECSTaskRule" in json.dumps(s.get("Resource"))
+        ]
+        assert found, name

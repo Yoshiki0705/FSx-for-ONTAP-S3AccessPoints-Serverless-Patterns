@@ -15,7 +15,9 @@ A file is deleted only when all of these hold:
    The approval is also bound to the execution that recorded it (``approvalExecutionArn`` must
    equal ``claim``) and to time (``approvedAt`` is at most ``ApprovalValidityHours`` old). An
    execution stopped after the approval leaves ``APPROVED`` items behind; a direct call with any
-   other ``claim``, or a call made after the window, finds them ``NOT_APPROVED``
+   other ``claim``, or a call made after the window, finds them ``NOT_APPROVED``. The ``claim`` must
+   also name an execution that is ``RUNNING`` now, so the stopped execution's own ARN, which the
+   ledger shows, does not work either; when the state cannot be read the call is refused
 3. the second copy is ``VERIFIED`` when one was required
 4. the Access Point's current ETag and size equal the ledger's
 
@@ -74,6 +76,7 @@ def delete_one(
     helper: S3ApHelper,
     ledger: Ledger,
     approval_validity_hours: float = DEFAULT_APPROVAL_VALIDITY_HOURS,
+    execution_state=None,
 ) -> dict:
     """Return ``{"key", "outcome", ...}``: DELETED, DRY_RUN, CHANGED, NOT_APPROVED or NOT_VERIFIED."""
     if parse_dry_run(dry_run):
@@ -93,6 +96,10 @@ def delete_one(
         # An APPROVED item from a stopped execution, or one approved longer ago than the window.
         # reconcile returns it to VERIFIED once its execution is no longer running.
         return {"key": key, "outcome": "NOT_APPROVED", "status": "approval not current"}
+    if execution_state is not None and execution_state(claim) != "RUNNING":
+        # The claim is only as good as the execution behind it. An execution that was stopped after the
+        # approval left APPROVED items whose claim is public (it is in the ledger); it must not delete.
+        return {"key": key, "outcome": "NOT_APPROVED", "status": "claiming execution is not running"}
     if item.get("secondCopyRequired") and item.get("secondCopy") != L.VERIFIED:
         return {"key": key, "outcome": "NOT_VERIFIED", "status": "second copy not verified"}
     before = (L.DELETING,) if resuming else (L.APPROVED,)
@@ -144,6 +151,15 @@ def _mark_deleted(ledger: Ledger, run_id: str, key: str, item: dict, claim: str)
         deletedAt=L.now_iso(),
         deletedBy=item["approvedBy"],
     )
+
+
+def execution_status(sfn, arn: str) -> str:
+    """Status of an execution, or ``UNKNOWN`` when it cannot be read (the caller then refuses)."""
+    try:
+        return sfn.describe_execution(executionArn=arn)["status"]
+    except Exception:  # noqa: BLE001 - fail closed: an unreadable execution is not shown to be running
+        logger.warning("could not read execution %s; refusing to delete under it", arn)
+        return "UNKNOWN"
 
 
 def _execution_running(sfn, arn: str | None) -> bool:
@@ -216,6 +232,7 @@ def handler(event, context):
     helper, ledger = S3ApHelper(cfg.access_point), Ledger(cfg.ledger_table)
     if event.get("action") == "reconcile":
         return reconcile(run_id=event["runId"], helper=helper, ledger=ledger)
+    sfn = boto3.client("stepfunctions")
     return delete_one(
         run_id=event["runId"],
         key=event["key"],
@@ -224,4 +241,5 @@ def handler(event, context):
         helper=helper,
         ledger=ledger,
         approval_validity_hours=cfg.approval_validity_hours,
+        execution_state=lambda arn: execution_status(sfn, arn),
     )

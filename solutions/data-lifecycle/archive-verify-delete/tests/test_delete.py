@@ -266,3 +266,38 @@ def test_handler_reads_the_validity_from_the_environment(aws, ledger, lambda_con
     out = delete.handler({"runId": "run1", "key": "docs/a.txt", "dryRun": False, "claim": CLAIM}, lambda_context)
     assert out["outcome"] == "NOT_APPROVED"
     assert _exists(aws)
+
+
+@pytest.mark.parametrize("state", ["ABORTED", "FAILED", "TIMED_OUT", "SUCCEEDED", "UNKNOWN"])
+def test_the_claiming_execution_must_be_running(aws, ledger, state):
+    """Live finding: calling the delete function with the stopped execution's own ARN as ``claim`` deleted
+    an APPROVED item (the ARN is in the ledger, so anyone who can read it can supply it). An item is
+    consumed only when the claiming execution is RUNNING; an unreadable state counts as not running.
+    """
+    _seed(aws, ledger)
+    result = _delete(ledger, execution_state=lambda arn: state)
+    assert result["outcome"] == "NOT_APPROVED"
+    assert _exists(aws)
+    assert ledger.get("run1", "docs/a.txt")["status"] == L.APPROVED
+
+
+def test_a_running_claiming_execution_deletes(aws, ledger):
+    _seed(aws, ledger)
+    asked = []
+    result = _delete(ledger, execution_state=lambda arn: asked.append(arn) or "RUNNING")
+    assert result["outcome"] == "DELETED" and asked == [CLAIM]
+
+
+def test_execution_status_fails_closed_when_the_state_cannot_be_read():
+    class Denied:
+        def describe_execution(self, **_):
+            raise RuntimeError("AccessDenied")
+
+    assert delete.execution_status(Denied(), CLAIM) == "UNKNOWN"
+
+
+def test_the_handler_checks_the_claiming_execution(aws, ledger, lambda_context):
+    """Through the handler no execution with this ARN exists, so nothing is consumed."""
+    _seed(aws, ledger)
+    out = delete.handler({"runId": "run1", "key": "docs/a.txt", "dryRun": False, "claim": CLAIM}, lambda_context)
+    assert out["outcome"] == "NOT_APPROVED" and _exists(aws)
