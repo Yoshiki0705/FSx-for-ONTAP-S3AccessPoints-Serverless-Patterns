@@ -442,6 +442,44 @@ class OntapClient:
             f"/protocols/file-security/permissions/{svm_uuid}/{volume_uuid}/{path}",
         )
 
+    def list_directory(
+        self,
+        volume_uuid: str,
+        path: str = "",
+        fields: str = "name,type,size,accessed_time,modified_time,owner_id,group_id,unix_permissions",
+        max_records: int = 1000,
+    ) -> list[dict]:
+        """ボリューム内ディレクトリのエントリ一覧（ファイル属性つき）を取得
+
+        ``GET /storage/volumes/{uuid}/files/{path}`` を呼び、``_links.next`` を
+        たどって全ページを返す。``path`` はボリュームのルートからの相対パスで、
+        区切りの ``/`` は ``%2F`` に符号化して送る（セグメントごとの符号化は
+        ここで行う）。ルート（空文字）の符号化は実機で未確認。
+
+        Args:
+            volume_uuid: ボリューム UUID
+            path: ボリュームのルートからの相対ディレクトリ（空ならルート）
+            fields: 取得するフィールド（``accessed_time`` などを含められる）
+            max_records: 1 ページあたりの件数
+
+        Returns:
+            list[dict]: エントリのリスト
+        """
+        from urllib.parse import quote
+
+        encoded = quote(path.strip("/"), safe="") if path.strip("/") else "%2F"
+        next_path: str | None = f"/storage/volumes/{volume_uuid}/files/{encoded}"
+        params: dict | None = {"fields": fields, "max_records": str(max_records)}
+        records: list[dict] = []
+        while next_path:
+            result = self.get(next_path, params=params)
+            records.extend(result.get("records", []))
+            href = result.get("_links", {}).get("next", {}).get("href")
+            # next の href は /api から始まる。BASE_API_PATH を外して同じ経路で辿る。
+            next_path = href[len(self.BASE_API_PATH) :] if href and href.startswith(self.BASE_API_PATH) else None
+            params = None
+        return records
+
     # --- FlexCache 操作メソッド ---
 
     def list_flexcaches(

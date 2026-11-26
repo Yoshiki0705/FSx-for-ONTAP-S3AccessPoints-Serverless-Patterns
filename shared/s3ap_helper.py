@@ -490,6 +490,60 @@ class S3ApHelper:
                 error_code=error_code,
             ) from e
 
+    def copy_between(
+        self,
+        source_bucket: str,
+        source_key: str,
+        dest_bucket: str,
+        dest_key: str,
+        extra_args: dict | None = None,
+        multipart_threshold: int = 5 * 1024**3,
+        multipart_chunksize: int = 64 * 1024 * 1024,
+        max_concurrency: int = 10,
+    ) -> None:
+        """サーバー側コピー（5 GiB 超はマルチパートの ``UploadPartCopy``）
+
+        ``CopyObject`` は 5 GiB までなので、それを超えるファイルは s3transfer の
+        管理コピーを使う。コピー元とコピー先のどちらかが S3 Access Point
+        （Alias または ARN）でもよい。``extra_args`` には ``ChecksumAlgorithm``、
+        ``CopySourceIfMatch``、``StorageClass``、``Metadata`` などを渡せる
+        （マルチパート時は ``CopySourceIfMatch`` が各 ``UploadPartCopy`` に付く）。
+
+        Args:
+            source_bucket: コピー元のバケット名または Access Point の Alias/ARN
+            source_key: コピー元キー
+            dest_bucket: コピー先のバケット名または Access Point の Alias/ARN
+            dest_key: コピー先キー
+            extra_args: s3transfer の ExtraArgs
+            multipart_threshold: マルチパートに切り替える大きさ（バイト）
+            multipart_chunksize: パートの大きさ（バイト）
+            max_concurrency: 並列度
+
+        Raises:
+            S3ApHelperError: コピーに失敗した場合（前提条件の不一致を含む）
+        """
+        from boto3.s3.transfer import TransferConfig
+
+        config = TransferConfig(
+            multipart_threshold=multipart_threshold,
+            multipart_chunksize=multipart_chunksize,
+            max_concurrency=max_concurrency,
+        )
+        try:
+            self._s3_client.copy(
+                CopySource={"Bucket": source_bucket, "Key": source_key},
+                Bucket=dest_bucket,
+                Key=dest_key,
+                ExtraArgs=extra_args or {},
+                Config=config,
+            )
+        except ClientError as e:
+            error_code = e.response.get("Error", {}).get("Code", "Unknown")
+            raise S3ApHelperError(
+                f"Failed to copy '{source_key}' from '{source_bucket}' to '{dest_bucket}/{dest_key}': {e}",
+                error_code=error_code,
+            ) from e
+
     # ------------------------------------------------------------------ #
     # Phase 2: ストリーミングダウンロード / マルチパートアップロード
     # ------------------------------------------------------------------ #
