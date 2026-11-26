@@ -67,7 +67,7 @@ Amazon FSx for NetApp ONTAP(이하 FSx for ONTAP) 볼륨에 있는, 거의 읽�
 ### 실기 통합 실행에서 알게 된 동작
 결함으로 고치지 않은 동작입니다.
 - `selection=ATIME`에서는 이 패턴 자신의 읽기가 `accessed_time`을 갱신합니다. `dryRun=true`로 한 번 돌리면 해시 계산을 위한 읽기로 파일의 atime이 실행 시각이 되어, 같은 입력으로 `dryRun=false`를 돌려도 아무것도 선택되지 않습니다(dry run 직후에 실제 실행을 했을 때 0건으로 종료). dry run 직후에 같은 후보로 실제 실행을 하려면 `selection=MTIME`을 사용하세요(`LastModified`는 읽기로 바뀌지 않습니다)
-- ETag에 대해, 공식 기재와 이 환경에서의 측정은 다음과 같습니다. 공식 페이지([Access point compatibility](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/access-points-for-fsxn-object-api-support.html), 2026-11-26 열람)에는 "The ETag reflects changes only to the contents of an object, not its metadata"라고 되어 있습니다. 이 환경에서의 1회 측정에서는 크기와 mtime이 같고 내용이 다른 파일 3개가 같은 ETag를 반환했습니다. 따라서 이 패턴은 삭제 전의 ETag와 크기 확인으로는, 크기와 mtime을 바꾸지 않는 내용 변경을 검출할 수 없는 것으로 취급합니다. 크기는 같지만 mtime이 갱신된 덮어쓰기는 승인 대기 중에 검출되었습니다(첫 번째 실행의 3단계와 두 번째 실제 실행)
+- ETag에 대해, 공식 기재와 이 환경에서의 측정은 다음과 같습니다. 공식 페이지([Access point compatibility](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/access-points-for-fsxn-object-api-support.html), 2026-11-26 열람)에는 "The ETag reflects changes only to the contents of an object, not its metadata"라고 되어 있습니다. 이 환경에서의 1회 측정에서는 크기와 mtime이 같고 내용이 다른 파일 3개가 같은 ETag를 반환했습니다. 따라서 이 패턴은 삭제 전의 ETag와 크기 확인으로는, 크기와 mtime을 바꾸지 않는 내용 변경을 검출할 수 없는 것으로 취급합니다. 크기는 같지만 mtime이 갱신된 덮어쓰기는 승인 대기 중에 검출되었습니다(첫 번째 실행의 3단계와 두 번째 실제 실행) [E-023]
 - Access Point를 통해 디렉터리의 마지막 파일을 삭제하면 비게 된 상위 디렉터리도 함께 사라집니다(`arc-e2e/large/`에서 확인). 복원의 `CopyObject`가 상위 디렉터리를 다시 만듭니다
 - 복원된 파일의 소유자는 0:1, 모드는 644, 수정 시각은 복원한 시각이었습니다. NFS로 볼륨을 마운트한 호스트에서 생성된 `reapply.sh`를 root로 실행하면 원래의 uid, gid, mode, mtime(1234:5678, 640, 2020-01-02 03:04:05)으로 돌아왔고 내용의 SHA-256은 바뀌지 않았습니다
 - 복원 스테이트 머신은, 아카이브용 버킷에 사본이 있으면 `CHANGED`로 남은 파일도 선택합니다. Access Point에 같은 키가 이미 있으면 `EXISTS`로 남기고 덮어쓰지 않습니다(두 번째 복원에서 1회 확인)
@@ -108,7 +108,7 @@ Amazon FSx for NetApp ONTAP(이하 FSx for ONTAP) 볼륨에 있는, 거의 읽�
 
 | 조건 | 기본값 | 이유 |
 |---|---|---|
-| 50 GiB 초과 | 제외하고 원장에 `SKIPPED_TOO_LARGE`로 기록한다. `allowOversize: true`로 포함할 수 있다 | 공식 페이지([Access point compatibility](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/access-points-for-fsxn-object-api-support.html), 2026-11-26 열람)에는 "Maximum object size is 50 GiB for uploads, but you can download objects larger than that"라고 되어 있다. 복원은 Access Point를 통해 쓰기 때문에, 이 패턴은 그보다 큰 파일을 Access Point로 복원할 수 없다(버킷에서 직접 다운로드할 수 있다) |
+| 50 GiB 초과 | 제외하고 원장에 `SKIPPED_TOO_LARGE`로 기록한다. `allowOversize: true`로 포함할 수 있다 | 공식 페이지([Access point compatibility](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/access-points-for-fsxn-object-api-support.html), 2026-11-26 열람)에는 "Maximum object size is 50 GiB for uploads, but you can download objects larger than that"라고 되어 있다. 복원은 Access Point를 통해 쓰기 때문에, 이 패턴은 그보다 큰 파일을 Access Point로 복원할 수 없다(버킷에서 직접 다운로드할 수 있다) [E-021] |
 | `MinFileSizeBytes` 미만 | 131,072 바이트(128 KiB). 입력의 `minSizeBytes`로 바꿀 수 있다 | [Comparing the Amazon S3 storage classes](https://docs.aws.amazon.com/AmazonS3/latest/userguide/storage-class-intro.html#sc-compare)(2026-11-26 열람)에 따르면 Standard-IA와 Glacier Instant Retrieval은 오브젝트당 최소 128 KB로 청구되고, Glacier Flexible Retrieval과 Deep Archive는 오브젝트당 40 KB의 메타데이터가 더해진다(32 KB는 해당 클래스의 요율, 8 KB는 Standard의 요율). 작은 파일에서는 데이터 자체보다 커진다 |
 | `ExcludePatterns`(glob), `ExcludePrefixes` | 비어 있음 | 스택의 값은 항상 적용되며, 입력의 `excludePatterns`와 `excludePrefixes`는 추가만 할 수 있다. 법적 보존 대상의 prefix는 여기에 넣는다 |
 
@@ -158,7 +158,7 @@ MOUNT_ROOT=/mnt/<volume> sh reapply.sh
 ## 배포
 ### 전제
 - Access Point의 별칭과 ARN 모두(IAM에 두 형식이 모두 필요합니다. 별칭만 있는 정책은 배포할 수 있어도 실행 시 거부됩니다)
-- Access Point 정책. 템플릿으로는 붙일 수 없으므로 아래와 같이 배포 후에 붙입니다. 없으면 실행 시 첫 번째 S3 호출이 거부됩니다
+- Access Point 정책. 이 스택은 Access Point를 만들지 않고(기존 Access Point를 파라미터로 받음) 그 정책도 관리하지 않으므로, 배포 후 아래 절차로 붙입니다. 붙이지 않으면 첫 S3 호출이 실행 시에 거부됩니다
 - 아카이브용 버킷의 이름(스택이 생성합니다. `DeletionPolicy: Retain`, Block Public Access, 기본 SSE-S3, KMS는 선택, EventBridge 알림 활성화, TLS 필수)
 - `selection=ATIME`과 속성 기록을 사용할 때만: VPC, 서브넷, ONTAP 자격 증명을 담은 시크릿, 관리 엔드포인트, 볼륨 UUID, `OntapVerifySsl`. FSx for ONTAP 관리 엔드포인트의 인증서는 공인 CA의 서명이 아니므로 기본값은 `false`(검증하지 않음)이며, 이 경우 ONTAP 자격 증명은 상대를 인증하지 않는 연결로 전송됩니다(경로는 VPC 내부). `true`로 하면 검증에 실패하여 선택 단계에서 멈췄습니다(실기에서 관측). VPC 내 Lambda에서 Secrets Manager와 S3로 가는 경로(VPC 엔드포인트 또는 NAT)가 필요합니다
 - 5 GiB를 초과하는 파일을 다룰 때만: ECR에 둔 이미지. Access Point가 인터넷 기점이므로 Fargate의 서브넷에는 NAT 게이트웨이 또는 공인 IP가 필요합니다
@@ -238,7 +238,7 @@ Step Functions 실행 이력과 로그(`/aws/vendedlogs/states/<stack>-archive`�
 | `FilesStuckDeletingAlarm` | `DELETING` 또는 `APPROVED` 항목이 남은 채 실행이 끝남 |
 | `FilesMismatchAlarm` | 아카이브한 사본이 일치하지 않음(`MISMATCH`) |
 | `RestoreMismatchAlarm` | 복원한 파일이 원장과 일치하지 않음 |
-알림 토픽은 고객 관리형 KMS 키로 암호화되어 있습니다. AWS 관리형 키(`alias/aws/sns`)의 키 정책은 편집할 수 없으며, EventBridge와 CloudWatch 알람이 암호화된 토픽에 게시하려면 서비스 주체에 `kms:GenerateDataKey*`와 `kms:Decrypt`를 허용하는 고객 관리형 키가 필요합니다([Amazon SNS key management](https://docs.aws.amazon.com/sns/latest/dg/sns-key-management.html), 2026-11-26 열람). 두 번째 실행에서 EventBridge의 실패 알림과 알람 알림이 도착하는 것을 확인했습니다.
+알림 토픽은 고객 관리형 KMS 키로 암호화되어 있습니다. AWS 관리형 키(`alias/aws/sns`)의 키 정책은 편집할 수 없으며, EventBridge와 CloudWatch 알람이 암호화된 토픽에 게시하려면 서비스 주체에 `kms:GenerateDataKey*`와 `kms:Decrypt`를 허용하는 고객 관리형 키가 필요합니다([Amazon SNS key management](https://docs.aws.amazon.com/sns/latest/dg/sns-key-management.html), 2026-11-26 열람). 두 번째 실행에서 EventBridge의 실패 알림과 알람 알림이 도착하는 것을 확인했습니다. [E-022]
 ## Performance Considerations
 기본 병렬도는 아래의 1회 측정에 근거합니다. 나머지는 설계상의 요인이며 측정하지 않았습니다.
 - 원본 파일은 2회 읽힙니다. 1회째는 해시 계산을 위해 Access Point에서 읽고, 2회째는 `CopyObject`가 서버 측에서 읽습니다. 읽기 요청 요금이 발생하며, 용량 풀에 있는 데이터에는 용량 풀의 읽기 요금도 발생합니다

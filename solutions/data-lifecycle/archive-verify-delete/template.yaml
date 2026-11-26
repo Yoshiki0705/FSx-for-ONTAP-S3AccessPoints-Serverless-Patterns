@@ -1423,7 +1423,7 @@ Outputs:
     Value: !Ref LedgerTable
   NotificationTopicArn:
     Value: !Ref NotificationTopic
-  # The Access Point policy is not a CloudFormation resource. After the deploy, render it from these
+  # This stack takes an existing Access Point and does not manage its policy. After the deploy, render it from these
   # role ARNs with tools/render_access_point_policy.py and attach it with
   # `aws s3control put-access-point-policy` (see the README).
   SelectRoleArn:

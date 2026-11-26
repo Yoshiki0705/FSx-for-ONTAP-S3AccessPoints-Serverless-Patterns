@@ -9,6 +9,7 @@ Un fichier suit les étapes ci-dessous, et un fichier dont les conditions cessen
 3. Comparer la somme de contrôle renvoyée par le compartiment avec la valeur du registre
 4. Une personne approuve la liste des fichiers concordants. L'approbation est consignée dans le registre comme `APPROVED`, et elle est refusée lorsque la personne qui approuve est le principal qui a lancé l'exécution (par défaut)
 5. Seuls les fichiers que le registre indique comme `APPROVED` sont supprimés, après vérification que l'ETag et la taille côté Access Point sont toujours identiques à ceux du registre
+
 Pour restaurer, le modèle retrouve les fichiers dans le registre, demande la restauration dans le compartiment, attend qu'elle se termine, recopie les fichiers vers l'Access Point avec `CopyObject`, puis relit chaque fichier restauré et le compare avec le SHA-256 et le CRC64NVME du registre.
 Ce modèle n'utilise ni S3 Object Lock, ni S3 Glacier Vault Lock, ni AWS Backup Vault Lock, ni SnapLock, ni le verrouillage de snapshots, et le modèle de déploiement n'en contient aucun. Aucune durée de conservation n'est définie : les objets du compartiment d'archive peuvent être supprimés par toute personne qui en a l'autorisation.
 Les hypothèses de ce modèle et sa comparaison avec d'autres approches se trouvent dans [Comparaison de 8 mécanismes de déplacement de fichiers vers des classes d'archive](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/blob/main/docs/en/reference/comparison/archive-tiering-library-options.md).
@@ -43,6 +44,7 @@ Toutes les ressources ont ensuite été supprimées, et la suppression a été c
 - Fargate : 5 tâches, environ 416 s au total (2 vCPU, 8 GiB, arm64). DynamoDB (à la demande) : 68,5 RCU en lecture et 74 WCU en écriture, cumulés sur toutes les exécutions
 - Le nombre de requêtes S3 n'a pas été mesuré (les métriques de requêtes n'étaient pas activées)
 Transitions d'état de la deuxième exécution (2026-11-26, petits fichiers, deuxième copie activée, `MapConcurrency=2`), une exécution chacune ; elles varient selon la taille des fichiers et le chemin.
+
 | Exécution | Fichiers | Durée | Transitions d'état (parent + exécutions enfants du Map) | Par fichier |
 |---|---|---|---|---|
 | À blanc `e2e2-dry1` | 4 | 66 s (dont environ 20 s d'attente de l'approbation) | 12 + 60 = 72 | 18 |
@@ -56,6 +58,7 @@ Chacun a été corrigé avec un test qui le reproduit.
 | 2 | La fonction API REST d'ONTAP a échoué avec `CERTIFICATE_VERIFY_FAILED` | Elle vérifiait toujours TLS, or le certificat du point de terminaison de gestion de FSx for ONTAP n'est pas signé par une autorité publique. Le paramètre `OntapVerifySsl` (par défaut `false`) a été ajouté |
 | 3 | Une demande de restauration en double est devenue un échec de fichier | L'intégration SDK de Step Functions renvoie `RestoreAlreadyInProgress` sous la forme `S3.S3Exception`, de sorte que le `Catch` sur `S3.RestoreAlreadyInProgressException` ne correspondait pas. Une restauration en cours est désormais dirigée vers la boucle d'attente |
 La deuxième exécution (2026-11-26) a trouvé et corrigé trois défauts de plus.
+
 | # | Symptôme | Cause et correction |
 |---|---|---|
 | 4 | Le déploiement a échoué avec `The state machine IAM Role is not authorized to access the Log Destination` | Les rôles des machines d'états n'avaient pas `logs:CreateLogDelivery` ni les autorisations associées que demande la journalisation des exécutions. Elles ont été ajoutées |
@@ -64,7 +67,7 @@ La deuxième exécution (2026-11-26) a trouvé et corrigé trois défauts de plu
 ### Comportements observés lors de l'exécution de bout en bout
 Ils n'ont pas été traités comme des défauts.
 - Avec `selection=ATIME`, les lectures du modèle lui-même mettent à jour `accessed_time`. Après une exécution avec `dryRun=true`, les lectures du calcul de hachage placent l'atime de chaque fichier à l'heure d'exécution, si bien que la même entrée avec `dryRun=false` ne sélectionne rien (elle s'est terminée avec 0 fichier quand l'exécution réelle a suivi l'exécution à blanc). Pour lancer l'exécution réelle sur les mêmes candidats juste après une exécution à blanc, utilisez `selection=MTIME` (`LastModified` ne change pas à la lecture)
-- Sur l'ETag, voici la formulation officielle et la mesure faite ici. La page officielle ([Access point compatibility](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/access-points-for-fsxn-object-api-support.html), lue le 2026-11-26) indique "The ETag reflects changes only to the contents of an object, not its metadata". Dans une mesure faite dans cet environnement, trois fichiers de même taille et de même mtime mais de contenus différents ont renvoyé le même ETag. Le modèle considère donc que la vérification de l'ETag et de la taille avant suppression ne peut pas détecter une modification du contenu qui conserve la taille et le mtime. Une réécriture de même taille qui a mis à jour le mtime pendant l'attente de l'approbation a été détectée (étape 3 de la première exécution, et deuxième exécution réelle)
+- Sur l'ETag, voici la formulation officielle et la mesure faite ici. La page officielle ([Access point compatibility](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/access-points-for-fsxn-object-api-support.html), lue le 2026-11-26) indique "The ETag reflects changes only to the contents of an object, not its metadata". Dans une mesure faite dans cet environnement, trois fichiers de même taille et de même mtime mais de contenus différents ont renvoyé le même ETag. Le modèle considère donc que la vérification de l'ETag et de la taille avant suppression ne peut pas détecter une modification du contenu qui conserve la taille et le mtime. Une réécriture de même taille qui a mis à jour le mtime pendant l'attente de l'approbation a été détectée (étape 3 de la première exécution, et deuxième exécution réelle) [E-023]
 - Supprimer le dernier fichier d'un répertoire par l'Access Point supprime aussi le répertoire parent devenu vide (constaté avec `arc-e2e/large/`). Le `CopyObject` de la restauration le recrée
 - Un fichier restauré avait pour propriétaire 0:1, pour mode 644 et pour date de modification l'heure de la restauration. L'exécution du `reapply.sh` généré, en root sur un hôte qui monte le volume par NFS, a rétabli les uid, gid, mode et mtime d'origine (1234:5678, 640, 2020-01-02 03:04:05) sans changer le SHA-256 du contenu
 - La machine d'états de restauration sélectionne aussi un fichier resté `CHANGED` lorsque le compartiment d'archive en contient la copie. Si l'Access Point contient déjà la clé, elle reste `EXISTS` et n'est pas écrasée (constaté une fois lors de la deuxième restauration)
@@ -98,13 +101,17 @@ Une fenêtre d'écriture subsiste dans la vérification avant suppression. Le `D
 | 9. Consigner | `manifests/<runId>-result.json` et métriques EMF (nombres, octets, exclusions). `COMPLETED_WITH_ERRORS` lorsqu'il reste des éléments `DELETING` ou `APPROVED` | `summarize` |
 Avec `dryRun=true`, l'exécution va quand même jusqu'à l'étape 6. Les copies sont faites et le stockage de la classe d'archive est facturé (avec une durée de stockage minimale). Pour un essai, utilisez un `maxFiles` faible. Rien n'est supprimé.
 Les statuts du registre progressent dans l'ordre `SELECTED`, `RECORDED`, `COPIED`, `VERIFIED`, `APPROVED`, `DELETING`, `DELETED`, `RESTORED`, `RESTORE_VERIFIED`, avec les sorties latérales `CHANGED`, `MISMATCH`, `FAILED`, `SKIPPED_TOO_LARGE` et `RESTORE_MISMATCH`. Seuls les fichiers `APPROVED` (et, lorsqu'une deuxième copie est exigée, dont la deuxième copie est aussi vérifiée) peuvent être supprimés.
+
 Un `runId` déjà utilisé est une erreur d'entrée. Pour poursuivre une exécution interrompue, indiquez le même `runId` avec `"resume": true` (voir « Reprise après une suppression interrompue » plus bas). La clé d'archive contient le `runId` : une exécution à blanc et une exécution réelle, ou un nouvel archivage après une réécriture, n'écrasent donc pas les objets les uns des autres. Sans versionnement, un écrasement supprime l'objet précédent, ce qui peut entraîner des frais de suppression anticipée dans les classes à durée de stockage minimale.
+
 Ce que la sélection laisse de côté :
+
 | Condition | Par défaut | Raison |
 |---|---|---|
-| Au-delà de 50 GiB | Exclu et consigné comme `SKIPPED_TOO_LARGE` dans le registre. `allowOversize: true` les inclut | La page officielle ([Access point compatibility](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/access-points-for-fsxn-object-api-support.html), lue le 2026-11-26) indique "Maximum object size is 50 GiB for uploads, but you can download objects larger than that". Une restauration écrit par l'Access Point : ce modèle ne peut donc pas y restaurer un fichier plus grand (il peut être téléchargé directement depuis le compartiment) |
+| Au-delà de 50 GiB | Exclu et consigné comme `SKIPPED_TOO_LARGE` dans le registre. `allowOversize: true` les inclut | La page officielle ([Access point compatibility](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/access-points-for-fsxn-object-api-support.html), lue le 2026-11-26) indique "Maximum object size is 50 GiB for uploads, but you can download objects larger than that". Une restauration écrit par l'Access Point : ce modèle ne peut donc pas y restaurer un fichier plus grand (il peut être téléchargé directement depuis le compartiment) [E-021] |
 | En dessous de `MinFileSizeBytes` | 131 072 octets (128 KiB). Le `minSizeBytes` de l'entrée le modifie | Selon [Comparing the Amazon S3 storage classes](https://docs.aws.amazon.com/AmazonS3/latest/userguide/storage-class-intro.html#sc-compare) (lu le 2026-11-26), S3 Standard-IA et S3 Glacier Instant Retrieval facturent au moins 128 KB par objet, et S3 Glacier Flexible Retrieval et S3 Glacier Deep Archive ajoutent 40 KB de métadonnées par objet (32 KB au tarif de cette classe, 8 KB au tarif de S3 Standard). Pour de petits fichiers, cela dépasse les données elles-mêmes |
 | `ExcludePatterns` (globs), `ExcludePrefixes` | Vide | Les valeurs de la pile s'appliquent toujours ; `excludePatterns` et `excludePrefixes` de l'entrée ne peuvent qu'en ajouter. Placez-y les préfixes sous conservation légale |
+
 Excluez toujours les fichiers de données des tables Iceberg, Delta ou Hive, les fichiers d'une base de données en fonctionnement et les images disque de machines virtuelles (`*.vmdk`, `*.vhd`, `*.qcow2` et similaires). Le modèle déplace les fichiers un par un et ne sait rien des métadonnées de table ni du processus qui tient un fichier ouvert. Nettoyez une table avec ses propres fonctions (détacher des partitions, faire expirer des snapshots) et ne visez que les chemins restants. Savoir si des données sont sous conservation légale est une décision de votre service juridique ; le modèle ne la prend pas.
 ### Restauration
 L'entrée est `runId` et exactement l'un de `keys` ou `prefix`. On peut indiquer `tier` (`Bulk` par défaut) et `days` (7 par défaut).
@@ -115,6 +122,7 @@ L'entrée est `runId` et exactement l'un de `keys` ou `prefix`. On peut indiquer
 5. `CopyObject` du compartiment vers l'Access Point (Fargate au-delà de 5 GiB). Le registre indique `RESTORED`
 6. Relire le fichier restauré par l'Access Point, calculer son hachage et le comparer avec le SHA-256, le CRC64NVME et la taille du registre (Fargate au-delà de 5 GiB). Une concordance donne `RESTORE_VERIFIED`, une différence `RESTORE_MISMATCH`
 7. Écrire le script de réapplication des attributs `manifests/<runId>-reapply.sh`, uniquement pour les fichiers `RESTORE_VERIFIED`
+
 Un fichier restauré avait pour propriétaire 0:1, pour mode 644, et une date de modification égale à l'heure de la restauration (vérifié dans l'environnement ci-dessus). Les valeurs d'origine ne sont pas restaurées par `CopyObject`.
 ### Reprise après une suppression interrompue
 Une fonction Lambda qui s'arrête en pleine suppression ou qui a épuisé ses nouvelles tentatives peut laisser des éléments `DELETING` ou `APPROVED` dans le registre. Le résultat l'indique par `COMPLETED_WITH_ERRORS`, `stuckDeleting` et `notDeleted`, et `FilesStuckDeletingAlarm` se déclenche. Démarrer la machine d'états d'archivage avec le même `runId` et `"resume": true` exécute `reconcile`, qui règle les éléments comme ci-dessous, puis demande une nouvelle approbation pour les fichiers restants.
@@ -139,6 +147,7 @@ aws stepfunctions send-task-success --task-token "$TOKEN" \
 aws stepfunctions send-task-failure --task-token "$TOKEN" --error Rejected --cause "<reason>"
 ```
 Après l'approbation, la fonction `approval` compare `approver` avec le `requestedBy` de l'entrée de démarrage (`RequireSeparateApprover=true`, par défaut). Le même principal termine l'exécution en `APPROVAL_REFUSED`, sans rien marquer `APPROVED`. L'ARN d'un rôle et l'ARN d'une session de ce rôle comptent comme le même principal. Sinon, chaque fichier de la liste passe à `APPROVED` dans le registre avec `approvedBy`, `approvedAt` et l'ARN de l'exécution. La fonction `delete` ne supprime que les fichiers qui portent cet enregistrement ; l'appeler directement ne supprime rien de ce qui n'en a pas.
+
 `approver` et `requestedBy` sont tous deux déclarés par les appelants. Le `deletedBy` du registre est repris de son `approvedBy`. Les principaux qui ont réellement lancé et approuvé figurent dans les événements `StartExecution` et `SendTaskSuccess` de CloudTrail. Pour garantir la séparation des tâches par principal, séparez dans IAM les rôles qui lancent et ceux qui approuvent.
 ## Réapplication des attributs
 À la fin d'une restauration, `manifests/<runId>-reapply.sh` est écrit. Exécutez-le en tant que root sur un hôte qui monte le volume en NFS.
@@ -149,7 +158,7 @@ Le script ne contient que `chown`, `chmod` et `touch -d`. Les valeurs du registr
 ## Déploiement
 ### Prérequis
 - L'alias et l'ARN de l'Access Point (IAM exige les deux formes ; une politique avec l'alias seul peut se déployer et être refusée à l'exécution)
-- Une politique d'Access Point. Le modèle de déploiement ne peut pas l'attacher : attachez-la après le déploiement comme indiqué ci-dessous. Sans elle, le premier appel S3 est refusé à l'exécution
+- Une politique d'Access Point. Cette pile ne crée pas l'Access Point (elle reçoit un Access Point existant en paramètre) et ne gère pas sa politique ; attachez-la après le déploiement comme indiqué ci-dessous. Sans elle, le premier appel S3 est refusé à l'exécution
 - Un nom pour le compartiment d'archive (la pile le crée : `DeletionPolicy: Retain`, Block Public Access, SSE-S3 par défaut, KMS facultatif, notifications EventBridge activées, TLS obligatoire)
 - Seulement pour `selection=ATIME` et la capture des attributs : un VPC, des sous-réseaux, le secret contenant les identifiants ONTAP, le point de terminaison de gestion, l'UUID du volume et `OntapVerifySsl`. Le certificat du point de terminaison de gestion de FSx for ONTAP n'est pas signé par une autorité publique ; la valeur par défaut est donc `false` (pas de vérification). Dans ce mode, les identifiants ONTAP sont envoyés sur une connexion dont l'homologue n'est pas authentifié (le chemin reste dans le VPC). Avec `true`, la vérification échoue et l'exécution s'arrête à la sélection (observé sur un système réel). La fonction Lambda du VPC a besoin d'une route vers Secrets Manager et S3 (points de terminaison de VPC ou NAT)
 - Seulement pour les fichiers de plus de 5 GiB : une image dans ECR. L'Access Point est d'origine Internet : les sous-réseaux de Fargate ont donc besoin d'une passerelle NAT ou d'une adresse IP publique
@@ -215,10 +224,13 @@ Les cibles sont fixées par l'exploitant. Aucun chiffre n'est donné ici.
 | Quality KPI | Fichiers supprimés sans approbation | Doit être 0. Compter les `DELETED` dont `approvedBy` ou `approvedAt` est vide |
 | Cost KPI | Par exécution : Lambda, Fargate, DynamoDB, requêtes S3, transitions d'état et stockage de la classe d'archive | Estimer avec la formule de « Estimation des coûts » à partir d'une exécution `dryRun=true` mesurée avec un `maxFiles` faible |
 | Go / No-Go | Technique : dans une exécution sur un environnement réel, tous les fichiers copiés passent à `VERIFIED`, un `CHANGED` créé volontairement n'est pas supprimé, une auto-approbation par la personne qui a lancé l'exécution est refusée, les fichiers restaurés sont `RESTORE_VERIFIED`. Métier : l'économie attendue dépasse le coût d'exploitation (effort d'approbation, traitement des demandes de restauration) ; le point d'entrée et le délai de réponse visé pour les demandes de restauration (y compris le temps de restauration de la classe) sont décidés ; les utilisateurs ont été informés | Ne pas utiliser `dryRun=false` sur un volume de production tant que tout cela n'est pas rempli. Désignez d'abord qui décide de chaque point (propriétaire des données, approbateur, responsable de l'exploitation) |
+
 La préparation d'un PoC et les vérifications avant la production se trouvent dans la [liste de vérification avant mise en production](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/blob/main/docs/ja/playbooks/04-build/checklists/pre-production-review.md) et dans l'[inventaire avant migration](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/blob/main/docs/ja/playbooks/01-assess/checklists/inventory.md) du FSx for ONTAP Adoption Playbook (tous deux en japonais). Pour le PoC de ce modèle, augmenter `maxFiles` à 20, 200 puis 2 000 en relevant la durée de l'exécution parente, les transitions d'état et les secondes Fargate donne des valeurs par fichier.
 ### Measurement Method
 Historique d'exécution et journaux de Step Functions (`/aws/vendedlogs/states/<stack>-archive` et `-restore`, sans les données d'exécution), `manifests/<runId>-result.json`, `manifests/<runId>-approval.json`, métriques EMF de CloudWatch (`FilesVerified`, `FilesDeleted`, `FilesMismatch`, `FilesChanged`, `FilesFailed`, `FilesStuckDeleting`, `BytesVerified`, `BytesDeleted`, `RestoreVerified`, `RestoreMismatch`, `ApprovalPendingHours`), et registre.
+
 Alarmes (toutes vers la rubrique de notification) :
+
 | Alarme | Condition |
 |---|---|
 | `ArchiveExecutionsFailedAlarm`, `RestoreExecutionsFailedAlarm` | Une exécution ou plus en échec, expirée ou interrompue en 5 minutes |
@@ -226,7 +238,7 @@ Alarmes (toutes vers la rubrique de notification) :
 | `FilesStuckDeletingAlarm` | Une exécution s'est terminée avec des éléments `DELETING` ou `APPROVED` |
 | `FilesMismatchAlarm` | Une copie archivée ne concordait pas (`MISMATCH`) |
 | `RestoreMismatchAlarm` | Un fichier restauré ne concordait pas avec le registre |
-La rubrique de notification est chiffrée avec une clé KMS gérée par le client. La clé gérée par AWS (`alias/aws/sns`) a une politique de clé non modifiable, et EventBridge et les alarmes CloudWatch ne peuvent publier sur une rubrique chiffrée qu'avec une clé gérée par le client qui autorise les principaux de service pour `kms:GenerateDataKey*` et `kms:Decrypt` ([Amazon SNS key management](https://docs.aws.amazon.com/sns/latest/dg/sns-key-management.html), lu le 2026-11-26). La deuxième exécution a confirmé que les notifications d'échec d'EventBridge et les notifications d'alarme arrivent.
+La rubrique de notification est chiffrée avec une clé KMS gérée par le client. La clé gérée par AWS (`alias/aws/sns`) a une politique de clé non modifiable, et EventBridge et les alarmes CloudWatch ne peuvent publier sur une rubrique chiffrée qu'avec une clé gérée par le client qui autorise les principaux de service pour `kms:GenerateDataKey*` et `kms:Decrypt` ([Amazon SNS key management](https://docs.aws.amazon.com/sns/latest/dg/sns-key-management.html), lu le 2026-11-26). La deuxième exécution a confirmé que les notifications d'échec d'EventBridge et les notifications d'alarme arrivent. [E-022]
 ## Performance Considerations
 Le parallélisme par défaut s'appuie sur la seule mesure ci-dessous. Le reste relève de facteurs de conception et n'a pas été mesuré.
 - Le fichier source est lu deux fois : une fois par l'Access Point pour calculer le hachage, et une fois côté serveur par `CopyObject`. Les requêtes de lecture sont facturées, et pour les données situées dans le pool de capacité, la lecture du pool de capacité l'est aussi
@@ -239,6 +251,7 @@ Le parallélisme par défaut s'appuie sur la seule mesure ci-dessous. Le reste r
 ## Estimation des coûts
 Aucune facture n'a été mesurée. Voici des valeurs d'utilisation mesurées et des conditions publiées par objet, à partir desquelles estimer.
 Transitions d'état par fichier dans les deux exécutions (une exécution chacune) :
+
 | Exécution | Transitions d'état par fichier | Source |
 |---|---|---|
 | Archivage à blanc | 17 (119 ÷ 7), 18 (72 ÷ 4) | Première et deuxième exécution |
@@ -246,6 +259,7 @@ Transitions d'état par fichier dans les deux exécutions (une exécution chacun
 | Restauration (`Expedited` ; la deuxième avec vérification) | 18 (107 ÷ 6), 14 (56 ÷ 4) | Idem |
 Les classes à longue attente ajoutent des transitions à chaque sondage.
 Conditions de stockage par objet ([Comparing the Amazon S3 storage classes](https://docs.aws.amazon.com/AmazonS3/latest/userguide/storage-class-intro.html#sc-compare), lu le 2026-11-26) :
+
 | Classe | Durée de stockage minimale | Surcoût par objet, taille facturable minimale |
 |---|---|---|
 | S3 Glacier Instant Retrieval | 90 jours | Taille d'objet facturable minimale de 128 KB |

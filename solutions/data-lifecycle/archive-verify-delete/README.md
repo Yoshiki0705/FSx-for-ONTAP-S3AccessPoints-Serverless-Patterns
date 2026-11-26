@@ -67,7 +67,7 @@ Amazon FSx for NetApp ONTAP（以下 FSx for ONTAP）のボリュームにある
 ### 実機の通しで分かった挙動
 不具合として直していない挙動です。
 - `selection=ATIME` では、このパターン自身の読み取りが `accessed_time` を更新します。`dryRun=true` で一度回すと、ハッシュ計算の読み取りでファイルの atime が実行時刻になり、同じ入力で `dryRun=false` を回しても選ばれません（0 件で終了。dry run の直後に本番を回したときに確認）。dry run の直後に同じ候補で本番を回すなら `selection=MTIME` を使ってください（`LastModified` は読み取りで変わりません）
-- ETag について、公式の記述とこの環境の測定は次のとおりです。公式のページ（[Access point compatibility](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/access-points-for-fsxn-object-api-support.html)、2026-11-26 閲覧）は "The ETag reflects changes only to the contents of an object, not its metadata" と書いています。この環境の 1 回の測定では、同じ大きさと同じ mtime を持つ内容の違うファイル 3 つが、同じ ETag を返しました。したがって、消す前の ETag と大きさの確認は、大きさと mtime を変えない内容の変更を検出できない、とこのパターンは扱います。承認待ちの間に大きさが同じまま mtime が更新された書き換えは検出されました（1 回目の手順 3、2 回目の本番）
+- ETag について、公式の記述とこの環境の測定は次のとおりです。公式のページ（[Access point compatibility](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/access-points-for-fsxn-object-api-support.html)、2026-11-26 閲覧）は "The ETag reflects changes only to the contents of an object, not its metadata" と書いています。この環境の 1 回の測定では、同じ大きさと同じ mtime を持つ内容の違うファイル 3 つが、同じ ETag を返しました。したがって、消す前の ETag と大きさの確認は、大きさと mtime を変えない内容の変更を検出できない、とこのパターンは扱います。承認待ちの間に大きさが同じまま mtime が更新された書き換えは検出されました（1 回目の手順 3、2 回目の本番） [E-023]
 - Access Point 経由で最後のファイルを消すと、空になった親ディレクトリも消えます（`arc-e2e2/large/` で確認）。戻しの `CopyObject` が親ディレクトリを作り直します
 - 戻したファイルの所有者は 0:1、モードは 644、更新時刻は戻した時刻でした。NFS でボリュームをマウントしたホストで、生成された `reapply.sh` を root として実行すると、元の uid、gid、mode、mtime（1234:5678、640、2020-01-02 03:04:05）に戻り、内容の SHA-256 は変わりませんでした
 - 戻しのステートマシンは、`CHANGED` で残ったファイルにもアーカイブ用バケットの写しがあれば対象に選びます。Access Point に同じキーがあれば `EXISTS` で上書きしません（2 回目の戻しで 1 件を確認）
@@ -108,7 +108,7 @@ Amazon FSx for NetApp ONTAP（以下 FSx for ONTAP）のボリュームにある
 
 | 条件 | 既定 | 理由 |
 |---|---|---|
-| 50 GiB を超える | 外して台帳に `SKIPPED_TOO_LARGE` を記録する。`allowOversize: true` で含められる | 公式のページ（[Access point compatibility](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/access-points-for-fsxn-object-api-support.html)、2026-11-26 閲覧）が "Maximum object size is 50 GiB for uploads, but you can download objects larger than that" と書いている。戻しは Access Point への書き込みなので、超えたファイルはこのパターンでは戻せない（バケットから直接ダウンロードはできる） |
+| 50 GiB を超える | 外して台帳に `SKIPPED_TOO_LARGE` を記録する。`allowOversize: true` で含められる | 公式のページ（[Access point compatibility](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/access-points-for-fsxn-object-api-support.html)、2026-11-26 閲覧）が "Maximum object size is 50 GiB for uploads, but you can download objects larger than that" と書いている。戻しは Access Point への書き込みなので、超えたファイルはこのパターンでは戻せない（バケットから直接ダウンロードはできる） [E-021] |
 | `MinFileSizeBytes` 未満 | 131,072 バイト（128 KiB）。入力の `minSizeBytes` で変えられる | [Amazon S3 のストレージクラスの比較](https://docs.aws.amazon.com/AmazonS3/latest/userguide/storage-class-intro.html#sc-compare)（2026-11-26 閲覧）によると、Standard-IA と Glacier Instant Retrieval は 1 オブジェクトあたり最低 128 KB で課金し、Glacier Flexible Retrieval と Deep Archive は 1 オブジェクトにつき 40 KB（32 KB はそのクラスの単価、8 KB は Standard の単価）のメタデータを加える。小さなファイルではこの分が実体より大きくなる |
 | `ExcludePatterns`（glob）、`ExcludePrefixes` | 空 | スタックの値は常に適用し、入力の `excludePatterns`、`excludePrefixes` は追加だけができる。保全（リーガルホールド）の対象のプレフィックスはここに入れる |
 
@@ -158,7 +158,7 @@ MOUNT_ROOT=/mnt/<volume> sh reapply.sh
 ## デプロイ
 ### 前提
 - Access Point のエイリアスと ARN の両方（IAM に両方の形式が要ります。エイリアスだけのポリシーはデプロイできても、実行時に拒否されます）
-- Access Point のポリシー。テンプレートでは付けられないため、デプロイの後に下の手順で付けます。付けないと、最初の S3 の呼び出しが実行時に拒否されます
+- Access Point のポリシー。このスタックは Access Point を作らず（既存のものをパラメーターで受け取る）、そのポリシーも管理しないため、デプロイの後に下の手順で付けます。付けないと、最初の S3 の呼び出しが実行時に拒否されます
 - アーカイブ用バケットの名前（スタックが作成します。`DeletionPolicy: Retain`、Block Public Access、SSE-S3 が既定、KMS は任意、EventBridge 通知有効、TLS 必須）
 - `selection=ATIME` と属性の記録を使うときだけ: VPC、サブネット、ONTAP の認証情報のシークレット、管理エンドポイント、ボリュームの UUID、`OntapVerifySsl`。FSx for ONTAP の管理エンドポイントの証明書は公的な CA の署名ではないため、既定は `false`（検証しない）です。この間、ONTAP の認証情報は相手を認証しない接続で送られます（経路は VPC 内）。`true` にすると検証に失敗して選択の段階で止まります（実機で確認）。VPC 内の Lambda から Secrets Manager と S3 へ届く経路（VPC エンドポイントか NAT）が要ります
 - 5 GiB を超えるファイルを扱うときだけ: ECR に置いたイメージ。Access Point がインターネット起点なので、Fargate のサブネットには NAT か公開 IP が要ります
@@ -238,7 +238,7 @@ Step Functions の実行履歴とログ（`/aws/vendedlogs/states/<stack>-archiv
 | `FilesStuckDeletingAlarm` | 実行の終わりに `DELETING` か `APPROVED` が残った |
 | `FilesMismatchAlarm` | 写しの照合で `MISMATCH` が出た |
 | `RestoreMismatchAlarm` | 戻したファイルが台帳と一致しなかった |
-通知のトピックはカスタマー管理の KMS キーで暗号化します。AWS 管理キー（`alias/aws/sns`）はキーのポリシーを編集できず、EventBridge と CloudWatch アラームが暗号化したトピックへ発行するには、サービスプリンシパルに `kms:GenerateDataKey*` と `kms:Decrypt` を許可したカスタマー管理キーが要るためです（[Amazon SNS のキー管理](https://docs.aws.amazon.com/sns/latest/dg/sns-key-management.html)、2026-11-26 閲覧）。2 回目の通しで、EventBridge の失敗通知と、アラームの通知が届くことを確かめました。
+通知のトピックはカスタマー管理の KMS キーで暗号化します。AWS 管理キー（`alias/aws/sns`）はキーのポリシーを編集できず、EventBridge と CloudWatch アラームが暗号化したトピックへ発行するには、サービスプリンシパルに `kms:GenerateDataKey*` と `kms:Decrypt` を許可したカスタマー管理キーが要るためです（[Amazon SNS のキー管理](https://docs.aws.amazon.com/sns/latest/dg/sns-key-management.html)、2026-11-26 閲覧）。2 回目の通しで、EventBridge の失敗通知と、アラームの通知が届くことを確かめました。 [E-022]
 ## Performance Considerations
 並列度の既定値は、次の 1 回の測定から決めています。それ以外は設計上の要因で、測っていません。
 - 元のファイルは 2 回読まれます。1 回目はハッシュ計算のために Access Point から読み、2 回目は `CopyObject` がサーバー側で読みます。読み取りのリクエスト料金がかかり、容量プールにあるデータには容量プールの読み取り料金もかかります

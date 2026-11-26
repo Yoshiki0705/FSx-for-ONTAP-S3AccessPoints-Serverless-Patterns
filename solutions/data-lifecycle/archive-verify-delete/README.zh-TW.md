@@ -67,7 +67,7 @@
 ### 端到端執行中得知的行為
 這些行為沒有作為缺陷處理。
 - 在 `selection=ATIME` 下，本模式自身的讀取會更新 `accessed_time`。用 `dryRun=true` 執行一次後，計算雜湊的讀取使每個檔案的 atime 變為執行時間，因此用相同輸入執行 `dryRun=false` 不會選中任何檔案（在 dry run 之後接著正式執行時，以 0 個檔案結束）。若要在 dry run 之後立即對相同的候選正式執行，請使用 `selection=MTIME`（`LastModified` 不會因讀取而改變）
-- 關於 ETag，官方的說明和本環境的測量如下。官方頁面（[Access point compatibility](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/access-points-for-fsxn-object-api-support.html)，2026-11-26 閱讀）寫道 "The ETag reflects changes only to the contents of an object, not its metadata"。在本環境的 1 次測量中，大小和 mtime 相同、內容不同的 3 個檔案返回了相同的 ETag。因此本模式認為，刪除前對 ETag 和大小的確認，無法發現大小和 mtime 都不變的內容變更。在等待批准期間，大小相同但 mtime 更新的改寫被檢測到了（第一次執行的步驟 3，以及第二次正式執行）
+- 關於 ETag，官方的說明和本環境的測量如下。官方頁面（[Access point compatibility](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/access-points-for-fsxn-object-api-support.html)，2026-11-26 閱讀）寫道 "The ETag reflects changes only to the contents of an object, not its metadata"。在本環境的 1 次測量中，大小和 mtime 相同、內容不同的 3 個檔案返回了相同的 ETag。因此本模式認為，刪除前對 ETag 和大小的確認，無法發現大小和 mtime 都不變的內容變更。在等待批准期間，大小相同但 mtime 更新的改寫被檢測到了（第一次執行的步驟 3，以及第二次正式執行） [E-023]
 - 透過 Access Point 刪除目錄中的最後一個檔案時，變空的上級目錄也會一併消失（在 `arc-e2e/large/` 上確認）。恢復時的 `CopyObject` 會重新建立該目錄
 - 恢復後的檔案擁有者為 0:1，模式為 644，修改時間為恢復的時間。在以 NFS 掛載了磁碟區的主機上，以 root 執行生成的 `reapply.sh` 後，恢復為原來的 uid、gid、mode、mtime（1234:5678、640、2020-01-02 03:04:05），內容的 SHA-256 沒有變化
 - 當歸檔儲存桶中有 `CHANGED` 檔案的副本時，恢復狀態機也會選擇該檔案。如果 Access Point 上已有相同的鍵，則保留為 `EXISTS`，不覆蓋（在第二次恢復中確認過 1 次）
@@ -108,7 +108,7 @@
 
 | 條件 | 預設 | 理由 |
 |---|---|---|
-| 超過 50 GiB | 被排除，並在帳本中記錄為 `SKIPPED_TOO_LARGE`。`allowOversize: true` 會將其納入 | 官方頁面（[Access point compatibility](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/access-points-for-fsxn-object-api-support.html)，2026-11-26 閱讀）寫道 "Maximum object size is 50 GiB for uploads, but you can download objects larger than that"。恢復是透過 Access Point 寫入，因此本模式無法把更大的檔案恢復到那裡（可以直接從儲存桶下載） |
+| 超過 50 GiB | 被排除，並在帳本中記錄為 `SKIPPED_TOO_LARGE`。`allowOversize: true` 會將其納入 | 官方頁面（[Access point compatibility](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/access-points-for-fsxn-object-api-support.html)，2026-11-26 閱讀）寫道 "Maximum object size is 50 GiB for uploads, but you can download objects larger than that"。恢復是透過 Access Point 寫入，因此本模式無法把更大的檔案恢復到那裡（可以直接從儲存桶下載） [E-021] |
 | 小於 `MinFileSizeBytes` | 131,072 位元組（128 KiB）。輸入的 `minSizeBytes` 可以更改 | 根據 [Comparing the Amazon S3 storage classes](https://docs.aws.amazon.com/AmazonS3/latest/userguide/storage-class-intro.html#sc-compare)（2026-11-26 閱讀），Standard-IA 和 Glacier Instant Retrieval 每個物件至少按 128 KB 計費，Glacier Flexible Retrieval 和 Deep Archive 每個物件另加 40 KB 的中繼資料（32 KB 按該類別的費率，8 KB 按 Standard 的費率）。對小檔案來說，這比資料本身還大 |
 | `ExcludePatterns`（glob）、`ExcludePrefixes` | 空 | 堆疊的值始終適用；輸入的 `excludePatterns` 和 `excludePrefixes` 只能追加。法律保全的前綴請放在這裡 |
 
@@ -158,7 +158,7 @@ MOUNT_ROOT=/mnt/<volume> sh reapply.sh
 ## 部署
 ### 前提
 - Access Point 的別名和 ARN 兩者都需要（IAM 需要兩種形式。僅有別名的策略可以部署，但執行時會被拒絕）
-- Access Point 策略。模板無法附加它，因此請在部署後按下文所示附加。沒有它，第一次 S3 呼叫在執行時就會被拒絕
+- Access Point 策略。此堆疊不建立 Access Point（以參數接收既有的 Access Point），也不管理其策略，因此在部署後依下方步驟附加。未附加時，第一次 S3 呼叫會在執行時被拒絕
 - 歸檔用儲存桶的名稱（由堆疊建立。`DeletionPolicy: Retain`、Block Public Access、預設 SSE-S3、KMS 可選、啟用 EventBridge 通知、必須使用 TLS）
 - 僅在使用 `selection=ATIME` 和屬性記錄時需要：VPC、子網、保存 ONTAP 憑據的金鑰、管理端點、磁碟區 UUID、`OntapVerifySsl`。FSx for ONTAP 管理端點的憑證不是由公共 CA 簽發，因此預設值為 `false`（不驗證）。此時 ONTAP 憑據會透過不對對端進行認證的連線發送（路徑在 VPC 內）。設為 `true` 時驗證失敗，執行在選擇階段停止（在實機上觀察到）。VPC 內的 Lambda 需要到 Secrets Manager 和 S3 的路徑（VPC 端點或 NAT）
 - 僅在處理超過 5 GiB 的檔案時需要：放在 ECR 中的映像。Access Point 是 Internet-origin，因此 Fargate 的子網需要 NAT 閘道或公網 IP
@@ -238,7 +238,7 @@ Step Functions 的執行歷史和日誌（`/aws/vendedlogs/states/<stack>-archiv
 | `FilesStuckDeletingAlarm` | 有執行結束時仍有 `DELETING` 或 `APPROVED` 的項目 |
 | `FilesMismatchAlarm` | 歸檔的副本不一致（`MISMATCH`） |
 | `RestoreMismatchAlarm` | 恢復的檔案與帳本不一致 |
-通知主題使用客戶管理的 KMS 金鑰加密。AWS 受管金鑰（`alias/aws/sns`）的金鑰策略無法編輯，而 EventBridge 和 CloudWatch 告警要向加密的主題發佈訊息，只能使用允許服務主體執行 `kms:GenerateDataKey*` 和 `kms:Decrypt` 的客戶管理金鑰（[Amazon SNS key management](https://docs.aws.amazon.com/sns/latest/dg/sns-key-management.html)，2026-11-26 閱讀）。第二次執行確認了 EventBridge 的失敗通知和告警通知都能送達。
+通知主題使用客戶管理的 KMS 金鑰加密。AWS 受管金鑰（`alias/aws/sns`）的金鑰策略無法編輯，而 EventBridge 和 CloudWatch 告警要向加密的主題發佈訊息，只能使用允許服務主體執行 `kms:GenerateDataKey*` 和 `kms:Decrypt` 的客戶管理金鑰（[Amazon SNS key management](https://docs.aws.amazon.com/sns/latest/dg/sns-key-management.html)，2026-11-26 閱讀）。第二次執行確認了 EventBridge 的失敗通知和告警通知都能送達。 [E-022]
 ## Performance Considerations
 預設的並行度依據下面的 1 次測量。其餘是設計上的因素，沒有測量。
 - 原始檔會被讀取 2 次。第 1 次是為計算雜湊而透過 Access Point 讀取，第 2 次是 `CopyObject` 在伺服器端讀取。會產生讀取請求費用，位於容量池中的資料還會產生容量池的讀取費用

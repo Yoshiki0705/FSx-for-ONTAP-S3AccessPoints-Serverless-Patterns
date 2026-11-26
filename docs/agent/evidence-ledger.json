@@ -767,7 +767,114 @@
       "appears_in": [
         "solutions/amplify-portal/docs/file-tools.md",
         "solutions/amplify-portal/docs/file-tools.en.md",
-        "solutions/amplify-portal/amplify/backend.ts"
+        "solutions/amplify-portal/amplify/backend.ts",
+        "solutions/data-lifecycle/archive-verify-delete/template.yaml",
+        "solutions/data-lifecycle/archive-verify-delete/README.md",
+        "solutions/data-lifecycle/archive-verify-delete/README.en.md"
+      ]
+    },
+    {
+      "id": "E-021",
+      "claim": "An FSx for ONTAP S3 Access Point accepts uploads of at most 50 GiB per object, so a file above that cannot be written back (restored) through the access point; it can still be downloaded.",
+      "subject": "AWS",
+      "tier": "documented",
+      "premise": true,
+      "sources": [
+        {
+          "url": "https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/access-points-for-fsxn-object-api-support.html",
+          "read": "full",
+          "retrieved": "2026-11-26",
+          "says": "Limitations: maximum object size is 50 GiB for uploads, but objects larger than that can be downloaded."
+        }
+      ],
+      "support_inquiry": {
+        "status": "not-needed",
+        "topic": "Stated in the FSx for ONTAP user guide."
+      },
+      "feature_request": {
+        "status": "not-applicable"
+      },
+      "appears_in": [
+        "solutions/data-lifecycle/archive-verify-delete/README.md",
+        "solutions/data-lifecycle/archive-verify-delete/README.en.md",
+        "solutions/data-lifecycle/archive-verify-delete/README.ko.md",
+        "solutions/data-lifecycle/archive-verify-delete/README.zh-CN.md",
+        "solutions/data-lifecycle/archive-verify-delete/README.zh-TW.md",
+        "solutions/data-lifecycle/archive-verify-delete/README.fr.md",
+        "solutions/data-lifecycle/archive-verify-delete/README.de.md",
+        "solutions/data-lifecycle/archive-verify-delete/README.es.md"
+      ]
+    },
+    {
+      "id": "E-022",
+      "claim": "The key policy of an AWS managed KMS key (alias/aws/sns) cannot be changed, so AWS service event sources such as EventBridge and CloudWatch alarms need a customer managed key that grants them kms:GenerateDataKey* and kms:Decrypt to publish to an encrypted SNS topic.",
+      "subject": "AWS",
+      "tier": "documented",
+      "premise": true,
+      "sources": [
+        {
+          "url": "https://docs.aws.amazon.com/sns/latest/dg/sns-key-management.html",
+          "read": "full",
+          "retrieved": "2026-11-26",
+          "says": "For event sources from AWS services to work with encrypted topics: use a customer managed key and allow the service principal kms:GenerateDataKey* and kms:Decrypt; aws:SourceAccount/SourceArn conditions are not supported for EventBridge-to-encrypted topics."
+        },
+        {
+          "url": "https://docs.aws.amazon.com/kms/latest/developerguide/concepts.html",
+          "read": "full",
+          "retrieved": "2026-11-26",
+          "says": "You cannot change any properties of AWS managed keys, rotate them, change their key policies, or schedule them for deletion."
+        }
+      ],
+      "observation": "2026-11-26, ap-northeast-1: with a customer managed key that allowed events.amazonaws.com and cloudwatch.amazonaws.com, an EventBridge execution-failure event and a CloudWatch alarm action reached the topic (the alarm only after the topic policy also allowed cloudwatch.amazonaws.com).",
+      "support_inquiry": {
+        "status": "not-needed",
+        "topic": "Documented in the SNS and KMS developer guides."
+      },
+      "feature_request": {
+        "status": "not-applicable"
+      },
+      "appears_in": [
+        "solutions/data-lifecycle/archive-verify-delete/README.md",
+        "solutions/data-lifecycle/archive-verify-delete/README.en.md",
+        "solutions/data-lifecycle/archive-verify-delete/README.ko.md",
+        "solutions/data-lifecycle/archive-verify-delete/README.zh-CN.md",
+        "solutions/data-lifecycle/archive-verify-delete/README.zh-TW.md",
+        "solutions/data-lifecycle/archive-verify-delete/README.fr.md",
+        "solutions/data-lifecycle/archive-verify-delete/README.de.md",
+        "solutions/data-lifecycle/archive-verify-delete/README.es.md"
+      ]
+    },
+    {
+      "id": "E-023",
+      "claim": "Through an FSx for ONTAP S3 Access Point, files with the same size and modification time but different contents returned the same ETag, so an ETag-and-size check cannot detect a content change that keeps size and mtime.",
+      "subject": "AWS",
+      "tier": "verified",
+      "premise": true,
+      "sources": [
+        {
+          "url": "https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/access-points-for-fsxn-object-api-support.html",
+          "read": "full",
+          "retrieved": "2026-11-26",
+          "says": "The ETag reflects changes only to the contents of an object, not its metadata (the documentation's wording, which the observation disagrees with)."
+        }
+      ],
+      "observation": "2026-11-26, ap-northeast-1, FSx for ONTAP SINGLE_AZ_1, ONTAP 9.19.1P4D1, UNIX volume: three 64-byte files with random contents and the same mtime returned one ETag; one run.",
+      "support_inquiry": {
+        "status": "not-needed",
+        "topic": "The pattern treats the check as unable to detect such a change; nothing relies on the documentation's wording."
+      },
+      "feature_request": {
+        "status": "not-applicable"
+      },
+      "appears_in": [
+        "solutions/data-lifecycle/archive-verify-delete/README.md",
+        "solutions/data-lifecycle/archive-verify-delete/README.en.md",
+        "solutions/data-lifecycle/archive-verify-delete/README.ko.md",
+        "solutions/data-lifecycle/archive-verify-delete/README.zh-CN.md",
+        "solutions/data-lifecycle/archive-verify-delete/README.zh-TW.md",
+        "solutions/data-lifecycle/archive-verify-delete/README.fr.md",
+        "solutions/data-lifecycle/archive-verify-delete/README.de.md",
+        "solutions/data-lifecycle/archive-verify-delete/README.es.md"
       ]
     }
   ]
