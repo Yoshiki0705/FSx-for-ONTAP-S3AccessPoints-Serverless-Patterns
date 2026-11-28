@@ -21,6 +21,7 @@ Amazon FSx for NetApp ONTAP（以下 FSx for ONTAP）のボリュームにある
 | 5.5 GiB を含む 7 ファイルの通しで 1 回ずつ確認した（2026-11-26、上と同じ環境、`selection=ATIME`、`GLACIER`、7 ファイル） | ONTAP REST API による `accessed_time` の選択と uid、gid、mode、mtime、atime の取得（ルートはボリュームのルートで、パスの先頭にスラッシュなし。`unix_permissions` は `640` の整数で返る）。Distributed Map の `ItemReader` と `ResultWriter`。Fargate による 5.5 GiB のマルチパートコピー（`CopySourceIfMatch` 付き、CRC64NVME が台帳と一致）。Lambda での 5.3 GB（約 4.94 GiB）のハッシュ計算（69.8 秒、メモリ 2048 MB、使用 152 MB）。2 つ目の写し。承認後の削除。承認待ちの間に NFS で書き換えたファイルは `CHANGED` になり消えなかった。承認の拒否で何も消えなかった。`Expedited` での戻し（5.5 GiB を含む）と、戻した 6 ファイルの SHA-256 の一致（7 ファイル中の残る 1 ファイルは書き換え済みで、削除も戻しもされていない）。`reapply.sh` による uid、gid、mode、mtime の復元 |
 | 除外と承認を確かめる通しで 1 回ずつ確認した（2026-11-26、上と同じ環境、`GLACIER`、2 つ目の写しあり。dry run は `selection=ATIME`、本番は `selection=MTIME` と ONTAP REST での属性取得。64 B から 1 MiB のファイルと 51 GiB の疎ファイル） | 5.5 GiB を含む 7 ファイルの通しにない項目の確認。`maxFiles=50` の選択で、64 B の 3 ファイルと 131,071 B の 1 ファイルが最小サイズで外れ、131,073 B は残った。`*.vmdk` と保全用のプレフィックスの除外。51 GiB の疎ファイルが `SKIPPED_TOO_LARGE` として台帳に載り、写されなかった。使用済みの `runId` と、`requestedBy` のない本番の入力が入力エラーで止まった。起動した主体と同じ ARN での承認が `APPROVAL_REFUSED` になり、何も消えなかった。`delete` 関数を承認なしで直接呼ぶと `NOT_APPROVED` で消えなかった。別の主体の承認では 3 ファイルが消え、承認待ちに書き換えた 1 ファイルが `CHANGED` で残った。戻しの後の照合で 3 ファイルが `RESTORE_VERIFIED`。アラームが KMS で暗号化したトピックへ発行できた |
 | 直接呼び出しを確かめる確認で 1 回ずつ確認した（2026-11-26、同じアカウントと Access Point、`selection=MTIME`、`GLACIER`、Fargate なし、256 KiB のファイル 8 つ、`MapConcurrency=1`） | 承認の直後に実行を止めると、`APPROVED` の項目が残った。その項目への `delete` 関数の直接呼び出しは、別の実行の `claim` では `NOT_APPROVED`（`approval not current`）、止めた実行自身の ARN の `claim` でも `NOT_APPROVED`（`claiming execution is not running`）で、どちらも消えなかった。`reconcile` は残った項目を `VERIFIED` に戻した。実行中の実行の通常の削除では、承認した項目がすべて `DELETED` になった。承認の後と拒否の後に、タスクトークンのパラメーターが消えていた。トークンは、スタックの KMS キーで暗号化されていた |
+| 承認と戻しの経路を確かめる確認で 1 回ずつ確認した（2026-11-28、同じ環境、`GLACIER`、2 つ目の写しあり、Fargate あり、`ApprovalTimeoutHours=1`、`ApprovalValidityHours=1`、`ApprovalAlarmHours=1`） | 承認専用の一時の IAM ロールで承認すると、3 ファイル（5.5 GiB を含む）が `DELETED` になった。起動した主体と同じ主体の承認は `APPROVAL_REFUSED` だった。CloudTrail では、`SendTaskSuccess`（管理イベント）の `userIdentity` が、受理した承認では承認用のロール、拒否した承認では起動した主体だった。`DeleteObject`（`resources.type` が `AWS::S3::AccessPoint` のデータイベントのトレイル）は 11 件とも `delete` 関数のロールで、`resources` に `AWS::FSx::Volume`、`AWS::S3::AccessPoint`、`AWS::S3::Object` が入った。5.5 GiB のファイルの戻しは、Fargate のタスクがコピーと戻した後の照合を行い、`RESTORE_VERIFIED` になった（SHA-256 は事前に NFS で記録した値と一致）。実行中の実行の `claim` での削除の再試行は、既に消えたファイルを `DELETED`（`already gone on retry`）にした。`COMPLETED_WITH_ERRORS` で終わった実行を `"resume": true` で起動すると、`reconcile` が消えていた 1 件を `DELETED`、残っていた 1 件を `VERIFIED` にし、承認の後にその 1 件が消えた。承認から 1 時間を過ぎた `APPROVED` の項目は、実行中の実行の `claim` でも `NOT_APPROVED`（`approval not current`）で、承認時刻を直前にした対照は `DELETED` だった。承認待ちが約 69 分続くと `ApprovalPendingAlarm` が `ALARM` になり、通知が届いた。消えたパスに NFS で別のファイルを置いてから戻すと `EXISTS` で、NFS のファイルの SHA-256 は変わらなかった。アーカイブ用バケットの写しを別の内容の版に差し替えて戻すと `RESTORE_MISMATCH` になり、`RestoreMismatchAlarm` が `ALARM` になった。元の版を最新に戻して `"retryMismatched": true` で戻すと `RESTORE_VERIFIED` になった。`touch -d` で atime を 2020 年にした 12 秒後と約 5 分後の `selection=ATIME` の dry run は、どちらも 2 ファイルを選んだ |
 ### 通しの環境と手順ごとの結果
 環境は ap-northeast-1、FSx for ONTAP の第 1 世代 `SINGLE_AZ_1`、ONTAP 9.19.1P4D1、UNIX セキュリティスタイルのボリューム、Access Point のファイルシステムユーザーは UNIX root です。実行日は 2026-11-26（時刻は日本時間）、各手順は 1 回だけ実行しました。構成は `selection=ATIME`、`GLACIER`、2 つ目の写しあり、Fargate は arm64 の 2 vCPU と 8 GiB です。データは小さい 6 ファイル（64 B が 3 つ、8 MiB が 3 つ。所有者 1234:5678、モード 640、mtime と atime は 2020-01-02）と、5,905,580,032 B のファイル 1 つです。
 | 手順 | 結果 | 所要 |
@@ -74,14 +75,10 @@ Amazon FSx for NetApp ONTAP（以下 FSx for ONTAP）のボリュームにある
 - 多数のファイルでの所要時間と料金。並列度を変えたときのファイルシステムのスループットと、業務のクライアントのレイテンシ
 - `Standard` と `Bulk` の戻しの完了待ち（実機では `Expedited` のみ）
 - `S3.SlowDownException` の再試行（SDK 統合が返す名前を観測していません。前提条件の 3 と同じ型の食い違いが起きる恐れがあります）
-- CloudTrail のデータイベントでの削除と承認の記録。S3 のデータイベント（`DeleteObject` など）は、トレイルでデータイベントを有効にしたときだけ記録されます。この通しでは、アカウントのトレイルが対象の Access Point のデータイベントを含むかを確認していません。`SendTaskSuccess` は管理イベントですが、その記録も確認していません
-- 2 つ目の主体による承認の拒否と受理の比較は、同じ SSO の主体が、承認の出力に別の ARN を申告して行いました。承認者の値は申告なので、別の IAM 主体で承認した場合と結果は同じはずですが、実際の別主体では試していません
 - 50 GiB を超えるファイルの写しと戻し（選択から外す動作だけを、疎ファイルで確認）
 - NTFS ボリューム、root 以外のユーザー、第 2 世代、Multi-AZ
-- 戻しで、`CHANGED` のファイルを選ばないこと以外の `EXISTS` の経路（NFS に同名のファイルがある場合）
-- `ApprovalPendingAlarm` が実際に `ALARM` になるまでの待ち（メトリクスが出ることだけを確認）
-- 候補が 0 件になった原因が 1 件あります。`touch -d` で atime を戻した約 10 秒後の実行は、候補が 0 件でした。約 17 分後の確認では 2020 年の値が返り、別の確認でも 6 件が返りました。原因は特定しておらず、再現もしていません
-- 削除の再試行と再開（`DELETING` と同じ `claimedBy`）の実機での通し。この経路は単体テストだけで確かめています
+- `touch -d` で atime を戻した約 10 秒後の実行で、候補が 0 件になった例が 1 回あります。2026-11-28 に 12 秒後と約 5 分後で試すと、どちらも選ばれ、再現しませんでした。原因は特定していません
+- 承認の待ちが `ApprovalTimeoutHours` を過ぎて実行が終わることと、ウォッチドッグが残ったタスクトークンを承認のタイムアウトに 1 時間を足した後に消すこと（単体テストのみ）
 ### 消す前の確認に残る書き込みの窓
 消す前の確認には、書き込みの窓が 1 つ残ります。Access Point の `DeleteObject` は条件付きの削除に対応していないため、`HeadObject` で確かめてから消すまでの間に書き換えられても検出できません。この窓は API 呼び出し 1 往復分です。
 ## 処理の流れ

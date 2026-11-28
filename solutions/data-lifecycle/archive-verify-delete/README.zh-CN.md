@@ -21,6 +21,7 @@
 | 在包含 5.5 GiB 的 7 个文件的运行中各确认 1 次（2026-11-26，与上述相同的环境，`selection=ATIME`，`GLACIER`，7 个文件） | 通过 ONTAP REST API 按 `accessed_time` 选择，并获取 uid、gid、mode、mtime、atime（根是卷的根，路径开头没有斜杠；`unix_permissions` 以整数 `640` 返回）。Distributed Map 的 `ItemReader` 和 `ResultWriter`。用 Fargate 进行 5.5 GiB 的分段复制（带 `CopySourceIfMatch`，CRC64NVME 与台账一致）。在 Lambda 中对 5.3 GB（约 4.94 GiB）计算哈希（69.8 秒，配置内存 2048 MB，使用 152 MB）。第二份副本。批准后的删除。等待批准期间在 NFS 上改写的文件变为 `CHANGED`，没有被删除。拒绝批准后什么都没有被删除。用 `Expedited` 恢复（含 5.5 GiB），恢复的 6 个文件 SHA-256 一致（7 个文件中剩下的 1 个已被改写，既没有被删除也没有被恢复）。用 `reapply.sh` 恢复 uid、gid、mode、mtime |
 | 在确认排除与批准的运行中各确认 1 次（2026-11-26，同一环境，`GLACIER`，开启第二份副本。dry run 使用 `selection=ATIME`，正式运行使用 `selection=MTIME`，属性来自 ONTAP REST。文件为 64 B 至 1 MiB，另有 1 个 51 GiB 的稀疏文件） | 包含 5.5 GiB 的 7 个文件的运行中没有的项目的确认。在 `maxFiles=50` 下，3 个 64 B 的文件和 1 个 131,071 B 的文件低于最小大小，131,073 B 的文件被保留。`*.vmdk` 和法律保留前缀被排除。51 GiB 的稀疏文件被记录为 `SKIPPED_TOO_LARGE`，没有被复制。重复使用的 `runId`，以及没有 `requestedBy` 的正式运行输入，都作为输入错误而停止。批准者 ARN 与启动者相同的批准以 `APPROVAL_REFUSED` 结束，没有任何删除。在没有批准的情况下直接调用 `delete` 函数，返回 `NOT_APPROVED` 且没有删除。批准者不同时，删除了 3 个文件，等待期间被改写的 1 个文件保留为 `CHANGED`。恢复后，3 个文件为 `RESTORE_VERIFIED`。告警已发布到 KMS 加密的主题 |
 | 在确认直接调用的检查中各确认 1 次（2026-11-26，同一账户和 Access Point，`selection=MTIME`，`GLACIER`，无 Fargate，8 个 256 KiB 的文件，`MapConcurrency=1`） | 批准之后立即停止执行，留下了 `APPROVED` 条目。对这些条目直接调用 `delete` 函数，无论是用其他执行的 `claim`（`approval not current`），还是把已停止执行自身的 ARN 作为 `claim`（`claiming execution is not running`），都返回 `NOT_APPROVED`，没有任何删除。`reconcile` 把剩余的条目恢复为 `VERIFIED`。在运行中的执行里正常删除，所有已批准的条目都变为 `DELETED`。批准之后和拒绝之后，任务令牌的参数都已被删除。令牌使用堆栈的 KMS 密钥加密 |
+| 在确认批准与恢复路径的检查中各确认 1 次（2026-11-28，同一环境，`GLACIER`，开启第二份副本，开启 Fargate，`ApprovalTimeoutHours=1`，`ApprovalValidityHours=1`，`ApprovalAlarmHours=1`） | 使用仅用于批准的临时 IAM 角色批准后，3 个文件（包含 5.5 GiB）变为 `DELETED`。与启动者相同主体的批准为 `APPROVAL_REFUSED`。在 CloudTrail 中，`SendTaskSuccess`（管理事件）的 `userIdentity`，在被接受的批准中是批准用的角色，在被拒绝的批准中是启动者。全部 11 条 `DeleteObject` 事件（`resources.type` 为 `AWS::S3::AccessPoint` 的数据事件跟踪）均来自 `delete` 函数的角色，`resources` 中包含 `AWS::FSx::Volume`、`AWS::S3::AccessPoint` 和 `AWS::S3::Object`。恢复 5.5 GiB 的文件时，复制和恢复后的验证在 Fargate 任务中运行，结果为 `RESTORE_VERIFIED`（SHA-256 与事先在 NFS 上记录的值一致）。用运行中的执行的 `claim` 重试删除，已经不存在的文件变为 `DELETED`（`already gone on retry`）。用 `"resume": true` 启动以 `COMPLETED_WITH_ERRORS` 结束的执行后，`reconcile` 把已不存在的条目设为 `DELETED`，仍然存在的条目设为 `VERIFIED`，该条目在批准后被删除。批准超过 1 小时的 `APPROVED` 条目，即使使用运行中的执行的 `claim`，也是 `NOT_APPROVED`（`approval not current`）；把批准时间设为刚刚之前的对照则为 `DELETED`。批准等待持续约 69 分钟后，`ApprovalPendingAlarm` 变为 `ALARM`，通知已送达。在已删除的路径上通过 NFS 放置另一个文件后再恢复，结果为 `EXISTS`，NFS 文件的 SHA-256 没有变化。把归档存储桶中的副本替换为内容不同的版本后再恢复，结果为 `RESTORE_MISMATCH`，`RestoreMismatchAlarm` 变为 `ALARM`。把原来的版本重新设为当前版本后，用 `"retryMismatched": true` 恢复，结果为 `RESTORE_VERIFIED`。用 `touch -d` 把 atime 设为 2020 年后，12 秒后和约 5 分钟后的 `selection=ATIME` dry run 都选中了 2 个文件 |
 ### 环境与各步骤的结果
 环境为 ap-northeast-1、FSx for ONTAP 第 1 代 `SINGLE_AZ_1`、ONTAP 9.19.1P4D1、UNIX 安全样式的卷，Access Point 的文件系统用户为 UNIX root。运行日期为 2026-11-26（时间为日本标准时间），每个步骤只运行了 1 次。配置为 `selection=ATIME`、`GLACIER`、有第二份副本，Fargate 为 arm64 的 2 vCPU 和 8 GiB。数据为 6 个小文件（3 个 64 B、3 个 8 MiB，所有者 1234:5678，模式 640，mtime 和 atime 为 2020-01-02）和 1 个 5,905,580,032 B 的文件。
 | 步骤 | 结果 | 耗时 |
@@ -74,14 +75,10 @@
 - 大量文件时的耗时和费用。其他并行度设置下的文件系统吞吐量和客户端延迟
 - `Standard` 和 `Bulk` 恢复的完成等待（只运行了 `Expedited`）
 - `S3.SlowDownException` 的重试（未观察到 SDK 集成返回的名称，可能出现与前提条件 3 同类的不匹配）
-- CloudTrail 数据事件中的删除和批准记录。S3 数据事件（`DeleteObject` 等）只有在跟踪启用了数据事件时才会记录。本次运行未确认账户的跟踪是否包含此 Access Point 的数据事件。`SendTaskSuccess` 是管理事件，其记录同样未确认
-- 批准的拒绝和接受，是用同一个 SSO 主体在批准输出中声明不同的 ARN 来比较的。`approver` 的值是自行申报的，所以换成不同的 IAM 主体应该得到相同的结果，但没有使用真正的第二个主体
 - 超过 50 GiB 的文件的复制和恢复（只用稀疏文件确认了将其排除在选择之外）
 - NTFS 卷、非 root 用户、第 2 代、Multi-AZ
-- 恢复中除了不选择 `CHANGED` 文件之外的 `EXISTS` 路径（NFS 上已有同名文件的情况）
-- 等到 `ApprovalPendingAlarm` 实际变为 `ALARM`（只确认了指标已发布）
-- 有 1 次候选为 0 个的情况原因不明。在用 `touch -d` 还原 atime 约 10 秒后的运行中没有候选。约 17 分钟后的确认返回了 2020 年的值，其他确认也返回了 6 个文件。未能确定原因，也没有再次出现
-- 在实机上运行删除的重试和恢复路径（`DELETING`，相同的 `claimedBy`）。该路径只有单元测试覆盖
+- 有 1 次，在用 `touch -d` 还原 atime 约 10 秒后的运行中没有候选。2026-11-28 在还原 12 秒后和约 5 分钟后分别运行，都选中了文件，因此没有再次出现。原因不明
+- 批准等待超过 `ApprovalTimeoutHours` 后执行结束，以及看门狗在批准超时一小时后删除残留的任务令牌（只有单元测试）
 ### 删除前确认中残留的写入窗口
 删除前的确认中仍残留一个写入窗口。Access Point 的 `DeleteObject` 不支持条件删除，因此在用 `HeadObject` 确认之后到删除之前被改写的情况无法检测。该窗口相当于一次 API 调用往返。
 ## 处理流程
