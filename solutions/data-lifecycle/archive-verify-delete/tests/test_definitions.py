@@ -373,7 +373,6 @@ def test_lambda_tasks_retry_a_timeout():
             assert any("States.Timeout" in r["ErrorEquals"] for r in state["Retry"]), name
 
 
-
 def test_the_approval_wait_is_not_retried_on_timeout():
     """The approval timeout ends the run. A Retry on States.Timeout would send a new approval
     request and wait the whole timeout again, up to MaxAttempts more times, so the configured
@@ -383,6 +382,7 @@ def test_the_approval_wait_is_not_retried_on_timeout():
     for r in state.get("Retry", []):
         assert "States.Timeout" not in r["ErrorEquals"]
     assert any("States.ALL" in c["ErrorEquals"] for c in state["Catch"])
+
 
 def test_delete_is_reachable_only_through_the_recorded_approval():
     edges = _graph(ARCHIVE)
