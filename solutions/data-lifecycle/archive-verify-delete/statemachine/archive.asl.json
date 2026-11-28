@@ -904,8 +904,7 @@
             "Lambda.ServiceException",
             "Lambda.AWSLambdaException",
             "Lambda.SdkClientException",
-            "Lambda.TooManyRequestsException",
-            "States.Timeout"
+            "Lambda.TooManyRequestsException"
           ],
           "IntervalSeconds": 5,
           "MaxAttempts": 3,
