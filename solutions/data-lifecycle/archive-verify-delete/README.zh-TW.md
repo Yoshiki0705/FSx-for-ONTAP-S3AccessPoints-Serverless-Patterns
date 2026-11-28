@@ -21,6 +21,7 @@
 | 在包含 5.5 GiB 的 7 個檔案的執行中各確認 1 次（2026-11-26，與上述相同的環境，`selection=ATIME`，`GLACIER`，7 個檔案） | 透過 ONTAP REST API 按 `accessed_time` 選擇，並獲取 uid、gid、mode、mtime、atime（根是磁碟區的根，路徑開頭沒有斜槓；`unix_permissions` 以整數 `640` 返回）。Distributed Map 的 `ItemReader` 和 `ResultWriter`。用 Fargate 進行 5.5 GiB 的分段複制（帶 `CopySourceIfMatch`，CRC64NVME 與帳本一致）。在 Lambda 中對 5.3 GB（約 4.94 GiB）計算雜湊（69.8 秒，設定記憶體 2048 MB，使用 152 MB）。第二份副本。批准後的刪除。等待批准期間在 NFS 上改寫的檔案變為 `CHANGED`，沒有被刪除。拒絕批准後什麼都沒有被刪除。用 `Expedited` 恢復（含 5.5 GiB），恢復的 6 個檔案 SHA-256 一致（7 個檔案中剩下的 1 個已被改寫，既沒有被刪除也沒有被恢復）。用 `reapply.sh` 恢復 uid、gid、mode、mtime |
 | 在確認排除與批准的執行中各確認 1 次（2026-11-26，相同環境，`GLACIER`，開啟第二份副本。dry run 使用 `selection=ATIME`，正式執行使用 `selection=MTIME` 並從 ONTAP REST 取得屬性。檔案從 64 B 到 1 MiB，另有 1 個 51 GiB 的稀疏檔案） | 包含 5.5 GiB 的 7 個檔案的執行中沒有的項目的確認。`maxFiles=50` 時，3 個 64 B 的檔案和 1 個 131,071 B 的檔案低於最小大小而被排除，131,073 B 的檔案被保留。`*.vmdk` 和法律保全前綴被排除。51 GiB 的稀疏檔案被記錄為 `SKIPPED_TOO_LARGE`，沒有被複製。重複使用的 `runId`，以及沒有 `requestedBy` 的正式執行輸入，都作為輸入錯誤而停止。與啟動者 ARN 相同的批准以 `APPROVAL_REFUSED` 結束，沒有刪除任何檔案。不經批准直接呼叫 `delete` 函數時返回 `NOT_APPROVED`，沒有刪除任何檔案。由不同的批准者批准後刪除了 3 個檔案，等待期間被改寫的 1 個檔案保留為 `CHANGED`。恢復後 3 個檔案為 `RESTORE_VERIFIED`。告警已發佈到經 KMS 加密的主題 |
 | 在確認直接呼叫的檢查中各確認 1 次（2026-11-26，相同帳戶和 Access Point，`selection=MTIME`，`GLACIER`，無 Fargate，8 個 256 KiB 的檔案，`MapConcurrency=1`） | 批准之後立即停止執行，留下了 `APPROVED` 項目。對這些項目直接呼叫 `delete` 函數，無論是用其他執行的 `claim`（`approval not current`），還是把已停止執行本身的 ARN 作為 `claim`（`claiming execution is not running`），都返回 `NOT_APPROVED`，沒有刪除任何檔案。`reconcile` 把剩餘的項目恢復為 `VERIFIED`。在執行中的執行裡正常刪除，所有已批准的項目都變為 `DELETED`。批准之後和拒絕之後，任務權杖的參數都已被刪除。權杖使用堆疊的 KMS 金鑰加密 |
+| 在確認批准與恢復路徑的檢查中各確認 1 次（2026-11-28，相同環境，`GLACIER`，開啟第二份副本，開啟 Fargate，`ApprovalTimeoutHours=1`，`ApprovalValidityHours=1`，`ApprovalAlarmHours=1`） | 使用僅供批准的臨時 IAM 角色批准後，3 個檔案（包含 5.5 GiB）變為 `DELETED`。與啟動者相同主體的批准為 `APPROVAL_REFUSED`。在 CloudTrail 中，`SendTaskSuccess`（管理事件）的 `userIdentity`，在被接受的批准中是批准用的角色，在被拒絕的批准中是啟動者。全部 11 筆 `DeleteObject` 事件（`resources.type` 為 `AWS::S3::AccessPoint` 的資料事件追蹤）均來自 `delete` 函數的角色，`resources` 中包含 `AWS::FSx::Volume`、`AWS::S3::AccessPoint` 和 `AWS::S3::Object`。恢復 5.5 GiB 的檔案時，複製和恢復後的驗證在 Fargate 任務中執行，結果為 `RESTORE_VERIFIED`（SHA-256 與事先在 NFS 上記錄的值一致）。用執行中的執行的 `claim` 重試刪除，已經不存在的檔案變為 `DELETED`（`already gone on retry`）。用 `"resume": true` 啟動以 `COMPLETED_WITH_ERRORS` 結束的執行後，`reconcile` 把已不存在的項目設為 `DELETED`，仍然存在的項目設為 `VERIFIED`，該項目在批准後被刪除。批准超過 1 小時的 `APPROVED` 項目，即使使用執行中的執行的 `claim`，也是 `NOT_APPROVED`（`approval not current`）；把批准時間設為剛剛之前的對照則為 `DELETED`。批准等待持續約 69 分鐘後，`ApprovalPendingAlarm` 變為 `ALARM`，通知已送達。在已刪除的路徑上透過 NFS 放置另一個檔案後再恢復，結果為 `EXISTS`，NFS 檔案的 SHA-256 沒有變化。把歸檔儲存貯體中的副本替換為內容不同的版本後再恢復，結果為 `RESTORE_MISMATCH`，`RestoreMismatchAlarm` 變為 `ALARM`。把原來的版本重新設為目前版本後，用 `"retryMismatched": true` 恢復，結果為 `RESTORE_VERIFIED`。用 `touch -d` 把 atime 設為 2020 年後，12 秒後和約 5 分鐘後的 `selection=ATIME` dry run 都選中了 2 個檔案 |
 ### 環境與各步驟的結果
 環境為 ap-northeast-1、FSx for ONTAP 第 1 代 `SINGLE_AZ_1`、ONTAP 9.19.1P4D1、UNIX 安全樣式的磁碟區，Access Point 的檔案系統使用者為 UNIX root。執行日期為 2026-11-26（時間為日本標準時間），每個步驟只執行了 1 次。設定為 `selection=ATIME`、`GLACIER`、有第二份副本，Fargate 為 arm64 的 2 vCPU 和 8 GiB。資料為 6 個小檔案（3 個 64 B、3 個 8 MiB，所有者 1234:5678，模式 640，mtime 和 atime 為 2020-01-02）和 1 個 5,905,580,032 B 的檔案。
 | 步驟 | 結果 | 耗時 |
@@ -74,14 +75,10 @@
 - 大量檔案時的耗時和費用。其他並行設定下檔案系統的吞吐量和用戶端延遲
 - `Standard` 和 `Bulk` 恢復的完成等待（只執行了 `Expedited`）
 - `S3.SlowDownException` 的重試（未觀察到 SDK 整合返回的名稱，可能出現與前提條件 3 同類的不匹配）
-- CloudTrail 資料事件中的刪除和批准記錄。只有在追蹤啟用了資料事件時，才會記錄 S3 資料事件（`DeleteObject` 等）。本次執行沒有確認帳戶的追蹤是否包含此 Access Point 的資料事件。`SendTaskSuccess` 是管理事件，它的記錄也沒有確認
-- 批准的拒絕和接受，是用同一個 SSO 主體在批准輸出中申報不同的 ARN 來比較的。批准者的值是申報的，因此不同的 IAM 主體應該得到相同的結果，但沒有使用真正的第二個主體
 - 複製和恢復超過 50 GiB 的檔案（只用稀疏檔案確認了它們被排除在選擇之外）
 - NTFS 磁碟區、非 root 使用者、第 2 代、Multi-AZ
-- 恢復中除了不選擇 `CHANGED` 檔案之外的 `EXISTS` 路徑（NFS 上已有同名檔案的情況）
-- 等到 `ApprovalPendingAlarm` 實際變為 `ALARM`（只確認了指標已發佈）
-- 有 1 次候選為 0 個的情況原因不明。在用 `touch -d` 重設 atime 約 10 秒後的執行中沒有候選。約 17 分鐘後的確認返回了 2020 年的值，其他確認也返回了 6 個檔案。未能確定原因，也沒有再次出現
-- 在實機上執行刪除的重試和恢復路徑（`DELETING`，相同的 `claimedBy`）。該路徑只有單元測試涵蓋
+- 有 1 次，在用 `touch -d` 重設 atime 約 10 秒後的執行中沒有候選。2026-11-28 在重設 12 秒後和約 5 分鐘後分別執行，都選中了檔案，因此沒有再次出現。原因不明
+- 批准等待超過 `ApprovalTimeoutHours` 後執行結束，以及看門狗在批准逾時一小時後刪除殘留的任務權杖（只有單元測試）
 ### 刪除前確認中殘留的寫入視窗
 刪除前的確認中仍殘留一個寫入視窗。Access Point 的 `DeleteObject` 不支持條件刪除，因此在用 `HeadObject` 確認之後到刪除之前被改寫的情況無法檢測。該視窗相當於一次 API 呼叫往返。
 ## 處理流程
